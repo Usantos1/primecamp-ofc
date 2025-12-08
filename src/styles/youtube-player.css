@@ -1,0 +1,28 @@
+/* CSS para ocultar elementos específicos do YouTube player */
+.youtube-container iframe {
+  border: none !important;
+}
+
+/* Oculta elementos específicos do YouTube usando CSS */
+iframe[src*="youtube"] {
+  pointer-events: none;
+}
+
+iframe[src*="youtube"]:hover {
+  pointer-events: auto;
+}
+
+/* Remove interações específicas */
+.youtube-container {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Força o foco apenas nos controles de reprodução */
+.youtube-container iframe {
+  filter: none;
+  -webkit-filter: none;
+}

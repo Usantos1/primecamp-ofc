@@ -1,0 +1,618 @@
+@import url('./styles/youtube-mask.css');
+@import url('./styles/youtube-player.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mobile optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  /* Prevent zoom on iOS */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  /* Smooth scrolling with momentum */
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  /* Prevent pull to refresh */
+  overscroll-behavior-y: none;
+  /* Better touch performance */
+  touch-action: manipulation;
+}
+
+/* Touch targets - minimum 44px for iOS */
+button, 
+input[type="button"], 
+input[type="submit"], 
+.btn,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Improve form inputs on mobile */
+input, 
+textarea, 
+select {
+  -webkit-appearance: none;
+  border-radius: 0;
+  font-size: 16px; /* Prevent zoom on iOS */
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Improve spacing on small screens */
+  .p-6 { padding: 1rem; }
+  .px-6 { padding-left: 1rem; padding-right: 1rem; }
+  .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+  
+  /* Improve card spacing */
+  .space-y-6 > * + * { margin-top: 1rem; }
+  .gap-6 { gap: 1rem; }
+  
+  /* Better text sizes */
+  .text-2xl { font-size: 1.5rem; }
+  .text-xl { font-size: 1.25rem; }
+  
+  /* Responsive grid adjustments */
+  .grid-cols-7 { grid-template-columns: repeat(7, 1fr); }
+  .min-h-16 { min-height: 3rem; }
+  .min-h-24 { min-height: 4rem; }
+  
+  /* Better button sizing for mobile */
+  .btn { min-height: 44px; }
+  button { min-height: 44px; }
+  
+  /* Improve touch targets */
+  [role="button"], button, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better modal sizing */
+  .modal-content { 
+    max-width: 95vw; 
+    max-height: 90vh;
+    margin: 5vh auto;
+  }
+  
+  /* Improve notification panel on mobile */
+  .notification-panel {
+    width: 100vw !important;
+    max-width: none !important;
+  }
+  
+  /* Better spacing for cards */
+  .grid { gap: 0.75rem; }
+  
+  /* Improve sidebar on mobile */
+  .sidebar-content { padding: 0.5rem; }
+  
+  /* Better form elements */
+  .form-input, .form-select, .form-textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* iPhone/Safari specific fixes for DISC test */
+  button, input, textarea, select {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 8px;
+    background-clip: padding-box;
+    outline: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    box-sizing: border-box;
+    font-size: 16px; /* Prevents zoom on iOS */
+    
+    /* Additional iPhone Safari fixes */
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    zoom: 1;
+  }
+
+  /* Remove tap highlights */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-focus-ring-color: transparent;
+    outline: none;
+  }
+
+  /* Ensure proper touch targets for better iPhone experience */
+  button, [role="button"], input[type="radio"], input[type="checkbox"], label {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Specific RadioGroup optimization for iPhone */
+  [data-radix-collection-item] {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  /* Better text readability on small screens */
+  body {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  h1, h2, h3 {
+    line-height: 1.2;
+  }
+}
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 26% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 26% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 26% 14%;
+
+    --primary: 198 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 198 100% 45%;
+
+    --secondary: 210 40% 95%;
+    --secondary-foreground: 220 26% 14%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 197 71% 73%;
+    --accent-foreground: 220 26% 14%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 198 100% 35%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-tech: linear-gradient(135deg, hsl(198 100% 35%), hsl(197 71% 73%));
+    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(var(--card) / 0.8));
+    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.15);
+    --shadow-soft: 0 4px 16px hsl(var(--primary) / 0.1);
+    --backdrop-blur: backdrop-filter: blur(8px);
+
+    /* Priority colors */
+    --priority-low: 120 60% 50%;
+    --priority-medium: 45 93% 58%;
+    --priority-high: 25 95% 53%;
+    --priority-critical: 0 84% 60%;
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Job Application Colors - Dark Theme by Default */
+    --job-application: 220 39% 11%; /* Dark blue background #0A1A2F */
+    --job-card: 215 28% 17%; /* Darker card background */
+    --job-card-border: 215 20% 25%; /* Dark border */
+    --job-text: 0 0% 100%; /* White text */
+    --job-text-muted: 0 0% 78%; /* Light gray text */
+    --job-primary: 213 94% 68%; /* Corporate blue */
+    --job-primary-hover: 213 94% 78%; /* Lighter blue on hover */
+    --job-badge: 215 20% 25%; /* Dark badge background */
+    --job-progress-bg: 215 20% 25%; /* Dark progress background */
+    --job-progress-inactive: 215 15% 35%; /* Inactive grey */
+    
+    /* Job Application Shadows - Dark */
+    --shadow-elegant: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
+    --shadow-job-glow: 0 0 0 3px hsl(213 94% 68% / 0.2);
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 198 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 198 100% 45%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 197 71% 73%;
+    --accent-foreground: 220 26% 14%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 198 100% 35%;
+
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 240 5.9% 10%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Job Application Colors - Light Mode */
+    --job-application: 210 20% 98%; /* Clean light grey background */
+    --job-card: 0 0% 100%; /* White card background */
+    --job-card-border: 214 32% 91%; /* Light grey border */
+    --job-text: 220 26% 14%; /* Dark grey text */
+    --job-text-muted: 215 16% 47%; /* Medium grey text */
+    --job-primary: 213 94% 68%; /* Corporate blue */
+    --job-primary-hover: 213 94% 58%; /* Darker blue on hover */
+    --job-badge: 210 40% 96%; /* Light badge background */
+    --job-progress-bg: 214 32% 91%; /* Light progress background */
+    --job-progress-inactive: 215 28% 17%; /* Inactive grey */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Enhanced Mobile-First Responsive Design */
+@media (max-width: 768px) {
+  /* Root font size adjustment for mobile */
+  html {
+    font-size: 14px;
+  }
+  
+  /* iOS Safari specific optimizations */
+  body {
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Touch-friendly elements */
+  button, [role="button"], input[type="radio"], .touch-manipulation {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    min-height: 44px;
+  }
+  
+  /* Improve text readability on mobile */
+  .text-xs {
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+  
+  .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25;
+  }
+  
+  .text-base {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  /* Enhanced sidebar mobile behavior */
+  .sidebar-collapsed {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .sidebar-expanded {
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Improved sidebar header height for mobile */
+  .sidebar-header {
+    height: 56px !important;
+    min-height: 56px !important;
+  }
+
+  /* Hide AppBar completely on mobile */
+  .app-header {
+    display: none !important;
+  }
+  
+  /* Keep only sidebar responsive */
+  .main-content {
+    padding-top: 0 !important;
+  }
+
+  /* Card improvements for mobile */
+  .card {
+    margin: 0.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Dialog mobile optimization */
+  .dialog-content {
+    margin: 1rem;
+    width: calc(100% - 2rem);
+    max-width: none;
+    border-radius: 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Time Clock Widget Mobile Enhancement */
+  .time-clock-widget {
+    padding: 1.5rem;
+    margin: 0;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+/* Enhanced touch targets */
+  button {
+    min-height: 48px;
+    min-width: 48px;
+    font-weight: 500;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* iPhone/Safari specific button fixes */
+  @supports (-webkit-touch-callout: none) {
+    button, [role="button"], .btn {
+      -webkit-appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      border-radius: 12px;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      background-clip: padding-box;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    /* Radio group items specific styling for iPhone */
+    .radio-group-item, input[type="radio"] {
+      -webkit-appearance: none;
+      -webkit-tap-highlight-color: transparent;
+      background-clip: padding-box;
+      transform: translateZ(0);
+    }
+    
+    /* Input fields for iPhone Safari */
+    input, select, textarea {
+      -webkit-appearance: none;
+      -webkit-border-radius: 12px;
+      border-radius: 12px;
+      background-clip: padding-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+
+  /* Primary buttons mobile enhancement */
+  .btn-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+  }
+
+  /* Input fields mobile optimization */
+  input, select, textarea {
+    min-height: 48px;
+    font-size: 16px; /* Prevents zoom on iOS */
+    border-radius: 12px;
+    padding: 12px 16px;
+  }
+
+  /* Badge mobile styling */
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+  }
+
+  /* Table mobile responsive improvements */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    margin: 0 -1rem;
+  }
+
+  /* Form mobile layout */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  /* Button group mobile */
+  .button-group {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Enhanced modal backdrop for mobile */
+  .modal-backdrop {
+    backdrop-filter: blur(8px);
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+
+  /* Mobile navigation improvements */
+  .mobile-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: hsl(var(--background));
+    border-top: 1px solid hsl(var(--border));
+    z-index: 50;
+    padding: 8px 16px;
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Scroll area mobile optimization */
+  .scroll-area {
+    max-height: 50vh;
+  }
+
+  /* Clock display mobile enhancement */
+  .clock-display {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: -0.02em;
+  }
+
+  /* Status indicators mobile */
+  .status-indicator {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  /* Mobile spacing utilities */
+  .mobile-p-safe {
+    padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)) 1rem;
+  }
+
+  /* Improved touch feedback */
+  .touch-feedback:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Mobile text scaling */
+  .mobile-text-sm { font-size: 0.875rem; }
+  .mobile-text-base { font-size: 1rem; }
+  .mobile-text-lg { font-size: 1.125rem; }
+
+  /* Location display mobile */
+  .location-display {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    background: hsl(var(--muted) / 0.5);
+  }
+}
+
+/* Enhanced animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Job Application Styles - Using Tailwind utilities directly */
+
+/* Job Application Input Styles */
+.job-input {
+  @apply bg-transparent border-job-card-border text-job-text placeholder:text-job-text-muted rounded-lg px-4 py-3 text-sm md:text-base min-h-[44px] transition-all duration-200;
+}
+
+.job-input:focus {
+  @apply border-job-primary ring-2 ring-job-primary/20 outline-none;
+}
+
+/* Job Application Button Styles */
+.job-button-primary {
+  @apply bg-job-primary hover:bg-job-primary-hover text-white font-medium rounded-lg shadow-lg hover:shadow-job-glow transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] min-h-[44px] text-sm md:text-base;
+}
+
+.job-button-secondary {
+  @apply border-job-card-border bg-transparent hover:bg-job-card-border/50 text-job-text font-medium rounded-lg transition-all duration-200 min-h-[44px] text-sm md:text-base;
+}
+
+/* Mobile Optimizations for Job Application */
+@media (max-width: 768px) {
+  .job-input {
+    @apply text-base min-h-[48px] px-4 py-3;
+  }
+  
+  .job-button-primary,
+  .job-button-secondary {
+    @apply min-h-[48px] px-6 text-base font-medium;
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+/* Real-time update indicator */
+.realtime-indicator {
+  animation: fadeInOut 2s infinite;
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}

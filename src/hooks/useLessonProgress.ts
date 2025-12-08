@@ -1,0 +1,82 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export function useLessonProgress(trainingId?: string) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: progress } = useQuery({
+    queryKey: ['lesson-progress', trainingId],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !trainingId) return [];
+
+      const { data, error } = await supabase
+        .from('lesson_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('training_id', trainingId);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!trainingId
+  });
+
+  const updateProgress = useMutation({
+    mutationFn: async ({ 
+      lessonId, 
+      trainingId,
+      progress: progressValue, 
+      lastWatchedSeconds,
+      completed
+    }: {
+      lessonId: string;
+      trainingId: string;
+      progress: number;
+      lastWatchedSeconds: number;
+      completed: boolean;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('lesson_progress')
+        .upsert({ 
+          user_id: user.id,
+          lesson_id: lessonId,
+          training_id: trainingId,
+          progress: progressValue,
+          last_watched_seconds: lastWatchedSeconds,
+          completed,
+          completed_at: completed ? new Date().toISOString() : null
+        }, {
+          onConflict: 'user_id,lesson_id'
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lesson-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['my-training-assignments'] });
+    }
+  });
+
+  const getLessonProgress = (lessonId: string) => {
+    return progress?.find(p => p.lesson_id === lessonId);
+  };
+
+  const getTrainingProgress = () => {
+    if (!progress || progress.length === 0) return 0;
+    const completed = progress.filter(p => p.completed).length;
+    return (completed / progress.length) * 100;
+  };
+
+  return {
+    progress,
+    updateProgress,
+    getLessonProgress,
+    getTrainingProgress
+  };
+}

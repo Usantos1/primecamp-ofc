@@ -1,0 +1,232 @@
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface SendMessageData {
+  number: string;
+  body: string;
+  url?: string;
+}
+
+export function useWhatsApp() {
+  const [loading, setLoading] = useState(false);
+
+  const getUserPhoneByName = async (displayName: string): Promise<string | null> => {
+    try {
+      console.log('🔥 getUserPhoneByName: Searching phone for:', displayName);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('phone, display_name, approved')
+        .eq('display_name', displayName)
+        .eq('approved', true)
+        .maybeSingle();
+
+      console.log('🔥 getUserPhoneByName: Query result:', { data, error });
+
+      if (error) {
+        console.error('🔥 Error fetching user phone:', error);
+        return null;
+      }
+
+      if (!data?.phone) {
+        console.log(`🔥 No phone found for user: ${displayName}`);
+        return null;
+      }
+
+      console.log(`🔥 Phone found for ${displayName}: ${data.phone}`);
+      return data.phone;
+    } catch (error) {
+      console.error('🔥 Error in getUserPhoneByName:', error);
+      return null;
+    }
+  };
+
+  const sendMessage = async (data: SendMessageData) => {
+    console.log('🔥 useWhatsApp: Sending message', data);
+    setLoading(true);
+    
+    try {
+      console.log('🔥 Sending WhatsApp message via edge function:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke('ativa-crm-api', {
+        body: {
+          action: 'send_message',
+          data
+        }
+      });
+
+      console.log('🔥 Edge function response:', { result, error });
+
+      if (error) {
+        console.error('🔥 Error calling edge function:', error);
+        throw error;
+      }
+
+      console.log('🔥 WhatsApp message sent successfully:', result);
+      toast.success('Mensagem enviada com sucesso!');
+      
+      return result;
+    } catch (error) {
+      console.error('🔥 Error sending WhatsApp message:', error);
+      toast.error('Erro ao enviar mensagem');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendTaskNotification = async (task: any, userPhone?: string, responsibleName?: string) => {
+    console.log('useWhatsApp: Sending task notification', { task, userPhone, responsibleName });
+    if (!userPhone) {
+      console.log('No phone number provided for task notification');
+      return;
+    }
+
+    const statusLabels = {
+      'pending': 'Pendente',
+      'in_progress': 'Em Andamento', 
+      'completed': 'Concluída',
+      'delayed': 'Atrasada'
+    };
+
+    const message = `🔔 *Nova Tarefa Atribuída*\n\n📋 *Tarefa:* ${task.name}\n📊 *Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n📊 *Prioridade:* ${task.priority || 'Normal'}\n🔗 *Link:* http://primecelular.com/tarefas\n\nAcesse o sistema para mais detalhes!`;
+
+    await sendMessage({
+      number: userPhone,
+      body: message
+    });
+  };
+
+  const sendCalendarNotification = async (event: any, userPhone?: string) => {
+    if (!userPhone) {
+      console.log('No phone number provided for calendar notification');
+      return;
+    }
+
+    const message = `📅 *Novo Evento Agendado*\n\n📋 *Evento:* ${event.title}\n⏰ *Data/Hora:* ${new Date(event.start_time).toLocaleString('pt-BR')}\n📍 *Local:* ${event.location || 'Não informado'}\n🔗 *Link:* http://primecelular.com/calendario\n\nNão esqueça do seu compromisso!`;
+
+    await sendMessage({
+      number: userPhone,
+      body: message
+    });
+  };
+
+  const sendTaskStatusNotification = async (task: any, userPhone?: string, oldStatus?: string, responsibleName?: string) => {
+    console.log('useWhatsApp: Sending task status notification', { task, userPhone, oldStatus, responsibleName });
+    if (!userPhone) {
+      console.log('No phone number provided for task status notification');
+      return;
+    }
+
+    const statusLabels = {
+      'pending': 'Pendente',
+      'in_progress': 'Em Andamento',
+      'completed': 'Concluída',
+      'delayed': 'Atrasada'
+    };
+
+    const message = `🔄 *Status da Tarefa Atualizado*\n\n📋 *Tarefa:* ${task.name}\n📊 *Novo Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n🔗 *Link:* http://primecelular.com/tarefas\n\nVerifique os detalhes no sistema!`;
+
+    await sendMessage({
+      number: userPhone,
+      body: message
+    });
+  };
+
+  const sendProcessNotification = async (process: any, userPhone?: string, userName?: string) => {
+    console.log('🔥 useWhatsApp: Sending process notification', { process, userPhone, userName });
+    if (!userPhone) {
+      console.log('🔥 No phone number provided for process notification');
+      return;
+    }
+
+    console.log('🔥 Creating message for process:', process.name);
+    const message = `📋 *Novo Processo Criado*\n\n📋 *Processo:* ${process.name}\n📝 *Objetivo:* ${process.objective}\n🏢 *Departamento:* ${process.department}\n👤 *Proprietário:* ${process.owner}\n🔗 *Link:* http://primecelular.com/processos\n\nAcesse o sistema para mais detalhes!`;
+
+    console.log('🔥 Sending WhatsApp message:', { number: userPhone, message });
+    await sendMessage({
+      number: userPhone,
+      body: message
+    });
+  };
+
+  const sendNPSReminder = async (userPhone: string, userName: string) => {
+    if (!userPhone) {
+      console.log('No phone number provided for NPS reminder');
+      return;
+    }
+
+    const message = `🌟 *Lembrete NPS Diário*\n\nOlá ${userName}! 👋\n\nÉ hora de avaliar seu dia no trabalho.\n\nPor favor, acesse o sistema e responda nossa pesquisa NPS diária.\n\n🔗 *Link:* http://primecelular.com/nps\n\nSua opinião é muito importante para nós! 💙`;
+
+    await sendMessage({
+      number: userPhone,
+      body: message
+    });
+  };
+
+  const sendJobCandidateNotification = async (candidate: any, surveyTitle: string, adminPhone: string) => {
+    const message = `🎯 *Novo Candidato!*\n\n` +
+      `📋 *Vaga:* ${surveyTitle}\n` +
+      `👤 *Nome:* ${candidate.name}\n` +
+      `📧 *Email:* ${candidate.email}\n` +
+      `📞 *Telefone:* ${candidate.phone || 'Não informado'}\n` +
+      `💬 *WhatsApp:* ${candidate.whatsapp || 'Não informado'}\n` +
+      `📸 *Instagram:* ${candidate.instagram || 'Não informado'}\n` +
+      `🎂 *Idade:* ${candidate.age || 'Não informada'}\n` +
+      `📍 *Endereço:* ${candidate.address || 'Não informado'}\n` +
+      `📮 *CEP:* ${candidate.cep || 'Não informado'}\n` +
+      `🔗 *Protocolo:* ${candidate.protocol}\n\n` +
+      `Acesse o sistema para mais detalhes:\n` +
+      `http://primecelular.com/admin/vagas`;
+
+    await sendMessage({
+      number: adminPhone,
+      body: message
+    });
+  };
+
+  const sendDiscTestCompletedNotification = async (testData: any, adminPhone: string) => {
+    const profileLabels: Record<string, string> = {
+      'D': 'Dominância',
+      'I': 'Influência',
+      'S': 'Estabilidade',
+      'C': 'Conformidade'
+    };
+
+    const isCandidate = !testData.user_id;
+    const testType = isCandidate ? 'Candidato Externo' : 'Colaborador';
+
+    const message = `🧠 *Teste DISC Completado!*\n\n` +
+      `📊 *Tipo:* ${testType}\n` +
+      `👤 *Nome:* ${testData.name || 'Não informado'}\n` +
+      `📧 *Email:* ${testData.email || 'Não informado'}\n` +
+      `🏢 *Empresa:* ${testData.company || 'Não informada'}\n\n` +
+      `📈 *Resultados:*\n` +
+      `• D (Dominância): ${testData.d_score || 0}\n` +
+      `• I (Influência): ${testData.i_score || 0}\n` +
+      `• S (Estabilidade): ${testData.s_score || 0}\n` +
+      `• C (Conformidade): ${testData.c_score || 0}\n\n` +
+      `🎯 *Perfil Dominante:* ${profileLabels[testData.dominant_profile] || 'Não definido'}\n\n` +
+      `Acesse o sistema para análise completa:\n` +
+      `http://primecelular.com/admin/disc`;
+
+    await sendMessage({
+      number: adminPhone,
+      body: message
+    });
+  };
+
+  return {
+    sendMessage,
+    sendTaskNotification,
+    sendCalendarNotification,
+    sendTaskStatusNotification,
+    sendProcessNotification,
+    sendNPSReminder,
+    sendJobCandidateNotification,
+    sendDiscTestCompletedNotification,
+    getUserPhoneByName,
+    loading
+  };
+}
