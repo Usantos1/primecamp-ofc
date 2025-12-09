@@ -145,11 +145,51 @@ Responda em JSON:
       const errTxt = await completion.text();
       console.error('[GENERATE-JOB-ASSETS] OpenAI error:', errTxt);
       let errorMsg = `OpenAI API error (${completion.status})`;
+      let errorDetails: any = {};
       try {
         const errJson = JSON.parse(errTxt);
         errorMsg = errJson.error?.message || errorMsg;
+        errorDetails = errJson.error || {};
       } catch {}
-      return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: corsHeaders });
+      
+      // Se o erro for de modelo inválido, tentar com gpt-4o-mini como fallback
+      if (errorDetails?.code === 'model_not_found' || errorDetails?.type === 'invalid_request_error') {
+        console.log('[GENERATE-JOB-ASSETS] Model error, trying fallback gpt-4o-mini');
+        try {
+          const fallbackCompletion = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: 'Responda somente JSON válido.' },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.6,
+              response_format: { type: 'json_object' }
+            })
+          });
+          
+          if (fallbackCompletion.ok) {
+            const fallbackData = await fallbackCompletion.json();
+            const fallbackContent = fallbackData.choices?.[0]?.message?.content;
+            if (fallbackContent) {
+              const fallbackParsed = JSON.parse(fallbackContent);
+              return new Response(JSON.stringify({ success: true, assets: fallbackParsed }), { headers: corsHeaders });
+            }
+          }
+        } catch (fallbackError) {
+          console.error('[GENERATE-JOB-ASSETS] Fallback also failed:', fallbackError);
+        }
+      }
+      
+      return new Response(JSON.stringify({ 
+        error: errorMsg,
+        details: errorDetails?.code || undefined
+      }), { status: 500, headers: corsHeaders });
     }
 
     let data;
@@ -193,11 +233,13 @@ Responda em JSON:
 
     return new Response(JSON.stringify({ success: true, assets: parsed }), { headers: corsHeaders });
   } catch (error: any) {
-    console.error('[GENERATE-JOB-ASSETS] Error:', error);
+    console.error('[GENERATE-JOB-ASSETS] Unexpected error:', error);
+    console.error('[GENERATE-JOB-ASSETS] Error stack:', error?.stack);
     const errorMessage = error?.message || error?.toString() || 'Failed to generate job assets';
     return new Response(JSON.stringify({ 
       error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      type: error?.name || 'UnknownError',
+      message: error?.message || 'Erro inesperado ao gerar conteúdo'
     }), { status: 500, headers: corsHeaders });
   }
 });

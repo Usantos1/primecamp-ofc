@@ -333,11 +333,38 @@ export const AdminJobSurveysManager = () => {
       });
     } catch (err: any) {
       console.error('Erro ao gerar descrição IA:', err);
-      const errorMessage = err?.message || err?.error || "Erro desconhecido. Verifique a API Key em Integrações.";
+      
+      // Tentar extrair mensagem de erro mais detalhada
+      let errorMessage = "Erro desconhecido. Verifique a API Key em Integrações.";
+      
+      if (err?.message) {
+        errorMessage = err.message;
+      } else if (err?.error) {
+        if (typeof err.error === 'string') {
+          errorMessage = err.error;
+        } else if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (err.error?.error) {
+          errorMessage = err.error.error;
+        }
+      } else if (err?.details) {
+        errorMessage = `Erro: ${err.details}`;
+      }
+      
+      // Mensagens mais amigáveis para erros comuns
+      if (errorMessage.includes('API key')) {
+        errorMessage = "API Key inválida ou não configurada. Verifique em Integrações > OpenAI.";
+      } else if (errorMessage.includes('model')) {
+        errorMessage = "Modelo não disponível. Tente usar outro modelo em Integrações.";
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+        errorMessage = "Limite de uso da API excedido. Verifique seus créditos na OpenAI.";
+      }
+      
       toast({
         title: "Erro ao gerar",
         description: errorMessage,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 5000
       });
     } finally {
       setGeneratingQuestions(false);
