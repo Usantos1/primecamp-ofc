@@ -145,17 +145,18 @@ ${scheduleInfo ? `- Horários: ${scheduleInfo}` : ''}
 ${compensationInfo ? `- Remuneração: ${compensationInfo}` : ''}
 
 INSTRUÇÕES DETALHADAS:
-1) DESCRIPTION: Crie um texto completo e envolvente (8-12 frases) que:
-   - Apresente a empresa e o contexto da vaga de forma atrativa
-   - Descreva o perfil ideal do candidato
-   - Destaque os principais desafios e oportunidades
-   - Mencione o ambiente de trabalho e cultura da empresa
+1) DESCRIPTION: Crie um texto completo e envolvente (8-12 frases) com FORMATAÇÃO ADEQUADA:
+   - Use \\n\\n para separar parágrafos (dois quebras de linha entre parágrafos)
+   - Primeiro parágrafo: Apresente a empresa e o contexto da vaga de forma atrativa
+   - Segundo parágrafo: Descreva o perfil ideal do candidato e o que a empresa busca
+   - Terceiro parágrafo: Destaque os principais desafios, oportunidades e ambiente de trabalho
    - Seja profissional mas acessível, usando linguagem que atraia candidatos qualificados
    - Inclua informações sobre localização, modalidade e benefícios quando relevante
+   - IMPORTANTE: Use \\n\\n para quebras de parágrafo e \\n para quebras dentro do mesmo parágrafo
 
-2) RESPONSIBILITIES: Liste 5-7 responsabilidades principais de forma clara e específica, começando com verbos de ação (Ex: "Atender clientes", "Desenvolver estratégias", "Gerenciar projetos")
+2) RESPONSIBILITIES: Liste 5-7 responsabilidades principais, cada uma em uma linha separada, começando com verbos de ação (Ex: "Atender clientes", "Desenvolver estratégias", "Gerenciar projetos")
 
-3) REQUIREMENTS: Liste 4-6 requisitos essenciais, incluindo:
+3) REQUIREMENTS: Liste 4-6 requisitos essenciais, cada um em uma linha separada, incluindo:
    - Formação/experiência necessária
    - Competências técnicas e comportamentais
    - Qualificações desejáveis (se houver)
@@ -166,9 +167,13 @@ INSTRUÇÕES DETALHADAS:
 
 6) SLUG_SUGGESTION: Crie um slug curto, descritivo e sem acentos
 
-Responda APENAS em JSON válido:
+FORMATO DE SAÍDA:
+A descrição deve ser formatada assim:
+"Parágrafo 1 completo com várias frases.\\n\\nParágrafo 2 completo com várias frases.\\n\\nResponsabilidades:\\n- Responsabilidade 1\\n- Responsabilidade 2\\n- Responsabilidade 3\\n\\nRequisitos:\\n- Requisito 1\\n- Requisito 2\\n- Requisito 3"
+
+Responda APENAS em JSON válido (use \\n para quebras de linha):
 {
-  "description": "Texto completo e detalhado (8-12 frases)",
+  "description": "Texto completo formatado com \\n\\n entre parágrafos e \\n para listas",
   "responsibilities": ["responsabilidade detalhada 1","responsabilidade detalhada 2","responsabilidade detalhada 3","responsabilidade detalhada 4","responsabilidade detalhada 5"],
   "requirements": ["requisito detalhado 1","requisito detalhado 2","requisito detalhado 3","requisito detalhado 4"],
   "work_schedule": "${scheduleInfo || 'A combinar'}",

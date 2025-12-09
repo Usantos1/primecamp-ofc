@@ -331,9 +331,28 @@ export const AdminJobSurveysManager = () => {
         return;
       }
 
+      // Formatar descrição completa com responsabilidades e requisitos
+      let formattedDescription = assets.description || '';
+      
+      // Adicionar responsabilidades se existirem
+      if (Array.isArray(assets.responsibilities) && assets.responsibilities.length > 0) {
+        formattedDescription += '\n\nResponsabilidades:\n';
+        assets.responsibilities.forEach((resp: string) => {
+          formattedDescription += `- ${resp}\n`;
+        });
+      }
+      
+      // Adicionar requisitos se existirem
+      if (Array.isArray(assets.requirements) && assets.requirements.length > 0) {
+        formattedDescription += '\nRequisitos:\n';
+        assets.requirements.forEach((req: string) => {
+          formattedDescription += `- ${req}\n`;
+        });
+      }
+
       setFormData(prev => ({
         ...prev,
-        description: assets.description || prev.description,
+        description: formattedDescription.trim(),
         requirements: Array.isArray(assets.requirements) ? assets.requirements : prev.requirements,
         work_schedule: assets.work_schedule || prev.work_schedule,
         salary_range: assets.salary_range || prev.salary_range,
