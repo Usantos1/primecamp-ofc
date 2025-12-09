@@ -227,64 +227,314 @@ export default function Reports() {
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Relatório PrimeCamp', 20, 20);
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+    let yPos = margin;
+
+    // Helper function to add section header
+    const addSectionHeader = (title: string, y: number) => {
+      doc.setFillColor(59, 130, 246); // Blue
+      doc.rect(margin, y, pageWidth - (margin * 2), 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, margin + 5, y + 6);
+      doc.setTextColor(0, 0, 0);
+      return y + 12;
+    };
+
+    // Helper function to add metric box
+    const addMetricBox = (label: string, value: string | number, x: number, y: number, width: number, color: number[]) => {
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.rect(x, y, width, 20, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(label, x + 5, y + 8);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(value), x + 5, y + 16);
+      doc.setTextColor(0, 0, 0);
+    };
+
+    // Helper function to add table row
+    const addTableRow = (label: string, value: string | number, y: number, isHeader: boolean = false) => {
+      if (isHeader) {
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin, y, pageWidth - (margin * 2), 8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+      }
+      doc.text(label, margin + 5, y + 6);
+      doc.text(String(value), pageWidth - margin - 5, y + 6, { align: 'right' });
+      return y + 8;
+    };
+
+    // Header with gradient effect
+    doc.setFillColor(59, 130, 246);
+    doc.rect(0, 0, pageWidth, 50, 'F');
+    
+    // White overlay for text area
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 35, pageWidth, 15, 'F');
+    
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PRIMECAMP', pageWidth / 2, 20, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text('Relatório & Analytics', pageWidth / 2, 30, { align: 'center' });
+    
+    // Period and date
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const periodText = dateRange === '7d' ? 'Últimos 7 dias' : 
+                      dateRange === '30d' ? 'Últimos 30 dias' : 
+                      dateRange === '90d' ? 'Últimos 90 dias' : 
+                      'Todo o período';
+    doc.text(`Período: ${periodText}`, margin, 42);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth - margin, 42, { align: 'right' });
+    
+    yPos = 60;
+
+    // Overview Metrics - 4 boxes in a row
     doc.setFontSize(12);
-    doc.text(`Período: ${dateRange === '7d' ? 'Últimos 7 dias' : dateRange === '30d' ? 'Últimos 30 dias' : dateRange === '90d' ? 'Últimos 90 dias' : 'Todo o período'}`, 20, 30);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Visão Geral', margin, yPos);
+    yPos += 8;
     
-    let yPos = 60;
+    const boxWidth = (pageWidth - (margin * 2) - 15) / 4;
+    const boxHeight = 25;
     
-    // Tasks Summary
-    doc.setFontSize(14);
-    doc.text('Resumo de Tarefas', 20, yPos);
-    yPos += 10;
-    doc.setFontSize(10);
+    addMetricBox('Tarefas', overviewStats.tasks.total, margin, yPos, boxWidth, [59, 130, 246]);
+    addMetricBox('Treinamentos', overviewStats.trainings.total, margin + boxWidth + 5, yPos, boxWidth, [16, 185, 129]);
+    addMetricBox('Usuários', overviewStats.users.active, margin + (boxWidth + 5) * 2, yPos, boxWidth, [139, 92, 246]);
+    addMetricBox('Processos', overviewStats.processes.active, margin + (boxWidth + 5) * 3, yPos, boxWidth, [245, 158, 11]);
+    
+    yPos += boxHeight + 15;
+
+    // Tasks Section
     if (tasksData) {
-      doc.text(`Total: ${tasksData.total}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Concluídas: ${tasksData.completed}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Pendentes: ${tasksData.pending}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Atrasadas: ${tasksData.delayed}`, 20, yPos);
+      yPos = addSectionHeader('📋 RESUMO DE TAREFAS', yPos);
+      
+      // Metrics boxes
+      const taskBoxWidth = (pageWidth - (margin * 2) - 15) / 4;
+      addMetricBox('Total', tasksData.total, margin, yPos, taskBoxWidth, [59, 130, 246]);
+      addMetricBox('Concluídas', tasksData.completed, margin + taskBoxWidth + 5, yPos, taskBoxWidth, [16, 185, 129]);
+      addMetricBox('Pendentes', tasksData.pending, margin + (taskBoxWidth + 5) * 2, yPos, taskBoxWidth, [245, 158, 11]);
+      addMetricBox('Atrasadas', tasksData.delayed, margin + (taskBoxWidth + 5) * 3, yPos, taskBoxWidth, [239, 68, 68]);
+      yPos += 30;
+
+      // Tasks by Status Table
+      if (tasksData.byStatus && Object.keys(tasksData.byStatus).length > 0) {
+        yPos = addTableRow('Status', 'Quantidade', yPos, true);
+        Object.entries(tasksData.byStatus).forEach(([status, count]: [string, any]) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+          }
+          yPos = addTableRow(status, count, yPos);
+        });
+        yPos += 10;
+      }
+
+      // Completion Rate
+      const completionRate = tasksData.total > 0 
+        ? Math.round((tasksData.completed / tasksData.total) * 100) 
+        : 0;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Taxa de Conclusão: ${completionRate}%`, margin, yPos);
+      yPos += 8;
+      
+      // Progress bar
+      doc.setFillColor(229, 231, 235);
+      doc.rect(margin, yPos, pageWidth - (margin * 2), 6, 'F');
+      doc.setFillColor(16, 185, 129);
+      doc.rect(margin, yPos, (pageWidth - (margin * 2)) * (completionRate / 100), 6, 'F');
       yPos += 15;
     }
 
-    // Trainings Summary
-    doc.setFontSize(14);
-    doc.text('Resumo de Treinamentos', 20, yPos);
-    yPos += 10;
-    doc.setFontSize(10);
+    // Trainings Section
     if (trainingsData) {
-      doc.text(`Total: ${trainingsData.total}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Concluídos: ${trainingsData.completed}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Progresso médio: ${trainingsData.averageProgress}%`, 20, yPos);
-      yPos += 15;
+      if (yPos > pageHeight - 80) {
+        doc.addPage();
+        yPos = margin;
+      }
+      
+      yPos = addSectionHeader('🎓 RESUMO DE TREINAMENTOS', yPos);
+      
+      const trainingBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
+      addMetricBox('Total', trainingsData.total, margin, yPos, trainingBoxWidth, [16, 185, 129]);
+      addMetricBox('Concluídos', trainingsData.completed, margin + trainingBoxWidth + 5, yPos, trainingBoxWidth, [16, 185, 129]);
+      addMetricBox('Progresso Médio', `${trainingsData.averageProgress}%`, margin + (trainingBoxWidth + 5) * 2, yPos, trainingBoxWidth, [59, 130, 246]);
+      yPos += 30;
+
+      // Trainings by Status
+      if (trainingsData.byStatus && Object.keys(trainingsData.byStatus).length > 0) {
+        yPos = addTableRow('Status', 'Quantidade', yPos, true);
+        Object.entries(trainingsData.byStatus).forEach(([status, count]: [string, any]) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+          }
+          yPos = addTableRow(status, count, yPos);
+        });
+        yPos += 10;
+      }
+
+      // Trainings by Department
+      if (trainingsData.byDepartment && trainingsData.byDepartment.length > 0) {
+        if (yPos > pageHeight - 50) {
+          doc.addPage();
+          yPos = margin;
+        }
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Por Departamento:', margin, yPos);
+        yPos += 8;
+        yPos = addTableRow('Departamento', 'Quantidade', yPos, true);
+        trainingsData.byDepartment.forEach((dept: any) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+          }
+          yPos = addTableRow(dept.name, dept.value, yPos);
+        });
+        yPos += 10;
+      }
     }
 
-    // Users Summary
-    doc.setFontSize(14);
-    doc.text('Resumo de Usuários', 20, yPos);
-    yPos += 10;
-    doc.setFontSize(10);
+    // Users Section
     if (usersData) {
-      doc.text(`Total: ${usersData.total}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Ativos: ${usersData.active}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Administradores: ${usersData.byRole.admin}`, 20, yPos);
-      yPos += 7;
-      doc.text(`Membros: ${usersData.byRole.member}`, 20, yPos);
+      if (yPos > pageHeight - 80) {
+        doc.addPage();
+        yPos = margin;
+      }
+      
+      yPos = addSectionHeader('👥 RESUMO DE USUÁRIOS', yPos);
+      
+      const userBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
+      addMetricBox('Total', usersData.total, margin, yPos, userBoxWidth, [139, 92, 246]);
+      addMetricBox('Ativos', usersData.active, margin + userBoxWidth + 5, yPos, userBoxWidth, [16, 185, 129]);
+      const activeRate = usersData.total > 0 
+        ? Math.round((usersData.active / usersData.total) * 100) 
+        : 0;
+      addMetricBox('Taxa Ativos', `${activeRate}%`, margin + (userBoxWidth + 5) * 2, yPos, userBoxWidth, [59, 130, 246]);
+      yPos += 30;
+
+      // Users by Role
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Por Função:', margin, yPos);
+      yPos += 8;
+      yPos = addTableRow('Função', 'Quantidade', yPos, true);
+      yPos = addTableRow('Administradores', usersData.byRole.admin, yPos);
+      yPos = addTableRow('Membros', usersData.byRole.member, yPos);
+      yPos += 10;
+
+      // Users by Department
+      if (usersData.byDepartment && usersData.byDepartment.length > 0) {
+        if (yPos > pageHeight - 50) {
+          doc.addPage();
+          yPos = margin;
+        }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Por Departamento:', margin, yPos);
+        yPos += 8;
+        yPos = addTableRow('Departamento', 'Quantidade', yPos, true);
+        usersData.byDepartment.forEach((dept: any) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+          }
+          yPos = addTableRow(dept.name, dept.value, yPos);
+        });
+      }
     }
 
-    doc.save(`relatorio_primecamp_${new Date().toISOString().split('T')[0]}.pdf`);
+    // Processes Section
+    if (processesData) {
+      if (yPos > pageHeight - 80) {
+        doc.addPage();
+        yPos = margin;
+      }
+      
+      yPos = addSectionHeader('🎯 RESUMO DE PROCESSOS', yPos);
+      
+      const processBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
+      addMetricBox('Total', processesData.total, margin, yPos, processBoxWidth, [245, 158, 11]);
+      addMetricBox('Ativos', processesData.active, margin + processBoxWidth + 5, yPos, processBoxWidth, [16, 185, 129]);
+      const processActiveRate = processesData.total > 0 
+        ? Math.round((processesData.active / processesData.total) * 100) 
+        : 0;
+      addMetricBox('Taxa Ativos', `${processActiveRate}%`, margin + (processBoxWidth + 5) * 2, yPos, processBoxWidth, [59, 130, 246]);
+      yPos += 30;
+
+      // Processes by Status
+      if (processesData.byStatus && Object.keys(processesData.byStatus).length > 0) {
+        yPos = addTableRow('Status', 'Quantidade', yPos, true);
+        Object.entries(processesData.byStatus).forEach(([status, count]: [string, any]) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+          }
+          yPos = addTableRow(status, count, yPos);
+        });
+      }
+    }
+
+    // DISC Section
+    if (discData && discData.total > 0) {
+      if (yPos > pageHeight - 60) {
+        doc.addPage();
+        yPos = margin;
+      }
+      
+      yPos = addSectionHeader('🧠 RESUMO DISC', yPos);
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Total de Testes Realizados: ${discData.total}`, margin, yPos);
+      yPos += 10;
+
+      if (discData.byProfile && discData.byProfile.length > 0) {
+        yPos = addTableRow('Perfil', 'Quantidade', yPos, true);
+        discData.byProfile.forEach((profile: any) => {
+          if (yPos > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+          }
+          yPos = addTableRow(profile.name, profile.value, yPos);
+        });
+      }
+    }
+
+    // Footer on all pages
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+      doc.text('PrimeCamp - Sistema de Gestão Empresarial', margin, pageHeight - 10);
+    }
+
+    const fileName = `Relatorio_PrimeCamp_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+    
     toast({
       title: "Sucesso",
-      description: "Relatório exportado em PDF",
+      description: "Relatório exportado em PDF com sucesso!",
     });
   };
 
