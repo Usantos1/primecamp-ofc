@@ -100,6 +100,7 @@ export const AdminJobSurveysManager = () => {
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState('');
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false);
+  const [generatingQuestions, setGeneratingQuestions] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -454,11 +455,78 @@ export const AdminJobSurveysManager = () => {
     }));
   };
 
+  const moveQuestion = (from: number, to: number) => {
+    setFormData(prev => {
+      const list = [...prev.questions];
+      if (to < 0 || to >= list.length) return prev;
+      const [item] = list.splice(from, 1);
+      list.splice(to, 0, item);
+      return { ...prev, questions: list };
+    });
+  };
+
   const removeQuestion = (index: number) => {
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.filter((_, i) => i !== index)
     }));
+  };
+
+  const generateQuestionsAI = async () => {
+    try {
+      setGeneratingQuestions(true);
+      const { data, error } = await supabase.functions.invoke('generate-dynamic-questions', {
+        body: {
+          survey: {
+            id: formData.id,
+            title: formData.title,
+            position_title: formData.position_title,
+            description: formData.description,
+            department: formData.department,
+            requirements: formData.requirements,
+            work_modality: formData.work_modality,
+            contract_type: formData.contract_type,
+            seniority: (formData as any).seniority
+          },
+          base_questions: formData.questions || []
+        }
+      });
+
+      if (error) throw error;
+      const generated = Array.isArray(data?.dynamic_questions) ? data.dynamic_questions : [];
+      if (!generated.length) {
+        toast({ title: "Nenhuma pergunta gerada", description: "A IA não retornou novas perguntas." });
+        return;
+      }
+
+      const mapped = generated.map((q: any, idx: number) => ({
+        id: q.id || `ia-${Date.now()}-${idx}`,
+        title: q.title || q.question || 'Pergunta gerada',
+        description: q.description || 'Pergunta sugerida pela IA',
+        type: q.type || 'textarea',
+        required: typeof q.required === 'boolean' ? q.required : true,
+        options: q.options || []
+      })) as Question[];
+
+      setFormData(prev => ({
+        ...prev,
+        questions: [...prev.questions, ...mapped]
+      }));
+
+      toast({
+        title: "Perguntas geradas",
+        description: `${mapped.length} perguntas de IA foram adicionadas ao formulário.`,
+      });
+    } catch (err: any) {
+      console.error('Erro ao gerar perguntas IA:', err);
+      toast({
+        title: "Erro ao gerar perguntas",
+        description: err?.message || "Tente novamente em instantes.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingQuestions(false);
+    }
   };
 
   const duplicateSurvey = async (survey: JobSurvey) => {
@@ -1849,11 +1917,22 @@ export const AdminJobSurveysManager = () => {
 
             <TabsContent value="questions" className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Perguntas do Formulário</h3>
-                <div className="flex gap-2">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold">Perguntas do Formulário</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Use IA para gerar/refinar perguntas ou reordene arrastando com os botões de mover.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <Button 
+                    onClick={generateQuestionsAI}
+                    variant="outline"
+                    disabled={generatingQuestions}
+                  >
+                    {generatingQuestions ? 'Gerando...' : 'Gerar/Refinar com IA'}
+                  </Button>
                   <Button 
                     onClick={() => {
-                      // Adicionar perguntas sugeridas da mentoria
                       const mentorQuestions: Question[] = [
                         {
                           id: Date.now().toString(),
@@ -1912,13 +1991,31 @@ export const AdminJobSurveysManager = () => {
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">
                         <span className="text-sm font-medium">Pergunta {index + 1}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeQuestion(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={index === 0}
+                            onClick={() => moveQuestion(index, index - 1)}
+                          >
+                            ↑
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={index === formData.questions.length - 1}
+                            onClick={() => moveQuestion(index, index + 1)}
+                          >
+                            ↓
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeQuestion(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
