@@ -14,10 +14,22 @@ interface GenerateJobAssetsRequest {
     position_title: string;
     description?: string;
     department?: string;
-    requirements?: string[];
-    work_modality?: string;
-    contract_type?: string;
+    company_name?: string;
     location?: string;
+    requirements?: string[];
+    benefits?: string[];
+    work_modality?: string;
+    work_schedule?: string;
+    work_days?: string[];
+    daily_schedule?: { [key: string]: { start: string; end: string } };
+    lunch_break?: string;
+    weekly_hours?: number;
+    contract_type?: string;
+    salary_range?: string;
+    salary_min?: number;
+    salary_max?: number;
+    has_commission?: boolean;
+    commission_details?: string;
   };
   provider?: 'openai';
   apiKey?: string;
@@ -91,25 +103,63 @@ serve(async (req) => {
       console.warn('[GENERATE-JOB-ASSETS] Model not in supported list, using anyway:', actualModel);
     }
 
+    // Construir informações de horários
+    let scheduleInfo = '';
+    if (job.work_schedule) {
+      scheduleInfo = `Horários: ${job.work_schedule}`;
+    } else if (job.work_days && job.daily_schedule) {
+      const daysInfo = job.work_days.map(day => {
+        const schedule = job.daily_schedule?.[day];
+        if (schedule) {
+          return `${day}: ${schedule.start} às ${schedule.end}`;
+        }
+        return day;
+      }).join(', ');
+      scheduleInfo = `Dias de trabalho: ${daysInfo}`;
+      if (job.lunch_break) {
+        scheduleInfo += `. Intervalo para almoço: ${job.lunch_break}`;
+      }
+      if (job.weekly_hours) {
+        scheduleInfo += `. Carga horária semanal: ${job.weekly_hours}h`;
+      }
+    }
+
+    // Construir informações de remuneração
+    let compensationInfo = '';
+    if (job.salary_range) {
+      compensationInfo = job.salary_range;
+    } else if (job.salary_min && job.salary_max) {
+      compensationInfo = `R$ ${job.salary_min.toLocaleString('pt-BR')} a R$ ${job.salary_max.toLocaleString('pt-BR')}`;
+    } else if (job.salary_min) {
+      compensationInfo = `A partir de R$ ${job.salary_min.toLocaleString('pt-BR')}`;
+    }
+    if (job.has_commission && job.commission_details) {
+      compensationInfo += compensationInfo ? `. ${job.commission_details}` : job.commission_details;
+    }
+
     const prompt = `Você é um especialista em RH. Gere textos curtos e objetivos em ${locale}.
-Dados da vaga:
+Dados completos da vaga:
 - Título: ${job.title}
 - Cargo: ${job.position_title}
-- Descrição atual: ${job.description || 'não informada'}
+- Empresa: ${job.company_name || 'não informada'}
 - Departamento: ${job.department || 'não informado'}
+- Localização: ${job.location || 'não informada'}
+- Descrição atual: ${job.description || 'não informada'}
 - Requisitos: ${Array.isArray(job.requirements) ? job.requirements.join(', ') : 'não informados'}
+- Benefícios: ${Array.isArray(job.benefits) ? job.benefits.join(', ') : 'não informados'}
 - Modalidade: ${job.work_modality || 'não informada'}
 - Contrato: ${job.contract_type || 'não informado'}
-- Local: ${job.location || 'não informado'}
+${scheduleInfo ? `- ${scheduleInfo}` : ''}
+${compensationInfo ? `- Remuneração: ${compensationInfo}` : ''}
 
 Responda em JSON:
 {
-  "description": "Resumo atraente (4-6 frases)",
-  "responsibilities": ["bullet 1","bullet 2","bullet 3","bullet 4"],
-  "requirements": ["req 1","req 2","req 3"],
-  "work_schedule": "Texto curto de horários/modo de trabalho",
-  "salary_range": "Faixa salarial se houver; senão sugestão",
-  "slug_suggestion": "slug-kebab-case-curto"
+  "description": "Resumo atraente e completo da vaga (4-8 frases) incluindo responsabilidades principais",
+  "responsibilities": ["responsabilidade 1","responsabilidade 2","responsabilidade 3","responsabilidade 4"],
+  "requirements": ["requisito 1","requisito 2","requisito 3"],
+  "work_schedule": "${scheduleInfo || 'A combinar'}",
+  "salary_range": "${compensationInfo || 'A combinar'}",
+  "slug_suggestion": "slug-kebab-case-curto-sem-acentos"
 }`;
 
     console.log('[GENERATE-JOB-ASSETS] Calling OpenAI API with model:', actualModel);
