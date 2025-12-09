@@ -251,6 +251,15 @@ export const AdminJobSurveysManager = () => {
   };
 
   const generateJobAssets = async () => {
+    if (!iaApiKey || iaApiKey.trim() === '') {
+      toast({
+        title: "API Key não configurada",
+        description: "Configure a API Key da OpenAI em Integrações > OpenAI.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setGeneratingQuestions(true);
       const { data, error } = await supabase.functions.invoke('generate-job-assets', {
@@ -266,12 +275,19 @@ export const AdminJobSurveysManager = () => {
             location: formData.location
           },
           provider: iaProvider,
-          apiKey: iaApiKey || undefined,
+          apiKey: iaApiKey.trim(),
           model: iaModel || 'gpt-4o-mini'
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na função:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
       const assets = data?.assets;
       if (!assets) {
         toast({ title: "Nenhum dado gerado", description: "A IA não retornou conteúdo." });
@@ -293,9 +309,10 @@ export const AdminJobSurveysManager = () => {
       });
     } catch (err: any) {
       console.error('Erro ao gerar descrição IA:', err);
+      const errorMessage = err?.message || err?.error || "Erro desconhecido. Verifique a API Key em Integrações.";
       toast({
         title: "Erro ao gerar",
-        description: err?.message || "Tente novamente em instantes.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -558,6 +575,15 @@ export const AdminJobSurveysManager = () => {
   };
 
   const generateQuestionsAI = async () => {
+    if (!iaApiKey || iaApiKey.trim() === '') {
+      toast({
+        title: "API Key não configurada",
+        description: "Configure a API Key da OpenAI em Integrações > OpenAI.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setGeneratingQuestions(true);
       const { data, error } = await supabase.functions.invoke('generate-dynamic-questions', {
@@ -575,12 +601,19 @@ export const AdminJobSurveysManager = () => {
           },
           base_questions: formData.questions || [],
           provider: iaProvider,
-          apiKey: iaApiKey || undefined,
+          apiKey: iaApiKey.trim(),
           model: iaModel || 'gpt-4o-mini'
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na função:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
       const generated = Array.isArray(data?.dynamic_questions) ? data.dynamic_questions : [];
       if (!generated.length) {
         toast({ title: "Nenhuma pergunta gerada", description: "A IA não retornou novas perguntas." });
@@ -607,9 +640,10 @@ export const AdminJobSurveysManager = () => {
       });
     } catch (err: any) {
       console.error('Erro ao gerar perguntas IA:', err);
+      const errorMessage = err?.message || err?.error || "Erro desconhecido. Verifique a API Key em Integrações.";
       toast({
         title: "Erro ao gerar perguntas",
-        description: err?.message || "Tente novamente em instantes.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

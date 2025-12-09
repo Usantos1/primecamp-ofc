@@ -40,13 +40,29 @@ serve(async (req) => {
       );
     }
 
-    const { survey, base_questions = [], locale = 'pt-BR', provider = 'openai', apiKey, model = 'gpt-4o-mini' }: GenerateRequest = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (err) {
+      console.error('[GENERATE-DYNAMIC-QUESTIONS] JSON parse error:', err);
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), { status: 400, headers: corsHeaders });
+    }
+
+    const { survey, base_questions = [], locale = 'pt-BR', provider = 'openai', apiKey, model = 'gpt-4o-mini' }: GenerateRequest = requestBody;
 
     const openaiApiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey || provider !== 'openai') {
+    if (!openaiApiKey || openaiApiKey.trim() === '') {
+      console.error('[GENERATE-DYNAMIC-QUESTIONS] No API key provided');
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: corsHeaders }
+        JSON.stringify({ error: 'OpenAI API key not configured. Configure it in Integrations > OpenAI' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    if (provider !== 'openai') {
+      return new Response(
+        JSON.stringify({ error: 'Only OpenAI provider is supported' }),
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -126,7 +142,12 @@ FORMATO DE RESPOSTA:
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
       console.error('[GENERATE-DYNAMIC-QUESTIONS] OpenAI error:', errorText);
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`);
+      let errorMsg = `OpenAI API error (${openaiResponse.status})`;
+      try {
+        const errJson = JSON.parse(errorText);
+        errorMsg = errJson.error?.message || errorMsg;
+      } catch {}
+      return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: corsHeaders });
     }
 
     const openaiData = await openaiResponse.json();
@@ -145,15 +166,27 @@ FORMATO DE RESPOSTA:
     }
 
     const dynamicQuestions = Array.isArray(parsed?.questions) ? parsed.questions : [];
+    
+    if (dynamicQuestions.length === 0) {
+      console.error('[GENERATE-DYNAMIC-QUESTIONS] No questions generated:', parsed);
+      return new Response(
+        JSON.stringify({ error: 'AI did not generate any questions. Please try again.' }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true, dynamic_questions: dynamicQuestions }),
       { headers: corsHeaders }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('[GENERATE-DYNAMIC-QUESTIONS] Error:', error);
+    const errorMessage = error?.message || error?.toString() || 'Failed to generate questions';
     return new Response(
-      JSON.stringify({ error: 'Failed to generate questions' }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      }),
       { status: 500, headers: corsHeaders }
     );
   }

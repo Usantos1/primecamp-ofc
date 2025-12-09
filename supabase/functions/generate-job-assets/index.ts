@@ -35,7 +35,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
     }
 
-    const { job, provider = 'openai', apiKey, model = 'gpt-4o-mini', locale = 'pt-BR' }: GenerateJobAssetsRequest = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (err) {
+      console.error('[GENERATE-JOB-ASSETS] JSON parse error:', err);
+      return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), { status: 400, headers: corsHeaders });
+    }
+
+    const { job, provider = 'openai', apiKey, model = 'gpt-4o-mini', locale = 'pt-BR' }: GenerateJobAssetsRequest = requestBody;
 
     if (!job?.title || !job?.position_title) {
       return new Response(JSON.stringify({ error: 'Missing job title or position_title' }), { status: 400, headers: corsHeaders });
@@ -47,8 +55,13 @@ serve(async (req) => {
     );
 
     const openaiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey || provider !== 'openai') {
-      return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), { status: 500, headers: corsHeaders });
+    if (!openaiKey || openaiKey.trim() === '') {
+      console.error('[GENERATE-JOB-ASSETS] No API key provided');
+      return new Response(JSON.stringify({ error: 'OpenAI API key not configured. Configure it in Integrations > OpenAI' }), { status: 400, headers: corsHeaders });
+    }
+    
+    if (provider !== 'openai') {
+      return new Response(JSON.stringify({ error: 'Only OpenAI provider is supported' }), { status: 400, headers: corsHeaders });
     }
 
     // Mapear modelos "futuristas" para modelos reais da OpenAI
@@ -103,7 +116,12 @@ Responda em JSON:
     if (!completion.ok) {
       const errTxt = await completion.text();
       console.error('[GENERATE-JOB-ASSETS] OpenAI error:', errTxt);
-      throw new Error(`OpenAI error: ${completion.status}`);
+      let errorMsg = `OpenAI API error (${completion.status})`;
+      try {
+        const errJson = JSON.parse(errTxt);
+        errorMsg = errJson.error?.message || errorMsg;
+      } catch {}
+      return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: corsHeaders });
     }
 
     const data = await completion.json();
@@ -118,7 +136,13 @@ Responda em JSON:
       throw new Error('Invalid JSON from AI');
     }
 
-    // opcional: salvar histórico
+    // Validar estrutura do JSON retornado
+    if (!parsed.description && !parsed.responsibilities && !parsed.requirements) {
+      console.error('[GENERATE-JOB-ASSETS] Invalid response structure:', parsed);
+      return new Response(JSON.stringify({ error: 'AI returned invalid response structure' }), { status: 500, headers: corsHeaders });
+    }
+
+    // opcional: salvar histórico (ignorar erro se tabela não existir)
     await supabase.from('job_assets_logs').insert({
       payload: job,
       provider,
@@ -128,7 +152,11 @@ Responda em JSON:
     return new Response(JSON.stringify({ success: true, assets: parsed }), { headers: corsHeaders });
   } catch (error: any) {
     console.error('[GENERATE-JOB-ASSETS] Error:', error);
-    return new Response(JSON.stringify({ error: error?.message || 'Failed to generate job assets' }), { status: 500, headers: corsHeaders });
+    const errorMessage = error?.message || error?.toString() || 'Failed to generate job assets';
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    }), { status: 500, headers: corsHeaders });
   }
 });
 
