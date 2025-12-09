@@ -1272,8 +1272,26 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                             if (!confirm('Tem certeza que deseja excluir este lead parcial?')) return;
                             
                             try {
-                              console.log('Tentando excluir draft:', draft.id);
+                              console.log('Tentando excluir draft:', draft.id, 'Survey:', selectedSurvey?.id);
                               
+                              // Primeiro, verificar se o draft existe
+                              const { data: checkData, error: checkError } = await supabase
+                                .from('job_application_drafts')
+                                .select('id')
+                                .eq('id', draft.id)
+                                .single();
+
+                              if (checkError || !checkData) {
+                                console.error('Draft não encontrado:', checkError);
+                                toast({
+                                  title: "Erro",
+                                  description: "Lead parcial não encontrado.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+
+                              // Tentar excluir
                               const { data, error } = await supabase
                                 .from('job_application_drafts')
                                 .delete()
@@ -1285,6 +1303,20 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                 throw error;
                               }
 
+                              // Verificar se realmente deletou
+                              if (!data || data.length === 0) {
+                                console.error('Nenhum registro foi deletado. Verifique as políticas RLS.');
+                                toast({
+                                  title: "Aviso",
+                                  description: "A exclusão pode ter falhado. Verifique se a política RLS foi aplicada no Supabase.",
+                                  variant: "destructive",
+                                });
+                                // Mesmo assim, tentar invalidar e refetch
+                                await queryClient.invalidateQueries({ queryKey: ['job-drafts'] });
+                                await queryClient.refetchQueries({ queryKey: ['job-drafts', selectedSurvey?.id] });
+                                return;
+                              }
+
                               console.log('Draft excluído com sucesso:', data);
 
                               toast({
@@ -1292,12 +1324,14 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                 description: "Lead parcial excluído.",
                               });
 
-                              queryClient.invalidateQueries({ queryKey: ['job-drafts', selectedSurvey?.id] });
+                              // Invalidar e refetch imediatamente
+                              await queryClient.invalidateQueries({ queryKey: ['job-drafts'] });
+                              await queryClient.refetchQueries({ queryKey: ['job-drafts', selectedSurvey?.id] });
                             } catch (error: any) {
                               console.error('Erro completo ao excluir:', error);
                               toast({
                                 title: "Erro ao excluir",
-                                description: error.message || error.details || "Erro ao excluir lead parcial. Verifique as permissões.",
+                                description: error.message || error.details || "Erro ao excluir lead parcial. Verifique se a política RLS foi aplicada no Supabase.",
                                 variant: "destructive",
                               });
                             }
