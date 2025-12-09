@@ -40,37 +40,53 @@ export default function TalentBank() {
   const { data: candidates = [], isLoading } = useQuery({
     queryKey: ['talent-bank', selectedSurvey, competenceFilter],
     queryFn: async () => {
+      // Primeiro, buscar todos os candidatos
       let query = supabase
         .from('job_responses')
-        .select(`
-          *,
-          job_surveys (
-            id,
-            title,
-            position_title,
-            department
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (selectedSurvey !== 'all') {
         query = query.eq('survey_id', selectedSurvey);
       }
 
-      const { data, error } = await query;
+      const { data: responses, error: responsesError } = await query;
 
-      if (error) {
-        console.error('Erro ao carregar candidatos do banco de talentos:', error);
+      if (responsesError) {
+        console.error('Erro ao carregar candidatos do banco de talentos:', responsesError);
         toast({
           title: 'Erro ao carregar candidatos',
-          description: error.message || 'Tente novamente ou verifique as permissões.',
+          description: responsesError.message || 'Tente novamente ou verifique as permissões.',
           variant: 'destructive',
         });
         return [];
       }
 
+      if (!responses || responses.length === 0) {
+        console.log('Nenhum candidato encontrado na tabela job_responses');
+        return [];
+      }
+
+      // Buscar informações das vagas separadamente
+      const surveyIds = [...new Set(responses.map((r: any) => r.survey_id).filter(Boolean))];
+      let surveysMap: Record<string, any> = {};
+      
+      if (surveyIds.length > 0) {
+        const { data: surveys, error: surveysError } = await supabase
+          .from('job_surveys')
+          .select('id, title, position_title, department')
+          .in('id', surveyIds);
+
+        if (!surveysError && surveys) {
+          surveysMap = surveys.reduce((acc: any, survey: any) => {
+            acc[survey.id] = survey;
+            return acc;
+          }, {});
+        }
+      }
+
       // Fetch AI analysis for each candidate
-      const candidateIds = (data || []).map((c: any) => c.id);
+      const candidateIds = responses.map((c: any) => c.id);
       let aiAnalyses: any[] = [];
       if (candidateIds.length > 0) {
         const { data: analyses, error: aiError } = await (supabase as any)
@@ -80,22 +96,22 @@ export default function TalentBank() {
 
         if (aiError) {
           console.error('Erro ao carregar análises de IA:', aiError);
-          toast({
-            title: 'Erro ao carregar análises de IA',
-            description: aiError.message || 'As análises de IA não puderam ser carregadas.',
-            variant: 'destructive',
-          });
+          // Não mostrar toast para erro de IA, apenas log
         } else {
           aiAnalyses = analyses || [];
         }
       }
 
-      return (data || []).map((candidate: any) => ({
-        ...candidate,
-        survey_title: candidate.job_surveys?.title,
-        survey_position: candidate.job_surveys?.position_title,
-        ai_analysis: aiAnalyses?.find((a: any) => a.job_response_id === candidate.id)
-      })) as Candidate[];
+      // Mapear candidatos com informações das vagas
+      return responses.map((candidate: any) => {
+        const survey = surveysMap[candidate.survey_id];
+        return {
+          ...candidate,
+          survey_title: survey?.title || 'Vaga não encontrada',
+          survey_position: survey?.position_title || '',
+          ai_analysis: aiAnalyses?.find((a: any) => a.job_response_id === candidate.id)
+        };
+      }) as Candidate[];
     }
   });
 
