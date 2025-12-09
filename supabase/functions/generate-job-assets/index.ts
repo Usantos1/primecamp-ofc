@@ -153,27 +153,30 @@ INSTRUÇÕES DETALHADAS:
    - Seja profissional mas acessível, usando linguagem que atraia candidatos qualificados
    - Inclua informações sobre localização, modalidade e benefícios quando relevante
    - IMPORTANTE: Use \\n\\n para quebras de parágrafo e \\n para quebras dentro do mesmo parágrafo
+   - CRÍTICO: NÃO inclua termos em inglês como "work schedule", "salary range", "slug_suggestion" ou qualquer outro termo técnico em inglês. TUDO deve estar em português.
 
-2) RESPONSIBILITIES: Liste 5-7 responsabilidades principais, cada uma em uma linha separada, começando com verbos de ação (Ex: "Atender clientes", "Desenvolver estratégias", "Gerenciar projetos")
+2) RESPONSIBILITIES: Liste 5-7 responsabilidades principais, cada uma em uma linha separada, começando com verbos de ação em português (Ex: "Atender clientes", "Desenvolver estratégias", "Gerenciar projetos")
 
 3) REQUIREMENTS: Liste 4-6 requisitos essenciais, cada um em uma linha separada, incluindo:
    - Formação/experiência necessária
    - Competências técnicas e comportamentais
    - Qualificações desejáveis (se houver)
 
-4) WORK_SCHEDULE: Formate os horários de forma clara e profissional
+4) WORK_SCHEDULE: Formate os horários de forma clara e profissional, APENAS em português
 
-5) SALARY_RANGE: Formate a remuneração de forma atrativa e clara
+5) SALARY_RANGE: Formate a remuneração de forma atrativa e clara, APENAS em português
 
-6) SLUG_SUGGESTION: Crie um slug curto, descritivo e sem acentos
+6) SLUG_SUGGESTION: Crie um slug curto, descritivo e sem acentos (apenas para uso técnico, não aparece na descrição)
 
 FORMATO DE SAÍDA:
-A descrição deve ser formatada assim:
+A descrição deve ser formatada assim (TUDO EM PORTUGUÊS):
 "Parágrafo 1 completo com várias frases.\\n\\nParágrafo 2 completo com várias frases.\\n\\nResponsabilidades:\\n- Responsabilidade 1\\n- Responsabilidade 2\\n- Responsabilidade 3\\n\\nRequisitos:\\n- Requisito 1\\n- Requisito 2\\n- Requisito 3"
 
-Responda APENAS em JSON válido (use \\n para quebras de linha):
+IMPORTANTE: A descrição NÃO deve conter termos em inglês como "work schedule:", "salary range:", "slug_suggestion:" ou qualquer outro termo técnico. Tudo deve estar em português brasileiro.
+
+Responda APENAS em JSON válido (use \\n para quebras de linha, TUDO em português):
 {
-  "description": "Texto completo formatado com \\n\\n entre parágrafos e \\n para listas",
+  "description": "Texto completo formatado com \\n\\n entre parágrafos e \\n para listas - SEM termos em inglês",
   "responsibilities": ["responsabilidade detalhada 1","responsabilidade detalhada 2","responsabilidade detalhada 3","responsabilidade detalhada 4","responsabilidade detalhada 5"],
   "requirements": ["requisito detalhado 1","requisito detalhado 2","requisito detalhado 3","requisito detalhado 4"],
   "work_schedule": "${scheduleInfo || 'A combinar'}",
