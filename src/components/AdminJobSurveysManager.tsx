@@ -103,7 +103,7 @@ export const AdminJobSurveysManager = () => {
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [iaProvider, setIaProvider] = useState<'openai'>('openai');
   const [iaApiKey, setIaApiKey] = useState<string>('');
-  const [iaModel, setIaModel] = useState<string>('gpt-4o-mini');
+  const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');
 
   // carrega API key e modelo de integrações (kv_store)
   useEffect(() => {

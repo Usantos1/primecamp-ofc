@@ -33,7 +33,7 @@ export default function Integration() {
     notificationEvents: [],
     aiProvider: 'openai',
     aiApiKey: '',
-    aiModel: 'gpt-4o-mini'
+    aiModel: 'gpt-4.1-mini'
   });
   const [loading, setLoading] = useState(false);
   const [testPhone, setTestPhone] = useState('');
@@ -352,17 +352,19 @@ export default function Integration() {
             <div className="space-y-2">
               <Label>Modelo LLM</Label>
               <Select
-                value={settings.aiModel || 'gpt-4o-mini'}
+                value={settings.aiModel || 'gpt-4.1-mini'}
                 onValueChange={(v) => setSettings(prev => ({ ...prev, aiModel: v }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o modelo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gpt-4o">GPT-4o (Mais potente)</SelectItem>
-                  <SelectItem value="gpt-4o-mini">GPT-4o Mini (Rápido e econômico)</SelectItem>
-                  <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                  <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Mais barato)</SelectItem>
+                  <SelectItem value="gpt-5">GPT-5 (Avançado)</SelectItem>
+                  <SelectItem value="gpt-5-mini">GPT-5 Mini</SelectItem>
+                  <SelectItem value="chatgpt-5.1">ChatGPT 5.1</SelectItem>
+                  <SelectItem value="chatgpt-5.1-mini">ChatGPT 5.1 Mini</SelectItem>
+                  <SelectItem value="gpt-4.1">GPT-4.1</SelectItem>
+                  <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
