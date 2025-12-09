@@ -84,6 +84,12 @@ serve(async (req) => {
     const actualModel = modelMap[model] || model || 'gpt-4o-mini';
     
     console.log('[GENERATE-JOB-ASSETS] Using model:', actualModel, 'from input:', model);
+    
+    // Validar se o modelo é suportado
+    const supportedModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'];
+    if (!supportedModels.includes(actualModel)) {
+      console.warn('[GENERATE-JOB-ASSETS] Model not in supported list, using anyway:', actualModel);
+    }
 
     const prompt = `Você é um especialista em RH. Gere textos curtos e objetivos em ${locale}.
 Dados da vaga:
@@ -108,24 +114,32 @@ Responda em JSON:
 
     console.log('[GENERATE-JOB-ASSETS] Calling OpenAI API with model:', actualModel);
     
-    const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: actualModel,
-        messages: [
-          { role: 'system', content: 'Responda somente JSON válido.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.6,
-        response_format: { type: 'json_object' }
-      })
-    });
-    
-    console.log('[GENERATE-JOB-ASSETS] OpenAI response status:', completion.status);
+    let completion;
+    try {
+      completion = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: actualModel,
+          messages: [
+            { role: 'system', content: 'Responda somente JSON válido.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.6,
+          response_format: { type: 'json_object' }
+        })
+      });
+      
+      console.log('[GENERATE-JOB-ASSETS] OpenAI response status:', completion.status);
+    } catch (fetchError: any) {
+      console.error('[GENERATE-JOB-ASSETS] Fetch error:', fetchError);
+      return new Response(JSON.stringify({ 
+        error: `Erro ao chamar OpenAI API: ${fetchError?.message || 'Erro desconhecido'}` 
+      }), { status: 500, headers: corsHeaders });
+    }
 
     if (!completion.ok) {
       const errTxt = await completion.text();
@@ -138,16 +152,30 @@ Responda em JSON:
       return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: corsHeaders });
     }
 
-    const data = await completion.json();
+    let data;
+    try {
+      data = await completion.json();
+    } catch (jsonError: any) {
+      console.error('[GENERATE-JOB-ASSETS] JSON parse error on response:', jsonError);
+      return new Response(JSON.stringify({ 
+        error: `Erro ao processar resposta da OpenAI: ${jsonError?.message || 'Resposta inválida'}` 
+      }), { status: 500, headers: corsHeaders });
+    }
+    
     const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error('Empty AI response');
+    if (!content) {
+      console.error('[GENERATE-JOB-ASSETS] Empty content in response:', data);
+      return new Response(JSON.stringify({ error: 'A IA não retornou conteúdo. Verifique o modelo e a API Key.' }), { status: 500, headers: corsHeaders });
+    }
 
     let parsed;
     try {
       parsed = JSON.parse(content);
     } catch (err) {
       console.error('[GENERATE-JOB-ASSETS] parse error:', content);
-      throw new Error('Invalid JSON from AI');
+      return new Response(JSON.stringify({ 
+        error: 'A IA retornou JSON inválido. Tente novamente.' 
+      }), { status: 500, headers: corsHeaders });
     }
 
     // Validar estrutura do JSON retornado

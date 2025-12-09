@@ -115,8 +115,19 @@ export const AdminJobSurveysManager = () => {
           .eq('key', 'integration_settings')
           .maybeSingle();
 
-        if (error) return;
+        if (error) {
+          console.error('Erro ao buscar integração IA:', error);
+          return;
+        }
+        
         const value = (data as any)?.value;
+        console.log('Configurações de IA carregadas:', {
+          hasApiKey: !!value?.aiApiKey,
+          apiKeyLength: value?.aiApiKey?.length || 0,
+          provider: value?.aiProvider,
+          model: value?.aiModel
+        });
+        
         if (value?.aiApiKey) {
           setIaApiKey(value.aiApiKey);
         }
