@@ -126,6 +126,11 @@ export default function JobApplicationSteps() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [dynamicQuestions, setDynamicQuestions] = useState<Question[]>([]);
+  const [loadingDynamic, setLoadingDynamic] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [showDiscPrompt, setShowDiscPrompt] = useState(false);
+  const [jobResponseId, setJobResponseId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -145,7 +150,7 @@ export default function JobApplicationSteps() {
   const [draftId, setDraftId] = useState<string | null>(null);
 
   const storageKey = useMemo(() => `jobapp:${slug}`, [slug]);
-  
+
   // Debounce para autosave (salvar após 2 segundos sem digitar)
   const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -336,7 +341,7 @@ export default function JobApplicationSteps() {
         return;
       }
 
-      setSurvey({
+      const normalizedSurvey = {
         ...data,
         questions: Array.isArray(data.questions) ? (data.questions as unknown as Question[]) : [],
         benefits: Array.isArray(data.benefits) ? (data.benefits as string[]) : [],
@@ -346,12 +351,62 @@ export default function JobApplicationSteps() {
           typeof data.daily_schedule === 'object' && data.daily_schedule !== null
             ? (data.daily_schedule as { [key: string]: { start: string; end: string } })
             : {},
-      });
+        dynamic_questions: Array.isArray((data as any).dynamic_questions) ? (data as any).dynamic_questions : [],
+      };
+
+      setSurvey(normalizedSurvey);
+      fetchDynamicQuestions(normalizedSurvey);
     } catch (error) {
       console.error("Erro ao buscar formulário:", error);
       navigate("/404");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDynamicQuestions = async (baseSurvey: any) => {
+    try {
+      setLoadingDynamic(true);
+      const { data, error } = await supabase.functions.invoke('generate-dynamic-questions', {
+        body: {
+          survey: {
+            id: baseSurvey.id,
+            title: baseSurvey.title,
+            position_title: baseSurvey.position_title,
+            description: baseSurvey.description,
+            department: baseSurvey.department,
+            requirements: baseSurvey.requirements,
+            work_modality: baseSurvey.work_modality,
+            contract_type: baseSurvey.contract_type,
+            seniority: (baseSurvey as any).seniority,
+          },
+          base_questions: baseSurvey.questions || [],
+        }
+      });
+
+      if (error) {
+        console.error('Erro ao gerar perguntas dinâmicas:', error);
+        return;
+      }
+
+      const generated = Array.isArray(data?.dynamic_questions) ? data.dynamic_questions : [];
+      setDynamicQuestions(generated);
+      setSurvey((prev) => {
+        if (!prev) return prev;
+        const mapped = generated.map((q: any, idx: number) => ({
+          id: q.id || `dyn-${idx}`,
+          title: q.title || q.question || 'Pergunta personalizada',
+          description: q.description || 'Pergunta adaptada para esta vaga',
+          type: q.type || 'textarea',
+          required: typeof q.required === 'boolean' ? q.required : true,
+          options: q.options || [],
+        }));
+        return { ...prev, questions: [...prev.questions, ...mapped] };
+      });
+    } catch (err) {
+      console.error('Erro ao buscar perguntas dinâmicas:', err);
+    } finally {
+      setLoadingDynamic(false);
     }
   };
 
@@ -471,11 +526,10 @@ export default function JobApplicationSteps() {
       const responseData = response.data;
       if (response.error) throw new Error(response.error.message);
 
-      // Redirecionar para teste DISC obrigatório
       setSubmitted(true);
-      toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Redirecionando para o teste DISC..." });
+      setShowDiscPrompt(true);
+      toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Você pode fazer o teste comportamental agora ou depois." });
       
-      // Salvar dados do candidato para o teste DISC
       const jobResponseId = responseData?.submissionId || responseData?.job_response_id;
       const candidateInfo = {
         name: formData.name.trim(),
@@ -485,19 +539,50 @@ export default function JobApplicationSteps() {
         job_response_id: jobResponseId || null,
         survey_id: survey.id
       };
+      setJobResponseId(jobResponseId || null);
       
-      // Salvar no sessionStorage para o teste DISC
       sessionStorage.setItem('candidate_disc_info', JSON.stringify(candidateInfo));
-      
-      setTimeout(() => {
-        // Redirecionar para teste DISC externo
-        navigate(`/disc-externo?job_response_id=${jobResponseId || ''}&survey_id=${survey.id}`);
-      }, 1500);
+
+      // Rodar análise de IA das respostas
+      try {
+        const aiResp = await supabase.functions.invoke('analyze-candidate-responses', {
+          body: {
+            job_response_id: jobResponseId,
+            survey_id: survey.id,
+            candidate: {
+              ...candidateInfo,
+              responses: formData.responses || {},
+              disc_final: null,
+            },
+            job: {
+              title: survey.title,
+              position_title: survey.position_title,
+              description: survey.description,
+              department: survey.department,
+              requirements: survey.requirements,
+              work_modality: survey.work_modality,
+              contract_type: survey.contract_type,
+              seniority: (survey as any).seniority,
+            }
+          }
+        });
+
+        if (!aiResp.error && aiResp.data?.analysis) {
+          setAiAnalysis(aiResp.data.analysis);
+          sessionStorage.setItem('candidate_ai_analysis', JSON.stringify(aiResp.data.analysis));
+        }
+      } catch (err) {
+        console.error('Erro ao analisar candidato:', err);
+      }
     } catch (error: any) {
       toast({ title: "Erro", description: error.message || "Falha ao enviar a candidatura.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startDiscTest = () => {
+    navigate(`/disc-externo?job_response_id=${jobResponseId || ''}&survey_id=${survey?.id || ''}`);
   };
 
   /* ---------- renderização de perguntas dinâmicas ---------- */
@@ -782,6 +867,16 @@ export default function JobApplicationSteps() {
       {/* Conteúdo */}
       <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8">
         <div className="max-w-3xl mx-auto">
+          {loadingDynamic && (
+            <div className="mb-3 text-sm text-center text-job-text-muted">
+              Gerando perguntas personalizadas para esta vaga...
+            </div>
+          )}
+          {!loadingDynamic && dynamicQuestions.length > 0 && (
+            <div className="mb-3 text-sm text-center text-job-text-muted">
+              Adicionamos {dynamicQuestions.length} perguntas personalizadas para esta vaga.
+            </div>
+          )}
           <div className="min-h-[60vh] flex flex-col">
             <Card className="flex-1" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
               <CardHeader className="text-center">
@@ -968,6 +1063,28 @@ export default function JobApplicationSteps() {
                 )}
               </CardContent>
             </Card>
+
+          {showDiscPrompt && (
+            <Card className="mt-4 border-dashed" style={{ backgroundColor: 'hsl(var(--job-badge))', borderColor: 'hsl(var(--job-card-border))' }}>
+              <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold" style={{ color: 'hsl(var(--job-text))' }}>Teste comportamental opcional</p>
+                  <p className="text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>
+                    Faça o DISC para validar o perfil inferido pela IA. Você pode pular e fazer depois.
+                  </p>
+                  {aiAnalysis && (
+                    <p className="text-sm mt-2" style={{ color: 'hsl(var(--job-text))' }}>
+                      Perfil inferido: {aiAnalysis?.disc_inferido?.dominante || 'N/A'} | Fit: {aiAnalysis?.scores?.fit ?? 0}%
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowDiscPrompt(false)}>Fazer depois</Button>
+                  <Button onClick={startDiscTest}>Fazer teste agora</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
             {/* Footer fixo com dots menores + progresso e navegação */}
             <Card className="mt-4 sm:mt-6 sticky bottom-0 z-10 shadow-lg" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
