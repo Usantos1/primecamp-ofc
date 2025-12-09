@@ -44,7 +44,7 @@ export default function TalentBank() {
         .from('job_responses')
         .select(`
           *,
-          job_surveys!inner (
+          job_surveys (
             id,
             title,
             position_title,
@@ -73,7 +73,7 @@ export default function TalentBank() {
       const candidateIds = (data || []).map((c: any) => c.id);
       let aiAnalyses: any[] = [];
       if (candidateIds.length > 0) {
-        const { data: analyses, error: aiError } = await supabase
+        const { data: analyses, error: aiError } = await (supabase as any)
           .from('job_candidate_ai_analysis')
           .select('*')
           .in('job_response_id', candidateIds);

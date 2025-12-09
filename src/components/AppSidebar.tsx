@@ -470,16 +470,16 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+                        <div className="ml-4 mt-1 space-y-1 border-l pl-2 min-w-0 overflow-hidden">
                           <SidebarMenuItem>
                             <SidebarMenuButton asChild>
                               <NavLink to="/admin/job-surveys">
                                 {({ isActive }) => (
                                   <div
-                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 min-w-0 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <ClipboardList className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Formulários de Vaga</span>
+                                    <span className="font-medium text-sm truncate flex-1 min-w-0">Formulários de Vaga</span>
                                   </div>
                                 )}
                               </NavLink>
@@ -490,10 +490,10 @@ export function AppSidebar() {
                               <NavLink to="/admin/interviews">
                                 {({ isActive }) => (
                                   <div
-                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 min-w-0 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Video className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Entrevistas com IA</span>
+                                    <span className="font-medium text-sm truncate flex-1 min-w-0">Entrevistas com IA</span>
                                   </div>
                                 )}
                               </NavLink>
@@ -504,10 +504,10 @@ export function AppSidebar() {
                               <NavLink to="/admin/talent-bank">
                                 {({ isActive }) => (
                                   <div
-                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 min-w-0 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Users className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Banco de Talentos</span>
+                                    <span className="font-medium text-sm truncate flex-1 min-w-0">Banco de Talentos</span>
                                   </div>
                                 )}
                               </NavLink>
@@ -518,10 +518,10 @@ export function AppSidebar() {
                               <NavLink to="/candidato-disc">
                                 {({ isActive }) => (
                                   <div
-                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 min-w-0 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Brain className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">DISC Externo</span>
+                                    <span className="font-medium text-sm truncate flex-1 min-w-0">DISC Externo</span>
                                   </div>
                                 )}
                               </NavLink>
