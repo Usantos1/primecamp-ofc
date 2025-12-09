@@ -101,6 +101,22 @@ export const AdminJobSurveysManager = () => {
   const [draftSearchTerm, setDraftSearchTerm] = useState('');
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
+  const [iaProvider, setIaProvider] = useState<'openai'>('openai');
+  const [iaApiKey, setIaApiKey] = useState<string>('');
+
+  // carregar/salvar API key local (uso apenas para chamadas de função)
+  useEffect(() => {
+    const storedKey = localStorage.getItem('ia:apiKey');
+    const storedProvider = localStorage.getItem('ia:provider');
+    if (storedKey) setIaApiKey(storedKey);
+    if (storedProvider === 'openai') setIaProvider('openai');
+  }, []);
+
+  useEffect(() => {
+    if (iaApiKey) localStorage.setItem('ia:apiKey', iaApiKey);
+    else localStorage.removeItem('ia:apiKey');
+    localStorage.setItem('ia:provider', iaProvider);
+  }, [iaApiKey, iaProvider]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -216,6 +232,58 @@ export const AdminJobSurveysManager = () => {
   // Helper para buscar análise de um candidato
   const getAIAnalysis = (responseId: string) => {
     return aiAnalyses.find((a: any) => a.job_response_id === responseId);
+  };
+
+  const generateJobAssets = async () => {
+    try {
+      setGeneratingQuestions(true);
+      const { data, error } = await supabase.functions.invoke('generate-job-assets', {
+        body: {
+          job: {
+            title: formData.title,
+            position_title: formData.position_title,
+            description: formData.description,
+            department: formData.department,
+            requirements: formData.requirements,
+            work_modality: formData.work_modality,
+            contract_type: formData.contract_type,
+            location: formData.location
+          },
+          provider: iaProvider,
+          apiKey: iaApiKey || undefined
+        }
+      });
+
+      if (error) throw error;
+      const assets = data?.assets;
+      if (!assets) {
+        toast({ title: "Nenhum dado gerado", description: "A IA não retornou conteúdo." });
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        description: assets.description || prev.description,
+        requirements: Array.isArray(assets.requirements) ? assets.requirements : prev.requirements,
+        work_schedule: assets.work_schedule || prev.work_schedule,
+        salary_range: assets.salary_range || prev.salary_range,
+        slug: assets.slug_suggestion || prev.slug
+      }));
+
+      toast({
+        title: "Conteúdo gerado",
+        description: "Descrição, requisitos e slug atualizados.",
+      });
+    } catch (err: any) {
+      console.error('Erro ao gerar descrição IA:', err);
+      toast({
+        title: "Erro ao gerar",
+        description: err?.message || "Tente novamente em instantes.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingQuestions(false);
+    }
   };
 
   // Use candidate evaluations hook
@@ -488,7 +556,9 @@ export const AdminJobSurveysManager = () => {
             contract_type: formData.contract_type,
             seniority: (formData as any).seniority
           },
-          base_questions: formData.questions || []
+          base_questions: formData.questions || [],
+          provider: iaProvider,
+          apiKey: iaApiKey || undefined
         }
       });
 
@@ -1654,6 +1724,32 @@ export const AdminJobSurveysManager = () => {
             </TabsList>
 
             <TabsContent value="info" className="space-y-4">
+              <Card className="p-3 border-dashed">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">IA Provider & API Key</p>
+                    <p className="text-xs text-muted-foreground">Use sua chave (OpenAI) para gerar descrição e perguntas.</p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <Select value={iaProvider} onValueChange={(v) => setIaProvider(v as 'openai')}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="password"
+                      placeholder="API Key (sk-...)"
+                      value={iaApiKey}
+                      onChange={(e) => setIaApiKey(e.target.value)}
+                      className="w-[240px]"
+                    />
+                  </div>
+                </div>
+              </Card>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Título da Vaga *</Label>
@@ -1729,6 +1825,11 @@ export const AdminJobSurveysManager = () => {
                   placeholder="Descreva a vaga..."
                   rows={3}
                 />
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={generateJobAssets} disabled={generatingQuestions}>
+                    {generatingQuestions ? 'Gerando...' : 'Gerar descrição/slug com IA'}
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2">

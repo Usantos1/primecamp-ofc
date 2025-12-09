@@ -9,7 +9,7 @@ const corsHeaders = {
 
 interface GenerateRequest {
   survey: {
-    id: string;
+    id?: string;
     title: string;
     position_title: string;
     description?: string;
@@ -21,6 +21,8 @@ interface GenerateRequest {
   };
   base_questions?: any[];
   locale?: string;
+  provider?: 'openai';
+  apiKey?: string;
 }
 
 serve(async (req) => {
@@ -36,7 +38,7 @@ serve(async (req) => {
       );
     }
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openaiApiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
@@ -46,7 +48,7 @@ serve(async (req) => {
 
     const { survey, base_questions = [], locale = 'pt-BR' }: GenerateRequest = await req.json();
 
-    if (!survey?.id || !survey?.title || !survey?.position_title) {
+    if (!survey?.title || !survey?.position_title) {
       return new Response(
         JSON.stringify({ error: 'Missing survey data' }),
         { status: 400, headers: corsHeaders }
