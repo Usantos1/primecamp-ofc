@@ -20,6 +20,7 @@ interface GenerateJobAssetsRequest {
   };
   provider?: 'openai';
   apiKey?: string;
+  model?: string;
   locale?: string;
 }
 
@@ -33,7 +34,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
     }
 
-    const { job, provider = 'openai', apiKey, locale = 'pt-BR' }: GenerateJobAssetsRequest = await req.json();
+    const { job, provider = 'openai', apiKey, model = 'gpt-4o-mini', locale = 'pt-BR' }: GenerateJobAssetsRequest = await req.json();
 
     if (!job?.title || !job?.position_title) {
       return new Response(JSON.stringify({ error: 'Missing job title or position_title' }), { status: 400, headers: corsHeaders });
@@ -77,7 +78,7 @@ Responda em JSON:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model,
         messages: [
           { role: 'system', content: 'Responda somente JSON válido.' },
           { role: 'user', content: prompt }

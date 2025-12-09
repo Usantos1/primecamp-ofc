@@ -18,6 +18,9 @@ interface IntegrationSettings {
   defaultNotificationPhone: string;
   webhookUrl: string;
   notificationEvents: string[];
+  aiProvider?: 'openai';
+  aiApiKey?: string;
+  aiModel?: string;
 }
 
 export default function Integration() {
@@ -27,7 +30,10 @@ export default function Integration() {
     whatsappNotifications: false,
     defaultNotificationPhone: '',
     webhookUrl: '',
-    notificationEvents: []
+    notificationEvents: [],
+    aiProvider: 'openai',
+    aiApiKey: '',
+    aiModel: 'gpt-4o-mini'
   });
   const [loading, setLoading] = useState(false);
   const [testPhone, setTestPhone] = useState('');
@@ -293,6 +299,76 @@ export default function Integration() {
                 </div>
               </div>
             )}
+
+            <Button onClick={saveSettings} disabled={loading}>
+              <Settings className="h-4 w-4 mr-2" />
+              Salvar Configurações
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* IA / OpenAI */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              OpenAI / IA
+            </CardTitle>
+            <CardDescription>
+              Chave usada para gerar descrição/slug e perguntas de vagas no painel.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Provider</Label>
+                <Select
+                  value={settings.aiProvider || 'openai'}
+                  onValueChange={(v) => setSettings(prev => ({ ...prev, aiProvider: v as 'openai' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>API Key</Label>
+                <Input
+                  type="password"
+                  placeholder="sk-..."
+                  value={settings.aiApiKey || ''}
+                  onChange={(e) => setSettings(prev => ({ ...prev, aiApiKey: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Armazenada no servidor; usada automaticamente no editor de vagas.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Modelo LLM</Label>
+              <Select
+                value={settings.aiModel || 'gpt-4o-mini'}
+                onValueChange={(v) => setSettings(prev => ({ ...prev, aiModel: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o modelo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gpt-4o">GPT-4o (Mais potente)</SelectItem>
+                  <SelectItem value="gpt-4o-mini">GPT-4o Mini (Rápido e econômico)</SelectItem>
+                  <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                  <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo (Mais barato)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Modelo usado para gerar descrições, slugs e perguntas de vagas.
+              </p>
+            </div>
 
             <Button onClick={saveSettings} disabled={loading}>
               <Settings className="h-4 w-4 mr-2" />

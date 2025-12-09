@@ -23,6 +23,7 @@ interface GenerateRequest {
   locale?: string;
   provider?: 'openai';
   apiKey?: string;
+  model?: string;
 }
 
 serve(async (req) => {
@@ -46,7 +47,7 @@ serve(async (req) => {
       );
     }
 
-    const { survey, base_questions = [], locale = 'pt-BR' }: GenerateRequest = await req.json();
+    const { survey, base_questions = [], locale = 'pt-BR', model = 'gpt-4o-mini' }: GenerateRequest = await req.json();
 
     if (!survey?.title || !survey?.position_title) {
       return new Response(
@@ -100,7 +101,7 @@ FORMATO DE RESPOSTA:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model,
         messages: [
           { role: 'system', content: 'Você é conciso e sempre responde com JSON válido.' },
           { role: 'user', content: prompt }

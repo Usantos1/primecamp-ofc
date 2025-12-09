@@ -103,20 +103,36 @@ export const AdminJobSurveysManager = () => {
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [iaProvider, setIaProvider] = useState<'openai'>('openai');
   const [iaApiKey, setIaApiKey] = useState<string>('');
+  const [iaModel, setIaModel] = useState<string>('gpt-4o-mini');
 
-  // carregar/salvar API key local (uso apenas para chamadas de função)
+  // carrega API key e modelo de integrações (kv_store)
   useEffect(() => {
-    const storedKey = localStorage.getItem('ia:apiKey');
-    const storedProvider = localStorage.getItem('ia:provider');
-    if (storedKey) setIaApiKey(storedKey);
-    if (storedProvider === 'openai') setIaProvider('openai');
+    const loadIntegrationKey = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('kv_store_2c4defad')
+          .select('*')
+          .eq('key', 'integration_settings')
+          .maybeSingle();
+
+        if (error) return;
+        const value = (data as any)?.value;
+        if (value?.aiApiKey) {
+          setIaApiKey(value.aiApiKey);
+        }
+        if (value?.aiProvider === 'openai') {
+          setIaProvider('openai');
+        }
+        if (value?.aiModel) {
+          setIaModel(value.aiModel);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar integração IA:', err);
+      }
+    };
+
+    loadIntegrationKey();
   }, []);
-
-  useEffect(() => {
-    if (iaApiKey) localStorage.setItem('ia:apiKey', iaApiKey);
-    else localStorage.removeItem('ia:apiKey');
-    localStorage.setItem('ia:provider', iaProvider);
-  }, [iaApiKey, iaProvider]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -250,7 +266,8 @@ export const AdminJobSurveysManager = () => {
             location: formData.location
           },
           provider: iaProvider,
-          apiKey: iaApiKey || undefined
+          apiKey: iaApiKey || undefined,
+          model: iaModel || 'gpt-4o-mini'
         }
       });
 
@@ -558,7 +575,8 @@ export const AdminJobSurveysManager = () => {
           },
           base_questions: formData.questions || [],
           provider: iaProvider,
-          apiKey: iaApiKey || undefined
+          apiKey: iaApiKey || undefined,
+          model: iaModel || 'gpt-4o-mini'
         }
       });
 
@@ -1727,26 +1745,12 @@ export const AdminJobSurveysManager = () => {
               <Card className="p-3 border-dashed">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm font-medium">IA Provider & API Key</p>
-                    <p className="text-xs text-muted-foreground">Use sua chave (OpenAI) para gerar descrição e perguntas.</p>
+                    <p className="text-sm font-medium">IA configurada em Integrações</p>
+                    <p className="text-xs text-muted-foreground">A API Key é lida de Integrações &gt; OpenAI. Defina lá para habilitar IA aqui.</p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                    <Select value={iaProvider} onValueChange={(v) => setIaProvider(v as 'openai')}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Provider" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="openai">OpenAI</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="password"
-                      placeholder="API Key (sk-...)"
-                      value={iaApiKey}
-                      onChange={(e) => setIaApiKey(e.target.value)}
-                      className="w-[240px]"
-                    />
-                  </div>
+                  {!iaApiKey && (
+                    <Badge variant="destructive">API Key não configurada</Badge>
+                  )}
                 </div>
               </Card>
 
@@ -1826,9 +1830,12 @@ export const AdminJobSurveysManager = () => {
                   rows={3}
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={generateJobAssets} disabled={generatingQuestions}>
+                  <Button variant="outline" onClick={generateJobAssets} disabled={generatingQuestions || !iaApiKey}>
                     {generatingQuestions ? 'Gerando...' : 'Gerar descrição/slug com IA'}
                   </Button>
+                  {!iaApiKey && (
+                    <p className="text-xs text-red-500">Configure a API key em Integrações &gt; OpenAI.</p>
+                  )}
                 </div>
               </div>
 
@@ -2028,10 +2035,13 @@ export const AdminJobSurveysManager = () => {
                   <Button 
                     onClick={generateQuestionsAI}
                     variant="outline"
-                    disabled={generatingQuestions}
+                    disabled={generatingQuestions || !iaApiKey}
                   >
                     {generatingQuestions ? 'Gerando...' : 'Gerar/Refinar com IA'}
                   </Button>
+                  {!iaApiKey && (
+                    <p className="text-xs text-red-500 w-full sm:w-auto">Configure a API key em Integrações &gt; OpenAI.</p>
+                  )}
                   <Button 
                     onClick={() => {
                       const mentorQuestions: Question[] = [
