@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,14 +8,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Users, BookOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Pencil, Trash2, Users, BookOpen, Search, Filter, Clock, Users as UsersIcon } from 'lucide-react';
 import { useTrainings } from '@/hooks/useTrainings';
 import { Switch } from '@/components/ui/switch';
 import AdminAssignments from './AdminAssignments';
 import { ModuleManager } from '@/components/trainings/ModuleManager';
+import { QuizManager } from '@/components/trainings/QuizManager';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function AdminTrainings() {
   const { trainings, isLoading, createTraining, updateTraining, deleteTraining } = useTrainings();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterMandatory, setFilterMandatory] = useState<string>('all');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [showModuleManager, setShowModuleManager] = useState(false);
   const [editingTraining, setEditingTraining] = useState<any>(null);
@@ -81,12 +88,53 @@ export default function AdminTrainings() {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (window.confirm(`Tem certeza que deseja deletar "${title}"?`)) {
-      await deleteTraining.mutateAsync(id);
-    }
+    await deleteTraining.mutateAsync(id);
   };
 
-  if (isLoading) return <ModernLayout title="Treinamentos"><div>Carregando...</div></ModernLayout>;
+  // Get unique values for filters
+  const departments = useMemo(() => {
+    const depts = new Set<string>();
+    trainings?.forEach(t => {
+      if (t.department) depts.add(t.department);
+    });
+    return Array.from(depts);
+  }, [trainings]);
+
+  const types = useMemo(() => {
+    const typeSet = new Set<string>();
+    trainings?.forEach(t => {
+      if (t.training_type) typeSet.add(t.training_type);
+    });
+    return Array.from(typeSet);
+  }, [trainings]);
+
+  // Filter trainings
+  const filteredTrainings = useMemo(() => {
+    if (!trainings) return [];
+    return trainings.filter(training => {
+      const matchesSearch = !searchTerm || 
+        training.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        training.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesDepartment = filterDepartment === 'all' || training.department === filterDepartment;
+      const matchesType = filterType === 'all' || training.training_type === filterType;
+      const matchesMandatory = filterMandatory === 'all' || 
+        (filterMandatory === 'yes' && training.mandatory) ||
+        (filterMandatory === 'no' && !training.mandatory);
+      
+      return matchesSearch && matchesDepartment && matchesType && matchesMandatory;
+    });
+  }, [trainings, searchTerm, filterDepartment, filterType, filterMandatory]);
+
+  if (isLoading) {
+    return (
+      <ModernLayout title="Treinamentos">
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </ModernLayout>
+    );
+  }
 
   return (
     <ModernLayout 
@@ -100,13 +148,60 @@ export default function AdminTrainings() {
         </TabsList>
 
         <TabsContent value="trainings" className="space-y-4">
-          <Dialog open={isCreateOpen} onOpenChange={(open) => {
-            setIsCreateOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Novo Treinamento</Button>
-            </DialogTrigger>
+          {/* Search and Filters */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar treinamentos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {departments.length > 0 && (
+              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {departments.map(dept => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {types.length > 0 && (
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {types.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={filterMandatory} onValueChange={setFilterMandatory}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Obrigatório" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="yes">Obrigatórios</SelectItem>
+                <SelectItem value="no">Opcionais</SelectItem>
+              </SelectContent>
+            </Select>
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              setIsCreateOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-2" />Novo Treinamento</Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingTraining ? 'Editar' : 'Criar'} Treinamento</DialogTitle>
@@ -195,71 +290,128 @@ export default function AdminTrainings() {
             </DialogContent>
           </Dialog>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {trainings && trainings.map((training) => (
-              <Card key={training.id}>
-                <CardHeader>
-                  <div className="flex gap-4">
-                    {training.thumbnail_url && (
+          {filteredTrainings.length === 0 ? (
+            <div className="text-center py-12">
+              <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-lg">
+                {searchTerm || filterDepartment !== 'all' || filterType !== 'all' || filterMandatory !== 'all'
+                  ? 'Nenhum treinamento encontrado com os filtros aplicados'
+                  : 'Nenhum treinamento criado ainda'}
+              </p>
+              {(searchTerm || filterDepartment !== 'all' || filterType !== 'all' || filterMandatory !== 'all') && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterDepartment('all');
+                    setFilterType('all');
+                    setFilterMandatory('all');
+                  }}
+                  className="mt-4"
+                >
+                  Limpar Filtros
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredTrainings.map((training) => (
+                <Card key={training.id} className="hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/50">
+                  {training.thumbnail_url && (
+                    <div className="relative h-48 overflow-hidden rounded-t-lg">
                       <img 
                         src={training.thumbnail_url} 
                         alt={training.title}
-                        className="w-24 h-24 object-cover rounded"
+                        className="w-full h-full object-cover"
                       />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <CardTitle className="text-base">{training.title}</CardTitle>
+                      <div className="absolute top-2 right-2">
                         {training.mandatory && (
-                          <Badge variant="destructive">Obrigatório</Badge>
+                          <Badge variant="destructive" className="shadow-lg">
+                            Obrigatório
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {training.description || 'Sem descrição'}
-                      </p>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2 flex-wrap">
-                    {training.training_type && (
-                      <Badge variant="secondary">{training.training_type}</Badge>
-                    )}
-                    {training.department && (
-                      <Badge variant="outline">{training.department}</Badge>
-                    )}
-                  </div>
+                  )}
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-lg line-clamp-2">{training.title}</CardTitle>
+                      {!training.thumbnail_url && training.mandatory && (
+                        <Badge variant="destructive" className="shrink-0">Obrigatório</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+                      {training.description || 'Sem descrição'}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2 flex-wrap">
+                      {training.training_type && (
+                        <Badge variant="secondary">{training.training_type}</Badge>
+                      )}
+                      {training.department && (
+                        <Badge variant="outline">{training.department}</Badge>
+                      )}
+                    </div>
 
-                  <div className="flex gap-2 flex-wrap">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleManageContent(training)}
-                    >
-                      <BookOpen className="h-4 w-4 mr-1" />
-                      Conteúdo
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleEdit(training)}
-                    >
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleDelete(training.id, training.title)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Deletar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    {training.duration_minutes && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>{training.duration_minutes} minutos</span>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 flex-wrap pt-2 border-t">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleManageContent(training)}
+                        className="flex-1"
+                      >
+                        <BookOpen className="h-4 w-4 mr-1" />
+                        Conteúdo
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEdit(training)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir o treinamento "{training.title}"? 
+                              Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDelete(training.id, training.title)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="assignments">
@@ -276,7 +428,18 @@ export default function AdminTrainings() {
             </DialogTitle>
           </DialogHeader>
           {selectedTraining && (
-            <ModuleManager trainingId={selectedTraining.id} />
+            <Tabs defaultValue="modules" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="modules">Módulos e Aulas</TabsTrigger>
+                <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
+              </TabsList>
+              <TabsContent value="modules">
+                <ModuleManager trainingId={selectedTraining.id} />
+              </TabsContent>
+              <TabsContent value="quizzes">
+                <QuizManager trainingId={selectedTraining.id} />
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
