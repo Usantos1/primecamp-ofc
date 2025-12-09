@@ -59,14 +59,36 @@ export default function TalentBank() {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar candidatos do banco de talentos:', error);
+        toast({
+          title: 'Erro ao carregar candidatos',
+          description: error.message || 'Tente novamente ou verifique as permissões.',
+          variant: 'destructive',
+        });
+        return [];
+      }
 
       // Fetch AI analysis for each candidate
       const candidateIds = (data || []).map((c: any) => c.id);
-      const { data: aiAnalyses } = await supabase
-        .from('job_candidate_ai_analysis')
-        .select('*')
-        .in('job_response_id', candidateIds);
+      let aiAnalyses: any[] = [];
+      if (candidateIds.length > 0) {
+        const { data: analyses, error: aiError } = await supabase
+          .from('job_candidate_ai_analysis')
+          .select('*')
+          .in('job_response_id', candidateIds);
+
+        if (aiError) {
+          console.error('Erro ao carregar análises de IA:', aiError);
+          toast({
+            title: 'Erro ao carregar análises de IA',
+            description: aiError.message || 'As análises de IA não puderam ser carregadas.',
+            variant: 'destructive',
+          });
+        } else {
+          aiAnalyses = analyses || [];
+        }
+      }
 
       return (data || []).map((candidate: any) => ({
         ...candidate,
