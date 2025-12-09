@@ -54,9 +54,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    console.log('[GENERATE-JOB-ASSETS] Request received:', {
+      hasJob: !!job,
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length || 0,
+      provider,
+      model
+    });
+
     const openaiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
     if (!openaiKey || openaiKey.trim() === '') {
-      console.error('[GENERATE-JOB-ASSETS] No API key provided');
+      console.error('[GENERATE-JOB-ASSETS] No API key provided. apiKey from request:', !!apiKey, 'env key:', !!Deno.env.get('OPENAI_API_KEY'));
       return new Response(JSON.stringify({ error: 'OpenAI API key not configured. Configure it in Integrations > OpenAI' }), { status: 400, headers: corsHeaders });
     }
     
@@ -74,6 +82,8 @@ serve(async (req) => {
       'gpt-4.1-mini': 'gpt-4o-mini',
     };
     const actualModel = modelMap[model] || model || 'gpt-4o-mini';
+    
+    console.log('[GENERATE-JOB-ASSETS] Using model:', actualModel, 'from input:', model);
 
     const prompt = `Você é um especialista em RH. Gere textos curtos e objetivos em ${locale}.
 Dados da vaga:
@@ -96,6 +106,8 @@ Responda em JSON:
   "slug_suggestion": "slug-kebab-case-curto"
 }`;
 
+    console.log('[GENERATE-JOB-ASSETS] Calling OpenAI API with model:', actualModel);
+    
     const completion = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -112,6 +124,8 @@ Responda em JSON:
         response_format: { type: 'json_object' }
       })
     });
+    
+    console.log('[GENERATE-JOB-ASSETS] OpenAI response status:', completion.status);
 
     if (!completion.ok) {
       const errTxt = await completion.text();

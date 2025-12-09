@@ -262,6 +262,14 @@ export const AdminJobSurveysManager = () => {
 
     try {
       setGeneratingQuestions(true);
+      console.log('Chamando generate-job-assets com:', {
+        hasTitle: !!formData.title,
+        hasPosition: !!formData.position_title,
+        hasApiKey: !!iaApiKey,
+        apiKeyLength: iaApiKey?.length || 0,
+        model: iaModel
+      });
+
       const { data, error } = await supabase.functions.invoke('generate-job-assets', {
         body: {
           job: {
@@ -281,13 +289,18 @@ export const AdminJobSurveysManager = () => {
       });
 
       if (error) {
-        console.error('Erro na função:', error);
-        throw error;
+        console.error('Erro na função Supabase:', error);
+        // Se o erro tem uma mensagem mais detalhada, use ela
+        const errorMsg = error?.message || JSON.stringify(error);
+        throw new Error(`Erro na função: ${errorMsg}`);
       }
 
       if (data?.error) {
+        console.error('Erro retornado pela função:', data.error);
         throw new Error(data.error);
       }
+      
+      console.log('Resposta da função:', { success: data?.success, hasAssets: !!data?.assets });
       const assets = data?.assets;
       if (!assets) {
         toast({ title: "Nenhum dado gerado", description: "A IA não retornou conteúdo." });
