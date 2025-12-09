@@ -1272,23 +1272,32 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                             if (!confirm('Tem certeza que deseja excluir este lead parcial?')) return;
                             
                             try {
-                              const { error } = await supabase
+                              console.log('Tentando excluir draft:', draft.id);
+                              
+                              const { data, error } = await supabase
                                 .from('job_application_drafts')
                                 .delete()
-                                .eq('id', draft.id);
+                                .eq('id', draft.id)
+                                .select();
 
-                              if (error) throw error;
+                              if (error) {
+                                console.error('Erro ao excluir draft:', error);
+                                throw error;
+                              }
+
+                              console.log('Draft excluído com sucesso:', data);
 
                               toast({
                                 title: "Sucesso!",
                                 description: "Lead parcial excluído.",
                               });
 
-                              queryClient.invalidateQueries({ queryKey: ['job-drafts'] });
+                              queryClient.invalidateQueries({ queryKey: ['job-drafts', selectedSurvey?.id] });
                             } catch (error: any) {
+                              console.error('Erro completo ao excluir:', error);
                               toast({
-                                title: "Erro",
-                                description: error.message || "Erro ao excluir lead parcial.",
+                                title: "Erro ao excluir",
+                                description: error.message || error.details || "Erro ao excluir lead parcial. Verifique as permissões.",
                                 variant: "destructive",
                               });
                             }
