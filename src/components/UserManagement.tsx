@@ -8,11 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Check, X, UserPlus, Mail, Calendar, Shield, User, Trash2 } from 'lucide-react';
+import { Check, X, UserPlus, Mail, Calendar, Shield, User, Trash2, Edit } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDepartments } from '@/hooks/useDepartments';
 import { DepartmentManager } from '@/components/DepartmentManager';
 import { TeamPermissionsManager } from '@/components/TeamPermissionsManager';
+import { UserEditModal } from '@/components/UserEditModal';
 
 interface UserProfile {
   id: string;
@@ -24,6 +25,7 @@ interface UserProfile {
   approved_at: string | null;
   created_at: string;
   email?: string;
+  phone?: string | null;
 }
 
 export const UserManagement = () => {
@@ -39,6 +41,8 @@ export const UserManagement = () => {
     role: 'member' as 'admin' | 'member'
   });
   const [newDepartment, setNewDepartment] = useState('');
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -198,45 +202,49 @@ export const UserManagement = () => {
         return;
       }
 
-      // First delete from profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', userId);
+      // Delete user using edge function (handles both profile and auth deletion)
+      const { data: result, error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId }
+      });
 
-      if (profileError) {
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
         toast({
           title: "Erro",
-          description: "Erro ao excluir perfil do usuário",
+          description: deleteError.message || "Erro ao excluir usuário",
           variant: "destructive"
         });
         return;
       }
 
-      // Then delete from auth (requires admin service key - this might need to be done via edge function)
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-
-      if (authError) {
-        console.error('Auth deletion error:', authError);
-        // Even if auth deletion fails, the profile is already deleted
-        toast({
-          title: "Aviso",
-          description: "Perfil excluído, mas pode ser necessário ação adicional para remover completamente a conta",
-          variant: "default"
-        });
+      if (result?.success) {
+        if (result.warning) {
+          toast({
+            title: "Aviso",
+            description: result.message || "Usuário excluído parcialmente",
+            variant: "default"
+          });
+        } else {
+          toast({
+            title: "Sucesso",
+            description: `Usuário ${displayName} excluído permanentemente`,
+          });
+        }
       } else {
         toast({
-          title: "Sucesso",
-          description: `Usuário ${displayName} excluído permanentemente`,
+          title: "Erro",
+          description: result?.error || "Erro ao excluir usuário",
+          variant: "destructive"
         });
+        return;
       }
 
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
         title: "Erro",
-        description: "Erro ao excluir usuário",
+        description: error.message || "Erro ao excluir usuário",
         variant: "destructive"
       });
     }
@@ -508,6 +516,43 @@ export const UserManagement = () => {
                           <X className="h-4 w-4" />
                           Rejeitar
                         </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setEditingUser(user);
+                            setIsEditModalOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                          Editar
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive">
+                              <Trash2 className="h-4 w-4" />
+                              Excluir
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar Exclusão Permanente</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir permanentemente o usuário "{user.display_name || 'Sem nome'}"? 
+                                Esta ação não pode ser desfeita e removerá todos os dados do usuário do sistema.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deleteUser(user.user_id, user.display_name || 'Usuário')}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir Permanentemente
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -585,6 +630,17 @@ export const UserManagement = () => {
                       <Button 
                         size="sm" 
                         variant="outline"
+                        onClick={() => {
+                          setEditingUser(user);
+                          setIsEditModalOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                        Editar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
                         onClick={() => rejectUser(user.user_id)}
                       >
                         <X className="h-4 w-4" />
@@ -624,6 +680,20 @@ export const UserManagement = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <UserEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingUser(null);
+        }}
+        user={editingUser}
+        onSuccess={() => {
+          fetchUsers();
+          setEditingUser(null);
+          setIsEditModalOpen(false);
+        }}
+      />
     </div>
   );
 };
