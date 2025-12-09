@@ -128,9 +128,9 @@ serve(async (req) => {
       compensationInfo += compensationInfo ? `. ${job.commission_details}` : job.commission_details;
     }
 
-    const prompt = `Você é um especialista em RH. Gere textos curtos e objetivos em ${locale}.
+    const prompt = `Você é um especialista em RH e redator de vagas de emprego. Crie uma descrição completa, atraente e profissional em ${locale}.
 
-DADOS DA VAGA:
+DADOS COMPLETOS DA VAGA:
 - Título: ${job.title}
 - Cargo: ${job.position_title}
 - Empresa: ${job.company_name || 'não informada'}
@@ -144,11 +144,33 @@ DADOS DA VAGA:
 ${scheduleInfo ? `- Horários: ${scheduleInfo}` : ''}
 ${compensationInfo ? `- Remuneração: ${compensationInfo}` : ''}
 
+INSTRUÇÕES DETALHADAS:
+1) DESCRIPTION: Crie um texto completo e envolvente (8-12 frases) que:
+   - Apresente a empresa e o contexto da vaga de forma atrativa
+   - Descreva o perfil ideal do candidato
+   - Destaque os principais desafios e oportunidades
+   - Mencione o ambiente de trabalho e cultura da empresa
+   - Seja profissional mas acessível, usando linguagem que atraia candidatos qualificados
+   - Inclua informações sobre localização, modalidade e benefícios quando relevante
+
+2) RESPONSIBILITIES: Liste 5-7 responsabilidades principais de forma clara e específica, começando com verbos de ação (Ex: "Atender clientes", "Desenvolver estratégias", "Gerenciar projetos")
+
+3) REQUIREMENTS: Liste 4-6 requisitos essenciais, incluindo:
+   - Formação/experiência necessária
+   - Competências técnicas e comportamentais
+   - Qualificações desejáveis (se houver)
+
+4) WORK_SCHEDULE: Formate os horários de forma clara e profissional
+
+5) SALARY_RANGE: Formate a remuneração de forma atrativa e clara
+
+6) SLUG_SUGGESTION: Crie um slug curto, descritivo e sem acentos
+
 Responda APENAS em JSON válido:
 {
-  "description": "Resumo atraente e completo da vaga (4-8 frases) incluindo responsabilidades principais",
-  "responsibilities": ["responsabilidade 1","responsabilidade 2","responsabilidade 3","responsabilidade 4"],
-  "requirements": ["requisito 1","requisito 2","requisito 3"],
+  "description": "Texto completo e detalhado (8-12 frases)",
+  "responsibilities": ["responsabilidade detalhada 1","responsabilidade detalhada 2","responsabilidade detalhada 3","responsabilidade detalhada 4","responsabilidade detalhada 5"],
+  "requirements": ["requisito detalhado 1","requisito detalhado 2","requisito detalhado 3","requisito detalhado 4"],
   "work_schedule": "${scheduleInfo || 'A combinar'}",
   "salary_range": "${compensationInfo || 'A combinar'}",
   "slug_suggestion": "slug-kebab-case-curto-sem-acentos"
