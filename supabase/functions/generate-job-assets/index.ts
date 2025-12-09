@@ -51,6 +51,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), { status: 500, headers: corsHeaders });
     }
 
+    // Mapear modelos "futuristas" para modelos reais da OpenAI
+    const modelMap: { [key: string]: string } = {
+      'gpt-5': 'gpt-4o',
+      'gpt-5-mini': 'gpt-4o-mini',
+      'chatgpt-5.1': 'gpt-4o',
+      'chatgpt-5.1-mini': 'gpt-4o-mini',
+      'gpt-4.1': 'gpt-4-turbo',
+      'gpt-4.1-mini': 'gpt-4o-mini',
+    };
+    const actualModel = modelMap[model] || model || 'gpt-4o-mini';
+
     const prompt = `Você é um especialista em RH. Gere textos curtos e objetivos em ${locale}.
 Dados da vaga:
 - Título: ${job.title}
@@ -79,7 +90,7 @@ Responda em JSON:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: model,
+        model: actualModel,
         messages: [
           { role: 'system', content: 'Responda somente JSON válido.' },
           { role: 'user', content: prompt }

@@ -40,15 +40,26 @@ serve(async (req) => {
       );
     }
 
+    const { survey, base_questions = [], locale = 'pt-BR', provider = 'openai', apiKey, model = 'gpt-4o-mini' }: GenerateRequest = await req.json();
+
     const openaiApiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
+    if (!openaiApiKey || provider !== 'openai') {
       return new Response(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
         { status: 500, headers: corsHeaders }
       );
     }
 
-    const { survey, base_questions = [], locale = 'pt-BR', model = 'gpt-4o-mini' }: GenerateRequest = await req.json();
+    // Mapear modelos "futuristas" para modelos reais da OpenAI
+    const modelMap: { [key: string]: string } = {
+      'gpt-5': 'gpt-4o',
+      'gpt-5-mini': 'gpt-4o-mini',
+      'chatgpt-5.1': 'gpt-4o',
+      'chatgpt-5.1-mini': 'gpt-4o-mini',
+      'gpt-4.1': 'gpt-4-turbo',
+      'gpt-4.1-mini': 'gpt-4o-mini',
+    };
+    const actualModel = modelMap[model] || model || 'gpt-4o-mini';
 
     if (!survey?.title || !survey?.position_title) {
       return new Response(
@@ -102,7 +113,7 @@ FORMATO DE RESPOSTA:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: model,
+        model: actualModel,
         messages: [
           { role: 'system', content: 'Você é conciso e sempre responde com JSON válido.' },
           { role: 'user', content: prompt }

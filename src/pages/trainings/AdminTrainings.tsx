@@ -202,6 +202,13 @@ export default function AdminTrainings() {
               <DialogTrigger asChild>
                 <Button><Plus className="h-4 w-4 mr-2" />Novo Treinamento</Button>
               </DialogTrigger>
+            </Dialog>
+          </div>
+
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{editingTraining ? 'Editar' : 'Criar'} Treinamento</DialogTitle>
