@@ -74,18 +74,18 @@ export default function Reports() {
   };
 
   useEffect(() => {
-    if (!user) return;
+      if (!user) return;
     fetchAllData();
   }, [user, dateRange]);
-
+      
   const fetchAllData = async () => {
     setLoading(true);
-    try {
+      try {
       const dateFilter = getDateFilter();
-      
+        
       // Fetch Tasks Data
       let tasksQuery = supabase
-        .from('tasks')
+          .from('tasks')
         .select('id, status, deadline, created_at, responsible_user_id, process_id');
       
       if (dateFilter) {
@@ -112,13 +112,13 @@ export default function Reports() {
         .order('created_at', { ascending: false });
 
       // Fetch Processes Data
-      const { data: processes } = await supabase
-        .from('processes')
+        const { data: processes } = await supabase
+          .from('processes')
         .select('id, name, status, department, created_at');
 
       // Fetch Users Data
-      const { data: profiles } = await supabase
-        .from('profiles')
+        const { data: profiles } = await supabase
+          .from('profiles')
         .select('id, user_id, display_name, department, role, approved, created_at');
 
       // Process Tasks Data
@@ -214,17 +214,17 @@ export default function Reports() {
         }
       });
 
-    } catch (error) {
+      } catch (error) {
       console.error('Error fetching reports data:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar dados dos relatórios",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const exportToPDF = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
@@ -270,7 +270,10 @@ export default function Reports() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
       }
-      doc.text(label, margin + 5, y + 6);
+      // Truncate label if too long
+      const maxLabelWidth = pageWidth - (margin * 2) - 50;
+      const truncatedLabel = doc.splitTextToSize(label, maxLabelWidth)[0];
+      doc.text(truncatedLabel, margin + 5, y + 6);
       doc.text(String(value), pageWidth - margin - 5, y + 6, { align: 'right' });
       return y + 8;
     };
@@ -322,7 +325,7 @@ export default function Reports() {
 
     // Tasks Section
     if (tasksData) {
-      yPos = addSectionHeader('📋 RESUMO DE TAREFAS', yPos);
+      yPos = addSectionHeader('RESUMO DE TAREFAS', yPos);
       
       // Metrics boxes
       const taskBoxWidth = (pageWidth - (margin * 2) - 15) / 4;
@@ -369,7 +372,7 @@ export default function Reports() {
         yPos = margin;
       }
       
-      yPos = addSectionHeader('🎓 RESUMO DE TREINAMENTOS', yPos);
+      yPos = addSectionHeader('RESUMO DE TREINAMENTOS', yPos);
       
       const trainingBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
       addMetricBox('Total', trainingsData.total, margin, yPos, trainingBoxWidth, [16, 185, 129]);
@@ -419,7 +422,7 @@ export default function Reports() {
         yPos = margin;
       }
       
-      yPos = addSectionHeader('👥 RESUMO DE USUÁRIOS', yPos);
+      yPos = addSectionHeader('RESUMO DE USUÁRIOS', yPos);
       
       const userBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
       addMetricBox('Total', usersData.total, margin, yPos, userBoxWidth, [139, 92, 246]);
@@ -431,12 +434,20 @@ export default function Reports() {
       yPos += 30;
 
       // Users by Role
+      if (yPos > pageHeight - 50) {
+        doc.addPage();
+        yPos = margin;
+      }
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('Por Função:', margin, yPos);
       yPos += 8;
       yPos = addTableRow('Função', 'Quantidade', yPos, true);
       yPos = addTableRow('Administradores', usersData.byRole.admin, yPos);
+      if (yPos > pageHeight - 30) {
+        doc.addPage();
+        yPos = margin;
+      }
       yPos = addTableRow('Membros', usersData.byRole.member, yPos);
       yPos += 10;
 
@@ -468,7 +479,7 @@ export default function Reports() {
         yPos = margin;
       }
       
-      yPos = addSectionHeader('🎯 RESUMO DE PROCESSOS', yPos);
+      yPos = addSectionHeader('RESUMO DE PROCESSOS', yPos);
       
       const processBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
       addMetricBox('Total', processesData.total, margin, yPos, processBoxWidth, [245, 158, 11]);
@@ -499,7 +510,7 @@ export default function Reports() {
         yPos = margin;
       }
       
-      yPos = addSectionHeader('🧠 RESUMO DISC', yPos);
+      yPos = addSectionHeader('RESUMO DISC', yPos);
       
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
@@ -525,8 +536,10 @@ export default function Reports() {
       doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-      doc.text('PrimeCamp - Sistema de Gestão Empresarial', margin, pageHeight - 10);
+      const pageText = `Página ${i} de ${totalPages}`;
+      const footerText = 'PrimeCamp - Sistema de Gestão Empresarial';
+      doc.text(pageText, pageWidth - margin, pageHeight - 10, { align: 'right' });
+      doc.text(footerText, margin, pageHeight - 10);
     }
 
     const fileName = `Relatorio_PrimeCamp_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -697,7 +710,7 @@ export default function Reports() {
                   <CardTitle className="flex items-center gap-2">
                     <CheckSquare className="h-5 w-5" />
                     Tarefas por Status
-                  </CardTitle>
+                </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {tasksData?.byStatus && Object.keys(tasksData.byStatus).length > 0 ? (
@@ -724,7 +737,7 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+              </div>
                   )}
                 </CardContent>
               </Card>
@@ -736,7 +749,7 @@ export default function Reports() {
                     <GraduationCap className="h-5 w-5" />
                     Treinamentos por Departamento
                   </CardTitle>
-                </CardHeader>
+            </CardHeader>
                 <CardContent>
                   {trainingsData?.byDepartment && trainingsData.byDepartment.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -752,7 +765,7 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+                </div>
                   )}
                 </CardContent>
               </Card>
@@ -780,10 +793,10 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+                </div>
                   )}
-                </CardContent>
-              </Card>
+            </CardContent>
+          </Card>
 
               {/* Processos por Status */}
               <Card>
@@ -791,8 +804,8 @@ export default function Reports() {
                   <CardTitle className="flex items-center gap-2">
                     <Target className="h-5 w-5" />
                     Processos por Status
-                  </CardTitle>
-                </CardHeader>
+                </CardTitle>
+            </CardHeader>
                 <CardContent>
                   {processesData?.byStatus && Object.keys(processesData.byStatus).length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -818,11 +831,11 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+                </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
+                </div>
           </TabsContent>
 
           {/* Relatório de Tarefas */}
@@ -847,10 +860,10 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+                </div>
                   )}
-                </CardContent>
-              </Card>
+            </CardContent>
+          </Card>
 
               <Card>
                 <CardHeader>
@@ -875,12 +888,12 @@ export default function Reports() {
                   )}
                 </CardContent>
               </Card>
-            </div>
+              </div>
 
             <Card>
               <CardHeader>
                 <CardTitle>Métricas de Tarefas</CardTitle>
-              </CardHeader>
+            </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 border rounded-lg">
@@ -894,11 +907,11 @@ export default function Reports() {
                   <div className="text-center p-4 border rounded-lg">
                     <p className="text-2xl font-bold text-yellow-600">{tasksData?.pending || 0}</p>
                     <p className="text-sm text-muted-foreground">Pendentes</p>
-                  </div>
+                </div>
                   <div className="text-center p-4 border rounded-lg">
                     <p className="text-2xl font-bold text-red-600">{tasksData?.delayed || 0}</p>
                     <p className="text-sm text-muted-foreground">Atrasadas</p>
-                  </div>
+                </div>
                 </div>
               </CardContent>
             </Card>
@@ -936,10 +949,10 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+              </div>
                   )}
-                </CardContent>
-              </Card>
+            </CardContent>
+          </Card>
 
               <Card>
                 <CardHeader>
@@ -964,12 +977,12 @@ export default function Reports() {
                   )}
                 </CardContent>
               </Card>
-            </div>
+              </div>
 
             <Card>
               <CardHeader>
                 <CardTitle>Métricas de Treinamentos</CardTitle>
-              </CardHeader>
+            </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 border rounded-lg">
@@ -983,14 +996,14 @@ export default function Reports() {
                   <div className="text-center p-4 border rounded-lg">
                     <p className="text-2xl font-bold text-yellow-600">{trainingsData?.inProgress || 0}</p>
                     <p className="text-sm text-muted-foreground">Em Progresso</p>
-                  </div>
+                </div>
                   <div className="text-center p-4 border rounded-lg">
                     <p className="text-2xl font-bold text-purple-600">{trainingsData?.averageProgress || 0}%</p>
                     <p className="text-sm text-muted-foreground">Progresso Médio</p>
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
+                </div>
+            </CardContent>
+          </Card>
           </TabsContent>
 
           {/* Relatório DISC */}
@@ -1021,7 +1034,7 @@ export default function Reports() {
                   <div className="text-center py-12 text-muted-foreground">
                     <Brain className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p>Nenhum teste DISC realizado ainda</p>
-                  </div>
+              </div>
                 )}
               </CardContent>
             </Card>
@@ -1029,7 +1042,7 @@ export default function Reports() {
             <Card>
               <CardHeader>
                 <CardTitle>Estatísticas DISC</CardTitle>
-              </CardHeader>
+            </CardHeader>
               <CardContent>
                 <div className="text-center p-6">
                   <p className="text-3xl font-bold text-purple-600">{discData?.total || 0}</p>
@@ -1071,15 +1084,15 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+                </div>
                   )}
-                </CardContent>
-              </Card>
+            </CardContent>
+          </Card>
 
               <Card>
                 <CardHeader>
                   <CardTitle>Processos por Departamento</CardTitle>
-                </CardHeader>
+            </CardHeader>
                 <CardContent>
                   {processesData?.byDepartment && processesData.byDepartment.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -1095,17 +1108,17 @@ export default function Reports() {
                     <div className="text-center py-12 text-muted-foreground">
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
-                    </div>
+              </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
+            </CardContent>
+          </Card>
+        </div>
 
             <Card>
-              <CardHeader>
+          <CardHeader>
                 <CardTitle>Métricas de Processos</CardTitle>
-              </CardHeader>
-              <CardContent>
+          </CardHeader>
+          <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 border rounded-lg">
                     <p className="text-2xl font-bold text-orange-600">{processesData?.total || 0}</p>
@@ -1123,9 +1136,9 @@ export default function Reports() {
                     </p>
                     <p className="text-sm text-muted-foreground">Taxa de Atividade</p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+            </div>
+          </CardContent>
+        </Card>
           </TabsContent>
         </Tabs>
       </div>
