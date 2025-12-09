@@ -269,6 +269,22 @@ export const AdminDiscManager = () => {
     }
   };
 
+  const deletePartialCandidates = async () => {
+    try {
+      const { error, count } = await supabase
+        .from('candidate_responses')
+        .delete({ count: 'exact' })
+        .eq('is_completed', false);
+
+      if (error) throw error;
+      toast.success(`Removidos ${count || 0} registros parciais/erro.`);
+      queryClient.invalidateQueries({ queryKey: ['admin-disc-candidates'] });
+    } catch (error: any) {
+      console.error('Erro ao excluir parciais:', error);
+      toast.error(`Falha ao excluir parciais: ${error.message || 'Erro desconhecido'}`);
+    }
+  };
+
   if (viewMode === 'details' && selectedResult) {
     return (
       <div className="space-y-6">
@@ -496,10 +512,34 @@ export const AdminDiscManager = () => {
             <TabsContent value="external" className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Resultados dos Candidatos Externos</h3>
-                <Button onClick={() => exportResults('candidates')} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar CSV
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => exportResults('candidates')} variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar CSV
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Apagar parciais/erro
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir todos os testes parciais?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Isso removerá todos os registros de candidatos externos com status parcial (is_completed = false). Ação irreversível.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={deletePartialCandidates}>
+                          Confirmar exclusão
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
               
               <div className="rounded-md border">
