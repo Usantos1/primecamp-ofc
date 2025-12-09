@@ -2127,53 +2127,6 @@ export const AdminJobSurveysManager = () => {
                   {!iaApiKey && (
                     <p className="text-xs text-red-500 w-full sm:w-auto">Configure a API key em Integrações &gt; OpenAI.</p>
                   )}
-                  <Button 
-                    onClick={() => {
-                      const mentorQuestions: Question[] = [
-                        {
-                          id: Date.now().toString(),
-                          type: 'textarea',
-                          title: 'Qual é o seu próximo sonho a ser conquistado?',
-                          description: 'Compartilhe seus objetivos profissionais e pessoais',
-                          required: true
-                        },
-                        {
-                          id: (Date.now() + 1).toString(),
-                          type: 'textarea',
-                          title: 'Descreva suas últimas 5 empresas e o tempo de permanência em cada uma',
-                          description: 'Inclua o nome da empresa, cargo e período trabalhado',
-                          required: false
-                        },
-                        {
-                          id: (Date.now() + 2).toString(),
-                          type: 'textarea',
-                          title: 'Qual foi o maior desafio que você enfrentou com um cliente e como resolveu?',
-                          description: 'Descreva uma situação específica e sua abordagem para resolver',
-                          required: true
-                        },
-                        {
-                          id: (Date.now() + 3).toString(),
-                          type: 'textarea',
-                          title: 'Conte sobre sua experiência profissional e principais realizações',
-                          description: 'Destaque projetos, resultados e conquistas relevantes',
-                          required: false
-                        }
-                      ];
-                      setFormData(prev => ({
-                        ...prev,
-                        questions: [...prev.questions, ...mentorQuestions]
-                      }));
-                      toast({
-                        title: "Perguntas adicionadas!",
-                        description: "4 perguntas sugeridas foram adicionadas ao formulário.",
-                      });
-                    }}
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Template (Mentoria)
-                  </Button>
                   <Button onClick={addQuestion} variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Pergunta

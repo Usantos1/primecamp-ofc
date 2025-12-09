@@ -84,13 +84,18 @@ serve(async (req) => {
       );
     }
 
+    const jobDescription = survey.description || 'Não informada';
+    const descriptionContext = jobDescription !== 'Não informada' 
+      ? `\n\nDESCRIÇÃO DETALHADA DA VAGA:\n${jobDescription}\n\nUse esta descrição para criar perguntas específicas e relevantes para esta vaga.` 
+      : '';
+
     const prompt = `Você é um especialista em recrutamento e seleção.
 Gere perguntas inteligentes e estratégicas para triagem inicial de candidatos, em ${locale}.
 
 CONTEXTUALIZE A VAGA:
 - Título: ${survey.title}
 - Cargo: ${survey.position_title}
-- Descrição: ${survey.description || 'Não informada'}
+- Descrição: ${jobDescription}${descriptionContext}
 - Departamento: ${survey.department || 'Não informado'}
 - Requisitos: ${Array.isArray(survey.requirements) ? survey.requirements.join(', ') : 'Não informados'}
 - Modalidade: ${survey.work_modality || 'Não informada'}
@@ -100,13 +105,15 @@ CONTEXTUALIZE A VAGA:
 PERGUNTAS BASE EXISTENTES (manter ou reformular):
 ${base_questions.map((q, idx) => `${idx + 1}. ${q.title || q.question || 'Pergunta'} (${q.type || 'texto'})`).join('\n') || 'Nenhuma'}
 
-INSTRUÇÕES:
-1) Entregue de 6 a 10 perguntas, variadas entre técnica, comportamental (STAR), cultural e situacional.
-2) Mantenha as perguntas atuais (se fizer sentido) reformulando para clareza. Adicione lacunas que faltam.
-3) Indique se é obrigatória (required true/false).
-4) Se for múltipla escolha, devolva opções curtas (3-6).
-5) Otimize para descobrir: perfil comportamental (DISC indireto), comprometimento, escrita/clareza, aderência aos requisitos e honestidade.
-6) Responda apenas em JSON válido.
+INSTRUÇÕES OBRIGATÓRIAS:
+1) SEMPRE inclua a pergunta: "Qual é o seu próximo sonho a ser conquistado?" como OBRIGATÓRIA (required: true), tipo "textarea", com descrição "Compartilhe seus objetivos profissionais e pessoais".
+2) Entregue de 6 a 10 perguntas no total, variadas entre técnica, comportamental (STAR), cultural e situacional.
+3) Mantenha as perguntas atuais (se fizer sentido) reformulando para clareza. Adicione lacunas que faltam.
+4) Use a descrição da vaga para criar perguntas específicas e relevantes.
+5) Indique se é obrigatória (required true/false).
+6) Se for múltipla escolha, devolva opções curtas (3-6).
+7) Otimize para descobrir: perfil comportamental (DISC indireto), comprometimento, escrita/clareza, aderência aos requisitos e honestidade.
+8) Responda apenas em JSON válido.
 
 FORMATO DE RESPOSTA:
 {
@@ -165,7 +172,7 @@ FORMATO DE RESPOSTA:
       throw new Error('Invalid JSON from OpenAI');
     }
 
-    const dynamicQuestions = Array.isArray(parsed?.questions) ? parsed.questions : [];
+    let dynamicQuestions = Array.isArray(parsed?.questions) ? parsed.questions : [];
     
     if (dynamicQuestions.length === 0) {
       console.error('[GENERATE-DYNAMIC-QUESTIONS] No questions generated:', parsed);
@@ -173,6 +180,42 @@ FORMATO DE RESPOSTA:
         JSON.stringify({ error: 'AI did not generate any questions. Please try again.' }),
         { status: 500, headers: corsHeaders }
       );
+    }
+
+    // Garantir que a pergunta sobre sonho está presente e obrigatória
+    const dreamQuestion = {
+      id: 'dream-question',
+      title: 'Qual é o seu próximo sonho a ser conquistado?',
+      description: 'Compartilhe seus objetivos profissionais e pessoais',
+      type: 'textarea',
+      required: true,
+      options: []
+    };
+
+    // Verificar se já existe uma pergunta similar sobre sonho
+    const hasDreamQuestion = dynamicQuestions.some((q: any) => 
+      q.title?.toLowerCase().includes('sonho') || 
+      q.title?.toLowerCase().includes('objetivo') ||
+      q.title?.toLowerCase().includes('meta')
+    );
+
+    // Se não tiver, adicionar no início
+    if (!hasDreamQuestion) {
+      dynamicQuestions = [dreamQuestion, ...dynamicQuestions];
+    } else {
+      // Se tiver, garantir que está obrigatória
+      dynamicQuestions = dynamicQuestions.map((q: any) => {
+        if (q.title?.toLowerCase().includes('sonho') || 
+            q.title?.toLowerCase().includes('objetivo') ||
+            q.title?.toLowerCase().includes('meta')) {
+          return {
+            ...q,
+            required: true,
+            type: q.type || 'textarea'
+          };
+        }
+        return q;
+      });
     }
 
     return new Response(
