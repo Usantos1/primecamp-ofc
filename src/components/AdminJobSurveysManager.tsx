@@ -15,7 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ModernSwitch } from '@/components/ui/modern-switch';
@@ -2261,6 +2261,18 @@ export const AdminJobSurveysManager = () => {
               </div>
             </TabsContent>
           </Tabs>
+
+          {generatingQuestions && (
+            <div className="mt-4 flex gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-primary">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <div className="space-y-1">
+                <p className="font-medium leading-none">IA trabalhando...</p>
+                <p className="text-xs text-muted-foreground">
+                  Gerando ou refinando conteúdo. Isso pode levar alguns segundos.
+                </p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button
