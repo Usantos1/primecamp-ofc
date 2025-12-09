@@ -62,24 +62,34 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
   // Load AI settings from integrations
   useEffect(() => {
     const loadAISettings = async () => {
-      const { data } = await supabase
-        .from('kv_store_2c4defad')
-        .select('value')
-        .eq('key', 'openai_api_key')
-        .single();
-      
-      if (data?.value) {
-        setIaApiKey(data.value);
-      }
+      try {
+        const { data, error } = await supabase
+          .from('kv_store_2c4defad')
+          .select('*')
+          .eq('key', 'integration_settings')
+          .maybeSingle();
 
-      const { data: modelData } = await supabase
-        .from('kv_store_2c4defad')
-        .select('value')
-        .eq('key', 'openai_model')
-        .single();
-      
-      if (modelData?.value) {
-        setIaModel(modelData.value);
+        if (error) {
+          console.error('Erro ao buscar integração IA:', error);
+          return;
+        }
+        
+        const value = (data as any)?.value;
+        console.log('Configurações de IA carregadas no ProcessForm:', {
+          hasApiKey: !!value?.aiApiKey,
+          apiKeyLength: value?.aiApiKey?.length || 0,
+          provider: value?.aiProvider,
+          model: value?.aiModel
+        });
+        
+        if (value?.aiApiKey) {
+          setIaApiKey(value.aiApiKey);
+        }
+        if (value?.aiModel) {
+          setIaModel(value.aiModel);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar integração IA:', err);
       }
     };
 
@@ -112,6 +122,17 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
         description: "A IA está criando o processo e fluxograma. Aguarde...",
       });
 
+      console.log('Chamando generate-process com:', {
+        processInfo: {
+          name: formData.name,
+          objective: formData.objective,
+          department: formData.department,
+          owner: formData.owner,
+        },
+        apiKeyLength: iaApiKey.length,
+        model: iaModel
+      });
+
       const { data, error } = await supabase.functions.invoke('generate-process', {
         body: {
           processInfo: {
@@ -126,7 +147,17 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
         },
       });
 
-      if (error) throw error;
+      console.log('Resposta da função:', { data, error });
+
+      if (error) {
+        console.error('Erro na função:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('Erro na resposta:', data.error);
+        throw new Error(data.error);
+      }
 
       if (data.activities && Array.isArray(data.activities)) {
         setFormData(prev => ({
@@ -153,10 +184,11 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
         throw new Error('Resposta da IA não contém atividades válidas');
       }
     } catch (error: any) {
-      console.error('Erro ao gerar processo:', error);
+      console.error('Erro completo ao gerar processo:', error);
+      const errorMessage = error.message || error.error || error.details || "Não foi possível gerar o processo. Verifique a API Key em Integrações.";
       toast({
         title: "Erro ao gerar processo",
-        description: error.message || "Não foi possível gerar o processo. Verifique a API Key em Integrações.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
