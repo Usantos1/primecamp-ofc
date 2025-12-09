@@ -83,7 +83,11 @@ interface Question {
   options?: string[];
 }
 
-export const AdminJobSurveysManager = () => {
+interface AdminJobSurveysManagerProps {
+  surveyId?: string;
+}
+
+export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps = {}) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -202,6 +206,16 @@ export const AdminJobSurveysManager = () => {
       })) as JobSurvey[];
     }
   });
+
+  // Auto-select survey if surveyId is provided
+  useEffect(() => {
+    if (surveyId && surveys.length > 0 && !selectedSurvey) {
+      const survey = surveys.find(s => s.id === surveyId);
+      if (survey) {
+        setSelectedSurvey(survey);
+      }
+    }
+  }, [surveyId, surveys, selectedSurvey]);
 
   // Fetch responses for selected survey
   const { data: responses = [], isLoading: loadingResponses } = useQuery({
@@ -1203,6 +1217,87 @@ export const AdminJobSurveysManager = () => {
                           <Eye className="h-4 w-4 mr-1" />
                           Ver
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              // Converter draft em resposta completa
+                              const { error: convertError } = await supabase
+                                .from('job_responses')
+                                .insert({
+                                  survey_id: draft.survey_id,
+                                  name: draft.name || '',
+                                  email: draft.email || '',
+                                  phone: draft.phone,
+                                  whatsapp: draft.whatsapp,
+                                  age: draft.age,
+                                  responses: draft.responses || {},
+                                  created_at: new Date().toISOString()
+                                });
+
+                              if (convertError) throw convertError;
+
+                              // Deletar o draft
+                              const { error: deleteError } = await supabase
+                                .from('job_application_drafts')
+                                .delete()
+                                .eq('id', draft.id);
+
+                              if (deleteError) throw deleteError;
+
+                              toast({
+                                title: "Sucesso!",
+                                description: "Lead parcial aprovado e convertido em candidato completo.",
+                              });
+
+                              queryClient.invalidateQueries({ queryKey: ['job-drafts'] });
+                              queryClient.invalidateQueries({ queryKey: ['job-responses'] });
+                            } catch (error: any) {
+                              toast({
+                                title: "Erro",
+                                description: error.message || "Erro ao aprovar lead parcial.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-900/20 text-green-600"
+                        >
+                          ✓ Aprovar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!confirm('Tem certeza que deseja excluir este lead parcial?')) return;
+                            
+                            try {
+                              const { error } = await supabase
+                                .from('job_application_drafts')
+                                .delete()
+                                .eq('id', draft.id);
+
+                              if (error) throw error;
+
+                              toast({
+                                title: "Sucesso!",
+                                description: "Lead parcial excluído.",
+                              });
+
+                              queryClient.invalidateQueries({ queryKey: ['job-drafts'] });
+                            } catch (error: any) {
+                              toast({
+                                title: "Erro",
+                                description: error.message || "Erro ao excluir lead parcial.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="hover:bg-red-50 hover:border-red-200 dark:hover:bg-red-900/20 text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
                         {draft.whatsapp && (
                           <Button
                             variant="outline"
@@ -1763,7 +1858,9 @@ export const AdminJobSurveysManager = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedSurvey(survey)}
+                          onClick={() => {
+                            window.location.href = `/admin/job-surveys/${survey.id}`;
+                          }}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           Ver

@@ -78,7 +78,10 @@ export function AppSidebar() {
   );
   const [isRecruitmentOpen, setIsRecruitmentOpen] = useState(
     currentPath.startsWith('/admin/job-surveys') || 
-    currentPath.startsWith('/admin/interviews')
+    currentPath.startsWith('/admin/interviews') ||
+    currentPath.startsWith('/admin/talent-bank') ||
+    currentPath.startsWith('/candidato-disc') ||
+    currentPath.startsWith('/disc-externo')
   );
 
   return (
@@ -254,20 +257,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to="/candidato-disc">
-                    {({ isActive }) => (
-                      <div
-                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                      >
-                        <Brain className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
-                        {!collapsed && <span className="font-medium text-sm">DISC Externo</span>}
-                      </div>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
@@ -505,6 +494,34 @@ export function AppSidebar() {
                                   >
                                     <Video className="h-4 w-4 flex-shrink-0" />
                                     <span className="font-medium text-sm">Entrevistas com IA</span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <NavLink to="/admin/talent-bank">
+                                {({ isActive }) => (
+                                  <div
+                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                  >
+                                    <Users className="h-4 w-4 flex-shrink-0" />
+                                    <span className="font-medium text-sm">Banco de Talentos</span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <NavLink to="/candidato-disc">
+                                {({ isActive }) => (
+                                  <div
+                                    className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                  >
+                                    <Brain className="h-4 w-4 flex-shrink-0" />
+                                    <span className="font-medium text-sm">DISC Externo</span>
                                   </div>
                                 )}
                               </NavLink>

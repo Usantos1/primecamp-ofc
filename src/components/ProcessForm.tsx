@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { X, Plus, Save, ArrowLeft, Settings } from "lucide-react";
+import { X, Plus, Save, ArrowLeft, Settings, Brain, Loader2 } from "lucide-react";
 import { Process, Activity, Department, DEPARTMENTS, COMMON_TAGS, MediaFile, FlowNode, FlowEdge } from "@/types/process";
 import { useCategories } from "@/hooks/useCategories";
 import { useUsers } from "@/hooks/useUsers";
 import { useTags } from "@/hooks/useTags";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { FlowBuilder } from "./FlowBuilder";
 import { MediaUpload } from "./MediaUpload";
 import { PrioritySlider } from "./PrioritySlider";
@@ -54,6 +55,114 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
 
   const [selectedTag, setSelectedTag] = useState('');
   const [showTagManager, setShowTagManager] = useState(false);
+  const [generatingProcess, setGeneratingProcess] = useState(false);
+  const [iaApiKey, setIaApiKey] = useState<string>('');
+  const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');
+
+  // Load AI settings from integrations
+  useEffect(() => {
+    const loadAISettings = async () => {
+      const { data } = await supabase
+        .from('kv_store_2c4defad')
+        .select('value')
+        .eq('key', 'openai_api_key')
+        .single();
+      
+      if (data?.value) {
+        setIaApiKey(data.value);
+      }
+
+      const { data: modelData } = await supabase
+        .from('kv_store_2c4defad')
+        .select('value')
+        .eq('key', 'openai_model')
+        .single();
+      
+      if (modelData?.value) {
+        setIaModel(modelData.value);
+      }
+    };
+
+    loadAISettings();
+  }, []);
+
+  const generateProcessWithAI = async () => {
+    if (!formData.name || !formData.objective) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha o nome e objetivo do processo antes de gerar com IA.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!iaApiKey) {
+      toast({
+        title: "API Key não configurada",
+        description: "Configure a API Key da OpenAI em Integrações.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingProcess(true);
+    try {
+      toast({
+        title: "Gerando processo...",
+        description: "A IA está criando o processo e fluxograma. Aguarde...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('generate-process', {
+        body: {
+          processInfo: {
+            name: formData.name,
+            objective: formData.objective,
+            department: formData.department,
+            owner: formData.owner,
+          },
+          provider: 'openai',
+          apiKey: iaApiKey,
+          model: iaModel,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.activities && Array.isArray(data.activities)) {
+        setFormData(prev => ({
+          ...prev,
+          activities: data.activities.map((act: any, idx: number) => ({
+            id: `ai-${Date.now()}-${idx}`,
+            step: act.step || idx + 1,
+            description: act.description || '',
+            responsible: act.responsible || prev.owner || '',
+            estimatedTime: act.estimatedTime || '',
+            tools: Array.isArray(act.tools) ? act.tools : [],
+          })),
+          flowNodes: data.flowNodes || prev.flowNodes,
+          flowEdges: data.flowEdges || prev.flowEdges,
+          metrics: data.metrics || prev.metrics,
+          automations: data.automations || prev.automations,
+        }));
+
+        toast({
+          title: "Processo gerado!",
+          description: "O processo e fluxograma foram criados pela IA. Revise e ajuste conforme necessário.",
+        });
+      } else {
+        throw new Error('Resposta da IA não contém atividades válidas');
+      }
+    } catch (error: any) {
+      console.error('Erro ao gerar processo:', error);
+      toast({
+        title: "Erro ao gerar processo",
+        description: error.message || "Não foi possível gerar o processo. Verifique a API Key em Integrações.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingProcess(false);
+    }
+  };
 
   const addActivity = () => {
     const newActivity: Activity = {
@@ -276,7 +385,29 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="objective">Objetivo Principal *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="objective">Objetivo Principal *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={generateProcessWithAI}
+                  disabled={generatingProcess || !iaApiKey || !formData.name || !formData.objective}
+                  className="gap-2"
+                >
+                  {generatingProcess ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-4 w-4" />
+                      Gerar Processo e Fluxograma com IA
+                    </>
+                  )}
+                </Button>
+              </div>
               <RichTextEditor
                 value={formData.objective}
                 onChange={(value) => setFormData({...formData, objective: value})}
@@ -286,6 +417,11 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
               <p className="text-xs text-muted-foreground">
                 {formData.objective.length}/50 caracteres mínimos
               </p>
+              {!iaApiKey && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  ⚠️ Configure a API Key da OpenAI em Integrações para usar a IA.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

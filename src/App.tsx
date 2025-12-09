@@ -42,6 +42,8 @@ import AdminGoals from "./pages/admin/AdminGoals";
 import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
 import AdminJobSurveys from "./pages/admin/AdminJobSurveys";
+import JobSurveyDetail from "./pages/admin/JobSurveyDetail";
+import TalentBank from "./pages/admin/TalentBank";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminInterviews from "./pages/admin/AdminInterviews";
 import InterviewEvaluation from "./pages/admin/InterviewEvaluation";
@@ -98,6 +100,8 @@ const App = () => (
               <Route path="/admin/nps" element={<ProtectedRoute><AdminNPS /></ProtectedRoute>} />
               <Route path="/admin/disc" element={<ProtectedRoute><AdminDisc /></ProtectedRoute>} />
               <Route path="/admin/job-surveys" element={<ProtectedRoute><AdminJobSurveys /></ProtectedRoute>} />
+              <Route path="/admin/job-surveys/:id" element={<ProtectedRoute><JobSurveyDetail /></ProtectedRoute>} />
+              <Route path="/admin/talent-bank" element={<ProtectedRoute><TalentBank /></ProtectedRoute>} />
               <Route path="/admin/interviews" element={<ProtectedRoute><AdminInterviews /></ProtectedRoute>} />
               <Route path="/admin/interviews/evaluate/:interview_id" element={<ProtectedRoute><InterviewEvaluation /></ProtectedRoute>} />
               <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
