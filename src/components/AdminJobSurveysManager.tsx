@@ -1927,6 +1927,28 @@ export const AdminJobSurveysManager = () => {
                   placeholder="Descreva a vaga..."
                   rows={3}
                 />
+                <div className="flex flex-wrap gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={generateJobAssets} 
+                    disabled={generatingQuestions || !iaApiKey}
+                  >
+                    {generatingQuestions ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        Gerar descrição/slug com IA
+                      </>
+                    )}
+                  </Button>
+                  {!iaApiKey && (
+                    <p className="text-xs text-red-500">Configure a API key em Integrações &gt; OpenAI.</p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -2108,39 +2130,6 @@ export const AdminJobSurveysManager = () => {
                         A vaga será desativada automaticamente nesta data. Deixe em branco para não expirar.
                       </p>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="p-4 border rounded-lg bg-primary/5">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <Brain className="h-4 w-4" />
-                    Gerar Descrição Completa com IA
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Use a IA para gerar uma descrição completa da vaga baseada em todas as informações preenchidas (horários, remuneração, requisitos, etc.).
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="outline" 
-                      onClick={generateJobAssets} 
-                      disabled={generatingQuestions || !iaApiKey}
-                      className="w-full sm:w-auto"
-                    >
-                      {generatingQuestions ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Gerando descrição...
-                        </>
-                      ) : (
-                        <>
-                          <Brain className="h-4 w-4 mr-2" />
-                          Gerar descrição completa com IA
-                        </>
-                      )}
-                    </Button>
-                    {!iaApiKey && (
-                      <p className="text-xs text-red-500 w-full sm:w-auto">Configure a API key em Integrações &gt; OpenAI.</p>
-                    )}
                   </div>
                 </div>
               </div>

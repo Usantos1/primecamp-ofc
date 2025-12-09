@@ -44,7 +44,10 @@ serve(async (req) => {
 
   try {
     if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { status: 405, headers: corsHeaders }
+      );
     }
 
     let requestBody;
@@ -57,31 +60,20 @@ serve(async (req) => {
 
     const { job, provider = 'openai', apiKey, model = 'gpt-4o-mini', locale = 'pt-BR' }: GenerateJobAssetsRequest = requestBody;
 
-    if (!job?.title || !job?.position_title) {
-      return new Response(JSON.stringify({ error: 'Missing job title or position_title' }), { status: 400, headers: corsHeaders });
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    console.log('[GENERATE-JOB-ASSETS] Request received:', {
-      hasJob: !!job,
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length || 0,
-      provider,
-      model
-    });
-
-    const openaiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey || openaiKey.trim() === '') {
-      console.error('[GENERATE-JOB-ASSETS] No API key provided. apiKey from request:', !!apiKey, 'env key:', !!Deno.env.get('OPENAI_API_KEY'));
-      return new Response(JSON.stringify({ error: 'OpenAI API key not configured. Configure it in Integrations > OpenAI' }), { status: 400, headers: corsHeaders });
+    const openaiApiKey = apiKey || Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey || openaiApiKey.trim() === '') {
+      console.error('[GENERATE-JOB-ASSETS] No API key provided');
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured. Configure it in Integrations > OpenAI' }),
+        { status: 400, headers: corsHeaders }
+      );
     }
     
     if (provider !== 'openai') {
-      return new Response(JSON.stringify({ error: 'Only OpenAI provider is supported' }), { status: 400, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: 'Only OpenAI provider is supported' }),
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     // Mapear modelos "futuristas" para modelos reais da OpenAI
@@ -94,19 +86,18 @@ serve(async (req) => {
       'gpt-4.1-mini': 'gpt-4o-mini',
     };
     const actualModel = modelMap[model] || model || 'gpt-4o-mini';
-    
-    console.log('[GENERATE-JOB-ASSETS] Using model:', actualModel, 'from input:', model);
-    
-    // Validar se o modelo é suportado
-    const supportedModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'];
-    if (!supportedModels.includes(actualModel)) {
-      console.warn('[GENERATE-JOB-ASSETS] Model not in supported list, using anyway:', actualModel);
+
+    if (!job?.title || !job?.position_title) {
+      return new Response(
+        JSON.stringify({ error: 'Missing job title or position_title' }),
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     // Construir informações de horários
     let scheduleInfo = '';
     if (job.work_schedule) {
-      scheduleInfo = `Horários: ${job.work_schedule}`;
+      scheduleInfo = job.work_schedule;
     } else if (job.work_days && job.daily_schedule) {
       const daysInfo = job.work_days.map(day => {
         const schedule = job.daily_schedule?.[day];
@@ -115,12 +106,12 @@ serve(async (req) => {
         }
         return day;
       }).join(', ');
-      scheduleInfo = `Dias de trabalho: ${daysInfo}`;
+      scheduleInfo = daysInfo;
       if (job.lunch_break) {
-        scheduleInfo += `. Intervalo para almoço: ${job.lunch_break}`;
+        scheduleInfo += `. Intervalo: ${job.lunch_break}`;
       }
       if (job.weekly_hours) {
-        scheduleInfo += `. Carga horária semanal: ${job.weekly_hours}h`;
+        scheduleInfo += `. ${job.weekly_hours}h/semana`;
       }
     }
 
@@ -138,7 +129,8 @@ serve(async (req) => {
     }
 
     const prompt = `Você é um especialista em RH. Gere textos curtos e objetivos em ${locale}.
-Dados completos da vaga:
+
+DADOS DA VAGA:
 - Título: ${job.title}
 - Cargo: ${job.position_title}
 - Empresa: ${job.company_name || 'não informada'}
@@ -149,10 +141,10 @@ Dados completos da vaga:
 - Benefícios: ${Array.isArray(job.benefits) ? job.benefits.join(', ') : 'não informados'}
 - Modalidade: ${job.work_modality || 'não informada'}
 - Contrato: ${job.contract_type || 'não informado'}
-${scheduleInfo ? `- ${scheduleInfo}` : ''}
+${scheduleInfo ? `- Horários: ${scheduleInfo}` : ''}
 ${compensationInfo ? `- Remuneração: ${compensationInfo}` : ''}
 
-Responda em JSON:
+Responda APENAS em JSON válido:
 {
   "description": "Resumo atraente e completo da vaga (4-8 frases) incluindo responsabilidades principais",
   "responsibilities": ["responsabilidade 1","responsabilidade 2","responsabilidade 3","responsabilidade 4"],
@@ -162,100 +154,39 @@ Responda em JSON:
   "slug_suggestion": "slug-kebab-case-curto-sem-acentos"
 }`;
 
-    console.log('[GENERATE-JOB-ASSETS] Calling OpenAI API with model:', actualModel);
-    
-    let completion;
-    try {
-      completion = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: actualModel,
-          messages: [
-            { role: 'system', content: 'Responda somente JSON válido.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.6,
-          response_format: { type: 'json_object' }
-        })
-      });
-      
-      console.log('[GENERATE-JOB-ASSETS] OpenAI response status:', completion.status);
-    } catch (fetchError: any) {
-      console.error('[GENERATE-JOB-ASSETS] Fetch error:', fetchError);
-      return new Response(JSON.stringify({ 
-        error: `Erro ao chamar OpenAI API: ${fetchError?.message || 'Erro desconhecido'}` 
-      }), { status: 500, headers: corsHeaders });
-    }
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: actualModel,
+        messages: [
+          { role: 'system', content: 'Você é conciso e sempre responde com JSON válido.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.6,
+        response_format: { type: 'json_object' }
+      })
+    });
 
-    if (!completion.ok) {
-      const errTxt = await completion.text();
-      console.error('[GENERATE-JOB-ASSETS] OpenAI error:', errTxt);
-      let errorMsg = `OpenAI API error (${completion.status})`;
-      let errorDetails: any = {};
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      console.error('[GENERATE-JOB-ASSETS] OpenAI error:', errorText);
+      let errorMsg = `OpenAI API error (${openaiResponse.status})`;
       try {
-        const errJson = JSON.parse(errTxt);
+        const errJson = JSON.parse(errorText);
         errorMsg = errJson.error?.message || errorMsg;
-        errorDetails = errJson.error || {};
       } catch {}
-      
-      // Se o erro for de modelo inválido, tentar com gpt-4o-mini como fallback
-      if (errorDetails?.code === 'model_not_found' || errorDetails?.type === 'invalid_request_error') {
-        console.log('[GENERATE-JOB-ASSETS] Model error, trying fallback gpt-4o-mini');
-        try {
-          const fallbackCompletion = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openaiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                { role: 'system', content: 'Responda somente JSON válido.' },
-                { role: 'user', content: prompt }
-              ],
-              temperature: 0.6,
-              response_format: { type: 'json_object' }
-            })
-          });
-          
-          if (fallbackCompletion.ok) {
-            const fallbackData = await fallbackCompletion.json();
-            const fallbackContent = fallbackData.choices?.[0]?.message?.content;
-            if (fallbackContent) {
-              const fallbackParsed = JSON.parse(fallbackContent);
-              return new Response(JSON.stringify({ success: true, assets: fallbackParsed }), { headers: corsHeaders });
-            }
-          }
-        } catch (fallbackError) {
-          console.error('[GENERATE-JOB-ASSETS] Fallback also failed:', fallbackError);
-        }
-      }
-      
-      return new Response(JSON.stringify({ 
-        error: errorMsg,
-        details: errorDetails?.code || undefined
-      }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: corsHeaders });
     }
 
-    let data;
-    try {
-      data = await completion.json();
-    } catch (jsonError: any) {
-      console.error('[GENERATE-JOB-ASSETS] JSON parse error on response:', jsonError);
-      return new Response(JSON.stringify({ 
-        error: `Erro ao processar resposta da OpenAI: ${jsonError?.message || 'Resposta inválida'}` 
-      }), { status: 500, headers: corsHeaders });
-    }
-    
-    const content = data.choices?.[0]?.message?.content;
+    const openaiData = await openaiResponse.json();
+    const content = openaiData.choices?.[0]?.message?.content;
+
     if (!content) {
-      console.error('[GENERATE-JOB-ASSETS] Empty content in response:', data);
-      return new Response(JSON.stringify({ error: 'A IA não retornou conteúdo. Verifique o modelo e a API Key.' }), { status: 500, headers: corsHeaders });
+      throw new Error('Empty response from OpenAI');
     }
 
     let parsed;
@@ -263,34 +194,31 @@ Responda em JSON:
       parsed = JSON.parse(content);
     } catch (err) {
       console.error('[GENERATE-JOB-ASSETS] parse error:', content);
-      return new Response(JSON.stringify({ 
-        error: 'A IA retornou JSON inválido. Tente novamente.' 
-      }), { status: 500, headers: corsHeaders });
+      throw new Error('Invalid JSON from OpenAI');
     }
 
-    // Validar estrutura do JSON retornado
+    // Validar estrutura básica
     if (!parsed.description && !parsed.responsibilities && !parsed.requirements) {
       console.error('[GENERATE-JOB-ASSETS] Invalid response structure:', parsed);
-      return new Response(JSON.stringify({ error: 'AI returned invalid response structure' }), { status: 500, headers: corsHeaders });
+      return new Response(
+        JSON.stringify({ error: 'AI did not generate valid content. Please try again.' }),
+        { status: 500, headers: corsHeaders }
+      );
     }
 
-    // opcional: salvar histórico (ignorar erro se tabela não existir)
-    await supabase.from('job_assets_logs').insert({
-      payload: job,
-      provider,
-      created_at: new Date().toISOString(),
-    }).catch(() => {});
-
-    return new Response(JSON.stringify({ success: true, assets: parsed }), { headers: corsHeaders });
+    return new Response(
+      JSON.stringify({ success: true, assets: parsed }),
+      { headers: corsHeaders }
+    );
   } catch (error: any) {
-    console.error('[GENERATE-JOB-ASSETS] Unexpected error:', error);
-    console.error('[GENERATE-JOB-ASSETS] Error stack:', error?.stack);
+    console.error('[GENERATE-JOB-ASSETS] Error:', error);
     const errorMessage = error?.message || error?.toString() || 'Failed to generate job assets';
-    return new Response(JSON.stringify({ 
-      error: errorMessage,
-      type: error?.name || 'UnknownError',
-      message: error?.message || 'Erro inesperado ao gerar conteúdo'
-    }), { status: 500, headers: corsHeaders });
+    return new Response(
+      JSON.stringify({ 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      }),
+      { status: 500, headers: corsHeaders }
+    );
   }
 });
-
