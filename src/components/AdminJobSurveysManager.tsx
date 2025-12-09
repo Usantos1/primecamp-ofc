@@ -152,7 +152,9 @@ export const AdminJobSurveysManager = () => {
         daily_schedule: typeof item.daily_schedule === 'object' && item.daily_schedule !== null ? 
           item.daily_schedule as { [key: string]: { start: string; end: string } } : {},
         benefits: Array.isArray(item.benefits) ? item.benefits as string[] : [],
-        requirements: Array.isArray(item.requirements) ? item.requirements as string[] : []
+        requirements: Array.isArray(item.requirements) ? item.requirements as string[] : [],
+        // novo: perguntas dinâmicas geradas por IA
+        dynamic_questions: Array.isArray((item as any).dynamic_questions) ? (item as any).dynamic_questions : []
       })) as JobSurvey[];
     }
   });
@@ -1391,14 +1393,19 @@ export const AdminJobSurveysManager = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center space-x-2">
-            <Search className="h-4 w-4" />
-            <Input
-              placeholder="Buscar formulários..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4" />
+              <Input
+                placeholder="Buscar formulários..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Dica: as vagas exibem quantas perguntas são base e quantas foram geradas por IA. Use isso para revisar rapidamente o questionário antes de enviar o link.
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -1458,9 +1465,20 @@ export const AdminJobSurveysManager = () => {
                           )}
                         </div>
 
-                        <p className="text-sm text-muted-foreground">
-                          {survey.questions.length} pergunta(s) • Criado em {format(new Date(survey.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                        </p>
+                        <div className="text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                          <div>
+                            {survey.questions.length} pergunta(s) base
+                            {survey.dynamic_questions?.length ? ` • ${survey.dynamic_questions.length} dinâmicas (IA)` : ''}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                            <Badge variant="outline" className="text-xs">
+                              IA ativa
+                            </Badge>
+                            <span>
+                              Criado em {format(new Date(survey.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2 ml-4">
