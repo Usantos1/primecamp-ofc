@@ -65,9 +65,12 @@ export const ProcessCard = ({ process, onView, onEdit, onDelete }: ProcessCardPr
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-          {process.objective?.replace(/<[^>]*>/g, '') || 'Sem objetivo disponível'}
-        </div>
+        <div 
+          className="text-sm text-muted-foreground leading-relaxed line-clamp-2 prose prose-sm max-w-none dark:prose-invert"
+          dangerouslySetInnerHTML={{ 
+            __html: process.objective?.replace(/<h[1-6][^>]*>.*?<\/h[1-6]>/gi, '') || 'Sem objetivo disponível' 
+          }}
+        />
         
         {/* Owner */}
         <div className="flex items-center gap-2">
