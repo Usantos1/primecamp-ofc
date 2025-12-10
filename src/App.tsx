@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { NotificationManager } from "@/components/NotificationManager";
 import { HelmetProvider } from "react-helmet-async";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ProcessView from "./pages/ProcessView";
@@ -59,15 +60,16 @@ import TrainingsIndex from "./pages/trainings/TrainingsIndex";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <HelmetProvider>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <NotificationManager>
-            <TooltipProvider>
-              {/* <Toaster /> Temporariamente desabilitado - usando apenas Sonner */}
-              <Sonner />
-              <BrowserRouter>
+  <ErrorBoundary>
+    <HelmetProvider>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <NotificationManager>
+              <TooltipProvider>
+                {/* <Toaster /> Temporariamente desabilitado - usando apenas Sonner */}
+                <Sonner />
+                <BrowserRouter>
             <Routes>
             <Route path="/login" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
@@ -138,6 +140,7 @@ const App = () => (
       </QueryClientProvider>
     </ThemeProvider>
   </HelmetProvider>
+  </ErrorBoundary>
 );
 
 export default App;

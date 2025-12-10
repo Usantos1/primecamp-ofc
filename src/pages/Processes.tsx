@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DEPARTMENTS, Department } from '@/types/process';
 import { cn } from '@/lib/utils';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 export default function Processes() {
   const { processes, loading, deleteProcess } = useProcesses();
@@ -173,11 +174,7 @@ export default function Processes() {
       {/* Conteúdo sem pré-visualização */}
       <div className="space-y-4">
         {loading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-48 bg-card/30 rounded-lg animate-pulse" />
-            ))}
-          </div>
+          <LoadingSkeleton type="card" count={6} />
         ) : filteredProcesses.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
