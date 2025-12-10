@@ -22,15 +22,24 @@ export function useFinancialCategories() {
   return useQuery({
     queryKey: ['financial-categories'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('financial_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      try {
+        const { data, error } = await (supabase as any)
+          .from('financial_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
 
-      if (error) throw error;
-      return data as FinancialCategory[];
+        if (error) {
+          console.warn('Tabela financial_categories não existe ainda:', error.message);
+          return [];
+        }
+        return data as FinancialCategory[];
+      } catch (err) {
+        console.warn('Erro ao buscar categorias financeiras:', err);
+        return [];
+      }
     },
+    retry: false,
   });
 }
 
@@ -49,27 +58,36 @@ export function useBillsToPay(filters?: {
   const query = useQuery({
     queryKey: ['bills-to-pay', filters],
     queryFn: async () => {
-      let query = (supabase as any)
-        .from('bills_to_pay')
-        .select('*, category:financial_categories(*)')
-        .order('due_date', { ascending: true });
+      try {
+        let query = (supabase as any)
+          .from('bills_to_pay')
+          .select('*, category:financial_categories(*)')
+          .order('due_date', { ascending: true });
 
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.expense_type) {
-        query = query.eq('expense_type', filters.expense_type);
-      }
-      if (filters?.month) {
-        const startDate = `${filters.month}-01`;
-        const endDate = `${filters.month}-31`;
-        query = query.gte('due_date', startDate).lte('due_date', endDate);
-      }
+        if (filters?.status) {
+          query = query.eq('status', filters.status);
+        }
+        if (filters?.expense_type) {
+          query = query.eq('expense_type', filters.expense_type);
+        }
+        if (filters?.month) {
+          const startDate = `${filters.month}-01`;
+          const endDate = `${filters.month}-31`;
+          query = query.gte('due_date', startDate).lte('due_date', endDate);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as BillToPay[];
+        const { data, error } = await query;
+        if (error) {
+          console.warn('Tabela bills_to_pay não existe ainda:', error.message);
+          return [];
+        }
+        return data as BillToPay[];
+      } catch (err) {
+        console.warn('Erro ao buscar contas a pagar:', err);
+        return [];
+      }
     },
+    retry: false,
   });
 
   const createBill = useMutation({
@@ -173,24 +191,33 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
   const query = useQuery({
     queryKey: ['cash-closings', filters],
     queryFn: async () => {
-      let query = (supabase as any)
-        .from('cash_closings')
-        .select('*')
-        .order('closing_date', { ascending: false });
+      try {
+        let query = (supabase as any)
+          .from('cash_closings')
+          .select('*')
+          .order('closing_date', { ascending: false });
 
-      if (filters?.month) {
-        const startDate = `${filters.month}-01`;
-        const endDate = `${filters.month}-31`;
-        query = query.gte('closing_date', startDate).lte('closing_date', endDate);
-      }
-      if (filters?.seller_id) {
-        query = query.eq('seller_id', filters.seller_id);
-      }
+        if (filters?.month) {
+          const startDate = `${filters.month}-01`;
+          const endDate = `${filters.month}-31`;
+          query = query.gte('closing_date', startDate).lte('closing_date', endDate);
+        }
+        if (filters?.seller_id) {
+          query = query.eq('seller_id', filters.seller_id);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as CashClosing[];
+        const { data, error } = await query;
+        if (error) {
+          console.warn('Tabela cash_closings não existe ainda:', error.message);
+          return [];
+        }
+        return data as CashClosing[];
+      } catch (err) {
+        console.warn('Erro ao buscar fechamentos de caixa:', err);
+        return [];
+      }
     },
+    retry: false,
   });
 
   const createCashClosing = useMutation({
@@ -283,24 +310,33 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
   const query = useQuery({
     queryKey: ['financial-transactions', filters],
     queryFn: async () => {
-      let query = (supabase as any)
-        .from('financial_transactions')
-        .select('*, category:financial_categories(*)')
-        .order('transaction_date', { ascending: false });
+      try {
+        let query = (supabase as any)
+          .from('financial_transactions')
+          .select('*, category:financial_categories(*)')
+          .order('transaction_date', { ascending: false });
 
-      if (filters?.month) {
-        const startDate = `${filters.month}-01`;
-        const endDate = `${filters.month}-31`;
-        query = query.gte('transaction_date', startDate).lte('transaction_date', endDate);
-      }
-      if (filters?.type) {
-        query = query.eq('type', filters.type);
-      }
+        if (filters?.month) {
+          const startDate = `${filters.month}-01`;
+          const endDate = `${filters.month}-31`;
+          query = query.gte('transaction_date', startDate).lte('transaction_date', endDate);
+        }
+        if (filters?.type) {
+          query = query.eq('type', filters.type);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as FinancialTransaction[];
+        const { data, error } = await query;
+        if (error) {
+          console.warn('Tabela financial_transactions não existe ainda:', error.message);
+          return [];
+        }
+        return data as FinancialTransaction[];
+      } catch (err) {
+        console.warn('Erro ao buscar transações:', err);
+        return [];
+      }
     },
+    retry: false,
   });
 
   const createTransaction = useMutation({
@@ -360,21 +396,30 @@ export function useBillsDueSoon(daysAhead: number = 7) {
   return useQuery({
     queryKey: ['bills-due-soon', daysAhead],
     queryFn: async () => {
-      const today = new Date();
-      const futureDate = new Date(today);
-      futureDate.setDate(today.getDate() + daysAhead);
+      try {
+        const today = new Date();
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + daysAhead);
 
-      const { data, error } = await (supabase as any)
-        .from('bills_to_pay')
-        .select('*, category:financial_categories(*)')
-        .eq('status', 'pendente')
-        .lte('due_date', futureDate.toISOString().split('T')[0])
-        .order('due_date', { ascending: true });
+        const { data, error } = await (supabase as any)
+          .from('bills_to_pay')
+          .select('*, category:financial_categories(*)')
+          .eq('status', 'pendente')
+          .lte('due_date', futureDate.toISOString().split('T')[0])
+          .order('due_date', { ascending: true });
 
-      if (error) throw error;
-      return data as BillToPay[];
+        if (error) {
+          console.warn('Tabela bills_to_pay não existe ainda:', error.message);
+          return [];
+        }
+        return data as BillToPay[];
+      } catch (err) {
+        console.warn('Erro ao buscar contas vencendo:', err);
+        return [];
+      }
     },
-    refetchInterval: 60000, // Atualizar a cada minuto
+    refetchInterval: 60000,
+    retry: false,
   });
 }
 
