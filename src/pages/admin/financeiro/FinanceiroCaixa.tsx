@@ -4,8 +4,5 @@ import type { FinanceiroContextType } from './FinanceiroLayout';
 
 export default function FinanceiroCaixa() {
   const { startDate } = useOutletContext<FinanceiroContextType>();
-  const month = startDate.slice(0, 7);
-
-  return <CashClosingManager month={month} />;
+  return <CashClosingManager month={startDate.slice(0, 7)} />;
 }
-

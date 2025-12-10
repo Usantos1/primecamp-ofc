@@ -4,8 +4,5 @@ import type { FinanceiroContextType } from './FinanceiroLayout';
 
 export default function FinanceiroContas() {
   const { startDate } = useOutletContext<FinanceiroContextType>();
-  const month = startDate.slice(0, 7);
-
-  return <BillsManager month={month} />;
+  return <BillsManager month={startDate.slice(0, 7)} />;
 }
-

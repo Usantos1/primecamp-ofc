@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -23,9 +22,6 @@ export interface FinanceiroContextType {
   period: PeriodFilter;
   startDate: string;
   endDate: string;
-  setPeriod: (period: PeriodFilter) => void;
-  setStartDate: (date: string) => void;
-  setEndDate: (date: string) => void;
 }
 
 export default function FinanceiroLayout() {
@@ -70,46 +66,35 @@ export default function FinanceiroLayout() {
 
   const navItems = [
     { path: '/admin/financeiro', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-    { path: '/admin/financeiro/caixa', label: 'Fechamento de Caixa', icon: Receipt },
-    { path: '/admin/financeiro/contas', label: 'Contas a Pagar', icon: CreditCard },
+    { path: '/admin/financeiro/caixa', label: 'Caixa', icon: Receipt },
+    { path: '/admin/financeiro/contas', label: 'Contas', icon: CreditCard },
     { path: '/admin/financeiro/transacoes', label: 'Transações', icon: ArrowLeftRight },
     { path: '/admin/financeiro/relatorios', label: 'Relatórios', icon: TrendingUp },
   ];
 
   const periodLabels: Record<PeriodFilter, string> = {
     today: 'Hoje',
-    week: 'Esta Semana',
-    month: 'Este Mês',
-    year: 'Este Ano',
-    custom: 'Personalizado',
+    week: 'Semana',
+    month: 'Mês',
+    year: 'Ano',
+    custom: 'Custom',
   };
 
   return (
-    <ModernLayout
-      title="Financeiro"
-      subtitle="Controle completo de caixa, contas e análises financeiras"
-    >
+    <ModernLayout title="Financeiro" subtitle="Controle de caixa, contas e transações">
       <div className="space-y-6">
-        {/* Header com navegação e filtros */}
+        {/* Navegação e filtros */}
         <div className="flex flex-col gap-4">
-          {/* Navegação por abas */}
           <div className="flex flex-wrap gap-2 p-1 bg-muted/50 rounded-lg">
             {navItems.map((item) => {
               const isActive = item.exact 
                 ? location.pathname === item.path
-                : location.pathname.startsWith(item.path);
+                : location.pathname.startsWith(item.path) && location.pathname !== '/admin/financeiro';
               const Icon = item.icon;
               
               return (
                 <NavLink key={item.path} to={item.path} end={item.exact}>
-                  <Button
-                    variant={isActive ? 'default' : 'ghost'}
-                    size="sm"
-                    className={cn(
-                      'gap-2',
-                      isActive && 'shadow-sm'
-                    )}
-                  >
+                  <Button variant={isActive ? 'default' : 'ghost'} size="sm" className="gap-2">
                     <Icon className="h-4 w-4" />
                     <span className="hidden sm:inline">{item.label}</span>
                   </Button>
@@ -118,62 +103,38 @@ export default function FinanceiroLayout() {
             })}
           </div>
 
-          {/* Filtros de período */}
           <div className="flex flex-wrap items-center gap-3 p-4 bg-card border rounded-lg">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Período:</span>
-            </div>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Período:</span>
             
-            <div className="flex flex-wrap gap-2">
-              {(['today', 'week', 'month', 'year', 'custom'] as PeriodFilter[]).map((p) => (
-                <Button
-                  key={p}
-                  variant={period === p ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => handlePeriodChange(p)}
-                >
-                  {periodLabels[p]}
-                </Button>
-              ))}
-            </div>
+            {(['today', 'week', 'month', 'year', 'custom'] as PeriodFilter[]).map((p) => (
+              <Button
+                key={p}
+                variant={period === p ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handlePeriodChange(p)}
+              >
+                {periodLabels[p]}
+              </Button>
+            ))}
 
             {period === 'custom' && (
-              <div className="flex items-center gap-2 ml-auto">
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-auto"
-                />
-                <span className="text-muted-foreground">até</span>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-auto"
-                />
+              <div className="flex items-center gap-2">
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" />
+                <span>até</span>
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" />
               </div>
             )}
 
-            <div className="ml-auto flex items-center gap-2">
-              <Badge variant="outline" className="gap-1">
-                <Calendar className="h-3 w-3" />
-                {new Date(startDate).toLocaleDateString('pt-BR')} - {new Date(endDate).toLocaleDateString('pt-BR')}
-              </Badge>
-              
-              <Button variant="outline" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Exportar
-              </Button>
-            </div>
+            <Badge variant="outline" className="ml-auto gap-1">
+              <Calendar className="h-3 w-3" />
+              {new Date(startDate).toLocaleDateString('pt-BR')} - {new Date(endDate).toLocaleDateString('pt-BR')}
+            </Badge>
           </div>
         </div>
 
-        {/* Conteúdo da rota */}
-        <Outlet context={{ period, startDate, endDate, setPeriod, setStartDate, setEndDate }} />
+        <Outlet context={{ period, startDate, endDate }} />
       </div>
     </ModernLayout>
   );
 }
-
