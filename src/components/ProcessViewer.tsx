@@ -303,17 +303,25 @@ export const ProcessViewer = ({ process, onEdit, onBack }: ProcessViewerProps) =
               </div>
             )}
             
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">Tags:</p>
-              <div className="flex flex-wrap gap-2">
-                {process.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Anotações e Sugestões */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Edit className="h-5 w-5 text-primary" />
+            Anotações e Sugestões
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div 
+            className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert min-h-[200px] p-4 border rounded-lg bg-muted/30"
+            dangerouslySetInnerHTML={{ 
+              __html: process.notes || '<p class="text-muted-foreground italic">Nenhuma anotação ou sugestão ainda. Use o editor abaixo para adicionar.</p>' 
+            }}
+          />
         </CardContent>
       </Card>
 

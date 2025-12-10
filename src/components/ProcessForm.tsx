@@ -11,14 +11,12 @@ import { X, Plus, Save, ArrowLeft, Settings, Brain, Loader2 } from "lucide-react
 import { Process, Activity, Department, DEPARTMENTS, COMMON_TAGS, MediaFile, FlowNode, FlowEdge } from "@/types/process";
 import { useCategories } from "@/hooks/useCategories";
 import { useUsers } from "@/hooks/useUsers";
-import { useTags } from "@/hooks/useTags";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FlowBuilder } from "./FlowBuilder";
 import { MediaUpload } from "./MediaUpload";
 import { PrioritySlider } from "./PrioritySlider";
 import { RichTextEditor } from "./RichTextEditor";
-import { TagManager } from "./TagManager";
 import { MultiSelect, Option } from "./ui/multi-select";
 
 interface ProcessFormProps {
@@ -32,7 +30,6 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
   const { toast } = useToast();
   const { categories } = useCategories();
   const { users } = useUsers();
-  const { tags } = useTags();
   
   const [formData, setFormData] = useState({
     name: process?.name || '',
@@ -44,6 +41,7 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
     metrics: process?.metrics || [''],
     automations: process?.automations || [],
     tags: process?.tags || [],
+    notes: process?.notes || '',
     priority: process?.priority || 2,
     mediaFiles: process?.mediaFiles || [],
     flowNodes: process?.flowNodes || [],
@@ -54,7 +52,6 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
   });
 
   const [selectedTag, setSelectedTag] = useState('');
-  const [showTagManager, setShowTagManager] = useState(false);
   const [generatingProcess, setGeneratingProcess] = useState(false);
   const [iaApiKey, setIaApiKey] = useState<string>('');
   const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');
@@ -701,77 +698,24 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
           </CardContent>
         </Card>
 
-        {/* Tags */}
+        {/* Anotações e Sugestões */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>🏷️ Tags e Classificação</CardTitle>
-              <Dialog open={showTagManager} onOpenChange={setShowTagManager}>
-                <DialogTrigger asChild>
-                  <Button type="button" variant="outline" size="sm">
-                    <Settings className="h-4 w-4" />
-                    Gerenciar Tags
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Gerenciar Tags</DialogTitle>
-                  </DialogHeader>
-                  <TagManager />
-                </DialogContent>
-              </Dialog>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-primary" />
+              Anotações e Sugestões
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Colaboradores podem adicionar anotações, sugestões de mudanças ou observações sobre o processo. Use formatação HTML para destacar informações importantes.
+            </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-2">
-              <Select value={selectedTag} onValueChange={setSelectedTag}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Selecione uma tag" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Tags do banco de dados */}
-                  {tags.filter(tag => !formData.tags.includes(tag.name)).map((tag) => (
-                    <SelectItem key={tag.id} value={tag.name}>
-                      <div className="flex items-center gap-2">
-                        <span>{tag.icon}</span>
-                        <span style={{ color: tag.color }}>{tag.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                  {/* Tags comuns como fallback */}
-                  {COMMON_TAGS.filter(tag => 
-                    !formData.tags.includes(tag) && 
-                    !tags.some(dbTag => dbTag.name === tag)
-                  ).map((tag) => (
-                    <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button type="button" onClick={addTag} variant="outline">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {formData.tags.map((tag) => {
-                const dbTag = tags.find(t => t.name === tag);
-                return (
-                  <Badge 
-                    key={tag} 
-                    variant="secondary" 
-                    className="gap-1"
-                    style={dbTag ? { 
-                      backgroundColor: dbTag.color + '20', 
-                      color: dbTag.color,
-                      borderColor: dbTag.color + '40'
-                    } : {}}
-                  >
-                    {dbTag?.icon} {tag}
-                    <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
-                  </Badge>
-                );
-              })}
-            </div>
+          <CardContent>
+            <RichTextEditor
+              value={formData.notes || ''}
+              onChange={(value) => setFormData({...formData, notes: value})}
+              placeholder="Adicione anotações, sugestões de melhorias ou observações sobre este processo..."
+              className="min-h-[300px]"
+            />
           </CardContent>
         </Card>
 

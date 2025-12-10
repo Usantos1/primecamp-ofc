@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { FlowBuilder } from '@/components/FlowBuilder';
 import { ProcessViewer } from '@/components/ProcessViewer';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Edit } from 'lucide-react';
+import { Edit, ArrowLeft } from 'lucide-react';
 import { Process } from '@/types/process';
 
 const ProcessView = () => {
@@ -90,6 +87,7 @@ const ProcessView = () => {
         flowEdges,
         youtubeVideoId: data.youtube_video_id || '',
         categoryId: data.category_id,
+        notes: data.notes || '',
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
         status: data.status as any
@@ -117,56 +115,6 @@ const ProcessView = () => {
     }
   };
 
-  const handleSaveFlow = async (nodes: any[], edges: any[]) => {
-    if (!processId) return;
-
-    try {
-      // Salva no localStorage para persistência imediata
-      const flowData = { nodes, edges };
-      localStorage.setItem(`flow-layout-${processId}`, JSON.stringify(flowData));
-
-      // Se for admin, salva também no banco
-      if (profile && isAdmin) {
-        const { error } = await supabase
-          .from('processes')
-          .update({
-            flow_nodes: nodes,
-            flow_edges: edges,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', processId);
-
-        if (error) {
-          toast({
-            title: "Erro",
-            description: "Erro ao salvar fluxo no banco",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        toast({
-          title: "Sucesso",
-          description: "Fluxo salvo com sucesso",
-        });
-
-        // Refresh process data
-        await fetchProcess();
-      } else {
-        toast({
-          title: "Layout salvo",
-          description: "Layout do fluxo salvo localmente",
-        });
-      }
-    } catch (error) {
-      console.error('Error saving flow:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar fluxo",
-        variant: "destructive"
-      });
-    }
-  };
 
   if (authLoading || loading) {
     return (
@@ -201,44 +149,33 @@ const ProcessView = () => {
       title={process.name}
       subtitle={`${process.department} • ${process.status === 'active' ? 'Ativo' : process.status === 'draft' ? 'Rascunho' : process.status}`}
       headerActions={
-        profile && isAdmin && (
+        <>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate(`/processo/${processId}/edit`)}
+            onClick={() => navigate('/processos')}
           >
-            <Edit className="h-4 w-4 mr-2" />
-            Editar
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
           </Button>
-        )
+          {profile && isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/processo/${processId}/edit`)}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Editar
+            </Button>
+          )}
+        </>
       }
     >
-      <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid w-full max-w-[400px] grid-cols-2 mb-6">
-          <TabsTrigger value="details">Detalhes</TabsTrigger>
-          <TabsTrigger value="flow">Fluxo</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="details" className="mt-6">
-          <ProcessViewer 
-            process={process}
-            onEdit={() => navigate(`/processo/${processId}/edit`)}
-            onBack={() => navigate('/processos')}
-          />
-        </TabsContent>
-        
-        <TabsContent value="flow" className="mt-6">
-          <div className="h-[calc(100vh-16rem)] border rounded-lg">
-            <FlowBuilder
-              processId={process.id}
-              initialNodes={process.flowNodes || []}
-              initialEdges={process.flowEdges || []}
-              onSave={handleSaveFlow}
-              readOnly={!profile || !isAdmin}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
+      <ProcessViewer 
+        process={process}
+        onEdit={() => navigate(`/processo/${processId}/edit`)}
+        onBack={() => navigate('/processos')}
+      />
     </ModernLayout>
   );
 };

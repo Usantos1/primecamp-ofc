@@ -52,6 +52,7 @@ export interface Process {
   flowNodes?: FlowNode[];
   flowEdges?: FlowEdge[];
   youtubeVideoId?: string;
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
   status: 'draft' | 'active' | 'review' | 'archived';

@@ -122,6 +122,7 @@ const ProcessEdit = () => {
           flow_nodes: processData.flowNodes as any || [],
           flow_edges: processData.flowEdges as any || [],
           youtube_video_id: processData.youtubeVideoId || null,
+          notes: processData.notes || '',
           status: processData.status,
           category_id: processData.categoryId,
           updated_at: new Date().toISOString()
