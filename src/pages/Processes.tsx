@@ -51,7 +51,7 @@ export default function Processes() {
       headerActions={
         isAdmin && (
           <Button 
-            onClick={() => window.location.href = '/#new-process'}
+            onClick={() => navigate('/processos/novo')}
             className="gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -120,7 +120,7 @@ export default function Processes() {
             </div>
             {isAdmin && !searchTerm && statusFilter === 'all' && categoryFilter === 'all' && (
               <Button 
-                onClick={() => window.location.href = '/#new-process'}
+                onClick={() => navigate('/processos/novo')}
                 className="mt-4 gap-2"
                 variant="outline"
               >

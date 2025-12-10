@@ -160,25 +160,61 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
       }
 
       if (data.activities && Array.isArray(data.activities)) {
-        setFormData(prev => ({
-          ...prev,
-          activities: data.activities.map((act: any, idx: number) => ({
-            id: `ai-${Date.now()}-${idx}`,
-            step: act.step || idx + 1,
-            description: act.description || '',
-            responsible: act.responsible || prev.owner || '',
-            estimatedTime: act.estimatedTime || '',
-            tools: Array.isArray(act.tools) ? act.tools : [],
-          })),
-          flowNodes: data.flowNodes || prev.flowNodes,
-          flowEdges: data.flowEdges || prev.flowEdges,
-          metrics: data.metrics || prev.metrics,
-          automations: data.automations || prev.automations,
+        // Atualizar objetivo melhorado se fornecido
+        if (data.improvedObjective && data.improvedObjective.length > 50) {
+          setFormData(prev => ({
+            ...prev,
+            objective: data.improvedObjective
+          }));
+        }
+
+        // Mostrar sugestões de nome se fornecidas
+        if (data.nameSuggestions && Array.isArray(data.nameSuggestions) && data.nameSuggestions.length > 0) {
+          toast({
+            title: "Sugestões de nome geradas",
+            description: `Sugestões: ${data.nameSuggestions.slice(0, 3).join(', ')}. Você pode atualizar o nome do processo.`,
+          });
+        }
+
+        // Aplicar atividades
+        const updatedActivities = data.activities.map((act: any, idx: number) => ({
+          id: `ai-${Date.now()}-${idx}`,
+          step: act.step || idx + 1,
+          description: act.description || '',
+          responsible: act.responsible || formData.owner || '',
+          estimatedTime: act.estimatedTime || '',
+          tools: Array.isArray(act.tools) ? act.tools : [],
         }));
+
+        setFormData(prev => {
+          // Aplicar fluxograma (garantir que seja um array válido)
+          const flowNodes = Array.isArray(data.flowNodes) && data.flowNodes.length > 0 
+            ? data.flowNodes 
+            : prev.flowNodes;
+          const flowEdges = Array.isArray(data.flowEdges) && data.flowEdges.length > 0 
+            ? data.flowEdges 
+            : prev.flowEdges;
+
+          return {
+            ...prev,
+            activities: updatedActivities,
+            flowNodes: flowNodes,
+            flowEdges: flowEdges,
+            metrics: Array.isArray(data.metrics) ? data.metrics : prev.metrics,
+            automations: Array.isArray(data.automations) ? data.automations : prev.automations,
+          };
+        });
+
+        console.log('Dados aplicados:', {
+          activitiesCount: updatedActivities.length,
+          flowNodesCount: flowNodes.length,
+          flowEdgesCount: flowEdges.length,
+          hasImprovedObjective: !!data.improvedObjective
+        });
 
         toast({
           title: "Processo gerado!",
-          description: "O processo e fluxograma foram criados pela IA. Revise e ajuste conforme necessário.",
+          description: `O processo foi criado com ${updatedActivities.length} atividades e fluxograma completo. Revise e ajuste conforme necessário.`,
         });
       } else {
         throw new Error('Resposta da IA não contém atividades válidas');

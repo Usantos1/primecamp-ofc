@@ -5,7 +5,6 @@ import { useProcesses } from '@/hooks/useProcesses';
 import { useCategories } from '@/hooks/useCategories';
 import { ProcessCard } from '@/components/ProcessCard';
 import { CategoryManager } from '@/components/CategoryManager';
-import { ProcessForm } from '@/components/ProcessForm';
 import { ModernLayout } from '@/components/ModernLayout';
 import { TaskManager } from '@/components/TaskManager';
 import { Button } from '@/components/ui/button';
@@ -105,7 +104,7 @@ const Index = () => {
     }
     
     if (hash === '#new-process' && isAdmin) {
-      setShowProcessForm(true);
+      navigate('/processos/novo');
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, [isAdmin]);
@@ -148,21 +147,6 @@ const Index = () => {
     navigate(`/processo/${process.id}/edit`);
   };
 
-  const handleProcessFormClose = () => {
-    setShowProcessForm(false);
-    setEditingProcess(null);
-  };
-
-  const handleProcessSave = async (processData: Omit<Process, 'id' | 'createdAt' | 'updatedAt'>) => {
-    console.log('Salvando processo:', processData);
-    try {
-      const result = await createProcess(processData);
-      console.log('Processo criado:', result);
-      handleProcessFormClose();
-    } catch (error) {
-      console.error('Erro ao criar processo:', error);
-    }
-  };
 
   if (!user) {
     return (
@@ -244,7 +228,7 @@ const Index = () => {
             
             {profile && isAdmin && (
               <Button 
-                onClick={() => setShowProcessForm(true)}
+                onClick={() => navigate('/processos/novo')}
                 className="bg-gradient-to-r from-primary to-primary-glow hover:from-primary/90 hover:to-primary-glow/90 shadow-lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -470,7 +454,7 @@ const Index = () => {
                     {searchTerm ? 'Nenhum processo encontrado para sua busca.' : 'Nenhum processo encontrado.'}
                   </p>
                   {!searchTerm && profile && isAdmin && (
-                    <Button onClick={() => setShowProcessForm(true)}>
+                    <Button onClick={() => navigate('/processos/novo')}>
                       <Plus className="h-4 w-4 mr-2" />
                       Criar Primeiro Processo
                     </Button>
@@ -485,18 +469,6 @@ const Index = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Process Form Modal */}
-        {showProcessForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-background rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-              <ProcessForm
-                process={editingProcess}
-                onSave={handleProcessSave}
-                onCancel={handleProcessFormClose}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </ModernLayout>
   );

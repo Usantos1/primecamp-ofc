@@ -42,37 +42,66 @@ serve(async (req) => {
 
     const actualModel = modelMap[model] || model;
 
-    const prompt = `Você é um especialista em mapeamento de processos empresariais. Com base nas informações fornecidas, crie um processo completo e um fluxograma detalhado.
+    const prompt = `Você é um especialista em mapeamento de processos empresariais. Com base nas informações fornecidas, crie um processo completo, objetivo detalhado, sugestões de nomes e um fluxograma detalhado.
 
 INFORMAÇÕES DO PROCESSO:
-- Nome: ${processInfo.name}
-- Objetivo: ${processInfo.objective}
+- Nome atual: ${processInfo.name}
+- Objetivo atual: ${processInfo.objective || 'Não especificado'}
 - Departamento: ${processInfo.department || 'Não especificado'}
 - Proprietário: ${processInfo.owner || 'Não especificado'}
 
-INSTRUÇÕES:
-1. Crie atividades detalhadas (5-10 atividades) que descrevam cada etapa do processo
-2. Para cada atividade, defina:
-   - Descrição clara e objetiva
-   - Responsável sugerido (baseado no departamento)
-   - Tempo estimado
-   - Ferramentas/recursos necessários
+INSTRUÇÕES DETALHADAS:
 
-3. Crie um fluxograma em formato JSON com:
-   - Nós (nodes) representando cada atividade/etapa
-   - Conexões (edges) mostrando o fluxo entre as atividades
-   - Cada nó deve ter: id, type ('process', 'decision', 'start', 'end'), label, position (x, y)
-   - Cada edge deve ter: id, source (id do nó origem), target (id do nó destino), label (opcional)
+1. SUGESTÕES DE NOME (nameSuggestions):
+   - Crie 3-5 sugestões de nomes profissionais e descritivos para este processo
+   - Os nomes devem ser claros, objetivos e refletir a essência do processo
+   - Exemplo: ["Processo de Atendimento ao Cliente", "Fluxo de Suporte Técnico", "Procedimento de Vendas"]
 
-4. Identifique pontos de decisão e loops quando necessário
+2. OBJETIVO PRINCIPAL MELHORADO (improvedObjective):
+   - Se o objetivo atual for vago ou curto, crie um objetivo completo e detalhado (mínimo 100 caracteres)
+   - O objetivo deve explicar claramente: qual problema resolve, qual resultado esperado, quem se beneficia
+   - Use parágrafos e formatação clara
+   - Se o objetivo atual já for bom, mantenha-o mas pode melhorar
 
-FORMATO DE RESPOSTA (JSON):
+3. ATIVIDADES (activities):
+   - Crie 5-10 atividades detalhadas que descrevam cada etapa do processo
+   - Para cada atividade, defina:
+     * step: número sequencial (1, 2, 3...)
+     * description: descrição clara e objetiva da atividade (mínimo 20 caracteres)
+     * responsible: sugestão de responsável baseado no departamento
+     * estimatedTime: tempo estimado (ex: "30 minutos", "2 horas", "1 dia")
+     * tools: array com ferramentas/recursos necessários
+
+4. FLUXOGRAMA (flowNodes e flowEdges) - OBRIGATÓRIO:
+   - Crie um fluxograma completo em formato JSON
+   - flowNodes: array de nós representando cada etapa
+     * Cada nó DEVE ter: id (string única como "node-1"), type ("start", "process", "decision", "end"), label (texto da etapa), position {x: número, y: número}
+     * O primeiro nó DEVE ser type: "start" com label "Início"
+     * O último nó DEVE ser type: "end" com label "Fim"
+     * Nós intermediários devem ser type: "process" ou "decision"
+     * Posições devem ser espaçadas: x incrementa de 200 em 200, y pode variar
+   - flowEdges: array de conexões entre nós
+     * Cada edge DEVE ter: id (string única como "edge-1"), source (id do nó origem), target (id do nó destino), label (opcional, string vazia se não houver)
+     * Conecte todos os nós sequencialmente: start -> processo1 -> processo2 -> ... -> end
+     * Se houver decisões, crie edges para cada caminho possível
+
+5. MÉTRICAS (metrics):
+   - Sugira 3-5 métricas relevantes para acompanhar este processo
+   - Exemplo: "Tempo médio de execução", "Taxa de conclusão", "Satisfação do cliente"
+
+6. AUTOMAÇÕES (automations):
+   - Sugira 2-4 automações que podem melhorar este processo
+   - Exemplo: "Notificação automática por email", "Integração com sistema de CRM"
+
+FORMATO DE RESPOSTA (JSON OBRIGATÓRIO):
 {
+  "nameSuggestions": ["Nome Sugerido 1", "Nome Sugerido 2", "Nome Sugerido 3"],
+  "improvedObjective": "Objetivo completo e detalhado com pelo menos 100 caracteres, explicando o problema que resolve, resultado esperado e beneficiários.",
   "activities": [
     {
       "step": 1,
-      "description": "Descrição detalhada da atividade",
-      "responsible": "Sugestão de responsável",
+      "description": "Descrição detalhada da atividade (mínimo 20 caracteres)",
+      "responsible": "Sugestão de responsável baseado no departamento",
       "estimatedTime": "Tempo estimado (ex: 30 minutos)",
       "tools": ["Ferramenta 1", "Ferramenta 2"]
     }
@@ -82,13 +111,25 @@ FORMATO DE RESPOSTA (JSON):
       "id": "node-1",
       "type": "start",
       "label": "Início",
-      "position": { "x": 100, "y": 100 }
+      "position": { "x": 100, "y": 200 }
     },
     {
       "id": "node-2",
       "type": "process",
-      "label": "Nome da atividade",
-      "position": { "x": 300, "y": 100 }
+      "label": "Nome da primeira atividade",
+      "position": { "x": 300, "y": 200 }
+    },
+    {
+      "id": "node-3",
+      "type": "process",
+      "label": "Nome da segunda atividade",
+      "position": { "x": 500, "y": 200 }
+    },
+    {
+      "id": "node-end",
+      "type": "end",
+      "label": "Fim",
+      "position": { "x": 700, "y": 200 }
     }
   ],
   "flowEdges": [
@@ -97,11 +138,24 @@ FORMATO DE RESPOSTA (JSON):
       "source": "node-1",
       "target": "node-2",
       "label": ""
+    },
+    {
+      "id": "edge-2",
+      "source": "node-2",
+      "target": "node-3",
+      "label": ""
+    },
+    {
+      "id": "edge-3",
+      "source": "node-3",
+      "target": "node-end",
+      "label": ""
     }
   ],
   "metrics": [
     "Métrica 1 (ex: Tempo médio de execução)",
-    "Métrica 2 (ex: Taxa de conclusão)"
+    "Métrica 2 (ex: Taxa de conclusão)",
+    "Métrica 3 (ex: Satisfação do cliente)"
   ],
   "automations": [
     "Automação sugerida 1",
@@ -109,7 +163,12 @@ FORMATO DE RESPOSTA (JSON):
   ]
 }
 
-Responda APENAS em JSON válido, sem markdown ou texto adicional:`;
+IMPORTANTE:
+- O fluxograma DEVE ter pelo menos um nó "start" e um nó "end"
+- Todos os nós devem estar conectados por edges
+- As posições devem ser números válidos (x, y)
+- Responda APENAS em JSON válido, sem markdown ou texto adicional
+- O JSON deve ser válido e completo`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

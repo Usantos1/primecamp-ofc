@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ProcessView from "./pages/ProcessView";
 import ProcessEdit from "./pages/ProcessEdit";
+import ProcessCreate from "./pages/ProcessCreate";
 import Admin from "./pages/Admin";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
@@ -89,6 +90,8 @@ const App = () => (
               <Route path="/pending-approval" element={<ProtectedRoute><PendingApproval /></ProtectedRoute>} />
               <Route path="/processo/:processId" element={<ProtectedRoute><ProcessView /></ProtectedRoute>} />
               <Route path="/processo/:processId/edit" element={<ProtectedRoute><ProcessEdit /></ProtectedRoute>} />
+              <Route path="/processos/novo" element={<ProtectedRoute><ProcessCreate /></ProtectedRoute>} />
+              <Route path="/processos/criar" element={<ProtectedRoute><ProcessCreate /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
               <Route path="/admin/positions" element={<ProtectedRoute><AdminPositions /></ProtectedRoute>} />
