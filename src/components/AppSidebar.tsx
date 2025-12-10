@@ -28,6 +28,7 @@ import {
   Package,
   GraduationCap,
   Video,
+  DollarSign,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -531,6 +532,22 @@ export function AppSidebar() {
                       </CollapsibleContent>
                     </SidebarMenuItem>
                   </Collapsible>
+
+                  {/* Financeiro */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/financeiro">
+                        {({ isActive }) => (
+                          <div
+                            className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                          >
+                            <DollarSign className="h-4 w-4 flex-shrink-0" />
+                            <span className="font-medium text-sm">Financeiro</span>
+                          </div>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
 
                   {/* Sistema */}
                   <SidebarMenuItem>
