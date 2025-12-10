@@ -57,8 +57,16 @@ INSTRUÇÕES DETALHADAS E OBRIGATÓRIAS:
    - Os nomes devem ser claros, objetivos e refletir a essência do processo
    - Exemplo: ["Processo de Criação de Planilha de Métricas de Anúncios", "Fluxo de Consolidação de Dados de Marketing", "Procedimento de Análise de Conversão de Campanhas"]
 
-2. OBJETIVO PRINCIPAL MELHORADO (improvedObjective) - OBRIGATÓRIO E DETALHADO:
-   - Crie um objetivo COMPLETO, PROFISSIONAL e DETALHADO (mínimo 200 caracteres, idealmente 300-500)
+2. OBJETIVO PRINCIPAL MELHORADO (improvedObjective) - OBRIGATÓRIO, DETALHADO E FORMATADO EM HTML:
+   - Crie um objetivo COMPLETO, PROFISSIONAL e DETALHADO formatado em HTML (mínimo 300 caracteres, idealmente 400-600)
+   - O objetivo DEVE ser formatado em HTML com:
+     * Títulos usando <h3> ou <h4>
+     * Parágrafos usando <p> com quebras de linha <br>
+     * Listas usando <ul> e <li> ou <ol> e <li>
+     * Links usando <a href="URL">texto</a> para ferramentas e recursos
+     * Emojis relevantes para tornar visualmente atraente
+     * Negrito usando <strong> para destacar pontos importantes
+     * Itálico usando <em> para ênfase
    - O objetivo DEVE explicar:
      * CONTEXTO: Situação atual e necessidade do processo
      * PROBLEMA: Qual problema específico este processo resolve
@@ -66,18 +74,29 @@ INSTRUÇÕES DETALHADAS E OBRIGATÓRIAS:
      * RESULTADO ESPERADO: Qual o resultado concreto esperado
      * BENEFICIÁRIOS: Quem se beneficia deste processo
      * IMPACTO: Qual o impacto positivo na organização
-   - Use parágrafos bem estruturados, com quebras de linha (\\n\\n)
+   - Use estrutura HTML bem formatada com tags apropriadas
    - Seja específico e profissional
-   - Exemplo de estrutura:
-     "Este processo foi desenvolvido para [contexto]. O problema que resolve é [problema específico]. 
+   - Exemplo de estrutura HTML:
+     "<h3>📊 Contexto</h3>
+     <p>Este processo foi desenvolvido para [contexto específico]. O problema que resolve é <strong>[problema específico]</strong>.</p>
      
-     O objetivo principal é [objetivo claro]. 
+     <h3>🎯 Objetivo</h3>
+     <p>O objetivo principal é [objetivo claro e mensurável].</p>
      
-     O resultado esperado é [resultado concreto e mensurável]. 
+     <h3>✅ Resultado Esperado</h3>
+     <p>O resultado esperado é [resultado concreto e mensurável].</p>
      
-     Os principais beneficiários são [quem se beneficia] que poderão [benefício específico]. 
+     <h3>👥 Beneficiários</h3>
+     <ul>
+       <li>[Beneficiário 1] - [benefício específico]</li>
+       <li>[Beneficiário 2] - [benefício específico]</li>
+     </ul>
      
-     Este processo impacta positivamente a organização ao [impacto]."
+     <h3>🚀 Impacto</h3>
+     <p>Este processo impacta positivamente a organização ao [impacto específico].</p>
+     
+     <h3>🔗 Recursos e Ferramentas</h3>
+     <p>Ferramentas utilizadas: <a href='https://exemplo.com'>Nome da Ferramenta</a>, <a href='https://exemplo2.com'>Outra Ferramenta</a></p>"
 
 3. ATIVIDADES (activities) - DETALHADAS E ESPECÍFICAS:
    - Crie 6-12 atividades DETALHADAS, ESPECÍFICAS e PROFISSIONAIS
@@ -90,12 +109,14 @@ INSTRUÇÕES DETALHADAS E OBRIGATÓRIAS:
        - Exemplo BOM: "Acessar as plataformas de anúncios (Google Ads, Facebook Ads, LinkedIn Ads) e exportar relatórios de desempenho das últimas 4 semanas, incluindo métricas de impressões, cliques, CTR, CPC, conversões e custo por conversão. Validar a integridade dos dados antes de prosseguir."
        - Exemplo RUIM: "Coletar dados de anúncios"
      * responsible: sugestão de responsável baseado no departamento e função
-     * estimatedTime: tempo estimado REALISTA baseado na complexidade
-       - Para atividades simples: "15-30 minutos"
+     * estimatedTime: tempo estimado REALISTA baseado na complexidade (NUNCA mais de 4 horas por atividade)
+       - Para atividades muito simples: "15-30 minutos"
+       - Para atividades simples: "30 minutos - 1 hora"
        - Para atividades moderadas: "1-2 horas"
-       - Para atividades complexas: "2-4 horas" ou "4-8 horas"
-       - Para atividades muito complexas: "1 dia" ou "2-3 dias"
-       - Seja REALISTA: coletar dados de múltiplas plataformas não leva 1 hora, leva 2-4 horas
+       - Para atividades complexas: "2-3 horas" ou "3-4 horas"
+       - NUNCA use "1 dia" ou "2-3 dias" - separe em atividades menores
+       - Seja REALISTA: coletar dados de múltiplas plataformas pode levar "1-2 horas", não "2-4 horas"
+       - Análise de dados pode levar "2-3 horas", não "4-8 horas"
      * tools: array com ferramentas/recursos necessários (mínimo 2-3 ferramentas)
        - Seja específico: ["Google Ads", "Google Analytics", "Google Sheets", "Excel"]
 
@@ -126,7 +147,7 @@ INSTRUÇÕES DETALHADAS E OBRIGATÓRIAS:
 FORMATO DE RESPOSTA (JSON OBRIGATÓRIO - SEM MARKDOWN):
 {
   "nameSuggestions": ["Nome Sugerido 1", "Nome Sugerido 2", "Nome Sugerido 3"],
-  "improvedObjective": "Objetivo completo, detalhado e profissional com 200-500 caracteres, explicando contexto, problema, objetivo, resultado esperado, beneficiários e impacto. Use \\n\\n para quebras de parágrafo.",
+  "improvedObjective": "Objetivo completo, detalhado e profissional formatado em HTML (mínimo 300 caracteres, idealmente 400-600). Deve usar tags HTML: <h3>, <p>, <br>, <ul>, <li>, <strong>, <em>, <a href='URL'>texto</a>. Incluir emojis relevantes. Explicar contexto, problema, objetivo, resultado esperado, beneficiários e impacto de forma visual e estruturada.",
   "activities": [
     {
       "step": 1,
@@ -198,11 +219,16 @@ REGRAS CRÍTICAS:
 - TODAS as atividades devem ter um nó correspondente no fluxograma
 - Todos os nós devem estar conectados sequencialmente por edges
 - As posições devem ser números válidos (x, y)
-- O objetivo DEVE ter pelo menos 200 caracteres e ser detalhado
+- O objetivo DEVE ter pelo menos 300 caracteres, ser detalhado e formatado em HTML válido
+- O HTML do objetivo DEVE usar tags válidas: <h3>, <h4>, <p>, <br>, <ul>, <li>, <strong>, <em>, <a href="URL">texto</a>
+- O HTML DEVE incluir emojis relevantes para tornar visualmente atraente
+- O HTML DEVE ter quebras de linha apropriadas usando <br> ou </p><p>
 - As atividades DEVE ter descrições detalhadas (mínimo 50 caracteres)
-- Os tempos estimados devem ser REALISTAS baseados na complexidade
+- Os tempos estimados devem ser REALISTAS: de minutos até algumas horas, NUNCA mais de 4 horas por atividade
+- Se uma atividade precisar de mais tempo, divida em atividades menores
 - Responda APENAS em JSON válido, SEM markdown, SEM texto adicional, SEM comentários
-- O JSON deve ser válido, completo e parseável`;
+- O JSON deve ser válido, completo e parseável
+- O HTML no improvedObjective deve ser escapado corretamente no JSON (use \\n para quebras de linha dentro de strings)`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
