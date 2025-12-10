@@ -131,9 +131,12 @@ export const ProcessViewer = ({ process, onEdit, onBack }: ProcessViewerProps) =
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-foreground leading-relaxed prose prose-sm max-w-none">
-            {process.objective?.replace(/<[^>]*>/g, '') || 'Objetivo não definido'}
-          </div>
+          <div 
+            className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+            dangerouslySetInnerHTML={{ 
+              __html: process.objective || 'Objetivo não definido' 
+            }}
+          />
         </CardContent>
       </Card>
 
