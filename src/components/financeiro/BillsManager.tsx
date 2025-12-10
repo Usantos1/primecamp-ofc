@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, Edit, Trash2, Check, Search, 
-  TrendingDown, TrendingUp, ArrowDownCircle, ArrowUpCircle
+  TrendingDown, TrendingUp, ArrowDownCircle, ArrowUpCircle, AlertTriangle
 } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
@@ -321,7 +321,7 @@ export function BillsManager({ month }: BillsManagerProps) {
           <Card className="border-l-4 border-l-destructive bg-destructive/5">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 text-destructive text-sm mb-1">
-                <TrendingDown className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" />
                 Atrasadas
               </div>
               <p className="text-2xl font-bold text-destructive">{totals.pagarAtrasadas}</p>
