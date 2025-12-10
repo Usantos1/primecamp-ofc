@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Clock, User, Users, Target, CheckCircle, Star, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Edit, Clock, User, Users, Target, CheckCircle, Star, AlertTriangle, Save } from "lucide-react";
 import { Process, DEPARTMENTS } from "@/types/process";
 import { useCategories } from "@/hooks/useCategories";
 import { PrioritySlider } from "./PrioritySlider";
 import { TaskManager } from '@/components/TaskManager';
 import { PriorityCard } from '@/components/PriorityCard';
+import { RichTextEditor } from "./RichTextEditor";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProcessViewerProps {
   process: Process;
