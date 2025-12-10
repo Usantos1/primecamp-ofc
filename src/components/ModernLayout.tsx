@@ -54,7 +54,7 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
   const handleResultClick = (result: any) => {
     if (result.type === 'process') {
-      navigate(`/process/${result.id}`)
+      navigate(`/processo/${result.id}`)
     } else if (result.type === 'task') {
       navigate('/tasks')
     }
