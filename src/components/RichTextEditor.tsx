@@ -34,27 +34,41 @@ export const RichTextEditor = ({ value, onChange, placeholder, className }: Rich
     };
   }, []);
 
+  const insertTable = useCallback(() => {
+    const quill = quillRef.current?.getEditor();
+    if (!quill) return;
+    const range = quill.getSelection(true);
+    const tableHtml = `
+      <table style="width:100%; border-collapse: collapse;" border="1">
+        <tr><th style="padding:6px;">Cabeçalho 1</th><th style="padding:6px;">Cabeçalho 2</th></tr>
+        <tr><td style="padding:6px;">Valor 1</td><td style="padding:6px;">Valor 2</td></tr>
+      </table><p></p>`;
+    quill.clipboard.dangerouslyPasteHTML(range ? range.index : 0, tableHtml);
+  }, []);
+
   const modules = useMemo(() => ({
     toolbar: {
       container: [
         [{ 'header': [1, 2, 3, false] }],
         ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
         ['blockquote', 'code-block'],
-        ['link', 'image'],
-        ['clean']
+        ['link', 'image', 'clean', 'table']
       ],
       handlers: {
-        image: imageHandler
+        image: imageHandler,
+        table: insertTable
       }
     },
     clipboard: {
       matchVisual: false,
     }
-  }), [imageHandler]);
+  }), [imageHandler, insertTable]);
 
   const formats = [
     'header', 'bold', 'italic', 'underline', 'strike',
+    'color', 'background',
     'list', 'bullet', 'blockquote', 'code-block', 'link', 'image'
   ];
 
