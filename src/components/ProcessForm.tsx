@@ -210,25 +210,30 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
     return { value: val, unit };
   };
 
+  const { handleError } = useErrorHandler();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.name.length < 10) {
-      toast({ title: "Validação", description: "Nome deve ter pelo menos 10 caracteres.", variant: "destructive" });
-      return;
+    
+    // Validação com Zod
+    try {
+      const validatedData = processSchema.parse(formData);
+      onSave(validatedData as any);
+    } catch (error: any) {
+      if (error.errors && error.errors.length > 0) {
+        const firstError = error.errors[0];
+        toast({
+          title: "Validação",
+          description: firstError.message || "Verifique os campos do formulário.",
+          variant: "destructive",
+        });
+      } else {
+        handleError(error, {
+          context: 'ProcessForm',
+          fallbackMessage: 'Erro ao validar formulário. Verifique os campos.',
+        });
+      }
     }
-    if (formData.objective.replace(/<[^>]*>/g, '').length < 50) {
-      toast({ title: "Validação", description: "Objetivo deve ter pelo menos 50 caracteres.", variant: "destructive" });
-      return;
-    }
-    if (!formData.department) {
-      toast({ title: "Validação", description: "Departamento é obrigatório.", variant: "destructive" });
-      return;
-    }
-    if (!formData.owner) {
-      toast({ title: "Validação", description: "Proprietário é obrigatório.", variant: "destructive" });
-      return;
-    }
-    onSave(formData as any);
   };
 
   return (

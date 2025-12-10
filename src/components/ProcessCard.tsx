@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Process, DEPARTMENTS } from "@/types/process";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EnhancedPriorityCard, PriorityBadge } from "@/components/EnhancedPriorityCard";
+import { logger } from "@/utils/logger";
 
 interface ProcessCardProps {
   process: Process;
@@ -15,10 +17,9 @@ interface ProcessCardProps {
   onDelete?: (process: Process) => void;
 }
 
-export const ProcessCard = ({ process, onView, onEdit, onDelete }: ProcessCardProps) => {
+const ProcessCardComponent = ({ process, onView, onEdit, onDelete }: ProcessCardProps) => {
   const navigate = useNavigate();
   const { isAdmin, profile } = useAuth();
-  console.log('ProcessCard - Auth state:', { isAdmin, profile });
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-success';
@@ -101,18 +102,6 @@ export const ProcessCard = ({ process, onView, onEdit, onDelete }: ProcessCardPr
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1">
-          {process.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-          {process.tags.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{process.tags.length - 3}
-            </Badge>
-          )}
-        </div>
 
         <div className="flex gap-2 pt-2">
           <Button 
@@ -152,3 +141,20 @@ export const ProcessCard = ({ process, onView, onEdit, onDelete }: ProcessCardPr
     </EnhancedPriorityCard>
   );
 };
+
+// Otimização com React.memo para evitar re-renders desnecessários
+export const ProcessCard = memo(ProcessCardComponent, (prevProps, nextProps) => {
+  // Comparação customizada para melhor performance
+  return (
+    prevProps.process.id === nextProps.process.id &&
+    prevProps.process.name === nextProps.process.name &&
+    prevProps.process.status === nextProps.process.status &&
+    prevProps.process.priority === nextProps.process.priority &&
+    prevProps.process.objective === nextProps.process.objective &&
+    prevProps.process.participants.length === nextProps.process.participants.length &&
+    prevProps.process.activities.length === nextProps.process.activities.length &&
+    prevProps.process.metrics.length === nextProps.process.metrics.length
+  );
+});
+
+ProcessCard.displayName = 'ProcessCard';

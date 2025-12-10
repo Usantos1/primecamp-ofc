@@ -15,6 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { CandidateEvaluationModal } from '@/components/CandidateEvaluationModal';
 import { useAuth } from '@/contexts/AuthContext';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface Candidate {
   id: string;
