@@ -15,7 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ModernSwitch } from '@/components/ui/modern-switch';
@@ -2589,18 +2589,6 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
             </TabsContent>
           </Tabs>
 
-          {generatingQuestions && (
-            <div className="mt-4 flex gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-primary">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <div className="space-y-1">
-                <p className="font-medium leading-none">IA trabalhando...</p>
-                <p className="text-xs text-muted-foreground">
-                  Gerando ou refinando conteúdo. Isso pode levar alguns segundos.
-                </p>
-              </div>
-            </div>
-          )}
-
           <DialogFooter>
             <Button
               variant="outline"
@@ -2616,6 +2604,21 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
               {editingSurvey ? 'Atualizar' : 'Criar'} Formulário
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={generatingQuestions}>
+        <DialogContent className="sm:max-w-[360px] text-center space-y-3">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+              <Sparkles className="h-7 w-7 text-primary" />
+            </div>
+            <p className="text-lg font-semibold">Gerando com IA...</p>
+            <p className="text-sm text-muted-foreground">
+              Nosso robozinho está criando a descrição da vaga e as perguntas personalizadas.
+            </p>
+            <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

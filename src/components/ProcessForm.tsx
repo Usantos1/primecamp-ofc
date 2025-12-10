@@ -339,16 +339,21 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
             <CardContent className="space-y-4">
               {formData.activities.map((activity, index) => (
                 <div key={activity.id} className="border border-primary/10 rounded-lg p-4 space-y-3 relative bg-muted/10">
-                  {formData.activities.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-2 right-2 text-muted-foreground"
-                      onClick={() => removeActivity(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="text-sm font-semibold">
+                      Etapa {activity.step || index + 1}
+                    </Badge>
+                    {formData.activities.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={() => removeActivity(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -444,7 +449,7 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
 
           <Card className="border border-primary/20 shadow-sm">
             <CardHeader>
-              <CardTitle>Automatizações</CardTitle>
+              <CardTitle>Automações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {formData.automations.map((automation, index) => (
@@ -491,7 +496,7 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
             <CardContent>
               <PrioritySlider 
                 value={formData.priority} 
-                onChange={(value) => setFormData({ ...formData, priority: value })}
+                onValueChange={(value) => setFormData({ ...formData, priority: value })}
               />
             </CardContent>
           </Card>

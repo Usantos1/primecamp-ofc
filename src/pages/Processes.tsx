@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { ProcessCard } from '@/components/ProcessCard';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Plus, Search, Filter, LayoutGrid, KanbanSquare, Table } from 'lucide-re
 import { useProcesses } from '@/hooks/useProcesses';
 import { useCategories } from '@/hooks/useCategories';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DEPARTMENTS, Department } from '@/types/process';
@@ -19,10 +19,25 @@ export default function Processes() {
   const { categories } = useCategories();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'kanban' | 'table'>('cards');
+
+  useEffect(() => {
+    const view = searchParams.get('view') as 'cards' | 'kanban' | 'table' | null;
+    if (view && ['cards', 'kanban', 'table'].includes(view)) {
+      setViewMode(view);
+    }
+  }, [searchParams]);
+
+  const handleViewChange = (mode: 'cards' | 'kanban' | 'table') => {
+    setViewMode(mode);
+    const next = new URLSearchParams(searchParams);
+    next.set('view', mode);
+    setSearchParams(next, { replace: true });
+  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -135,7 +150,7 @@ export default function Processes() {
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Visualização:</span>
           <div className="flex rounded-md border border-border overflow-hidden">
-            {([
+              {([
               { key: 'cards', label: 'Cards', icon: LayoutGrid },
               { key: 'kanban', label: 'Kanban', icon: KanbanSquare },
               { key: 'table', label: 'Tabela', icon: Table },
@@ -145,7 +160,7 @@ export default function Processes() {
                 variant={viewMode === key ? 'default' : 'ghost'}
                 size="sm"
                 className="gap-2 rounded-none"
-                onClick={() => setViewMode(key)}
+                onClick={() => handleViewChange(key)}
               >
                 <Icon className="h-4 w-4" />
                 {label}
@@ -186,7 +201,7 @@ export default function Processes() {
         ) : (
           <>
             {viewMode === 'cards' && (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredProcesses.map(process => (
                   <ProcessCard 
                     key={process.id} 
@@ -202,7 +217,7 @@ export default function Processes() {
             {viewMode === 'kanban' && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {kanbanColumns.map(col => (
-                  <Card key={col.key} className="bg-muted/30">
+                  <Card key={col.key} className="bg-muted/20 border border-border/70 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center justify-between text-sm">
                         <span>{col.title}</span>
@@ -216,7 +231,7 @@ export default function Processes() {
                       {col.items.map(proc => (
                         <div 
                           key={proc.id} 
-                          className="p-3 rounded-lg border bg-background/80 hover:border-primary cursor-pointer transition"
+                          className="p-3 rounded-lg border bg-background/80 hover:border-primary/60 hover:shadow-sm cursor-pointer transition"
                           onClick={() => navigate(`/processo/${proc.id}`)}
                         >
                           <div className="font-medium text-sm mb-1 leading-tight">{proc.name}</div>
@@ -240,7 +255,7 @@ export default function Processes() {
             )}
 
             {viewMode === 'table' && (
-              <Card>
+                <Card className="border border-border/70 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-base">Tabela de Processos</CardTitle>
                 </CardHeader>
@@ -261,7 +276,7 @@ export default function Processes() {
                       {filteredProcesses.map(proc => (
                         <tr 
                           key={proc.id} 
-                          className="border-t border-border/60 hover:bg-muted/30"
+                          className="border-t border-border/60 hover:bg-muted/30 even:bg-muted/10"
                         >
                           <td className="py-3 font-medium">{proc.name}</td>
                           <td>{DEPARTMENTS[proc.department]}</td>

@@ -120,7 +120,7 @@ export const ProcessViewer = ({ process, processId, onEdit, onBack }: ProcessVie
         </Card>
       </div>
 
-      <Accordion type="multiple" defaultValue={['objetivo', 'resumo', 'participantes', 'atividades', 'metricas', 'automacoes', 'anotacoes']} className="space-y-4">
+      <Accordion type="multiple" defaultValue={['objetivo', 'resumo', 'participantes', 'atividades', 'metricas', 'automacoes', 'anotacoes']} className="space-y-6">
         <AccordionItem value="objetivo" className="border border-primary/30 rounded-lg px-2 sm:px-3 shadow-sm">
           <AccordionTrigger className="text-base font-semibold flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" />
