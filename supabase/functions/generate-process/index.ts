@@ -42,7 +42,7 @@ serve(async (req) => {
 
     const actualModel = modelMap[model] || model;
 
-    const prompt = `Você é um especialista em mapeamento de processos empresariais. Com base nas informações fornecidas, crie um processo completo, objetivo detalhado, sugestões de nomes e um fluxograma detalhado.
+    const prompt = `Você é um especialista em mapeamento de processos empresariais. Com base nas informações fornecidas, crie um processo COMPLETO, PROFISSIONAL e DETALHADO.
 
 INFORMAÇÕES DO PROCESSO:
 - Nome atual: ${processInfo.name}
@@ -50,125 +50,159 @@ INFORMAÇÕES DO PROCESSO:
 - Departamento: ${processInfo.department || 'Não especificado'}
 - Proprietário: ${processInfo.owner || 'Não especificado'}
 
-INSTRUÇÕES DETALHADAS:
+INSTRUÇÕES DETALHADAS E OBRIGATÓRIAS:
 
 1. SUGESTÕES DE NOME (nameSuggestions):
-   - Crie 3-5 sugestões de nomes profissionais e descritivos para este processo
+   - Crie 3-5 sugestões de nomes profissionais, descritivos e específicos
    - Os nomes devem ser claros, objetivos e refletir a essência do processo
-   - Exemplo: ["Processo de Atendimento ao Cliente", "Fluxo de Suporte Técnico", "Procedimento de Vendas"]
+   - Exemplo: ["Processo de Criação de Planilha de Métricas de Anúncios", "Fluxo de Consolidação de Dados de Marketing", "Procedimento de Análise de Conversão de Campanhas"]
 
-2. OBJETIVO PRINCIPAL MELHORADO (improvedObjective):
-   - Se o objetivo atual for vago ou curto, crie um objetivo completo e detalhado (mínimo 100 caracteres)
-   - O objetivo deve explicar claramente: qual problema resolve, qual resultado esperado, quem se beneficia
-   - Use parágrafos e formatação clara
-   - Se o objetivo atual já for bom, mantenha-o mas pode melhorar
+2. OBJETIVO PRINCIPAL MELHORADO (improvedObjective) - OBRIGATÓRIO E DETALHADO:
+   - Crie um objetivo COMPLETO, PROFISSIONAL e DETALHADO (mínimo 200 caracteres, idealmente 300-500)
+   - O objetivo DEVE explicar:
+     * CONTEXTO: Situação atual e necessidade do processo
+     * PROBLEMA: Qual problema específico este processo resolve
+     * OBJETIVO: O que se pretende alcançar com este processo
+     * RESULTADO ESPERADO: Qual o resultado concreto esperado
+     * BENEFICIÁRIOS: Quem se beneficia deste processo
+     * IMPACTO: Qual o impacto positivo na organização
+   - Use parágrafos bem estruturados, com quebras de linha (\\n\\n)
+   - Seja específico e profissional
+   - Exemplo de estrutura:
+     "Este processo foi desenvolvido para [contexto]. O problema que resolve é [problema específico]. 
+     
+     O objetivo principal é [objetivo claro]. 
+     
+     O resultado esperado é [resultado concreto e mensurável]. 
+     
+     Os principais beneficiários são [quem se beneficia] que poderão [benefício específico]. 
+     
+     Este processo impacta positivamente a organização ao [impacto]."
 
-3. ATIVIDADES (activities):
-   - Crie 5-10 atividades detalhadas que descrevam cada etapa do processo
+3. ATIVIDADES (activities) - DETALHADAS E ESPECÍFICAS:
+   - Crie 6-12 atividades DETALHADAS, ESPECÍFICAS e PROFISSIONAIS
+   - Cada atividade DEVE ser uma etapa completa e bem definida
    - Para cada atividade, defina:
      * step: número sequencial (1, 2, 3...)
-     * description: descrição clara e objetiva da atividade (mínimo 20 caracteres)
-     * responsible: sugestão de responsável baseado no departamento
-     * estimatedTime: tempo estimado (ex: "30 minutos", "2 horas", "1 dia")
-     * tools: array com ferramentas/recursos necessários
+     * description: descrição DETALHADA e ESPECÍFICA da atividade (mínimo 50 caracteres, idealmente 80-150)
+       - Explique O QUE fazer, COMO fazer e POR QUE é importante
+       - Seja específico sobre ações, ferramentas e resultados esperados
+       - Exemplo BOM: "Acessar as plataformas de anúncios (Google Ads, Facebook Ads, LinkedIn Ads) e exportar relatórios de desempenho das últimas 4 semanas, incluindo métricas de impressões, cliques, CTR, CPC, conversões e custo por conversão. Validar a integridade dos dados antes de prosseguir."
+       - Exemplo RUIM: "Coletar dados de anúncios"
+     * responsible: sugestão de responsável baseado no departamento e função
+     * estimatedTime: tempo estimado REALISTA baseado na complexidade
+       - Para atividades simples: "15-30 minutos"
+       - Para atividades moderadas: "1-2 horas"
+       - Para atividades complexas: "2-4 horas" ou "4-8 horas"
+       - Para atividades muito complexas: "1 dia" ou "2-3 dias"
+       - Seja REALISTA: coletar dados de múltiplas plataformas não leva 1 hora, leva 2-4 horas
+     * tools: array com ferramentas/recursos necessários (mínimo 2-3 ferramentas)
+       - Seja específico: ["Google Ads", "Google Analytics", "Google Sheets", "Excel"]
 
-4. FLUXOGRAMA (flowNodes e flowEdges) - OBRIGATÓRIO:
-   - Crie um fluxograma completo em formato JSON
+4. FLUXOGRAMA (flowNodes e flowEdges) - OBRIGATÓRIO E COMPLETO:
+   - Crie um fluxograma COMPLETO em formato JSON
    - flowNodes: array de nós representando cada etapa
      * Cada nó DEVE ter: id (string única como "node-1"), type ("start", "process", "decision", "end"), label (texto da etapa), position {x: número, y: número}
-     * O primeiro nó DEVE ser type: "start" com label "Início"
-     * O último nó DEVE ser type: "end" com label "Fim"
-     * Nós intermediários devem ser type: "process" ou "decision"
-     * Posições devem ser espaçadas: x incrementa de 200 em 200, y pode variar
+     * O primeiro nó DEVE ser type: "start" com label "Início do Processo"
+     * O último nó DEVE ser type: "end" com label "Fim do Processo"
+     * Nós intermediários devem ser type: "process" (uma para cada atividade)
+     * Labels devem ser curtos mas descritivos (máximo 40 caracteres)
+     * Posições: x incrementa de 250 em 250 (250, 500, 750, 1000...), y pode variar para evitar sobreposição
+     * Se houver muitas atividades, use múltiplas linhas (y: 200, 300, 400...)
    - flowEdges: array de conexões entre nós
-     * Cada edge DEVE ter: id (string única como "edge-1"), source (id do nó origem), target (id do nó destino), label (opcional, string vazia se não houver)
-     * Conecte todos os nós sequencialmente: start -> processo1 -> processo2 -> ... -> end
-     * Se houver decisões, crie edges para cada caminho possível
+     * Cada edge DEVE ter: id (string única como "edge-1"), source (id do nó origem), target (id do nó destino), label (string vazia "")
+     * Conecte todos os nós sequencialmente: start -> atividade1 -> atividade2 -> ... -> end
+     * TODAS as atividades devem estar no fluxograma
+     * Se houver decisões, crie nós type: "decision" e edges para cada caminho
 
 5. MÉTRICAS (metrics):
-   - Sugira 3-5 métricas relevantes para acompanhar este processo
-   - Exemplo: "Tempo médio de execução", "Taxa de conclusão", "Satisfação do cliente"
+   - Sugira 4-6 métricas ESPECÍFICAS e RELEVANTES para este processo
+   - Seja específico: "Tempo médio de criação da planilha", "Precisão dos dados coletados (taxa de erro)", "Frequência de atualização da planilha"
 
 6. AUTOMAÇÕES (automations):
-   - Sugira 2-4 automações que podem melhorar este processo
-   - Exemplo: "Notificação automática por email", "Integração com sistema de CRM"
+   - Sugira 3-5 automações ESPECÍFICAS que podem melhorar este processo
+   - Seja específico: "Integração automática entre Google Ads e Google Sheets via API", "Notificação automática quando novos dados estiverem disponíveis"
 
-FORMATO DE RESPOSTA (JSON OBRIGATÓRIO):
+FORMATO DE RESPOSTA (JSON OBRIGATÓRIO - SEM MARKDOWN):
 {
   "nameSuggestions": ["Nome Sugerido 1", "Nome Sugerido 2", "Nome Sugerido 3"],
-  "improvedObjective": "Objetivo completo e detalhado com pelo menos 100 caracteres, explicando o problema que resolve, resultado esperado e beneficiários.",
+  "improvedObjective": "Objetivo completo, detalhado e profissional com 200-500 caracteres, explicando contexto, problema, objetivo, resultado esperado, beneficiários e impacto. Use \\n\\n para quebras de parágrafo.",
   "activities": [
     {
       "step": 1,
-      "description": "Descrição detalhada da atividade (mínimo 20 caracteres)",
+      "description": "Descrição DETALHADA e ESPECÍFICA da atividade (mínimo 50 caracteres, idealmente 80-150), explicando O QUE fazer, COMO fazer e POR QUE é importante",
       "responsible": "Sugestão de responsável baseado no departamento",
-      "estimatedTime": "Tempo estimado (ex: 30 minutos)",
-      "tools": ["Ferramenta 1", "Ferramenta 2"]
+      "estimatedTime": "Tempo estimado REALISTA baseado na complexidade (ex: 2-4 horas para atividades complexas, 30 minutos para atividades simples)",
+      "tools": ["Ferramenta específica 1", "Ferramenta específica 2", "Ferramenta específica 3"]
     }
   ],
   "flowNodes": [
     {
-      "id": "node-1",
+      "id": "node-start",
       "type": "start",
-      "label": "Início",
+      "label": "Início do Processo",
       "position": { "x": 100, "y": 200 }
+    },
+    {
+      "id": "node-1",
+      "type": "process",
+      "label": "Nome curto da atividade 1",
+      "position": { "x": 350, "y": 200 }
     },
     {
       "id": "node-2",
       "type": "process",
-      "label": "Nome da primeira atividade",
-      "position": { "x": 300, "y": 200 }
-    },
-    {
-      "id": "node-3",
-      "type": "process",
-      "label": "Nome da segunda atividade",
-      "position": { "x": 500, "y": 200 }
+      "label": "Nome curto da atividade 2",
+      "position": { "x": 600, "y": 200 }
     },
     {
       "id": "node-end",
       "type": "end",
-      "label": "Fim",
-      "position": { "x": 700, "y": 200 }
+      "label": "Fim do Processo",
+      "position": { "x": 850, "y": 200 }
     }
   ],
   "flowEdges": [
     {
       "id": "edge-1",
+      "source": "node-start",
+      "target": "node-1",
+      "label": ""
+    },
+    {
+      "id": "edge-2",
       "source": "node-1",
       "target": "node-2",
       "label": ""
     },
     {
-      "id": "edge-2",
-      "source": "node-2",
-      "target": "node-3",
-      "label": ""
-    },
-    {
       "id": "edge-3",
-      "source": "node-3",
+      "source": "node-2",
       "target": "node-end",
       "label": ""
     }
   ],
   "metrics": [
-    "Métrica 1 (ex: Tempo médio de execução)",
-    "Métrica 2 (ex: Taxa de conclusão)",
-    "Métrica 3 (ex: Satisfação do cliente)"
+    "Métrica específica 1",
+    "Métrica específica 2",
+    "Métrica específica 3"
   ],
   "automations": [
-    "Automação sugerida 1",
-    "Automação sugerida 2"
+    "Automação específica 1",
+    "Automação específica 2"
   ]
 }
 
-IMPORTANTE:
+REGRAS CRÍTICAS:
 - O fluxograma DEVE ter pelo menos um nó "start" e um nó "end"
-- Todos os nós devem estar conectados por edges
+- TODAS as atividades devem ter um nó correspondente no fluxograma
+- Todos os nós devem estar conectados sequencialmente por edges
 - As posições devem ser números válidos (x, y)
-- Responda APENAS em JSON válido, sem markdown ou texto adicional
-- O JSON deve ser válido e completo`;
+- O objetivo DEVE ter pelo menos 200 caracteres e ser detalhado
+- As atividades DEVE ter descrições detalhadas (mínimo 50 caracteres)
+- Os tempos estimados devem ser REALISTAS baseados na complexidade
+- Responda APENAS em JSON válido, SEM markdown, SEM texto adicional, SEM comentários
+- O JSON deve ser válido, completo e parseável`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -189,7 +223,7 @@ IMPORTANTE:
           }
         ],
         temperature: 0.7,
-        max_tokens: 3000,
+        max_tokens: 4000,
       }),
     });
 
@@ -218,8 +252,8 @@ IMPORTANTE:
                 content: prompt
               }
             ],
-            temperature: 0.7,
-            max_tokens: 3000,
+                  temperature: 0.7,
+                  max_tokens: 4000,
           }),
         });
 

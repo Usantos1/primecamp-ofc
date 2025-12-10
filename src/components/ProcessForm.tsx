@@ -205,13 +205,25 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
           activitiesCount: updatedActivities.length,
           flowNodesCount: flowNodes.length,
           flowEdgesCount: flowEdges.length,
-          hasImprovedObjective: !!data.improvedObjective
+          hasImprovedObjective: !!data.improvedObjective,
+          flowNodes: flowNodes,
+          flowEdges: flowEdges
         });
 
-        toast({
-          title: "Processo gerado!",
-          description: `O processo foi criado com ${updatedActivities.length} atividades e fluxograma completo. Revise e ajuste conforme necessário.`,
-        });
+        // Validar se o fluxograma foi gerado
+        if (flowNodes.length === 0 || flowEdges.length === 0) {
+          console.warn('Fluxograma não foi gerado corretamente pela IA');
+          toast({
+            title: "Aviso",
+            description: "Processo gerado, mas o fluxograma não foi criado. Você pode criar manualmente.",
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Processo gerado!",
+            description: `O processo foi criado com ${updatedActivities.length} atividades e fluxograma completo (${flowNodes.length} nós, ${flowEdges.length} conexões). Revise e ajuste conforme necessário.`,
+          });
+        }
       } else {
         throw new Error('Resposta da IA não contém atividades válidas');
       }
