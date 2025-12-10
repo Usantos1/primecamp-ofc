@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, Save, Brain, Loader2 } from "lucide-react";
+import { X, Plus, Save, Brain, Loader2, Sparkles } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Process, Activity, Department, DEPARTMENTS } from "@/types/process";
 import { useCategories } from "@/hooks/useCategories";
 import { useUsers } from "@/hooks/useUsers";
@@ -191,6 +192,24 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
     setFormData({ ...formData, participants: formData.participants.filter((_, i) => i !== index) });
   };
 
+  const updateActivityTime = (index: number, rawValue: string, unit: string) => {
+    const value = rawValue.trim();
+    const updated = [...formData.activities];
+    updated[index] = {
+      ...updated[index],
+      estimatedTime: value ? `${value} ${unit}` : ''
+    };
+    setFormData({ ...formData, activities: updated });
+  };
+
+  const parseTime = (estimated?: string) => {
+    if (!estimated) return { value: '', unit: 'min' };
+    const parts = estimated.split(' ');
+    const val = parts[0] || '';
+    const unit = parts[1] || 'min';
+    return { value: val, unit };
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name.length < 10) {
@@ -231,6 +250,21 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
           </Button>
         </div>
       </div>
+
+      <Dialog open={generatingProcess}>
+        <DialogContent className="sm:max-w-[360px] text-center space-y-3">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
+              <Sparkles className="h-7 w-7 text-primary" />
+            </div>
+            <p className="text-lg font-semibold">Gerando com IA...</p>
+            <p className="text-sm text-muted-foreground">
+              Nosso robozinho está montando o processo, atividades e automações.
+            </p>
+            <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-6">
@@ -335,13 +369,31 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
                           placeholder="Quem executa?"
                         />
                       </div>
-                      <div>
-                        <Label>Tempo Estimado</Label>
-                        <Input
-                          value={activity.estimatedTime}
-                          onChange={(e) => updateActivity(index, 'estimatedTime', e.target.value)}
-                          placeholder="Ex: 30 min ou 2h"
-                        />
+                      <div className="grid grid-cols-3 gap-2 items-end">
+                        <div className="col-span-2">
+                          <Label>Tempo Estimado</Label>
+                          <Input
+                            value={parseTime(activity.estimatedTime).value}
+                            onChange={(e) => updateActivityTime(index, e.target.value, parseTime(activity.estimatedTime).unit)}
+                            placeholder="Ex: 30"
+                          />
+                        </div>
+                        <div>
+                          <Label>Unidade</Label>
+                          <Select
+                            value={parseTime(activity.estimatedTime).unit}
+                            onValueChange={(unit) => updateActivityTime(index, parseTime(activity.estimatedTime).value, unit)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="min" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="min">Minutos</SelectItem>
+                              <SelectItem value="h">Horas</SelectItem>
+                              <SelectItem value="dias">Dias</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   </div>

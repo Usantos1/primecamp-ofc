@@ -200,7 +200,8 @@ export const ProcessViewer = ({ process, processId, onEdit, onBack }: ProcessVie
             Atividades do Processo
           </AccordionTrigger>
           <AccordionContent>
-            <div className="space-y-3 pb-4">
+            <div className="space-y-4 pb-4">
+              <div className="text-sm text-muted-foreground">Total de etapas: {process.activities.length}</div>
               {process.activities.length === 0 ? (
                 <p className="text-muted-foreground text-sm">Nenhuma atividade adicionada.</p>
               ) : (
@@ -267,7 +268,7 @@ export const ProcessViewer = ({ process, processId, onEdit, onBack }: ProcessVie
         <AccordionItem value="automacoes" className="border border-primary/30 rounded-lg px-2 sm:px-3 shadow-sm">
           <AccordionTrigger className="text-base font-semibold flex items-center gap-2">
             <Star className="h-4 w-4 text-primary" />
-            Automatizações
+            Automações
           </AccordionTrigger>
           <AccordionContent>
             <div className="pb-4">
