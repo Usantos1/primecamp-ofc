@@ -160,22 +160,6 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
       }
 
       if (data.activities && Array.isArray(data.activities)) {
-        // Atualizar objetivo melhorado se fornecido
-        if (data.improvedObjective && data.improvedObjective.length > 50) {
-          setFormData(prev => ({
-            ...prev,
-            objective: data.improvedObjective
-          }));
-        }
-
-        // Mostrar sugestões de nome se fornecidas
-        if (data.nameSuggestions && Array.isArray(data.nameSuggestions) && data.nameSuggestions.length > 0) {
-          toast({
-            title: "Sugestões de nome geradas",
-            description: `Sugestões: ${data.nameSuggestions.slice(0, 3).join(', ')}. Você pode atualizar o nome do processo.`,
-          });
-        }
-
         // Aplicar atividades
         const updatedActivities = data.activities.map((act: any, idx: number) => ({
           id: `ai-${Date.now()}-${idx}`,
@@ -185,6 +169,14 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
           estimatedTime: act.estimatedTime || '',
           tools: Array.isArray(act.tools) ? act.tools : [],
         }));
+
+        // Mostrar sugestões de nome se fornecidas
+        if (data.nameSuggestions && Array.isArray(data.nameSuggestions) && data.nameSuggestions.length > 0) {
+          toast({
+            title: "Sugestões de nome geradas",
+            description: `Sugestões: ${data.nameSuggestions.slice(0, 3).join(', ')}. Você pode atualizar o nome do processo.`,
+          });
+        }
 
         setFormData(prev => {
           // Aplicar fluxograma (garantir que seja um array válido)
@@ -197,6 +189,10 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
 
           return {
             ...prev,
+            // Atualizar objetivo melhorado se fornecido
+            objective: (data.improvedObjective && data.improvedObjective.length > 50) 
+              ? data.improvedObjective 
+              : prev.objective,
             activities: updatedActivities,
             flowNodes: flowNodes,
             flowEdges: flowEdges,
