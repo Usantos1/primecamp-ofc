@@ -148,31 +148,10 @@ const ProcessView = () => {
     <ModernLayout
       title={process.name}
       subtitle={`${process.department} • ${process.status === 'active' ? 'Ativo' : process.status === 'draft' ? 'Rascunho' : process.status}`}
-      headerActions={
-        <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/processos')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
-          {profile && isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/processo/${processId}/edit`)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-          )}
-        </>
-      }
     >
       <ProcessViewer 
         process={process}
+        processId={processId || ''}
         onEdit={() => navigate(`/processo/${processId}/edit`)}
         onBack={() => navigate('/processos')}
       />

@@ -11,13 +11,19 @@ import { PriorityCard } from '@/components/PriorityCard';
 
 interface ProcessViewerProps {
   process: Process;
+  processId: string;
   onEdit: () => void;
   onBack: () => void;
 }
 
-export const ProcessViewer = ({ process, onEdit, onBack }: ProcessViewerProps) => {
+export const ProcessViewer = ({ process, processId, onEdit, onBack }: ProcessViewerProps) => {
   console.log('ProcessViewer - Video ID:', process.youtubeVideoId);
   const { categories } = useCategories();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [notes, setNotes] = useState(process.notes || '');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
   
   
   const getStatusColor = (status: string) => {
@@ -310,18 +316,73 @@ export const ProcessViewer = ({ process, onEdit, onBack }: ProcessViewerProps) =
       {/* Anotações e Sugestões */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Edit className="h-5 w-5 text-primary" />
-            Anotações e Sugestões
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-primary" />
+              Anotações e Sugestões
+            </CardTitle>
+            {!isEditingNotes ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingNotes(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNotes(process.notes || '');
+                    setIsEditingNotes(false);
+                  }}
+                  disabled={savingNotes}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveNotes}
+                  disabled={savingNotes}
+                >
+                  {savingNotes ? (
+                    <>
+                      <Save className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Colaboradores podem adicionar anotações, sugestões de mudanças ou observações sobre o processo.
+          </p>
         </CardHeader>
         <CardContent>
-          <div 
-            className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert min-h-[200px] p-4 border rounded-lg bg-muted/30"
-            dangerouslySetInnerHTML={{ 
-              __html: process.notes || '<p class="text-muted-foreground italic">Nenhuma anotação ou sugestão ainda. Use o editor abaixo para adicionar.</p>' 
-            }}
-          />
+          {isEditingNotes ? (
+            <RichTextEditor
+              value={notes}
+              onChange={setNotes}
+              placeholder="Adicione anotações, sugestões de melhorias ou observações sobre este processo..."
+              className="min-h-[300px]"
+            />
+          ) : (
+            <div 
+              className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert min-h-[200px] p-4 border rounded-lg bg-muted/30"
+              dangerouslySetInnerHTML={{ 
+                __html: notes || '<p class="text-muted-foreground italic">Nenhuma anotação ou sugestão ainda. Clique em "Editar" para adicionar.</p>' 
+              }}
+            />
+          )}
         </CardContent>
       </Card>
 
