@@ -4,12 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { FlowBuilder } from '@/components/FlowBuilder';
 import { ProcessViewer } from '@/components/ProcessViewer';
+import { ModernLayout } from '@/components/ModernLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Eye } from 'lucide-react';
+import { Edit } from 'lucide-react';
 import { Process } from '@/types/process';
 
 const ProcessView = () => {
@@ -169,105 +170,76 @@ const ProcessView = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Carregando processo...</p>
+      <ModernLayout title="Carregando..." subtitle="Carregando processo...">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Carregando processo...</p>
+          </div>
         </div>
-      </div>
+      </ModernLayout>
     );
   }
 
   if (!process) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <ModernLayout title="Processo não encontrado" subtitle="O processo solicitado não foi encontrado">
+        <Card className="w-full max-w-md mx-auto">
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground">Processo não encontrado</p>
-            <Button onClick={() => navigate('/')} className="mt-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar
+            <Button onClick={() => navigate('/processos')} className="mt-4">
+              Voltar para Processos
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </ModernLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header fixo no topo */}
-      <div className="sticky top-0 z-50 h-14 bg-background border-b border-border flex items-center px-2 sm:px-4">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/')}
-              className="shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline ml-1">Voltar</span>
-            </Button>
-            <div className="flex items-center gap-2 min-w-0">
-              <Badge variant="outline" className="text-xs shrink-0">
-                {process.department}
-              </Badge>
-              <Badge variant={process.status === 'active' ? 'default' : 'secondary'} className="text-xs shrink-0">
-                {process.status}
-              </Badge>
-            </div>
-            <h1 className="text-sm sm:text-lg font-semibold truncate min-w-0">
-              {process.name}
-            </h1>
-          </div>
-          
-          {profile && isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/processo/${processId}/edit`)}
-              className="shrink-0"
-            >
-              <Edit className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">Editar</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Content com scroll adequado */}
-      <div className="pb-4">
-        <Tabs defaultValue="details" className="w-full">
-          <div className="sticky top-14 z-40 bg-background border-b border-border">
-            <TabsList className="mx-2 sm:mx-4 mt-2 sm:mt-4 mb-2 grid w-full max-w-[400px] grid-cols-2">
-              <TabsTrigger value="details" className="text-xs sm:text-sm">Detalhes</TabsTrigger>
-              <TabsTrigger value="flow" className="text-xs sm:text-sm">Fluxo</TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="details" className="mx-2 sm:mx-4 mt-2">
-            <ProcessViewer 
-              process={process}
-              onEdit={() => navigate(`/processo/${processId}/edit`)}
-              onBack={() => navigate('/')}
+    <ModernLayout
+      title={process.name}
+      subtitle={`${process.department} • ${process.status === 'active' ? 'Ativo' : process.status === 'draft' ? 'Rascunho' : process.status}`}
+      headerActions={
+        profile && isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/processo/${processId}/edit`)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Editar
+          </Button>
+        )
+      }
+    >
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList className="grid w-full max-w-[400px] grid-cols-2 mb-6">
+          <TabsTrigger value="details">Detalhes</TabsTrigger>
+          <TabsTrigger value="flow">Fluxo</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="details" className="mt-6">
+          <ProcessViewer 
+            process={process}
+            onEdit={() => navigate(`/processo/${processId}/edit`)}
+            onBack={() => navigate('/processos')}
+          />
+        </TabsContent>
+        
+        <TabsContent value="flow" className="mt-6">
+          <div className="h-[calc(100vh-16rem)] border rounded-lg">
+            <FlowBuilder
+              processId={process.id}
+              initialNodes={process.flowNodes || []}
+              initialEdges={process.flowEdges || []}
+              onSave={handleSaveFlow}
+              readOnly={!profile || !isAdmin}
             />
-          </TabsContent>
-          
-          <TabsContent value="flow" className="mx-2 sm:mx-4 mt-2">
-            <div className="h-[calc(100vh-8rem)]">
-              <FlowBuilder
-                processId={process.id}
-                initialNodes={process.flowNodes || []}
-                initialEdges={process.flowEdges || []}
-                onSave={handleSaveFlow}
-                readOnly={!profile || !isAdmin}
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </ModernLayout>
   );
 };
 
