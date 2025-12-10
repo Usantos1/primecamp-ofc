@@ -51,7 +51,6 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
     categoryId: process?.categoryId || null
   });
 
-  const [selectedTag, setSelectedTag] = useState('');
   const [generatingProcess, setGeneratingProcess] = useState(false);
   const [iaApiKey, setIaApiKey] = useState<string>('');
   const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');

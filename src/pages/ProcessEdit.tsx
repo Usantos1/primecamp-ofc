@@ -82,6 +82,7 @@ const ProcessEdit = () => {
         flowNodes: Array.isArray(data.flow_nodes) ? data.flow_nodes as any[] : [],
         flowEdges: Array.isArray(data.flow_edges) ? data.flow_edges as any[] : [],
         youtubeVideoId: data.youtube_video_id || '',
+        notes: data.notes || '',
         categoryId: data.category_id,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
