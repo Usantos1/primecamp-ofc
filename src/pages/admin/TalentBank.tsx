@@ -218,11 +218,9 @@ export default function TalentBank() {
       });
       refetchCandidates();
     } catch (error: any) {
-      console.error('Erro ao analisar candidato:', error);
-      toast({
-        title: "Erro ao analisar",
-        description: error?.message || "Não foi possível gerar a análise.",
-        variant: "destructive",
+      handleError(error, {
+        context: 'TalentBank.handleAnalyzeWithAI',
+        fallbackMessage: 'Não foi possível gerar a análise.',
       });
     } finally {
       setAiLoadingId(null);
@@ -545,7 +543,7 @@ export default function TalentBank() {
                   {isLoading ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8">
-                        Carregando...
+                        <LoadingSkeleton type="table" count={5} />
                       </TableCell>
                     </TableRow>
                   ) : filteredCandidates.length === 0 ? (
