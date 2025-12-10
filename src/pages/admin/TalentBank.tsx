@@ -6,13 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Eye, Brain, Download, Filter } from 'lucide-react';
+import { Search, Eye, Brain, Download, Filter, Video, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { CandidateEvaluationModal } from '@/components/CandidateEvaluationModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Candidate {
   id: string;
@@ -32,9 +34,15 @@ interface Candidate {
 export default function TalentBank() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSurvey, setSelectedSurvey] = useState<string>('all');
   const [competenceFilter, setCompetenceFilter] = useState<string>('all');
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [selectedEvaluation, setSelectedEvaluation] = useState<any>(null);
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [aiLoadingId, setAiLoadingId] = useState<string | null>(null);
 
   // Fetch all candidates from all surveys
   const { data: candidates = [], isLoading } = useQuery({
@@ -114,6 +122,279 @@ export default function TalentBank() {
       }) as Candidate[];
     }
   });
+
+  const refetchCandidates = () => {
+    queryClient.invalidateQueries({ queryKey: ['talent-bank', selectedSurvey, competenceFilter] });
+  };
+
+  const handleOpenEvaluation = async (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    const { data: evaluation } = await supabase
+      .from('job_candidate_evaluations')
+      .select('*')
+      .eq('job_response_id', candidate.id)
+      .maybeSingle();
+    setSelectedEvaluation(evaluation || null);
+    setShowEvaluationModal(true);
+  };
+
+  const handleEvaluationSaved = () => {
+    setShowEvaluationModal(false);
+    setSelectedCandidate(null);
+    setSelectedEvaluation(null);
+    refetchCandidates();
+  };
+
+  const handleAnalyzeWithAI = async (candidate: Candidate) => {
+    setAiLoadingId(candidate.id);
+    try {
+      toast({
+        title: "Analisando candidato...",
+        description: "A IA está gerando a análise completa.",
+      });
+
+      const { data: jobResponse, error: responseError } = await supabase
+        .from('job_responses')
+        .select('*')
+        .eq('id', candidate.id)
+        .single();
+
+      const { data: jobSurvey, error: surveyError } = await supabase
+        .from('job_surveys')
+        .select('*')
+        .eq('id', candidate.survey_id)
+        .single();
+
+      if (responseError || surveyError || !jobResponse || !jobSurvey) {
+        throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
+      }
+
+      const { data: discResult } = await supabase
+        .from('candidate_responses')
+        .select('*')
+        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .eq('is_completed', true)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+
+      const { error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
+        body: {
+          job_response_id: candidate.id,
+          survey_id: candidate.survey_id,
+          candidate_data: {
+            name: jobResponse.name,
+            email: jobResponse.email,
+            age: jobResponse.age,
+            phone: jobResponse.phone || jobResponse.whatsapp,
+            responses: jobResponse.responses,
+            disc_profile: discResult ? {
+              d_score: discResult.d_score || 0,
+              i_score: discResult.i_score || 0,
+              s_score: discResult.s_score || 0,
+              c_score: discResult.c_score || 0,
+              dominant_profile: discResult.dominant_profile || ''
+            } : undefined
+          },
+          job_data: {
+            title: jobSurvey.title,
+            position_title: jobSurvey.position_title,
+            description: jobSurvey.description,
+            requirements: jobSurvey.requirements,
+            work_modality: jobSurvey.work_modality,
+            contract_type: jobSurvey.contract_type
+          }
+        }
+      });
+
+      if (analysisError) {
+        throw analysisError;
+      }
+
+      toast({
+        title: "Análise gerada!",
+        description: "A análise de IA foi criada com sucesso.",
+      });
+      refetchCandidates();
+    } catch (error: any) {
+      console.error('Erro ao analisar candidato:', error);
+      toast({
+        title: "Erro ao analisar",
+        description: error?.message || "Não foi possível gerar a análise.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoadingId(null);
+    }
+  };
+
+  const handleApproveWithAI = async (candidate: Candidate) => {
+    if (!user?.id) {
+      toast({
+        title: "Acesso negado",
+        description: "Faça login para aprovar com IA.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAiLoadingId(candidate.id);
+    try {
+      toast({
+        title: "Avaliando e aprovando...",
+        description: "A IA está analisando o candidato e aprovando automaticamente.",
+      });
+
+      const { data: jobResponse, error: responseError } = await supabase
+        .from('job_responses')
+        .select('*')
+        .eq('id', candidate.id)
+        .single();
+
+      const { data: jobSurvey, error: surveyError } = await supabase
+        .from('job_surveys')
+        .select('*')
+        .eq('id', candidate.survey_id)
+        .single();
+
+      if (responseError || surveyError || !jobResponse || !jobSurvey) {
+        throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
+      }
+
+      const { data: discResult } = await supabase
+        .from('candidate_responses')
+        .select('*')
+        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .eq('is_completed', true)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
+        body: {
+          job_response_id: candidate.id,
+          survey_id: candidate.survey_id,
+          candidate_data: {
+            name: jobResponse.name,
+            email: jobResponse.email,
+            age: jobResponse.age,
+            phone: jobResponse.phone || jobResponse.whatsapp,
+            responses: jobResponse.responses,
+            disc_profile: discResult ? {
+              d_score: discResult.d_score || 0,
+              i_score: discResult.i_score || 0,
+              s_score: discResult.s_score || 0,
+              c_score: discResult.c_score || 0,
+              dominant_profile: discResult.dominant_profile || ''
+            } : undefined
+          },
+          job_data: {
+            title: jobSurvey.title,
+            position_title: jobSurvey.position_title,
+            description: jobSurvey.description,
+            requirements: jobSurvey.requirements,
+            work_modality: jobSurvey.work_modality,
+            contract_type: jobSurvey.contract_type
+          }
+        }
+      });
+
+      if (analysisError) {
+        throw analysisError;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        throw new Error("Perfil do avaliador não encontrado.");
+      }
+
+      const { data: existingEvaluation } = await supabase
+        .from('job_candidate_evaluations')
+        .select('*')
+        .eq('job_response_id', candidate.id)
+        .maybeSingle();
+
+      const evaluationData = {
+        job_response_id: candidate.id,
+        evaluator_id: profile.id,
+        status: 'approved' as const,
+        rating: analysisData?.score ? Math.min(Math.max(Math.round(analysisData.score), 1), 5) : 5,
+        notes: analysisData?.recommendation || 'Aprovado automaticamente pela IA.'
+      };
+
+      if (existingEvaluation) {
+        const { error } = await supabase
+          .from('job_candidate_evaluations')
+          .update(evaluationData)
+          .eq('id', existingEvaluation.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('job_candidate_evaluations')
+          .insert(evaluationData);
+        if (error) throw error;
+      }
+
+      toast({
+        title: "✅ Candidato aprovado!",
+        description: "Status atualizado para Aprovado com análise da IA.",
+      });
+      refetchCandidates();
+    } catch (error: any) {
+      console.error('Erro ao aprovar com IA:', error);
+      toast({
+        title: "Erro ao aprovar",
+        description: error?.message || "Não foi possível aprovar com IA.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoadingId(null);
+    }
+  };
+
+  const handleCreateInterview = async (candidate: Candidate) => {
+    try {
+      const { data: newInterview, error: createError } = await supabase
+        .from('job_interviews')
+        .insert({
+          job_response_id: candidate.id,
+          survey_id: candidate.survey_id,
+          interview_type: 'online',
+          status: 'scheduled',
+          questions: []
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        const { data: existing } = await supabase
+          .from('job_interviews')
+          .select('*')
+          .eq('job_response_id', candidate.id)
+          .eq('interview_type', 'online')
+          .maybeSingle();
+
+        if (existing) {
+          window.location.href = `/admin/interviews?interview_id=${existing.id}`;
+          return;
+        }
+
+        throw createError;
+      }
+
+      window.location.href = `/admin/interviews?interview_id=${newInterview.id}`;
+    } catch (error: any) {
+      console.error('Erro ao criar entrevista:', error);
+      toast({
+        title: "Erro ao criar entrevista",
+        description: error?.message || "Não foi possível criar a entrevista.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch all surveys for filter
   const { data: surveys = [] } = useQuery({
@@ -324,29 +605,65 @@ export default function TalentBank() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center gap-2 justify-end">
+                          <div className="flex items-center gap-2 justify-end flex-wrap">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                navigate(`/admin/job-surveys/${candidate.survey_id}?candidate_id=${candidate.id}`);
-                              }}
+                              onClick={() => navigate(`/admin/job-surveys/${candidate.survey_id}?candidate_id=${candidate.id}`)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               Ver
                             </Button>
-                            {candidate.ai_analysis && (
+
+                            {candidate.ai_analysis ? (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  navigate(`/admin/job-surveys/${candidate.survey_id}?candidate_id=${candidate.id}&show_ai=true`);
-                                }}
+                                onClick={() => navigate(`/admin/job-surveys/${candidate.survey_id}?candidate_id=${candidate.id}&show_ai=true`)}
                               >
                                 <Brain className="h-4 w-4 mr-1" />
-                                IA
+                                Ver IA
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={aiLoadingId === candidate.id}
+                                onClick={() => handleAnalyzeWithAI(candidate)}
+                              >
+                                <Brain className="h-4 w-4 mr-1" />
+                                Analisar IA
                               </Button>
                             )}
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={aiLoadingId === candidate.id}
+                              onClick={() => handleApproveWithAI(candidate)}
+                              className="hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-900/20"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Aprovar IA
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCreateInterview(candidate)}
+                              className="hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-900/20"
+                            >
+                              <Video className="h-4 w-4 mr-1" />
+                              Criar Entrevista
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenEvaluation(candidate)}
+                            >
+                              Avaliar
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -358,6 +675,18 @@ export default function TalentBank() {
           </div>
         </CardContent>
       </Card>
+
+      <CandidateEvaluationModal
+        isOpen={showEvaluationModal}
+        onClose={() => {
+          setShowEvaluationModal(false);
+          setSelectedCandidate(null);
+          setSelectedEvaluation(null);
+        }}
+        candidate={selectedCandidate as any}
+        evaluation={selectedEvaluation}
+        onEvaluationSaved={handleEvaluationSaved}
+      />
     </ModernLayout>
   );
 }

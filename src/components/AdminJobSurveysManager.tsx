@@ -108,6 +108,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const [iaProvider, setIaProvider] = useState<'openai'>('openai');
   const [iaApiKey, setIaApiKey] = useState<string>('');
   const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');
+  const [aiApprovingId, setAiApprovingId] = useState<string | null>(null);
 
   // carrega API key e modelo de integrações (kv_store)
   useEffect(() => {
@@ -956,6 +957,132 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     queryClient.invalidateQueries({ queryKey: ['job-responses'] });
   };
 
+  const handleApproveWithAI = async (response: JobResponse) => {
+    if (!user?.id) {
+      toast({
+        title: "Acesso negado",
+        description: "Faça login para aprovar com IA.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAiApprovingId(response.id);
+    try {
+      toast({
+        title: "Avaliando com IA...",
+        description: "Gerando análise e aprovando automaticamente.",
+      });
+
+      const { data: jobResponse, error: responseError } = await supabase
+        .from('job_responses')
+        .select('*')
+        .eq('id', response.id)
+        .single();
+
+      const { data: jobSurvey, error: surveyError } = await supabase
+        .from('job_surveys')
+        .select('*')
+        .eq('id', response.survey_id)
+        .single();
+
+      if (responseError || surveyError || !jobResponse || !jobSurvey) {
+        throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
+      }
+
+      const { data: discResult } = await supabase
+        .from('candidate_responses')
+        .select('*')
+        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .eq('is_completed', true)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
+        body: {
+          job_response_id: response.id,
+          survey_id: response.survey_id,
+          candidate_data: {
+            name: jobResponse.name,
+            email: jobResponse.email,
+            age: jobResponse.age,
+            phone: jobResponse.phone || jobResponse.whatsapp,
+            responses: jobResponse.responses,
+            disc_profile: discResult ? {
+              d_score: discResult.d_score || 0,
+              i_score: discResult.i_score || 0,
+              s_score: discResult.s_score || 0,
+              c_score: discResult.c_score || 0,
+              dominant_profile: discResult.dominant_profile || ''
+            } : undefined
+          },
+          job_data: {
+            title: jobSurvey.title,
+            position_title: jobSurvey.position_title,
+            description: jobSurvey.description,
+            requirements: jobSurvey.requirements,
+            work_modality: jobSurvey.work_modality,
+            contract_type: jobSurvey.contract_type
+          }
+        }
+      });
+
+      if (analysisError) {
+        throw analysisError;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        throw new Error("Perfil do avaliador não encontrado.");
+      }
+
+      const existingEvaluation = getEvaluationByResponseId(response.id);
+      const evaluationData = {
+        job_response_id: response.id,
+        evaluator_id: profile.id,
+        status: 'approved' as const,
+        rating: analysisData?.score ? Math.min(Math.max(Math.round(analysisData.score), 1), 5) : 5,
+        notes: analysisData?.recommendation || 'Aprovado automaticamente pela IA.'
+      };
+
+      if (existingEvaluation) {
+        const { error } = await supabase
+          .from('job_candidate_evaluations')
+          .update(evaluationData)
+          .eq('id', existingEvaluation.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('job_candidate_evaluations')
+          .insert(evaluationData);
+        if (error) throw error;
+      }
+
+      toast({
+        title: "✅ Candidato aprovado pela IA!",
+        description: "Status atualizado para Aprovado e análise gerada.",
+      });
+
+      refreshEvaluations();
+      queryClient.invalidateQueries({ queryKey: ['job-responses'] });
+      queryClient.invalidateQueries({ queryKey: ['aiAnalyses', selectedSurvey?.id] });
+    } catch (error: any) {
+      console.error('Erro ao aprovar com IA:', error);
+      toast({
+        title: "Erro ao aprovar com IA",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiApprovingId(null);
+    }
+  };
+
   /**
    * NOVO getStatusBadge – aplica cores de FUNDO (com opacidade), texto e um aro leve.
    * Uso variant="secondary" para não forçar o fundo sólido do shadcn e permitir as classes abaixo.
@@ -1676,6 +1803,16 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                   Analisar IA
                                 </Button>
                               )}
+
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              disabled={aiApprovingId === response.id}
+                              onClick={() => handleApproveWithAI(response)}
+                              className="hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-900/20"
+                            >
+                              ✓ Aprovar IA
+                            </Button>
                               
                               <Button 
                                 variant="outline" 
