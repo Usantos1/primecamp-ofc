@@ -101,9 +101,71 @@ export const ProcessViewer = ({ process, processId, onEdit, onBack }: ProcessVie
     }
   };
 
+  const handleSaveNotes = async () => {
+    if (!processId || !user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para salvar anotações",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from('processes')
+        .update({
+          notes: notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', processId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: "Anotações salvas com sucesso",
+      });
+
+      setIsEditingNotes(false);
+      // Atualizar o processo local
+      process.notes = notes;
+    } catch (error: any) {
+      console.error('Erro ao salvar anotações:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar anotações",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   return (
     <div className="w-full space-y-4 sm:space-y-6 px-2 sm:px-4">
-      {/* Header - removido para evitar duplicação com ProcessView */}
+      {/* Botões de ação */}
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onBack}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onEdit}
+        >
+          <Edit className="h-4 w-4 mr-2" />
+          Editar Processo
+        </Button>
+      </div>
 
       {/* Priority & Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
