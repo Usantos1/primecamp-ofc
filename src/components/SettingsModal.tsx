@@ -28,8 +28,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   
   // Cores do tema
   const [primaryColor, setPrimaryColor] = useState(config.colors.primary);
-  const [sidebarColor, setSidebarColor] = useState(config.colors.primary);
-  const [buttonColor, setButtonColor] = useState(config.colors.primary);
+  const [sidebarColor, setSidebarColor] = useState(config.colors.sidebar || config.colors.primary);
+  const [buttonColor, setButtonColor] = useState(config.colors.button || config.colors.primary);
   const [logoPreview, setLogoPreview] = useState<string | null>(config.logo || null);
 
   const handleSave = () => {
