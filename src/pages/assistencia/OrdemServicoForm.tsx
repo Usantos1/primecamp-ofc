@@ -24,7 +24,7 @@ import {
 import { useCargos } from '@/hooks/useCargos';
 import { 
   OrdemServicoFormData, CHECKLIST_ITENS, ItemOS,
-  STATUS_OS_LABELS, STATUS_OS_COLORS, StatusOS
+  STATUS_OS_LABELS, STATUS_OS_COLORS, StatusOS, CARGOS_LABELS
 } from '@/types/assistencia';
 import { PhoneDrawing, PhoneDrawingLegend } from '@/components/assistencia/PhoneDrawing';
 import { PatternLock } from '@/components/assistencia/PatternLock';
