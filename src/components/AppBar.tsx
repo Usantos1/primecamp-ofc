@@ -103,9 +103,9 @@ export function AppBar() {
   return (
     <div className={cn(
       "border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      "flex items-center justify-center gap-1 px-4 py-1.5 overflow-x-auto"
+      "flex items-center justify-center gap-0 px-2 py-1.5 overflow-x-auto max-w-full"
     )}>
-      {quickNavItems.map((item) => {
+      {quickNavItems.map((item, index) => {
         const Icon = item.icon;
         // Corrigir lógica: só marcar como ativo se for exatamente o path ou começar com o path + '/'
         // Mas não marcar se outro path mais específico também começar com o mesmo prefixo
@@ -126,26 +126,30 @@ export function AppBar() {
         }
         
         return (
-          <Button
-            key={item.path}
-            variant={isActive ? "default" : "ghost"}
-            size="sm"
-            className={cn(
-              "h-7 px-2.5 gap-1.5 whitespace-nowrap text-xs",
-              isActive 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          <div key={item.path} className="flex items-center">
+            {index > 0 && (
+              <div className="h-4 w-px bg-border mx-0.5" />
             )}
-            onClick={() => navigate(item.path)}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            <span className="font-medium">{item.label}</span>
-            {item.badge && item.badge > 0 && (
-              <span className="ml-0.5 px-1 py-0.5 text-[10px] rounded-full bg-sidebar-primary-foreground/20">
-                {item.badge}
-              </span>
-            )}
-          </Button>
+            <Button
+              variant={isActive ? "default" : "ghost"}
+              size="sm"
+              className={cn(
+                "h-7 px-2 gap-1.5 whitespace-nowrap text-xs shrink-0",
+                isActive 
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+              onClick={() => navigate(item.path)}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="font-medium truncate max-w-[100px]">{item.label}</span>
+              {item.badge && item.badge > 0 && (
+                <span className="ml-0.5 px-1 py-0.5 text-[10px] rounded-full bg-sidebar-primary-foreground/20 shrink-0">
+                  {item.badge}
+                </span>
+              )}
+            </Button>
+          </div>
         );
       })}
     </div>
