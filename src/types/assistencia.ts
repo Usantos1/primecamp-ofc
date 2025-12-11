@@ -250,6 +250,17 @@ export interface ProdutoFormData {
   localizacao?: string;
 }
 
+// ==================== CARGO ====================
+
+export type Cargo = 'tecnico' | 'vendedor' | 'atendente' | 'admin';
+
+export const CARGOS_LABELS: Record<Cargo, string> = {
+  tecnico: 'Técnico',
+  vendedor: 'Vendedor',
+  atendente: 'Atendente',
+  admin: 'Administrador',
+};
+
 // ==================== ORDEM DE SERVIÇO ====================
 
 export interface OrdemServico {
@@ -270,7 +281,8 @@ export interface OrdemServico {
   // Cliente
   cliente_id: string;
   cliente_nome?: string;
-  telefone_contato?: string;
+  cliente_empresa?: string; // Nome da empresa (se existir)
+  telefone_contato: string; // Obrigatório
   
   // Aparelho
   tipo_aparelho: TipoAparelho | string;
@@ -282,24 +294,38 @@ export interface OrdemServico {
   numero_serie?: string;
   cor?: string;
   senha_aparelho?: string;
+  senha_numerica?: string; // Para iPhone
+  padrao_desbloqueio?: string; // Padrão de desbloqueio (bolinhas)
   possui_senha: boolean;
   deixou_aparelho: boolean;
+  apenas_agendamento: boolean; // Se é apenas agendamento ou deixou aparelho
   
   // Problema
   descricao_problema: string;
   descricao_servico?: string;
+  problema_constatado?: string; // Problema constatado na resolução
   laudo_tecnico?: string;
+  
+  // Resolução
+  tecnico_id?: string;
+  tecnico_nome?: string;
+  servico_executado?: string; // Serviço executado
   
   // Checklist
   checklist_entrada: string[];
   checklist_saida?: string[];
   areas_defeito: string[];
+  observacoes_checklist?: string; // Observações gerais do checklist
   
   // Condições
   condicoes_equipamento?: string;
-  acessorios?: string;
   observacoes?: string;
-  observacoes_internas?: string;
+  observacoes_internas?: string; // Informações técnicas internas
+  
+  // Orçamento pré-autorizado
+  orcamento_parcelado?: number; // Valor parcelado (débito/crédito até 6x)
+  orcamento_desconto?: number; // Valor com desconto (dinheiro/PIX)
+  orcamento_autorizado?: boolean;
   
   // Valores
   subtotal?: number;
@@ -307,11 +333,11 @@ export interface OrdemServico {
   valor_total: number;
   valor_pago?: number;
   
-  // Técnico
-  tecnico_id?: string;
-  tecnico_nome?: string;
+  // Vendedor/Atendente
   vendedor_id?: string;
   vendedor_nome?: string;
+  atendente_id?: string;
+  atendente_nome?: string;
   
   // Garantia
   garantia_dias?: number;
@@ -319,6 +345,7 @@ export interface OrdemServico {
   // Fotos
   fotos_entrada?: string[];
   fotos_saida?: string[];
+  fotos_drive_folder_id?: string; // ID da pasta no Google Drive
   
   // Metadata
   created_at: string;
@@ -327,7 +354,7 @@ export interface OrdemServico {
 
 export interface OrdemServicoFormData {
   cliente_id: string;
-  telefone_contato?: string;
+  telefone_contato: string; // Obrigatório
   tipo_aparelho: string;
   marca_id?: string;
   modelo_id?: string;
@@ -335,16 +362,28 @@ export interface OrdemServicoFormData {
   numero_serie?: string;
   cor?: string;
   senha_aparelho?: string;
+  senha_numerica?: string; // Para iPhone
+  padrao_desbloqueio?: string; // Padrão de desbloqueio
   possui_senha: boolean;
   deixou_aparelho: boolean;
+  apenas_agendamento: boolean;
   descricao_problema: string;
   condicoes_equipamento?: string;
-  acessorios?: string;
   previsao_entrega?: string;
   hora_previsao?: string;
   observacoes?: string;
+  observacoes_internas?: string;
   checklist_entrada: string[];
   areas_defeito: string[];
+  observacoes_checklist?: string;
+  // Resolução
+  problema_constatado?: string;
+  tecnico_id?: string;
+  servico_executado?: string;
+  // Orçamento
+  orcamento_parcelado?: number;
+  orcamento_desconto?: number;
+  orcamento_autorizado?: boolean;
 }
 
 // ==================== ITENS DA OS ====================
