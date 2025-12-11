@@ -29,6 +29,9 @@ import {
   GraduationCap,
   Video,
   DollarSign,
+  ShoppingCart,
+  UserCircle,
+  Wrench,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -122,6 +125,85 @@ export function AppSidebar() {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* === PDV / Assistência Técnica === */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink to="/pdv">
+                    {({ isActive }) => (
+                      <div
+                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                      >
+                        <ShoppingCart className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
+                        {!collapsed && <span className="font-medium text-sm">PDV</span>}
+                      </div>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink to="/pdv/clientes">
+                    {({ isActive }) => (
+                      <div
+                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                      >
+                        <UserCircle className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
+                        {!collapsed && <span className="font-medium text-sm">Clientes</span>}
+                      </div>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink to="/pdv/produtos">
+                    {({ isActive }) => (
+                      <div
+                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                      >
+                        <Package className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
+                        {!collapsed && <span className="font-medium text-sm">Produtos</span>}
+                      </div>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink to="/pdv/os">
+                    {({ isActive }) => (
+                      <div
+                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                      >
+                        <Wrench className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
+                        {!collapsed && <span className="font-medium text-sm">Ordem de Serviço</span>}
+                      </div>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink to="/admin/financeiro">
+                    {({ isActive }) => (
+                      <div
+                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                      >
+                        <DollarSign className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
+                        {!collapsed && <span className="font-medium text-sm">Financeiro</span>}
+                      </div>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Divisor visual */}
+              {!collapsed && <div className="my-2 border-t border-border/50" />}
 
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
