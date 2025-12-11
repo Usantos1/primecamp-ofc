@@ -89,8 +89,7 @@ export function AppSidebar() {
   );
 
   return (
-    <>
-      <Sidebar
+    <Sidebar
       className={`${collapsed ? "w-16" : "w-64"} transition-all duration-300 ease-in-out border-r`}
       collapsible="icon"
     >
