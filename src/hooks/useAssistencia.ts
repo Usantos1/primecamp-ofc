@@ -22,52 +22,228 @@ const MARCAS_MODELOS_PADRAO = [
   {
     marca: 'Apple',
     modelos: [
+      // iPhone 15
       'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+      // iPhone 14
       'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+      // iPhone 13
       'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 Mini',
+      // iPhone 12
       'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 Mini',
+      // iPhone 11
       'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+      // iPhone X
       'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
-      'iPhone 8 Plus', 'iPhone 8', 'iPhone 7 Plus', 'iPhone 7',
+      // iPhone 8
+      'iPhone 8 Plus', 'iPhone 8',
+      // iPhone 7
+      'iPhone 7 Plus', 'iPhone 7',
+      // iPhone 6
+      'iPhone 6s Plus', 'iPhone 6s', 'iPhone 6 Plus', 'iPhone 6',
+      // iPhone SE
       'iPhone SE 3ª Geração', 'iPhone SE 2ª Geração', 'iPhone SE',
+      // iPhone 5
+      'iPhone 5s', 'iPhone 5c', 'iPhone 5',
     ],
   },
   {
     marca: 'Samsung',
     modelos: [
-      'Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24',
+      // Galaxy S - Série Flagship
+      'Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S24 FE',
       'Galaxy S23 Ultra', 'Galaxy S23+', 'Galaxy S23', 'Galaxy S23 FE',
-      'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22',
+      'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22', 'Galaxy S22 FE',
       'Galaxy S21 Ultra', 'Galaxy S21+', 'Galaxy S21', 'Galaxy S21 FE',
-      'Galaxy Z Fold 5', 'Galaxy Z Fold 4', 'Galaxy Z Flip 5', 'Galaxy Z Flip 4',
-      'Galaxy A54', 'Galaxy A53', 'Galaxy A34', 'Galaxy A14', 'Galaxy A04',
+      'Galaxy S20 Ultra', 'Galaxy S20+', 'Galaxy S20', 'Galaxy S20 FE',
+      'Galaxy S10+', 'Galaxy S10', 'Galaxy S10e', 'Galaxy S10 Lite',
+      'Galaxy S9+', 'Galaxy S9', 'Galaxy S8+', 'Galaxy S8',
+      'Galaxy S7 Edge', 'Galaxy S7', 'Galaxy S6 Edge+', 'Galaxy S6 Edge', 'Galaxy S6',
+      // Galaxy Note
+      'Galaxy Note 20 Ultra', 'Galaxy Note 20', 'Galaxy Note 10+', 'Galaxy Note 10',
+      'Galaxy Note 9', 'Galaxy Note 8', 'Galaxy Note 7', 'Galaxy Note 5',
+      // Galaxy Z - Dobráveis
+      'Galaxy Z Fold 5', 'Galaxy Z Fold 4', 'Galaxy Z Fold 3', 'Galaxy Z Fold 2',
+      'Galaxy Z Flip 5', 'Galaxy Z Flip 4', 'Galaxy Z Flip 3', 'Galaxy Z Flip',
+      // Galaxy A - Série Intermediária
+      'Galaxy A54', 'Galaxy A53', 'Galaxy A52', 'Galaxy A51',
+      'Galaxy A34', 'Galaxy A33', 'Galaxy A32', 'Galaxy A31',
+      'Galaxy A24', 'Galaxy A23', 'Galaxy A22', 'Galaxy A21',
+      'Galaxy A14', 'Galaxy A13', 'Galaxy A12', 'Galaxy A11',
+      'Galaxy A04', 'Galaxy A03', 'Galaxy A02', 'Galaxy A01',
+      // Galaxy M
+      'Galaxy M54', 'Galaxy M53', 'Galaxy M52', 'Galaxy M51',
+      'Galaxy M34', 'Galaxy M33', 'Galaxy M32', 'Galaxy M31',
+      'Galaxy M23', 'Galaxy M22', 'Galaxy M21', 'Galaxy M12',
+      // Galaxy J (antiga linha)
+      'Galaxy J7', 'Galaxy J6', 'Galaxy J5', 'Galaxy J4', 'Galaxy J3', 'Galaxy J2',
+      'Galaxy J7 Prime', 'Galaxy J6 Prime', 'Galaxy J5 Prime',
     ],
   },
   {
     marca: 'Motorola',
     modelos: [
-      'Edge 40 Pro', 'Edge 40', 'Edge 30 Ultra', 'Edge 30',
-      'Moto G84', 'Moto G73', 'Moto G53', 'Moto G34', 'Moto G24',
-      'Razr 40 Ultra', 'Razr 40',
+      // Edge
+      'Edge 40 Pro', 'Edge 40', 'Edge 30 Ultra', 'Edge 30 Pro', 'Edge 30', 'Edge 20',
+      // Moto G - Série Popular
+      'Moto G84', 'Moto G73', 'Moto G72', 'Moto G71', 'Moto G70',
+      'Moto G64', 'Moto G63', 'Moto G62', 'Moto G61', 'Moto G60',
+      'Moto G54', 'Moto G53', 'Moto G52', 'Moto G51', 'Moto G50',
+      'Moto G44', 'Moto G43', 'Moto G42', 'Moto G41', 'Moto G40',
+      'Moto G34', 'Moto G33', 'Moto G32', 'Moto G31', 'Moto G30',
+      'Moto G24', 'Moto G23', 'Moto G22', 'Moto G21', 'Moto G20',
+      'Moto G14', 'Moto G13', 'Moto G12', 'Moto G11', 'Moto G10',
+      'Moto G9 Plus', 'Moto G9', 'Moto G8 Plus', 'Moto G8', 'Moto G7 Plus', 'Moto G7',
+      'Moto G6 Plus', 'Moto G6', 'Moto G5 Plus', 'Moto G5', 'Moto G4 Plus', 'Moto G4',
+      // Moto E
+      'Moto E40', 'Moto E32', 'Moto E31', 'Moto E30', 'Moto E22', 'Moto E20',
+      'Moto E7 Plus', 'Moto E7', 'Moto E6 Plus', 'Moto E6', 'Moto E5 Plus', 'Moto E5',
+      // Razr
+      'Razr 40 Ultra', 'Razr 40', 'Razr 5G', 'Razr 2019',
+      // Moto X
+      'Moto X4', 'Moto X3', 'Moto X2', 'Moto X',
+      // Moto Z
+      'Moto Z4', 'Moto Z3', 'Moto Z2', 'Moto Z',
     ],
   },
   {
     marca: 'Xiaomi',
     modelos: [
+      // Mi Series
       'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14',
-      'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13',
-      'Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13',
-      'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12',
-      'POCO X6 Pro', 'POCO X6', 'POCO F5 Pro', 'POCO F5',
+      'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13', 'Xiaomi 13 Lite',
+      'Xiaomi 12 Pro', 'Xiaomi 12', 'Xiaomi 12 Lite', 'Xiaomi 12T',
+      'Xiaomi 11 Pro', 'Xiaomi 11', 'Xiaomi 11 Lite',
+      'Xiaomi Mi 10 Pro', 'Xiaomi Mi 10', 'Xiaomi Mi 10 Lite',
+      'Xiaomi Mi 9 Pro', 'Xiaomi Mi 9', 'Xiaomi Mi 9 Lite',
+      // Redmi Note
+      'Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13', 'Redmi Note 13 5G',
+      'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12', 'Redmi Note 12 5G',
+      'Redmi Note 11 Pro+', 'Redmi Note 11 Pro', 'Redmi Note 11', 'Redmi Note 11S',
+      'Redmi Note 10 Pro', 'Redmi Note 10', 'Redmi Note 10S', 'Redmi Note 10 5G',
+      'Redmi Note 9 Pro', 'Redmi Note 9', 'Redmi Note 9S',
+      'Redmi Note 8 Pro', 'Redmi Note 8', 'Redmi Note 8T',
+      'Redmi Note 7', 'Redmi Note 6 Pro', 'Redmi Note 5',
+      // Redmi
+      'Redmi 13C', 'Redmi 12C', 'Redmi 11', 'Redmi 10', 'Redmi 9',
+      'Redmi 8', 'Redmi 7', 'Redmi 6', 'Redmi 5', 'Redmi 4',
+      // POCO
+      'POCO X6 Pro', 'POCO X6', 'POCO X5 Pro', 'POCO X5', 'POCO X4 Pro', 'POCO X4',
+      'POCO X3 Pro', 'POCO X3', 'POCO X2', 'POCO X',
+      'POCO F5 Pro', 'POCO F5', 'POCO F4', 'POCO F3', 'POCO F2 Pro', 'POCO F1',
+      'POCO M5', 'POCO M4', 'POCO M3', 'POCO M2', 'POCO M',
+      'POCO C55', 'POCO C51', 'POCO C50', 'POCO C40',
+    ],
+  },
+  {
+    marca: 'LG',
+    modelos: [
+      'LG G8', 'LG G7', 'LG G6', 'LG G5', 'LG G4', 'LG G3', 'LG G2',
+      'LG V60', 'LG V50', 'LG V40', 'LG V30', 'LG V20', 'LG V10',
+      'LG K62', 'LG K52', 'LG K42', 'LG K32', 'LG K22',
+      'LG Q92', 'LG Q70', 'LG Q60', 'LG Q7', 'LG Q6',
+      'LG Stylo 6', 'LG Stylo 5', 'LG Stylo 4', 'LG Stylo 3',
+      'LG Velvet', 'LG Wing', 'LG W10', 'LG W30',
     ],
   },
   {
     marca: 'Realme',
-    modelos: ['Realme 11 Pro+', 'Realme 11 Pro', 'Realme 11', 'Realme C55'],
+    modelos: [
+      'Realme 11 Pro+', 'Realme 11 Pro', 'Realme 11', 'Realme 11 5G',
+      'Realme 10 Pro+', 'Realme 10 Pro', 'Realme 10', 'Realme 10 5G',
+      'Realme 9 Pro+', 'Realme 9 Pro', 'Realme 9', 'Realme 9 5G',
+      'Realme 8 Pro', 'Realme 8', 'Realme 8 5G',
+      'Realme 7 Pro', 'Realme 7', 'Realme 7 5G',
+      'Realme C55', 'Realme C53', 'Realme C51', 'Realme C35', 'Realme C33',
+      'Realme GT 5 Pro', 'Realme GT 5', 'Realme GT 3', 'Realme GT 2',
+      'Realme Narzo 70 Pro', 'Realme Narzo 60 Pro', 'Realme Narzo 50',
+    ],
   },
   {
     marca: 'OnePlus',
-    modelos: ['OnePlus 12', 'OnePlus 11', 'OnePlus Nord 3'],
+    modelos: [
+      'OnePlus 12', 'OnePlus 11', 'OnePlus 11R', 'OnePlus 10 Pro', 'OnePlus 10T',
+      'OnePlus 9 Pro', 'OnePlus 9', 'OnePlus 9RT', 'OnePlus 9R',
+      'OnePlus 8 Pro', 'OnePlus 8', 'OnePlus 8T',
+      'OnePlus 7 Pro', 'OnePlus 7', 'OnePlus 7T Pro', 'OnePlus 7T',
+      'OnePlus 6T', 'OnePlus 6', 'OnePlus 5T', 'OnePlus 5',
+      'OnePlus Nord 3', 'OnePlus Nord 2', 'OnePlus Nord', 'OnePlus Nord CE',
+    ],
+  },
+  {
+    marca: 'Asus',
+    modelos: [
+      'Zenfone 10', 'Zenfone 9', 'Zenfone 8', 'Zenfone 7 Pro', 'Zenfone 7',
+      'Zenfone 6', 'Zenfone 5Z', 'Zenfone 5', 'Zenfone 4', 'Zenfone 3',
+      'ROG Phone 7', 'ROG Phone 6', 'ROG Phone 5', 'ROG Phone 3',
+    ],
+  },
+  {
+    marca: 'Nokia',
+    modelos: [
+      'Nokia G60', 'Nokia G50', 'Nokia G42', 'Nokia G21', 'Nokia G11',
+      'Nokia X30', 'Nokia X20', 'Nokia X10', 'Nokia XR20',
+      'Nokia 8.3', 'Nokia 7.2', 'Nokia 6.2', 'Nokia 5.3', 'Nokia 4.2',
+      'Nokia 3.4', 'Nokia 2.4', 'Nokia 1.4',
+    ],
+  },
+  {
+    marca: 'TCL',
+    modelos: [
+      'TCL 40 XE', 'TCL 40 SE', 'TCL 30 SE', 'TCL 30 XE', 'TCL 30 5G',
+      'TCL 20 Pro', 'TCL 20 SE', 'TCL 20L', 'TCL 20 5G',
+      'TCL 10 Pro', 'TCL 10L', 'TCL 10 SE',
+    ],
+  },
+  {
+    marca: 'Alcatel',
+    modelos: [
+      'Alcatel 3X', 'Alcatel 3L', 'Alcatel 3', 'Alcatel 1X', 'Alcatel 1S',
+      'Alcatel 5V', 'Alcatel 5', 'Alcatel 3V', 'Alcatel 3C',
+      'Alcatel Pixi 4', 'Alcatel Pixi 3', 'Alcatel One Touch',
+    ],
+  },
+  {
+    marca: 'Positivo',
+    modelos: [
+      'Positivo Twist 4', 'Positivo Twist 3', 'Positivo Twist 2',
+      'Positivo BGH', 'Positivo S380', 'Positivo S350',
+      'Positivo S240', 'Positivo S200', 'Positivo S180',
+    ],
+  },
+  {
+    marca: 'Multilaser',
+    modelos: [
+      'Multilaser M7', 'Multilaser M6', 'Multilaser M5', 'Multilaser M4',
+      'Multilaser M3', 'Multilaser M2', 'Multilaser M1',
+      'Multilaser E Pro', 'Multilaser E', 'Multilaser F',
+    ],
+  },
+  {
+    marca: 'Oppo',
+    modelos: [
+      'Oppo Find X6 Pro', 'Oppo Find X5 Pro', 'Oppo Find X3 Pro', 'Oppo Find X2',
+      'Oppo Reno 11 Pro', 'Oppo Reno 10 Pro', 'Oppo Reno 9 Pro', 'Oppo Reno 8 Pro',
+      'Oppo A98', 'Oppo A78', 'Oppo A58', 'Oppo A38', 'Oppo A18',
+      'Oppo A17', 'Oppo A16', 'Oppo A15', 'Oppo A12', 'Oppo A11',
+    ],
+  },
+  {
+    marca: 'Vivo',
+    modelos: [
+      'Vivo X100 Pro', 'Vivo X90 Pro', 'Vivo X80 Pro', 'Vivo X70 Pro',
+      'Vivo V30 Pro', 'Vivo V29', 'Vivo V27', 'Vivo V25', 'Vivo V23',
+      'Vivo Y100', 'Vivo Y78', 'Vivo Y56', 'Vivo Y35', 'Vivo Y22',
+      'Vivo Y17', 'Vivo Y15', 'Vivo Y12', 'Vivo Y11', 'Vivo Y10',
+    ],
+  },
+  {
+    marca: 'Honor',
+    modelos: [
+      'Honor Magic 6 Pro', 'Honor Magic 5 Pro', 'Honor Magic 4 Pro',
+      'Honor 90 Pro', 'Honor 80 Pro', 'Honor 70 Pro',
+      'Honor X50', 'Honor X40', 'Honor X30', 'Honor X20',
+      'Honor 50', 'Honor 40', 'Honor 30', 'Honor 20',
+    ],
   },
 ];
 
