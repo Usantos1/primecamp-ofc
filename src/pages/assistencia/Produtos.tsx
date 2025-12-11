@@ -270,7 +270,7 @@ export default function Produtos() {
   };
 
   // Salvar produto
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.descricao) {
       toast({ title: 'Descrição é obrigatória', variant: 'destructive' });
       return;
@@ -278,6 +278,14 @@ export default function Produtos() {
 
     setIsSubmitting(true);
     try {
+      // Combinar dados do formulário com dados estendidos
+      const produtoData: any = {
+        ...formData,
+        ...formDataExtended,
+        // Garantir que campos principais estejam corretos
+        situacao: formDataExtended.situacao,
+        unidade: formDataExtended.conversao_unidade || 'UN',
+      };
       const margem = calcularMargem(formData.preco_custo, formData.preco_venda);
       
       if (editingProduto) {
