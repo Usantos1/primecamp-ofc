@@ -32,9 +32,6 @@ import {
   ShoppingCart,
   UserCircle,
   Wrench,
-  Sun,
-  Moon,
-  Bell,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -675,39 +672,6 @@ export function AppSidebar() {
       <SidebarFooter className={`border-t mt-auto ${collapsed ? "p-1" : "p-2"}`}>
         {!collapsed ? (
           <div className="space-y-2">
-            {/* Controles: Tema, Configurações, Notificações */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 h-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                asChild
-              >
-                <div>
-                  <ThemeToggle variant="button" size="sm" showLabel={true} />
-                </div>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 h-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                onClick={() => {/* Abrir configurações */}}
-              >
-                <Settings className="h-4 w-4 mr-1.5" />
-                <span className="text-xs">Config</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 h-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
-                onClick={() => {/* Abrir notificações */}}
-              >
-                <Bell className="h-4 w-4 mr-1.5" />
-                <span className="text-xs">Alertas</span>
-                <span className="absolute top-0 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-              </Button>
-            </div>
-
             <NavLink
               to="/perfil"
               className="flex items-center gap-2 hover:bg-sidebar-accent rounded-md p-2 transition-colors"
@@ -730,30 +694,6 @@ export function AppSidebar() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
-            {/* Controles colapsados */}
-            <div className="flex items-center gap-1 w-full justify-center mb-1">
-              <div className="h-8 w-8">
-                <ThemeToggle variant="button" size="sm" />
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                title="Configurações"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
-                title="Notificações"
-              >
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-              </Button>
-            </div>
-
             <NavLink
               to="/perfil"
               className="w-10 h-10 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors mx-auto"

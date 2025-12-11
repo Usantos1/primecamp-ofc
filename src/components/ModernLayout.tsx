@@ -93,7 +93,7 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
           {/* Desktop Header */}
           <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 hidden md:block app-header">
-            <div className="h-14 flex items-center justify-center px-6 gap-4">
+            <div className="h-14 flex items-center justify-between px-6 gap-4">
               {/* Lado esquerdo: Sidebar Trigger */}
               <div className="flex items-center">
                 <SidebarTrigger className="h-8 w-8" />
@@ -104,42 +104,29 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
                 <AppBar />
               </div>
 
-              {/* Lado direito: Search */}
+              {/* Lado direito: Ícones (Tema, Configurações, Notificações) */}
               <div className="flex items-center gap-2">
-                <div ref={searchRef} className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Buscar..."
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="pl-10 w-64 bg-muted/50 border-0 focus:bg-background"
-                  />
-                  
-                  {/* Search Results Dropdown */}
-                  {searchResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                      {searchResults.map((result, index) => (
-                        <div 
-                          key={`${result.type}-${result.id}-${index}`}
-                          className="p-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
-                          onClick={() => handleResultClick(result)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
-                              {result.type === 'process' ? 'Processo' : 'Tarefa'}
-                            </span>
-                            <span className="font-medium">{result.name}</span>
-                          </div>
-                          {result.type === 'task' && result.responsible_name && (
-                            <div className="text-xs text-muted-foreground ml-2">
-                              Responsável: {result.responsible_name}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                <ThemeToggle variant="button" size="sm" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="relative"
+                  onClick={() => setIsNotificationOpen(true)}
+                >
+                  <Bell className="h-4 w-4" />
+                  {notificationCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                      {notificationCount}
+                    </Badge>
                   )}
-                </div>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setIsSettingsOpen(true)}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
 
                 {/* Header Actions */}
                 {headerActions}
