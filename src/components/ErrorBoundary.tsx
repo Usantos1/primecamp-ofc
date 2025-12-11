@@ -2,7 +2,6 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { logger } from '@/utils/logger';
 
 interface Props {
@@ -72,7 +71,13 @@ interface ErrorFallbackProps {
 }
 
 function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
-  const navigate = useNavigate();
+  const handleGoHome = () => {
+    window.location.href = '/';
+  };
+
+  const handleReload = () => {
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -109,7 +114,11 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
               <RefreshCw className="h-4 w-4" />
               Tentar Novamente
             </Button>
-            <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
+            <Button variant="outline" onClick={handleReload} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Recarregar Página
+            </Button>
+            <Button variant="outline" onClick={handleGoHome} className="gap-2">
               <Home className="h-4 w-4" />
               Ir para Início
             </Button>
