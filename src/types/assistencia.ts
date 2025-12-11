@@ -1,48 +1,81 @@
+// ==========================================
+// TIPOS PARA SISTEMA DE ASSISTÊNCIA TÉCNICA
+// ==========================================
+
 // ==================== TIPOS BASE ====================
 
 export type TipoAparelho = 'celular' | 'tablet' | 'notebook' | 'outro';
 export type TipoPessoa = 'fisica' | 'juridica';
 export type TipoCliente = 'cliente' | 'fornecedor' | 'ambos';
-export type TipoProduto = 'peca' | 'servico' | 'acessorio';
+export type TipoProduto = 'peca' | 'servico' | 'produto';
 export type TipoItemOS = 'peca' | 'servico' | 'mao_de_obra';
-export type FormaPagamento = 'dinheiro' | 'pix' | 'cartao_debito' | 'cartao_credito' | 'transferencia' | 'boleto';
+export type FormaPagamento = 'dinheiro' | 'pix' | 'credito' | 'debito' | 'boleto' | 'transferencia';
 
 // ==================== STATUS DA OS ====================
 
 export type StatusOS = 
-  | 'aguardando_aprovacao'
+  | 'aberta'
+  | 'aguardando_orcamento'
+  | 'orcamento_enviado'
   | 'aprovado'
-  | 'em_analise'
+  | 'em_andamento'
   | 'aguardando_peca'
-  | 'em_reparo'
-  | 'pronto'
+  | 'finalizada'
+  | 'aguardando_retirada'
   | 'entregue'
-  | 'cancelado'
-  | 'garantia';
+  | 'cancelada';
 
 export const STATUS_OS_LABELS: Record<StatusOS, string> = {
-  aguardando_aprovacao: 'Aguardando Aprovação',
+  aberta: 'Aberta',
+  aguardando_orcamento: 'Aguardando Orçamento',
+  orcamento_enviado: 'Orçamento Enviado',
   aprovado: 'Aprovado',
-  em_analise: 'Em Análise',
+  em_andamento: 'Em Andamento',
   aguardando_peca: 'Aguardando Peça',
-  em_reparo: 'Em Reparo',
-  pronto: 'Pronto',
+  finalizada: 'Finalizada',
+  aguardando_retirada: 'Aguardando Retirada',
   entregue: 'Entregue',
-  cancelado: 'Cancelado',
-  garantia: 'Em Garantia',
+  cancelada: 'Cancelada',
 };
 
 export const STATUS_OS_COLORS: Record<StatusOS, string> = {
-  aguardando_aprovacao: 'bg-yellow-500',
-  aprovado: 'bg-blue-500',
-  em_analise: 'bg-purple-500',
-  aguardando_peca: 'bg-orange-500',
-  em_reparo: 'bg-indigo-500',
-  pronto: 'bg-green-500',
-  entregue: 'bg-emerald-600',
-  cancelado: 'bg-red-500',
-  garantia: 'bg-amber-600',
+  aberta: 'bg-blue-500',
+  aguardando_orcamento: 'bg-yellow-500',
+  orcamento_enviado: 'bg-orange-500',
+  aprovado: 'bg-green-500',
+  em_andamento: 'bg-purple-500',
+  aguardando_peca: 'bg-red-500',
+  finalizada: 'bg-emerald-500',
+  aguardando_retirada: 'bg-cyan-500',
+  entregue: 'bg-gray-500',
+  cancelada: 'bg-gray-400',
 };
+
+// ==================== CONFIGURAÇÃO DE STATUS ====================
+
+export interface ConfiguracaoStatus {
+  id: string;
+  status: StatusOS;
+  label: string;
+  cor: string;
+  notificar_whatsapp: boolean;
+  mensagem_whatsapp?: string;
+  ordem: number;
+  ativo: boolean;
+}
+
+export const STATUS_OS_PADRAO: ConfiguracaoStatus[] = [
+  { id: '1', status: 'aberta', label: 'Aberta', cor: 'bg-blue-500', notificar_whatsapp: false, ordem: 1, ativo: true },
+  { id: '2', status: 'aguardando_orcamento', label: 'Aguardando Orçamento', cor: 'bg-yellow-500', notificar_whatsapp: false, ordem: 2, ativo: true },
+  { id: '3', status: 'orcamento_enviado', label: 'Orçamento Enviado', cor: 'bg-orange-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! O orçamento da sua OS #{numero} está pronto.', ordem: 3, ativo: true },
+  { id: '4', status: 'aprovado', label: 'Aprovado', cor: 'bg-green-500', notificar_whatsapp: false, ordem: 4, ativo: true },
+  { id: '5', status: 'em_andamento', label: 'Em Andamento', cor: 'bg-purple-500', notificar_whatsapp: false, ordem: 5, ativo: true },
+  { id: '6', status: 'aguardando_peca', label: 'Aguardando Peça', cor: 'bg-red-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! Sua OS #{numero} está aguardando peça.', ordem: 6, ativo: true },
+  { id: '7', status: 'finalizada', label: 'Finalizada', cor: 'bg-emerald-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! Seu aparelho da OS #{numero} está pronto!', ordem: 7, ativo: true },
+  { id: '8', status: 'aguardando_retirada', label: 'Aguardando Retirada', cor: 'bg-cyan-500', notificar_whatsapp: false, ordem: 8, ativo: true },
+  { id: '9', status: 'entregue', label: 'Entregue', cor: 'bg-gray-500', notificar_whatsapp: true, mensagem_whatsapp: 'Obrigado pela preferência!', ordem: 9, ativo: true },
+  { id: '10', status: 'cancelada', label: 'Cancelada', cor: 'bg-gray-400', notificar_whatsapp: false, ordem: 10, ativo: true },
+];
 
 // ==================== CHECKLIST ====================
 
@@ -50,195 +83,171 @@ export interface ChecklistItem {
   id: string;
   nome: string;
   categoria: 'fisico' | 'funcional';
-  descricao?: string;
 }
 
 export const CHECKLIST_ITENS: ChecklistItem[] = [
   // Estado Físico
   { id: 'tela_trincada', nome: 'Tela Trincada', categoria: 'fisico' },
   { id: 'tela_riscada', nome: 'Tela Riscada', categoria: 'fisico' },
-  { id: 'carcaca_danificada', nome: 'Carcaça Danificada', categoria: 'fisico' },
-  { id: 'botoes_danificados', nome: 'Botões Danificados', categoria: 'fisico' },
-  { id: 'camera_riscada', nome: 'Câmera Riscada', categoria: 'fisico' },
-  { id: 'entrada_danificada', nome: 'Entrada Carregador Danificada', categoria: 'fisico' },
-  { id: 'alto_falante_sujo', nome: 'Alto-falante Sujo', categoria: 'fisico' },
-  { id: 'oxidacao', nome: 'Oxidação/Molhado', categoria: 'fisico' },
-  { id: 'tampa_solta', nome: 'Tampa Traseira Solta', categoria: 'fisico' },
-  { id: 'pelicula_danificada', nome: 'Película Danificada', categoria: 'fisico' },
+  { id: 'tampa_trincada', nome: 'Tampa Traseira Trincada', categoria: 'fisico' },
+  { id: 'tampa_riscada', nome: 'Tampa Traseira Riscada', categoria: 'fisico' },
+  { id: 'aro_amassado', nome: 'Aro/Lateral Amassado', categoria: 'fisico' },
+  { id: 'aro_riscado', nome: 'Aro/Lateral Riscado', categoria: 'fisico' },
+  { id: 'botoes_quebrados', nome: 'Botões Quebrados', categoria: 'fisico' },
+  { id: 'camera_trincada', nome: 'Lente da Câmera Trincada', categoria: 'fisico' },
+  { id: 'entrada_danificada', nome: 'Entrada Carregamento Danificada', categoria: 'fisico' },
   
   // Estado Funcional
-  { id: 'liga_normalmente', nome: 'Liga Normalmente', categoria: 'funcional' },
-  { id: 'touch_funciona', nome: 'Touch Funciona', categoria: 'funcional' },
-  { id: 'display_funciona', nome: 'Display Funciona', categoria: 'funcional' },
-  { id: 'camera_traseira_funciona', nome: 'Câmera Traseira Funciona', categoria: 'funcional' },
-  { id: 'camera_frontal_funciona', nome: 'Câmera Frontal Funciona', categoria: 'funcional' },
-  { id: 'alto_falante_funciona', nome: 'Alto-falante Funciona', categoria: 'funcional' },
-  { id: 'microfone_funciona', nome: 'Microfone Funciona', categoria: 'funcional' },
-  { id: 'wifi_funciona', nome: 'Wi-Fi Funciona', categoria: 'funcional' },
-  { id: 'bluetooth_funciona', nome: 'Bluetooth Funciona', categoria: 'funcional' },
-  { id: 'carrega_normalmente', nome: 'Carrega Normalmente', categoria: 'funcional' },
-  { id: 'bateria_boa', nome: 'Bateria em Bom Estado', categoria: 'funcional' },
-  { id: 'biometria_funciona', nome: 'Biometria Funciona', categoria: 'funcional' },
-  { id: 'face_id_funciona', nome: 'Face ID Funciona', categoria: 'funcional' },
-  { id: 'sensores_funcionam', nome: 'Sensores Funcionam', categoria: 'funcional' },
-  { id: 'gps_funciona', nome: 'GPS Funciona', categoria: 'funcional' },
-];
-
-// ==================== CONDIÇÕES DO APARELHO ====================
-
-export interface CondicaoAparelho {
-  id: string;
-  nome: string;
-  checked: boolean;
-}
-
-// ==================== MARCAS E MODELOS ====================
-
-export interface Marca {
-  id: string;
-  nome: string;
-  ativo: boolean;
-}
-
-export interface Modelo {
-  id: string;
-  marca_id: string;
-  nome: string;
-  ativo: boolean;
-}
-
-export const MARCAS_MODELOS_PADRAO: { marca: string; modelos: string[] }[] = [
-  {
-    marca: 'Apple',
-    modelos: [
-      'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
-      'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
-      'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 Mini',
-      'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 Mini',
-      'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
-      'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
-      'iPhone 8 Plus', 'iPhone 8', 'iPhone 7 Plus', 'iPhone 7',
-      'iPhone SE 3ª Geração', 'iPhone SE 2ª Geração', 'iPhone SE',
-    ],
-  },
-  {
-    marca: 'Samsung',
-    modelos: [
-      'Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24',
-      'Galaxy S23 Ultra', 'Galaxy S23+', 'Galaxy S23', 'Galaxy S23 FE',
-      'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22',
-      'Galaxy S21 Ultra', 'Galaxy S21+', 'Galaxy S21', 'Galaxy S21 FE',
-      'Galaxy S20 Ultra', 'Galaxy S20+', 'Galaxy S20', 'Galaxy S20 FE',
-      'Galaxy Z Fold 5', 'Galaxy Z Fold 4', 'Galaxy Z Fold 3',
-      'Galaxy Z Flip 5', 'Galaxy Z Flip 4', 'Galaxy Z Flip 3',
-      'Galaxy A54', 'Galaxy A53', 'Galaxy A52', 'Galaxy A34', 'Galaxy A33',
-      'Galaxy A14', 'Galaxy A13', 'Galaxy A04', 'Galaxy A03',
-      'Galaxy M54', 'Galaxy M34', 'Galaxy M14',
-    ],
-  },
-  {
-    marca: 'Motorola',
-    modelos: [
-      'Edge 40 Pro', 'Edge 40', 'Edge 30 Ultra', 'Edge 30 Pro', 'Edge 30',
-      'Moto G84', 'Moto G73', 'Moto G72', 'Moto G53', 'Moto G52',
-      'Moto G34', 'Moto G24', 'Moto G14', 'Moto G04',
-      'Moto E22', 'Moto E13',
-      'Razr 40 Ultra', 'Razr 40',
-    ],
-  },
-  {
-    marca: 'Xiaomi',
-    modelos: [
-      'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14',
-      'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13', 'Xiaomi 13 Lite',
-      'Xiaomi 12 Pro', 'Xiaomi 12', 'Xiaomi 12 Lite',
-      'Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13',
-      'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12',
-      'Redmi Note 11 Pro+', 'Redmi Note 11 Pro', 'Redmi Note 11',
-      'Redmi 13C', 'Redmi 12C', 'Redmi 12',
-      'POCO X6 Pro', 'POCO X6', 'POCO X5 Pro', 'POCO X5',
-      'POCO M6 Pro', 'POCO M5', 'POCO F5 Pro', 'POCO F5',
-    ],
-  },
-  {
-    marca: 'Realme',
-    modelos: [
-      'Realme GT 5 Pro', 'Realme GT 3', 'Realme GT Neo 5',
-      'Realme 11 Pro+', 'Realme 11 Pro', 'Realme 11',
-      'Realme C55', 'Realme C53', 'Realme C51',
-    ],
-  },
-  {
-    marca: 'OnePlus',
-    modelos: [
-      'OnePlus 12', 'OnePlus 12R',
-      'OnePlus 11', 'OnePlus 11R',
-      'OnePlus Nord 3', 'OnePlus Nord CE 3',
-    ],
-  },
-  {
-    marca: 'ASUS',
-    modelos: [
-      'ROG Phone 8 Pro', 'ROG Phone 8', 'ROG Phone 7 Ultimate', 'ROG Phone 7',
-      'Zenfone 10', 'Zenfone 9',
-    ],
-  },
-  {
-    marca: 'LG',
-    modelos: [
-      'K62', 'K52', 'K42',
-      'Velvet', 'Wing',
-    ],
-  },
+  { id: 'touch_ok', nome: 'Touch Funcionando', categoria: 'funcional' },
+  { id: 'display_ok', nome: 'Display Funcionando', categoria: 'funcional' },
+  { id: 'som_ok', nome: 'Som Funcionando', categoria: 'funcional' },
+  { id: 'microfone_ok', nome: 'Microfone Funcionando', categoria: 'funcional' },
+  { id: 'camera_traseira_ok', nome: 'Câmera Traseira Funcionando', categoria: 'funcional' },
+  { id: 'camera_frontal_ok', nome: 'Câmera Frontal Funcionando', categoria: 'funcional' },
+  { id: 'wifi_ok', nome: 'Wi-Fi Funcionando', categoria: 'funcional' },
+  { id: 'bluetooth_ok', nome: 'Bluetooth Funcionando', categoria: 'funcional' },
+  { id: 'carregamento_ok', nome: 'Carregamento Funcionando', categoria: 'funcional' },
+  { id: 'bateria_ok', nome: 'Bateria em Bom Estado', categoria: 'funcional' },
+  { id: 'biometria_ok', nome: 'Biometria Funcionando', categoria: 'funcional' },
+  { id: 'face_id_ok', nome: 'Face ID Funcionando', categoria: 'funcional' },
+  { id: 'sensores_ok', nome: 'Sensores Funcionando', categoria: 'funcional' },
+  { id: 'botoes_ok', nome: 'Botões Funcionando', categoria: 'funcional' },
+  { id: 'vibracall_ok', nome: 'Vibracall Funcionando', categoria: 'funcional' },
 ];
 
 // ==================== CLIENTE ====================
 
 export interface Cliente {
   id: string;
+  codigo?: number;
   tipo_pessoa: TipoPessoa;
-  tipo_cliente: TipoCliente;
+  tipo_cliente?: TipoCliente;
+  situacao?: 'ativo' | 'inativo';
+  
+  // Dados pessoais
   nome: string;
+  nome_fantasia?: string;
   cpf_cnpj?: string;
-  rg_ie?: string;
-  email?: string;
-  telefone?: string;
-  whatsapp?: string;
+  rg?: string;
+  sexo?: 'M' | 'F' | 'O';
+  data_nascimento?: string;
+  
+  // Endereço
   cep?: string;
   logradouro?: string;
   numero?: string;
   complemento?: string;
   bairro?: string;
   cidade?: string;
+  estado?: string;
   uf?: string;
+  
+  // Contato
+  telefone?: string;
+  telefone2?: string;
+  email?: string;
+  whatsapp?: string;
+  
+  // Outros
   observacoes?: string;
-  ativo: boolean;
+  ativo?: boolean;
+  limite_credito?: number;
+  
+  // Metadata
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+}
+
+export interface ClienteFormData {
+  tipo_pessoa: TipoPessoa;
+  nome: string;
+  nome_fantasia?: string;
+  cpf_cnpj?: string;
+  rg?: string;
+  sexo?: 'M' | 'F' | 'O';
+  data_nascimento?: string;
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  telefone?: string;
+  telefone2?: string;
+  email?: string;
+  whatsapp?: string;
+}
+
+// ==================== MARCA E MODELO ====================
+
+export interface Marca {
+  id: string;
+  nome: string;
+  situacao?: 'ativo' | 'inativo';
+  ativo?: boolean;
+  created_at?: string;
+}
+
+export interface Modelo {
+  id: string;
+  marca_id: string;
+  nome: string;
+  situacao?: 'ativo' | 'inativo';
+  ativo?: boolean;
+  created_at?: string;
 }
 
 // ==================== PRODUTO ====================
 
 export interface Produto {
   id: string;
-  codigo?: string;
+  codigo?: number;
   codigo_barras?: string;
-  descricao: string;
+  situacao?: 'ativo' | 'inativo';
+  ativo?: boolean;
   tipo: TipoProduto;
+  
+  descricao: string;
+  descricao_abreviada?: string;
+  referencia?: string;
   categoria?: string;
+  
+  grupo_id?: string;
   marca?: string;
+  marca_id?: string;
+  modelo_id?: string;
   modelo_compativel?: string;
+  
   preco_custo: number;
   preco_venda: number;
-  margem_lucro: number;
+  margem_lucro?: number;
+  
   estoque_atual: number;
-  estoque_minimo: number;
+  estoque_minimo?: number;
   localizacao?: string;
+  
   ncm?: string;
-  unidade: string;
-  ativo: boolean;
+  unidade?: string;
+  
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+}
+
+export interface ProdutoFormData {
+  tipo: TipoProduto;
+  descricao: string;
+  descricao_abreviada?: string;
+  codigo_barras?: string;
+  referencia?: string;
+  grupo_id?: string;
+  marca_id?: string;
+  modelo_id?: string;
+  preco_custo: number;
+  preco_venda: number;
+  estoque_atual: number;
+  estoque_minimo?: number;
+  localizacao?: string;
 }
 
 // ==================== ORDEM DE SERVIÇO ====================
@@ -246,7 +255,17 @@ export interface Produto {
 export interface OrdemServico {
   id: string;
   numero: number;
+  situacao: 'aberta' | 'fechada' | 'cancelada';
   status: StatusOS;
+  
+  // Datas
+  data_entrada: string;
+  hora_entrada?: string;
+  previsao_entrega?: string;
+  hora_previsao?: string;
+  data_conclusao?: string;
+  data_entrega?: string;
+  data_saida?: string;
   
   // Cliente
   cliente_id: string;
@@ -254,7 +273,7 @@ export interface OrdemServico {
   telefone_contato?: string;
   
   // Aparelho
-  tipo_aparelho: TipoAparelho;
+  tipo_aparelho: TipoAparelho | string;
   marca_id?: string;
   marca_nome?: string;
   modelo_id?: string;
@@ -266,54 +285,64 @@ export interface OrdemServico {
   possui_senha: boolean;
   deixou_aparelho: boolean;
   
-  // Problema e Condições
+  // Problema
   descricao_problema: string;
+  descricao_servico?: string;
   laudo_tecnico?: string;
-  condicoes_equipamento?: string;
-  acessorios?: string;
+  
+  // Checklist
   checklist_entrada: string[];
+  checklist_saida?: string[];
   areas_defeito: string[];
   
-  // Datas
-  data_entrada: string;
-  previsao_entrega?: string;
-  hora_previsao?: string;
-  data_saida?: string;
+  // Condições
+  condicoes_equipamento?: string;
+  acessorios?: string;
+  observacoes?: string;
+  observacoes_internas?: string;
   
-  // Financeiro
+  // Valores
+  subtotal?: number;
+  desconto?: number;
   valor_total: number;
-  valor_pago: number;
-  desconto: number;
+  valor_pago?: number;
   
   // Técnico
   tecnico_id?: string;
   tecnico_nome?: string;
+  vendedor_id?: string;
+  vendedor_nome?: string;
   
-  // Outros
-  observacoes?: string;
-  garantia_dias: number;
+  // Garantia
+  garantia_dias?: number;
+  
+  // Fotos
+  fotos_entrada?: string[];
+  fotos_saida?: string[];
+  
+  // Metadata
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface OrdemServicoFormData {
   cliente_id: string;
-  telefone_contato: string;
-  tipo_aparelho: TipoAparelho;
-  marca_id: string;
-  modelo_id: string;
-  imei: string;
-  numero_serie: string;
-  cor: string;
-  senha_aparelho: string;
+  telefone_contato?: string;
+  tipo_aparelho: string;
+  marca_id?: string;
+  modelo_id?: string;
+  imei?: string;
+  numero_serie?: string;
+  cor?: string;
+  senha_aparelho?: string;
   possui_senha: boolean;
   deixou_aparelho: boolean;
   descricao_problema: string;
-  condicoes_equipamento: string;
-  acessorios: string;
-  previsao_entrega: string;
-  hora_previsao: string;
-  observacoes: string;
+  condicoes_equipamento?: string;
+  acessorios?: string;
+  previsao_entrega?: string;
+  hora_previsao?: string;
+  observacoes?: string;
   checklist_entrada: string[];
   areas_defeito: string[];
 }
@@ -322,7 +351,8 @@ export interface OrdemServicoFormData {
 
 export interface ItemOS {
   id: string;
-  os_id: string;
+  os_id?: string;
+  ordem_servico_id?: string;
   produto_id?: string;
   tipo: TipoItemOS;
   descricao: string;
@@ -346,12 +376,28 @@ export interface Pagamento {
   created_at: string;
 }
 
-// ==================== CONFIGURAÇÃO DE STATUS ====================
-
-export interface ConfiguracaoStatus {
+export interface PagamentoOS {
   id: string;
-  status: StatusOS;
-  mensagem_padrao: string;
-  notificar_whatsapp: boolean;
-  ativo: boolean;
+  ordem_servico_id: string;
+  valor: number;
+  forma_pagamento: FormaPagamento;
+  parcelas?: number;
+  data_pagamento: string;
+  observacao?: string;
+  tipo: 'adiantamento' | 'pagamento_final';
+  created_at: string;
+}
+
+// ==================== ESTATÍSTICAS ====================
+
+export interface EstatisticasOS {
+  total: number;
+  abertas: number;
+  emAndamento: number;
+  aguardando: number;
+  finalizadas: number;
+  entregues: number;
+  atrasadas: number;
+  valorTotal: number;
+  valorPendente: number;
 }

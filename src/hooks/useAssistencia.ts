@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  OrdemServico, Cliente, Produto, Marca, Modelo, ItemOS, Pagamento,
-  ConfiguracaoStatus, StatusOS, MARCAS_MODELOS_PADRAO, STATUS_OS_LABELS
+  OrdemServico, Cliente, Produto, Marca, Modelo, ItemOS, PagamentoOS,
+  ConfiguracaoStatus, StatusOS, STATUS_OS_PADRAO, STATUS_OS_LABELS
 } from '@/types/assistencia';
 
 // ==================== STORAGE KEYS ====================
@@ -16,6 +16,60 @@ const STORAGE_KEYS = {
   CONFIG_STATUS: 'assistencia_config_status',
   CONTADOR_OS: 'assistencia_contador_os',
 };
+
+// ==================== MARCAS E MODELOS PADRÃO ====================
+const MARCAS_MODELOS_PADRAO = [
+  {
+    marca: 'Apple',
+    modelos: [
+      'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+      'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+      'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 Mini',
+      'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 Mini',
+      'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+      'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
+      'iPhone 8 Plus', 'iPhone 8', 'iPhone 7 Plus', 'iPhone 7',
+      'iPhone SE 3ª Geração', 'iPhone SE 2ª Geração', 'iPhone SE',
+    ],
+  },
+  {
+    marca: 'Samsung',
+    modelos: [
+      'Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24',
+      'Galaxy S23 Ultra', 'Galaxy S23+', 'Galaxy S23', 'Galaxy S23 FE',
+      'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22',
+      'Galaxy S21 Ultra', 'Galaxy S21+', 'Galaxy S21', 'Galaxy S21 FE',
+      'Galaxy Z Fold 5', 'Galaxy Z Fold 4', 'Galaxy Z Flip 5', 'Galaxy Z Flip 4',
+      'Galaxy A54', 'Galaxy A53', 'Galaxy A34', 'Galaxy A14', 'Galaxy A04',
+    ],
+  },
+  {
+    marca: 'Motorola',
+    modelos: [
+      'Edge 40 Pro', 'Edge 40', 'Edge 30 Ultra', 'Edge 30',
+      'Moto G84', 'Moto G73', 'Moto G53', 'Moto G34', 'Moto G24',
+      'Razr 40 Ultra', 'Razr 40',
+    ],
+  },
+  {
+    marca: 'Xiaomi',
+    modelos: [
+      'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14',
+      'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13',
+      'Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13',
+      'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12',
+      'POCO X6 Pro', 'POCO X6', 'POCO F5 Pro', 'POCO F5',
+    ],
+  },
+  {
+    marca: 'Realme',
+    modelos: ['Realme 11 Pro+', 'Realme 11 Pro', 'Realme 11', 'Realme C55'],
+  },
+  {
+    marca: 'OnePlus',
+    modelos: ['OnePlus 12', 'OnePlus 11', 'OnePlus Nord 3'],
+  },
+];
 
 // ==================== HELPERS ====================
 function generateId(): string {
@@ -84,14 +138,18 @@ export function useOrdensServico() {
   }, []);
 
   const createOS = useCallback((data: Partial<OrdemServico>): OrdemServico => {
+    const now = new Date();
     const novaOS: OrdemServico = {
       id: generateId(),
       numero: getNextNumero(),
-      status: 'aguardando_aprovacao',
+      situacao: 'aberta',
+      status: 'aberta',
+      data_entrada: now.toISOString().split('T')[0],
+      hora_entrada: now.toTimeString().slice(0, 5),
       cliente_id: data.cliente_id || '',
       cliente_nome: data.cliente_nome,
       telefone_contato: data.telefone_contato,
-      tipo_aparelho: data.tipo_aparelho || 'celular',
+      tipo_aparelho: data.tipo_aparelho || 'Celular',
       marca_id: data.marca_id,
       marca_nome: data.marca_nome,
       modelo_id: data.modelo_id,
@@ -103,21 +161,19 @@ export function useOrdensServico() {
       possui_senha: data.possui_senha || false,
       deixou_aparelho: data.deixou_aparelho ?? true,
       descricao_problema: data.descricao_problema || '',
-      laudo_tecnico: data.laudo_tecnico,
+      descricao_servico: data.descricao_servico,
+      checklist_entrada: data.checklist_entrada || [],
+      checklist_saida: [],
+      areas_defeito: data.areas_defeito || [],
       condicoes_equipamento: data.condicoes_equipamento,
       acessorios: data.acessorios,
-      checklist_entrada: data.checklist_entrada || [],
-      areas_defeito: data.areas_defeito || [],
-      data_entrada: new Date().toISOString(),
+      observacoes: data.observacoes,
       previsao_entrega: data.previsao_entrega,
       hora_previsao: data.hora_previsao,
-      valor_total: 0,
-      valor_pago: 0,
+      subtotal: 0,
       desconto: 0,
-      garantia_dias: 90,
-      observacoes: data.observacoes,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      valor_total: 0,
+      created_at: now.toISOString(),
     };
     
     setOrdens(prev => [novaOS, ...prev]);
@@ -139,13 +195,22 @@ export function useOrdensServico() {
   }, [ordens]);
 
   const updateStatus = useCallback(async (id: string, status: StatusOS, notificar?: boolean) => {
-    updateOS(id, { 
-      status,
-      data_saida: status === 'entregue' ? new Date().toISOString() : undefined 
-    });
+    const updates: Partial<OrdemServico> = { status };
+    
+    if (status === 'entregue') {
+      updates.situacao = 'fechada';
+      updates.data_entrega = new Date().toISOString();
+    }
+    if (status === 'cancelada') {
+      updates.situacao = 'cancelada';
+    }
+    if (status === 'finalizada') {
+      updates.data_conclusao = new Date().toISOString();
+    }
+    
+    updateOS(id, updates);
     
     if (notificar) {
-      // TODO: Integrar com WhatsApp API
       console.log(`Notificando cliente sobre status: ${STATUS_OS_LABELS[status]}`);
     }
   }, [updateOS]);
@@ -155,19 +220,19 @@ export function useOrdensServico() {
     
     return {
       total: ordens.length,
-      aguardando_aprovacao: ordens.filter(o => o.status === 'aguardando_aprovacao').length,
-      em_analise: ordens.filter(o => o.status === 'em_analise').length,
-      aguardando_peca: ordens.filter(o => o.status === 'aguardando_peca').length,
-      em_reparo: ordens.filter(o => o.status === 'em_reparo').length,
-      pronto: ordens.filter(o => o.status === 'pronto').length,
-      entregue: ordens.filter(o => o.status === 'entregue').length,
-      cancelado: ordens.filter(o => o.status === 'cancelado').length,
-      hoje: ordens.filter(o => o.data_entrada.split('T')[0] === hoje).length,
-      prazoHoje: ordens.filter(o => o.previsao_entrega === hoje && !['entregue', 'cancelado'].includes(o.status)).length,
+      abertas: ordens.filter(o => o.status === 'aberta').length,
+      emAndamento: ordens.filter(o => ['em_andamento', 'aguardando_orcamento', 'aprovado'].includes(o.status)).length,
+      aguardandoPeca: ordens.filter(o => o.status === 'aguardando_peca').length,
+      finalizadas: ordens.filter(o => o.status === 'finalizada').length,
+      aguardandoRetirada: ordens.filter(o => o.status === 'aguardando_retirada').length,
+      entregues: ordens.filter(o => o.status === 'entregue').length,
+      canceladas: ordens.filter(o => o.status === 'cancelada').length,
+      hoje: ordens.filter(o => o.data_entrada === hoje).length,
+      prazoHoje: ordens.filter(o => o.previsao_entrega === hoje && !['entregue', 'cancelada'].includes(o.status)).length,
       emAtraso: ordens.filter(o => 
         o.previsao_entrega && 
         o.previsao_entrega < hoje && 
-        !['entregue', 'cancelado'].includes(o.status)
+        !['entregue', 'cancelada'].includes(o.status)
       ).length,
     };
   }, [ordens]);
@@ -198,24 +263,25 @@ export function useClientes() {
     const novoCliente: Cliente = {
       id: generateId(),
       tipo_pessoa: data.tipo_pessoa || 'fisica',
-      tipo_cliente: data.tipo_cliente || 'cliente',
+      situacao: 'ativo',
       nome: data.nome || '',
+      nome_fantasia: data.nome_fantasia,
       cpf_cnpj: data.cpf_cnpj,
-      rg_ie: data.rg_ie,
-      email: data.email,
-      telefone: data.telefone,
-      whatsapp: data.whatsapp,
+      rg: data.rg,
+      sexo: data.sexo,
+      data_nascimento: data.data_nascimento,
       cep: data.cep,
       logradouro: data.logradouro,
       numero: data.numero,
       complemento: data.complemento,
       bairro: data.bairro,
       cidade: data.cidade,
-      uf: data.uf,
-      observacoes: data.observacoes,
-      ativo: true,
+      estado: data.estado,
+      telefone: data.telefone,
+      telefone2: data.telefone2,
+      email: data.email,
+      whatsapp: data.whatsapp,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
     
     setClientes(prev => [novoCliente, ...prev]);
@@ -262,11 +328,11 @@ export function useMarcasModelos() {
   const [marcas, setMarcas] = useState<Marca[]>(() => {
     const stored = loadFromStorage<Marca[]>(STORAGE_KEYS.MARCAS, []);
     if (stored.length === 0) {
-      // Inicializar com marcas padrão
       const marcasPadrao = MARCAS_MODELOS_PADRAO.map(m => ({
         id: generateId(),
         nome: m.marca,
-        ativo: true,
+        situacao: 'ativo' as const,
+        created_at: new Date().toISOString(),
       }));
       saveToStorage(STORAGE_KEYS.MARCAS, marcasPadrao);
       return marcasPadrao;
@@ -277,7 +343,6 @@ export function useMarcasModelos() {
   const [modelos, setModelos] = useState<Modelo[]>(() => {
     const stored = loadFromStorage<Modelo[]>(STORAGE_KEYS.MODELOS, []);
     if (stored.length === 0) {
-      // Inicializar com modelos padrão
       const modelosPadrao: Modelo[] = [];
       const marcasStored = loadFromStorage<Marca[]>(STORAGE_KEYS.MARCAS, []);
       
@@ -289,7 +354,8 @@ export function useMarcasModelos() {
               id: generateId(),
               marca_id: marca.id,
               nome: nomeModelo,
-              ativo: true,
+              situacao: 'ativo',
+              created_at: new Date().toISOString(),
             });
           });
         }
@@ -310,7 +376,7 @@ export function useMarcasModelos() {
   }, [modelos]);
 
   const getModelosByMarca = useCallback((marcaId: string): Modelo[] => {
-    return modelos.filter(m => m.marca_id === marcaId && m.ativo);
+    return modelos.filter(m => m.marca_id === marcaId && m.situacao === 'ativo');
   }, [modelos]);
 
   const getMarcaById = useCallback((id: string): Marca | undefined => {
@@ -321,26 +387,12 @@ export function useMarcasModelos() {
     return modelos.find(m => m.id === id);
   }, [modelos]);
 
-  const createMarca = useCallback((nome: string): Marca => {
-    const nova: Marca = { id: generateId(), nome, ativo: true };
-    setMarcas(prev => [...prev, nova]);
-    return nova;
-  }, []);
-
-  const createModelo = useCallback((marcaId: string, nome: string): Modelo => {
-    const novo: Modelo = { id: generateId(), marca_id: marcaId, nome, ativo: true };
-    setModelos(prev => [...prev, novo]);
-    return novo;
-  }, []);
-
   return {
-    marcas: marcas.filter(m => m.ativo),
-    modelos: modelos.filter(m => m.ativo),
+    marcas: marcas.filter(m => m.situacao === 'ativo'),
+    modelos: modelos.filter(m => m.situacao === 'ativo'),
     getModelosByMarca,
     getMarcaById,
     getModeloById,
-    createMarca,
-    createModelo,
   };
 }
 
@@ -357,24 +409,19 @@ export function useProdutos() {
   const createProduto = useCallback((data: Partial<Produto>): Produto => {
     const novoProduto: Produto = {
       id: generateId(),
-      codigo: data.codigo,
-      codigo_barras: data.codigo_barras,
-      descricao: data.descricao || '',
+      situacao: 'ativo',
       tipo: data.tipo || 'peca',
-      categoria: data.categoria,
-      marca: data.marca,
-      modelo_compativel: data.modelo_compativel,
+      descricao: data.descricao || '',
+      descricao_abreviada: data.descricao_abreviada,
+      codigo_barras: data.codigo_barras,
+      referencia: data.referencia,
       preco_custo: data.preco_custo || 0,
       preco_venda: data.preco_venda || 0,
-      margem_lucro: data.margem_lucro || 0,
+      margem_lucro: data.margem_lucro,
       estoque_atual: data.estoque_atual || 0,
-      estoque_minimo: data.estoque_minimo || 0,
+      estoque_minimo: data.estoque_minimo,
       localizacao: data.localizacao,
-      ncm: data.ncm,
-      unidade: data.unidade || 'UN',
-      ativo: true,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
     
     setProdutos(prev => [novoProduto, ...prev]);
@@ -400,13 +447,13 @@ export function useProdutos() {
     const q = query.toLowerCase();
     return produtos.filter(p => 
       p.descricao.toLowerCase().includes(q) ||
-      p.codigo?.toLowerCase().includes(q) ||
-      p.codigo_barras?.includes(query)
+      p.codigo_barras?.includes(query) ||
+      p.referencia?.toLowerCase().includes(q)
     );
   }, [produtos]);
 
   return {
-    produtos,
+    produtos: produtos.filter(p => p.situacao === 'ativo'),
     createProduto,
     updateProduto,
     deleteProduto,
@@ -426,7 +473,7 @@ export function useItensOS(osId: string) {
   }, [allItens]);
 
   const itens = useMemo(() => 
-    allItens.filter(i => i.os_id === osId),
+    allItens.filter(i => i.ordem_servico_id === osId),
     [allItens, osId]
   );
 
@@ -435,11 +482,11 @@ export function useItensOS(osId: string) {
     [itens]
   );
 
-  const addItem = useCallback((data: Omit<ItemOS, 'id' | 'os_id' | 'created_at'>) => {
+  const addItem = useCallback((data: Omit<ItemOS, 'id' | 'ordem_servico_id' | 'created_at'>) => {
     const novoItem: ItemOS = {
       ...data,
       id: generateId(),
-      os_id: osId,
+      ordem_servico_id: osId,
       created_at: new Date().toISOString(),
     };
     setAllItens(prev => [...prev, novoItem]);
@@ -459,7 +506,7 @@ export function useItensOS(osId: string) {
 
 // ==================== HOOK: PAGAMENTOS ====================
 export function usePagamentos(osId: string) {
-  const [allPagamentos, setAllPagamentos] = useState<Pagamento[]>(() => 
+  const [allPagamentos, setAllPagamentos] = useState<PagamentoOS[]>(() => 
     loadFromStorage(STORAGE_KEYS.PAGAMENTOS, [])
   );
 
@@ -468,7 +515,7 @@ export function usePagamentos(osId: string) {
   }, [allPagamentos]);
 
   const pagamentos = useMemo(() => 
-    allPagamentos.filter(p => p.os_id === osId),
+    allPagamentos.filter(p => p.ordem_servico_id === osId),
     [allPagamentos, osId]
   );
 
@@ -477,11 +524,11 @@ export function usePagamentos(osId: string) {
     [pagamentos]
   );
 
-  const addPagamento = useCallback((data: Omit<Pagamento, 'id' | 'os_id' | 'created_at'>) => {
-    const novoPagamento: Pagamento = {
+  const addPagamento = useCallback((data: Omit<PagamentoOS, 'id' | 'ordem_servico_id' | 'created_at'>) => {
+    const novoPagamento: PagamentoOS = {
       ...data,
       id: generateId(),
-      os_id: osId,
+      ordem_servico_id: osId,
       created_at: new Date().toISOString(),
     };
     setAllPagamentos(prev => [...prev, novoPagamento]);
@@ -496,20 +543,8 @@ export function useConfiguracaoStatus() {
   const [configuracoes, setConfiguracoes] = useState<ConfiguracaoStatus[]>(() => {
     const stored = loadFromStorage<ConfiguracaoStatus[]>(STORAGE_KEYS.CONFIG_STATUS, []);
     if (stored.length === 0) {
-      // Configurações padrão
-      const defaultConfig: ConfiguracaoStatus[] = [
-        { id: generateId(), status: 'aguardando_aprovacao', mensagem_padrao: 'Sua OS foi criada e está aguardando aprovação.', notificar_whatsapp: true, ativo: true },
-        { id: generateId(), status: 'aprovado', mensagem_padrao: 'Sua OS foi aprovada e entrará em análise em breve.', notificar_whatsapp: true, ativo: true },
-        { id: generateId(), status: 'em_analise', mensagem_padrao: 'Seu aparelho está em análise técnica.', notificar_whatsapp: false, ativo: true },
-        { id: generateId(), status: 'aguardando_peca', mensagem_padrao: 'Estamos aguardando a chegada de uma peça para continuar o reparo.', notificar_whatsapp: true, ativo: true },
-        { id: generateId(), status: 'em_reparo', mensagem_padrao: 'Seu aparelho está sendo reparado.', notificar_whatsapp: false, ativo: true },
-        { id: generateId(), status: 'pronto', mensagem_padrao: 'Seu aparelho está pronto! Venha buscar.', notificar_whatsapp: true, ativo: true },
-        { id: generateId(), status: 'entregue', mensagem_padrao: 'Obrigado pela preferência! Seu aparelho foi entregue.', notificar_whatsapp: true, ativo: true },
-        { id: generateId(), status: 'cancelado', mensagem_padrao: 'Sua OS foi cancelada.', notificar_whatsapp: true, ativo: true },
-        { id: generateId(), status: 'garantia', mensagem_padrao: 'Seu aparelho está em atendimento de garantia.', notificar_whatsapp: true, ativo: true },
-      ];
-      saveToStorage(STORAGE_KEYS.CONFIG_STATUS, defaultConfig);
-      return defaultConfig;
+      saveToStorage(STORAGE_KEYS.CONFIG_STATUS, STATUS_OS_PADRAO);
+      return STATUS_OS_PADRAO;
     }
     return stored;
   });
