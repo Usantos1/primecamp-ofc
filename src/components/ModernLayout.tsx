@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
+import { AppBar } from "@/components/AppBar"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "@/components/ui/button"
 import { Search, Bell, Settings } from "lucide-react"
@@ -91,8 +92,8 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
           </header>
 
           {/* Desktop Header */}
-          <header className="h-16 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 hidden md:block app-header">
-            <div className="h-full flex items-center justify-between px-6 gap-4">
+          <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 hidden md:block app-header">
+            <div className="h-16 flex items-center justify-between px-6 gap-4">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="h-8 w-8" />
                 
@@ -174,11 +175,13 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
                 {headerActions}
               </div>
             </div>
+            {/* AppBar - Navegação rápida */}
+            <AppBar />
           </header>
 
           {/* Main Content */}
           <main className="flex-1 overflow-auto">
-            <div className="p-6">
+            <div className="p-6 max-w-full">
               {children}
             </div>
           </main>

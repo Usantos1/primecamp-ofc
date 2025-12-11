@@ -297,7 +297,7 @@ export default function OrdemServicoForm() {
       title={isEditing ? `OS #${currentOS?.numero || ''}` : 'Nova Ordem de Serviço'} 
       subtitle={isEditing ? 'Editar ordem de serviço' : 'Cadastrar nova OS'}
     >
-      <div className="space-y-4 max-w-7xl mx-auto">
+      <div className="space-y-4 w-full">
         {/* Header com ações */}
         <Card>
           <CardContent className="py-3">
