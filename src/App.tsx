@@ -57,7 +57,7 @@ import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
 import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
-import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos } from "./pages/assistencia";
+import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV } from "./pages/assistencia";
 
 const queryClient = new QueryClient();
 
@@ -135,7 +135,7 @@ const App = () => (
             <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
               
               {/* PDV / Assistência Técnica */}
-              <Route path="/pdv" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
+              <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
               <Route path="/pdv/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
               <Route path="/pdv/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />

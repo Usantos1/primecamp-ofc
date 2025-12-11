@@ -396,11 +396,34 @@ export function useMarcasModelos() {
   };
 }
 
+// ==================== GRUPOS DE PRODUTO ====================
+interface GrupoProduto {
+  id: string;
+  nome: string;
+  situacao: 'ativo' | 'inativo';
+}
+
+const GRUPOS_PADRAO: GrupoProduto[] = [
+  { id: '1', nome: 'Telas', situacao: 'ativo' },
+  { id: '2', nome: 'Baterias', situacao: 'ativo' },
+  { id: '3', nome: 'Conectores', situacao: 'ativo' },
+  { id: '4', nome: 'Flex', situacao: 'ativo' },
+  { id: '5', nome: 'Capas', situacao: 'ativo' },
+  { id: '6', nome: 'Películas', situacao: 'ativo' },
+  { id: '7', nome: 'Carregadores', situacao: 'ativo' },
+  { id: '8', nome: 'Cabos', situacao: 'ativo' },
+  { id: '9', nome: 'Serviços', situacao: 'ativo' },
+];
+
 // ==================== HOOK: PRODUTOS ====================
 export function useProdutos() {
   const [produtos, setProdutos] = useState<Produto[]>(() => 
     loadFromStorage(STORAGE_KEYS.PRODUTOS, [])
   );
+  const [grupos] = useState<GrupoProduto[]>(() => 
+    loadFromStorage('assistencia_grupos', GRUPOS_PADRAO)
+  );
+  const [isLoading] = useState(false);
 
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.PRODUTOS, produtos);
@@ -415,6 +438,9 @@ export function useProdutos() {
       descricao_abreviada: data.descricao_abreviada,
       codigo_barras: data.codigo_barras,
       referencia: data.referencia,
+      grupo_id: data.grupo_id,
+      marca_id: data.marca_id,
+      modelo_id: data.modelo_id,
       preco_custo: data.preco_custo || 0,
       preco_venda: data.preco_venda || 0,
       margem_lucro: data.margem_lucro,
@@ -435,7 +461,9 @@ export function useProdutos() {
   }, []);
 
   const deleteProduto = useCallback((id: string) => {
-    setProdutos(prev => prev.filter(p => p.id !== id));
+    setProdutos(prev => prev.map(p => 
+      p.id === id ? { ...p, situacao: 'inativo' } : p
+    ));
   }, []);
 
   const getProdutoById = useCallback((id: string): Produto | undefined => {
@@ -446,14 +474,18 @@ export function useProdutos() {
     if (!query || query.length < 2) return [];
     const q = query.toLowerCase();
     return produtos.filter(p => 
-      p.descricao.toLowerCase().includes(q) ||
-      p.codigo_barras?.includes(query) ||
-      p.referencia?.toLowerCase().includes(q)
+      p.situacao === 'ativo' && (
+        p.descricao.toLowerCase().includes(q) ||
+        p.codigo_barras?.includes(query) ||
+        p.referencia?.toLowerCase().includes(q)
+      )
     );
   }, [produtos]);
 
   return {
     produtos: produtos.filter(p => p.situacao === 'ativo'),
+    grupos: grupos.filter(g => g.situacao === 'ativo'),
+    isLoading,
     createProduto,
     updateProduto,
     deleteProduto,
