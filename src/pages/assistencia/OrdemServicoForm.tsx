@@ -561,9 +561,9 @@ export default function OrdemServicoForm() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {formData.marca_id && (
+                      {(formData.marca_id || currentOS?.marca_nome) && (
                         <p className="text-xs text-muted-foreground">
-                          Marca: {marcas.find(m => m.id === formData.marca_id)?.nome}
+                          Marca: {marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome}
                         </p>
                       )}
                     </div>
