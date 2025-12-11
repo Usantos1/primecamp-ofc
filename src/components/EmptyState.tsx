@@ -81,13 +81,26 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   const config = variantConfig[variant];
-  const Icon = icon || <config.icon className="h-12 w-12" />;
+  const DefaultIcon = config.icon;
+
+  // Se icon for um componente React (função), renderiza como JSX
+  // Se for JSX ou outro ReactNode, renderiza diretamente
+  const renderIcon = () => {
+    if (icon) {
+      if (typeof icon === 'function') {
+        const IconComponent = icon;
+        return <IconComponent className="h-12 w-12" />;
+      }
+      return icon;
+    }
+    return <DefaultIcon className="h-12 w-12" />;
+  };
 
   return (
     <Card className={cn('border-dashed', className)}>
       <CardContent className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4 text-muted-foreground">
-          {Icon}
+          {renderIcon()}
         </div>
         
         <h3 className="text-lg font-semibold mb-2">

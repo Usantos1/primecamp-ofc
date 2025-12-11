@@ -192,7 +192,7 @@ export default function Produtos() {
           <CardContent className="p-0">
             {filteredProdutos.length === 0 ? (
               <EmptyState
-                icon={Package}
+                icon={<Package className="h-12 w-12" />}
                 title="Nenhum produto encontrado"
                 description={searchTerm ? "Tente buscar por outro termo" : "Cadastre seu primeiro produto ou serviço"}
                 action={!searchTerm ? { label: "Novo Produto", onClick: handleNew } : undefined}
