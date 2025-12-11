@@ -6,6 +6,8 @@ interface ThemeColors {
   primaryForeground: string;
   secondary: string;
   accent: string;
+  sidebar?: string;
+  button?: string;
 }
 
 interface ThemeConfig {
@@ -55,6 +57,14 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--primary-foreground', themeConfig.colors.primaryForeground);
     root.style.setProperty('--secondary', themeConfig.colors.secondary);
     root.style.setProperty('--accent', themeConfig.colors.accent);
+    
+    // Aplicar cores específicas se definidas
+    if (themeConfig.colors.sidebar) {
+      root.style.setProperty('--sidebar-primary', themeConfig.colors.sidebar);
+    }
+    if (themeConfig.colors.button) {
+      root.style.setProperty('--button-primary', themeConfig.colors.button);
+    }
   };
 
   // Aplicar configurações ao carregar

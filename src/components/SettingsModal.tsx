@@ -49,6 +49,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           primaryForeground: config.colors.primaryForeground,
           secondary: config.colors.secondary,
           accent: config.colors.accent,
+          sidebar: sidebarColor,
+          button: buttonColor,
         },
         logo: logoPreview || config.logo,
       });
