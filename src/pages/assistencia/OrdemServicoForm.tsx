@@ -592,9 +592,9 @@ export default function OrdemServicoForm() {
                           )}
                         </SelectContent>
                       </Select>
-                      {formData.modelo_id && (
+                      {(formData.modelo_id || currentOS?.modelo_nome) && (
                         <p className="text-xs text-muted-foreground">
-                          Modelo: {modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome}
+                          Modelo: {modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome}
                         </p>
                       )}
                     </div>
