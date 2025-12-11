@@ -1,6 +1,6 @@
-export { default as FinanceiroLayout } from './FinanceiroLayout';
-export { default as FinanceiroDashboard } from './FinanceiroDashboard';
-export { default as FinanceiroCaixa } from './FinanceiroCaixa';
-export { default as FinanceiroContas } from './FinanceiroContas';
-export { default as FinanceiroTransacoes } from './FinanceiroTransacoes';
-export { default as FinanceiroRelatorios } from './FinanceiroRelatorios';
+export { FinanceiroLayout } from './FinanceiroLayout';
+export { FinanceiroDashboard } from './FinanceiroDashboard';
+export { FinanceiroCaixa } from './FinanceiroCaixa';
+export { FinanceiroContas } from './FinanceiroContas';
+export { FinanceiroTransacoes } from './FinanceiroTransacoes';
+export { FinanceiroRelatorios } from './FinanceiroRelatorios';

@@ -1,139 +1,97 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  CreditCard, 
-  ArrowLeftRight,
-  TrendingUp,
-  Calendar,
-  Download,
-  Filter
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart3, DollarSign, FileText, TrendingUp, Calendar } from 'lucide-react';
 
-type PeriodFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
-
-export interface FinanceiroContextType {
-  period: PeriodFilter;
-  startDate: string;
-  endDate: string;
-}
-
-export default function FinanceiroLayout() {
+export function FinanceiroLayout() {
   const location = useLocation();
-  const today = new Date();
+  const currentPath = location.pathname;
   
-  const [period, setPeriod] = useState<PeriodFilter>('month');
-  const [startDate, setStartDate] = useState(
-    new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState(
-    new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
-  );
-
-  const handlePeriodChange = (newPeriod: PeriodFilter) => {
-    setPeriod(newPeriod);
-    const now = new Date();
-    
-    switch (newPeriod) {
-      case 'today':
-        setStartDate(now.toISOString().split('T')[0]);
-        setEndDate(now.toISOString().split('T')[0]);
-        break;
-      case 'week':
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        setStartDate(weekStart.toISOString().split('T')[0]);
-        setEndDate(weekEnd.toISOString().split('T')[0]);
-        break;
-      case 'month':
-        setStartDate(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]);
-        setEndDate(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]);
-        break;
-      case 'year':
-        setStartDate(new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]);
-        setEndDate(new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0]);
-        break;
-    }
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.toISOString().slice(0, 7));
+  
+  const getActiveTab = () => {
+    if (currentPath.includes('/caixa')) return 'caixa';
+    if (currentPath.includes('/contas')) return 'contas';
+    if (currentPath.includes('/transacoes')) return 'transacoes';
+    if (currentPath.includes('/relatorios')) return 'relatorios';
+    return 'dashboard';
   };
 
-  const navItems = [
-    { path: '/admin/financeiro', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-    { path: '/admin/financeiro/caixa', label: 'Caixa', icon: Receipt },
-    { path: '/admin/financeiro/contas', label: 'Contas', icon: CreditCard },
-    { path: '/admin/financeiro/transacoes', label: 'Transações', icon: ArrowLeftRight },
-    { path: '/admin/financeiro/relatorios', label: 'Relatórios', icon: TrendingUp },
-  ];
-
-  const periodLabels: Record<PeriodFilter, string> = {
-    today: 'Hoje',
-    week: 'Semana',
-    month: 'Mês',
-    year: 'Ano',
-    custom: 'Custom',
-  };
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return {
+      value: date.toISOString().slice(0, 7),
+      label: date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+    };
+  });
 
   return (
-    <ModernLayout title="Financeiro" subtitle="Controle de caixa, contas e transações">
+    <ModernLayout title="Módulo Financeiro" subtitle="Gestão financeira completa">
       <div className="space-y-6">
-        {/* Navegação e filtros */}
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-wrap gap-2 p-1 bg-muted/50 rounded-lg">
-            {navItems.map((item) => {
-              const isActive = item.exact 
-                ? location.pathname === item.path
-                : location.pathname.startsWith(item.path) && location.pathname !== '/admin/financeiro';
-              const Icon = item.icon;
-              
-              return (
-                <NavLink key={item.path} to={item.path} end={item.exact}>
-                  <Button variant={isActive ? 'default' : 'ghost'} size="sm" className="gap-2">
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </Button>
-                </NavLink>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 p-4 bg-card border rounded-lg">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Período:</span>
+        {/* Filtro de período */}
+        <Card>
+          <CardContent className="pt-4 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Período:</span>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map(month => (
+                    <SelectItem key={month.value} value={month.value}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             
-            {(['today', 'week', 'month', 'year', 'custom'] as PeriodFilter[]).map((p) => (
-              <Button
-                key={p}
-                variant={period === p ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handlePeriodChange(p)}
-              >
-                {periodLabels[p]}
-              </Button>
-            ))}
+            {/* Navegação por tabs */}
+            <Tabs value={getActiveTab()} className="w-auto">
+              <TabsList>
+                <TabsTrigger value="dashboard" asChild>
+                  <NavLink to="/admin/financeiro" end className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Dashboard
+                  </NavLink>
+                </TabsTrigger>
+                <TabsTrigger value="caixa" asChild>
+                  <NavLink to="/admin/financeiro/caixa" className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Caixa
+                  </NavLink>
+                </TabsTrigger>
+                <TabsTrigger value="contas" asChild>
+                  <NavLink to="/admin/financeiro/contas" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Contas
+                  </NavLink>
+                </TabsTrigger>
+                <TabsTrigger value="transacoes" asChild>
+                  <NavLink to="/admin/financeiro/transacoes" className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    Transações
+                  </NavLink>
+                </TabsTrigger>
+                <TabsTrigger value="relatorios" asChild>
+                  <NavLink to="/admin/financeiro/relatorios" className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Relatórios
+                  </NavLink>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardContent>
+        </Card>
 
-            {period === 'custom' && (
-              <div className="flex items-center gap-2">
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-auto" />
-                <span>até</span>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-auto" />
-              </div>
-            )}
-
-            <Badge variant="outline" className="ml-auto gap-1">
-              <Calendar className="h-3 w-3" />
-              {new Date(startDate).toLocaleDateString('pt-BR')} - {new Date(endDate).toLocaleDateString('pt-BR')}
-            </Badge>
-          </div>
-        </div>
-
-        <Outlet context={{ period, startDate, endDate }} />
+        {/* Conteúdo da rota filha */}
+        <Outlet context={{ startDate: `${selectedMonth}-01` }} />
       </div>
     </ModernLayout>
   );

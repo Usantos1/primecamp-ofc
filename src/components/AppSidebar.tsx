@@ -29,6 +29,9 @@ import {
   GraduationCap,
   Video,
   DollarSign,
+  Wrench,
+  Smartphone,
+  UserCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -86,6 +89,9 @@ export function AppSidebar() {
   );
   const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(
     currentPath.startsWith('/admin/financeiro')
+  );
+  const [isAssistenciaOpen, setIsAssistenciaOpen] = useState(
+    currentPath.startsWith('/assistencia')
   );
 
   return (
@@ -526,6 +532,71 @@ export function AppSidebar() {
                                   >
                                     <Brain className="h-4 w-4 flex-shrink-0" />
                                     <span className="font-medium text-sm whitespace-nowrap">DISC Externo</span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        </div>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
+
+                  {/* Assistência Técnica */}
+                  <Collapsible open={isAssistenciaOpen} onOpenChange={setIsAssistenciaOpen}>
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton className="w-full">
+                          <Wrench className="h-4 w-4 flex-shrink-0" />
+                          <span className="font-medium text-sm">Assistência Técnica</span>
+                          <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isAssistenciaOpen ? 'rotate-180' : ''}`} />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="ml-4 mt-1 space-y-1 border-l pl-2">
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <NavLink to="/assistencia/os">
+                                {({ isActive }) => (
+                                  <div className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                                    <Smartphone className="h-4 w-4 flex-shrink-0" />
+                                    <span className="font-medium text-sm whitespace-nowrap">Ordens de Serviço</span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <NavLink to="/assistencia/clientes">
+                                {({ isActive }) => (
+                                  <div className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                                    <UserCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span className="font-medium text-sm whitespace-nowrap">Clientes</span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <NavLink to="/assistencia/produtos">
+                                {({ isActive }) => (
+                                  <div className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                                    <Package className="h-4 w-4 flex-shrink-0" />
+                                    <span className="font-medium text-sm whitespace-nowrap">Peças e Serviços</span>
+                                  </div>
+                                )}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                            <SidebarMenuButton asChild>
+                              <NavLink to="/assistencia/marcas-modelos">
+                                {({ isActive }) => (
+                                  <div className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                                    <Tag className="h-4 w-4 flex-shrink-0" />
+                                    <span className="font-medium text-sm whitespace-nowrap">Marcas e Modelos</span>
                                   </div>
                                 )}
                               </NavLink>

@@ -64,6 +64,13 @@ import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
 import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
+import { 
+  OrdensServico as AssistenciaOS,
+  OrdemServicoForm,
+  Clientes as AssistenciaClientes,
+  Produtos as AssistenciaProdutos,
+  MarcasModelos
+} from "./pages/assistencia";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +135,15 @@ const App = () => (
               <Route path="/admin/interviews" element={<ProtectedRoute><AdminInterviews /></ProtectedRoute>} />
               <Route path="/admin/interviews/evaluate/:interview_id" element={<ProtectedRoute><InterviewEvaluation /></ProtectedRoute>} />
               <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
+              
+              {/* Módulo Assistência Técnica */}
+              <Route path="/assistencia/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
+              <Route path="/assistencia/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/assistencia/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/assistencia/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/assistencia/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
+              <Route path="/assistencia/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
+              <Route path="/assistencia/marcas-modelos" element={<ProtectedRoute><MarcasModelos /></ProtectedRoute>} />
               
               {/* Public job application routes */}
               <Route path="/job-application/:surveyId" element={<JobApplication />} />
