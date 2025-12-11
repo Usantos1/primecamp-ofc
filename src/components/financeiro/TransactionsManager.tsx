@@ -349,3 +349,4 @@ export function TransactionsManager({ month }: TransactionsManagerProps) {
   );
 }
 
+
