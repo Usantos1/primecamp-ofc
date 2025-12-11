@@ -107,7 +107,23 @@ export function AppBar() {
     )}>
       {quickNavItems.map((item) => {
         const Icon = item.icon;
-        const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path + '/'));
+        // Corrigir lógica: só marcar como ativo se for exatamente o path ou começar com o path + '/'
+        // Mas não marcar se outro path mais específico também começar com o mesmo prefixo
+        let isActive = false;
+        if (item.path === '/') {
+          isActive = currentPath === '/';
+        } else {
+          isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
+          // Se outro item mais específico também corresponde, não marcar este
+          const moreSpecificMatch = quickNavItems.find(other => 
+            other.path !== item.path && 
+            other.path.startsWith(item.path) && 
+            (currentPath === other.path || currentPath.startsWith(other.path + '/'))
+          );
+          if (moreSpecificMatch) {
+            isActive = false;
+          }
+        }
         
         return (
           <Button
