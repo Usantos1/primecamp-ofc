@@ -190,22 +190,7 @@ const Index = () => {
       title="Dashboard" 
       subtitle={`Bem-vindo, ${profile?.display_name || user.email}`}
       onSearch={setSearchTerm}
-      headerActions={
-        <div className="flex items-center gap-2">
-          {profile && isAdmin && (
-            <Badge variant="default" className="gap-1 bg-gradient-to-r from-primary to-primary-glow">
-              <Shield className="h-3 w-3" />
-              Admin
-            </Badge>
-          )}
-          {profile && isAdmin && (
-            <Button onClick={() => navigate('/admin')} variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Admin
-            </Button>
-          )}
-        </div>
-      }
+      headerActions={null}
     >
       <div className="space-y-6">
         {/* Tabs - Moved to top */}
