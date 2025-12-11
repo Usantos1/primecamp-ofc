@@ -501,6 +501,7 @@ export function useClientes() {
 
 // ==================== HOOK: MARCAS E MODELOS ====================
 export function useMarcasModelos() {
+  // Inicializar marcas e modelos juntos para garantir sincronização
   const [marcas, setMarcas] = useState<Marca[]>(() => {
     const stored = loadFromStorage<Marca[]>(STORAGE_KEYS.MARCAS, []);
     if (stored.length === 0) {
@@ -511,6 +512,25 @@ export function useMarcasModelos() {
         created_at: new Date().toISOString(),
       }));
       saveToStorage(STORAGE_KEYS.MARCAS, marcasPadrao);
+      
+      // Inicializar modelos imediatamente após criar marcas
+      const modelosPadrao: Modelo[] = [];
+      MARCAS_MODELOS_PADRAO.forEach((mp, index) => {
+        const marca = marcasPadrao[index];
+        if (marca) {
+          mp.modelos.forEach(nomeModelo => {
+            modelosPadrao.push({
+              id: generateId(),
+              marca_id: marca.id,
+              nome: nomeModelo,
+              situacao: 'ativo',
+              created_at: new Date().toISOString(),
+            });
+          });
+        }
+      });
+      saveToStorage(STORAGE_KEYS.MODELOS, modelosPadrao);
+      
       return marcasPadrao;
     }
     return stored;
@@ -519,8 +539,9 @@ export function useMarcasModelos() {
   const [modelos, setModelos] = useState<Modelo[]>(() => {
     const stored = loadFromStorage<Modelo[]>(STORAGE_KEYS.MODELOS, []);
     if (stored.length === 0) {
-      const modelosPadrao: Modelo[] = [];
+      // Se não há modelos mas há marcas, criar modelos baseado nas marcas existentes
       const marcasStored = loadFromStorage<Marca[]>(STORAGE_KEYS.MARCAS, []);
+      const modelosPadrao: Modelo[] = [];
       
       MARCAS_MODELOS_PADRAO.forEach(mp => {
         const marca = marcasStored.find(m => m.nome === mp.marca);
@@ -537,7 +558,9 @@ export function useMarcasModelos() {
         }
       });
       
-      saveToStorage(STORAGE_KEYS.MODELOS, modelosPadrao);
+      if (modelosPadrao.length > 0) {
+        saveToStorage(STORAGE_KEYS.MODELOS, modelosPadrao);
+      }
       return modelosPadrao;
     }
     return stored;
