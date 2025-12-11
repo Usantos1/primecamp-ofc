@@ -397,8 +397,12 @@ export interface ItemOS {
   descricao: string;
   quantidade: number;
   valor_unitario: number;
+  valor_minimo?: number;
   desconto: number;
   valor_total: number;
+  garantia?: number; // Garantia por item (em dias)
+  colaborador_id?: string; // ID do colaborador que lançou o item
+  colaborador_nome?: string; // Nome do colaborador que lançou o item
   created_at: string;
 }
 

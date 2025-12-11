@@ -26,6 +26,7 @@ import {
   STATUS_OS_LABELS, STATUS_OS_COLORS, StatusOS
 } from '@/types/assistencia';
 import { PhoneDrawing, PhoneDrawingLegend } from '@/components/assistencia/PhoneDrawing';
+import { PatternLock } from '@/components/assistencia/PatternLock';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
@@ -47,7 +48,7 @@ export default function OrdemServicoForm() {
   // Estados do formulário
   const [formData, setFormData] = useState<OrdemServicoFormData>({
     cliente_id: '',
-    telefone_contato: '',
+    telefone_contato: '', // Obrigatório
     tipo_aparelho: 'celular',
     marca_id: '',
     modelo_id: '',
@@ -55,16 +56,28 @@ export default function OrdemServicoForm() {
     numero_serie: '',
     cor: '',
     senha_aparelho: '',
+    senha_numerica: '', // Para iPhone
+    padrao_desbloqueio: '', // Padrão de desbloqueio
     possui_senha: false,
     deixou_aparelho: true,
+    apenas_agendamento: false,
     descricao_problema: '',
     condicoes_equipamento: '',
-    acessorios: '',
     previsao_entrega: '',
     hora_previsao: '18:00',
     observacoes: '',
+    observacoes_internas: '',
     checklist_entrada: [],
     areas_defeito: [],
+    observacoes_checklist: '',
+    // Resolução
+    problema_constatado: '',
+    tecnico_id: '',
+    servico_executado: '',
+    // Orçamento
+    orcamento_parcelado: 0,
+    orcamento_desconto: 0,
+    orcamento_autorizado: false,
   });
 
   const [currentOS, setCurrentOS] = useState<any>(null);
@@ -110,16 +123,26 @@ export default function OrdemServicoForm() {
           numero_serie: os.numero_serie || '',
           cor: os.cor || '',
           senha_aparelho: os.senha_aparelho || '',
+          senha_numerica: os.senha_numerica || '',
+          padrao_desbloqueio: os.padrao_desbloqueio || '',
           possui_senha: os.possui_senha,
           deixou_aparelho: os.deixou_aparelho,
+          apenas_agendamento: os.apenas_agendamento || false,
           descricao_problema: os.descricao_problema,
           condicoes_equipamento: os.condicoes_equipamento || '',
-          acessorios: os.acessorios || '',
           previsao_entrega: os.previsao_entrega || '',
           hora_previsao: os.hora_previsao || '18:00',
           observacoes: os.observacoes || '',
+          observacoes_internas: os.observacoes_internas || '',
           checklist_entrada: os.checklist_entrada || [],
           areas_defeito: os.areas_defeito || [],
+          observacoes_checklist: os.observacoes_checklist || '',
+          problema_constatado: os.problema_constatado || '',
+          tecnico_id: os.tecnico_id || '',
+          servico_executado: os.servico_executado || '',
+          orcamento_parcelado: os.orcamento_parcelado || 0,
+          orcamento_desconto: os.orcamento_desconto || 0,
+          orcamento_autorizado: os.orcamento_autorizado || false,
         });
         
         const cliente = getClienteById(os.cliente_id);
@@ -365,6 +388,10 @@ export default function OrdemServicoForm() {
             </TabsTrigger>
             {isEditing && (
               <>
+                <TabsTrigger value="resolucao" className="gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Resolução
+                </TabsTrigger>
                 <TabsTrigger value="itens" className="gap-2">
                   <Package className="h-4 w-4" />
                   Peças/Serviços ({itens.length})
@@ -372,6 +399,14 @@ export default function OrdemServicoForm() {
                 <TabsTrigger value="financeiro" className="gap-2">
                   <DollarSign className="h-4 w-4" />
                   Financeiro
+                </TabsTrigger>
+                <TabsTrigger value="tecnico" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Informações Técnicas
+                </TabsTrigger>
+                <TabsTrigger value="fotos" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Fotos
                 </TabsTrigger>
               </>
             )}
@@ -445,13 +480,25 @@ export default function OrdemServicoForm() {
                   )}
 
                   <div className="space-y-2">
-                    <Label>Telefone para Contato</Label>
+                    <Label>Telefone para Contato *</Label>
                     <Input
                       value={formData.telefone_contato}
                       onChange={(e) => setFormData(prev => ({ ...prev, telefone_contato: e.target.value }))}
                       placeholder="(99) 99999-9999"
+                      required
                     />
                   </div>
+                  
+                  {selectedCliente?.nome_fantasia && (
+                    <div className="space-y-2">
+                      <Label>Empresa</Label>
+                      <Input
+                        value={selectedCliente.nome_fantasia}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -519,7 +566,7 @@ export default function OrdemServicoForm() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
                         id="possui_senha"
@@ -528,22 +575,61 @@ export default function OrdemServicoForm() {
                       />
                       <Label htmlFor="possui_senha" className="text-sm">Possui Senha</Label>
                     </div>
+                    
                     {formData.possui_senha && (
-                      <Input
-                        value={formData.senha_aparelho}
-                        onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
-                        placeholder="Senha"
-                      />
+                      <div className="space-y-3 pl-6 border-l-2">
+                        {/* Verificar se é iPhone para mostrar campo numérico ou padrão */}
+                        {formData.marca_id && marcas.find(m => m.id === formData.marca_id)?.nome.toLowerCase().includes('apple') ? (
+                          <div className="space-y-2">
+                            <Label>Senha Numérica (iPhone)</Label>
+                            <Input
+                              type="number"
+                              value={formData.senha_numerica}
+                              onChange={(e) => setFormData(prev => ({ ...prev, senha_numerica: e.target.value }))}
+                              placeholder="Digite a senha numérica"
+                              maxLength={6}
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="space-y-2">
+                              <Label>Padrão de Desbloqueio</Label>
+                              <PatternLock
+                                value={formData.padrao_desbloqueio}
+                                onChange={(pattern) => setFormData(prev => ({ ...prev, padrao_desbloqueio: pattern }))}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Senha (se houver)</Label>
+                              <Input
+                                value={formData.senha_aparelho}
+                                onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
+                                placeholder="Senha adicional"
+                                type="password"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="deixou_aparelho"
-                      checked={formData.deixou_aparelho}
-                      onCheckedChange={(v) => setFormData(prev => ({ ...prev, deixou_aparelho: !!v }))}
-                    />
-                    <Label htmlFor="deixou_aparelho" className="text-sm">Deixou o aparelho</Label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="deixou_aparelho"
+                        checked={formData.deixou_aparelho}
+                        onCheckedChange={(v) => setFormData(prev => ({ ...prev, deixou_aparelho: !!v, apenas_agendamento: !v }))}
+                      />
+                      <Label htmlFor="deixou_aparelho" className="text-sm">Deixou o aparelho</Label>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="apenas_agendamento"
+                        checked={formData.apenas_agendamento}
+                        onCheckedChange={(v) => setFormData(prev => ({ ...prev, apenas_agendamento: !!v, deixou_aparelho: !v }))}
+                      />
+                      <Label htmlFor="apenas_agendamento" className="text-sm">Apenas agendamento</Label>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -599,14 +685,6 @@ export default function OrdemServicoForm() {
                       className="resize-none"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Acessórios</Label>
-                    <Input
-                      value={formData.acessorios}
-                      onChange={(e) => setFormData(prev => ({ ...prev, acessorios: e.target.value }))}
-                      placeholder="Ex: Capinha, película, carregador..."
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label>Previsão de Entrega</Label>
@@ -617,7 +695,7 @@ export default function OrdemServicoForm() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Horário</Label>
+                      <Label>Hora de Entrega</Label>
                       <Input
                         type="time"
                         value={formData.hora_previsao}
@@ -625,6 +703,48 @@ export default function OrdemServicoForm() {
                       />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+              
+              {/* Orçamento Pré-autorizado */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Orçamento Pré-autorizado</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="orcamento_autorizado"
+                      checked={formData.orcamento_autorizado}
+                      onCheckedChange={(v) => setFormData(prev => ({ ...prev, orcamento_autorizado: !!v }))}
+                    />
+                    <Label htmlFor="orcamento_autorizado" className="text-sm">Orçamento pré-autorizado</Label>
+                  </div>
+                  
+                  {formData.orcamento_autorizado && (
+                    <div className="grid grid-cols-2 gap-3 pl-6">
+                      <div className="space-y-2">
+                        <Label>Valor Parcelado (Débito/Crédito até 6x)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.orcamento_parcelado || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, orcamento_parcelado: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Valor com Desconto (Dinheiro/PIX)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.orcamento_desconto || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, orcamento_desconto: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0,00"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -681,7 +801,147 @@ export default function OrdemServicoForm() {
                 </CardContent>
               </Card>
             </div>
+            
+            {/* Observações do Checklist */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Observações Gerais do Checklist</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={formData.observacoes_checklist || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, observacoes_checklist: e.target.value }))}
+                  placeholder="Adicione observações gerais sobre o checklist..."
+                  rows={3}
+                  className="resize-none"
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
+          
+          {/* Tab Resolução do Problema */}
+          {isEditing && (
+            <TabsContent value="resolucao" className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Resolução do Problema</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Problema Constatado</Label>
+                    <Textarea
+                      value={formData.problema_constatado || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, problema_constatado: e.target.value }))}
+                      placeholder="Descreva o problema constatado após análise técnica..."
+                      rows={4}
+                      className="resize-none"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Técnico Responsável</Label>
+                      <Select
+                        value={formData.tecnico_id || ''}
+                        onValueChange={(v) => setFormData(prev => ({ ...prev, tecnico_id: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o técnico" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* TODO: Carregar lista de técnicos do sistema */}
+                          <SelectItem value="tecnico1">Técnico 1</SelectItem>
+                          <SelectItem value="tecnico2">Técnico 2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Serviço Executado</Label>
+                      <Select
+                        value={formData.servico_executado || ''}
+                        onValueChange={(v) => setFormData(prev => ({ ...prev, servico_executado: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o serviço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* TODO: Carregar lista de serviços */}
+                          <SelectItem value="troca_tela">Troca de Tela</SelectItem>
+                          <SelectItem value="troca_bateria">Troca de Bateria</SelectItem>
+                          <SelectItem value="troca_conector">Troca de Conector</SelectItem>
+                          <SelectItem value="limpeza">Limpeza</SelectItem>
+                          <SelectItem value="formatação">Formatação</SelectItem>
+                          <SelectItem value="outro">Outro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+          
+          {/* Tab Informações Técnicas */}
+          {isEditing && (
+            <TabsContent value="tecnico" className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Informações Técnicas Internas</CardTitle>
+                  <CardDescription>Anotações internas que não aparecem para o cliente</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={formData.observacoes_internas || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, observacoes_internas: e.target.value }))}
+                    placeholder="Ex: faltando parafuso, câmera não funciona, placa oxidada, peças removidas..."
+                    rows={8}
+                    className="resize-none"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+          
+          {/* Tab Fotos */}
+          {isEditing && (
+            <TabsContent value="fotos" className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Fotos da Ordem de Serviço</CardTitle>
+                  <CardDescription>Fotos serão salvas automaticamente no Google Drive</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        // TODO: Implementar captura de foto ou upload
+                        toast({ title: 'Funcionalidade em desenvolvimento', description: 'Integração com Google Drive em andamento' });
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Tirar Foto / Upload
+                    </Button>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground">
+                    <p>As fotos serão automaticamente:</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Salvas em uma pasta no Google Drive com o nome: OS-{currentOS?.numero || 'N'}</li>
+                      <li>Nomeadas como: OS-{currentOS?.numero || 'N'}-foto-{new Date().toISOString().split('T')[0]}.jpg</li>
+                    </ul>
+                  </div>
+                  
+                  {/* TODO: Exibir fotos existentes */}
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Placeholder para fotos */}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Tab Itens (Peças/Serviços) */}
           {isEditing && (
