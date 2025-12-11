@@ -677,9 +677,16 @@ export function AppSidebar() {
           <div className="space-y-2">
             {/* Controles: Tema, Configurações, Notificações */}
             <div className="flex items-center gap-1">
-              <div className="flex-1">
-                <ThemeToggle variant="button" size="sm" showLabel={true} />
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 h-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                asChild
+              >
+                <div>
+                  <ThemeToggle variant="button" size="sm" showLabel={true} />
+                </div>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -725,15 +732,9 @@ export function AppSidebar() {
           <div className="flex flex-col items-center gap-1">
             {/* Controles colapsados */}
             <div className="flex items-center gap-1 w-full justify-center mb-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                title="Tema"
-              >
-                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="h-4 w-4 absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
+              <div className="h-8 w-8">
+                <ThemeToggle variant="button" size="sm" />
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
