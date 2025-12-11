@@ -37,7 +37,6 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeConfig } from "@/contexts/ThemeConfigContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Sidebar,
   SidebarContent,
