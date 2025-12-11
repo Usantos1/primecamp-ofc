@@ -93,22 +93,19 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
           {/* Desktop Header */}
           <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 hidden md:block app-header">
-            <div className="h-16 flex items-center justify-between px-6 gap-4">
-              <div className="flex items-center gap-4">
+            <div className="h-14 flex items-center justify-center px-6 gap-4">
+              {/* Lado esquerdo: Sidebar Trigger */}
+              <div className="flex items-center">
                 <SidebarTrigger className="h-8 w-8" />
-                
-                {title && (
-                  <div className="min-w-0">
-                    <h1 className="font-semibold text-lg truncate">{title}</h1>
-                    {subtitle && (
-                      <p className="text-sm text-muted-foreground truncate">{subtitle}</p>
-                    )}
-                  </div>
-                )}
               </div>
 
-              <div className="flex items-center gap-3">
-                {/* Search */}
+              {/* Centro: AppBar - Navegação rápida */}
+              <div className="flex-1 flex items-center justify-center">
+                <AppBar />
+              </div>
+
+              {/* Lado direito: Search */}
+              <div className="flex items-center gap-2">
                 <div ref={searchRef} className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
@@ -144,39 +141,10 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
                   )}
                 </div>
 
-                {/* Notifications */}
-                 <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="relative"
-                  data-notification-trigger
-                  onClick={() => setIsNotificationOpen(true)}
-                >
-                  <Bell className="h-4 w-4" />
-                  {notificationCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
-                      {notificationCount}
-                    </Badge>
-                  )}
-                </Button>
-
-                {/* Settings */}
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setIsSettingsOpen(true)}
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-
-                <ThemeToggle />
-
                 {/* Header Actions */}
                 {headerActions}
               </div>
             </div>
-            {/* AppBar - Navegação rápida */}
-            <AppBar />
           </header>
 
           {/* Main Content */}

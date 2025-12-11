@@ -95,20 +95,19 @@ export function AppBar() {
   const quickNavItems = getQuickNavItems();
   const currentPath = location.pathname;
 
-  // Se o sidebar não estiver colapsado e não houver itens, não mostrar
-  if (!collapsed && quickNavItems.length === 0) {
+  // Se não houver itens, não mostrar
+  if (quickNavItems.length === 0) {
     return null;
   }
 
   return (
     <div className={cn(
-      "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      collapsed ? "flex" : "hidden md:flex",
-      "items-center gap-2 px-4 py-2 overflow-x-auto"
+      "border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      "flex items-center justify-center gap-1 px-4 py-1.5 overflow-x-auto"
     )}>
       {quickNavItems.map((item) => {
         const Icon = item.icon;
-        const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
+        const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path + '/'));
         
         return (
           <Button
@@ -116,15 +115,17 @@ export function AppBar() {
             variant={isActive ? "default" : "ghost"}
             size="sm"
             className={cn(
-              "gap-2 whitespace-nowrap",
-              isActive && "bg-primary text-primary-foreground"
+              "h-7 px-2.5 gap-1.5 whitespace-nowrap text-xs",
+              isActive 
+                ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
             onClick={() => navigate(item.path)}
           >
-            <Icon className="h-4 w-4" />
-            <span className="text-sm font-medium">{item.label}</span>
+            <Icon className="h-3.5 w-3.5" />
+            <span className="font-medium">{item.label}</span>
             {item.badge && item.badge > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary-foreground/20">
+              <span className="ml-0.5 px-1 py-0.5 text-[10px] rounded-full bg-sidebar-primary-foreground/20">
                 {item.badge}
               </span>
             )}
@@ -134,4 +135,3 @@ export function AppBar() {
     </div>
   );
 }
-

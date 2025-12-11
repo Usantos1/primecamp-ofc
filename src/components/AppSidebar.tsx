@@ -32,10 +32,15 @@ import {
   ShoppingCart,
   UserCircle,
   Wrench,
+  Sun,
+  Moon,
+  Bell,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useThemeConfig } from "@/contexts/ThemeConfigContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Sidebar,
   SidebarContent,
@@ -55,13 +60,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-// ⬇️ trocado: agora logoImage é a URL do logo novo
-const logoImage = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
-
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const { user, profile, isAdmin, signOut } = useAuth();
+  const { config } = useThemeConfig();
 
   const collapsed = state === "collapsed";
   const currentPath = location.pathname;
@@ -96,8 +99,8 @@ export function AppSidebar() {
       {!collapsed && (
         <SidebarHeader className="px-4 py-3 border-b h-16 flex items-center justify-center">
           <img
-            src={logoImage}
-            alt="Prime Camp Logo"
+            src={config.logo || "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png"}
+            alt={config.logoAlt || config.companyName || "Logo"}
             className="h-10 w-auto object-contain"
             fetchPriority="high"
             decoding="async"
@@ -672,6 +675,32 @@ export function AppSidebar() {
       <SidebarFooter className={`border-t mt-auto ${collapsed ? "p-1" : "p-2"}`}>
         {!collapsed ? (
           <div className="space-y-2">
+            {/* Controles: Tema, Configurações, Notificações */}
+            <div className="flex items-center gap-1">
+              <div className="flex-1">
+                <ThemeToggle variant="button" size="sm" showLabel={true} />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 h-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                onClick={() => {/* Abrir configurações */}}
+              >
+                <Settings className="h-4 w-4 mr-1.5" />
+                <span className="text-xs">Config</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 h-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
+                onClick={() => {/* Abrir notificações */}}
+              >
+                <Bell className="h-4 w-4 mr-1.5" />
+                <span className="text-xs">Alertas</span>
+                <span className="absolute top-0 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+              </Button>
+            </div>
+
             <NavLink
               to="/perfil"
               className="flex items-center gap-2 hover:bg-sidebar-accent rounded-md p-2 transition-colors"
@@ -694,6 +723,36 @@ export function AppSidebar() {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
+            {/* Controles colapsados */}
+            <div className="flex items-center gap-1 w-full justify-center mb-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                title="Tema"
+              >
+                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="h-4 w-4 absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                title="Configurações"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground relative"
+                title="Notificações"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+              </Button>
+            </div>
+
             <NavLink
               to="/perfil"
               className="w-10 h-10 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors mx-auto"

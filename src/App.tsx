@@ -65,9 +65,10 @@ const App = () => (
   <ErrorBoundary>
     <HelmetProvider>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <NotificationManager>
+        <ThemeConfigProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <NotificationManager>
               <TooltipProvider>
                 {/* <Toaster /> Temporariamente desabilitado - usando apenas Sonner */}
                 <Sonner />
@@ -148,9 +149,10 @@ const App = () => (
               </Routes>
             </BrowserRouter>
             </TooltipProvider>
-          </NotificationManager>
-        </AuthProvider>
-      </QueryClientProvider>
+            </NotificationManager>
+          </AuthProvider>
+        </QueryClientProvider>
+        </ThemeConfigProvider>
     </ThemeProvider>
   </HelmetProvider>
   </ErrorBoundary>
