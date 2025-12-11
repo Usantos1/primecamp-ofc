@@ -93,7 +93,7 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
           {/* Desktop Header */}
           <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 hidden md:block app-header">
-            <div className="h-14 flex items-center justify-between px-6 gap-4">
+            <div className="h-16 flex items-center justify-between px-6 gap-4">
               {/* Lado esquerdo: Sidebar Trigger */}
               <div className="flex items-center">
                 <SidebarTrigger className="h-8 w-8" />

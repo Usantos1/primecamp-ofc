@@ -826,14 +826,14 @@ export default function Produtos() {
                     <div className="space-y-2">
                       <Label>Grade</Label>
                       <Select
-                        value={formDataExtended.grade}
+                        value={formDataExtended.grade || undefined}
                         onValueChange={(v) => setFormDataExtended(prev => ({ ...prev, grade: v }))}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">-</SelectItem>
+                          <SelectItem value="nenhuma">Nenhuma</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
