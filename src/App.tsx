@@ -43,14 +43,7 @@ import AdminTimeClock from "./pages/admin/AdminTimeClock";
 import AdminGoals from "./pages/admin/AdminGoals";
 import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
-import { 
-  FinanceiroLayout, 
-  FinanceiroDashboard, 
-  FinanceiroCaixa, 
-  FinanceiroContas, 
-  FinanceiroTransacoes, 
-  FinanceiroRelatorios 
-} from "./pages/admin/financeiro";
+import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
 import AdminJobSurveys from "./pages/admin/AdminJobSurveys";
 import JobSurveyDetail from "./pages/admin/JobSurveyDetail";
 import TalentBank from "./pages/admin/TalentBank";
@@ -64,13 +57,6 @@ import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
 import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
-import { 
-  OrdensServico as AssistenciaOS,
-  OrdemServicoForm,
-  Clientes as AssistenciaClientes,
-  Produtos as AssistenciaProdutos,
-  MarcasModelos
-} from "./pages/assistencia";
 
 const queryClient = new QueryClient();
 
@@ -119,31 +105,13 @@ const App = () => (
               <Route path="/admin/goals" element={<ProtectedRoute><AdminGoals /></ProtectedRoute>} />
               <Route path="/admin/nps" element={<ProtectedRoute><AdminNPS /></ProtectedRoute>} />
               <Route path="/admin/disc" element={<ProtectedRoute><AdminDisc /></ProtectedRoute>} />
-              
-              {/* Módulo Financeiro com sub-rotas */}
-              <Route path="/admin/financeiro" element={<ProtectedRoute><FinanceiroLayout /></ProtectedRoute>}>
-                <Route index element={<FinanceiroDashboard />} />
-                <Route path="caixa" element={<FinanceiroCaixa />} />
-                <Route path="contas" element={<FinanceiroContas />} />
-                <Route path="transacoes" element={<FinanceiroTransacoes />} />
-                <Route path="relatorios" element={<FinanceiroRelatorios />} />
-              </Route>
-              
+              <Route path="/admin/financeiro" element={<ProtectedRoute><AdminFinanceiro /></ProtectedRoute>} />
               <Route path="/admin/job-surveys" element={<ProtectedRoute><AdminJobSurveys /></ProtectedRoute>} />
               <Route path="/admin/job-surveys/:id" element={<ProtectedRoute><JobSurveyDetail /></ProtectedRoute>} />
               <Route path="/admin/talent-bank" element={<ProtectedRoute><TalentBank /></ProtectedRoute>} />
               <Route path="/admin/interviews" element={<ProtectedRoute><AdminInterviews /></ProtectedRoute>} />
               <Route path="/admin/interviews/evaluate/:interview_id" element={<ProtectedRoute><InterviewEvaluation /></ProtectedRoute>} />
               <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
-              
-              {/* Módulo Assistência Técnica */}
-              <Route path="/assistencia/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
-              <Route path="/assistencia/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/assistencia/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/assistencia/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/assistencia/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
-              <Route path="/assistencia/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
-              <Route path="/assistencia/marcas-modelos" element={<ProtectedRoute><MarcasModelos /></ProtectedRoute>} />
               
               {/* Public job application routes */}
               <Route path="/job-application/:surveyId" element={<JobApplication />} />
