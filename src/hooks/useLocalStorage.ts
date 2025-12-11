@@ -152,3 +152,4 @@ export function useSearchHistory(maxItems: number = 10) {
   return { history, addToHistory, removeFromHistory, clearHistory };
 }
 
+

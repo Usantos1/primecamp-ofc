@@ -415,3 +415,4 @@ export function BillsManager({ month }: BillsManagerProps) {
   );
 }
 
+

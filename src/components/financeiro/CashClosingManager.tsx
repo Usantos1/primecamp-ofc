@@ -444,3 +444,4 @@ export function CashClosingManager({ month }: CashClosingManagerProps) {
   );
 }
 
+
