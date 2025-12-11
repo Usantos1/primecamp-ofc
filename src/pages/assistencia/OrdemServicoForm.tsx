@@ -552,7 +552,7 @@ export default function OrdemServicoForm() {
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione a marca">
-                            {formData.marca_id && marcas.find(m => m.id === formData.marca_id)?.nome}
+                            {formData.marca_id ? marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome : 'Selecione'}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -579,7 +579,7 @@ export default function OrdemServicoForm() {
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o modelo">
-                            {formData.modelo_id && modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome}
+                            {formData.modelo_id ? modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome : 'Selecione'}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
