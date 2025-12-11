@@ -57,7 +57,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-export function AppSidebar() {
+export function AppSidebar(): JSX.Element {
   const { state } = useSidebar();
   const location = useLocation();
   const { user, profile, isAdmin, signOut } = useAuth();
