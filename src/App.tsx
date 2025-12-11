@@ -57,6 +57,7 @@ import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
 import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
+import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos } from "./pages/assistencia";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +133,16 @@ const App = () => (
             <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
             <Route path="/productivity" element={<ProtectedRoute><Productivity /></ProtectedRoute>} />
             <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
+              
+              {/* PDV / Assistência Técnica */}
+              <Route path="/pdv" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
+              <Route path="/pdv/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
+              <Route path="/pdv/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
+              <Route path="/pdv/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
+              
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
               </Routes>
