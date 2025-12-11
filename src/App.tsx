@@ -58,7 +58,7 @@ import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
 import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
-import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV } from "./pages/assistencia";
+import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, Colaboradores as AssistenciaColaboradores } from "./pages/assistencia";
 
 const queryClient = new QueryClient();
 
@@ -144,6 +144,7 @@ const App = () => (
               <Route path="/pdv/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
               <Route path="/pdv/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
+              <Route path="/pdv/colaboradores" element={<ProtectedRoute><AssistenciaColaboradores /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
