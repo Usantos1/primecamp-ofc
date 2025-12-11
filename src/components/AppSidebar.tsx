@@ -56,6 +56,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
