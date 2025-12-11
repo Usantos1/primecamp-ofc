@@ -21,6 +21,7 @@ import {
   useOrdensServico, useClientes, useMarcasModelos, useProdutos, 
   useItensOS, usePagamentos, buscarCEP, useConfiguracaoStatus
 } from '@/hooks/useAssistencia';
+import { useCargos } from '@/hooks/useCargos';
 import { 
   OrdemServicoFormData, CHECKLIST_ITENS, ItemOS,
   STATUS_OS_LABELS, STATUS_OS_COLORS, StatusOS
@@ -208,11 +209,13 @@ export default function OrdemServicoForm() {
   // Adicionar/Editar item
   const handleSubmitItem = () => {
     const valorTotal = (itemForm.quantidade * itemForm.valor_unitario) - itemForm.desconto;
+    const colaborador = itemForm.colaborador_id ? getColaboradorById(itemForm.colaborador_id) : null;
     
     if (editingItem) {
       updateItem(editingItem.id, {
         ...itemForm,
         valor_total: valorTotal,
+        colaborador_nome: colaborador?.nome,
       });
       setEditingItem(null);
     } else {
@@ -220,6 +223,7 @@ export default function OrdemServicoForm() {
         ...itemForm,
         produto_id: undefined,
         valor_total: valorTotal,
+        colaborador_nome: colaborador?.nome,
       });
     }
     
@@ -229,7 +233,10 @@ export default function OrdemServicoForm() {
       descricao: '',
       quantidade: 1,
       valor_unitario: 0,
+      valor_minimo: 0,
       desconto: 0,
+      garantia: 0,
+      colaborador_id: '',
     });
     setProdutoSearch('');
   };
@@ -534,10 +541,19 @@ export default function OrdemServicoForm() {
                       <Label>Marca</Label>
                       <Select 
                         value={formData.marca_id} 
-                        onValueChange={(v) => setFormData(prev => ({ ...prev, marca_id: v, modelo_id: '' }))}
+                        onValueChange={(v) => {
+                          const marcaSelecionada = marcas.find(m => m.id === v);
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            marca_id: v, 
+                            modelo_id: '' 
+                          }));
+                        }}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder="Selecione a marca">
+                            {formData.marca_id && marcas.find(m => m.id === formData.marca_id)?.nome}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {marcas.map(m => (
@@ -545,23 +561,42 @@ export default function OrdemServicoForm() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {formData.marca_id && (
+                        <p className="text-xs text-muted-foreground">
+                          Marca: {marcas.find(m => m.id === formData.marca_id)?.nome}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Modelo</Label>
                       <Select 
                         value={formData.modelo_id} 
-                        onValueChange={(v) => setFormData(prev => ({ ...prev, modelo_id: v }))}
+                        onValueChange={(v) => {
+                          const modeloSelecionado = modelosFiltrados.find(m => m.id === v);
+                          setFormData(prev => ({ ...prev, modelo_id: v }));
+                        }}
                         disabled={!formData.marca_id}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
+                          <SelectValue placeholder="Selecione o modelo">
+                            {formData.modelo_id && modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {modelosFiltrados.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-                          ))}
+                          {modelosFiltrados.length > 0 ? (
+                            modelosFiltrados.map(m => (
+                              <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>Nenhum modelo disponível</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
+                      {formData.modelo_id && (
+                        <p className="text-xs text-muted-foreground">
+                          Modelo: {modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -623,7 +658,6 @@ export default function OrdemServicoForm() {
                                 value={formData.senha_aparelho}
                                 onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                                 placeholder="Senha adicional"
-                                type="password"
                               />
                             </div>
                           </>

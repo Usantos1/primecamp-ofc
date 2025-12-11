@@ -210,4 +210,3 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
     </div>
   );
 }
-
