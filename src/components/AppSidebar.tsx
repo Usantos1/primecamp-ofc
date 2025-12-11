@@ -33,7 +33,7 @@ import {
   UserCircle,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeConfig } from "@/contexts/ThemeConfigContext";
