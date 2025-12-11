@@ -1,4 +1,4 @@
-﻿import {
+import {
   Home,
   Target,
   Users,
@@ -66,7 +66,7 @@ export function AppSidebar(): JSX.Element {
   const collapsed = state === "collapsed";
   const currentPath = location.pathname;
   
-  // Estados para controlar quais submenus estão abertos
+  // Estados para controlar quais submenus estÃ£o abertos
   const [isOrgOpen, setIsOrgOpen] = useState(
     currentPath.startsWith('/admin/users') || 
     currentPath.startsWith('/admin/positions') || 
@@ -126,7 +126,7 @@ export function AppSidebar(): JSX.Element {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* === PDV / Assist├¬ncia T├⌐cnica === */}
+              {/* === PDV / Assistâ”œÂ¬ncia Tâ”œâŒcnica === */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink to="/pdv" end>
@@ -180,7 +180,7 @@ export function AppSidebar(): JSX.Element {
                         className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                       >
                         <Wrench className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
-                        {!collapsed && <span className="font-medium text-sm">Ordem de Servi├ºo</span>}
+                        {!collapsed && <span className="font-medium text-sm">Ordem de Serviâ”œÂºo</span>}
                       </div>
                     )}
                   </NavLink>
@@ -273,7 +273,7 @@ export function AppSidebar(): JSX.Element {
                         className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                       >
                         <Calendar className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
-                        {!collapsed && <span className="font-medium text-sm">Calend├írio</span>}
+                        {!collapsed && <span className="font-medium text-sm">Calendâ”œÃ­rio</span>}
                       </div>
                     )}
                   </NavLink>
@@ -364,7 +364,7 @@ export function AppSidebar(): JSX.Element {
                         className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                       >
                         <BarChart3 className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
-                        {!collapsed && <span className="font-medium text-sm">Relat├│rios</span>}
+                        {!collapsed && <span className="font-medium text-sm">Relatâ”œâ”‚rios</span>}
                       </div>
                     )}
                   </NavLink>
@@ -379,7 +379,7 @@ export function AppSidebar(): JSX.Element {
                         className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                       >
                         <Shield className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
-                        {!collapsed && <span className="font-medium text-sm">Integra├º├╡es</span>}
+                        {!collapsed && <span className="font-medium text-sm">Integraâ”œÂºâ”œâ•¡es</span>}
                       </div>
                     )}
                   </NavLink>
@@ -392,7 +392,7 @@ export function AppSidebar(): JSX.Element {
                     <div className="flex items-center gap-2 px-2 py-1">
                       <Shield className="h-4 w-4 text-muted-foreground" />
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Administra├º├úo
+                        Administraâ”œÂºâ”œÃºo
                       </span>
                     </div>
                   </div>
@@ -417,7 +417,7 @@ export function AppSidebar(): JSX.Element {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Users className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Usu├írios</span>
+                                    <span className="font-medium text-sm">Usuâ”œÃ­rios</span>
                                   </div>
                                 )}
                               </NavLink>
@@ -484,13 +484,13 @@ export function AppSidebar(): JSX.Element {
                     </SidebarMenuItem>
                   </Collapsible>
 
-                  {/* Gest├úo de Funcionalidades */}
+                  {/* Gestâ”œÃºo de Funcionalidades */}
                   <Collapsible open={isFeaturesOpen} onOpenChange={setIsFeaturesOpen}>
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton className="w-full">
                           <Settings className="h-4 w-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">Gest├úo de Funcionalidades</span>
+                          <span className="font-medium text-sm">Gestâ”œÃºo de Funcionalidades</span>
                           <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isFeaturesOpen ? 'rotate-180' : ''}`} />
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
@@ -577,7 +577,7 @@ export function AppSidebar(): JSX.Element {
                                     className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <ClipboardList className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm whitespace-nowrap">Formul├írios de Vagas</span>
+                                    <span className="font-medium text-sm whitespace-nowrap">Formulâ”œÃ­rios de Vagas</span>
                                   </div>
                                 )}
                               </NavLink>
@@ -700,7 +700,7 @@ export function AppSidebar(): JSX.Element {
                 <p className="text-xs font-medium text-sidebar-foreground truncate">
                   {profile?.display_name || user?.email}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{isAdmin ? "Admin" : "Usu├írio"}</p>
+                <p className="text-xs text-muted-foreground truncate">{isAdmin ? "Admin" : "Usuâ”œÃ­rio"}</p>
               </div>
             </NavLink>
             <Button variant="outline" size="sm" onClick={signOut} className="w-full h-7 text-xs">
