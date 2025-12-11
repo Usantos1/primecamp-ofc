@@ -44,6 +44,7 @@ export default function OrdemServicoForm() {
   const { marcas, modelos, getModelosByMarca } = useMarcasModelos();
   const { produtos, searchProdutos } = useProdutos();
   const { configuracoes, getConfigByStatus } = useConfiguracaoStatus();
+  const { tecnicos, colaboradores, getColaboradorById } = useCargos();
 
   // Estados do formulário
   const [formData, setFormData] = useState<OrdemServicoFormData>({
@@ -99,7 +100,10 @@ export default function OrdemServicoForm() {
     descricao: '',
     quantidade: 1,
     valor_unitario: 0,
+    valor_minimo: 0,
     desconto: 0,
+    garantia: 0,
+    colaborador_id: '',
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
 
@@ -238,7 +242,10 @@ export default function OrdemServicoForm() {
       descricao: item.descricao,
       quantidade: item.quantidade,
       valor_unitario: item.valor_unitario,
+      valor_minimo: item.valor_minimo || 0,
       desconto: item.desconto,
+      garantia: item.garantia || 0,
+      colaborador_id: item.colaborador_id || '',
     });
     setShowAddItem(true);
   };
@@ -266,22 +273,33 @@ export default function OrdemServicoForm() {
       return;
     }
 
+    if (!formData.telefone_contato) {
+      toast({ title: 'Telefone para contato é obrigatório', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const tecnico = formData.tecnico_id ? getColaboradorById(formData.tecnico_id) : null;
+      
       if (isEditing && currentOS) {
         updateOS(currentOS.id, {
           ...formData,
           cliente_nome: selectedCliente?.nome,
+          cliente_empresa: selectedCliente?.nome_fantasia,
           marca_nome: marcas.find(m => m.id === formData.marca_id)?.nome,
           modelo_nome: modelos.find(m => m.id === formData.modelo_id)?.nome,
+          tecnico_nome: tecnico?.nome,
         });
         toast({ title: 'OS atualizada!' });
       } else {
         const novaOS = createOS({
           ...formData,
           cliente_nome: selectedCliente?.nome,
+          cliente_empresa: selectedCliente?.nome_fantasia,
           marca_nome: marcas.find(m => m.id === formData.marca_id)?.nome,
           modelo_nome: modelos.find(m => m.id === formData.modelo_id)?.nome,
+          tecnico_nome: tecnico?.nome,
         } as any);
         toast({ title: `OS #${novaOS.numero} criada!` });
         navigate(`/pdv/os/${novaOS.id}`);
@@ -849,9 +867,15 @@ export default function OrdemServicoForm() {
                           <SelectValue placeholder="Selecione o técnico" />
                         </SelectTrigger>
                         <SelectContent>
-                          {/* TODO: Carregar lista de técnicos do sistema */}
-                          <SelectItem value="tecnico1">Técnico 1</SelectItem>
-                          <SelectItem value="tecnico2">Técnico 2</SelectItem>
+                          {tecnicos.length > 0 ? (
+                            tecnicos.map(tecnico => (
+                              <SelectItem key={tecnico.id} value={tecnico.id}>
+                                {tecnico.nome}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>Nenhum técnico cadastrado</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -952,7 +976,7 @@ export default function OrdemServicoForm() {
                     <CardTitle className="text-base">Peças e Serviços</CardTitle>
                     <Button onClick={() => {
                       setEditingItem(null);
-                      setItemForm({ tipo: 'servico', descricao: '', quantidade: 1, valor_unitario: 0, desconto: 0 });
+                      setItemForm({ tipo: 'servico', descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 0, colaborador_id: '' });
                       setShowAddItem(true);
                     }} size="sm" className="gap-2">
                       <Plus className="h-4 w-4" />
@@ -973,7 +997,10 @@ export default function OrdemServicoForm() {
                           <TableHead>Descrição</TableHead>
                           <TableHead className="text-right">Qtd</TableHead>
                           <TableHead className="text-right">Valor Unit.</TableHead>
+                          <TableHead className="text-right">Valor Mín.</TableHead>
                           <TableHead className="text-right">Desconto</TableHead>
+                          <TableHead className="text-right">Garantia</TableHead>
+                          <TableHead>Colaborador</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
@@ -989,7 +1016,10 @@ export default function OrdemServicoForm() {
                             <TableCell>{item.descricao}</TableCell>
                             <TableCell className="text-right">{item.quantidade}</TableCell>
                             <TableCell className="text-right">{currencyFormatters.brl(item.valor_unitario)}</TableCell>
+                            <TableCell className="text-right">{currencyFormatters.brl(item.valor_minimo || 0)}</TableCell>
                             <TableCell className="text-right">{currencyFormatters.brl(item.desconto)}</TableCell>
+                            <TableCell className="text-right">{item.garantia ? `${item.garantia} dias` : '-'}</TableCell>
+                            <TableCell>{item.colaborador_nome || '-'}</TableCell>
                             <TableCell className="text-right font-semibold">{currencyFormatters.brl(item.valor_total)}</TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1">
@@ -1155,7 +1185,7 @@ export default function OrdemServicoForm() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Valor Unitário</Label>
                   <Input
@@ -1163,6 +1193,16 @@ export default function OrdemServicoForm() {
                     step="0.01"
                     value={itemForm.valor_unitario || ''}
                     onChange={(e) => setItemForm(prev => ({ ...prev, valor_unitario: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor Mínimo</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={itemForm.valor_minimo || ''}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, valor_minimo: parseFloat(e.target.value) || 0 }))}
                     placeholder="0,00"
                   />
                 </div>
@@ -1175,6 +1215,41 @@ export default function OrdemServicoForm() {
                     onChange={(e) => setItemForm(prev => ({ ...prev, desconto: parseFloat(e.target.value) || 0 }))}
                     placeholder="0,00"
                   />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Garantia (dias)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={itemForm.garantia || ''}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, garantia: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Colaborador que lançou</Label>
+                  <Select
+                    value={itemForm.colaborador_id || ''}
+                    onValueChange={(v) => setItemForm(prev => ({ ...prev, colaborador_id: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colaboradores.length > 0 ? (
+                        colaboradores.map(colab => (
+                          <SelectItem key={colab.id} value={colab.id}>
+                            {colab.nome} ({CARGOS_LABELS[colab.cargo]})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="" disabled>Nenhum colaborador cadastrado</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
