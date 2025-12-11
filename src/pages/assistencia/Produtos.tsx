@@ -285,14 +285,14 @@ export default function Produtos() {
         // Garantir que campos principais estejam corretos
         situacao: formDataExtended.situacao,
         unidade: formDataExtended.conversao_unidade || 'UN',
+        margem_lucro: calcularMargem(formData.preco_custo, formData.preco_venda),
       };
-      const margem = calcularMargem(formData.preco_custo, formData.preco_venda);
       
       if (editingProduto) {
-        updateProduto(editingProduto.id, { ...formData, margem_lucro: margem } as any);
+        updateProduto(editingProduto.id, produtoData);
         toast({ title: 'Produto atualizado!' });
       } else {
-        createProduto({ ...formData, margem_lucro: margem } as any);
+        createProduto(produtoData);
         toast({ title: 'Produto cadastrado!' });
       }
       setShowForm(false);
