@@ -162,6 +162,39 @@ export default function Produtos() {
   const handleNew = () => {
     setEditingProduto(null);
     setFormData(INITIAL_FORM);
+    setFormDataExtended({
+      codigo_balanca: '',
+      situacao: 'ativo',
+      ncm: '',
+      cest: '',
+      serial: false,
+      peso: 0,
+      informacoes_adicionais: '',
+      servico_nfse: '',
+      garantia: 0,
+      sub_grupo_id: '',
+      grade: '',
+      compra: 0,
+      percentual_lucro: 0,
+      percentual_desconto: 0,
+      tipo_preco: 'variavel',
+      conversao_codigo_barras: '',
+      conversao_unidade: 'UN',
+      conversao_fator: 1,
+      conversao_operacao: 'multiplicar',
+      natureza_operacao: '',
+      situacao_tributaria: '',
+      aliquota_icms: '',
+      percentual_ipi: 0,
+      percentual_ampara_rs: 0,
+      percentual_mva: 0,
+      percentual_mva_interes: 0,
+      estoque_reposicao: 0,
+      icms_st_base: 0,
+      icms_st_aliquota: 0,
+      icms_st_valor: 0,
+    });
+    setActiveTab('manutencao');
     setShowForm(true);
   };
 
@@ -184,6 +217,40 @@ export default function Produtos() {
       estoque_minimo: produto.estoque_minimo || 0,
       localizacao: produto.localizacao || '',
     });
+    // Carregar dados estendidos (se existirem no produto)
+    setFormDataExtended({
+      codigo_balanca: (produto as any).codigo_balanca || '',
+      situacao: produto.situacao || 'ativo',
+      ncm: (produto as any).ncm || '',
+      cest: (produto as any).cest || '',
+      serial: (produto as any).serial || false,
+      peso: (produto as any).peso || 0,
+      informacoes_adicionais: (produto as any).informacoes_adicionais || '',
+      servico_nfse: (produto as any).servico_nfse || '',
+      garantia: (produto as any).garantia || 0,
+      sub_grupo_id: (produto as any).sub_grupo_id || '',
+      grade: (produto as any).grade || '',
+      compra: (produto as any).compra || produto.preco_custo,
+      percentual_lucro: calcularMargem(produto.preco_custo, produto.preco_venda),
+      percentual_desconto: (produto as any).percentual_desconto || 0,
+      tipo_preco: (produto as any).tipo_preco || 'variavel',
+      conversao_codigo_barras: (produto as any).conversao_codigo_barras || produto.codigo_barras || '',
+      conversao_unidade: (produto as any).conversao_unidade || produto.unidade || 'UN',
+      conversao_fator: (produto as any).conversao_fator || 1,
+      conversao_operacao: (produto as any).conversao_operacao || 'multiplicar',
+      natureza_operacao: (produto as any).natureza_operacao || '',
+      situacao_tributaria: (produto as any).situacao_tributaria || '',
+      aliquota_icms: (produto as any).aliquota_icms || '',
+      percentual_ipi: (produto as any).percentual_ipi || 0,
+      percentual_ampara_rs: (produto as any).percentual_ampara_rs || 0,
+      percentual_mva: (produto as any).percentual_mva || 0,
+      percentual_mva_interes: (produto as any).percentual_mva_interes || 0,
+      estoque_reposicao: (produto as any).estoque_reposicao || 0,
+      icms_st_base: (produto as any).icms_st_base || 0,
+      icms_st_aliquota: (produto as any).icms_st_aliquota || 0,
+      icms_st_valor: (produto as any).icms_st_valor || 0,
+    });
+    setActiveTab('manutencao');
     setShowForm(true);
   };
 
