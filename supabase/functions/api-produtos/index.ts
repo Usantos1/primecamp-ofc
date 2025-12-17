@@ -102,6 +102,7 @@ serve(async (req) => {
 
     // Aplicar filtros
     if (search) {
+      // Buscar em nome, marca ou modelo
       query = query.or(`nome.ilike.%${search}%,marca.ilike.%${search}%,modelo.ilike.%${search}%`);
     }
     if (marca) {
