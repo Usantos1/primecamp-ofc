@@ -63,13 +63,61 @@ export function useWhatsApp() {
         throw error;
       }
 
+      // Verificar se a mensagem foi realmente enviada
+      if (result && typeof result === 'object') {
+        // Verificar se há erro na resposta (mesmo com status 200)
+        if (result.error) {
+          console.error('🔥 Ativa CRM retornou erro:', result.error);
+          
+          // Mensagens de erro mais específicas
+          if (result.error === 'invalidNumber' || result.error === 'ERR_INVALID_NUMBER' || 
+              result.error.includes('invalidNumber') || result.error.includes('Invalid phone number')) {
+            throw new Error('Número de telefone inválido. Verifique se o número está no formato correto (ex: 5519988779414).');
+          } else if (result.error.includes('Invalid Ativa CRM token') || result.error === 'ERR_INVALID_TOKEN') {
+            throw new Error('Token do Ativa CRM inválido. Verifique as configurações de integração.');
+          } else {
+            throw new Error(result.error || 'Erro desconhecido ao enviar mensagem');
+          }
+        }
+        
+        if (result.success === false) {
+          const errorMsg = result.error || result.message || 'Erro desconhecido ao enviar mensagem';
+          console.error('🔥 WhatsApp API error:', errorMsg);
+          
+          // Mensagens de erro mais específicas
+          if (errorMsg.includes('invalidNumber') || errorMsg.includes('Invalid phone number') || errorMsg === 'invalidNumber') {
+            throw new Error('Número de telefone inválido. Verifique se o número está no formato correto (ex: 5519988779414).');
+          } else if (errorMsg.includes('Invalid Ativa CRM token') || errorMsg.includes('ERR_INVALID_TOKEN')) {
+            throw new Error('Token do Ativa CRM inválido. Verifique as configurações de integração.');
+          } else {
+            throw new Error(errorMsg);
+          }
+        }
+        
+        // Se tiver warning mas success for true, ainda é sucesso
+        if (result.warning && result.success === true) {
+          console.warn('🔥 WhatsApp sent with warning:', result.warning);
+          toast.success('Mensagem processada (pode não ter WhatsApp configurado no Ativa CRM)');
+          return result;
+        }
+      }
+
       console.log('🔥 WhatsApp message sent successfully:', result);
       toast.success('Mensagem enviada com sucesso!');
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔥 Error sending WhatsApp message:', error);
-      toast.error('Erro ao enviar mensagem');
+      
+      // Mensagens de erro mais específicas
+      if (error.message?.includes('Invalid phone number') || error.message?.includes('invalidNumber')) {
+        toast.error('Número de telefone inválido. Verifique se o número está no formato correto (ex: 5519988779414).');
+      } else if (error.message?.includes('Invalid Ativa CRM token')) {
+        toast.error('Token do Ativa CRM inválido. Verifique as configurações de integração.');
+      } else {
+        toast.error(error.message || 'Erro ao enviar mensagem. Verifique o console para mais detalhes.');
+      }
+      
       throw error;
     } finally {
       setLoading(false);

@@ -1,0 +1,279 @@
+import { useState, useMemo } from 'react';
+import { ModernLayout } from '@/components/ModernLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { 
+  Calendar, Download, TrendingUp, DollarSign, ShoppingCart, 
+  User, Package, BarChart3
+} from 'lucide-react';
+import { useSales } from '@/hooks/usePDV';
+import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { cn } from '@/lib/utils';
+
+export default function Relatorios() {
+  const { sales, isLoading } = useSales();
+  const [periodoInicio, setPeriodoInicio] = useState(
+    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]
+  );
+  const [periodoFim, setPeriodoFim] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  const [vendedorFilter, setVendedorFilter] = useState<string>('all');
+
+  // Filtrar vendas por período
+  const filteredSales = useMemo(() => {
+    const inicio = new Date(periodoInicio);
+    inicio.setHours(0, 0, 0, 0);
+    const fim = new Date(periodoFim);
+    fim.setHours(23, 59, 59, 999);
+
+    return sales.filter(sale => {
+      const saleDate = new Date(sale.created_at);
+      const inPeriod = saleDate >= inicio && saleDate <= fim;
+      const byVendedor = vendedorFilter === 'all' || sale.vendedor_id === vendedorFilter;
+      return inPeriod && byVendedor && !sale.is_draft;
+    });
+  }, [sales, periodoInicio, periodoFim, vendedorFilter]);
+
+  // Estatísticas
+  const stats = useMemo(() => {
+    const vendasPagas = filteredSales.filter(s => s.status === 'paid');
+    const totalVendas = vendasPagas.length;
+    const totalRecebido = vendasPagas.reduce((sum, s) => sum + Number(s.total), 0);
+    const ticketMedio = totalVendas > 0 ? totalRecebido / totalVendas : 0;
+
+    // Vendas por vendedor
+    const vendasPorVendedor = vendasPagas.reduce((acc, sale) => {
+      const vendedorId = sale.vendedor_id || 'sem-vendedor';
+      const vendedorNome = sale.vendedor_nome || 'Sem vendedor';
+      if (!acc[vendedorId]) {
+        acc[vendedorId] = { id: vendedorId, nome: vendedorNome, total: 0, quantidade: 0 };
+      }
+      acc[vendedorId].total += Number(sale.total);
+      acc[vendedorId].quantidade += 1;
+      return acc;
+    }, {} as Record<string, { id: string; nome: string; total: number; quantidade: number }>);
+
+    // Vendas por forma de pagamento
+    // Nota: Isso requer buscar os pagamentos, por enquanto vamos usar dados básicos
+
+    // Produtos mais vendidos
+    // Nota: Isso requer buscar os itens, por enquanto vamos usar dados básicos
+
+    return {
+      totalVendas,
+      totalRecebido,
+      ticketMedio,
+      vendasPorVendedor: Object.values(vendasPorVendedor).sort((a, b) => b.total - a.total),
+    };
+  }, [filteredSales]);
+
+  // Lista de vendedores únicos
+  const vendedores = useMemo(() => {
+    const unique = new Map<string, string>();
+    sales.forEach(sale => {
+      if (sale.vendedor_id && sale.vendedor_nome) {
+        unique.set(sale.vendedor_id, sale.vendedor_nome);
+      }
+    });
+    return Array.from(unique.entries()).map(([id, nome]) => ({ id, nome }));
+  }, [sales]);
+
+  if (isLoading) {
+    return (
+      <ModernLayout title="Relatórios" subtitle="Relatórios de vendas e caixa">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </ModernLayout>
+    );
+  }
+
+  return (
+    <ModernLayout title="Relatórios" subtitle="Relatórios de vendas e caixa">
+      <div className="space-y-6">
+        {/* Filtros */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Filtros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>Período Início</Label>
+                <Input
+                  type="date"
+                  value={periodoInicio}
+                  onChange={(e) => setPeriodoInicio(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Período Fim</Label>
+                <Input
+                  type="date"
+                  value={periodoFim}
+                  onChange={(e) => setPeriodoFim(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Vendedor</Label>
+                <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {vendedores.map(v => (
+                      <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button className="w-full" onClick={() => {
+                  // Exportar relatório
+                  alert('Funcionalidade de exportação em desenvolvimento');
+                }}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Vendas</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalVendas}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{currencyFormatters.brl(stats.totalRecebido)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{currencyFormatters.brl(stats.ticketMedio)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vendedores</CardTitle>
+              <User className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.vendasPorVendedor.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Vendas por Vendedor */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Vendas por Vendedor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {stats.vendasPorVendedor.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Nenhuma venda no período</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vendedor</TableHead>
+                      <TableHead className="text-right">Quantidade</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Ticket Médio</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.vendasPorVendedor.map((vendedor) => (
+                      <TableRow key={vendedor.id}>
+                        <TableCell className="font-medium">{vendedor.nome}</TableCell>
+                        <TableCell className="text-right">{vendedor.quantidade}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {currencyFormatters.brl(vendedor.total)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {currencyFormatters.brl(vendedor.total / vendedor.quantidade)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Últimas Vendas */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Últimas Vendas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {filteredSales.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>Nenhuma venda no período</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nº</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Vendedor</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSales.slice(0, 20).map((sale) => (
+                      <TableRow key={sale.id}>
+                        <TableCell className="font-bold text-primary">#{sale.numero}</TableCell>
+                        <TableCell>{sale.cliente_nome || 'Cliente não informado'}</TableCell>
+                        <TableCell>{sale.vendedor_nome || '-'}</TableCell>
+                        <TableCell>{dateFormatters.short(sale.created_at)}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {currencyFormatters.brl(sale.total)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </ModernLayout>
+  );
+}
+

@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, Users, Package, Wrench, DollarSign, 
-  Home, FileText, Calendar, CheckSquare, Target, BarChart3
+  Home, FileText, Calendar, CheckSquare, Target, BarChart3, Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -17,25 +17,41 @@ interface QuickNavItem {
 // Configuração de navegação rápida por rota
 const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
   '/pdv': [
-    { label: 'PDV', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
+    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
+    { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
+    { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
+    { label: 'Ordem de Serviço', icon: Wrench, path: '/pdv/os' },
+  ],
+  '/pdv/venda': [
+    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
+    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
     { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
     { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
     { label: 'Ordem de Serviço', icon: Wrench, path: '/pdv/os' },
   ],
   '/pdv/os': [
-    { label: 'PDV', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
+    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
     { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
     { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
     { label: 'Ordem de Serviço', icon: Wrench, path: '/pdv/os' },
   ],
   '/pdv/clientes': [
-    { label: 'PDV', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
+    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
     { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
     { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
     { label: 'Ordem de Serviço', icon: Wrench, path: '/pdv/os' },
   ],
   '/pdv/produtos': [
-    { label: 'PDV', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
+    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
     { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
     { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
     { label: 'Ordem de Serviço', icon: Wrench, path: '/pdv/os' },

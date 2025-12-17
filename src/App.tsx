@@ -58,7 +58,11 @@ import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
 import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
-import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, Colaboradores as AssistenciaColaboradores } from "./pages/assistencia";
+import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, MarcasModelos as AssistenciaMarcasModelos, ConfiguracaoStatus as AssistenciaConfiguracaoStatus } from "./pages/assistencia";
+import Vendas from "./pages/pdv/Vendas";
+import NovaVenda from "./pages/pdv/NovaVenda";
+import Caixa from "./pages/pdv/Caixa";
+import Relatorios from "./pages/pdv/Relatorios";
 
 const queryClient = new QueryClient();
 
@@ -136,15 +140,27 @@ const App = () => (
             <Route path="/productivity" element={<ProtectedRoute><Productivity /></ProtectedRoute>} />
             <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
               
-              {/* PDV / Assistência Técnica */}
-              <Route path="/pdv" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
+              {/* PDV - Frente de Caixa */}
+              <Route path="/pdv" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
+              <Route path="/pdv/vendas" element={<ProtectedRoute><Vendas /></ProtectedRoute>} />
+              {/* Dashboard Assistência Técnica */}
+              <Route path="/assistencia" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
+              <Route path="/pdv/venda/nova" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
+              <Route path="/pdv/venda/:id" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
+              <Route path="/pdv/venda/:id/editar" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
+              <Route path="/pdv/caixa" element={<ProtectedRoute><Caixa /></ProtectedRoute>} />
+              <Route path="/pdv/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
               <Route path="/pdv/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
-              <Route path="/pdv/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/nova/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/:id/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
+              <Route path="/pdv/os/:id/editar/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
               <Route path="/pdv/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
-              <Route path="/pdv/colaboradores" element={<ProtectedRoute><AssistenciaColaboradores /></ProtectedRoute>} />
+              <Route path="/pdv/marcas-modelos" element={<ProtectedRoute><AssistenciaMarcasModelos /></ProtectedRoute>} />
+              <Route path="/pdv/configuracao-status" element={<ProtectedRoute><AssistenciaConfiguracaoStatus /></ProtectedRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

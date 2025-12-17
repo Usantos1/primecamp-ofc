@@ -81,6 +81,9 @@ verify_jwt = false
 [functions.busca-produtos]
 verify_jwt = false
 
+[functions.telegram-webhook]
+verify_jwt = false
+
 [functions.get-candidate-data]
 verify_jwt = false
 

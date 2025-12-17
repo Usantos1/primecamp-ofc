@@ -255,17 +255,94 @@ function generateId(): string {
 function loadFromStorage<T>(key: string, defaultValue: T): T {
   try {
     const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultValue;
-  } catch {
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Log para debug de produtos
+      if (key === STORAGE_KEYS.PRODUTOS) {
+        console.log(`[PRODUTOS] Carregados ${Array.isArray(parsed) ? parsed.length : 0} produtos do localStorage`);
+      }
+      return parsed;
+    }
+    // Log quando não há dados salvos
+    if (key === STORAGE_KEYS.PRODUTOS) {
+      console.warn(`[PRODUTOS] Nenhum produto encontrado no localStorage, usando valor padrão`);
+    }
+    return defaultValue;
+  } catch (error) {
+    console.error(`[STORAGE] Erro ao carregar ${key}:`, error);
+    // Log específico para produtos
+    if (key === STORAGE_KEYS.PRODUTOS) {
+      console.error(`[PRODUTOS] Erro ao parsear produtos do localStorage, usando valor padrão`);
+    }
     return defaultValue;
   }
 }
 
 function saveToStorage<T>(key: string, data: T): void {
   try {
+    // Proteção especial para produtos - fazer backup antes de salvar
+    if (key === STORAGE_KEYS.PRODUTOS && Array.isArray(data)) {
+      const current = localStorage.getItem(key);
+      
+      // PROTEÇÃO CRÍTICA: Não permitir salvar array vazio se já existir dados
+      if ((data as any[]).length === 0 && current) {
+        try {
+          const currentData = JSON.parse(current);
+          if (Array.isArray(currentData) && currentData.length > 0) {
+            console.error(`[PRODUTOS] 🚨 BLOQUEADO: Tentativa de salvar array vazio quando existem ${currentData.length} produtos salvos!`);
+            // Criar backup de emergência
+            const emergencyBackup = `${key}_emergency_${Date.now()}`;
+            localStorage.setItem(emergencyBackup, current);
+            console.error(`[PRODUTOS] Backup de emergência criado: ${emergencyBackup}`);
+            // NÃO SALVAR - retornar sem fazer nada
+            return;
+          }
+        } catch (e) {
+          console.error('[PRODUTOS] Erro ao verificar dados atuais:', e);
+        }
+      }
+      
+      if (current) {
+        try {
+          const currentData = JSON.parse(current);
+          // Sempre fazer backup antes de salvar (não só quando reduz)
+          if (Array.isArray(currentData) && currentData.length > 0) {
+            const backupKey = `${key}_backup_${Date.now()}`;
+            localStorage.setItem(backupKey, current);
+            console.log(`[PRODUTOS] Backup automático criado: ${backupKey} (${currentData.length} produtos)`);
+            // Manter apenas os últimos 10 backups (aumentado de 5 para 10)
+            const backupKeys = Object.keys(localStorage)
+              .filter(k => k.startsWith(`${key}_backup_`))
+              .sort()
+              .reverse()
+              .slice(10);
+            backupKeys.forEach(k => localStorage.removeItem(k));
+          }
+        } catch (e) {
+          console.error('[PRODUTOS] Erro ao criar backup:', e);
+        }
+      }
+      console.log(`[PRODUTOS] ✅ Salvando ${(data as any[]).length} produtos no localStorage`);
+    }
     localStorage.setItem(key, JSON.stringify(data));
   } catch (error) {
-    console.error('Erro ao salvar no localStorage:', error);
+    console.error(`[STORAGE] Erro ao salvar ${key}:`, error);
+    // Se for erro de quota, tentar limpar backups antigos
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      console.warn('[STORAGE] Quota excedida, limpando backups antigos...');
+      const backupKeys = Object.keys(localStorage)
+        .filter(k => k.includes('_backup_'))
+        .sort()
+        .slice(0, -3); // Manter apenas os 3 mais recentes
+      backupKeys.forEach(k => localStorage.removeItem(k));
+      // Tentar salvar novamente
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+        console.log(`[STORAGE] Salvamento bem-sucedido após limpeza de backups`);
+      } catch (retryError) {
+        console.error(`[STORAGE] Erro ao salvar após limpeza:`, retryError);
+      }
+    }
   }
 }
 
@@ -382,8 +459,8 @@ export function useOrdensServico() {
     return ordens.find(os => os.id === id);
   }, [ordens]);
 
-  const updateStatus = useCallback(async (id: string, status: StatusOS, notificar?: boolean) => {
-    const updates: Partial<OrdemServico> = { status };
+  const updateStatus = useCallback(async (id: string, status: StatusOS | string, notificar?: boolean) => {
+    const updates: Partial<OrdemServico> = { status: status as StatusOS };
     
     if (status === 'entregue') {
       updates.situacao = 'fechada';
@@ -399,7 +476,10 @@ export function useOrdensServico() {
     updateOS(id, updates);
     
     if (notificar) {
-      console.log(`Notificando cliente sobre status: ${STATUS_OS_LABELS[status]}`);
+      const statusLabel = status in STATUS_OS_LABELS 
+        ? STATUS_OS_LABELS[status as StatusOS] 
+        : status;
+      console.log(`Notificando cliente sobre status: ${statusLabel}`);
     }
   }, [updateOS]);
 
@@ -607,6 +687,155 @@ export function useMarcasModelos() {
   };
 }
 
+// ==================== HOOK: MARCAS (separado) ====================
+export function useMarcas() {
+  const [marcas, setMarcas] = useState<Marca[]>(() => {
+    const stored = loadFromStorage<Marca[]>(STORAGE_KEYS.MARCAS, []);
+    if (stored.length === 0) {
+      const marcasPadrao = MARCAS_MODELOS_PADRAO.map(m => ({
+        id: generateId(),
+        nome: m.marca,
+        situacao: 'ativo' as const,
+        created_at: new Date().toISOString(),
+      }));
+      saveToStorage(STORAGE_KEYS.MARCAS, marcasPadrao);
+      return marcasPadrao;
+    }
+    return stored;
+  });
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.MARCAS, marcas);
+  }, [marcas]);
+
+  const getMarcaById = useCallback((id: string): Marca | undefined => {
+    return marcas.find(m => m.id === id);
+  }, [marcas]);
+
+  const createMarca = useCallback((data: Partial<Marca>): Marca => {
+    const novaMarca: Marca = {
+      id: generateId(),
+      nome: data.nome || '',
+      situacao: 'ativo',
+      created_at: new Date().toISOString(),
+    };
+    
+    setMarcas(prev => [novaMarca, ...prev]);
+    return novaMarca;
+  }, []);
+
+  const updateMarca = useCallback((id: string, data: Partial<Marca>): Marca | null => {
+    setMarcas(prev => {
+      const index = prev.findIndex(m => m.id === id);
+      if (index === -1) return prev;
+      
+      const updated = [...prev];
+      updated[index] = { ...updated[index], ...data };
+      return updated;
+    });
+    
+    const updated = marcas.find(m => m.id === id);
+    return updated ? { ...updated, ...data } : null;
+  }, [marcas]);
+
+  const deleteMarca = useCallback((id: string): boolean => {
+    setMarcas(prev => prev.map(m => 
+      m.id === id ? { ...m, situacao: 'inativo' as const } : m
+    ));
+    return true;
+  }, []);
+
+  return {
+    marcas: marcas.filter(m => m.situacao === 'ativo'),
+    createMarca,
+    updateMarca,
+    deleteMarca,
+    getMarcaById,
+  };
+}
+
+// ==================== HOOK: MODELOS (separado) ====================
+export function useModelos() {
+  const [modelos, setModelos] = useState<Modelo[]>(() => {
+    const stored = loadFromStorage<Modelo[]>(STORAGE_KEYS.MODELOS, []);
+    if (stored.length === 0) {
+      const marcasStored = loadFromStorage<Marca[]>(STORAGE_KEYS.MARCAS, []);
+      const modelosPadrao: Modelo[] = [];
+      
+      MARCAS_MODELOS_PADRAO.forEach(mp => {
+        const marca = marcasStored.find(m => m.nome === mp.marca);
+        if (marca) {
+          mp.modelos.forEach(nomeModelo => {
+            modelosPadrao.push({
+              id: generateId(),
+              marca_id: marca.id,
+              nome: nomeModelo,
+              situacao: 'ativo',
+              created_at: new Date().toISOString(),
+            });
+          });
+        }
+      });
+      
+      if (modelosPadrao.length > 0) {
+        saveToStorage(STORAGE_KEYS.MODELOS, modelosPadrao);
+      }
+      return modelosPadrao;
+    }
+    return stored;
+  });
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.MODELOS, modelos);
+  }, [modelos]);
+
+  const getModeloById = useCallback((id: string): Modelo | undefined => {
+    return modelos.find(m => m.id === id);
+  }, [modelos]);
+
+  const createModelo = useCallback((data: Partial<Modelo>): Modelo => {
+    const novoModelo: Modelo = {
+      id: generateId(),
+      marca_id: data.marca_id || '',
+      nome: data.nome || '',
+      situacao: 'ativo',
+      created_at: new Date().toISOString(),
+    };
+    
+    setModelos(prev => [novoModelo, ...prev]);
+    return novoModelo;
+  }, []);
+
+  const updateModelo = useCallback((id: string, data: Partial<Modelo>): Modelo | null => {
+    setModelos(prev => {
+      const index = prev.findIndex(m => m.id === id);
+      if (index === -1) return prev;
+      
+      const updated = [...prev];
+      updated[index] = { ...updated[index], ...data };
+      return updated;
+    });
+    
+    const updated = modelos.find(m => m.id === id);
+    return updated ? { ...updated, ...data } : null;
+  }, [modelos]);
+
+  const deleteModelo = useCallback((id: string): boolean => {
+    setModelos(prev => prev.map(m => 
+      m.id === id ? { ...m, situacao: 'inativo' as const } : m
+    ));
+    return true;
+  }, []);
+
+  return {
+    modelos: modelos.filter(m => m.situacao === 'ativo'),
+    createModelo,
+    updateModelo,
+    deleteModelo,
+    getModeloById,
+  };
+}
+
 // ==================== GRUPOS DE PRODUTO ====================
 interface GrupoProduto {
   id: string;
@@ -628,16 +857,110 @@ const GRUPOS_PADRAO: GrupoProduto[] = [
 
 // ==================== HOOK: PRODUTOS ====================
 export function useProdutos() {
-  const [produtos, setProdutos] = useState<Produto[]>(() => 
-    loadFromStorage(STORAGE_KEYS.PRODUTOS, [])
-  );
+  const [produtos, setProdutos] = useState<Produto[]>(() => {
+    const loaded = loadFromStorage(STORAGE_KEYS.PRODUTOS, []);
+    console.log(`[PRODUTOS] Estado inicial: ${Array.isArray(loaded) ? loaded.length : 0} produtos`);
+    return loaded;
+  });
   const [grupos] = useState<GrupoProduto[]>(() => 
     loadFromStorage('assistencia_grupos', GRUPOS_PADRAO)
   );
   const [isLoading] = useState(false);
 
+  // PROTEÇÃO CRÍTICA: Verificar e restaurar produtos se sumirem
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.PRODUTOS, produtos);
+    const checkAndRestore = () => {
+      const stored = localStorage.getItem(STORAGE_KEYS.PRODUTOS);
+      if (stored) {
+        try {
+          const storedData = JSON.parse(stored);
+          if (Array.isArray(storedData) && storedData.length > 0) {
+            // Se temos dados salvos mas o estado está vazio, restaurar IMEDIATAMENTE
+            if (produtos.length === 0 && storedData.length > 0) {
+              console.error(`[PRODUTOS] 🚨 PRODUTOS SUMIRAM! Restaurando ${storedData.length} produtos do localStorage.`);
+              setProdutos(storedData);
+              return;
+            }
+            // Se temos menos produtos no estado do que salvos, restaurar
+            if (produtos.length > 0 && produtos.length < storedData.length) {
+              console.warn(`[PRODUTOS] ⚠️ Produtos perdidos detectados! Estado: ${produtos.length}, localStorage: ${storedData.length}. Restaurando...`);
+              setProdutos(storedData);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('[PRODUTOS] Erro ao verificar dados salvos:', e);
+        }
+      }
+    };
+    
+    // Verificar imediatamente
+    checkAndRestore();
+    
+    // Verificar periodicamente (a cada 3 segundos)
+    const interval = setInterval(checkAndRestore, 3000);
+    
+    return () => clearInterval(interval);
+  }, [produtos.length]);
+
+  // Sincronizar com localStorage e detectar mudanças externas
+  useEffect(() => {
+    // Verificar se há mudanças no localStorage (outras abas, etc)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEYS.PRODUTOS && e.newValue) {
+        try {
+          const newData = JSON.parse(e.newValue);
+          if (Array.isArray(newData)) {
+            console.log(`[PRODUTOS] Mudança detectada no localStorage: ${newData.length} produtos`);
+            // PROTEÇÃO: Só atualizar se os novos dados não forem vazios OU se os atuais também forem vazios
+            if (newData.length > 0 || produtos.length === 0) {
+              setProdutos(newData);
+            } else {
+              console.warn(`[PRODUTOS] 🛡️ Ignorando atualização vazia. Mantendo ${produtos.length} produtos atuais.`);
+            }
+          }
+        } catch (error) {
+          console.error('[PRODUTOS] Erro ao processar mudança do localStorage:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // PROTEÇÃO CRÍTICA: Não salvar array vazio se já existir dados no localStorage
+    const currentStored = localStorage.getItem(STORAGE_KEYS.PRODUTOS);
+    if (produtos.length === 0 && currentStored) {
+      try {
+        const storedData = JSON.parse(currentStored);
+        if (Array.isArray(storedData) && storedData.length > 0) {
+          console.error(`[PRODUTOS] 🚨 BLOQUEADO: Tentativa de salvar array vazio! Restaurando ${storedData.length} produtos.`);
+          setProdutos(storedData);
+          return () => {
+            window.removeEventListener('storage', handleStorageChange);
+          };
+        }
+      } catch (e) {
+        console.error('[PRODUTOS] Erro ao verificar dados salvos:', e);
+      }
+    }
+    
+    // Salvar produtos no localStorage APENAS se houver produtos
+    if (produtos.length > 0) {
+      saveToStorage(STORAGE_KEYS.PRODUTOS, produtos);
+    } else {
+      // Se produtos está vazio, NUNCA salvar se houver dados no localStorage
+      if (!currentStored) {
+        // Só salvar array vazio se realmente não houver nada salvo
+        saveToStorage(STORAGE_KEYS.PRODUTOS, produtos);
+      } else {
+        // PROTEÇÃO: Não salvar array vazio quando há dados salvos
+        console.warn(`[PRODUTOS] 🛡️ Proteção: não salvando array vazio quando há dados no localStorage`);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [produtos]);
 
   const createProduto = useCallback((data: Partial<Produto>): Produto => {
@@ -796,7 +1119,7 @@ export function useConfiguracaoStatus() {
     saveToStorage(STORAGE_KEYS.CONFIG_STATUS, configuracoes);
   }, [configuracoes]);
 
-  const getConfigByStatus = useCallback((status: StatusOS): ConfiguracaoStatus | undefined => {
+  const getConfigByStatus = useCallback((status: StatusOS | string): ConfiguracaoStatus | undefined => {
     return configuracoes.find(c => c.status === status);
   }, [configuracoes]);
 
@@ -804,5 +1127,21 @@ export function useConfiguracaoStatus() {
     setConfiguracoes(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   }, []);
 
-  return { configuracoes, getConfigByStatus, updateConfig };
+  const createConfig = useCallback((data: Omit<ConfiguracaoStatus, 'id'>) => {
+    const newConfig: ConfiguracaoStatus = {
+      ...data,
+      id: Date.now().toString(),
+    };
+    setConfiguracoes(prev => {
+      const maxOrdem = prev.length > 0 ? Math.max(...prev.map(c => c.ordem)) : 0;
+      return [...prev, { ...newConfig, ordem: data.ordem || maxOrdem + 1 }];
+    });
+    return newConfig;
+  }, []);
+
+  const deleteConfig = useCallback((id: string) => {
+    setConfiguracoes(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  return { configuracoes, getConfigByStatus, updateConfig, createConfig, deleteConfig };
 }

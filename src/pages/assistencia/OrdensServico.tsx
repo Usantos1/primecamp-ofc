@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-  Plus, Search, Eye, Edit, Phone, Filter, X,
+  Plus, Search, Eye, Edit, Phone, Filter,
   Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar
 } from 'lucide-react';
 import { useOrdensServico, useClientes, useMarcasModelos } from '@/hooks/useAssistencia';
@@ -20,16 +20,31 @@ import { cn } from '@/lib/utils';
 export default function OrdensServico() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchNumeroOS, setSearchNumeroOS] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   
-  const { ordens, isLoading, getEstatisticas } = useOrdensServico();
+  const { ordens, isLoading, getEstatisticas, getOSById } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
   const { getMarcaById, getModeloById } = useMarcasModelos();
 
   const stats = getEstatisticas();
+
+  // Buscar OS por número
+  useEffect(() => {
+    if (searchNumeroOS) {
+      const numero = parseInt(searchNumeroOS);
+      if (!isNaN(numero)) {
+        const os = ordens.find(o => o.numero === numero);
+        if (os) {
+          navigate(`/pdv/os/${os.id}`);
+          setSearchNumeroOS('');
+        }
+      }
+    }
+  }, [searchNumeroOS, ordens, navigate]);
 
   // Filtrar ordens
   const filteredOrdens = useMemo(() => {
@@ -212,6 +227,27 @@ export default function OrdensServico() {
                   className="pl-9"
                 />
               </div>
+              <div className="relative w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nº OS..."
+                  value={searchNumeroOS}
+                  onChange={(e) => setSearchNumeroOS(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && searchNumeroOS) {
+                      const numero = parseInt(searchNumeroOS);
+                      if (!isNaN(numero)) {
+                        const os = ordens.find(o => o.numero === numero);
+                        if (os) {
+                          navigate(`/pdv/os/${os.id}`);
+                          setSearchNumeroOS('');
+                        }
+                      }
+                    }
+                  }}
+                  className="pl-9"
+                />
+              </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Status" />
@@ -297,7 +333,11 @@ export default function OrdensServico() {
                             isAtrasada && 'bg-red-50 dark:bg-red-950/20',
                             'cursor-pointer hover:bg-muted/50'
                           )}
-                          onClick={() => navigate(`/pdv/os/${os.id}`)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigate(`/pdv/os/${os.id}`);
+                          }}
                         >
                           <TableCell className="font-bold text-primary">#{os.numero}</TableCell>
                           <TableCell>
@@ -368,7 +408,7 @@ export default function OrdensServico() {
                                 className="h-8 w-8"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/pdv/os/${os.id}/editar`);
+                                  navigate(`/pdv/os/${os.id}`);
                                 }}
                               >
                                 <Edit className="h-4 w-4" />
@@ -385,6 +425,7 @@ export default function OrdensServico() {
           </CardContent>
         </Card>
       </div>
+
     </ModernLayout>
   );
 }

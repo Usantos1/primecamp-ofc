@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Check, X, UserPlus, Mail, Calendar, Shield, User, Trash2, Edit } from 'lucide-react';
+import { Check, X, UserPlus, Mail, Calendar, Shield, User, Trash2, Edit, Plus, Star } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDepartments } from '@/hooks/useDepartments';
+import { usePositions, Position } from '@/hooks/usePositions';
 import { DepartmentManager } from '@/components/DepartmentManager';
 import { TeamPermissionsManager } from '@/components/TeamPermissionsManager';
-import { UserEditModal } from '@/components/UserEditModal';
 
 interface UserProfile {
   id: string;
@@ -28,21 +30,36 @@ interface UserProfile {
   phone?: string | null;
 }
 
+interface UserPosition {
+  id: string;
+  user_id: string;
+  position_id: string;
+  department_name: string;
+  is_primary: boolean;
+  position?: Position;
+}
+
+interface UserWithPositions extends UserProfile {
+  positions: UserPosition[];
+}
+
 export const UserManagement = () => {
   const { toast } = useToast();
   const { departments } = useDepartments();
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const { positions, loading: positionsLoading } = usePositions();
+  const [users, setUsers] = useState<UserWithPositions[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingUser, setEditingUser] = useState<UserWithPositions | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
     display_name: '',
     department: '',
-    role: 'member' as 'admin' | 'member'
+    role: 'member' as 'admin' | 'member',
+    selectedPositions: [] as string[]
   });
   const [newDepartment, setNewDepartment] = useState('');
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -50,12 +67,13 @@ export const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar perfis
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
+      if (profilesError) {
         toast({
           title: "Erro",
           description: "Erro ao carregar usuários",
@@ -64,11 +82,90 @@ export const UserManagement = () => {
         return;
       }
 
-      setUsers((data as UserProfile[]) || []);
+      // Buscar posições dos usuários
+      const { data: positionsData, error: positionsError } = await supabase
+        .from('user_position_departments')
+        .select(`
+          *,
+          position:positions(*)
+        `);
+
+      if (positionsError) {
+        console.error('Error fetching positions:', positionsError);
+      }
+
+      // Combinar dados
+      const usersWithPositions: UserWithPositions[] = (profilesData || []).map(profile => {
+        const userPositions = (positionsData || [])
+          .filter((up: any) => up.user_id === profile.user_id)
+          .map((up: any) => ({
+            id: up.id,
+            user_id: up.user_id,
+            position_id: up.position_id,
+            department_name: up.department_name,
+            is_primary: up.is_primary || false,
+            position: up.position
+          }));
+
+        return {
+          ...profile,
+          role: (profile.role === 'admin' || profile.role === 'member') ? profile.role : 'member',
+          positions: userPositions
+        } as UserWithPositions;
+      });
+
+      setUsers(usersWithPositions);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateUserPositions = async (userId: string, positionIds: string[], departmentName: string, primaryPositionId?: string) => {
+    try {
+      // Remover todas as posições atuais do usuário neste departamento
+      const { error: deleteError } = await supabase
+        .from('user_position_departments')
+        .delete()
+        .eq('user_id', userId)
+        .eq('department_name', departmentName);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Adicionar novas posições
+      if (positionIds.length > 0) {
+        const positionsToInsert = positionIds.map((positionId, index) => ({
+          user_id: userId,
+          position_id: positionId,
+          department_name: departmentName,
+          is_primary: primaryPositionId === positionId || (index === 0 && !primaryPositionId)
+        }));
+
+        const { error: insertError } = await supabase
+          .from('user_position_departments')
+          .insert(positionsToInsert);
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Cargos atualizados com sucesso",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error updating positions:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar cargos",
+        variant: "destructive"
+      });
     }
   };
 
@@ -83,14 +180,7 @@ export const UserManagement = () => {
         })
         .eq('user_id', userId);
 
-      if (error) {
-        toast({
-          title: "Erro",
-          description: "Erro ao aprovar usuário",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (error) throw error;
 
       toast({
         title: "Sucesso",
@@ -98,8 +188,12 @@ export const UserManagement = () => {
       });
 
       fetchUsers();
-    } catch (error) {
-      console.error('Error approving user:', error);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao aprovar usuário",
+        variant: "destructive"
+      });
     }
   };
 
@@ -114,24 +208,20 @@ export const UserManagement = () => {
         })
         .eq('user_id', userId);
 
-      if (error) {
-        toast({
-          title: "Erro",
-          description: "Erro ao rejeitar usuário",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (error) throw error;
 
       toast({
         title: "Usuário rejeitado",
         description: "Acesso removido do usuário",
-        variant: "default"
       });
 
       fetchUsers();
-    } catch (error) {
-      console.error('Error rejecting user:', error);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao rejeitar usuário",
+        variant: "destructive"
+      });
     }
   };
 
@@ -142,23 +232,20 @@ export const UserManagement = () => {
         .update({ role })
         .eq('user_id', userId);
 
-      if (error) {
-        toast({
-          title: "Erro",
-          description: "Erro ao atualizar role do usuário",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (error) throw error;
 
       toast({
         title: "Sucesso",
-        description: "Role do usuário atualizada",
+        description: "Função do usuário atualizada",
       });
 
       fetchUsers();
-    } catch (error) {
-      console.error('Error updating user role:', error);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar função",
+        variant: "destructive"
+      });
     }
   };
 
@@ -169,14 +256,7 @@ export const UserManagement = () => {
         .update({ department })
         .eq('user_id', userId);
 
-      if (error) {
-        toast({
-          title: "Erro",
-          description: "Erro ao atualizar departamento",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (error) throw error;
 
       toast({
         title: "Sucesso",
@@ -184,8 +264,12 @@ export const UserManagement = () => {
       });
 
       fetchUsers();
-    } catch (error) {
-      console.error('Error updating user department:', error);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar departamento",
+        variant: "destructive"
+      });
     }
   };
 
@@ -202,46 +286,24 @@ export const UserManagement = () => {
         return;
       }
 
-      // Delete user using edge function (handles both profile and auth deletion)
       const { data: result, error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
         body: { userId }
       });
 
-      if (deleteError) {
-        console.error('Delete error:', deleteError);
-        toast({
-          title: "Erro",
-          description: deleteError.message || "Erro ao excluir usuário",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (deleteError) throw deleteError;
 
       if (result?.success) {
-        if (result.warning) {
-          toast({
-            title: "Aviso",
-            description: result.message || "Usuário excluído parcialmente",
-            variant: "default"
-          });
-        } else {
-          toast({
-            title: "Sucesso",
-            description: `Usuário ${displayName} excluído permanentemente`,
-          });
-        }
-      } else {
         toast({
-          title: "Erro",
-          description: result?.error || "Erro ao excluir usuário",
-          variant: "destructive"
+          title: result.warning ? "Aviso" : "Sucesso",
+          description: result.message || `Usuário ${displayName} excluído`,
+          variant: result.warning ? "default" : "default"
         });
-        return;
+      } else {
+        throw new Error(result?.error || "Erro ao excluir usuário");
       }
 
       fetchUsers();
     } catch (error: any) {
-      console.error('Error deleting user:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao excluir usuário",
@@ -255,7 +317,6 @@ export const UserManagement = () => {
     
     let finalDepartment = newUser.department;
     
-    // If user typed a new department, create it first
     if (newDepartment.trim()) {
       try {
         const { data: userData } = await supabase.auth.getUser();
@@ -268,19 +329,16 @@ export const UserManagement = () => {
           .select()
           .single();
 
-        if (deptError) {
-          toast({
-            title: "Erro",
-            description: "Erro ao criar novo departamento",
-            variant: "destructive"
-          });
-          return;
-        }
+        if (deptError) throw deptError;
         
         finalDepartment = newDepartment.trim();
         setNewDepartment('');
-      } catch (error) {
-        console.error('Error creating department:', error);
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message || "Erro ao criar departamento",
+          variant: "destructive"
+        });
         return;
       }
     }
@@ -295,7 +353,6 @@ export const UserManagement = () => {
     }
 
     try {
-      // Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newUser.email,
         password: newUser.password,
@@ -306,24 +363,16 @@ export const UserManagement = () => {
         }
       });
 
-      if (authError) {
-        toast({
-          title: "Erro",
-          description: authError.message,
-          variant: "destructive"
-        });
-        return;
-      }
+      if (authError) throw authError;
 
       if (authData.user) {
-        // Update profile with additional data
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             display_name: newUser.display_name,
             department: finalDepartment,
             role: newUser.role,
-            approved: true, // Auto-approve users created by admin
+            approved: true,
             approved_at: new Date().toISOString(),
             approved_by: (await supabase.auth.getUser()).data.user?.id
           })
@@ -331,6 +380,24 @@ export const UserManagement = () => {
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
+        }
+
+        // Adicionar cargos se selecionados
+        if (newUser.selectedPositions.length > 0) {
+          const positionsToInsert = newUser.selectedPositions.map((positionId, index) => ({
+            user_id: authData.user.id,
+            position_id: positionId,
+            department_name: finalDepartment,
+            is_primary: index === 0
+          }));
+
+          const { error: positionsError } = await supabase
+            .from('user_position_departments')
+            .insert(positionsToInsert);
+
+          if (positionsError) {
+            console.error('Error adding positions:', positionsError);
+          }
         }
       }
 
@@ -344,21 +411,21 @@ export const UserManagement = () => {
         password: '',
         display_name: '',
         department: '',
-        role: 'member'
+        role: 'member',
+        selectedPositions: []
       });
 
       fetchUsers();
-    } catch (error) {
-      console.error('Error creating user:', error);
+    } catch (error: any) {
       toast({
         title: "Erro",
-        description: "Erro ao criar usuário",
+        description: error.message || "Erro ao criar usuário",
         variant: "destructive"
       });
     }
   };
 
-  if (loading) {
+  if (loading || positionsLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -455,6 +522,58 @@ export const UserManagement = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Cargos</Label>
+                <Select 
+                  value="" 
+                  onValueChange={(value) => {
+                    if (!newUser.selectedPositions.includes(value)) {
+                      setNewUser({
+                        ...newUser,
+                        selectedPositions: [...newUser.selectedPositions, value]
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Adicionar cargo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions
+                      .filter(p => !newUser.selectedPositions.includes(p.id))
+                      .map((position) => (
+                        <SelectItem key={position.id} value={position.id}>
+                          {position.name} (Nível {position.level})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {newUser.selectedPositions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {newUser.selectedPositions.map((positionId) => {
+                      const position = positions.find(p => p.id === positionId);
+                      return position ? (
+                        <Badge key={positionId} variant="secondary" className="flex items-center gap-1">
+                          {position.name}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewUser({
+                                ...newUser,
+                                selectedPositions: newUser.selectedPositions.filter(id => id !== positionId)
+                              });
+                            }}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             <Button type="submit" className="w-full">
@@ -539,7 +658,7 @@ export const UserManagement = () => {
                               <AlertDialogTitle>Confirmar Exclusão Permanente</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Tem certeza que deseja excluir permanentemente o usuário "{user.display_name || 'Sem nome'}"? 
-                                Esta ação não pode ser desfeita e removerá todos os dados do usuário do sistema.
+                                Esta ação não pode ser desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -577,6 +696,7 @@ export const UserManagement = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Departamento</TableHead>
+                <TableHead>Cargos</TableHead>
                 <TableHead>Função</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ações</TableHead>
@@ -605,6 +725,14 @@ export const UserManagement = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell>
+                    <UserPositionsManager 
+                      user={user}
+                      positions={positions}
+                      departments={departments}
+                      onUpdate={() => fetchUsers()}
+                    />
                   </TableCell>
                   <TableCell>
                     <Select 
@@ -658,7 +786,7 @@ export const UserManagement = () => {
                             <AlertDialogTitle>Confirmar Exclusão Permanente</AlertDialogTitle>
                             <AlertDialogDescription>
                               Tem certeza que deseja excluir permanentemente o usuário "{user.display_name || 'Sem nome'}"? 
-                              Esta ação não pode ser desfeita e removerá todos os dados do usuário do sistema.
+                              Esta ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -680,20 +808,200 @@ export const UserManagement = () => {
           </Table>
         </CardContent>
       </Card>
-
-      <UserEditModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingUser(null);
-        }}
-        user={editingUser}
-        onSuccess={() => {
-          fetchUsers();
-          setEditingUser(null);
-          setIsEditModalOpen(false);
-        }}
-      />
     </div>
+  );
+};
+
+// Componente para gerenciar cargos do usuário
+const UserPositionsManager = ({ 
+  user, 
+  positions, 
+  departments,
+  onUpdate 
+}: { 
+  user: UserWithPositions; 
+  positions: Position[];
+  departments: any[];
+  onUpdate: () => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState(user.department || '');
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
+  const [primaryPosition, setPrimaryPosition] = useState<string>('');
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (isOpen && user) {
+      setSelectedDepartment(user.department || '');
+      const userPositions = user.positions.filter(p => p.department_name === (user.department || ''));
+      setSelectedPositions(userPositions.map(p => p.position_id));
+      const primary = userPositions.find(p => p.is_primary);
+      setPrimaryPosition(primary?.position_id || '');
+    }
+  }, [isOpen, user]);
+
+  const handleSave = async () => {
+    if (!selectedDepartment) {
+      toast({
+        title: "Erro",
+        description: "Selecione um departamento",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Remover posições antigas deste departamento
+      const { error: deleteError } = await supabase
+        .from('user_position_departments')
+        .delete()
+        .eq('user_id', user.user_id)
+        .eq('department_name', selectedDepartment);
+
+      if (deleteError) throw deleteError;
+
+      // Adicionar novas posições
+      if (selectedPositions.length > 0) {
+        const positionsToInsert = selectedPositions.map((positionId) => ({
+          user_id: user.user_id,
+          position_id: positionId,
+          department_name: selectedDepartment,
+          is_primary: primaryPosition === positionId || (selectedPositions[0] === positionId && !primaryPosition)
+        }));
+
+        const { error: insertError } = await supabase
+          .from('user_position_departments')
+          .insert(positionsToInsert);
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Cargos atualizados com sucesso",
+      });
+
+      setIsOpen(false);
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar cargos",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const userPositionsInDept = user.positions.filter(p => p.department_name === (user.department || ''));
+  const positionNames = userPositionsInDept
+    .map(up => {
+      const pos = positions.find(p => p.id === up.position_id);
+      return pos ? `${pos.name}${up.is_primary ? ' ⭐' : ''}` : null;
+    })
+    .filter(Boolean)
+    .join(', ') || 'Nenhum';
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="w-full justify-start">
+          <Plus className="h-4 w-4 mr-2" />
+          {positionNames || 'Adicionar cargos'}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Gerenciar Cargos - {user.display_name}</DialogTitle>
+          <DialogDescription>
+            Selecione múltiplos cargos para este usuário. O cargo principal será marcado com ⭐.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Departamento</Label>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o departamento" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Cargos Disponíveis</Label>
+            <div className="border rounded-md p-4 max-h-60 overflow-y-auto space-y-2">
+              {positions.map((position) => (
+                <div key={position.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`position-${position.id}`}
+                    checked={selectedPositions.includes(position.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedPositions([...selectedPositions, position.id]);
+                        if (!primaryPosition) {
+                          setPrimaryPosition(position.id);
+                        }
+                      } else {
+                        setSelectedPositions(selectedPositions.filter(id => id !== position.id));
+                        if (primaryPosition === position.id) {
+                          setPrimaryPosition(selectedPositions.find(id => id !== position.id) || '');
+                        }
+                      }
+                    }}
+                  />
+                  <Label 
+                    htmlFor={`position-${position.id}`}
+                    className="flex-1 cursor-pointer flex items-center justify-between"
+                  >
+                    <span>{position.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">Nível {position.level}</Badge>
+                      {selectedPositions.includes(position.id) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPrimaryPosition(position.id);
+                          }}
+                          className="text-yellow-500 hover:text-yellow-600"
+                        >
+                          {primaryPosition === position.id ? (
+                            <Star className="h-4 w-4 fill-yellow-500" />
+                          ) : (
+                            <Star className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {selectedPositions.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                {selectedPositions.length} cargo(s) selecionado(s)
+                {primaryPosition && (
+                  <span className="ml-2">
+                    • Principal: {positions.find(p => p.id === primaryPosition)?.name}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave}>
+            Salvar Cargos
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

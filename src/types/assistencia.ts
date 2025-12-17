@@ -55,7 +55,7 @@ export const STATUS_OS_COLORS: Record<StatusOS, string> = {
 
 export interface ConfiguracaoStatus {
   id: string;
-  status: StatusOS;
+  status: StatusOS | string; // Permite status customizados além dos pré-definidos
   label: string;
   cor: string;
   notificar_whatsapp: boolean;
@@ -267,7 +267,7 @@ export interface OrdemServico {
   id: string;
   numero: number;
   situacao: 'aberta' | 'fechada' | 'cancelada';
-  status: StatusOS;
+  status: StatusOS | string; // Permite status customizados
   
   // Datas
   data_entrada: string;
@@ -297,6 +297,7 @@ export interface OrdemServico {
   senha_numerica?: string; // Para iPhone
   padrao_desbloqueio?: string; // Padrão de desbloqueio (bolinhas)
   possui_senha: boolean;
+  possui_senha_tipo?: string; // Tipo de senha: 'sim', 'nao', 'deslizar', 'nao_sabe', 'nao_autorizou'
   deixou_aparelho: boolean;
   apenas_agendamento: boolean; // Se é apenas agendamento ou deixou aparelho
   
@@ -345,7 +346,35 @@ export interface OrdemServico {
   // Fotos
   fotos_entrada?: string[];
   fotos_saida?: string[];
-  fotos_drive_folder_id?: string; // ID da pasta no Google Drive
+  fotos_processo?: string[];
+  fotos_telegram_entrada?: Array<{
+    url?: string;
+    fileName?: string;
+    tipo: 'entrada' | 'processo' | 'saida';
+    enviadoEm?: string;
+    messageId?: number;
+    fileId?: string;
+  }>; // Informações das fotos enviadas para Telegram (entrada)
+  fotos_telegram_processo?: Array<{
+    url?: string;
+    fileName?: string;
+    tipo: 'entrada' | 'processo' | 'saida';
+    enviadoEm?: string;
+    messageId?: number;
+    fileId?: string;
+  }>; // Informações das fotos enviadas para Telegram (processo)
+  fotos_telegram_saida?: Array<{
+    url?: string;
+    fileName?: string;
+    tipo: 'entrada' | 'processo' | 'saida';
+    enviadoEm?: string;
+    messageId?: number;
+    fileId?: string;
+  }>; // Informações das fotos enviadas para Telegram (saída)
+  telegram_chat_id_entrada?: string; // Chat ID do Telegram para fotos de entrada
+  telegram_chat_id_processo?: string; // Chat ID do Telegram para fotos de processo
+  telegram_chat_id_saida?: string; // Chat ID do Telegram para fotos de saída
+  fotos_drive_folder_id?: string; // ID da pasta no Google Drive (deprecated)
   
   // Metadata
   created_at: string;
@@ -361,10 +390,12 @@ export interface OrdemServicoFormData {
   imei?: string;
   numero_serie?: string;
   cor?: string;
+  operadora?: string;
   senha_aparelho?: string;
   senha_numerica?: string; // Para iPhone
   padrao_desbloqueio?: string; // Padrão de desbloqueio
   possui_senha: boolean;
+  possui_senha_tipo?: string; // 'sim', 'nao', 'deslizar', 'nao_sabe', 'nao_autorizou'
   deixou_aparelho: boolean;
   apenas_agendamento: boolean;
   descricao_problema: string;

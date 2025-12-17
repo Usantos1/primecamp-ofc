@@ -16,6 +16,7 @@ const DOT_SPACING = 50;
 export function PatternLock({ value = '', onChange, disabled = false, className }: PatternLockProps) {
   const [selectedDots, setSelectedDots] = useState<number[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [clickStartPos, setClickStartPos] = useState<{x: number, y: number} | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -85,12 +86,20 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Círculo interno (selecionado)
+        // Círculo interno (selecionado) e número da sequência
         if (isSelected) {
           ctx.beginPath();
           ctx.arc(x, y, DOT_SIZE / 4, 0, 2 * Math.PI);
           ctx.fillStyle = '#ffffff';
           ctx.fill();
+          
+          // Desenhar número da sequência
+          const sequenceNumber = selectedDots.indexOf(index) + 1;
+          ctx.fillStyle = '#2563eb';
+          ctx.font = 'bold 12px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(sequenceNumber.toString(), x, y);
         }
       }
     }
@@ -114,11 +123,29 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
     return index;
   };
 
+  const handleClick = (x: number, y: number) => {
+    if (disabled) return;
+    const index = getDotIndex(x, y);
+    if (index !== null) {
+      // Se já está selecionado, remove (permite desfazer)
+      if (selectedDots.includes(index)) {
+        const newDots = selectedDots.filter(dot => dot !== index);
+        setSelectedDots(newDots);
+        onChange?.(newDots.join('-'));
+      } else {
+        // Adiciona à sequência
+        const newDots = [...selectedDots, index];
+        setSelectedDots(newDots);
+        onChange?.(newDots.join('-'));
+      }
+    }
+  };
+
   const handleStart = (x: number, y: number) => {
     if (disabled) return;
-    setIsDrawing(true);
     const index = getDotIndex(x, y);
     if (index !== null && !selectedDots.includes(index)) {
+      // Inicia arrasto adicionando o primeiro ponto
       const newDots = [index];
       setSelectedDots(newDots);
       onChange?.(newDots.join('-'));
@@ -148,15 +175,33 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
   // Handlers para mouse
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    handleStart(e.clientX, e.clientY);
+    setClickStartPos({ x: e.clientX, y: e.clientY });
+    // Não inicia arrasto ainda, espera para ver se é clique ou arrasto
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     e.preventDefault();
-    handleMove(e.clientX, e.clientY);
+    // Se moveu mais de 5px, considera como arrasto
+    if (clickStartPos && !isDrawing) {
+      const dx = Math.abs(e.clientX - clickStartPos.x);
+      const dy = Math.abs(e.clientY - clickStartPos.y);
+      if (dx > 5 || dy > 5) {
+        setIsDrawing(true);
+        // Inicia arrasto no ponto inicial
+        handleStart(clickStartPos.x, clickStartPos.y);
+      }
+    }
+    if (isDrawing) {
+      handleMove(e.clientX, e.clientY);
+    }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
+    // Se não estava arrastando (foi um clique simples), trata como clique
+    if (!isDrawing && clickStartPos) {
+      handleClick(e.clientX, e.clientY);
+    }
+    setClickStartPos(null);
     handleEnd();
   };
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Edit, Trash2, Package, X, Barcode, Warehouse, Plug, 
-  DoorOpen, Filter, XCircle, Save
+  DoorOpen, Filter, XCircle, Save, AlertTriangle, Check
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useProdutos, useMarcasModelos } from '@/hooks/useAssistencia';
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
@@ -21,6 +22,7 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
 
 const INITIAL_FORM: ProdutoFormData = {
   tipo: 'peca',
@@ -38,6 +40,46 @@ export default function Produtos() {
   const { marcas, modelos, getModeloById, getMarcaById, getModelosByMarca } = useMarcasModelos();
   const { toast } = useToast();
 
+  // Verificar se há backups disponíveis quando produtos desaparecem
+  useEffect(() => {
+    const checkBackups = () => {
+      const backupKeys = Object.keys(localStorage)
+        .filter(k => k.startsWith('assistencia_produtos_backup_'))
+        .sort()
+        .reverse();
+      
+      if (backupKeys.length > 0 && produtos.length === 0) {
+        const latestBackup = localStorage.getItem(backupKeys[0]);
+        if (latestBackup) {
+          try {
+            const backupData = JSON.parse(latestBackup);
+            if (Array.isArray(backupData) && backupData.length > 0) {
+              console.warn(`[PRODUTOS] Backup encontrado com ${backupData.length} produtos!`);
+              toast({
+                title: '⚠️ Backup encontrado!',
+                description: `Encontrado backup com ${backupData.length} produtos. Verifique o console para restaurar.`,
+                variant: 'default',
+                duration: 15000,
+              });
+              // Adicionar função global para restaurar
+              (window as any).restaurarProdutosBackup = () => {
+                localStorage.setItem('assistencia_produtos', latestBackup);
+                window.location.reload();
+              };
+              console.log('[PRODUTOS] Para restaurar, execute: window.restaurarProdutosBackup()');
+            }
+          } catch (error) {
+            console.error('Erro ao verificar backup:', error);
+          }
+        }
+      }
+    };
+
+    // Verificar backups após 2 segundos (dar tempo para carregar)
+    const timeout = setTimeout(checkBackups, 2000);
+    return () => clearTimeout(timeout);
+  }, [produtos.length, toast]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [situacaoFilter, setSituacaoFilter] = useState<string>('ativo');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
@@ -48,6 +90,9 @@ export default function Produtos() {
   const [formData, setFormData] = useState<ProdutoFormData>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('manutencao');
+  const [showEtiquetaModal, setShowEtiquetaModal] = useState(false);
+  const [quantidadeEtiquetas, setQuantidadeEtiquetas] = useState(1);
+  const [showEstoqueModal, setShowEstoqueModal] = useState(false);
   
   // Campos adicionais do formulário completo
   const [formDataExtended, setFormDataExtended] = useState({
@@ -252,6 +297,113 @@ export default function Produtos() {
     });
     setActiveTab('manutencao');
     setShowForm(true);
+  };
+
+  // Gerar código de barras automaticamente
+  const gerarCodigoBarras = (produto: Produto): string => {
+    if (produto.codigo_barras) {
+      return produto.codigo_barras;
+    }
+    
+    // Gerar EAN13 baseado no código do produto
+    if (produto.codigo) {
+      // EAN13 precisa de 13 dígitos
+      // Usar código do produto + zeros à esquerda + dígito verificador
+      const codigoBase = produto.codigo.toString().padStart(12, '0');
+      // Calcular dígito verificador EAN13
+      let soma = 0;
+      for (let i = 0; i < 12; i++) {
+        const digito = parseInt(codigoBase[i]);
+        soma += i % 2 === 0 ? digito : digito * 3;
+      }
+      const digitoVerificador = (10 - (soma % 10)) % 10;
+      return codigoBase + digitoVerificador.toString();
+    }
+    
+    // Se não tiver código, gerar baseado no ID
+    const idBase = produto.id.replace(/-/g, '').substring(0, 12).padStart(12, '0');
+    let soma = 0;
+    for (let i = 0; i < 12; i++) {
+      const digito = parseInt(idBase[i]);
+      soma += i % 2 === 0 ? digito : digito * 3;
+    }
+    const digitoVerificador = (10 - (soma % 10)) % 10;
+    return idBase + digitoVerificador.toString();
+  };
+
+  // Gerar etiqueta
+  const handleGerarEtiqueta = async () => {
+    if (!selectedProduto) {
+      toast({
+        title: 'Produto não selecionado',
+        description: 'Selecione um produto para gerar a etiqueta.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Gerar código de barras se não tiver
+      const codigoBarras = gerarCodigoBarras(selectedProduto);
+      
+      // Se o produto não tinha código de barras, atualizar
+      if (!selectedProduto.codigo_barras) {
+        updateProduto(selectedProduto.id, {
+          ...selectedProduto,
+          codigo_barras: codigoBarras,
+        });
+        toast({
+          title: 'Código de barras gerado',
+          description: `Código de barras ${codigoBarras} foi gerado e salvo no produto.`,
+        });
+      }
+
+      // Calcular código do produto (usar código existente ou índice + 1)
+      const produtoIndex = produtos.findIndex(p => p.id === selectedProduto.id);
+      const codigoProduto = selectedProduto.codigo || produtoIndex + 1;
+
+      const etiquetaData: EtiquetaData = {
+        descricao: selectedProduto.descricao,
+        descricao_abreviada: selectedProduto.descricao_abreviada,
+        preco_venda: selectedProduto.preco_venda,
+        codigo_barras: codigoBarras,
+        codigo: codigoProduto,
+        referencia: selectedProduto.referencia,
+        empresa: {
+          nome: 'PRIMECAMP',
+          logo: 'https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png', // Logo da empresa
+        },
+      };
+
+      // Gerar múltiplas etiquetas se necessário
+      if (quantidadeEtiquetas > 1) {
+        const produtos = Array(quantidadeEtiquetas).fill(etiquetaData);
+        const doc = await generateEtiquetasA4(produtos, 7, 5); // 7 colunas x 5 linhas para etiquetas verticais
+        // Abrir janela de impressão
+        doc.autoPrint();
+        window.open(doc.output('bloburl'), '_blank');
+      } else {
+        const doc = await generateEtiquetaPDF(etiquetaData);
+        // Abrir janela de impressão
+        doc.autoPrint();
+        window.open(doc.output('bloburl'), '_blank');
+      }
+
+      toast({
+        title: 'Etiqueta gerada',
+        description: `Abrindo janela de impressão para ${quantidadeEtiquetas} etiqueta(s)...`,
+      });
+
+      setShowEtiquetaModal(false);
+      setQuantidadeEtiquetas(1);
+    } catch (error: any) {
+      console.error('Erro ao gerar etiqueta:', error);
+      toast({
+        title: 'Erro ao gerar etiqueta',
+        description: error.message || 'Ocorreu um erro ao gerar a etiqueta.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Abrir produto (selecionar)
@@ -481,6 +633,7 @@ export default function Produtos() {
                   className="gap-2"
                   variant="outline"
                   disabled={!selectedProduto}
+                  onClick={() => setShowEtiquetaModal(true)}
                 >
                   <Barcode className="h-4 w-4" />
                   Etiqueta
@@ -489,6 +642,7 @@ export default function Produtos() {
                   className="gap-2"
                   variant="outline"
                   disabled={!selectedProduto}
+                  onClick={() => setShowEstoqueModal(true)}
                 >
                   <Warehouse className="h-4 w-4" />
                   Estoque
@@ -596,8 +750,45 @@ export default function Produtos() {
                           onChange={(e) => setFormData(prev => ({ ...prev, codigo_barras: e.target.value }))}
                           placeholder="7890000030922"
                         />
-                        <Button variant="outline" size="icon">
-                          <Search className="h-4 w-4" />
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => {
+                            // Gerar código de barras EAN13
+                            let codigoBase = '';
+                            
+                            // Tentar usar código do produto se existir
+                            if (editingProduto?.codigo) {
+                              codigoBase = editingProduto.codigo.toString().padStart(12, '0');
+                            } else if (formData.codigo_barras && formData.codigo_barras.length >= 12) {
+                              // Se já tiver código de barras parcial, usar ele
+                              codigoBase = formData.codigo_barras.substring(0, 12).padStart(12, '0');
+                            } else {
+                              // Gerar baseado em timestamp + random
+                              const timestamp = Date.now().toString().slice(-8);
+                              const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+                              codigoBase = (timestamp + random).padStart(12, '0').substring(0, 12);
+                            }
+                            
+                            // Calcular dígito verificador EAN13
+                            let soma = 0;
+                            for (let i = 0; i < 12; i++) {
+                              const digito = parseInt(codigoBase[i] || '0');
+                              soma += i % 2 === 0 ? digito : digito * 3;
+                            }
+                            const digitoVerificador = (10 - (soma % 10)) % 10;
+                            const codigoBarrasCompleto = codigoBase + digitoVerificador.toString();
+                            
+                            setFormData(prev => ({ ...prev, codigo_barras: codigoBarrasCompleto }));
+                            toast({
+                              title: 'Código de barras gerado',
+                              description: `Código EAN13: ${codigoBarrasCompleto}`,
+                            });
+                          }}
+                          title="Gerar código de barras EAN13"
+                        >
+                          <Barcode className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -1188,36 +1379,399 @@ export default function Produtos() {
 
                 {/* Tab: Estoque */}
                 <TabsContent value="estoque" className="space-y-4 mt-0">
-                  <div className="text-center text-muted-foreground py-8">
-                    <p>Gestão de estoque em desenvolvimento</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Estoque Atual</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.estoque_atual || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, estoque_atual: parseFloat(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade atual em estoque
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Estoque Mínimo</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.estoque_minimo || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, estoque_minimo: parseFloat(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade mínima para alerta
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Localização</Label>
+                      <Input
+                        value={formData.localizacao || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))}
+                        placeholder="Ex: Prateleira A-01"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Localização física do produto no estoque
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Estoque de Reposição</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formDataExtended.estoque_reposicao || ''}
+                        onChange={(e) => setFormDataExtended(prev => ({ ...prev, estoque_reposicao: parseFloat(e.target.value) || 0 }))}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade ideal para reposição
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status do Estoque */}
+                  <div className="border rounded-lg p-4 bg-muted/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-base font-semibold">Status do Estoque</Label>
+                      {formData.estoque_atual !== undefined && formData.estoque_minimo !== undefined && (
+                        <div className="flex items-center gap-2">
+                          {formData.estoque_atual <= formData.estoque_minimo ? (
+                            <Badge variant="destructive" className="gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Estoque Baixo
+                            </Badge>
+                          ) : formData.estoque_atual <= (formData.estoque_minimo * 1.5) ? (
+                            <Badge variant="outline" className="gap-1 text-yellow-600 border-yellow-600">
+                              <AlertTriangle className="h-3 w-3" />
+                              Atenção
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
+                              <Check className="h-3 w-3" />
+                              Normal
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Atual</p>
+                        <p className="font-semibold text-lg">{formData.estoque_atual || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Mínimo</p>
+                        <p className="font-semibold text-lg">{formData.estoque_minimo || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Disponível</p>
+                        <p className="font-semibold text-lg">
+                          {Math.max(0, (formData.estoque_atual || 0) - (formData.estoque_minimo || 0))}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 
                 {/* Tab: Estoque Condicional */}
                 <TabsContent value="estoque-condicional" className="space-y-4 mt-0">
-                  <div className="text-center text-muted-foreground py-8">
-                    <p>Estoque condicional em desenvolvimento</p>
+                  <div className="space-y-4">
+                    <div className="border rounded-lg p-4 bg-muted/50">
+                      <Label className="text-base font-semibold mb-2 block">Estoque Reservado</Label>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Produtos reservados para ordens de serviço ou vendas pendentes
+                      </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Quantidade Reservada</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            disabled
+                            className="bg-background"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Estoque Disponível Real</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={Math.max(0, (formData.estoque_atual || 0))}
+                            disabled
+                            className="bg-background font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Regras de Reserva</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" className="rounded" />
+                          <Label className="text-sm font-normal">
+                            Reservar automaticamente ao adicionar em OS
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" className="rounded" />
+                          <Label className="text-sm font-normal">
+                            Liberar reserva ao finalizar OS
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" className="rounded" />
+                          <Label className="text-sm font-normal">
+                            Permitir venda mesmo com estoque reservado
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 
                 {/* Tab: Preço Venda Empresa */}
                 <TabsContent value="preco-venda-empresa" className="space-y-4 mt-0">
-                  <div className="text-center text-muted-foreground py-8">
-                    <p>Preços de venda por empresa em desenvolvimento</p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Preço de Venda</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.preco_venda || ''}
+                          onChange={(e) => {
+                            const venda = parseFloat(e.target.value) || 0;
+                            const custo = formData.preco_custo || 0;
+                            setFormData(prev => ({ ...prev, preco_venda: venda }));
+                            // Recalcular margem de lucro quando preço de venda muda
+                            if (custo > 0) {
+                              const margem = ((venda - custo) / custo) * 100;
+                              setFormDataExtended(prev => ({ ...prev, percentual_lucro: margem }));
+                            }
+                          }}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Preço Mínimo de Venda</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0,00"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Preço de Custo</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.preco_custo || ''}
+                          onChange={(e) => {
+                            const custo = parseFloat(e.target.value) || 0;
+                            setFormData(prev => ({ ...prev, preco_custo: custo }));
+                            // Se tiver % lucro definido, recalcular preço de venda
+                            if (formDataExtended.percentual_lucro > 0 && custo > 0) {
+                              const venda = custo * (1 + formDataExtended.percentual_lucro / 100);
+                              setFormData(prev => ({ ...prev, preco_venda: venda }));
+                            } else if (formData.preco_venda > 0 && custo > 0) {
+                              // Se não tiver % lucro, recalcular margem baseada no preço de venda atual
+                              const margem = ((formData.preco_venda - custo) / custo) * 100;
+                              setFormDataExtended(prev => ({ ...prev, percentual_lucro: margem }));
+                            }
+                          }}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Percentual de Lucro (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formDataExtended.percentual_lucro || ''}
+                          onChange={(e) => {
+                            const lucro = parseFloat(e.target.value) || 0;
+                            const custo = formData.preco_custo || 0;
+                            const venda = custo * (1 + lucro / 100);
+                            setFormDataExtended(prev => ({ ...prev, percentual_lucro: lucro }));
+                            setFormData(prev => ({ ...prev, preco_venda: venda }));
+                          }}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Margem de Lucro</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.preco_venda && formData.preco_custo 
+                            ? (((formData.preco_venda - formData.preco_custo) / formData.preco_custo) * 100).toFixed(2)
+                            : '0,00'}
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Preço</Label>
+                        <Select
+                          value={formDataExtended.tipo_preco}
+                          onValueChange={(v: any) => setFormDataExtended(prev => ({ ...prev, tipo_preco: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fixo">Fixo</SelectItem>
+                            <SelectItem value="variavel">Variável</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Percentual de Desconto Máximo (%)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formDataExtended.percentual_desconto || ''}
+                          onChange={(e) => setFormDataExtended(prev => ({ ...prev, percentual_desconto: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0,00"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 
                 {/* Tab: Preço Fornecedor */}
                 <TabsContent value="preco-fornecedor" className="space-y-4 mt-0">
-                  <div className="text-center text-muted-foreground py-8">
-                    <p>Preços de fornecedor em desenvolvimento</p>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Preço de Compra (Fornecedor)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formDataExtended.compra || ''}
+                          onChange={(e) => setFormDataExtended(prev => ({ ...prev, compra: parseFloat(e.target.value) || 0 }))}
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Última Compra</Label>
+                        <Input
+                          type="date"
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Preço Médio de Compra</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.preco_custo || ''}
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Quantidade Mínima de Compra</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="1"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Unidade de Compra</Label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="UN" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="UN">UN</SelectItem>
+                            <SelectItem value="CX">CX (Caixa)</SelectItem>
+                            <SelectItem value="PC">PC (Peça)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-muted/50">
+                      <Label className="text-base font-semibold mb-2 block">Histórico de Preços</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Histórico de preços de compra será exibido aqui
+                      </p>
+                    </div>
                   </div>
                 </TabsContent>
 
                 {/* Tab: Foto */}
                 <TabsContent value="foto" className="space-y-4 mt-0">
-                  <div className="text-center text-muted-foreground py-8">
-                    <p>Upload de fotos em desenvolvimento</p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Foto do Produto</Label>
+                      <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                        <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Clique para fazer upload ou arraste uma imagem aqui
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/*';
+                            input.onchange = (e: any) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                // Aqui você pode implementar o upload da imagem
+                                toast({
+                                  title: 'Upload de foto',
+                                  description: 'Funcionalidade de upload será implementada em breve.',
+                                });
+                              }
+                            };
+                            input.click();
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Selecionar Imagem
+                        </Button>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Formatos aceitos: JPG, PNG, WEBP (máx. 5MB)
+                        </p>
+                      </div>
+                    </div>
+
+                    {editingProduto && (
+                      <div className="space-y-2">
+                        <Label>Foto Atual</Label>
+                        <div className="border rounded-lg p-4 bg-muted/50 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Nenhuma foto cadastrada
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               </div>
@@ -1244,6 +1798,201 @@ export default function Produtos() {
                   Sair
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Etiqueta */}
+        <Dialog open={showEtiquetaModal} onOpenChange={setShowEtiquetaModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Gerar Etiqueta</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {selectedProduto && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Produto:</Label>
+                    <span className="font-semibold">{selectedProduto.descricao}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Preço:</Label>
+                    <span className="font-semibold text-lg">
+                      {currencyFormatters.brl(selectedProduto.preco_venda)}
+                    </span>
+                  </div>
+                  {selectedProduto.codigo_barras && (
+                    <div className="flex items-center justify-between">
+                      <Label>Código de Barras:</Label>
+                      <span className="text-sm font-mono">{selectedProduto.codigo_barras}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Quantidade de Etiquetas</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={quantidadeEtiquetas}
+                  onChange={(e) => setQuantidadeEtiquetas(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {quantidadeEtiquetas > 1 
+                    ? `${quantidadeEtiquetas} etiquetas serão geradas em uma página A4`
+                    : '1 etiqueta será gerada (50mm x 30mm)'}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEtiquetaModal(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleGerarEtiqueta}>
+                <Barcode className="h-4 w-4 mr-2" />
+                Gerar Etiqueta
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Estoque */}
+        <Dialog open={showEstoqueModal} onOpenChange={setShowEstoqueModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Informações de Estoque</DialogTitle>
+            </DialogHeader>
+            {selectedProduto && (
+              <div className="space-y-6 py-4">
+                {/* Informações do Produto */}
+                <div className="border-b pb-4">
+                  <h3 className="font-semibold text-lg mb-2">{selectedProduto.descricao}</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                    <div>
+                      <span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}
+                    </div>
+                    {selectedProduto.referencia && (
+                      <div>
+                        <span className="font-medium">Referência:</span> {selectedProduto.referencia}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quantidades */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Estoque Atual</Label>
+                      <div className="text-3xl font-bold text-primary">
+                        {selectedProduto.estoque_atual || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade disponível em estoque
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Estoque Mínimo</Label>
+                      <div className="text-2xl font-semibold">
+                        {selectedProduto.estoque_minimo || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade mínima para alerta
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Estoque de Reposição</Label>
+                      <div className="text-2xl font-semibold">
+                        {(selectedProduto as any).estoque_reposicao || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade ideal para reposição
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Estoque Disponível Real</Label>
+                      <div className="text-2xl font-semibold text-green-600">
+                        {Math.max(0, (selectedProduto.estoque_atual || 0))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Estoque disponível para venda
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Localização</Label>
+                      <div className="text-lg font-medium">
+                        {selectedProduto.localizacao || '-'}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Localização física no estoque
+                      </p>
+                    </div>
+
+                    {/* Status do Estoque */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Status do Estoque</Label>
+                      <div className="mt-2">
+                        {selectedProduto.estoque_atual !== undefined && selectedProduto.estoque_minimo !== undefined && (
+                          <>
+                            {selectedProduto.estoque_atual <= selectedProduto.estoque_minimo ? (
+                              <Badge variant="destructive" className="text-sm py-1 px-3">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Estoque Baixo
+                              </Badge>
+                            ) : selectedProduto.estoque_atual <= (selectedProduto.estoque_minimo * 1.5) ? (
+                              <Badge variant="outline" className="text-sm py-1 px-3 border-yellow-500 text-yellow-700">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Atenção
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-sm py-1 px-3 border-green-500 text-green-700">
+                                <Check className="h-3 w-3 mr-1" />
+                                Normal
+                              </Badge>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumo */}
+                <div className="border-t pt-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Saldo Disponível</p>
+                      <p className="text-lg font-semibold">
+                        {Math.max(0, (selectedProduto.estoque_atual || 0) - (selectedProduto.estoque_minimo || 0))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Necessário Repor</p>
+                      <p className="text-lg font-semibold text-orange-600">
+                        {Math.max(0, ((selectedProduto as any).estoque_reposicao || 0) - (selectedProduto.estoque_atual || 0))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Valor Total Estoque</p>
+                      <p className="text-lg font-semibold text-primary">
+                        {currencyFormatters.brl((selectedProduto.estoque_atual || 0) * (selectedProduto.preco_custo || 0))}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEstoqueModal(false)}>
+                Fechar
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
