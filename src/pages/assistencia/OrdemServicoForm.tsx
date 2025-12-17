@@ -2417,7 +2417,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'processo' as const } 
                                 : foto;
-                              const imageUrl = fotoData.url || fotoData.thumbnailUrl || fotoData.postLink;
+                              const imageUrl = fotoData.url || fotoData.thumbnailUrl;
+                              const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_processo;
                               
                               const handleDelete = async (e: React.MouseEvent) => {
@@ -2450,20 +2451,26 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {imageUrl && !fotoData.postLink ? (
+                                  {hasImage && imageUrl ? (
                                     <>
                                       <img 
                                         src={imageUrl} 
                                         alt={fotoData.fileName || `Processo ${index + 1}`}
                                         className="w-full h-full object-cover"
-                                        onClick={() => window.open(imageUrl, '_blank')}
+                                        onClick={() => {
+                                          if (fotoData.postLink) {
+                                            window.open(fotoData.postLink, '_blank');
+                                          } else if (imageUrl) {
+                                            window.open(imageUrl, '_blank');
+                                          }
+                                        }}
                                         onError={(e) => {
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
-                                          Clique para ampliar
+                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
                                       </div>
                                     </>
@@ -2537,7 +2544,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'saida' as const } 
                                 : foto;
-                              const imageUrl = fotoData.url || fotoData.thumbnailUrl || fotoData.postLink;
+                              const imageUrl = fotoData.url || fotoData.thumbnailUrl;
+                              const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_saida;
                               
                               const handleDelete = async (e: React.MouseEvent) => {
@@ -2570,20 +2578,26 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {imageUrl && !fotoData.postLink ? (
+                                  {hasImage && imageUrl ? (
                                     <>
                                       <img 
                                         src={imageUrl} 
                                         alt={fotoData.fileName || `Saída ${index + 1}`}
                                         className="w-full h-full object-cover"
-                                        onClick={() => window.open(imageUrl, '_blank')}
+                                        onClick={() => {
+                                          if (fotoData.postLink) {
+                                            window.open(fotoData.postLink, '_blank');
+                                          } else if (imageUrl) {
+                                            window.open(imageUrl, '_blank');
+                                          }
+                                        }}
                                         onError={(e) => {
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
-                                          Clique para ampliar
+                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
                                       </div>
                                     </>
