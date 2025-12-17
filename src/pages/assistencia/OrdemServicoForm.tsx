@@ -2289,22 +2289,28 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {currentOS.fotos_telegram_entrada.map((foto, index) => {
-                              const fotoData = typeof foto === 'string' ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } : foto;
+                              const fotoData = typeof foto === 'string' 
+                                ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } 
+                                : foto;
+                              const imageUrl = fotoData.url || fotoData.postLink;
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {fotoData.url ? (
+                                  {imageUrl ? (
                                     <>
                                       <img 
-                                        src={fotoData.url} 
+                                        src={imageUrl} 
                                         alt={fotoData.fileName || `Entrada ${index + 1}`}
                                         className="w-full h-full object-cover"
-                                        onClick={() => window.open(fotoData.url, '_blank')}
+                                        onClick={() => window.open(imageUrl, '_blank')}
                                         onError={(e) => {
+                                          // Se a imagem falhar, mostrar fallback
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
+                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
+                                        </span>
                                       </div>
                                     </>
                                   ) : (
@@ -2314,8 +2320,25 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
                                         <p className="text-xs text-muted-foreground mt-1">
-                                          {new Date(fotoData.enviadoEm).toLocaleDateString('pt-BR')}
+                                          {new Date(fotoData.enviadoEm).toLocaleString('pt-BR', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
                                         </p>
+                                      )}
+                                      {fotoData.postLink && (
+                                        <a 
+                                          href={fotoData.postLink} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline mt-1"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          Ver no Telegram
+                                        </a>
                                       )}
                                     </div>
                                   )}
@@ -2337,22 +2360,27 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {currentOS.fotos_telegram_processo.map((foto, index) => {
-                              const fotoData = typeof foto === 'string' ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'processo' as const } : foto;
+                              const fotoData = typeof foto === 'string' 
+                                ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'processo' as const } 
+                                : foto;
+                              const imageUrl = fotoData.url || fotoData.postLink;
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {fotoData.url ? (
+                                  {imageUrl ? (
                                     <>
                                       <img 
-                                        src={fotoData.url} 
+                                        src={imageUrl} 
                                         alt={fotoData.fileName || `Processo ${index + 1}`}
                                         className="w-full h-full object-cover"
-                                        onClick={() => window.open(fotoData.url, '_blank')}
+                                        onClick={() => window.open(imageUrl, '_blank')}
                                         onError={(e) => {
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
+                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
+                                        </span>
                                       </div>
                                     </>
                                   ) : (
@@ -2362,8 +2390,25 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
                                         <p className="text-xs text-muted-foreground mt-1">
-                                          {new Date(fotoData.enviadoEm).toLocaleDateString('pt-BR')}
+                                          {new Date(fotoData.enviadoEm).toLocaleString('pt-BR', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
                                         </p>
+                                      )}
+                                      {fotoData.postLink && (
+                                        <a 
+                                          href={fotoData.postLink} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline mt-1"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          Ver no Telegram
+                                        </a>
                                       )}
                                     </div>
                                   )}
@@ -2385,22 +2430,27 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {currentOS.fotos_telegram_saida.map((foto, index) => {
-                              const fotoData = typeof foto === 'string' ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'saida' as const } : foto;
+                              const fotoData = typeof foto === 'string' 
+                                ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'saida' as const } 
+                                : foto;
+                              const imageUrl = fotoData.url || fotoData.postLink;
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {fotoData.url ? (
+                                  {imageUrl ? (
                                     <>
                                       <img 
-                                        src={fotoData.url} 
+                                        src={imageUrl} 
                                         alt={fotoData.fileName || `Saída ${index + 1}`}
                                         className="w-full h-full object-cover"
-                                        onClick={() => window.open(fotoData.url, '_blank')}
+                                        onClick={() => window.open(imageUrl, '_blank')}
                                         onError={(e) => {
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
+                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
+                                        </span>
                                       </div>
                                     </>
                                   ) : (
@@ -2410,8 +2460,25 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
                                         <p className="text-xs text-muted-foreground mt-1">
-                                          {new Date(fotoData.enviadoEm).toLocaleDateString('pt-BR')}
+                                          {new Date(fotoData.enviadoEm).toLocaleString('pt-BR', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
                                         </p>
+                                      )}
+                                      {fotoData.postLink && (
+                                        <a 
+                                          href={fotoData.postLink} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline mt-1"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          Ver no Telegram
+                                        </a>
                                       )}
                                     </div>
                                   )}
