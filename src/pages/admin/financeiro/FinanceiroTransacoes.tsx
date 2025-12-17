@@ -9,31 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, TrendingUp, TrendingDown } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
+import { useFinancialTransactions } from '@/hooks/useFinanceiro';
+import { TransactionsManager } from '@/components/financeiro/TransactionsManager';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 export function FinanceiroTransacoes() {
   const { startDate } = useOutletContext<{ startDate: string }>();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-
-  // Dados simulados
-  const transactions = [
-    { id: '1', date: '2025-12-10', description: 'Venda OS #123', type: 'entrada', amount: 620, category: 'Serviços' },
-    { id: '2', date: '2025-12-10', description: 'Compra Tela iPhone 12', type: 'saida', amount: 280, category: 'Peças' },
-    { id: '3', date: '2025-12-09', description: 'Venda OS #122', type: 'entrada', amount: 350, category: 'Serviços' },
-    { id: '4', date: '2025-12-09', description: 'Pagamento Fornecedor', type: 'saida', amount: 1500, category: 'Fornecedores' },
-    { id: '5', date: '2025-12-08', description: 'Venda OS #121', type: 'entrada', amount: 180, category: 'Serviços' },
-  ];
-
-  const filteredTransactions = transactions.filter(t => {
-    if (typeFilter !== 'all' && t.type !== typeFilter) return false;
-    if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    return true;
-  });
-
-  const totals = {
-    entradas: transactions.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.amount, 0),
-    saidas: transactions.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.amount, 0),
-  };
+  const month = startDate.slice(0, 7);
+  
+  return <TransactionsManager month={month} />;
 
   return (
     <div className="space-y-6">
