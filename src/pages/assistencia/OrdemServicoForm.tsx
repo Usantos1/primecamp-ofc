@@ -1947,7 +1947,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const failed = results.filter(r => !r.success);
 
                               if (successful.length > 0) {
-                                const newPhotos = successful.map(r => r.fileUrl || '').filter(Boolean);
+                                const newPhotos = successful.map((r, idx) => ({
+                                  url: r.fileUrl || '',
+                                  fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
+                                  tipo: 'entrada' as const,
+                                  enviadoEm: new Date().toISOString(),
+                                  messageId: r.messageId,
+                                  fileId: r.fileId,
+                                }));
                                 const updatedFotos = [
                                   ...(currentOS.fotos_telegram_entrada || []),
                                   ...newPhotos
@@ -1957,12 +1964,22 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   fotos_telegram_entrada: updatedFotos,
                                   telegram_chat_id_entrada: chatId,
                                 });
+                                
+                                // Recarregar OS atualizada para atualizar o preview
+                                const osAtualizada = getOSById(currentOS.id);
+                                if (osAtualizada) {
+                                  setCurrentOS(osAtualizada);
+                                }
 
                                 if (failed.length > 0) {
                                   toast({
                                     title: 'Parcialmente enviado',
                                     description: `${successful.length} foto(s) enviada(s), ${failed.length} falharam`,
-                                    variant: 'default'
+                                  });
+                                } else {
+                                  toast({
+                                    title: '✅ Fotos enviadas!',
+                                    description: `${successful.length} foto(s) de entrada enviada(s) com sucesso`,
                                   });
                                 }
                               } else {
@@ -2070,6 +2087,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   fotos_telegram_processo: updatedFotos,
                                   telegram_chat_id_processo: chatId,
                                 });
+                                
+                                // Recarregar OS atualizada para atualizar o preview
+                                const osAtualizada = getOSById(currentOS.id);
+                                if (osAtualizada) {
+                                  setCurrentOS(osAtualizada);
+                                }
                                 
                                 // Logs já foram salvos no banco pelo useTelegram
 
@@ -2192,6 +2215,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   telegram_chat_id_saida: chatId,
                                 });
                                 
+                                // Recarregar OS atualizada para atualizar o preview
+                                const osAtualizada = getOSById(currentOS.id);
+                                if (osAtualizada) {
+                                  setCurrentOS(osAtualizada);
+                                }
+                                
                                 // Logs já foram salvos no banco pelo useTelegram
 
                                 if (failed.length > 0) {
@@ -2256,19 +2285,43 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             Fotos de Entrada ({currentOS.fotos_telegram_entrada.length})
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {currentOS.fotos_telegram_entrada.map((foto, index) => (
-                              <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors">
-                                <img 
-                                  src={foto} 
-                                  alt={`Entrada ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                  onClick={() => window.open(foto, '_blank')}
-                                />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                  <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                            {currentOS.fotos_telegram_entrada.map((foto, index) => {
+                              const fotoData = typeof foto === 'string' ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } : foto;
+                              return (
+                                <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
+                                  {fotoData.url ? (
+                                    <>
+                                      <img 
+                                        src={fotoData.url} 
+                                        alt={fotoData.fileName || `Entrada ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                        onClick={() => window.open(fotoData.url, '_blank')}
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
+                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
+                                      <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
+                                      {fotoData.enviadoEm && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {new Date(fotoData.enviadoEm).toLocaleDateString('pt-BR')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                    {fotoData.tipo}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -2280,19 +2333,43 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             Fotos de Processo ({currentOS.fotos_telegram_processo.length})
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {currentOS.fotos_telegram_processo.map((foto, index) => (
-                              <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors">
-                                <img 
-                                  src={foto} 
-                                  alt={`Processo ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                  onClick={() => window.open(foto, '_blank')}
-                                />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                  <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                            {currentOS.fotos_telegram_processo.map((foto, index) => {
+                              const fotoData = typeof foto === 'string' ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'processo' as const } : foto;
+                              return (
+                                <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
+                                  {fotoData.url ? (
+                                    <>
+                                      <img 
+                                        src={fotoData.url} 
+                                        alt={fotoData.fileName || `Processo ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                        onClick={() => window.open(fotoData.url, '_blank')}
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
+                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
+                                      <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
+                                      {fotoData.enviadoEm && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {new Date(fotoData.enviadoEm).toLocaleDateString('pt-BR')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                    {fotoData.tipo}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -2304,19 +2381,43 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             Fotos de Saída ({currentOS.fotos_telegram_saida.length})
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {currentOS.fotos_telegram_saida.map((foto, index) => (
-                              <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors">
-                                <img 
-                                  src={foto} 
-                                  alt={`Saída ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                  onClick={() => window.open(foto, '_blank')}
-                                />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                  <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                            {currentOS.fotos_telegram_saida.map((foto, index) => {
+                              const fotoData = typeof foto === 'string' ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'saida' as const } : foto;
+                              return (
+                                <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
+                                  {fotoData.url ? (
+                                    <>
+                                      <img 
+                                        src={fotoData.url} 
+                                        alt={fotoData.fileName || `Saída ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                        onClick={() => window.open(fotoData.url, '_blank')}
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">Clique para ampliar</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
+                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
+                                      <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
+                                      {fotoData.enviadoEm && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {new Date(fotoData.enviadoEm).toLocaleDateString('pt-BR')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                                    {fotoData.tipo}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
