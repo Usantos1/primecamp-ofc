@@ -1948,7 +1948,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                               if (successful.length > 0) {
                                 const newPhotos = successful.map((r, idx) => ({
-                                  url: r.fileUrl || '',
+                                  url: r.fileUrl || undefined,
+                                  postLink: r.postLink || undefined, // Link do post como fallback
                                   fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
                                   tipo: 'entrada' as const,
                                   enviadoEm: new Date().toISOString(),
@@ -2071,7 +2072,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                               if (successful.length > 0) {
                                 const newPhotos = successful.map((r, idx) => ({
-                                  url: r.fileUrl || '',
+                                  url: r.fileUrl || undefined,
+                                  postLink: r.postLink || undefined, // Link do post como fallback
                                   fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
                                   tipo: 'processo' as const,
                                   enviadoEm: new Date().toISOString(),
@@ -2198,7 +2200,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                               if (successful.length > 0) {
                                 const newPhotos = successful.map((r, idx) => ({
-                                  url: r.fileUrl || '',
+                                  url: r.fileUrl || undefined,
+                                  postLink: r.postLink || undefined, // Link do post como fallback
                                   fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
                                   tipo: 'saida' as const,
                                   enviadoEm: new Date().toISOString(),

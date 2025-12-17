@@ -349,6 +349,7 @@ export interface OrdemServico {
   fotos_processo?: string[];
   fotos_telegram_entrada?: Array<{
     url?: string;
+    postLink?: string; // Link do post no Telegram (quando url não está disponível)
     fileName?: string;
     tipo: 'entrada' | 'processo' | 'saida';
     enviadoEm?: string;
@@ -357,6 +358,7 @@ export interface OrdemServico {
   }>; // Informações das fotos enviadas para Telegram (entrada)
   fotos_telegram_processo?: Array<{
     url?: string;
+    postLink?: string; // Link do post no Telegram (quando url não está disponível)
     fileName?: string;
     tipo: 'entrada' | 'processo' | 'saida';
     enviadoEm?: string;
@@ -365,6 +367,7 @@ export interface OrdemServico {
   }>; // Informações das fotos enviadas para Telegram (processo)
   fotos_telegram_saida?: Array<{
     url?: string;
+    postLink?: string; // Link do post no Telegram (quando url não está disponível)
     fileName?: string;
     tipo: 'entrada' | 'processo' | 'saida';
     enviadoEm?: string;

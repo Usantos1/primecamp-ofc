@@ -159,14 +159,30 @@ serve(async (req) => {
     console.log('[telegram-bot] Foto enviada com sucesso:', {
       messageId: telegramData.result?.message_id,
       photoId: telegramData.result?.photo?.[0]?.file_id,
+      chatType: telegramData.result?.chat?.type,
     });
 
     // Retornar informações da foto enviada
     const photo = telegramData.result?.photo?.[telegramData.result.photo.length - 1]; // Pegar a maior resolução
     const fileId = photo?.file_id;
-    const fileUrl = photo?.file_path 
-      ? `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${photo.file_path}`
-      : undefined;
+    
+    // Tentar obter URL da foto (pode não estar disponível em canais)
+    let fileUrl = undefined;
+    if (photo?.file_path) {
+      fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${photo.file_path}`;
+    }
+    
+    // Se não tiver fileUrl (comum em canais), gerar link do post
+    let postLink = undefined;
+    if (!fileUrl && telegramData.result?.message_id && telegramData.result?.chat?.username) {
+      // Canal público: https://t.me/username/message_id
+      postLink = `https://t.me/${telegramData.result.chat.username}/${telegramData.result.message_id}`;
+    } else if (!fileUrl && telegramData.result?.message_id && chatId) {
+      // Canal privado ou grupo: usar chat_id e message_id
+      // Formato: https://t.me/c/chat_id/message_id (remover o -100 do início se existir)
+      const cleanChatId = String(chatId).replace(/^-100/, '');
+      postLink = `https://t.me/c/${cleanChatId}/${telegramData.result.message_id}`;
+    }
 
     return new Response(
       JSON.stringify({
@@ -174,6 +190,7 @@ serve(async (req) => {
         messageId: telegramData.result?.message_id,
         fileId: fileId,
         fileUrl: fileUrl,
+        postLink: postLink, // Link do post no Telegram
         photo: telegramData.result?.photo,
       }),
       {

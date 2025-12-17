@@ -7,6 +7,7 @@ export interface TelegramPhotoResult {
   messageId?: number;
   fileId?: string;
   fileUrl?: string;
+  postLink?: string; // Link do post no Telegram (usado quando fileUrl não está disponível)
   error?: string;
 }
 
