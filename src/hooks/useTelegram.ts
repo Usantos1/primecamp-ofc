@@ -7,6 +7,7 @@ export interface TelegramPhotoResult {
   messageId?: number;
   fileId?: string;
   fileUrl?: string;
+  thumbnailUrl?: string; // URL do thumbnail (menor resolução)
   postLink?: string; // Link do post no Telegram (usado quando fileUrl não está disponível)
   error?: string;
 }
@@ -117,7 +118,7 @@ export function useTelegram() {
           ordem_servico_id: String(osNumero), // Usando número como ID temporário
           ordem_servico_numero: Number(osNumero),
           file_name: file.name,
-          file_url: data.fileUrl || data.postLink, // Usar postLink se fileUrl não estiver disponível
+          file_url: data.fileUrl || data.thumbnailUrl || data.postLink, // Usar thumbnailUrl ou postLink como fallback
           file_id: data.fileId,
           message_id: data.messageId,
           tipo: tipo,
@@ -138,6 +139,8 @@ export function useTelegram() {
         messageId: data.messageId,
         fileId: data.fileId,
         fileUrl: data.fileUrl,
+        thumbnailUrl: data.thumbnailUrl, // Incluir thumbnail
+        postLink: data.postLink, // Incluir link do post
       };
     } catch (error: any) {
       console.error('[useTelegram] Erro ao enviar foto:', error);

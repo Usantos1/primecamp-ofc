@@ -349,30 +349,36 @@ export interface OrdemServico {
   fotos_processo?: string[];
   fotos_telegram_entrada?: Array<{
     url?: string;
+    thumbnailUrl?: string; // URL do thumbnail (menor resolução)
     postLink?: string; // Link do post no Telegram (quando url não está disponível)
     fileName?: string;
     tipo: 'entrada' | 'processo' | 'saida';
     enviadoEm?: string;
     messageId?: number;
     fileId?: string;
+    chatId?: string; // Chat ID para deletar a mensagem
   }>; // Informações das fotos enviadas para Telegram (entrada)
   fotos_telegram_processo?: Array<{
     url?: string;
+    thumbnailUrl?: string; // URL do thumbnail (menor resolução)
     postLink?: string; // Link do post no Telegram (quando url não está disponível)
     fileName?: string;
     tipo: 'entrada' | 'processo' | 'saida';
     enviadoEm?: string;
     messageId?: number;
     fileId?: string;
+    chatId?: string; // Chat ID para deletar a mensagem
   }>; // Informações das fotos enviadas para Telegram (processo)
   fotos_telegram_saida?: Array<{
     url?: string;
+    thumbnailUrl?: string; // URL do thumbnail (menor resolução)
     postLink?: string; // Link do post no Telegram (quando url não está disponível)
     fileName?: string;
     tipo: 'entrada' | 'processo' | 'saida';
     enviadoEm?: string;
     messageId?: number;
     fileId?: string;
+    chatId?: string; // Chat ID para deletar a mensagem
   }>; // Informações das fotos enviadas para Telegram (saída)
   telegram_chat_id_entrada?: string; // Chat ID do Telegram para fotos de entrada
   telegram_chat_id_processo?: string; // Chat ID do Telegram para fotos de processo

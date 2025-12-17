@@ -17,6 +17,11 @@ interface TelegramUploadRequest {
   caption?: string;
 }
 
+interface TelegramDeleteRequest {
+  chatId: string;
+  messageId: number;
+}
+
 serve(async (req) => {
   console.log('[telegram-bot] Requisição recebida:', {
     method: req.method,
@@ -28,6 +33,78 @@ serve(async (req) => {
     if (req.method === 'OPTIONS') {
       console.log('[telegram-bot] Respondendo OPTIONS (CORS preflight)');
       return new Response(null, { headers: corsHeaders });
+    }
+
+    const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+    if (!TELEGRAM_BOT_TOKEN) {
+      console.error('[telegram-bot] TELEGRAM_BOT_TOKEN não configurado');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'TELEGRAM_BOT_TOKEN não configurado' 
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Verificar se é requisição de deletar mensagem
+    const url = new URL(req.url);
+    if (url.pathname.includes('/delete') || url.searchParams.get('action') === 'delete') {
+      console.log('[telegram-bot] Requisição de deletar mensagem');
+      const body: TelegramDeleteRequest = await req.json();
+      const { chatId, messageId } = body;
+
+      if (!chatId || !messageId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'chatId e messageId são obrigatórios' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Deletar mensagem via Telegram API
+      const deleteResponse = await fetch(
+        `${TELEGRAM_API_URL}${TELEGRAM_BOT_TOKEN}/deleteMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+          }),
+        }
+      );
+
+      const deleteData = await deleteResponse.json();
+
+      if (!deleteResponse.ok || !deleteData.ok) {
+        console.error('[telegram-bot] Erro ao deletar mensagem:', deleteData);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: deleteData.description || 'Erro ao deletar mensagem',
+            telegramError: deleteData 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      console.log('[telegram-bot] Mensagem deletada com sucesso');
+      return new Response(
+        JSON.stringify({ success: true }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     console.log('[telegram-bot] Lendo body da requisição...');
@@ -48,23 +125,6 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: 'Parâmetros obrigatórios faltando' }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    console.log('[telegram-bot] Token presente:', !!TELEGRAM_BOT_TOKEN);
-    
-    if (!TELEGRAM_BOT_TOKEN) {
-      console.error('[telegram-bot] TELEGRAM_BOT_TOKEN não configurado');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'TELEGRAM_BOT_TOKEN não configurado. Configure no Supabase Dashboard > Edge Functions > Secrets' 
-        }),
-        {
-          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -163,33 +223,50 @@ serve(async (req) => {
     });
 
     // Retornar informações da foto enviada
-    const photo = telegramData.result?.photo?.[telegramData.result.photo.length - 1]; // Pegar a maior resolução
+    const photos = telegramData.result?.photo || [];
+    const photo = photos[photos.length - 1]; // Pegar a maior resolução
+    const thumbnail = photos[0]; // Pegar a menor resolução (thumbnail)
     const fileId = photo?.file_id;
     
     // Tentar obter URL da foto (pode não estar disponível em canais)
     let fileUrl = undefined;
+    let thumbnailUrl = undefined;
+    
     if (photo?.file_path) {
       fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${photo.file_path}`;
     }
     
-    // Se não tiver fileUrl (comum em canais), gerar link do post
-    let postLink = undefined;
-    if (!fileUrl && telegramData.result?.message_id && telegramData.result?.chat?.username) {
-      // Canal público: https://t.me/username/message_id
-      postLink = `https://t.me/${telegramData.result.chat.username}/${telegramData.result.message_id}`;
-    } else if (!fileUrl && telegramData.result?.message_id && chatId) {
-      // Canal privado ou grupo: usar chat_id e message_id
-      // Formato: https://t.me/c/chat_id/message_id (remover o -100 do início se existir)
-      const cleanChatId = String(chatId).replace(/^-100/, '');
-      postLink = `https://t.me/c/${cleanChatId}/${telegramData.result.message_id}`;
+    // URL do thumbnail (menor resolução)
+    if (thumbnail?.file_path) {
+      thumbnailUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${thumbnail.file_path}`;
     }
+    
+    // Sempre gerar postLink se tiver messageId e chat
+    let postLink = undefined;
+    const chat = telegramData.result?.chat;
+    const messageId = telegramData.result?.message_id;
+    
+    if (messageId && chat) {
+      if (chat.username) {
+        // Canal público: https://t.me/username/message_id
+        postLink = `https://t.me/${chat.username}/${messageId}`;
+      } else if (chat.id) {
+        // Canal privado ou grupo: usar chat_id e message_id
+        // Formato: https://t.me/c/chat_id/message_id (remover o -100 do início se existir)
+        const cleanChatId = String(chat.id).replace(/^-100/, '');
+        postLink = `https://t.me/c/${cleanChatId}/${messageId}`;
+      }
+    }
+
+    console.log('[telegram-bot] URLs geradas:', { fileUrl, thumbnailUrl, postLink });
 
     return new Response(
       JSON.stringify({
         success: true,
-        messageId: telegramData.result?.message_id,
+        messageId: messageId,
         fileId: fileId,
         fileUrl: fileUrl,
+        thumbnailUrl: thumbnailUrl, // URL do thumbnail (menor resolução)
         postLink: postLink, // Link do post no Telegram
         photo: telegramData.result?.photo,
       }),

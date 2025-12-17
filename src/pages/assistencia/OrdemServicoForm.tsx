@@ -65,7 +65,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   }, [tecnicos, colaboradores, isLoadingCargos]);
   const { sendMessage, loading: whatsappLoading } = useWhatsApp();
-  const { sendMultiplePhotos: sendTelegramPhotos, loading: telegramLoading } = useTelegram();
+  const { sendMultiplePhotos: sendTelegramPhotos, deleteMessage: deleteTelegramMessage, loading: telegramLoading } = useTelegram();
 
   // Estados para Chat IDs do Telegram - carrega automaticamente do localStorage
   const [telegramChatIdEntrada, setTelegramChatIdEntrada] = useState<string>(() => {
@@ -1949,12 +1949,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               if (successful.length > 0) {
                                 const newPhotos = successful.map((r, idx) => ({
                                   url: r.fileUrl || undefined,
+                                  thumbnailUrl: r.thumbnailUrl || undefined, // Thumbnail como fallback
                                   postLink: r.postLink || undefined, // Link do post como fallback
                                   fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
                                   tipo: 'entrada' as const,
                                   enviadoEm: new Date().toISOString(),
                                   messageId: r.messageId,
                                   fileId: r.fileId,
+                                  chatId: chatId, // Salvar chatId para poder deletar depois
                                 }));
                                 const updatedFotos = [
                                   ...(currentOS.fotos_telegram_entrada || []),
@@ -2073,12 +2075,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               if (successful.length > 0) {
                                 const newPhotos = successful.map((r, idx) => ({
                                   url: r.fileUrl || undefined,
+                                  thumbnailUrl: r.thumbnailUrl || undefined, // Thumbnail como fallback
                                   postLink: r.postLink || undefined, // Link do post como fallback
                                   fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
                                   tipo: 'processo' as const,
                                   enviadoEm: new Date().toISOString(),
                                   messageId: r.messageId,
                                   fileId: r.fileId,
+                                  chatId: chatId, // Salvar chatId para poder deletar depois
                                 }));
                                 const updatedFotos = [
                                   ...(currentOS.fotos_telegram_processo || []),
@@ -2201,12 +2205,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               if (successful.length > 0) {
                                 const newPhotos = successful.map((r, idx) => ({
                                   url: r.fileUrl || undefined,
+                                  thumbnailUrl: r.thumbnailUrl || undefined, // Thumbnail como fallback
                                   postLink: r.postLink || undefined, // Link do post como fallback
                                   fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
                                   tipo: 'saida' as const,
                                   enviadoEm: new Date().toISOString(),
                                   messageId: r.messageId,
                                   fileId: r.fileId,
+                                  chatId: chatId, // Salvar chatId para poder deletar depois
                                 }));
                                 const updatedFotos = [
                                   ...(currentOS.fotos_telegram_saida || []),
@@ -2292,10 +2298,42 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } 
                                 : foto;
-                              const imageUrl = fotoData.url || fotoData.postLink;
+                              // Prioridade: url > thumbnailUrl > postLink
+                              const imageUrl = fotoData.url || fotoData.thumbnailUrl || fotoData.postLink;
+                              const chatId = fotoData.chatId || currentOS.telegram_chat_id_entrada;
+                              
+                              const handleDelete = async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if (!fotoData.messageId || !chatId) {
+                                  toast({
+                                    title: 'Erro',
+                                    description: 'Não é possível deletar: dados da mensagem não encontrados',
+                                    variant: 'destructive',
+                                  });
+                                  return;
+                                }
+                                
+                                if (!confirm('Tem certeza que deseja deletar esta foto do Telegram?')) {
+                                  return;
+                                }
+                                
+                                const result = await deleteTelegramMessage(chatId, fotoData.messageId);
+                                if (result.success) {
+                                  // Remover foto da lista
+                                  const updatedFotos = currentOS.fotos_telegram_entrada?.filter((_, i) => i !== index) || [];
+                                  await updateOS(currentOS.id, {
+                                    fotos_telegram_entrada: updatedFotos,
+                                  });
+                                  const osAtualizada = getOSById(currentOS.id);
+                                  if (osAtualizada) {
+                                    setCurrentOS(osAtualizada);
+                                  }
+                                }
+                              };
+                              
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {imageUrl ? (
+                                  {imageUrl && !fotoData.postLink ? (
                                     <>
                                       <img 
                                         src={imageUrl} 
@@ -2309,13 +2347,24 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
-                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
+                                          Clique para ampliar
                                         </span>
                                       </div>
                                     </>
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      {fotoData.thumbnailUrl ? (
+                                        <img 
+                                          src={fotoData.thumbnailUrl} 
+                                          alt={fotoData.fileName || `Entrada ${index + 1}`}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      ) : (
+                                        <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      )}
                                       <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
@@ -2345,6 +2394,15 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
                                     {fotoData.tipo}
                                   </div>
+                                  {fotoData.messageId && chatId && (
+                                    <button
+                                      onClick={handleDelete}
+                                      className="absolute top-1 left-1 bg-destructive/80 hover:bg-destructive text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Deletar foto do Telegram"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  )}
                                 </div>
                               );
                             })}
@@ -2363,10 +2421,40 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'processo' as const } 
                                 : foto;
-                              const imageUrl = fotoData.url || fotoData.postLink;
+                              const imageUrl = fotoData.url || fotoData.thumbnailUrl || fotoData.postLink;
+                              const chatId = fotoData.chatId || currentOS.telegram_chat_id_processo;
+                              
+                              const handleDelete = async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if (!fotoData.messageId || !chatId) {
+                                  toast({
+                                    title: 'Erro',
+                                    description: 'Não é possível deletar: dados da mensagem não encontrados',
+                                    variant: 'destructive',
+                                  });
+                                  return;
+                                }
+                                
+                                if (!confirm('Tem certeza que deseja deletar esta foto do Telegram?')) {
+                                  return;
+                                }
+                                
+                                const result = await deleteTelegramMessage(chatId, fotoData.messageId);
+                                if (result.success) {
+                                  const updatedFotos = currentOS.fotos_telegram_processo?.filter((_, i) => i !== index) || [];
+                                  await updateOS(currentOS.id, {
+                                    fotos_telegram_processo: updatedFotos,
+                                  });
+                                  const osAtualizada = getOSById(currentOS.id);
+                                  if (osAtualizada) {
+                                    setCurrentOS(osAtualizada);
+                                  }
+                                }
+                              };
+                              
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {imageUrl ? (
+                                  {imageUrl && !fotoData.postLink ? (
                                     <>
                                       <img 
                                         src={imageUrl} 
@@ -2379,13 +2467,24 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
-                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
+                                          Clique para ampliar
                                         </span>
                                       </div>
                                     </>
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      {fotoData.thumbnailUrl ? (
+                                        <img 
+                                          src={fotoData.thumbnailUrl} 
+                                          alt={fotoData.fileName || `Processo ${index + 1}`}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      ) : (
+                                        <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      )}
                                       <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
@@ -2415,6 +2514,15 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
                                     {fotoData.tipo}
                                   </div>
+                                  {fotoData.messageId && chatId && (
+                                    <button
+                                      onClick={handleDelete}
+                                      className="absolute top-1 left-1 bg-destructive/80 hover:bg-destructive text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Deletar foto do Telegram"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  )}
                                 </div>
                               );
                             })}
@@ -2433,10 +2541,40 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'saida' as const } 
                                 : foto;
-                              const imageUrl = fotoData.url || fotoData.postLink;
+                              const imageUrl = fotoData.url || fotoData.thumbnailUrl || fotoData.postLink;
+                              const chatId = fotoData.chatId || currentOS.telegram_chat_id_saida;
+                              
+                              const handleDelete = async (e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                if (!fotoData.messageId || !chatId) {
+                                  toast({
+                                    title: 'Erro',
+                                    description: 'Não é possível deletar: dados da mensagem não encontrados',
+                                    variant: 'destructive',
+                                  });
+                                  return;
+                                }
+                                
+                                if (!confirm('Tem certeza que deseja deletar esta foto do Telegram?')) {
+                                  return;
+                                }
+                                
+                                const result = await deleteTelegramMessage(chatId, fotoData.messageId);
+                                if (result.success) {
+                                  const updatedFotos = currentOS.fotos_telegram_saida?.filter((_, i) => i !== index) || [];
+                                  await updateOS(currentOS.id, {
+                                    fotos_telegram_saida: updatedFotos,
+                                  });
+                                  const osAtualizada = getOSById(currentOS.id);
+                                  if (osAtualizada) {
+                                    setCurrentOS(osAtualizada);
+                                  }
+                                }
+                              };
+                              
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {imageUrl ? (
+                                  {imageUrl && !fotoData.postLink ? (
                                     <>
                                       <img 
                                         src={imageUrl} 
@@ -2449,13 +2587,24 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
-                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
+                                          Clique para ampliar
                                         </span>
                                       </div>
                                     </>
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      {fotoData.thumbnailUrl ? (
+                                        <img 
+                                          src={fotoData.thumbnailUrl} 
+                                          alt={fotoData.fileName || `Saída ${index + 1}`}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      ) : (
+                                        <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                      )}
                                       <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
@@ -2485,6 +2634,15 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   <div className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
                                     {fotoData.tipo}
                                   </div>
+                                  {fotoData.messageId && chatId && (
+                                    <button
+                                      onClick={handleDelete}
+                                      className="absolute top-1 left-1 bg-destructive/80 hover:bg-destructive text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Deletar foto do Telegram"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  )}
                                 </div>
                               );
                             })}
