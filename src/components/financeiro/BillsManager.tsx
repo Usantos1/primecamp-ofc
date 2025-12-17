@@ -300,18 +300,28 @@ export function BillsManager({ month }: BillsManagerProps) {
               <div className="space-y-2">
                 <Label>Categoria</Label>
                 <Select
-                  value={formData.category_id}
-                  onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                  value={formData.category_id || undefined}
+                  onValueChange={(value) => setFormData({ ...formData, category_id: value || '' })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue placeholder={expenseCategories.length === 0 ? "Nenhuma categoria disponível" : "Selecione"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {expenseCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {expenseCategories.length === 0 ? (
+                      <SelectItem value="" disabled>Carregando categorias...</SelectItem>
+                    ) : (
+                      expenseCategories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
+                {expenseCategories.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Categorias serão carregadas automaticamente após aplicar as migrations do banco de dados.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Despesa</Label>

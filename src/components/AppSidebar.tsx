@@ -119,10 +119,7 @@ export function AppSidebar() {
     currentPath.startsWith('/teste-disc')
   );
   const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(
-    currentPath.startsWith('/financeiro') ||
-    currentPath.startsWith('/contas') ||
-    currentPath.startsWith('/caixa') ||
-    currentPath.startsWith('/transacoes')
+    currentPath.startsWith('/admin/financeiro')
   );
 
   return (
@@ -497,12 +494,26 @@ export function AppSidebar() {
                     <div className="ml-4 mt-1 space-y-1 border-l pl-2">
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink to="/financeiro/contas-pagar">
+                          <NavLink to="/admin/financeiro">
                             {({ isActive }) => (
                               <div
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
-                                <TrendingDown className="h-4 w-4 flex-shrink-0" />
+                                <BarChart3 className="h-4 w-4 flex-shrink-0" />
+                                <span className="font-medium text-sm">Dashboard</span>
+                              </div>
+                            )}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/admin/financeiro/contas">
+                            {({ isActive }) => (
+                              <div
+                                className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                              >
+                                <Receipt className="h-4 w-4 flex-shrink-0" />
                                 <span className="font-medium text-sm">Contas a Pagar</span>
                               </div>
                             )}
@@ -511,21 +522,7 @@ export function AppSidebar() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink to="/financeiro/contas-receber">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <TrendingUpIcon className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Contas a Receber</span>
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/financeiro/caixa">
+                          <NavLink to="/admin/financeiro/caixa">
                             {({ isActive }) => (
                               <div
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
@@ -539,13 +536,27 @@ export function AppSidebar() {
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink to="/financeiro/transacoes">
+                          <NavLink to="/admin/financeiro/transacoes">
                             {({ isActive }) => (
                               <div
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <CreditCard className="h-4 w-4 flex-shrink-0" />
                                 <span className="font-medium text-sm">Transações</span>
+                              </div>
+                            )}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/admin/financeiro/relatorios">
+                            {({ isActive }) => (
+                              <div
+                                className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                              >
+                                <FileTextIcon className="h-4 w-4 flex-shrink-0" />
+                                <span className="font-medium text-sm">Relatórios</span>
                               </div>
                             )}
                           </NavLink>
