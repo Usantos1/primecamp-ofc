@@ -54,7 +54,7 @@ serve(async (req) => {
     let body: any = {};
     try {
       const bodyText = await req.text();
-      if (bodyText) {
+      if (bodyText && bodyText.trim()) {
         body = JSON.parse(bodyText);
         console.log('[telegram-bot] Body parseado:', { 
           hasAction: !!body.action, 
@@ -62,16 +62,14 @@ serve(async (req) => {
           hasChatId: !!body.chatId, 
           hasMessageId: !!body.messageId 
         });
+      } else {
+        console.log('[telegram-bot] Body vazio ou inválido');
       }
     } catch (e) {
       console.error('[telegram-bot] Erro ao parsear body:', e);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao processar requisição: ' + (e instanceof Error ? e.message : String(e)) }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      // Se for erro de parse, pode ser que seja uma requisição de upload com formato diferente
+      // Vamos continuar e deixar o código abaixo tratar
+      body = {};
     }
 
     // Verificar se é requisição de deletar mensagem (verificar no body)
