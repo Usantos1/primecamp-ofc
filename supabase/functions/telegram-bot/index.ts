@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TELEGRAM_API_URL = "https://api.telegram.org/bot";
 
@@ -13,11 +12,12 @@ interface TelegramUploadRequest {
   fileName: string;
   osNumero: number | string;
   tipo: 'entrada' | 'saida' | 'processo';
-  chatId: string; // ID do chat do Telegram (grupo ou canal)
+  chatId: string;
   caption?: string;
 }
 
 interface TelegramDeleteRequest {
+  action: 'delete';
   chatId: string;
   messageId: number;
 }
@@ -50,35 +50,48 @@ serve(async (req) => {
       );
     }
 
-    // Ler body uma vez para verificar o tipo de requisição
-    let body: any = {};
-    try {
-      const bodyText = await req.text();
-      if (bodyText && bodyText.trim()) {
-        body = JSON.parse(bodyText);
-        console.log('[telegram-bot] Body parseado:', { 
-          hasAction: !!body.action, 
-          hasFile: !!body.file, 
-          hasChatId: !!body.chatId, 
-          hasMessageId: !!body.messageId 
-        });
-      } else {
-        console.log('[telegram-bot] Body vazio ou inválido');
-      }
-    } catch (e) {
-      console.error('[telegram-bot] Erro ao parsear body:', e);
-      // Se for erro de parse, pode ser que seja uma requisição de upload com formato diferente
-      // Vamos continuar e deixar o código abaixo tratar
-      body = {};
+    // Ler body
+    const bodyText = await req.text();
+    console.log('[telegram-bot] Body recebido (primeiros 200 chars):', bodyText.substring(0, 200));
+    
+    if (!bodyText || !bodyText.trim()) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Body vazio' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    // Verificar se é requisição de deletar mensagem (verificar no body)
-    if (body && (body.action === 'delete' || (body.chatId && body.messageId && !body.file))) {
-      console.log('[telegram-bot] Requisição de deletar mensagem:', body);
-      const deleteBody: TelegramDeleteRequest = body as TelegramDeleteRequest;
-      const { chatId, messageId } = deleteBody;
+    let body: any;
+    try {
+      body = JSON.parse(bodyText);
+    } catch (e) {
+      console.error('[telegram-bot] Erro ao parsear JSON:', e);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao parsear JSON: ' + (e instanceof Error ? e.message : String(e)) }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('[telegram-bot] Body parseado:', { 
+      hasAction: !!body.action, 
+      hasFile: !!body.file, 
+      hasChatId: !!body.chatId, 
+      hasMessageId: !!body.messageId 
+    });
+
+    // Verificar se é requisição de deletar
+    if (body.action === 'delete') {
+      console.log('[telegram-bot] Requisição de deletar mensagem');
+      const { chatId, messageId } = body as TelegramDeleteRequest;
 
       if (!chatId || !messageId) {
+        console.error('[telegram-bot] chatId ou messageId faltando:', { chatId, messageId });
         return new Response(
           JSON.stringify({ success: false, error: 'chatId e messageId são obrigatórios' }),
           {
@@ -88,6 +101,8 @@ serve(async (req) => {
         );
       }
 
+      console.log('[telegram-bot] Deletando mensagem:', { chatId, messageId });
+
       // Deletar mensagem via Telegram API
       const deleteResponse = await fetch(
         `${TELEGRAM_API_URL}${TELEGRAM_BOT_TOKEN}/deleteMessage`,
@@ -95,13 +110,14 @@ serve(async (req) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chat_id: chatId,
-            message_id: messageId,
+            chat_id: String(chatId),
+            message_id: Number(messageId),
           }),
         }
       );
 
       const deleteData = await deleteResponse.json();
+      console.log('[telegram-bot] Resposta do Telegram:', deleteData);
 
       if (!deleteResponse.ok || !deleteData.ok) {
         console.error('[telegram-bot] Erro ao deletar mensagem:', deleteData);
@@ -112,7 +128,7 @@ serve(async (req) => {
             telegramError: deleteData 
           }),
           {
-            status: 500,
+            status: deleteResponse.ok ? 200 : 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
@@ -131,18 +147,17 @@ serve(async (req) => {
     // Se chegou aqui, é requisição de upload
     console.log('[telegram-bot] Requisição de upload de foto');
     const uploadBody: TelegramUploadRequest = body as TelegramUploadRequest;
-    console.log('[telegram-bot] Body recebido:', {
-      hasFile: !!uploadBody.file,
-      fileName: uploadBody.fileName,
-      osNumero: uploadBody.osNumero,
-      tipo: uploadBody.tipo,
-      chatId: uploadBody.chatId,
-      fileSize: uploadBody.file?.length || 0,
-    });
-
+    
     const { file, fileName, osNumero, tipo, chatId, caption } = uploadBody;
 
     if (!file || !fileName || !osNumero || !tipo || !chatId) {
+      console.error('[telegram-bot] Parâmetros faltando:', {
+        hasFile: !!file,
+        hasFileName: !!fileName,
+        hasOsNumero: !!osNumero,
+        hasTipo: !!tipo,
+        hasChatId: !!chatId,
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'Parâmetros obrigatórios faltando' }),
         {
@@ -242,6 +257,8 @@ serve(async (req) => {
       messageId: telegramData.result?.message_id,
       photoId: telegramData.result?.photo?.[0]?.file_id,
       chatType: telegramData.result?.chat?.type,
+      chatUsername: telegramData.result?.chat?.username,
+      chatId: telegramData.result?.chat?.id,
     });
 
     // Retornar informações da foto enviada
@@ -316,4 +333,3 @@ serve(async (req) => {
     );
   }
 });
-
