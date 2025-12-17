@@ -73,8 +73,8 @@ serve(async (req) => {
     }
 
     // Verificar se é requisição de deletar mensagem (verificar no body)
-    if (body.action === 'delete' || (body.chatId && body.messageId && !body.file)) {
-      console.log('[telegram-bot] Requisição de deletar mensagem');
+    if (body && (body.action === 'delete' || (body.chatId && body.messageId && !body.file))) {
+      console.log('[telegram-bot] Requisição de deletar mensagem:', body);
       const deleteBody: TelegramDeleteRequest = body as TelegramDeleteRequest;
       const { chatId, messageId } = deleteBody;
 
