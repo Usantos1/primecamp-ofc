@@ -99,5 +99,8 @@ verify_jwt = false
 [functions.evaluate-interview-transcription]
 verify_jwt = false
 
+[functions.api-produtos]
+verify_jwt = false
+
 [edge_runtime]
 policy = "oneshot"
