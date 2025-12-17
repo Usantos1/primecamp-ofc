@@ -2298,9 +2298,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } 
                                 : foto;
-                              // Prioridade: url > thumbnailUrl > postLink (mas postLink não é imagem)
+                              // Prioridade: url > thumbnailUrl
+                              // Se não tiver nenhum, tentar usar postLink como fallback (pode ter thumbnail embutido)
                               const imageUrl = fotoData.url || fotoData.thumbnailUrl;
                               const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
+                              const hasPostLink = !!fotoData.postLink;
+                              // Se não tiver imagem mas tiver postLink, mostrar link
+                              const hasPostLink = !!fotoData.postLink;
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_entrada;
                               
                               const handleDelete = async (e: React.MouseEvent) => {
@@ -2348,14 +2352,40 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                           }
                                         }}
                                         onError={(e) => {
-                                          // Se a imagem falhar, mostrar fallback
-                                          (e.target as HTMLImageElement).style.display = 'none';
+                                          // Se a imagem falhar, esconder e mostrar fallback
+                                          const img = e.target as HTMLImageElement;
+                                          img.style.display = 'none';
+                                          // Mostrar fallback
+                                          const parent = img.parentElement;
+                                          if (parent) {
+                                            const fallback = parent.querySelector('.image-fallback') as HTMLElement;
+                                            if (fallback) {
+                                              fallback.style.display = 'flex';
+                                            }
+                                          }
                                         }}
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
                                           {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
+                                      </div>
+                                      {/* Fallback escondido inicialmente */}
+                                      <div className="image-fallback hidden w-full h-full flex-col items-center justify-center p-2 text-center absolute inset-0 bg-muted">
+                                        <Image className="h-8 w-8 text-muted-foreground mb-1" />
+                                        <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
+                                        <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
+                                        {fotoData.postLink && (
+                                          <a 
+                                            href={fotoData.postLink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-primary hover:underline mt-1"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Ver no Telegram
+                                          </a>
+                                        )}
                                       </div>
                                     </>
                                   ) : (
@@ -2419,6 +2449,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 : foto;
                               const imageUrl = fotoData.url || fotoData.thumbnailUrl;
                               const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
+                              const hasPostLink = !!fotoData.postLink;
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_processo;
                               
                               const handleDelete = async (e: React.MouseEvent) => {
@@ -2546,6 +2577,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 : foto;
                               const imageUrl = fotoData.url || fotoData.thumbnailUrl;
                               const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
+                              const hasPostLink = !!fotoData.postLink;
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_saida;
                               
                               const handleDelete = async (e: React.MouseEvent) => {

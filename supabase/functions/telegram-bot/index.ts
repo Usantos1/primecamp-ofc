@@ -50,12 +50,23 @@ serve(async (req) => {
       );
     }
 
-    // Verificar se é requisição de deletar mensagem
-    const url = new URL(req.url);
-    if (url.pathname.includes('/delete') || url.searchParams.get('action') === 'delete') {
+    // Ler body para verificar se é requisição de deletar
+    let body: any;
+    try {
+      const bodyText = await req.text();
+      if (bodyText) {
+        body = JSON.parse(bodyText);
+      }
+    } catch (e) {
+      // Se não conseguir parsear, continuar com upload normal
+      body = {};
+    }
+
+    // Verificar se é requisição de deletar mensagem (verificar no body)
+    if (body.action === 'delete' || (body.chatId && body.messageId && !body.file)) {
       console.log('[telegram-bot] Requisição de deletar mensagem');
-      const body: TelegramDeleteRequest = await req.json();
-      const { chatId, messageId } = body;
+      const deleteBody: TelegramDeleteRequest = body as TelegramDeleteRequest;
+      const { chatId, messageId } = deleteBody;
 
       if (!chatId || !messageId) {
         return new Response(
@@ -107,18 +118,19 @@ serve(async (req) => {
       );
     }
 
-    console.log('[telegram-bot] Lendo body da requisição...');
-    const body: TelegramUploadRequest = await req.json();
+    // Se chegou aqui, é requisição de upload
+    console.log('[telegram-bot] Requisição de upload de foto');
+    const uploadBody: TelegramUploadRequest = body as TelegramUploadRequest;
     console.log('[telegram-bot] Body recebido:', {
-      hasFile: !!body.file,
-      fileName: body.fileName,
-      osNumero: body.osNumero,
-      tipo: body.tipo,
-      chatId: body.chatId,
-      fileSize: body.file?.length || 0,
+      hasFile: !!uploadBody.file,
+      fileName: uploadBody.fileName,
+      osNumero: uploadBody.osNumero,
+      tipo: uploadBody.tipo,
+      chatId: uploadBody.chatId,
+      fileSize: uploadBody.file?.length || 0,
     });
 
-    const { file, fileName, osNumero, tipo, chatId, caption } = body;
+    const { file, fileName, osNumero, tipo, chatId, caption } = uploadBody;
 
     if (!file || !fileName || !osNumero || !tipo || !chatId) {
       return new Response(
