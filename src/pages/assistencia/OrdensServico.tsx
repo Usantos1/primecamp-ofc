@@ -69,11 +69,21 @@ export default function OrdensServico() {
     }
 
     if (dataInicio) {
-      result = result.filter(os => os.data_entrada >= dataInicio);
+      result = result.filter(os => {
+        if (!os.data_entrada) return false;
+        // Normalizar data_entrada para comparação (remover hora se houver)
+        const osDate = os.data_entrada.split('T')[0];
+        return osDate >= dataInicio;
+      });
     }
 
     if (dataFim) {
-      result = result.filter(os => os.data_entrada <= dataFim);
+      result = result.filter(os => {
+        if (!os.data_entrada) return false;
+        // Normalizar data_entrada para comparação (remover hora se houver)
+        const osDate = os.data_entrada.split('T')[0];
+        return osDate <= dataFim;
+      });
     }
 
     return result.sort((a, b) => b.numero - a.numero);
@@ -82,15 +92,16 @@ export default function OrdensServico() {
   // Filtros rápidos
   const hoje = new Date().toISOString().split('T')[0];
   const osHoje = ordens.filter(os => os.data_entrada === hoje);
-  const osAtrasadas = ordens.filter(os => 
-    os.previsao_entrega && 
-    os.previsao_entrega < hoje && 
-    !['finalizada', 'entregue', 'cancelada'].includes(os.status)
-  );
-  const osPrazoHoje = ordens.filter(os => 
-    os.previsao_entrega === hoje && 
-    !['finalizada', 'entregue', 'cancelada'].includes(os.status)
-  );
+  const osAtrasadas = ordens.filter(os => {
+    if (!os.previsao_entrega) return false;
+    const previsaoDate = os.previsao_entrega.split('T')[0];
+    return previsaoDate < hoje && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
+  });
+  const osPrazoHoje = ordens.filter(os => {
+    if (!os.previsao_entrega) return false;
+    const previsaoDate = os.previsao_entrega.split('T')[0];
+    return previsaoDate === hoje && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
+  });
 
   const handleWhatsApp = (telefone?: string) => {
     if (telefone) {
@@ -323,7 +334,8 @@ export default function OrdensServico() {
                       const cliente = getClienteById(os.cliente_id);
                       const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
                       const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
-                      const isAtrasada = os.previsao_entrega && os.previsao_entrega < hoje && 
+                      const isAtrasada = os.previsao_entrega && 
+                        os.previsao_entrega.split('T')[0] < hoje && 
                         !['finalizada', 'entregue', 'cancelada'].includes(os.status);
                       
                       return (

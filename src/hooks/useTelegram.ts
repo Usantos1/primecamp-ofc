@@ -203,9 +203,47 @@ export function useTelegram() {
     return results;
   };
 
+  const deleteMessage = async (
+    chatId: string,
+    messageId: number
+  ): Promise<{ success: boolean; error?: string }> => {
+    setLoading(true);
+    try {
+      console.log('[useTelegram] Deletando mensagem:', { chatId, messageId });
+
+      const { data, error } = await supabase.functions.invoke('telegram-bot', {
+        body: {
+          action: 'delete',
+          chatId,
+          messageId,
+        },
+      });
+
+      if (error) {
+        console.error('[useTelegram] Erro ao deletar mensagem:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao deletar mensagem');
+      }
+
+      toast.success('Foto deletada do Telegram com sucesso!');
+      return { success: true };
+    } catch (error: any) {
+      console.error('[useTelegram] Erro ao deletar mensagem:', error);
+      const errorMsg = error.message || 'Erro ao deletar foto do Telegram';
+      toast.error(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     sendPhoto,
     sendMultiplePhotos,
+    deleteMessage,
     loading,
   };
 }

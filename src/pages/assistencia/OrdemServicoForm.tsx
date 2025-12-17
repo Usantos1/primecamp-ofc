@@ -2298,8 +2298,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } 
                                 : foto;
-                              // Prioridade: url > thumbnailUrl > postLink
-                              const imageUrl = fotoData.url || fotoData.thumbnailUrl || fotoData.postLink;
+                              // Prioridade: url > thumbnailUrl > postLink (mas postLink não é imagem)
+                              const imageUrl = fotoData.url || fotoData.thumbnailUrl;
+                              const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_entrada;
                               
                               const handleDelete = async (e: React.MouseEvent) => {
@@ -2333,13 +2334,19 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               
                               return (
                                 <div key={index} className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer hover:border-primary transition-colors bg-muted">
-                                  {imageUrl && !fotoData.postLink ? (
+                                  {hasImage && imageUrl ? (
                                     <>
                                       <img 
                                         src={imageUrl} 
                                         alt={fotoData.fileName || `Entrada ${index + 1}`}
                                         className="w-full h-full object-cover"
-                                        onClick={() => window.open(imageUrl, '_blank')}
+                                        onClick={() => {
+                                          if (fotoData.postLink) {
+                                            window.open(fotoData.postLink, '_blank');
+                                          } else if (imageUrl) {
+                                            window.open(imageUrl, '_blank');
+                                          }
+                                        }}
                                         onError={(e) => {
                                           // Se a imagem falhar, mostrar fallback
                                           (e.target as HTMLImageElement).style.display = 'none';
@@ -2347,24 +2354,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                       />
                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
-                                          Clique para ampliar
+                                          {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
                                       </div>
                                     </>
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                                      {fotoData.thumbnailUrl ? (
-                                        <img 
-                                          src={fotoData.thumbnailUrl} 
-                                          alt={fotoData.fileName || `Entrada ${index + 1}`}
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                          }}
-                                        />
-                                      ) : (
-                                        <Image className="h-8 w-8 text-muted-foreground mb-1" />
-                                      )}
+                                      <Image className="h-8 w-8 text-muted-foreground mb-1" />
                                       <p className="text-xs font-medium truncate w-full">{fotoData.fileName}</p>
                                       <p className="text-xs text-muted-foreground">Enviada para Telegram</p>
                                       {fotoData.enviadoEm && (
