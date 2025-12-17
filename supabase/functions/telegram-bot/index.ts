@@ -50,16 +50,28 @@ serve(async (req) => {
       );
     }
 
-    // Ler body para verificar se é requisição de deletar
-    let body: any;
+    // Ler body uma vez para verificar o tipo de requisição
+    let body: any = {};
     try {
       const bodyText = await req.text();
       if (bodyText) {
         body = JSON.parse(bodyText);
+        console.log('[telegram-bot] Body parseado:', { 
+          hasAction: !!body.action, 
+          hasFile: !!body.file, 
+          hasChatId: !!body.chatId, 
+          hasMessageId: !!body.messageId 
+        });
       }
     } catch (e) {
-      // Se não conseguir parsear, continuar com upload normal
-      body = {};
+      console.error('[telegram-bot] Erro ao parsear body:', e);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao processar requisição: ' + (e instanceof Error ? e.message : String(e)) }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // Verificar se é requisição de deletar mensagem (verificar no body)
