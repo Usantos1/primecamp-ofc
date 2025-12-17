@@ -300,16 +300,16 @@ export function BillsManager({ month }: BillsManagerProps) {
               <div className="space-y-2">
                 <Label>Categoria</Label>
                 <Select
-                  value={formData.category_id || undefined}
-                  onValueChange={(value) => setFormData({ ...formData, category_id: value || '' })}
+                  value={formData.category_id || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, category_id: value === 'none' ? '' : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={expenseCategories.length === 0 ? "Nenhuma categoria disponível" : "Selecione"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
+                    <SelectItem value="none">Nenhuma</SelectItem>
                     {expenseCategories.length === 0 ? (
-                      <SelectItem value="" disabled>Carregando categorias...</SelectItem>
+                      <SelectItem value="loading" disabled>Carregando categorias...</SelectItem>
                     ) : (
                       expenseCategories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
