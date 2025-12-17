@@ -214,26 +214,18 @@ export function useTelegram() {
       const { data, error } = await supabase.functions.invoke('telegram-bot', {
         body: {
           action: 'delete',
-          chatId: String(chatId),
-          messageId: Number(messageId),
+          chatId,
+          messageId,
         },
       });
 
-      console.log('[useTelegram] Resposta da Edge Function:', { data, error });
-
       if (error) {
         console.error('[useTelegram] Erro ao deletar mensagem:', error);
-        // Se o erro for do tipo FunctionsHttpError, extrair a mensagem
-        if (error.message) {
-          throw new Error(error.message);
-        }
         throw error;
       }
 
-      if (!data || !data.success) {
-        const errorMsg = data?.error || 'Erro ao deletar mensagem';
-        console.error('[useTelegram] Resposta sem sucesso:', data);
-        throw new Error(errorMsg);
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao deletar mensagem');
       }
 
       toast.success('Foto deletada do Telegram com sucesso!');

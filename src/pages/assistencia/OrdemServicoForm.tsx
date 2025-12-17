@@ -2304,7 +2304,6 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               const hasImage = !!(fotoData.url || fotoData.thumbnailUrl);
                               const hasPostLink = !!fotoData.postLink;
                               // Se não tiver imagem mas tiver postLink, mostrar link
-                              const hasPostLink = !!fotoData.postLink;
                               const chatId = fotoData.chatId || currentOS.telegram_chat_id_entrada;
                               
                               const handleDelete = async (e: React.MouseEvent) => {

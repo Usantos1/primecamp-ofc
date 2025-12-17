@@ -5,34 +5,72 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, TrendingDown } from 'lucide-react';
-import { currencyFormatters } from '@/utils/formatters';
+import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
+import { CashFlowChart } from '@/components/financeiro/CashFlowChart';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 export function FinanceiroRelatorios() {
   const { startDate } = useOutletContext<{ startDate: string }>();
+  const month = startDate.slice(0, 7);
   const [selectedReport, setSelectedReport] = useState('dre');
 
-  // DRE simulado
+  const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
+  const { bills, isLoading: billsLoading } = useBillsToPay({ month });
+  const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
+  const { data: categories = [] } = useFinancialCategories();
+
+  // Buscar vendas do período
+  const { data: sales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ['sales-report', month],
+    queryFn: async () => {
+      const start = `${month}-01`;
+      const end = `${month}-31`;
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .gte('created_at', start)
+        .lte('created_at', end)
+        .eq('status', 'paid');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Calcular DRE a partir das transações
+  const receitas = transactions
+    .filter(t => t.type === 'entrada')
+    .reduce((acc, t) => {
+      const catName = t.category?.name || 'Outras Receitas';
+      if (!acc[catName]) acc[catName] = 0;
+      acc[catName] += t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+  const despesas = transactions
+    .filter(t => t.type === 'saida')
+    .reduce((acc, t) => {
+      const catName = t.category?.name || 'Outras Despesas';
+      if (!acc[catName]) acc[catName] = 0;
+      acc[catName] += t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
   const dreData = {
-    receitas: [
-      { descricao: 'Serviços de Assistência', valor: 35000 },
-      { descricao: 'Venda de Acessórios', valor: 8000 },
-      { descricao: 'Outras Receitas', valor: 2000 },
-    ],
-    despesas: [
-      { descricao: 'Custo de Peças', valor: 12000 },
-      { descricao: 'Aluguel', valor: 3500 },
-      { descricao: 'Energia e Água', valor: 800 },
-      { descricao: 'Internet e Telefone', valor: 300 },
-      { descricao: 'Salários', valor: 8000 },
-      { descricao: 'Impostos', valor: 2500 },
-      { descricao: 'Outras Despesas', valor: 900 },
-    ],
+    receitas: Object.entries(receitas).map(([descricao, valor]) => ({ descricao, valor })),
+    despesas: Object.entries(despesas).map(([descricao, valor]) => ({ descricao, valor })),
   };
 
-  const totalReceitas = dreData.receitas.reduce((sum, r) => sum + r.valor, 0);
-  const totalDespesas = dreData.despesas.reduce((sum, d) => sum + d.valor, 0);
+  const totalReceitas = Object.values(receitas).reduce((sum, v) => sum + v, 0);
+  const totalDespesas = Object.values(despesas).reduce((sum, v) => sum + v, 0);
   const lucroLiquido = totalReceitas - totalDespesas;
-  const margemLucro = (lucroLiquido / totalReceitas) * 100;
+  const margemLucro = totalReceitas > 0 ? (lucroLiquido / totalReceitas) * 100 : 0;
+
+  if (transactionsLoading || billsLoading || closingsLoading || salesLoading) {
+    return <LoadingSkeleton type="cards" count={2} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -136,11 +174,167 @@ export function FinanceiroRelatorios() {
         </Card>
       )}
 
-      {/* Outros relatórios podem ser adicionados aqui */}
-      {selectedReport !== 'dre' && (
+      {/* Fluxo de Caixa */}
+      {selectedReport === 'fluxo' && (
+        <CashFlowChart month={month} />
+      )}
+
+      {/* Contas a Pagar/Receber */}
+      {selectedReport === 'contas' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Contas a Pagar</CardTitle>
+              <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bills.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Nenhuma conta encontrada
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      bills.map(bill => (
+                        <TableRow key={bill.id}>
+                          <TableCell className="font-medium">{bill.description}</TableCell>
+                          <TableCell>{dateFormatters.short(bill.due_date)}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {currencyFormatters.brl(bill.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              bill.status === 'pago' ? 'bg-success/10 text-success' :
+                              bill.status === 'atrasado' ? 'bg-destructive/10 text-destructive' :
+                              'bg-warning/10 text-warning'
+                            }`}>
+                              {bill.status}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Fechamentos de Caixa</CardTitle>
+              <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Vendedor</TableHead>
+                      <TableHead className="text-right">Total Vendas</TableHead>
+                      <TableHead className="text-right">Diferença</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cashClosings.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          Nenhum fechamento encontrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      cashClosings.map(closing => (
+                        <TableRow key={closing.id}>
+                          <TableCell>{dateFormatters.short(closing.closing_date)}</TableCell>
+                          <TableCell>{closing.seller_name}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {currencyFormatters.brl(closing.total_sales)}
+                          </TableCell>
+                          <TableCell className={`text-right font-semibold ${
+                            (closing.difference || 0) === 0 ? 'text-success' :
+                            (closing.difference || 0) > 0 ? 'text-primary' : 'text-destructive'
+                          }`}>
+                            {currencyFormatters.brl(closing.difference || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Vendas por Período */}
+      {selectedReport === 'vendas' && (
         <Card>
-          <CardContent className="pt-8 text-center text-muted-foreground">
-            <p>Relatório em desenvolvimento...</p>
+          <CardHeader>
+            <CardTitle>Vendas por Período</CardTitle>
+            <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sales.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        Nenhuma venda encontrada
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sales.map(sale => (
+                      <TableRow key={sale.id}>
+                        <TableCell className="font-medium">#{sale.numero}</TableCell>
+                        <TableCell>{sale.cliente_nome || '-'}</TableCell>
+                        <TableCell>{dateFormatters.short(sale.created_at)}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {currencyFormatters.brl(sale.total)}
+                        </TableCell>
+                        <TableCell>
+                          <span className="px-2 py-1 rounded text-xs bg-success/10 text-success">
+                            {sale.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            {sales.length > 0 && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total de Vendas:</span>
+                  <span className="text-xl font-bold text-primary">
+                    {currencyFormatters.brl(sales.reduce((sum, s) => sum + Number(s.total), 0))}
+                  </span>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

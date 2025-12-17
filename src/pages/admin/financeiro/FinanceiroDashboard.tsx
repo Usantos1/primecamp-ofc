@@ -4,28 +4,35 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Plus, ArrowRight, Wallet, CreditCard, FileText, BarChart3 } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { useFinancialSummary, useBillsDueSoon, useFinancialTransactions, useCashClosings } from '@/hooks/useFinanceiro';
+import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 export function FinanceiroDashboard() {
   const navigate = useNavigate();
   const { startDate } = useOutletContext<{ startDate: string }>();
+  const month = startDate.slice(0, 7);
 
-  // Dados simulados para demonstração
+  const summary = useFinancialSummary(month);
+  const { data: billsDueSoon = [], isLoading: billsLoading } = useBillsDueSoon(7);
+  const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
+  const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
+
   const metrics = {
-    totalEntradas: 45000,
-    totalSaidas: 28000,
-    saldo: 17000,
-    margemLucro: 37.8,
-    contasPendentes: 5,
-    contasAtrasadas: 2,
-    mediaVendasDiaria: 1500,
-    fechamentosCaixa: 22,
+    totalEntradas: summary.total_entradas,
+    totalSaidas: summary.total_saidas,
+    saldo: summary.saldo,
+    margemLucro: summary.total_entradas > 0 
+      ? ((summary.saldo / summary.total_entradas) * 100) 
+      : 0,
+    contasPendentes: summary.bills_pending,
+    contasAtrasadas: summary.bills_overdue,
+    mediaVendasDiaria: summary.total_entradas / (new Date().getDate() || 1),
+    fechamentosCaixa: cashClosings.length,
   };
 
-  const billsDueSoon = [
-    { id: '1', description: 'Aluguel', due_date: '2025-12-15', amount: 3500 },
-    { id: '2', description: 'Energia Elétrica', due_date: '2025-12-18', amount: 450 },
-    { id: '3', description: 'Internet', due_date: '2025-12-20', amount: 150 },
-  ];
+  if (transactionsLoading || closingsLoading || billsLoading) {
+    return <LoadingSkeleton type="cards" count={4} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -86,19 +93,25 @@ export function FinanceiroDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {billsDueSoon.map(bill => (
-                <div key={bill.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{bill.description}</p>
-                    <p className="text-sm text-muted-foreground">{dateFormatters.short(bill.due_date)}</p>
+            {billsDueSoon.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                Nenhuma conta vencendo em breve
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {billsDueSoon.slice(0, 5).map(bill => (
+                  <div key={bill.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{bill.description}</p>
+                      <p className="text-sm text-muted-foreground">{dateFormatters.short(bill.due_date)}</p>
+                    </div>
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                      {currencyFormatters.brl(bill.amount)}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                    {currencyFormatters.brl(bill.amount)}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
