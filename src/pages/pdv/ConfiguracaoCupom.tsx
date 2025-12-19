@@ -94,44 +94,33 @@ export default function ConfiguracaoCupom() {
 
     setUploadingLogo(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `cupom-logo-${Date.now()}.${fileExt}`;
-      const filePath = `cupom/${fileName}`;
-
-      // Remover logo antigo se existir
-      if (config.logo_url) {
-        const oldPath = config.logo_url.split('/').slice(-2).join('/');
-        await supabase.storage.from('public').remove([oldPath]);
-      }
-
-      // Upload novo logo
-      const { error: uploadError } = await supabase.storage
-        .from('public')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
+      // Converter para base64 para armazenar inline (mais simples e não depende de storage)
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setConfig({ ...config, logo_url: base64String });
+        toast({
+          title: 'Logo carregado com sucesso!',
+          description: 'Lembre-se de salvar as configurações.',
         });
-
-      if (uploadError) throw uploadError;
-
-      // Obter URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('public')
-        .getPublicUrl(filePath);
-
-      setConfig({ ...config, logo_url: publicUrl });
-      toast({
-        title: 'Logo enviado com sucesso!',
-        description: 'Lembre-se de salvar as configurações.',
-      });
+        setUploadingLogo(false);
+      };
+      reader.onerror = () => {
+        toast({
+          title: 'Erro ao ler arquivo',
+          description: 'Não foi possível ler o arquivo selecionado.',
+          variant: 'destructive',
+        });
+        setUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
     } catch (error: any) {
-      console.error('Erro ao fazer upload do logo:', error);
+      console.error('Erro ao processar logo:', error);
       toast({
-        title: 'Erro ao fazer upload',
-        description: error.message || 'Não foi possível fazer upload do logo.',
+        title: 'Erro ao processar logo',
+        description: error.message || 'Não foi possível processar o logo.',
         variant: 'destructive',
       });
-    } finally {
       setUploadingLogo(false);
     }
   };
