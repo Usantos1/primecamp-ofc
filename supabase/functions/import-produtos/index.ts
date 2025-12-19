@@ -102,15 +102,33 @@ serve(async (req) => {
     console.log('[import-produtos] Iniciando parse do body...');
     let body;
     try {
-      const bodyText = await req.text();
-      console.log('[import-produtos] Body recebido (primeiros 500 chars):', bodyText.substring(0, 500));
-      body = JSON.parse(bodyText);
+      // Usar req.json() diretamente ao invés de req.text() + JSON.parse()
+      // Isso evita problemas com body muito grande ou incompleto
+      body = await req.json();
       console.log('[import-produtos] Body parseado com sucesso');
+      console.log('[import-produtos] Body keys:', Object.keys(body || {}));
+      console.log('[import-produtos] Produtos no body:', body?.produtos?.length || 0);
     } catch (error: any) {
       console.error('[import-produtos] Erro ao parsear JSON:', error);
       console.error('[import-produtos] Stack:', error.stack);
+      console.error('[import-produtos] Error name:', error.name);
+      console.error('[import-produtos] Error message:', error.message);
+      
+      // Tentar ler como texto para debug
+      try {
+        const bodyText = await req.text();
+        console.error('[import-produtos] Body como texto (primeiros 1000 chars):', bodyText.substring(0, 1000));
+        console.error('[import-produtos] Tamanho do body:', bodyText.length);
+      } catch (textError: any) {
+        console.error('[import-produtos] Erro ao ler body como texto:', textError);
+      }
+      
       return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao processar requisição. Body inválido.' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Erro ao processar requisição. Body inválido ou incompleto.',
+          detalhes: error.message 
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
