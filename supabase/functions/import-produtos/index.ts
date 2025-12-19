@@ -29,18 +29,21 @@ interface ProdutoImport {
 }
 
 serve(async (req) => {
+  // LOG IMEDIATO - PRIMEIRA COISA
   console.log('[import-produtos] ========== NOVA REQUISIÇÃO ==========');
-  console.log('[import-produtos] Requisição recebida:', {
-    method: req.method,
-    url: req.url,
-  });
+  console.log('[import-produtos] Timestamp:', new Date().toISOString());
+  console.log('[import-produtos] Method:', req.method);
+  console.log('[import-produtos] URL:', req.url);
+  console.log('[import-produtos] Headers:', Object.fromEntries(req.headers.entries()));
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
+    console.log('[import-produtos] CORS preflight - retornando OK');
     return new Response(null, { headers: corsHeaders });
   }
 
   if (req.method !== 'POST') {
+    console.error('[import-produtos] Método inválido:', req.method);
     return new Response(
       JSON.stringify({ success: false, error: 'Método não permitido. Use POST.' }),
       {
@@ -50,10 +53,15 @@ serve(async (req) => {
     );
   }
 
+  console.log('[import-produtos] Método POST confirmado, iniciando processamento...');
+
   try {
     // Verificar autenticação
+    console.log('[import-produtos] Verificando autenticação...');
     const authHeader = req.headers.get('authorization');
+    console.log('[import-produtos] Auth header presente?', !!authHeader);
     if (!authHeader) {
+      console.error('[import-produtos] ERRO: Token de autenticação não encontrado');
       return new Response(
         JSON.stringify({ success: false, error: 'Token de autenticação necessário' }),
         {
@@ -62,6 +70,7 @@ serve(async (req) => {
         }
       );
     }
+    console.log('[import-produtos] Autenticação OK');
 
     // Criar cliente Supabase com Service Role (bypass RLS)
     const supabaseClient = createClient(

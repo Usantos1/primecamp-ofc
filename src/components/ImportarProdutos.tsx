@@ -171,6 +171,10 @@ export function ImportarProdutos() {
         });
 
         try {
+          console.log(`[ImportarProdutos] Chamando Edge Function para lote ${batchNum}...`);
+          console.log(`[ImportarProdutos] Tamanho do batch: ${batch.length} produtos`);
+          console.log(`[ImportarProdutos] Primeiro produto:`, JSON.stringify(batch[0]));
+          
           const { data, error } = await supabase.functions.invoke('import-produtos', {
             body: {
               produtos: batch,
@@ -179,7 +183,12 @@ export function ImportarProdutos() {
                 updateExisting,
               },
             },
+            headers: {
+              'Content-Type': 'application/json',
+            },
           });
+          
+          console.log(`[ImportarProdutos] Edge Function respondeu para lote ${batchNum}`);
 
           console.log(`[ImportarProdutos] Resposta do lote ${batchNum}:`, { data, error });
 
