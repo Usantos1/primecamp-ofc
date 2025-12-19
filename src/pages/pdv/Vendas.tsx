@@ -186,7 +186,45 @@ export default function Vendas() {
 
       const qrCodeData = `venda:${fullSale.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData);
-      printTermica(html);
+      
+      // Impressão direta sem abrir janela
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = '0';
+      document.body.appendChild(printFrame);
+      
+      const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
+      if (printDoc) {
+        printDoc.open();
+        printDoc.write(html);
+        printDoc.close();
+        
+        // Aguardar carregamento e imprimir
+        setTimeout(() => {
+          try {
+            printFrame.contentWindow?.focus();
+            printFrame.contentWindow?.print();
+            
+            // Remover iframe após impressão
+            setTimeout(() => {
+              try {
+                if (printFrame.parentNode) {
+                  document.body.removeChild(printFrame);
+                }
+              } catch (e) {
+                console.error('Erro ao remover iframe:', e);
+              }
+            }, 1000);
+          } catch (e) {
+            console.error('Erro ao imprimir:', e);
+            toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
+          }
+        }, 500);
+      }
     } catch (error) {
       console.error('Erro ao imprimir cupom:', error);
     }
@@ -681,7 +719,16 @@ export default function Vendas() {
                                     }}
                                   >
                                     <Printer className="h-4 w-4 mr-2" />
-                                    Imprimir Cupom
+                                    Reimprimir Cupom
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/pdv/venda/${sale.id}/editar`);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Editar Venda
                                   </DropdownMenuItem>
                                   <DropdownMenuItem 
                                     onClick={(e) => {

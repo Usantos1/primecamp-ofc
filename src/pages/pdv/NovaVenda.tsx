@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
-import { useSales, useSaleItems, usePayments } from '@/hooks/usePDV';
+import { useSales, useSaleItems, usePayments, useCashRegister } from '@/hooks/usePDV';
 import { useClientes, useOrdensServico, useItensOS } from '@/hooks/useAssistencia';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +37,7 @@ export default function NovaVenda() {
   const { createSale, updateSale, finalizeSale, deleteSale, getSaleById } = useSales();
   const { items, addItem, updateItem, removeItem, isLoading: itemsLoading } = useSaleItems(id || '');
   const { payments, addPayment, confirmPayment, isLoading: paymentsLoading } = usePayments(id || '');
+  const { currentSession: cashSession } = useCashRegister();
   
   const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
   
@@ -517,6 +518,17 @@ export default function NovaVenda() {
       return;
     }
 
+    // Validar se o caixa está aberto
+    if (!cashSession || cashSession.status !== 'open') {
+      toast({ 
+        title: 'Caixa fechado', 
+        description: 'É necessário abrir o caixa antes de realizar vendas.',
+        variant: 'destructive' 
+      });
+      navigate('/pdv/caixa');
+      return;
+    }
+
     setIsSaving(true);
     try {
       if (!isEditing || !id) {
@@ -628,7 +640,7 @@ export default function NovaVenda() {
     } finally {
       setIsSaving(false);
     }
-  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving]);
+  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -865,10 +877,18 @@ export default function NovaVenda() {
         // Recarregar dados da venda
         await loadSale();
         
-        // Perguntar se deseja emitir cupom
+        // Imprimir cupom direto sem perguntar
         setPendingSaleForCupom(sale);
-        setShouldEmitCupom(true);
-        setShowEmitirCupomDialog(true);
+        setTimeout(async () => {
+          if (sale && items && payments) {
+            await handlePrintCupomDirect(sale);
+            // Aguardar impressão e limpar PDV
+            setTimeout(() => {
+              limparPDV();
+              toast({ title: 'PDV limpo. Pronto para nova venda!' });
+            }, 1500);
+          }
+        }, 500);
       }
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);
@@ -898,17 +918,18 @@ export default function NovaVenda() {
     }, 100);
   };
 
-  // Confirmar emissão de cupom
+  // Confirmar emissão de cupom - SEMPRE imprime direto
   const handleConfirmEmitCupom = async () => {
     setShowEmitirCupomDialog(false);
     
-    if (shouldEmitCupom && pendingSaleForCupom) {
+    if (pendingSaleForCupom) {
       try {
         // Recarregar dados da venda para ter items e payments atualizados
         await loadSale();
         // Aguardar um pouco para garantir que os dados foram carregados
         setTimeout(async () => {
           if (sale && items && payments) {
+            // SEMPRE imprime direto, sem perguntar
             await handlePrintCupomDirect(pendingSaleForCupom);
             // Aguardar impressão e limpar PDV
             setTimeout(() => {
@@ -927,7 +948,7 @@ export default function NovaVenda() {
         limparPDV();
       }
     } else {
-      // Se não quiser emitir cupom, apenas limpar
+      // Se não tiver venda pendente, apenas limpar
       limparPDV();
     }
     
@@ -1698,39 +1719,6 @@ export default function NovaVenda() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de confirmação para emitir cupom */}
-      {showEmitirCupomDialog && (
-        <Dialog open={showEmitirCupomDialog} onOpenChange={setShowEmitirCupomDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Emitir Cupom Fiscal?</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="emitCupom"
-                  checked={shouldEmitCupom}
-                  onCheckedChange={(checked) => setShouldEmitCupom(checked === true)}
-                />
-                <Label htmlFor="emitCupom" className="cursor-pointer text-sm font-normal">
-                  Sim, desejo emitir o cupom fiscal
-                </Label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setShowEmitirCupomDialog(false);
-                setPendingSaleForCupom(null);
-              }}>
-                Não
-              </Button>
-              <Button onClick={handleConfirmEmitCupom}>
-                Confirmar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Modal de Faturar OS */}
       <Dialog open={showFaturarOSModal} onOpenChange={setShowFaturarOSModal}>

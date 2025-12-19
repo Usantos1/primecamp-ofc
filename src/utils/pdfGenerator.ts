@@ -78,12 +78,13 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           color: #000;
           background: #fff;
           line-height: 1.2;
+          font-weight: 600;
         }
         .center {
           text-align: center;
         }
         .bold {
-          font-weight: bold;
+          font-weight: 900;
         }
         .divider {
           border-top: 1px solid #000;
@@ -102,12 +103,18 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           margin: 2px 0;
         }
         .item-name {
-          font-weight: bold;
+          font-weight: 800;
           margin-bottom: 1px;
         }
         .total-line {
-          font-weight: bold;
+          font-weight: 900;
           font-size: 11px;
+        }
+        span {
+          font-weight: 600;
+        }
+        strong {
+          font-weight: 900;
         }
       </style>
     </head>
