@@ -16,7 +16,8 @@ import {
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useSaleItems, usePayments } from '@/hooks/usePDV';
-import { useProdutos, useClientes, useOrdensServico, useItensOS } from '@/hooks/useAssistencia';
+import { useClientes, useOrdensServico, useItensOS } from '@/hooks/useAssistencia';
+import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CartItem, PaymentFormData, PaymentMethod } from '@/types/pdv';
@@ -36,7 +37,19 @@ export default function NovaVenda() {
   const { items, addItem, updateItem, removeItem, isLoading: itemsLoading } = useSaleItems(id || '');
   const { payments, addPayment, confirmPayment, isLoading: paymentsLoading } = usePayments(id || '');
   
-  const { produtos, searchProdutos } = useProdutos();
+  const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
+  
+  // Função de busca de produtos
+  const searchProdutos = (term: string) => {
+    if (!term) return [];
+    const search = term.toLowerCase();
+    return produtos.filter(p => 
+      p.descricao?.toLowerCase().includes(search) ||
+      p.codigo?.toString().includes(search) ||
+      p.codigo_barras?.includes(search) ||
+      p.referencia?.toLowerCase().includes(search)
+    );
+  };
   const { clientes, searchClientes, createCliente } = useClientes();
   const { ordens } = useOrdensServico();
   
@@ -519,7 +532,7 @@ export default function NovaVenda() {
   const handleAddProduct = (produto: any) => {
     const existingItem = cart.find(item => 
       item.produto_id === produto.id || 
-      item.produto_nome === produto.nome
+      item.produto_nome === produto.descricao
     );
 
     if (existingItem) {
@@ -1118,14 +1131,14 @@ export default function NovaVenda() {
                           className="p-3 hover:bg-muted cursor-pointer border-b last:border-0"
                           onClick={() => handleAddProduct(produto)}
                         >
-                          <p className="font-medium">{produto.nome || produto.descricao}</p>
+                          <p className="font-medium">{produto.descricao || ''}</p>
                           <div className="flex items-center justify-between mt-1">
                             <p className="text-xs text-muted-foreground">
                               {produto.codigo && `Cód: ${produto.codigo}`}
                               {produto.codigo_barras && ` • Barras: ${produto.codigo_barras}`}
                             </p>
                             <p className="text-sm font-semibold">
-                              {currencyFormatters.brl(produto.preco_venda || produto.valor_dinheiro_pix || 0)}
+                              {currencyFormatters.brl(produto.preco_venda || 0)}
                             </p>
                           </div>
                         </div>
@@ -1581,7 +1594,7 @@ export default function NovaVenda() {
                               )}
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Produtos: {produtos.length}</p>
+                              <p>Produtos: {(os.itens || []).length}</p>
                               <p>Total: {currencyFormatters.brl(totalOS)}</p>
                               {os.tipo_aparelho && (
                                 <p>Aparelho: {os.tipo_aparelho} {os.marca_nome} {os.modelo_nome}</p>
