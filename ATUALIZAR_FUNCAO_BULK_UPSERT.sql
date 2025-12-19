@@ -56,7 +56,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'valor_dinheiro_pix')::TEXT IS NULL OR (produto_item->>'valor_dinheiro_pix')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'valor_dinheiro_pix')::NUMERIC 
+              ELSE LEAST((produto_item->>'valor_dinheiro_pix')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             valor_dinheiro_pix,
             0
@@ -65,7 +65,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'valor_parcelado_6x')::TEXT IS NULL OR (produto_item->>'valor_parcelado_6x')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'valor_parcelado_6x')::NUMERIC 
+              ELSE LEAST((produto_item->>'valor_parcelado_6x')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             valor_parcelado_6x,
             0
@@ -83,7 +83,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'vi_compra')::TEXT IS NULL OR (produto_item->>'vi_compra')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'vi_compra')::NUMERIC 
+              ELSE LEAST((produto_item->>'vi_compra')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             vi_compra,
             0
@@ -92,7 +92,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'vi_custo')::TEXT IS NULL OR (produto_item->>'vi_custo')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'vi_custo')::NUMERIC 
+              ELSE LEAST((produto_item->>'vi_custo')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             vi_custo,
             0
@@ -101,7 +101,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'quantidade')::TEXT IS NULL OR (produto_item->>'quantidade')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'quantidade')::INTEGER 
+              ELSE LEAST(GREATEST((produto_item->>'quantidade')::NUMERIC, -2147483648), 2147483647)::INTEGER
             END,
             quantidade,
             0
@@ -110,7 +110,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'margem_percentual')::TEXT IS NULL OR (produto_item->>'margem_percentual')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'margem_percentual')::NUMERIC 
+              ELSE LEAST((produto_item->>'margem_percentual')::NUMERIC, 999.99)::NUMERIC(5,2)
             END,
             margem_percentual,
             0
@@ -172,7 +172,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'vi_compra')::TEXT IS NULL OR (produto_item->>'vi_compra')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'vi_compra')::NUMERIC 
+              ELSE LEAST((produto_item->>'vi_compra')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             0
           ),
@@ -180,7 +180,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'vi_custo')::TEXT IS NULL OR (produto_item->>'vi_custo')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'vi_custo')::NUMERIC 
+              ELSE LEAST((produto_item->>'vi_custo')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             0
           ),
@@ -188,7 +188,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'quantidade')::TEXT IS NULL OR (produto_item->>'quantidade')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'quantidade')::INTEGER 
+              ELSE LEAST(GREATEST((produto_item->>'quantidade')::NUMERIC, -2147483648), 2147483647)::INTEGER
             END,
             0
           ),
@@ -196,7 +196,7 @@ BEGIN
             CASE 
               WHEN (produto_item->>'margem_percentual')::TEXT IS NULL OR (produto_item->>'margem_percentual')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'margem_percentual')::NUMERIC 
+              ELSE LEAST((produto_item->>'margem_percentual')::NUMERIC, 999.99)::NUMERIC(5,2)
             END,
             0
           ),
