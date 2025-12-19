@@ -99,7 +99,8 @@ export function AppSidebar() {
   const [isEstoqueVendasOpen, setIsEstoqueVendasOpen] = useState(
     currentPath.startsWith('/pdv') || 
     currentPath.startsWith('/assistencia') || 
-    currentPath.startsWith('/vendas')
+    currentPath.startsWith('/vendas') ||
+    currentPath.startsWith('/pdv/configuracao-cupom')
   );
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(
     currentPath.startsWith('/pdv/clientes') || 
@@ -265,6 +266,20 @@ export function AppSidebar() {
                               >
                                 <BarChart3 className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
                                 {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
+                              </div>
+                            )}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/pdv/configuracao-cupom">
+                            {({ isActive }) => (
+                              <div
+                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                              >
+                                <Receipt className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
+                                {!collapsed && <span className="font-medium text-sm">Config. Cupom</span>}
                               </div>
                             )}
                           </NavLink>
