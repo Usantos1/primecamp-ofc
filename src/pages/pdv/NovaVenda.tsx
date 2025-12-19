@@ -879,7 +879,12 @@ export default function NovaVenda() {
   // Confirmar emissão de cupom
   const handleConfirmEmitCupom = async () => {
     if (shouldEmitCupom && pendingSaleForCupom) {
-      await handlePrintCupomDirect(pendingSaleForCupom);
+      // Recarregar dados da venda para ter items e payments atualizados
+      await loadSale();
+      // Aguardar um pouco para garantir que os dados foram carregados
+      setTimeout(async () => {
+        await handlePrintCupomDirect(pendingSaleForCupom);
+      }, 500);
     }
     setShowEmitirCupomDialog(false);
     setPendingSaleForCupom(null);
