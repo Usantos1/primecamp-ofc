@@ -70,7 +70,11 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
             margin: 0;
             padding: 5mm;
             font-family: 'Courier New', monospace;
-            font-size: 10px;
+            font-size: 13px;
+            color: #000;
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
         }
         body {
@@ -78,54 +82,73 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           margin: 0;
           padding: 5mm;
           font-family: 'Courier New', monospace;
-          font-size: 10px;
+          font-size: 13px;
+          color: #000;
+          background: #fff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .header {
           text-align: center;
-          border-bottom: 1px dashed #000;
-          padding-bottom: 5px;
-          margin-bottom: 5px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 8px;
+          margin-bottom: 8px;
         }
         .title {
           font-weight: bold;
-          font-size: 12px;
+          font-size: 16px;
+          color: #000;
         }
         .info {
-          font-size: 9px;
-          margin: 2px 0;
+          font-size: 12px;
+          margin: 4px 0;
+          color: #000;
         }
         .item {
-          margin: 3px 0;
-          font-size: 9px;
+          margin: 5px 0;
+          font-size: 12px;
+          color: #000;
         }
         .item-name {
           font-weight: bold;
+          font-size: 13px;
+          color: #000;
         }
         .item-details {
           display: flex;
           justify-content: space-between;
-          font-size: 8px;
+          font-size: 11px;
+          color: #000;
         }
         .total {
-          border-top: 1px dashed #000;
-          margin-top: 5px;
-          padding-top: 5px;
+          border-top: 2px solid #000;
+          margin-top: 8px;
+          padding-top: 8px;
           font-weight: bold;
+          font-size: 14px;
+          color: #000;
         }
         .payment {
-          margin: 2px 0;
-          font-size: 9px;
+          margin: 4px 0;
+          font-size: 12px;
+          color: #000;
         }
         .footer {
           text-align: center;
-          margin-top: 10px;
-          font-size: 8px;
-          border-top: 1px dashed #000;
-          padding-top: 5px;
+          margin-top: 12px;
+          font-size: 11px;
+          border-top: 2px solid #000;
+          padding-top: 8px;
+          color: #000;
         }
         .qr-code {
           text-align: center;
           margin: 10px 0;
+        }
+        * {
+          color: #000 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
       </style>
     </head>

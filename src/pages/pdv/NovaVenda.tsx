@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Search, Plus, Minus, Trash2, ShoppingCart, User, X,
   Save, CreditCard, DollarSign, QrCode, Printer, Send, Download, FileText, Wrench
@@ -105,6 +106,9 @@ export default function NovaVenda() {
   const [descontoTotal, setDescontoTotal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEmitirCupomDialog, setShowEmitirCupomDialog] = useState(false);
+  const [shouldEmitCupom, setShouldEmitCupom] = useState(true);
+  const [pendingSaleForCupom, setPendingSaleForCupom] = useState<any>(null);
   
   // Estados para modal de faturar OS
   const [showFaturarOSModal, setShowFaturarOSModal] = useState(false);
@@ -860,6 +864,11 @@ export default function NovaVenda() {
         setShowCheckout(false);
         // Recarregar dados da venda
         await loadSale();
+        
+        // Perguntar se deseja emitir cupom
+        setPendingSaleForCupom(sale);
+        setShouldEmitCupom(true);
+        setShowEmitirCupomDialog(true);
       }
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);
@@ -867,7 +876,16 @@ export default function NovaVenda() {
     }
   };
 
-  // Imprimir cupom térmico
+  // Confirmar emissão de cupom
+  const handleConfirmEmitCupom = async () => {
+    if (shouldEmitCupom && pendingSaleForCupom) {
+      await handlePrintCupomDirect(pendingSaleForCupom);
+    }
+    setShowEmitirCupomDialog(false);
+    setPendingSaleForCupom(null);
+  };
+
+  // Imprimir cupom térmico (com janela)
   const handlePrintCupom = async () => {
     if (!sale || !items || !payments) return;
 
@@ -912,6 +930,85 @@ export default function NovaVenda() {
       const qrCodeData = `venda:${sale.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData);
       printTermica(html);
+    } catch (error) {
+      console.error('Erro ao gerar cupom:', error);
+      toast({ title: 'Erro ao gerar cupom', variant: 'destructive' });
+    }
+  };
+
+  // Imprimir cupom térmico diretamente (sem abrir janela)
+  const handlePrintCupomDirect = async (saleData?: any) => {
+    const saleToUse = saleData || sale;
+    if (!saleToUse || !items || !payments) return;
+
+    try {
+      const cupomData = {
+        numero: saleToUse.numero,
+        data: new Date(saleToUse.created_at).toLocaleDateString('pt-BR'),
+        hora: new Date(saleToUse.created_at).toLocaleTimeString('pt-BR'),
+        empresa: {
+          nome: 'PRIME CAMP',
+          cnpj: '31.833.574/0001-74',
+          endereco: undefined,
+          telefone: undefined,
+        },
+        cliente: saleToUse.cliente_nome ? {
+          nome: saleToUse.cliente_nome,
+          cpf_cnpj: saleToUse.cliente_cpf_cnpj || undefined,
+          telefone: saleToUse.cliente_telefone || undefined,
+        } : undefined,
+        itens: items.map(item => ({
+          nome: item.produto_nome,
+          quantidade: Number(item.quantidade),
+          valor_unitario: Number(item.valor_unitario),
+          desconto: Number(item.desconto || 0),
+          valor_total: Number(item.valor_total),
+        })),
+        subtotal: Number(saleToUse.subtotal),
+        desconto_total: Number(saleToUse.desconto_total),
+        total: Number(saleToUse.total),
+        pagamentos: payments
+          .filter(p => p.status === 'confirmed')
+          .map(p => ({
+            forma: p.forma_pagamento,
+            valor: Number(p.valor),
+            troco: p.troco ? Number(p.troco) : undefined,
+          })),
+        vendedor: saleToUse.vendedor_nome || undefined,
+        observacoes: saleToUse.observacoes || undefined,
+        termos_garantia: 'A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega. A garantia não cobre danos causados por mau uso, quedas, água ou outros fatores externos.',
+      };
+
+      const qrCodeData = `venda:${saleToUse.id}`;
+      const html = await generateCupomTermica(cupomData, qrCodeData);
+      
+      // Impressão direta sem abrir janela
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = '0';
+      document.body.appendChild(printFrame);
+      
+      const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
+      if (printDoc) {
+        printDoc.open();
+        printDoc.write(html);
+        printDoc.close();
+        
+        // Aguardar carregamento e imprimir
+        setTimeout(() => {
+          printFrame.contentWindow?.focus();
+          printFrame.contentWindow?.print();
+          
+          // Remover iframe após impressão
+          setTimeout(() => {
+            document.body.removeChild(printFrame);
+          }, 1000);
+        }, 500);
+      }
     } catch (error) {
       console.error('Erro ao gerar cupom:', error);
       toast({ title: 'Erro ao gerar cupom', variant: 'destructive' });
@@ -1459,7 +1556,7 @@ export default function NovaVenda() {
                 </Select>
               </div>
               <div>
-                <Label>Valor</Label>
+                <Label>Valor Recebido</Label>
                 <Input
                   type="number"
                   value={checkoutPayment.valor ?? ''}
@@ -1483,10 +1580,10 @@ export default function NovaVenda() {
               <div>
                 <Label>Troco</Label>
                 <Input
-                  type="number"
-                  value={checkoutPayment.troco || 0}
+                  type="text"
+                  value={currencyFormatters.brl(checkoutPayment.troco || 0)}
                   readOnly
-                  className="bg-muted"
+                  className="bg-muted font-semibold text-lg"
                 />
               </div>
             )}
@@ -1534,6 +1631,38 @@ export default function NovaVenda() {
             </Button>
             <Button onClick={handleAddPayment} disabled={!checkoutPayment.valor || checkoutPayment.valor <= 0 || checkoutPayment.valor === undefined}>
               Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação para emitir cupom */}
+      <Dialog open={showEmitirCupomDialog} onOpenChange={setShowEmitirCupomDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Emitir Cupom Fiscal?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="emitCupom"
+                checked={shouldEmitCupom}
+                onCheckedChange={(checked) => setShouldEmitCupom(checked === true)}
+              />
+              <Label htmlFor="emitCupom" className="cursor-pointer text-sm font-normal">
+                Sim, desejo emitir o cupom fiscal
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowEmitirCupomDialog(false);
+              setPendingSaleForCupom(null);
+            }}>
+              Não
+            </Button>
+            <Button onClick={handleConfirmEmitCupom}>
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
