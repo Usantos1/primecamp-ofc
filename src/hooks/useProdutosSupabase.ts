@@ -40,7 +40,7 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
 // Mapear produto assistencia.Produto para Supabase
 function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
   return {
-    nome: produto.descricao || '',
+    nome: (produto.descricao || '').toUpperCase(), // Converter para maiúsculo
     marca: produto.marca || 'Geral',
     modelo: produto.modelo_compativel || produto.modelo_id || 'Geral',
     qualidade: 'Original', // Padrão

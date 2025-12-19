@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Edit, Trash2, Smartphone, Tag, ChevronRight } from 'lucide-react';
-import { useMarcas, useModelos } from '@/hooks/useAssistencia';
+import { useMarcas, useModelos, MARCAS_MODELOS_PADRAO } from '@/hooks/useAssistencia';
 import { Marca, Modelo } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -19,6 +19,37 @@ import { LoadingButton } from '@/components/LoadingButton';
 export default function MarcasModelos() {
   const { marcas, createMarca, updateMarca, deleteMarca } = useMarcas();
   const { modelos, createModelo, updateModelo, deleteModelo } = useModelos();
+  
+  // Popular marcas e modelos padrão se não existirem
+  useEffect(() => {
+    if (marcas.length === 0) {
+      // Criar todas as marcas padrão
+      MARCAS_MODELOS_PADRAO.forEach(mp => {
+        const marcaExistente = marcas.find(m => m.nome === mp.marca);
+        if (!marcaExistente) {
+          createMarca({ nome: mp.marca });
+        }
+      });
+    }
+    
+    // Aguardar um pouco para garantir que as marcas foram criadas
+    if (marcas.length > 0 && modelos.length === 0) {
+      setTimeout(() => {
+        const marcasAtualizadas = JSON.parse(localStorage.getItem('assistencia_marcas') || '[]');
+        MARCAS_MODELOS_PADRAO.forEach(mp => {
+          const marca = marcasAtualizadas.find((m: any) => m.nome === mp.marca);
+          if (marca) {
+            mp.modelos.forEach(nomeModelo => {
+              const modeloExistente = modelos.find(m => m.nome === nomeModelo && m.marca_id === marca.id);
+              if (!modeloExistente) {
+                createModelo({ marca_id: marca.id, nome: nomeModelo });
+              }
+            });
+          }
+        });
+      }, 500);
+    }
+  }, [marcas.length, modelos.length]);
   
   const [activeTab, setActiveTab] = useState('marcas');
   const [searchTerm, setSearchTerm] = useState('');

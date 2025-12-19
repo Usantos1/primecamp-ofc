@@ -18,7 +18,7 @@ const STORAGE_KEYS = {
 };
 
 // ==================== MARCAS E MODELOS PADRÃO ====================
-const MARCAS_MODELOS_PADRAO = [
+export const MARCAS_MODELOS_PADRAO = [
   {
     marca: 'Apple',
     modelos: [

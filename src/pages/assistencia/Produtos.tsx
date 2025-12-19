@@ -617,7 +617,7 @@ export default function Produtos() {
                         <TableCell className="font-mono text-muted-foreground">
                           {produto.codigo_barras || '-'}
                         </TableCell>
-                        <TableCell className="font-medium">{produto.descricao}</TableCell>
+                        <TableCell className="font-medium uppercase">{produto.descricao}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {produto.localizacao || '-'}
                         </TableCell>

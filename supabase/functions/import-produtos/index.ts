@@ -237,7 +237,7 @@ serve(async (req) => {
       const codigo_barras = codigoBarrasRaw !== null && codigoBarrasRaw !== undefined && codigoBarrasRaw !== '' ? String(codigoBarrasRaw) : null;
       
       return {
-        nome: nomeFinal.toLowerCase(), // Converter para lowercase para evitar duplicatas
+        nome: nomeFinal.toUpperCase(), // Converter para maiúsculo
         marca: marca || 'Geral',
         modelo: nomeFinal, // Modelo deve ser igual ao nome
         qualidade: qualidade,
