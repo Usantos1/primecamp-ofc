@@ -102,5 +102,8 @@ verify_jwt = false
 [functions.api-produtos]
 verify_jwt = false
 
+[functions.import-produtos]
+verify_jwt = true
+
 [edge_runtime]
 policy = "oneshot"

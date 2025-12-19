@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2, Package, Wrench, Tag, BarChart3 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, Wrench, Tag, BarChart3, FileSpreadsheet } from 'lucide-react';
+import { ImportarProdutos } from '@/components/ImportarProdutos';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProdutos, useMarcasModelos } from '@/hooks/useAssistencia';
 import { Produto, ProdutoFormData, TipoProduto, TIPO_PRODUTO_LABELS } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
@@ -27,6 +29,7 @@ export default function Produtos() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const [formData, setFormData] = useState<ProdutoFormData>({
     tipo: 'peca',

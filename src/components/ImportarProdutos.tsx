@@ -1,0 +1,317 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import * as XLSX from 'xlsx';
+
+interface ProdutoPlanilha {
+  Codigo?: number;
+  'Código Barras'?: string;
+  Descricao: string;
+  Referencia?: string;
+  Grupo?: string;
+  'Sub Grupo'?: string;
+  'VI Compra'?: number;
+  'VI Custo'?: number;
+  'VI Venda': number;
+  Quantidade?: number;
+  'Margem %'?: number;
+}
+
+export function ImportarProdutos() {
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [resultado, setResultado] = useState<any>(null);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [updateExisting, setUpdateExisting] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (
+        selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        selectedFile.type === 'application/vnd.ms-excel' ||
+        selectedFile.name.endsWith('.xlsx') ||
+        selectedFile.name.endsWith('.xls')
+      ) {
+        setFile(selectedFile);
+        setResultado(null);
+      } else {
+        toast({
+          title: 'Arquivo inválido',
+          description: 'Por favor, selecione um arquivo Excel (.xlsx ou .xls)',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const processarPlanilha = async (file: File): Promise<ProdutoPlanilha[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Pegar a primeira planilha
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json<ProdutoPlanilha>(firstSheet);
+          
+          resolve(jsonData);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const handleImport = async () => {
+    if (!file) {
+      toast({
+        title: 'Arquivo não selecionado',
+        description: 'Por favor, selecione um arquivo Excel para importar',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    setResultado(null);
+
+    try {
+      // Processar planilha
+      const produtosPlanilha = await processarPlanilha(file);
+      
+      if (produtosPlanilha.length === 0) {
+        toast({
+          title: 'Planilha vazia',
+          description: 'A planilha não contém dados',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log('[ImportarProdutos] Produtos da planilha:', produtosPlanilha.length);
+
+      // Mapear para formato da API
+      const produtosMapeados = produtosPlanilha.map((prod) => ({
+        codigo: prod.Codigo,
+        codigo_barras: prod['Código Barras']?.toString(),
+        descricao: prod.Descricao,
+        referencia: prod.Referencia,
+        grupo: prod.Grupo,
+        sub_grupo: prod['Sub Grupo'],
+        vi_compra: prod['VI Compra'],
+        vi_custo: prod['VI Custo'],
+        vi_venda: prod['VI Venda'],
+        quantidade: prod.Quantidade,
+        margem: prod['Margem %'],
+        // Campos diretos se existirem
+        nome: prod.Descricao,
+        valor_dinheiro_pix: prod['VI Venda'],
+        valor_parcelado_6x: prod['VI Venda'] ? prod['VI Venda'] * 1.2 : 0,
+      }));
+
+      // Chamar Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { data, error } = await supabase.functions.invoke('import-produtos', {
+        body: {
+          produtos: produtosMapeados,
+          opcoes: {
+            skipDuplicates,
+            updateExisting,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.success) {
+        setResultado(data.resultado);
+        toast({
+          title: 'Importação concluída!',
+          description: data.mensagem,
+          variant: 'default',
+        });
+      } else {
+        throw new Error(data.error || 'Erro na importação');
+      }
+
+    } catch (error: any) {
+      console.error('[ImportarProdutos] Erro:', error);
+      toast({
+        title: 'Erro na importação',
+        description: error.message || 'Erro ao processar a planilha',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileSpreadsheet className="h-5 w-5" />
+          Importar Produtos em Massa
+        </CardTitle>
+        <CardDescription>
+          Importe produtos de uma planilha Excel (.xlsx ou .xls)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Upload */}
+        <div className="space-y-2">
+          <Label htmlFor="file">Arquivo Excel</Label>
+          <div className="flex items-center gap-4">
+            <Input
+              id="file"
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              disabled={loading}
+              className="flex-1"
+            />
+            {file && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                {file.name}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Opções */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="skipDuplicates"
+              checked={skipDuplicates}
+              onCheckedChange={(checked) => setSkipDuplicates(checked === true)}
+              disabled={loading || updateExisting}
+            />
+            <Label htmlFor="skipDuplicates" className="cursor-pointer">
+              Ignorar produtos duplicados (pular se já existir)
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="updateExisting"
+              checked={updateExisting}
+              onCheckedChange={(checked) => setUpdateExisting(checked === true)}
+              disabled={loading || skipDuplicates}
+            />
+            <Label htmlFor="updateExisting" className="cursor-pointer">
+              Atualizar produtos existentes (sobrescrever se já existir)
+            </Label>
+          </div>
+        </div>
+
+        {/* Botão Importar */}
+        <Button
+          onClick={handleImport}
+          disabled={!file || loading}
+          className="w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Importando...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar Produtos
+            </>
+          )}
+        </Button>
+
+        {/* Resultado */}
+        {resultado && (
+          <div className="rounded-lg border p-4 space-y-2">
+            <div className="flex items-center gap-2 font-semibold">
+              {resultado.erros > 0 ? (
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              )}
+              Resultado da Importação
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">Total:</span>{' '}
+                <span className="font-medium">{resultado.total}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Válidos:</span>{' '}
+                <span className="font-medium text-green-600">{resultado.validos}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Inválidos:</span>{' '}
+                <span className="font-medium text-red-600">{resultado.invalidos}</span>
+              </div>
+              {resultado.inseridos > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Inseridos:</span>{' '}
+                  <span className="font-medium text-blue-600">{resultado.inseridos}</span>
+                </div>
+              )}
+              {resultado.atualizados > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Atualizados:</span>{' '}
+                  <span className="font-medium text-blue-600">{resultado.atualizados}</span>
+              </div>
+              )}
+              {resultado.erros > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Erros:</span>{' '}
+                  <span className="font-medium text-red-600">{resultado.erros}</span>
+                </div>
+              )}
+            </div>
+            {resultado.erros_detalhes && resultado.erros_detalhes.length > 0 && (
+              <div className="mt-2 text-xs text-red-600">
+                <div className="font-semibold">Detalhes dos erros:</div>
+                <ul className="list-disc list-inside mt-1">
+                  {resultado.erros_detalhes.map((erro: string, idx: number) => (
+                    <li key={idx}>{erro}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Instruções */}
+        <div className="rounded-lg bg-muted p-4 text-sm">
+          <div className="font-semibold mb-2">Formato da Planilha:</div>
+          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+            <li>Colunas obrigatórias: <strong>Descrição</strong>, <strong>VI Venda</strong></li>
+            <li>Colunas opcionais: Código, Código Barras, Referência, Grupo, Sub Grupo, VI Compra, VI Custo, Quantidade, Margem %</li>
+            <li>O sistema tentará extrair marca e modelo da descrição automaticamente</li>
+            <li>Valor parcelado 6x será calculado automaticamente (20% de acréscimo sobre o valor de venda)</li>
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+

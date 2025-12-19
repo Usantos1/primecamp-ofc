@@ -1,0 +1,251 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+interface ProdutoImport {
+  codigo?: number;
+  codigo_barras?: string;
+  descricao: string;
+  referencia?: string;
+  grupo?: string;
+  sub_grupo?: string;
+  vi_compra?: number;
+  vi_custo?: number;
+  vi_venda: number;
+  quantidade?: number;
+  margem?: number;
+  // Campos mapeados para a tabela produtos
+  nome?: string;
+  marca?: string;
+  modelo?: string;
+  qualidade?: string;
+  valor_dinheiro_pix?: number;
+  valor_parcelado_6x?: number;
+}
+
+serve(async (req) => {
+  console.log('[import-produtos] Requisição recebida:', {
+    method: req.method,
+    url: req.url,
+  });
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Método não permitido. Use POST.' }),
+      {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  try {
+    // Verificar autenticação
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Token de autenticação necessário' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Criar cliente Supabase
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    );
+
+    // Obter usuário autenticado
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Usuário não autenticado' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Parse do body
+    const body = await req.json();
+    const { produtos, opcoes } = body;
+
+    if (!produtos || !Array.isArray(produtos) || produtos.length === 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Lista de produtos vazia ou inválida' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log(`[import-produtos] Importando ${produtos.length} produtos`);
+
+    // Opções de importação
+    const skipDuplicates = opcoes?.skipDuplicates !== false; // Padrão: true
+    const updateExisting = opcoes?.updateExisting === true; // Padrão: false
+
+    // Mapear produtos da planilha para estrutura do banco
+    const produtosMapeados = produtos.map((prod: ProdutoImport) => {
+      // Extrair marca e modelo da descrição se não vierem separados
+      let marca = prod.marca || '';
+      let modelo = prod.modelo || '';
+      let qualidade = prod.qualidade || 'Original';
+
+      // Tentar extrair marca/modelo da descrição se não vierem
+      if (!marca && !modelo && prod.descricao) {
+        // Exemplo: "ADAPTADOR 90 GRAU HDMI" -> marca vazia, modelo vazio
+        // Ou: "TELA IPHONE 12" -> marca: "Apple", modelo: "iPhone 12"
+        const descUpper = prod.descricao.toUpperCase();
+        if (descUpper.includes('IPHONE')) {
+          marca = 'Apple';
+          modelo = descUpper.match(/IPHONE\s+(\d+[A-Z]*)/)?.[0] || 'iPhone';
+        } else if (descUpper.includes('SAMSUNG')) {
+          marca = 'Samsung';
+          modelo = descUpper.match(/SAMSUNG\s+([A-Z0-9]+)/)?.[1] || '';
+        }
+      }
+
+      // Calcular valor parcelado (6x) se não vier
+      const valorVenda = prod.vi_venda || prod.valor_dinheiro_pix || 0;
+      const valorParcelado = prod.valor_parcelado_6x || valorVenda * 1.2; // 20% de acréscimo padrão
+
+      return {
+        nome: prod.descricao || prod.nome || '',
+        marca: marca || 'Geral',
+        modelo: modelo || 'Geral',
+        qualidade: qualidade,
+        valor_dinheiro_pix: valorVenda,
+        valor_parcelado_6x: valorParcelado,
+      };
+    });
+
+    // Validar produtos
+    const produtosValidos = produtosMapeados.filter(p => p.nome && p.marca && p.modelo);
+    const produtosInvalidos = produtosMapeados.length - produtosValidos.length;
+
+    if (produtosValidos.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Nenhum produto válido encontrado. Verifique os dados.',
+          detalhes: `${produtosInvalidos} produtos inválidos`
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log(`[import-produtos] ${produtosValidos.length} produtos válidos, ${produtosInvalidos} inválidos`);
+
+    // Inserir produtos em lotes
+    const batchSize = 100;
+    let inseridos = 0;
+    let atualizados = 0;
+    let erros = 0;
+    const errosDetalhes: string[] = [];
+
+    for (let i = 0; i < produtosValidos.length; i += batchSize) {
+      const batch = produtosValidos.slice(i, i + batchSize);
+      
+      if (updateExisting) {
+        // Atualizar ou inserir (upsert)
+        const { data, error } = await supabaseClient
+          .from('produtos')
+          .upsert(batch, {
+            onConflict: 'nome',
+            ignoreDuplicates: false,
+          })
+          .select();
+
+        if (error) {
+          console.error(`[import-produtos] Erro no lote ${i / batchSize + 1}:`, error);
+          erros += batch.length;
+          errosDetalhes.push(`Lote ${i / batchSize + 1}: ${error.message}`);
+        } else {
+          atualizados += data?.length || 0;
+        }
+      } else {
+        // Apenas inserir (ignorar duplicados se skipDuplicates = true)
+        const { data, error } = await supabaseClient
+          .from('produtos')
+          .insert(batch)
+          .select();
+
+        if (error) {
+          // Se for erro de duplicata e skipDuplicates = true, ignorar
+          if (skipDuplicates && error.code === '23505') {
+            console.log(`[import-produtos] Duplicados ignorados no lote ${i / batchSize + 1}`);
+          } else {
+            console.error(`[import-produtos] Erro no lote ${i / batchSize + 1}:`, error);
+            erros += batch.length;
+            errosDetalhes.push(`Lote ${i / batchSize + 1}: ${error.message}`);
+          }
+        } else {
+          inseridos += data?.length || 0;
+        }
+      }
+    }
+
+    console.log(`[import-produtos] Importação concluída: ${inseridos} inseridos, ${atualizados} atualizados, ${erros} erros`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        resultado: {
+          total: produtos.length,
+          validos: produtosValidos.length,
+          invalidos: produtosInvalidos,
+          inseridos: updateExisting ? 0 : inseridos,
+          atualizados: updateExisting ? atualizados : 0,
+          erros: erros,
+          erros_detalhes: errosDetalhes.length > 0 ? errosDetalhes : undefined,
+        },
+        mensagem: updateExisting
+          ? `${atualizados} produtos atualizados/inseridos com sucesso`
+          : `${inseridos} produtos inseridos com sucesso`,
+      }, null, 2),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
+  } catch (error: any) {
+    console.error('[import-produtos] Erro inesperado:', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Erro interno do servidor',
+        message: error.message 
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+});
+
