@@ -14,6 +14,9 @@ export interface CupomConfig {
   mostrar_logo: boolean;
   mostrar_qr_code: boolean;
   mensagem_rodape?: string;
+  imprimir_2_vias?: boolean;
+  imprimir_sem_dialogo?: boolean;
+  impressora_padrao?: string;
 }
 
 export function useCupomConfig() {

@@ -107,6 +107,12 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
             print-color-adjust: exact !important;
             -webkit-font-smoothing: none !important;
             text-rendering: optimizeLegibility !important;
+            image-rendering: -webkit-optimize-contrast !important;
+            image-rendering: crisp-edges !important;
+          }
+          body {
+            transform: scale(1);
+            -webkit-transform: scale(1);
           }
         }
         * {
@@ -121,18 +127,19 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           width: 80mm;
           max-width: 80mm;
           margin: 0;
-          padding: 2mm 5mm 2mm 5mm;
+          padding: 2mm 5mm 2mm 1mm;
           font-family: Arial, Helvetica, sans-serif;
-          font-size: 9px;
+          font-size: 11px;
           color: #000000 !important;
           background: #ffffff;
-          line-height: 1.3;
+          line-height: 1.4;
           font-weight: 900;
           -webkit-font-smoothing: none;
           text-rendering: optimizeLegibility;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
           overflow: hidden;
+          letter-spacing: 0.3px;
         }
         .center {
           text-align: center;
@@ -242,24 +249,24 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       
       <div class="divider-dashed" style="margin: 3px 0;"></div>
       
-      <div style="font-size: 7px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding: 1px 0;">
-          <span style="font-weight: 900 !important; color: #000000 !important;">Cod</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: center;">Descrição</span>
-          <span style="font-weight: 900 !important; color: #000000 !important;">Qtd</span>
-          <span style="font-weight: 900 !important; color: #000000 !important;">Vl Item</span>
-          <span style="font-weight: 900 !important; color: #000000 !important;">Vl Total</span>
+      <div style="font-size: 9px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding: 2px 0; gap: 6px;">
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 30px;">Cod</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: center; margin: 0 6px;">Descrição</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 28px; text-align: right;">Qtd</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 42px; text-align: right;">Vl Item</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 48px; text-align: right;">Vl Total</span>
         </div>
       </div>
       
       ${data.itens.map((item, idx) => `
-        <div style="font-size: 7px; margin: 1px 0; font-weight: 900 !important; color: #000000 !important;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <span style="font-weight: 900 !important; color: #000000 !important; width: 30px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 2px;">${item.nome}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; width: 20px; text-align: right;">${item.quantidade}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; width: 35px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; width: 40px; text-align: right;">${formatCurrency(item.valor_total)}</span>
+        <div style="font-size: 9px; margin: 2px 0; font-weight: 900 !important; color: #000000 !important;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 30px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 6px; text-transform: uppercase; letter-spacing: 0.2px;">${(item.nome || '').toUpperCase()}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 28px; text-align: right;">${item.quantidade}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 42px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 48px; text-align: right;">${formatCurrency(item.valor_total)}</span>
           </div>
         </div>
       `).join('')}

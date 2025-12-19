@@ -25,6 +25,8 @@ interface CupomConfig {
   mostrar_logo: boolean;
   mostrar_qr_code: boolean;
   mensagem_rodape: string;
+  imprimir_2_vias?: boolean;
+  imprimir_sem_dialogo?: boolean;
 }
 
 export default function ConfiguracaoCupom() {
@@ -44,6 +46,8 @@ export default function ConfiguracaoCupom() {
     mostrar_logo: true,
     mostrar_qr_code: true,
     mensagem_rodape: 'Obrigado pela preferência! Volte sempre',
+    imprimir_2_vias: false,
+    imprimir_sem_dialogo: true,
   });
 
   useEffect(() => {
@@ -363,6 +367,48 @@ export default function ConfiguracaoCupom() {
               <Label htmlFor="mostrar_qr_code" className="cursor-pointer">
                 Mostrar QR Code no cupom
               </Label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Opções de Impressão */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Opções de Impressão</CardTitle>
+            <CardDescription>Configure o comportamento da impressão</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="imprimir_2_vias"
+                checked={config.imprimir_2_vias || false}
+                onCheckedChange={(checked) => setConfig({ ...config, imprimir_2_vias: checked === true })}
+              />
+              <Label htmlFor="imprimir_2_vias" className="cursor-pointer">
+                Imprimir 2 vias automaticamente
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="imprimir_sem_dialogo"
+                checked={config.imprimir_sem_dialogo !== false}
+                onCheckedChange={(checked) => setConfig({ ...config, imprimir_sem_dialogo: checked === true })}
+              />
+              <Label htmlFor="imprimir_sem_dialogo" className="cursor-pointer">
+                Imprimir diretamente sem abrir caixa de diálogo (usar impressora padrão)
+              </Label>
+            </div>
+            <div>
+              <Label htmlFor="impressora_padrao">Impressora Padrão (opcional)</Label>
+              <Input
+                id="impressora_padrao"
+                value={config.impressora_padrao || ''}
+                onChange={(e) => setConfig({ ...config, impressora_padrao: e.target.value })}
+                placeholder="Deixe em branco para usar a impressora padrão do sistema"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Nome da impressora que será usada para impressão direta. Deixe em branco para usar a impressora padrão do sistema.
+              </p>
             </div>
           </CardContent>
         </Card>

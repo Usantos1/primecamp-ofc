@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS public.cupom_config (
   mostrar_logo BOOLEAN DEFAULT true,
   mostrar_qr_code BOOLEAN DEFAULT true,
   mensagem_rodape TEXT DEFAULT 'Obrigado pela preferência! Volte sempre',
+  imprimir_2_vias BOOLEAN DEFAULT false,
+  imprimir_sem_dialogo BOOLEAN DEFAULT true,
   
   -- Timestamps
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),

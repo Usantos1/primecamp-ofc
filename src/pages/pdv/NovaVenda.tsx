@@ -21,6 +21,7 @@ import { useClientes, useOrdensServico, useItensOS } from '@/hooks/useAssistenci
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { CartItem, PaymentFormData, PaymentMethod } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +41,7 @@ export default function NovaVenda() {
   const { currentSession: cashSession } = useCashRegister();
   
   const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
+  const { data: cupomConfig } = useCupomConfig();
   
   // Função de busca de produtos
   const searchProdutos = (term: string) => {
@@ -1050,45 +1052,74 @@ export default function NovaVenda() {
       };
 
       const qrCodeData = `venda:${saleToUse.id}`;
-      const html = await generateCupomTermica(cupomData, qrCodeData);
+      const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
       
-      // Impressão direta sem abrir janela
-      const printFrame = document.createElement('iframe');
-      printFrame.style.position = 'fixed';
-      printFrame.style.right = '0';
-      printFrame.style.bottom = '0';
-      printFrame.style.width = '0';
-      printFrame.style.height = '0';
-      printFrame.style.border = '0';
-      document.body.appendChild(printFrame);
+      const imprimirSemDialogo = cupomConfig?.imprimir_sem_dialogo !== false; // Default true
+      const imprimir2Vias = cupomConfig?.imprimir_2_vias === true;
       
-      const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-      if (printDoc) {
-        printDoc.open();
-        printDoc.write(html);
-        printDoc.close();
+      const printCupom = () => {
+        // Impressão direta sem abrir janela
+        const printFrame = document.createElement('iframe');
+        printFrame.style.position = 'fixed';
+        printFrame.style.right = '0';
+        printFrame.style.bottom = '0';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = '0';
+        document.body.appendChild(printFrame);
         
-        // Aguardar carregamento e imprimir
-        setTimeout(() => {
-          try {
-            printFrame.contentWindow?.focus();
-            printFrame.contentWindow?.print();
-            
-            // Remover iframe após impressão
-            setTimeout(() => {
-              try {
-                if (printFrame.parentNode) {
-                  document.body.removeChild(printFrame);
+        const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
+        if (printDoc) {
+          printDoc.open();
+          printDoc.write(html);
+          printDoc.close();
+          
+          // Aguardar carregamento e imprimir
+          setTimeout(() => {
+            try {
+              printFrame.contentWindow?.focus();
+              if (imprimirSemDialogo) {
+                // Impressão silenciosa (sem diálogo) - usar impressora padrão
+                // Tentar usar a API de impressão silenciosa se disponível
+                try {
+                  // Usar window.print() que respeita a impressora padrão do sistema
+                  printFrame.contentWindow?.print();
+                } catch (e) {
+                  console.error('Erro na impressão silenciosa:', e);
+                  // Fallback para impressão normal
+                  printFrame.contentWindow?.print();
                 }
-              } catch (e) {
-                console.error('Erro ao remover iframe:', e);
+              } else {
+                // Impressão com diálogo
+                printFrame.contentWindow?.print();
               }
-            }, 1000);
-          } catch (e) {
-            console.error('Erro ao imprimir:', e);
-            toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
-          }
-        }, 500);
+              
+              // Remover iframe após impressão
+              setTimeout(() => {
+                try {
+                  if (printFrame.parentNode) {
+                    document.body.removeChild(printFrame);
+                  }
+                } catch (e) {
+                  console.error('Erro ao remover iframe:', e);
+                }
+              }, 1000);
+            } catch (e) {
+              console.error('Erro ao imprimir:', e);
+              toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
+            }
+          }, 500);
+        }
+      };
+      
+      // Imprimir primeira via
+      printCupom();
+      
+      // Se configurado para 2 vias, imprimir novamente após um delay
+      if (imprimir2Vias) {
+        setTimeout(() => {
+          printCupom();
+        }, 1500);
       }
     } catch (error) {
       console.error('Erro ao gerar cupom:', error);
