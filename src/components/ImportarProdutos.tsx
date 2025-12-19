@@ -330,7 +330,15 @@ export function ImportarProdutos() {
 
         {/* Botão Importar */}
         <Button
-          onClick={handleImport}
+          onClick={(e) => {
+            console.log('[ImportarProdutos] ========== BOTÃO CLICADO (onClick) ==========');
+            console.log('[ImportarProdutos] Event:', e);
+            console.log('[ImportarProdutos] File:', file);
+            console.log('[ImportarProdutos] Loading:', loading);
+            e.preventDefault();
+            e.stopPropagation();
+            handleImport();
+          }}
           disabled={!file || loading}
           className="w-full"
         >
