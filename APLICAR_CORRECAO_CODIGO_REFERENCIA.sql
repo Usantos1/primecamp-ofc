@@ -40,8 +40,13 @@ BEGIN
       -- Extrair codigo, codigo_barras e referencia do JSON
       -- Tratar null corretamente: se vier null no JSON, usar NULL no banco
       -- Se não vier no JSON, preservar valor existente (para UPDATE) ou usar NULL (para INSERT)
+      
+      -- Para codigo: verificar se existe e converter para INTEGER
       IF produto_item ? 'codigo' THEN
-        IF (produto_item->>'codigo')::TEXT IS NULL OR (produto_item->>'codigo')::TEXT = '' OR (produto_item->>'codigo')::TEXT = 'null' THEN
+        -- Se o valor é null no JSON, usar NULL
+        IF produto_item->'codigo' IS NULL OR produto_item->'codigo' = 'null'::jsonb THEN
+          v_codigo := NULL;
+        ELSIF (produto_item->>'codigo')::TEXT = '' THEN
           v_codigo := NULL;
         ELSE
           BEGIN
@@ -54,8 +59,12 @@ BEGIN
         v_codigo := NULL; -- Para INSERT, usar NULL se não vier no JSON
       END IF;
       
+      -- Para codigo_barras: verificar se existe e converter para TEXT
       IF produto_item ? 'codigo_barras' THEN
-        IF (produto_item->>'codigo_barras')::TEXT IS NULL OR (produto_item->>'codigo_barras')::TEXT = '' OR (produto_item->>'codigo_barras')::TEXT = 'null' THEN
+        -- Se o valor é null no JSON, usar NULL
+        IF produto_item->'codigo_barras' IS NULL OR produto_item->'codigo_barras' = 'null'::jsonb THEN
+          v_codigo_barras := NULL;
+        ELSIF (produto_item->>'codigo_barras')::TEXT = '' THEN
           v_codigo_barras := NULL;
         ELSE
           v_codigo_barras := (produto_item->>'codigo_barras')::TEXT;
@@ -64,8 +73,12 @@ BEGIN
         v_codigo_barras := NULL; -- Para INSERT, usar NULL se não vier no JSON
       END IF;
       
+      -- Para referencia: verificar se existe e converter para TEXT
       IF produto_item ? 'referencia' THEN
-        IF (produto_item->>'referencia')::TEXT IS NULL OR (produto_item->>'referencia')::TEXT = '' OR (produto_item->>'referencia')::TEXT = 'null' THEN
+        -- Se o valor é null no JSON, usar NULL
+        IF produto_item->'referencia' IS NULL OR produto_item->'referencia' = 'null'::jsonb THEN
+          v_referencia := NULL;
+        ELSIF (produto_item->>'referencia')::TEXT = '' THEN
           v_referencia := NULL;
         ELSE
           v_referencia := (produto_item->>'referencia')::TEXT;

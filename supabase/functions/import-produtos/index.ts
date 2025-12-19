@@ -249,6 +249,8 @@ serve(async (req) => {
     // Validar produtos
     console.log('[import-produtos] Validando produtos mapeados...');
     console.log('[import-produtos] Exemplo de produto mapeado:', JSON.stringify(produtosMapeados[0], null, 2));
+    console.log('[import-produtos] Exemplo - codigo:', produtosMapeados[0]?.codigo, 'tipo:', typeof produtosMapeados[0]?.codigo);
+    console.log('[import-produtos] Exemplo - referencia:', produtosMapeados[0]?.referencia, 'tipo:', typeof produtosMapeados[0]?.referencia);
     
     // Verificar produtos inválidos com mais detalhes
     const produtosInvalidosDetalhes = produtosMapeados
@@ -341,14 +343,24 @@ serve(async (req) => {
       
       console.log(`[import-produtos] Processando lote ${batchNum} (${batch.length} produtos)`);
       console.log(`[import-produtos] Exemplo de produto do lote:`, JSON.stringify(batch[0], null, 2));
+      console.log(`[import-produtos] Exemplo - codigo no batch:`, batch[0]?.codigo, 'tipo:', typeof batch[0]?.codigo);
+      console.log(`[import-produtos] Exemplo - referencia no batch:`, batch[0]?.referencia, 'tipo:', typeof batch[0]?.referencia);
       
       if (updateExisting) {
         // Usar função SQL para bulk upsert (muito mais rápido)
         try {
           console.log(`[import-produtos] Chamando bulk_upsert_produtos para lote ${batchNum}...`);
+          // Garantir que campos null sejam incluídos no JSON
+          const batchComNulls = batch.map(p => ({
+            ...p,
+            codigo: p.codigo !== undefined ? p.codigo : null,
+            referencia: p.referencia !== undefined ? p.referencia : null,
+            codigo_barras: p.codigo_barras !== undefined ? p.codigo_barras : null,
+          }));
+          console.log(`[import-produtos] Batch com nulls explícitos - exemplo:`, JSON.stringify(batchComNulls[0], null, 2));
           const { data: result, error: rpcError } = await supabaseClient
             .rpc('bulk_upsert_produtos', {
-              produtos_json: batch
+              produtos_json: batchComNulls
             });
 
           console.log(`[import-produtos] Resposta RPC lote ${batchNum}:`, { result, rpcError });
