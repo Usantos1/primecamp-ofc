@@ -224,6 +224,18 @@ serve(async (req) => {
       // Se não tiver nome, usar uma descrição padrão
       const nomeFinal = nomeProduto || 'Produto sem descrição';
       
+      // Extrair codigo - verificar se existe (pode ser 0, então usar !== undefined)
+      const codigoRaw = prod.codigo !== undefined ? prod.codigo : null;
+      const codigo = codigoRaw !== null && codigoRaw !== undefined ? Number(codigoRaw) : null;
+      
+      // Extrair referencia - verificar se existe
+      const referenciaRaw = prod.referencia !== undefined ? prod.referencia : null;
+      const referencia = referenciaRaw !== null && referenciaRaw !== undefined && referenciaRaw !== '' ? String(referenciaRaw) : null;
+      
+      // Extrair codigo_barras
+      const codigoBarrasRaw = prod.codigo_barras !== undefined ? prod.codigo_barras : null;
+      const codigo_barras = codigoBarrasRaw !== null && codigoBarrasRaw !== undefined && codigoBarrasRaw !== '' ? String(codigoBarrasRaw) : null;
+      
       return {
         nome: nomeFinal.toLowerCase(), // Converter para lowercase para evitar duplicatas
         marca: marca || 'Geral',
@@ -234,9 +246,9 @@ serve(async (req) => {
         criado_por: userId || null,
         disponivel: true, // Garantir que produtos importados estejam disponíveis
         // Campos adicionais da planilha - garantir tipos corretos
-        codigo: prod.codigo ? Number(prod.codigo) : null,
-        codigo_barras: prod.codigo_barras || null,
-        referencia: prod.referencia || null,
+        codigo: codigo,
+        codigo_barras: codigo_barras,
+        referencia: referencia,
         grupo: prod.grupo || null,
         sub_grupo: prod.sub_grupo || null,
         vi_compra: parseValor(prod.vi_compra || 0),
