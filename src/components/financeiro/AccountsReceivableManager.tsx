@@ -140,15 +140,19 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle>Contas a Receber</CardTitle>
-            <CardDescription>Gerencie os recebimentos pendentes</CardDescription>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Contas a Receber</CardTitle>
+              <CardDescription>Gerencie os recebimentos pendentes</CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nova Conta a Receber
+            </Button>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
       <CardContent className="space-y-4">
         {/* Resumo */}
         <div className="grid grid-cols-2 gap-4">
