@@ -399,6 +399,16 @@ export default function Produtos() {
       </Dialog>
 
       <ConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} title="Excluir Produto" description="Tem certeza?" onConfirm={handleDelete} variant="danger" />
+      
+      {/* Dialog de Importação */}
+      <Dialog open={showImport} onOpenChange={setShowImport}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Importar Produtos em Massa</DialogTitle>
+          </DialogHeader>
+          <ImportarProdutos />
+        </DialogContent>
+      </Dialog>
     </ModernLayout>
   );
 }
