@@ -260,30 +260,47 @@ export default function ConfiguracaoCupom() {
             <CardDescription>Logo que aparecerá no topo do cupom (centrado)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <Label htmlFor="logo_upload">Upload de Logo</Label>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="logo_upload">Upload de Logo</Label>
+                  <Input
+                    id="logo_upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadLogo}
+                    disabled={uploadingLogo}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB
+                  </p>
+                </div>
+                {config.logo_url && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={config.logo_url}
+                      alt="Logo"
+                      className="h-20 w-auto object-contain border rounded p-2 bg-white max-w-[200px]"
+                      onError={(e) => {
+                        console.error('Erro ao carregar logo');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="logo_url">Ou cole uma URL de imagem</Label>
                 <Input
-                  id="logo_upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleUploadLogo}
-                  disabled={uploadingLogo}
-                  className="cursor-pointer"
+                  id="logo_url"
+                  value={config.logo_url || ''}
+                  onChange={(e) => setConfig({ ...config, logo_url: e.target.value })}
+                  placeholder="https://exemplo.com/logo.png"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB
+                  Você pode usar uma URL externa ou fazer upload acima
                 </p>
               </div>
-              {config.logo_url && (
-                <div className="flex-shrink-0">
-                  <img
-                    src={config.logo_url}
-                    alt="Logo"
-                    className="h-20 w-auto object-contain border rounded p-2 bg-white"
-                  />
-                </div>
-              )}
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
