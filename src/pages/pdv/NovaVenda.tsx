@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -483,6 +483,133 @@ export default function NovaVenda() {
     }
   }, [isEditing]);
 
+  // Função auxiliar para validar UUID
+  const isValidUUID = (str: string | undefined | null): boolean => {
+    if (!str) return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Finalizar venda
+  const handleFinalize = useCallback(async () => {
+    if (cart.length === 0) {
+      toast({ title: 'Adicione pelo menos um item ao carrinho', variant: 'destructive' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (!isEditing || !id) {
+        // Criar venda primeiro
+        const newSale = await createSale({
+          cliente_id: selectedCliente?.id && isValidUUID(selectedCliente.id) ? selectedCliente.id : undefined,
+          cliente_nome: selectedCliente?.nome,
+          cliente_cpf_cnpj: selectedCliente?.cpf_cnpj,
+          cliente_telefone: selectedCliente?.telefone || selectedCliente?.whatsapp,
+          observacoes,
+          is_draft: false,
+        });
+
+        // Adicionar itens
+        for (const cartItem of cart) {
+          await addItem(cartItem, newSale.id);
+        }
+
+        // Atualizar valores da venda antes de finalizar
+        await updateSale(newSale.id, {
+          subtotal: totals.subtotal,
+          desconto_total: totals.descontoTotal,
+          total: totals.total,
+        });
+
+        // Finalizar
+        await finalizeSale(newSale.id);
+        
+        toast({ title: 'Venda finalizada com sucesso!' });
+        navigate(`/pdv/venda/${newSale.id}`);
+        setShowCheckout(true);
+      } else {
+        // Atualizar itens - IMPORTANTE: não adicionar itens que já existem no banco
+        console.log('=== FINALIZAR VENDA - VERIFICANDO ITENS ===');
+        console.log(`Itens no carrinho: ${cart.length}`);
+        console.log(`Itens no banco: ${items.length}`);
+        
+        // Função auxiliar para comparar itens
+        const itemsMatch = (item1: any, item2: any): boolean => {
+          // Se ambos têm produto_id, comparar por isso (mais confiável)
+          if (item1.produto_id && item2.produto_id) {
+            return item1.produto_id === item2.produto_id;
+          }
+          // Se ambos têm código de barras, comparar por isso
+          if (item1.produto_codigo_barras && item2.produto_codigo_barras) {
+            return item1.produto_codigo_barras === item2.produto_codigo_barras;
+          }
+          // Se ambos têm código, comparar por isso
+          if (item1.produto_codigo && item2.produto_codigo) {
+            return item1.produto_codigo === item2.produto_codigo;
+          }
+          // Último recurso: comparar por nome (menos confiável)
+          return item1.produto_nome === item2.produto_nome;
+        };
+        
+        // Primeiro, remover itens que não estão mais no carrinho
+        for (const item of items) {
+          const stillInCart = cart.some(cartItem => itemsMatch(item, cartItem));
+          
+          if (!stillInCart) {
+            console.log(`Removendo item do banco: ${item.produto_nome}`);
+            await removeItem(item.id);
+          }
+        }
+
+        // Adicionar/atualizar apenas itens que realmente mudaram ou não existem
+        for (const cartItem of cart) {
+          // Buscar item existente usando a função de comparação
+          const existingItem = items.find(i => itemsMatch(i, cartItem));
+
+          if (existingItem) {
+            // Verificar se realmente mudou antes de atualizar
+            const hasChanged = 
+              Math.abs(existingItem.quantidade - cartItem.quantidade) > 0.001 ||
+              Math.abs(existingItem.valor_unitario - cartItem.valor_unitario) > 0.01 ||
+              Math.abs((existingItem.desconto || 0) - (cartItem.desconto || 0)) > 0.01;
+            
+            if (hasChanged) {
+              console.log(`Atualizando item: ${cartItem.produto_nome}`);
+              await updateItem(existingItem.id, cartItem);
+            } else {
+              console.log(`Item já existe e não mudou: ${cartItem.produto_nome} (ID: ${existingItem.id})`);
+            }
+          } else {
+            console.log(`Adicionando novo item: ${cartItem.produto_nome}`);
+            await addItem(cartItem, id);
+          }
+        }
+
+        // Atualizar valores da venda antes de finalizar
+        await updateSale(id, {
+          subtotal: totals.subtotal,
+          desconto_total: totals.descontoTotal,
+          total: totals.total,
+        });
+
+        // Finalizar
+        await finalizeSale(id);
+        toast({ title: 'Venda finalizada com sucesso!' });
+        setShowCheckout(true);
+      }
+    } catch (error: any) {
+      console.error('Erro ao finalizar venda:', error);
+      toast({ 
+        title: 'Erro ao finalizar venda', 
+        description: error.message || 'Não foi possível finalizar a venda.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving]);
+
   // Atalhos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -519,7 +646,7 @@ export default function NovaVenda() {
     // Adicionar listener com capture para garantir que seja capturado antes de outros handlers
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [cart, handleFinalize]);
+  }, [cart, handleFinalize, isSaving]);
 
   // Calcular totais
   const totals = useMemo(() => {
@@ -551,13 +678,6 @@ export default function NovaVenda() {
           : item
       ));
     } else {
-      // Validar UUID do produto antes de adicionar ao carrinho
-      const isValidUUID = (str: string | undefined | null): boolean => {
-        if (!str) return false;
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        return uuidRegex.test(str);
-      };
-
       setCart([...cart, {
         produto_id: produto.id && isValidUUID(produto.id) ? produto.id : undefined,
         produto_nome: produto.descricao || '',
@@ -684,132 +804,6 @@ export default function NovaVenda() {
     }
   };
 
-  // Função auxiliar para validar UUID
-  const isValidUUID = (str: string | undefined | null): boolean => {
-    if (!str) return false;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  };
-
-  // Finalizar venda
-  const handleFinalize = async () => {
-    if (cart.length === 0) {
-      toast({ title: 'Adicione pelo menos um item ao carrinho', variant: 'destructive' });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      if (!isEditing || !id) {
-        // Criar venda primeiro
-        const newSale = await createSale({
-          cliente_id: selectedCliente?.id && isValidUUID(selectedCliente.id) ? selectedCliente.id : undefined,
-          cliente_nome: selectedCliente?.nome,
-          cliente_cpf_cnpj: selectedCliente?.cpf_cnpj,
-          cliente_telefone: selectedCliente?.telefone || selectedCliente?.whatsapp,
-          observacoes,
-          is_draft: false,
-        });
-
-        // Adicionar itens
-        for (const cartItem of cart) {
-          await addItem(cartItem, newSale.id);
-        }
-
-        // Atualizar valores da venda antes de finalizar
-        await updateSale(newSale.id, {
-          subtotal: totals.subtotal,
-          desconto_total: totals.descontoTotal,
-          total: totals.total,
-        });
-
-        // Finalizar
-        await finalizeSale(newSale.id);
-        
-        toast({ title: 'Venda finalizada com sucesso!' });
-        navigate(`/pdv/venda/${newSale.id}`);
-        setShowCheckout(true);
-      } else {
-        // Atualizar itens - IMPORTANTE: não adicionar itens que já existem no banco
-        console.log('=== FINALIZAR VENDA - VERIFICANDO ITENS ===');
-        console.log(`Itens no carrinho: ${cart.length}`);
-        console.log(`Itens no banco: ${items.length}`);
-        
-        // Função auxiliar para comparar itens
-        const itemsMatch = (item1: any, item2: any): boolean => {
-          // Se ambos têm produto_id, comparar por isso (mais confiável)
-          if (item1.produto_id && item2.produto_id) {
-            return item1.produto_id === item2.produto_id;
-          }
-          // Se ambos têm código de barras, comparar por isso
-          if (item1.produto_codigo_barras && item2.produto_codigo_barras) {
-            return item1.produto_codigo_barras === item2.produto_codigo_barras;
-          }
-          // Se ambos têm código, comparar por isso
-          if (item1.produto_codigo && item2.produto_codigo) {
-            return item1.produto_codigo === item2.produto_codigo;
-          }
-          // Último recurso: comparar por nome (menos confiável)
-          return item1.produto_nome === item2.produto_nome;
-        };
-        
-        // Primeiro, remover itens que não estão mais no carrinho
-        for (const item of items) {
-          const stillInCart = cart.some(cartItem => itemsMatch(item, cartItem));
-          
-          if (!stillInCart) {
-            console.log(`Removendo item do banco: ${item.produto_nome}`);
-            await removeItem(item.id);
-          }
-        }
-
-        // Adicionar/atualizar apenas itens que realmente mudaram ou não existem
-        for (const cartItem of cart) {
-          // Buscar item existente usando a função de comparação
-          const existingItem = items.find(i => itemsMatch(i, cartItem));
-
-          if (existingItem) {
-            // Verificar se realmente mudou antes de atualizar
-            const hasChanged = 
-              Math.abs(existingItem.quantidade - cartItem.quantidade) > 0.001 ||
-              Math.abs(existingItem.valor_unitario - cartItem.valor_unitario) > 0.01 ||
-              Math.abs((existingItem.desconto || 0) - (cartItem.desconto || 0)) > 0.01;
-            
-            if (hasChanged) {
-              console.log(`Atualizando item: ${cartItem.produto_nome}`);
-              await updateItem(existingItem.id, cartItem);
-            } else {
-              console.log(`Item já existe e não mudou: ${cartItem.produto_nome} (ID: ${existingItem.id})`);
-            }
-          } else {
-            console.log(`Adicionando novo item: ${cartItem.produto_nome}`);
-            await addItem(cartItem, id);
-          }
-        }
-
-        // Atualizar valores da venda antes de finalizar
-        await updateSale(id, {
-          subtotal: totals.subtotal,
-          desconto_total: totals.descontoTotal,
-          total: totals.total,
-        });
-
-        // Finalizar
-        await finalizeSale(id);
-        toast({ title: 'Venda finalizada com sucesso!' });
-        setShowCheckout(true);
-      }
-    } catch (error: any) {
-      console.error('Erro ao finalizar venda:', error);
-      toast({ 
-        title: 'Erro ao finalizar venda', 
-        description: error.message || 'Não foi possível finalizar a venda.',
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // Excluir venda
   const handleDelete = async () => {
