@@ -626,8 +626,8 @@ export default function Produtos() {
                       <TableHead className="w-28 text-right">Vl Venda</TableHead>
                       <TableHead className="w-32">Modelo</TableHead>
                       <TableHead className="w-32">Marca</TableHead>
-                      <TableHead className="w-32">Grupo</TableHead>
-                      <TableHead className="w-32">Sub Grupo</TableHead>
+                      <TableHead className="w-24 text-right">Estoque</TableHead>
+                      <TableHead className="w-20">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -660,11 +660,21 @@ export default function Produtos() {
                         <TableCell className="text-muted-foreground">
                           {produto.marca || '-'}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {(produto as any).grupo_nome || produto.categoria || '-'}
+                        <TableCell className="text-right font-mono">
+                          {produto.estoque_atual || 0}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {(produto as any).sub_grupo_nome || '-'}
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpen(produto);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

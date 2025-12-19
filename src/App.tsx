@@ -56,7 +56,6 @@ import JobApplicationSteps from "./pages/JobApplicationSteps";
 import JobSuccess from "./pages/JobSuccess";
 import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
-import Produtos from "./pages/Produtos";
 import TrainingsIndex from "./pages/trainings/TrainingsIndex";
 import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, MarcasModelos as AssistenciaMarcasModelos, ConfiguracaoStatus as AssistenciaConfiguracaoStatus } from "./pages/assistencia";
 import Vendas from "./pages/pdv/Vendas";
@@ -136,7 +135,7 @@ const App = () => (
             <Route path="/logs" element={<ProtectedRoute><UserLogs /></ProtectedRoute>} />
             <Route path="/nps" element={<ProtectedRoute><NPS /></ProtectedRoute>} />
             <Route path="/teste-disc" element={<ProtectedRoute><DiscTest /></ProtectedRoute>} />
-            <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
+            <Route path="/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
             <Route path="/productivity" element={<ProtectedRoute><Productivity /></ProtectedRoute>} />
             <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
               
@@ -158,7 +157,6 @@ const App = () => (
               <Route path="/pdv/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/os/:id/editar/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
-              <Route path="/pdv/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
               <Route path="/pdv/marcas-modelos" element={<ProtectedRoute><AssistenciaMarcasModelos /></ProtectedRoute>} />
               <Route path="/pdv/configuracao-status" element={<ProtectedRoute><AssistenciaConfiguracaoStatus /></ProtectedRoute>} />
               
