@@ -53,212 +53,167 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
     }
   }
 
-  // HTML para impressão térmica 80mm
+  // HTML para impressão térmica 80mm - Formato simplificado e legível
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <style>
-        @media print {
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
-          body {
-            width: 80mm;
-            margin: 0;
-            padding: 3mm;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            color: #000;
-            background: #fff;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            line-height: 1.3;
-          }
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
         body {
           width: 80mm;
-          margin: 0;
-          padding: 3mm;
-          font-family: 'Courier New', monospace;
-          font-size: 11px;
+          margin: 0 auto;
+          padding: 2mm;
+          font-family: 'Courier New', 'Courier', monospace;
+          font-size: 10px;
           color: #000;
           background: #fff;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          line-height: 1.3;
+          line-height: 1.2;
         }
-        .header {
+        .center {
           text-align: center;
-          border-bottom: 1px solid #000;
-          padding-bottom: 5px;
-          margin-bottom: 5px;
         }
-        .title {
+        .bold {
           font-weight: bold;
-          font-size: 13px;
-          color: #000;
-          text-transform: uppercase;
         }
-        .info {
-          font-size: 10px;
-          margin: 2px 0;
-          color: #000;
-          line-height: 1.4;
-        }
-        .item {
+        .divider {
+          border-top: 1px solid #000;
           margin: 3px 0;
-          font-size: 10px;
-          color: #000;
+        }
+        .divider-dashed {
+          border-top: 1px dashed #000;
+          margin: 3px 0;
+        }
+        .line {
+          display: flex;
+          justify-content: space-between;
+          margin: 1px 0;
+        }
+        .item-line {
+          margin: 2px 0;
         }
         .item-name {
           font-weight: bold;
-          font-size: 11px;
-          color: #000;
           margin-bottom: 1px;
         }
-        .item-details {
-          display: flex;
-          justify-content: space-between;
-          font-size: 9px;
-          color: #000;
-        }
-        .total {
-          border-top: 1px solid #000;
-          margin-top: 5px;
-          padding-top: 5px;
+        .total-line {
           font-weight: bold;
           font-size: 11px;
-          color: #000;
-        }
-        .payment {
-          margin: 2px 0;
-          font-size: 10px;
-          color: #000;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 8px;
-          font-size: 9px;
-          border-top: 1px solid #000;
-          padding-top: 5px;
-          color: #000;
-        }
-        .qr-code {
-          text-align: center;
-          margin: 8px 0;
-        }
-        * {
-          color: #000;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        strong {
-          font-weight: bold;
-          color: #000;
         }
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="title">${data.empresa?.nome || 'PRIME CAMP'}</div>
-        <div class="info">Assistência Técnica</div>
-        ${data.empresa?.cnpj ? `<div class="info">CNPJ: ${data.empresa.cnpj}</div>` : ''}
-        ${data.empresa?.endereco ? `<div class="info">${data.empresa.endereco}</div>` : ''}
-        ${data.empresa?.telefone ? `<div class="info">Tel: ${data.empresa.telefone}</div>` : ''}
+      <div class="center bold" style="font-size: 12px; margin-bottom: 3px;">
+        ${data.empresa?.nome || 'PRIME CAMP'}
       </div>
+      <div class="center" style="margin-bottom: 2px;">
+        Assistência Técnica
+      </div>
+      ${data.empresa?.cnpj ? `<div class="center" style="margin-bottom: 2px;">CNPJ: ${data.empresa.cnpj}</div>` : ''}
+      ${data.empresa?.endereco ? `<div class="center" style="margin-bottom: 2px;">${data.empresa.endereco}</div>` : ''}
+      ${data.empresa?.telefone ? `<div class="center" style="margin-bottom: 3px;">Tel: ${data.empresa.telefone}</div>` : ''}
       
-      <div class="info">
-        <strong>CUPOM NÃO FISCAL</strong>
+      <div class="divider"></div>
+      
+      <div class="center bold" style="margin: 3px 0;">
+        CUPOM NÃO FISCAL
       </div>
-      <div class="info">
-        Venda #${data.numero}
+      <div class="line">
+        <span>Venda #${data.numero}</span>
       </div>
-      <div class="info">
-        Data: ${data.data} ${data.hora}
+      <div class="line">
+        <span>Data: ${data.data} ${data.hora}</span>
       </div>
       
       ${data.cliente?.nome ? `
-        <div class="info">
-          Cliente: ${data.cliente.nome}
-          ${data.cliente.cpf_cnpj ? `<br>CPF/CNPJ: ${data.cliente.cpf_cnpj}` : ''}
-          ${data.cliente.telefone ? `<br>Tel: ${data.cliente.telefone}` : ''}
+        <div class="line" style="margin-top: 3px;">
+          <span>Cliente: ${data.cliente.nome}</span>
         </div>
+        ${data.cliente.cpf_cnpj ? `<div class="line"><span>CPF/CNPJ: ${data.cliente.cpf_cnpj}</span></div>` : ''}
+        ${data.cliente.telefone ? `<div class="line"><span>Tel: ${data.cliente.telefone}</span></div>` : ''}
       ` : ''}
       
-      <div style="border-top: 1px dashed #000; margin: 5px 0; padding-top: 5px;">
-        ${data.itens.map(item => `
-          <div class="item">
-            <div class="item-name">${item.nome}</div>
-            <div class="item-details">
-              <span>${item.quantidade}x ${formatCurrency(item.valor_unitario)}</span>
-              ${item.desconto > 0 ? `<span>Desc: -${formatCurrency(item.desconto)}</span>` : ''}
-              <span>${formatCurrency(item.valor_total)}</span>
-            </div>
+      <div class="divider-dashed" style="margin: 4px 0;"></div>
+      
+      ${data.itens.map(item => `
+        <div class="item-line">
+          <div class="item-name">${item.nome}</div>
+          <div class="line">
+            <span>${item.quantidade}x ${formatCurrency(item.valor_unitario)}</span>
+            ${item.desconto > 0 ? `<span>Desc: -${formatCurrency(item.desconto)}</span>` : ''}
+            <span class="bold">${formatCurrency(item.valor_total)}</span>
           </div>
-        `).join('')}
+        </div>
+      `).join('')}
+      
+      <div class="divider" style="margin: 4px 0;"></div>
+      
+      <div class="line">
+        <span>Subtotal:</span>
+        <span>${formatCurrency(data.subtotal)}</span>
+      </div>
+      ${data.desconto_total > 0 ? `
+        <div class="line">
+          <span>Desconto:</span>
+          <span>-${formatCurrency(data.desconto_total)}</span>
+        </div>
+      ` : ''}
+      <div class="line total-line" style="margin-top: 2px;">
+        <span>TOTAL:</span>
+        <span>${formatCurrency(data.total)}</span>
       </div>
       
-      <div class="total">
-        <div style="display: flex; justify-content: space-between;">
-          <span>Subtotal:</span>
-          <span>${formatCurrency(data.subtotal)}</span>
+      <div class="divider" style="margin: 4px 0;"></div>
+      
+      ${data.pagamentos.map(pag => `
+        <div class="line">
+          <span>${pag.forma}:</span>
+          <span>${formatCurrency(pag.valor)}</span>
         </div>
-        ${data.desconto_total > 0 ? `
-          <div style="display: flex; justify-content: space-between;">
-            <span>Desconto:</span>
-            <span>-${formatCurrency(data.desconto_total)}</span>
+        ${pag.troco ? `
+          <div class="line" style="font-size: 9px; margin-top: 1px;">
+            <span>Troco:</span>
+            <span>${formatCurrency(pag.troco)}</span>
           </div>
         ` : ''}
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 3px;">
-          <span><strong>TOTAL:</strong></span>
-          <span><strong>${formatCurrency(data.total)}</strong></span>
-        </div>
-      </div>
+      `).join('')}
       
-      <div style="border-top: 1px solid #000; margin: 5px 0; padding-top: 5px;">
-        ${data.pagamentos.map(pag => `
-          <div class="payment">
-            <div style="display: flex; justify-content: space-between;">
-              <span>${pag.forma}:</span>
-              <span>${formatCurrency(pag.valor)}</span>
-            </div>
-            ${pag.troco ? `
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 2px;">
-                <span>Troco:</span>
-                <span>${formatCurrency(pag.troco)}</span>
-              </div>
-            ` : ''}
-          </div>
-        `).join('')}
-      </div>
-      
-      ${data.observacoes ? `
-        <div class="info" style="margin-top: 5px;">
-          <strong>Obs:</strong> ${data.observacoes}
+      ${data.vendedor ? `
+        <div class="line" style="margin-top: 3px;">
+          <span>Vendedor: ${data.vendedor}</span>
         </div>
       ` : ''}
       
-      ${data.vendedor ? `
-        <div class="info">
-          Vendedor: ${data.vendedor}
+      ${data.observacoes ? `
+        <div style="margin-top: 3px;">
+          <span class="bold">Obs:</span> ${data.observacoes}
         </div>
       ` : ''}
       
       ${data.termos_garantia ? `
-        <div style="border-top: 1px dashed #000; margin: 5px 0; padding-top: 5px; font-size: 8px;">
-          <div style="font-weight: bold; margin-bottom: 2px;">TERMOS DE GARANTIA:</div>
-          <div style="text-align: justify; line-height: 1.2;">${data.termos_garantia}</div>
+        <div class="divider-dashed" style="margin: 4px 0;"></div>
+        <div style="font-size: 8px; line-height: 1.3;">
+          <div class="bold" style="margin-bottom: 2px;">TERMOS DE GARANTIA:</div>
+          <div style="text-align: justify;">${data.termos_garantia}</div>
         </div>
       ` : ''}
       
-      <div class="footer">
+      <div class="divider" style="margin: 5px 0;"></div>
+      
+      <div class="center" style="margin-top: 5px;">
         <div>Obrigado pela preferência!</div>
         <div>Volte sempre</div>
         ${qrCodeImg ? `
-          <div class="qr-code">
+          <div style="margin-top: 5px;">
             ${qrCodeImg}
           </div>
         ` : ''}
