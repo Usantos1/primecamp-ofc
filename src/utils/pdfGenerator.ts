@@ -127,19 +127,21 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           width: 80mm;
           max-width: 80mm;
           margin: 0;
-          padding: 2mm 5mm 2mm 1mm;
+          padding: 2mm 4mm 2mm 3mm;
           font-family: Arial, Helvetica, sans-serif;
-          font-size: 11px;
+          font-size: 12px;
           color: #000000 !important;
           background: #ffffff;
           line-height: 1.4;
           font-weight: 900;
-          -webkit-font-smoothing: none;
-          text-rendering: optimizeLegibility;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
+          -webkit-font-smoothing: none !important;
+          text-rendering: optimizeLegibility !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
           overflow: hidden;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.2px;
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
         }
         .center {
           text-align: center;
@@ -205,14 +207,14 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         </div>
       ` : ''}
       
-      <div class="center bold" style="font-size: 11px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important; text-shadow: 0.5px 0.5px 0px #000;">
+      <div class="center bold" style="font-size: 12px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
         ${empresaNome}
       </div>
-      ${empresaCnpj ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">CNPJ: ${empresaCnpj}</div>` : ''}
-      ${empresaIe ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">IE: ${empresaIe}</div>` : ''}
-      ${empresaEndereco ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">${empresaEndereco}</div>` : ''}
+      ${empresaCnpj ? `<div class="center" style="font-size: 9px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">CNPJ: ${empresaCnpj}</div>` : ''}
+      ${empresaIe ? `<div class="center" style="font-size: 9px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">IE: ${empresaIe}</div>` : ''}
+      ${empresaEndereco ? `<div class="center" style="font-size: 9px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">${empresaEndereco}</div>` : ''}
       ${empresaTelefone || empresaWhatsapp ? `
-        <div class="center" style="font-size: 8px; margin-bottom: 3px; font-weight: 900 !important; color: #000000 !important;">
+        <div class="center" style="font-size: 9px; margin-bottom: 3px; font-weight: 900 !important; color: #000000 !important;">
           ${empresaTelefone ? `Tel:${empresaTelefone}` : ''}${empresaTelefone && empresaWhatsapp ? ' / ' : ''}${empresaWhatsapp ? `WhatsApp:${empresaWhatsapp}` : ''}
         </div>
       ` : ''}
@@ -222,26 +224,26 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       <div class="center bold" style="font-size: 10px; margin: 3px 0; font-weight: 900 !important; color: #000000 !important;">
         PEDIDO N° ${data.numero}
       </div>
-      <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">Operação:</span>
         <span style="font-weight: 900 !important; color: #000000 !important;">VENDA</span>
       </div>
-      <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}</span>
       </div>
       ${data.vendedor ? `
-        <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+        <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
           <span style="font-weight: 900 !important; color: #000000 !important;">VENDEDOR:</span>
           <span style="font-weight: 900 !important; color: #000000 !important;">${data.vendedor}</span>
         </div>
       ` : ''}
       
-      <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">CLIENTE:</span>
         <span style="font-weight: 900 !important; color: #000000 !important;">${data.cliente?.nome || 'CONSUMIDOR FINAL'}</span>
       </div>
       ${data.cliente?.cidade ? `
-        <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+        <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
           <span style="font-weight: 900 !important; color: #000000 !important;">CIDADE:</span>
           <span style="font-weight: 900 !important; color: #000000 !important;">${data.cliente.cidade}</span>
         </div>
@@ -249,35 +251,35 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       
       <div class="divider-dashed" style="margin: 3px 0;"></div>
       
-      <div style="font-size: 9px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
+      <div style="font-size: 10px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
         <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding: 2px 0; gap: 6px;">
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 30px;">Cod</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 32px;">Cod</span>
           <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: center; margin: 0 6px;">Descrição</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 28px; text-align: right;">Qtd</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 42px; text-align: right;">Vl Item</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 48px; text-align: right;">Vl Total</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 30px; text-align: right;">Qtd</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 44px; text-align: right;">Vl Item</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 50px; text-align: right;">Vl Total</span>
         </div>
       </div>
       
       ${data.itens.map((item, idx) => `
-        <div style="font-size: 9px; margin: 2px 0; font-weight: 900 !important; color: #000000 !important;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 30px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 6px; text-transform: uppercase; letter-spacing: 0.2px;">${(item.nome || '').toUpperCase()}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 28px; text-align: right;">${item.quantidade}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 42px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 48px; text-align: right;">${formatCurrency(item.valor_total)}</span>
+        <div style="font-size: 10px; margin: 2px 0; font-weight: 900 !important; color: #000000 !important;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px;">
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 35px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 4px; text-transform: uppercase; letter-spacing: 0.1px;">${(item.nome || '').toUpperCase()}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 32px; text-align: right;">${item.quantidade}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 46px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 52px; text-align: right;">${formatCurrency(item.valor_total)}</span>
           </div>
         </div>
       `).join('')}
       
       <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">Total Desconto:</span>
         <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.desconto_total)}</span>
       </div>
-      <div class="line total-line" style="font-size: 9px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="line total-line" style="font-size: 11px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">Total:</span>
         <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
       </div>
@@ -286,17 +288,17 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         const valorPago = pag.valor;
         const troco = pag.troco || 0;
         return `
-          <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+          <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
             <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
             <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(valorPago)}</span>
           </div>
           ${troco > 0 ? `
-            <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+            <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
               <span style="font-weight: 900 !important; color: #000000 !important;">Troco:</span>
               <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(troco)}</span>
             </div>
           ` : ''}
-          <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+          <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
             <span style="font-weight: 900 !important; color: #000000 !important;">${pag.forma}:</span>
             <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
           </div>
@@ -305,21 +307,21 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       
       ${termosGarantia ? `
         <div class="divider-dashed" style="margin: 3px 0;"></div>
-        <div style="font-size: 7px; line-height: 1.2; font-weight: 900 !important; color: #000000 !important; text-align: justify;">
+        <div style="font-size: 8px; line-height: 1.3; font-weight: 900 !important; color: #000000 !important; text-align: justify;">
           ${termosGarantia}
         </div>
       ` : ''}
       
       <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="center" style="font-size: 8px; margin-top: 3px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="center" style="font-size: 9px; margin-top: 3px; font-weight: 900 !important; color: #000000 !important;">
         <div style="font-weight: 900 !important; color: #000000 !important;">${mensagemRodape}</div>
         ${qrCodeImg ? `
           <div style="margin-top: 3px;">
             ${qrCodeImg}
           </div>
         ` : ''}
-        <div style="font-size: 7px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <div style="font-size: 8px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
           Impresso em ${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}
         </div>
       </div>
