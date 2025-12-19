@@ -837,9 +837,9 @@ export function AppSidebar() {
                       <NavLink to="/admin/logs">
                         {({ isActive }) => (
                           <div
-                            className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                            className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                           >
-                            <Activity className="h-4 w-4 flex-shrink-0" />
+                            <Activity className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
                             {!collapsed && <span className="font-medium text-sm">Logs</span>}
                           </div>
                         )}
