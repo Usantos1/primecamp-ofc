@@ -551,12 +551,12 @@ export default function NovaVenda() {
 
       setCart([...cart, {
         produto_id: produto.id && isValidUUID(produto.id) ? produto.id : undefined,
-        produto_nome: produto.nome || produto.descricao,
+        produto_nome: produto.descricao || '',
         produto_codigo: produto.codigo?.toString(),
         produto_codigo_barras: produto.codigo_barras,
         produto_tipo: normalizeProdutoTipo(produto.tipo),
         quantidade: 1,
-        valor_unitario: produto.preco_venda || produto.valor_dinheiro_pix || 0,
+        valor_unitario: produto.preco_venda || 0,
         desconto: 0,
       }]);
     }
