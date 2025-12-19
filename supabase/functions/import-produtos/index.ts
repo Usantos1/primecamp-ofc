@@ -251,11 +251,14 @@ serve(async (req) => {
         try {
           if (skipDuplicates) {
             // Buscar produtos existentes em lote (muito mais rápido)
+            // Usar RPC para busca case-insensitive em lote
             const nomesLower = batch.map(p => p.nome.toLowerCase());
-            const { data: existingProducts } = await supabaseClient
+            
+            // Buscar produtos existentes usando lower(nome)
+            const { data: existingProducts, error: searchError } = await supabaseClient
               .from('produtos')
               .select('nome')
-              .in('nome', nomesLower);
+              .or(nomesLower.map(n => `nome.ilike.${n}`).join(','));
             
             const existingNames = new Set(
               (existingProducts || []).map(p => p.nome.toLowerCase())
