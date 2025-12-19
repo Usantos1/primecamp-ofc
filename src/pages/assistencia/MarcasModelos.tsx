@@ -10,15 +10,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Edit, Trash2, Smartphone, Tag, ChevronRight } from 'lucide-react';
-import { useMarcas, useModelos, MARCAS_MODELOS_PADRAO } from '@/hooks/useAssistencia';
+import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
+import { MARCAS_MODELOS_PADRAO } from '@/hooks/useAssistencia';
 import { Marca, Modelo } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LoadingButton } from '@/components/LoadingButton';
 
 export default function MarcasModelos() {
-  const { marcas, createMarca, updateMarca, deleteMarca } = useMarcas();
-  const { modelos, createModelo, updateModelo, deleteModelo } = useModelos();
+  const { marcas, createMarca, updateMarca, deleteMarca } = useMarcasSupabase();
+  const { modelos, createModelo, updateModelo, deleteModelo } = useModelosSupabase();
   
   // Popular marcas e modelos padrão se não existirem
   useEffect(() => {
@@ -161,21 +162,30 @@ export default function MarcasModelos() {
     setIsSaving(true);
     try {
       if (editingModelo) {
-        updateModelo(editingModelo.id, { nome: modeloNome, marca_id: modeloMarcaId });
+        await updateModelo(editingModelo.id, { nome: modeloNome, marca_id: modeloMarcaId });
       } else {
-        createModelo(modeloMarcaId, modeloNome);
+        await createModelo(modeloMarcaId, modeloNome);
       }
       setModeloDialog(false);
+      setModeloNome('');
+      setModeloMarcaId('');
+      setEditingModelo(null);
+    } catch (error) {
+      console.error('[handleSaveModelo] Erro:', error);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteModelo = () => {
+  const handleDeleteModelo = async () => {
     if (deletingModeloId) {
-      deleteModelo(deletingModeloId);
-      setDeleteModeloDialog(false);
-      setDeletingModeloId(null);
+      try {
+        await deleteModelo(deletingModeloId);
+        setDeleteModeloDialog(false);
+        setDeletingModeloId(null);
+      } catch (error) {
+        console.error('[handleDeleteModelo] Erro:', error);
+      }
     }
   };
 

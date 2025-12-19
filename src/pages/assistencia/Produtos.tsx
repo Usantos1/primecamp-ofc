@@ -17,7 +17,7 @@ import {
 import { ImportarProdutos } from '@/components/ImportarProdutos';
 import { Badge } from '@/components/ui/badge';
 import { useProdutos } from '@/hooks/useProdutosSupabase';
-import { useMarcasModelos } from '@/hooks/useAssistencia';
+import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -39,7 +39,7 @@ const INITIAL_FORM: ProdutoFormData = {
 export default function Produtos() {
   const navigate = useNavigate();
   const { produtos, grupos, isLoading, createProduto, updateProduto, deleteProduto } = useProdutos();
-  const { marcas, modelos, getModeloById, getMarcaById, getModelosByMarca } = useMarcasModelos();
+  const { marcas, modelos, getModeloById, getMarcaById, getModelosByMarca } = useMarcasModelosSupabase();
   const { toast } = useToast();
 
   // Verificar se há backups disponíveis quando produtos desaparecem
