@@ -878,15 +878,24 @@ export default function NovaVenda() {
 
   // Confirmar emissão de cupom
   const handleConfirmEmitCupom = async () => {
-    if (shouldEmitCupom && pendingSaleForCupom) {
-      // Recarregar dados da venda para ter items e payments atualizados
-      await loadSale();
-      // Aguardar um pouco para garantir que os dados foram carregados
-      setTimeout(async () => {
-        await handlePrintCupomDirect(pendingSaleForCupom);
-      }, 500);
-    }
     setShowEmitirCupomDialog(false);
+    
+    if (shouldEmitCupom && pendingSaleForCupom) {
+      try {
+        // Recarregar dados da venda para ter items e payments atualizados
+        await loadSale();
+        // Aguardar um pouco para garantir que os dados foram carregados
+        setTimeout(async () => {
+          if (sale && items && payments) {
+            await handlePrintCupomDirect(pendingSaleForCupom);
+          }
+        }, 500);
+      } catch (error) {
+        console.error('Erro ao emitir cupom:', error);
+        toast({ title: 'Erro ao emitir cupom', variant: 'destructive' });
+      }
+    }
+    
     setPendingSaleForCupom(null);
   };
 
@@ -943,8 +952,12 @@ export default function NovaVenda() {
 
   // Imprimir cupom térmico diretamente (sem abrir janela)
   const handlePrintCupomDirect = async (saleData?: any) => {
-    const saleToUse = saleData || sale;
-    if (!saleToUse || !items || !payments) return;
+    try {
+      const saleToUse = saleData || sale;
+      if (!saleToUse || !items || !payments) {
+        console.error('Dados insuficientes para imprimir cupom:', { saleToUse, items, payments });
+        return;
+      }
 
     try {
       const cupomData = {
@@ -1005,13 +1018,24 @@ export default function NovaVenda() {
         
         // Aguardar carregamento e imprimir
         setTimeout(() => {
-          printFrame.contentWindow?.focus();
-          printFrame.contentWindow?.print();
-          
-          // Remover iframe após impressão
-          setTimeout(() => {
-            document.body.removeChild(printFrame);
-          }, 1000);
+          try {
+            printFrame.contentWindow?.focus();
+            printFrame.contentWindow?.print();
+            
+            // Remover iframe após impressão
+            setTimeout(() => {
+              try {
+                if (printFrame.parentNode) {
+                  document.body.removeChild(printFrame);
+                }
+              } catch (e) {
+                console.error('Erro ao remover iframe:', e);
+              }
+            }, 1000);
+          } catch (e) {
+            console.error('Erro ao imprimir:', e);
+            toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
+          }
         }, 500);
       }
     } catch (error) {
