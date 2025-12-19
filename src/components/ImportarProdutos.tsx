@@ -29,6 +29,7 @@ export function ImportarProdutos() {
   const [resultado, setResultado] = useState<any>(null);
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [updateExisting, setUpdateExisting] = useState(false);
+  const [progresso, setProgresso] = useState<{ atual: number; total: number; lote: number; totalLotes: number } | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
