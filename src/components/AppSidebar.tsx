@@ -288,9 +288,9 @@ export function AppSidebar() {
                                   <NavLink to="/pdv/clientes">
                                     {({ isActive }) => (
                                       <div
-                                        className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                       >
-                                        <UserCircle className="h-4 w-4 flex-shrink-0" />
+                                        <UserCircle className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
                                         {!collapsed && <span className="font-medium text-sm">Clientes</span>}
                                       </div>
                                     )}
@@ -302,9 +302,9 @@ export function AppSidebar() {
                                   <NavLink to="/produtos">
                                     {({ isActive }) => (
                                       <div
-                                        className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                       >
-                                        <Package className="h-4 w-4 flex-shrink-0" />
+                                        <Package className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
                                         {!collapsed && <span className="font-medium text-sm">Produtos</span>}
                                       </div>
                                     )}
@@ -316,9 +316,9 @@ export function AppSidebar() {
                                   <NavLink to="/pdv/marcas-modelos">
                                     {({ isActive }) => (
                                       <div
-                                        className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                       >
-                                        <Smartphone className="h-4 w-4 flex-shrink-0" />
+                                        <Smartphone className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
                                         {!collapsed && <span className="font-medium text-sm">Marcas e Modelos</span>}
                                       </div>
                                     )}
