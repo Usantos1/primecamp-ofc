@@ -528,6 +528,78 @@ export default function Produtos() {
           </CardContent>
         </Card>
 
+        {/* Barra de ações fixa abaixo dos filtros */}
+        <div className="sticky top-0 bg-background border-b z-40 shadow-sm -mx-4 px-4 py-2">
+          <Card className="border-0 shadow-none">
+            <CardContent className="py-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => setShowImport(true)} className="gap-2" variant="outline">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Importar
+                  </Button>
+                  <Button onClick={handleNew} className="gap-2" variant="default">
+                    <Plus className="h-4 w-4" />
+                    Novo Produto
+                  </Button>
+                  <Button 
+                    onClick={() => selectedProduto && handleOpen(selectedProduto)} 
+                    className="gap-2"
+                    variant="outline"
+                    disabled={!selectedProduto}
+                  >
+                    <Edit className="h-4 w-4" />
+                    Abrir
+                  </Button>
+                  <Button 
+                    onClick={handleInativar}
+                    className="gap-2"
+                    variant="outline"
+                    disabled={!selectedProduto}
+                  >
+                    <X className="h-4 w-4" />
+                    Inativar
+                  </Button>
+                  <Button 
+                    className="gap-2"
+                    variant="outline"
+                    disabled={!selectedProduto}
+                    onClick={() => setShowEtiquetaModal(true)}
+                  >
+                    <Barcode className="h-4 w-4" />
+                    Etiqueta
+                  </Button>
+                  <Button 
+                    className="gap-2"
+                    variant="outline"
+                    disabled={!selectedProduto}
+                    onClick={() => setShowEstoqueModal(true)}
+                  >
+                    <Warehouse className="h-4 w-4" />
+                    Estoque
+                  </Button>
+                  <Button 
+                    className="gap-2"
+                    variant="outline"
+                    disabled={!selectedProduto}
+                  >
+                    <Plug className="h-4 w-4" />
+                    NCM
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline"
+                  onClick={() => navigate(-1)}
+                  className="gap-2 text-destructive"
+                >
+                  <DoorOpen className="h-4 w-4" />
+                  Sair
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Tabela de produtos */}
         <Card>
           <CardContent className="p-0">
@@ -552,7 +624,6 @@ export default function Produtos() {
                       <TableHead className="w-32">Localização</TableHead>
                       <TableHead className="w-20">Un</TableHead>
                       <TableHead className="w-28 text-right">Vl Venda</TableHead>
-                      <TableHead className="w-32 text-right">Vl. Mín. Venda</TableHead>
                       <TableHead className="w-32">Modelo</TableHead>
                       <TableHead className="w-32">Marca</TableHead>
                       <TableHead className="w-32">Grupo</TableHead>
@@ -566,7 +637,7 @@ export default function Produtos() {
                         className={selectedProduto?.id === produto.id ? 'bg-muted' : 'cursor-pointer'}
                         onClick={() => setSelectedProduto(produto)}
                       >
-                        <TableCell className="font-mono">{getCodigo(produto, index)}</TableCell>
+                        <TableCell className="font-mono">{produto.codigo || '-'}</TableCell>
                         <TableCell className="font-mono text-muted-foreground">
                           {produto.referencia || '-'}
                         </TableCell>
@@ -583,19 +654,18 @@ export default function Produtos() {
                         <TableCell className="text-right font-semibold">
                           {currencyFormatters.brl(produto.preco_venda)}
                         </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {currencyFormatters.brl(produto.preco_venda)}
+                        <TableCell className="text-muted-foreground">
+                          {produto.modelo_compativel || produto.modelo || '-'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {getModeloNome(produto.modelo_id)}
+                          {produto.marca || '-'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {getMarcaNome(produto.marca_id)}
+                          {(produto as any).grupo_nome || produto.categoria || '-'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {getGrupoNome(produto.grupo_id)}
+                          {(produto as any).sub_grupo_nome || '-'}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">-</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

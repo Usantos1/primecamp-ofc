@@ -31,7 +31,10 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     unidade: undefined,
     created_at: supabaseProduto.created_at || new Date().toISOString(),
     updated_at: supabaseProduto.updated_at || supabaseProduto.updated_at,
-  };
+    // Campos adicionais da tabela para acesso direto
+    grupo_nome: supabaseProduto.grupo || undefined,
+    sub_grupo_nome: supabaseProduto.sub_grupo || undefined,
+  } as any;
 }
 
 // Mapear produto assistencia.Produto para Supabase
@@ -63,14 +66,32 @@ export function useProdutos() {
   const { data: produtosData, isLoading, error } = useQuery({
     queryKey: ['produtos-assistencia'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        // Não filtrar por disponivel - mostrar todos os produtos
-        .order('nome', { ascending: true });
+      // Buscar todos os produtos sem limite (Supabase tem limite padrão de 1000)
+      // Usar paginação para buscar todos
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
-      return (data || []).map(mapSupabaseToAssistencia);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('produtos')
+          .select('*')
+          .order('nome', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return allData.map(mapSupabaseToAssistencia);
     },
   });
 
