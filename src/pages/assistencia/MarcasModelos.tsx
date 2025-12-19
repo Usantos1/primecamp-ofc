@@ -124,11 +124,15 @@ export default function MarcasModelos() {
     setIsSaving(true);
     try {
       if (editingMarca) {
-        updateMarca(editingMarca.id, { nome: marcaNome });
+        await updateMarca(editingMarca.id, { nome: marcaNome });
       } else {
-        createMarca(marcaNome);
+        await createMarca(marcaNome);
       }
       setMarcaDialog(false);
+      setMarcaNome('');
+      setEditingMarca(null);
+    } catch (error) {
+      console.error('[handleSaveMarca] Erro:', error);
     } finally {
       setIsSaving(false);
     }
