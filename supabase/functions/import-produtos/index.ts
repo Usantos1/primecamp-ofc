@@ -274,12 +274,29 @@ serve(async (req) => {
     // Verificar se a função SQL existe (apenas para updateExisting)
     if (updateExisting) {
       console.log(`[import-produtos] Verificando se função bulk_upsert_produtos existe...`);
-      const { data: funcCheck, error: funcError } = await supabaseClient
-        .rpc('bulk_upsert_produtos', { produtos_json: [] })
-        .catch(() => ({ data: null, error: { message: 'Função não encontrada' } }));
-      
-      if (funcError && funcError.message?.includes('não encontrada') || funcError?.code === '42883') {
-        console.error(`[import-produtos] ERRO CRÍTICO: Função bulk_upsert_produtos não existe!`);
+      try {
+        const { data: funcCheck, error: funcError } = await supabaseClient
+          .rpc('bulk_upsert_produtos', { produtos_json: [] });
+        
+        if (funcError && (funcError.message?.includes('não encontrada') || funcError.message?.includes('does not exist') || funcError?.code === '42883')) {
+          console.error(`[import-produtos] ERRO CRÍTICO: Função bulk_upsert_produtos não existe!`);
+          console.error(`[import-produtos] Execute o script APLICAR_TODAS_FUNCOES_IMPORTACAO.sql no Supabase SQL Editor`);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'Função SQL bulk_upsert_produtos não encontrada. Execute o script SQL primeiro.',
+              detalhes: 'Execute APLICAR_TODAS_FUNCOES_IMPORTACAO.sql no Supabase SQL Editor'
+            }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
+          );
+        }
+        console.log(`[import-produtos] Função bulk_upsert_produtos disponível`);
+      } catch (checkError: any) {
+        // Se der erro ao verificar, assumir que a função não existe
+        console.error(`[import-produtos] Erro ao verificar função:`, checkError);
         console.error(`[import-produtos] Execute o script APLICAR_TODAS_FUNCOES_IMPORTACAO.sql no Supabase SQL Editor`);
         return new Response(
           JSON.stringify({ 
@@ -293,7 +310,6 @@ serve(async (req) => {
           }
         );
       }
-      console.log(`[import-produtos] Função bulk_upsert_produtos disponível`);
     }
 
     // Inserir produtos em lotes
