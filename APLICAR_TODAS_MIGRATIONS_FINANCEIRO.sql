@@ -50,20 +50,20 @@ CREATE TABLE IF NOT EXISTS financial_categories (
 INSERT INTO financial_categories (name, type, description, color, icon)
 SELECT * FROM (VALUES
     -- Entradas
-    ('Vendas à Vista', 'entrada', 'Vendas pagas em dinheiro ou PIX', '#22c55e', 'dollar-sign'),
-    ('Vendas Cartão', 'entrada', 'Vendas pagas com cartão', '#3b82f6', 'credit-card'),
-    ('Outros Recebimentos', 'entrada', 'Outras entradas de dinheiro', '#8b5cf6', 'plus-circle'),
+    ('Vendas à Vista', 'entrada'::transaction_type, 'Vendas pagas em dinheiro ou PIX', '#22c55e', 'dollar-sign'),
+    ('Vendas Cartão', 'entrada'::transaction_type, 'Vendas pagas com cartão', '#3b82f6', 'credit-card'),
+    ('Outros Recebimentos', 'entrada'::transaction_type, 'Outras entradas de dinheiro', '#8b5cf6', 'plus-circle'),
     -- Saídas
-    ('Fornecedores', 'saida', 'Pagamentos a fornecedores', '#ef4444', 'truck'),
-    ('Salários', 'saida', 'Pagamento de funcionários', '#f97316', 'users'),
-    ('Aluguel', 'saida', 'Despesas com aluguel', '#eab308', 'home'),
-    ('Energia/Água', 'saida', 'Contas de consumo', '#06b6d4', 'zap'),
-    ('Internet/Telefone', 'saida', 'Telecomunicações', '#6366f1', 'wifi'),
-    ('Material de Escritório', 'saida', 'Papelaria e suprimentos', '#ec4899', 'file-text'),
-    ('Manutenção', 'saida', 'Reparos e manutenções', '#84cc16', 'tool'),
-    ('Marketing', 'saida', 'Publicidade e marketing', '#f43f5e', 'megaphone'),
-    ('Impostos', 'saida', 'Tributos e taxas', '#64748b', 'file-minus'),
-    ('Outros Gastos', 'saida', 'Despesas diversas', '#94a3b8', 'more-horizontal')
+    ('Fornecedores', 'saida'::transaction_type, 'Pagamentos a fornecedores', '#ef4444', 'truck'),
+    ('Salários', 'saida'::transaction_type, 'Pagamento de funcionários', '#f97316', 'users'),
+    ('Aluguel', 'saida'::transaction_type, 'Despesas com aluguel', '#eab308', 'home'),
+    ('Energia/Água', 'saida'::transaction_type, 'Contas de consumo', '#06b6d4', 'zap'),
+    ('Internet/Telefone', 'saida'::transaction_type, 'Telecomunicações', '#6366f1', 'wifi'),
+    ('Material de Escritório', 'saida'::transaction_type, 'Papelaria e suprimentos', '#ec4899', 'file-text'),
+    ('Manutenção', 'saida'::transaction_type, 'Reparos e manutenções', '#84cc16', 'tool'),
+    ('Marketing', 'saida'::transaction_type, 'Publicidade e marketing', '#f43f5e', 'megaphone'),
+    ('Impostos', 'saida'::transaction_type, 'Tributos e taxas', '#64748b', 'file-minus'),
+    ('Outros Gastos', 'saida'::transaction_type, 'Despesas diversas', '#94a3b8', 'more-horizontal')
 ) AS v(name, type, description, color, icon)
 WHERE NOT EXISTS (
     SELECT 1 FROM financial_categories WHERE financial_categories.name = v.name
