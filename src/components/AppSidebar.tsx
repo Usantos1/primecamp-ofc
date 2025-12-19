@@ -164,10 +164,10 @@ export function AppSidebar() {
               <Collapsible open={isEstoqueVendasOpen} onOpenChange={setIsEstoqueVendasOpen}>
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="w-full">
+                    <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                       <Store className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-sm">Estoque e Vendas</span>
-                      <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isEstoqueVendasOpen ? 'rotate-180' : ''}`} />
+                      {!collapsed && <span className="font-medium text-sm">Estoque e Vendas</span>}
+                      {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isEstoqueVendasOpen ? 'rotate-180' : ''}`} />}
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -180,7 +180,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Dashboard Assistência</span>
+                                {!collapsed && <span className="font-medium text-sm">Dashboard Assistência</span>}
                               </div>
                             )}
                           </NavLink>
@@ -194,7 +194,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <ShoppingCart className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">PDV - Vendas</span>
+                                {!collapsed && <span className="font-medium text-sm">PDV - Vendas</span>}
                               </div>
                             )}
                           </NavLink>
@@ -208,7 +208,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Wrench className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Ordem de Serviço</span>
+                                {!collapsed && <span className="font-medium text-sm">Ordem de Serviço</span>}
                               </div>
                             )}
                           </NavLink>
@@ -222,7 +222,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Settings className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Status de OS</span>
+                                {!collapsed && <span className="font-medium text-sm">Status de OS</span>}
                               </div>
                             )}
                           </NavLink>
@@ -236,7 +236,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Receipt className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Lista de Vendas</span>
+                                {!collapsed && <span className="font-medium text-sm">Lista de Vendas</span>}
                               </div>
                             )}
                           </NavLink>
@@ -250,7 +250,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <DollarSign className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Caixa</span>
+                                {!collapsed && <span className="font-medium text-sm">Caixa</span>}
                               </div>
                             )}
                           </NavLink>
@@ -264,7 +264,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Relatórios</span>
+                                {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
                               </div>
                             )}
                           </NavLink>
@@ -275,10 +275,10 @@ export function AppSidebar() {
                       <Collapsible open={isCadastrosOpen} onOpenChange={setIsCadastrosOpen}>
                         <SidebarMenuItem>
                           <CollapsibleTrigger asChild>
-                            <SidebarMenuButton className="w-full">
+                            <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                               <Folder className="h-4 w-4 flex-shrink-0" />
-                              <span className="font-medium text-sm">Cadastros</span>
-                              <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isCadastrosOpen ? 'rotate-180' : ''}`} />
+                              {!collapsed && <span className="font-medium text-sm">Cadastros</span>}
+                              {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isCadastrosOpen ? 'rotate-180' : ''}`} />}
                             </SidebarMenuButton>
                           </CollapsibleTrigger>
                           <CollapsibleContent>
@@ -291,7 +291,7 @@ export function AppSidebar() {
                                         className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                       >
                                         <UserCircle className="h-4 w-4 flex-shrink-0" />
-                                        <span className="font-medium text-sm">Clientes</span>
+                                        {!collapsed && <span className="font-medium text-sm">Clientes</span>}
                                       </div>
                                     )}
                                   </NavLink>
@@ -305,7 +305,7 @@ export function AppSidebar() {
                                         className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                       >
                                         <Package className="h-4 w-4 flex-shrink-0" />
-                                        <span className="font-medium text-sm">Produtos</span>
+                                        {!collapsed && <span className="font-medium text-sm">Produtos</span>}
                                       </div>
                                     )}
                                   </NavLink>
@@ -319,7 +319,7 @@ export function AppSidebar() {
                                         className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                       >
                                         <Smartphone className="h-4 w-4 flex-shrink-0" />
-                                        <span className="font-medium text-sm">Marcas e Modelos</span>
+                                        {!collapsed && <span className="font-medium text-sm">Marcas e Modelos</span>}
                                       </div>
                                     )}
                                   </NavLink>
@@ -338,10 +338,10 @@ export function AppSidebar() {
               <Collapsible open={isGestaoOperacionalOpen} onOpenChange={setIsGestaoOperacionalOpen}>
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="w-full">
+                    <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                       <Settings className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-sm">Gestão Operacional</span>
-                      <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isGestaoOperacionalOpen ? 'rotate-180' : ''}`} />
+                      {!collapsed && <span className="font-medium text-sm">Gestão Operacional</span>}
+                      {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isGestaoOperacionalOpen ? 'rotate-180' : ''}`} />}
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -354,7 +354,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <CheckSquare className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Tarefas</span>
+                                {!collapsed && <span className="font-medium text-sm">Tarefas</span>}
                               </div>
                             )}
                           </NavLink>
@@ -368,7 +368,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Workflow className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Processos</span>
+                                {!collapsed && <span className="font-medium text-sm">Processos</span>}
                               </div>
                             )}
                           </NavLink>
@@ -382,7 +382,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Calendar className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Calendário</span>
+                                {!collapsed && <span className="font-medium text-sm">Calendário</span>}
                               </div>
                             )}
                           </NavLink>
@@ -396,7 +396,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Clock className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Ponto</span>
+                                {!collapsed && <span className="font-medium text-sm">Ponto</span>}
                               </div>
                             )}
                           </NavLink>
@@ -411,10 +411,10 @@ export function AppSidebar() {
               <Collapsible open={isRecursosHumanosOpen} onOpenChange={setIsRecursosHumanosOpen}>
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="w-full">
+                    <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                       <Users className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-sm">Recursos Humanos</span>
-                      <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isRecursosHumanosOpen ? 'rotate-180' : ''}`} />
+                      {!collapsed && <span className="font-medium text-sm">Recursos Humanos</span>}
+                      {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isRecursosHumanosOpen ? 'rotate-180' : ''}`} />}
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -427,7 +427,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <GraduationCap className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Treinamentos</span>
+                                {!collapsed && <span className="font-medium text-sm">Treinamentos</span>}
                               </div>
                             )}
                           </NavLink>
@@ -455,7 +455,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <TrendingUp className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">NPS</span>
+                                {!collapsed && <span className="font-medium text-sm">NPS</span>}
                               </div>
                             )}
                           </NavLink>
@@ -469,7 +469,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Brain className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Teste DISC</span>
+                                {!collapsed && <span className="font-medium text-sm">Teste DISC</span>}
                               </div>
                             )}
                           </NavLink>
@@ -500,7 +500,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Dashboard</span>
+                                {!collapsed && <span className="font-medium text-sm">Dashboard</span>}
                               </div>
                             )}
                           </NavLink>
@@ -514,7 +514,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Receipt className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Contas a Pagar</span>
+                                {!collapsed && <span className="font-medium text-sm">Contas a Pagar</span>}
                               </div>
                             )}
                           </NavLink>
@@ -528,7 +528,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <Wallet className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Caixa</span>
+                                {!collapsed && <span className="font-medium text-sm">Caixa</span>}
                               </div>
                             )}
                           </NavLink>
@@ -542,7 +542,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <CreditCard className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Transações</span>
+                                {!collapsed && <span className="font-medium text-sm">Transações</span>}
                               </div>
                             )}
                           </NavLink>
@@ -556,7 +556,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <FileTextIcon className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Relatórios</span>
+                                {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
                               </div>
                             )}
                           </NavLink>
@@ -570,7 +570,7 @@ export function AppSidebar() {
                                 className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                               >
                                 <FileTextIcon className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium text-sm">Relatórios</span>
+                                {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
                               </div>
                             )}
                           </NavLink>
@@ -597,10 +597,10 @@ export function AppSidebar() {
                   <Collapsible open={isOrgOpen} onOpenChange={setIsOrgOpen}>
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="w-full">
+                        <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                           <Building2 className="h-4 w-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">Estrutura Organizacional</span>
-                          <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isOrgOpen ? 'rotate-180' : ''}`} />
+                          {!collapsed && <span className="font-medium text-sm">Estrutura Organizacional</span>}
+                          {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isOrgOpen ? 'rotate-180' : ''}`} />}
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
@@ -613,7 +613,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Users className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Usuários</span>
+                                    {!collapsed && <span className="font-medium text-sm">Usuários</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -627,7 +627,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Briefcase className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Cargos</span>
+                                    {!collapsed && <span className="font-medium text-sm">Cargos</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -641,7 +641,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Building2 className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Departamentos</span>
+                                    {!collapsed && <span className="font-medium text-sm">Departamentos</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -655,7 +655,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <FolderOpen className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Categorias</span>
+                                    {!collapsed && <span className="font-medium text-sm">Categorias</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -669,7 +669,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Tag className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Tags</span>
+                                    {!collapsed && <span className="font-medium text-sm">Tags</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -684,10 +684,10 @@ export function AppSidebar() {
                   <Collapsible open={isFeaturesOpen} onOpenChange={setIsFeaturesOpen}>
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="w-full">
+                        <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                           <Settings className="h-4 w-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">Gestão de Funcionalidades</span>
-                          <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isFeaturesOpen ? 'rotate-180' : ''}`} />
+                          {!collapsed && <span className="font-medium text-sm">Gestão de Funcionalidades</span>}
+                          {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isFeaturesOpen ? 'rotate-180' : ''}`} />}
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
@@ -700,7 +700,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Clock className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Ponto Admin</span>
+                                    {!collapsed && <span className="font-medium text-sm">Ponto Admin</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -714,7 +714,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Target className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">Metas Admin</span>
+                                    {!collapsed && <span className="font-medium text-sm">Metas Admin</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -728,7 +728,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <TrendingUp className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">NPS Admin</span>
+                                    {!collapsed && <span className="font-medium text-sm">NPS Admin</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -742,7 +742,7 @@ export function AppSidebar() {
                                     className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Brain className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm">DISC Admin</span>
+                                    {!collapsed && <span className="font-medium text-sm">DISC Admin</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -757,10 +757,10 @@ export function AppSidebar() {
                   <Collapsible open={isRecruitmentOpen} onOpenChange={setIsRecruitmentOpen}>
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="w-full">
+                        <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
                           <ClipboardList className="h-4 w-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">Recrutamento</span>
-                          <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isRecruitmentOpen ? 'rotate-180' : ''}`} />
+                          {!collapsed && <span className="font-medium text-sm">Recrutamento</span>}
+                          {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isRecruitmentOpen ? 'rotate-180' : ''}`} />}
                         </SidebarMenuButton>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
@@ -773,7 +773,7 @@ export function AppSidebar() {
                                     className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <ClipboardList className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm whitespace-nowrap">Formulários de Vagas</span>
+                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Formulários de Vagas</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -787,7 +787,7 @@ export function AppSidebar() {
                                     className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Video className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm whitespace-nowrap">Entrevistas com IA</span>
+                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Entrevistas com IA</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -801,7 +801,7 @@ export function AppSidebar() {
                                     className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Users className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm whitespace-nowrap">Banco de Talentos</span>
+                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Banco de Talentos</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -815,7 +815,7 @@ export function AppSidebar() {
                                     className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                                   >
                                     <Brain className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-medium text-sm whitespace-nowrap">DISC Externo</span>
+                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">DISC Externo</span>}
                                   </div>
                                 )}
                               </NavLink>
@@ -836,7 +836,7 @@ export function AppSidebar() {
                             className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                           >
                             <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                            <span className="font-medium text-sm">Relatórios</span>
+                            {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
                           </div>
                         )}
                       </NavLink>

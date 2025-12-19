@@ -9,8 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Plus, Search, Eye, Edit, Phone, Filter,
-  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar
+  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useOrdensServico, useClientes, useMarcasModelos } from '@/hooks/useAssistencia';
 import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
@@ -23,8 +27,9 @@ export default function OrdensServico() {
   const [searchNumeroOS, setSearchNumeroOS] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
+  const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
+  const [periodoFilter, setPeriodoFilter] = useState<string>('all');
   
   const { ordens, isLoading, getEstatisticas, getOSById } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
@@ -71,18 +76,22 @@ export default function OrdensServico() {
     if (dataInicio) {
       result = result.filter(os => {
         if (!os.data_entrada) return false;
-        // Normalizar data_entrada para comparação (remover hora se houver)
-        const osDate = os.data_entrada.split('T')[0];
-        return osDate >= dataInicio;
+        const osDate = new Date(os.data_entrada.split('T')[0]);
+        const inicioDate = new Date(dataInicio);
+        inicioDate.setHours(0, 0, 0, 0);
+        osDate.setHours(0, 0, 0, 0);
+        return osDate >= inicioDate;
       });
     }
 
     if (dataFim) {
       result = result.filter(os => {
         if (!os.data_entrada) return false;
-        // Normalizar data_entrada para comparação (remover hora se houver)
-        const osDate = os.data_entrada.split('T')[0];
-        return osDate <= dataFim;
+        const osDate = new Date(os.data_entrada.split('T')[0]);
+        const fimDate = new Date(dataFim);
+        fimDate.setHours(23, 59, 59, 999);
+        osDate.setHours(0, 0, 0, 0);
+        return osDate <= fimDate;
       });
     }
 
@@ -90,17 +99,25 @@ export default function OrdensServico() {
   }, [ordens, statusFilter, searchTerm, dataInicio, dataFim, getClienteById]);
 
   // Filtros rápidos
-  const hoje = new Date().toISOString().split('T')[0];
-  const osHoje = ordens.filter(os => os.data_entrada === hoje);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const hojeStr = hoje.toISOString().split('T')[0];
+  
+  const osHoje = ordens.filter(os => {
+    if (!os.data_entrada) return false;
+    return os.data_entrada.split('T')[0] === hojeStr;
+  });
+  
   const osAtrasadas = ordens.filter(os => {
     if (!os.previsao_entrega) return false;
-    const previsaoDate = os.previsao_entrega.split('T')[0];
+    const previsaoDate = new Date(os.previsao_entrega.split('T')[0]);
     return previsaoDate < hoje && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
   });
+  
   const osPrazoHoje = ordens.filter(os => {
     if (!os.previsao_entrega) return false;
     const previsaoDate = os.previsao_entrega.split('T')[0];
-    return previsaoDate === hoje && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
+    return previsaoDate === hojeStr && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
   });
 
   const handleWhatsApp = (telefone?: string) => {
@@ -113,11 +130,40 @@ export default function OrdensServico() {
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
-    setDataInicio('');
-    setDataFim('');
+    setDataInicio(undefined);
+    setDataFim(undefined);
+    setPeriodoFilter('all');
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dataInicio || dataFim;
+  const handlePeriodoFilter = (periodo: string) => {
+    setPeriodoFilter(periodo);
+    const hojeDate = new Date();
+    hojeDate.setHours(0, 0, 0, 0);
+    
+    switch (periodo) {
+      case 'hoje':
+        setDataInicio(hojeDate);
+        setDataFim(new Date(hojeDate));
+        break;
+      case 'semana':
+        const inicioSemana = new Date(hojeDate);
+        inicioSemana.setDate(hojeDate.getDate() - hojeDate.getDay());
+        setDataInicio(inicioSemana);
+        setDataFim(hojeDate);
+        break;
+      case 'mes':
+        const inicioMes = new Date(hojeDate.getFullYear(), hojeDate.getMonth(), 1);
+        setDataInicio(inicioMes);
+        setDataFim(hojeDate);
+        break;
+      case 'all':
+        setDataInicio(undefined);
+        setDataFim(undefined);
+        break;
+    }
+  };
+
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dataInicio || dataFim || periodoFilter !== 'all';
 
   return (
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
@@ -186,19 +232,42 @@ export default function OrdensServico() {
             Todas
           </Button>
           <Button 
-            variant="outline" 
+            variant={periodoFilter === 'hoje' ? 'default' : 'outline'} 
             size="sm" 
             className="gap-2"
-            onClick={() => { setDataInicio(hoje); setDataFim(hoje); }}
+            onClick={() => handlePeriodoFilter('hoje')}
           >
             <Calendar className="h-4 w-4" />
             Hoje ({osHoje.length})
           </Button>
           <Button 
+            variant={periodoFilter === 'semana' ? 'default' : 'outline'} 
+            size="sm" 
+            className="gap-2"
+            onClick={() => handlePeriodoFilter('semana')}
+          >
+            <Calendar className="h-4 w-4" />
+            Esta Semana
+          </Button>
+          <Button 
+            variant={periodoFilter === 'mes' ? 'default' : 'outline'} 
+            size="sm" 
+            className="gap-2"
+            onClick={() => handlePeriodoFilter('mes')}
+          >
+            <Calendar className="h-4 w-4" />
+            Este Mês
+          </Button>
+          <Button 
             variant="outline" 
             size="sm" 
             className="gap-2 text-yellow-600 border-yellow-300 hover:bg-yellow-50"
-            onClick={() => { /* filtrar prazo hoje */ }}
+            onClick={() => { 
+              setStatusFilter('all');
+              setDataInicio(undefined);
+              setDataFim(undefined);
+              setPeriodoFilter('prazo-hoje');
+            }}
           >
             <Clock className="h-4 w-4" />
             Prazo Hoje ({osPrazoHoje.length})
@@ -285,21 +354,86 @@ export default function OrdensServico() {
               <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg">
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Data Início</label>
-                  <Input 
-                    type="date" 
-                    value={dataInicio} 
-                    onChange={(e) => setDataInicio(e.target.value)} 
-                    className="w-auto" 
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-[240px] justify-start text-left font-normal ${!dataInicio && "text-muted-foreground"}`}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dataInicio ? format(dataInicio, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dataInicio}
+                        onSelect={setDataInicio}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {dataInicio && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs mt-1"
+                      onClick={() => setDataInicio(undefined)}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Limpar
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Data Fim</label>
-                  <Input 
-                    type="date" 
-                    value={dataFim} 
-                    onChange={(e) => setDataFim(e.target.value)} 
-                    className="w-auto" 
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-[240px] justify-start text-left font-normal ${!dataFim && "text-muted-foreground"}`}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {dataFim ? format(dataFim, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={dataFim}
+                        onSelect={setDataFim}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {dataFim && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs mt-1"
+                      onClick={() => setDataFim(undefined)}
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Limpar
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Período</label>
+                  <Select value={periodoFilter} onValueChange={handlePeriodoFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Selecione período" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="hoje">Hoje</SelectItem>
+                      <SelectItem value="semana">Esta Semana</SelectItem>
+                      <SelectItem value="mes">Este Mês</SelectItem>
+                      <SelectItem value="periodo">Período Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
