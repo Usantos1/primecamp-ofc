@@ -194,7 +194,7 @@ export default function OrdensServico() {
           <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('aguardando_orcamento')}>
             <CardContent className="pt-3 pb-3">
               <p className="text-xs text-orange-600">Aguardando</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.aguardando}</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.aguardando || 0}</p>
             </CardContent>
           </Card>
 
@@ -223,7 +223,7 @@ export default function OrdensServico() {
         </div>
 
         {/* Filtros rápidos por prazo */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant={!hasActiveFilters ? 'default' : 'outline'} 
             size="sm"
@@ -282,6 +282,22 @@ export default function OrdensServico() {
               Em Atraso ({osAtrasadas.length})
             </Button>
           )}
+          
+          {/* Filtro de período na mesma linha */}
+          <div className="ml-auto">
+            <Select value={periodoFilter} onValueChange={handlePeriodoFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="hoje">Hoje</SelectItem>
+                <SelectItem value="semana">Esta Semana</SelectItem>
+                <SelectItem value="mes">Este Mês</SelectItem>
+                <SelectItem value="periodo">Período Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Card principal */}
@@ -419,21 +435,6 @@ export default function OrdensServico() {
                       Limpar
                     </Button>
                   )}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Período</label>
-                  <Select value={periodoFilter} onValueChange={handlePeriodoFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Selecione período" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="hoje">Hoje</SelectItem>
-                      <SelectItem value="semana">Esta Semana</SelectItem>
-                      <SelectItem value="mes">Este Mês</SelectItem>
-                      <SelectItem value="periodo">Período Personalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             )}

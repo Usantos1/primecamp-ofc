@@ -486,10 +486,19 @@ export function useOrdensServico() {
   const getEstatisticas = useCallback(() => {
     const hoje = new Date().toISOString().split('T')[0];
     
+    // Status que são considerados "aguardando"
+    const aguardandoStatuses = [
+      'aguardando_orcamento',
+      'aguardando_peca',
+      'aguardando_aprovacao',
+      'aguardando_cliente'
+    ];
+    
     return {
       total: ordens.length,
       abertas: ordens.filter(o => o.status === 'aberta').length,
-      emAndamento: ordens.filter(o => ['em_andamento', 'aguardando_orcamento', 'aprovado'].includes(o.status)).length,
+      emAndamento: ordens.filter(o => ['em_andamento', 'aprovado'].includes(o.status)).length,
+      aguardando: ordens.filter(o => aguardandoStatuses.includes(o.status)).length,
       aguardandoPeca: ordens.filter(o => o.status === 'aguardando_peca').length,
       finalizadas: ordens.filter(o => o.status === 'finalizada').length,
       aguardandoRetirada: ordens.filter(o => o.status === 'aguardando_retirada').length,
