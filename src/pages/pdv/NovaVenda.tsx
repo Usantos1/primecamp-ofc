@@ -490,8 +490,13 @@ export default function NovaVenda() {
       if (e.key === 'F2' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
-        e.preventDefault();
-        searchInputRef.current?.focus();
+        e.stopImmediatePropagation();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+          // Garantir que o campo de busca está visível
+          setShowProductSearch(true);
+        }
       }
       
       // F4 - Finalizar venda
@@ -510,9 +515,10 @@ export default function NovaVenda() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart]);
+    // Adicionar listener com capture para garantir que seja capturado antes de outros handlers
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [cart, handleFinalize]);
 
   // Calcular totais
   const totals = useMemo(() => {
