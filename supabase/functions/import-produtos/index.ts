@@ -232,6 +232,7 @@ serve(async (req) => {
         valor_dinheiro_pix: valorVenda,
         valor_parcelado_6x: valorParcelado,
         criado_por: userId || null,
+        disponivel: true, // Garantir que produtos importados estejam disponíveis
         // Campos adicionais da planilha - garantir tipos corretos
         codigo: prod.codigo ? Number(prod.codigo) : null,
         codigo_barras: prod.codigo_barras || null,

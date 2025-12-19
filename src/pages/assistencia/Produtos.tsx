@@ -605,10 +605,11 @@ export default function Produtos() {
           </CardContent>
         </Card>
 
-        {/* Barra de ações */}
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Barra de ações fixa no rodapé */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 shadow-lg">
+          <Card className="border-0 shadow-none rounded-none">
+            <CardContent className="py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 max-w-[1920px] mx-auto px-4">
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => setShowImport(true)} className="gap-2" variant="outline">
                   <FileSpreadsheet className="h-4 w-4" />
