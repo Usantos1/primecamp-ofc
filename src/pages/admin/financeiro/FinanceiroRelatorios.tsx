@@ -16,8 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
 export function FinanceiroRelatorios() {
-  const { startDate } = useOutletContext<{ startDate: string }>();
-  const month = startDate.slice(0, 7);
+  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string }>();
+  const month = context.month || context.startDate.slice(0, 7);
   const [selectedReport, setSelectedReport] = useState('dre');
 
   const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });

@@ -562,20 +562,6 @@ export function AppSidebar() {
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/relatorios">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <FileTextIcon className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
                     </div>
                   </CollapsibleContent>
                 </SidebarMenuItem>
@@ -827,21 +813,7 @@ export function AppSidebar() {
                   </Collapsible>
 
 
-                  {/* Relatórios */}
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink to="/relatorios">
-                        {({ isActive }) => (
-                          <div
-                            className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                          >
-                            <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                            {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
-                          </div>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {/* Relatórios - Removido duplicata, já existe dentro de Estoque e Vendas */}
 
                   {/* Integrações */}
                   <SidebarMenuItem>
@@ -849,10 +821,10 @@ export function AppSidebar() {
                       <NavLink to="/integracoes">
                         {({ isActive }) => (
                           <div
-                            className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+                            className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                           >
-                            <Shield className="h-4 w-4 flex-shrink-0" />
-                            <span className="font-medium text-sm">Integrações</span>
+                            <Shield className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
+                            {!collapsed && <span className="font-medium text-sm">Integrações</span>}
                           </div>
                         )}
                       </NavLink>

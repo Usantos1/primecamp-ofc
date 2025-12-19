@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, TrendingUp } from 'lucide-react';
 
 export function FinanceiroContas() {
-  const { startDate } = useOutletContext<{ startDate: string }>();
-  const month = startDate.slice(0, 7);
+  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string }>();
+  const month = context.month || context.startDate.slice(0, 7);
   const [activeTab, setActiveTab] = useState('pagar');
   
   return (

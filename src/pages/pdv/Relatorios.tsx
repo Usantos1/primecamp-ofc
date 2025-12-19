@@ -5,27 +5,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Calendar, Download, TrendingUp, DollarSign, ShoppingCart, 
   User, Package, BarChart3
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import { useSales } from '@/hooks/usePDV';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 
 export default function Relatorios() {
   const { sales, isLoading } = useSales();
-  const [periodoInicio, setPeriodoInicio] = useState(
-    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]
+  const [periodoInicio, setPeriodoInicio] = useState<Date | undefined>(
+    new Date(new Date().setDate(new Date().getDate() - 30))
   );
-  const [periodoFim, setPeriodoFim] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [periodoFim, setPeriodoFim] = useState<Date | undefined>(new Date());
   const [vendedorFilter, setVendedorFilter] = useState<string>('all');
 
   // Filtrar vendas por período
   const filteredSales = useMemo(() => {
+    if (!periodoInicio || !periodoFim) return sales;
+    
     const inicio = new Date(periodoInicio);
     inicio.setHours(0, 0, 0, 0);
     const fim = new Date(periodoFim);
@@ -103,21 +108,57 @@ export default function Relatorios() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
+              <div className="space-y-1">
                 <Label>Período Início</Label>
-                <Input
-                  type="date"
-                  value={periodoInicio}
-                  onChange={(e) => setPeriodoInicio(e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !periodoInicio && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {periodoInicio ? format(periodoInicio, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={periodoInicio}
+                      onSelect={setPeriodoInicio}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div>
+              <div className="space-y-1">
                 <Label>Período Fim</Label>
-                <Input
-                  type="date"
-                  value={periodoFim}
-                  onChange={(e) => setPeriodoFim(e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !periodoFim && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {periodoFim ? format(periodoFim, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={periodoFim}
+                      onSelect={setPeriodoFim}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label>Vendedor</Label>
