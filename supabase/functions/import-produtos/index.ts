@@ -227,7 +227,7 @@ serve(async (req) => {
       return {
         nome: nomeFinal.toLowerCase(), // Converter para lowercase para evitar duplicatas
         marca: marca || 'Geral',
-        modelo: modelo || 'Geral',
+        modelo: nomeFinal, // Modelo deve ser igual ao nome
         qualidade: qualidade,
         valor_dinheiro_pix: valorVenda,
         valor_parcelado_6x: valorParcelado,
