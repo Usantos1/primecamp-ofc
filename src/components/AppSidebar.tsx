@@ -840,7 +840,7 @@ export function AppSidebar() {
                             className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
                           >
                             <Activity className="h-4 w-4 flex-shrink-0" />
-                            <span className="font-medium text-sm">Logs</span>
+                            {!collapsed && <span className="font-medium text-sm">Logs</span>}
                           </div>
                         )}
                       </NavLink>
