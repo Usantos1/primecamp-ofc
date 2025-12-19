@@ -27,6 +27,7 @@ interface CupomConfig {
   mensagem_rodape: string;
   imprimir_2_vias?: boolean;
   imprimir_sem_dialogo?: boolean;
+  impressora_padrao?: string;
 }
 
 export default function ConfiguracaoCupom() {
@@ -48,6 +49,7 @@ export default function ConfiguracaoCupom() {
     mensagem_rodape: 'Obrigado pela preferência! Volte sempre',
     imprimir_2_vias: false,
     imprimir_sem_dialogo: true,
+    impressora_padrao: '',
   });
 
   useEffect(() => {
