@@ -250,19 +250,37 @@ serve(async (req) => {
         // Apenas inserir (ignorar duplicados se skipDuplicates = true)
         try {
           if (skipDuplicates) {
-            // Buscar produtos existentes em lote (muito mais rápido)
-            // Usar RPC para busca case-insensitive em lote
+            // Buscar produtos existentes em lote usando função SQL (muito mais rápido)
             const nomesLower = batch.map(p => p.nome.toLowerCase());
             
-            // Buscar produtos existentes usando lower(nome)
-            const { data: existingProducts, error: searchError } = await supabaseClient
-              .from('produtos')
-              .select('nome')
-              .or(nomesLower.map(n => `nome.ilike.${n}`).join(','));
+            // Usar RPC para buscar produtos existentes em lote (case-insensitive)
+            const { data: existingProducts } = await supabaseClient
+              .rpc('buscar_produtos_por_nomes', { nomes: nomesLower })
+              .catch(() => {
+                // Se a função não existir, fazer busca manual (mais lento mas funciona)
+                return { data: null };
+              });
             
-            const existingNames = new Set(
-              (existingProducts || []).map(p => p.nome.toLowerCase())
-            );
+            let existingNames = new Set<string>();
+            if (existingProducts) {
+              existingNames = new Set(
+                existingProducts.map((p: any) => p.nome?.toLowerCase() || '')
+              );
+            } else {
+              // Fallback: buscar um por um (mais lento, mas funciona)
+              console.log(`[import-produtos] Função RPC não disponível, usando fallback`);
+              for (const nomeLower of nomesLower) {
+                const { data: existing } = await supabaseClient
+                  .from('produtos')
+                  .select('nome')
+                  .ilike('nome', nomeLower)
+                  .limit(1)
+                  .single();
+                if (existing) {
+                  existingNames.add(existing.nome.toLowerCase());
+                }
+              }
+            }
             
             // Filtrar apenas produtos que não existem
             const produtosNovos = batch.filter(p => !existingNames.has(p.nome.toLowerCase()));
