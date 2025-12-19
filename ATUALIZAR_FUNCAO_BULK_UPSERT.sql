@@ -73,7 +73,7 @@ BEGIN
           codigo = CASE 
             WHEN (produto_item->>'codigo')::TEXT IS NULL OR (produto_item->>'codigo')::TEXT = '' 
             THEN codigo 
-            ELSE (produto_item->>'codigo')::INTEGER 
+            ELSE LEAST(GREATEST((produto_item->>'codigo')::NUMERIC, -2147483648), 2147483647)::INTEGER
           END,
           codigo_barras = COALESCE(NULLIF((produto_item->>'codigo_barras')::TEXT, ''), codigo_barras),
           referencia = COALESCE(NULLIF((produto_item->>'referencia')::TEXT, ''), referencia),
@@ -162,7 +162,7 @@ BEGIN
           CASE 
             WHEN (produto_item->>'codigo')::TEXT IS NULL OR (produto_item->>'codigo')::TEXT = '' 
             THEN NULL 
-            ELSE (produto_item->>'codigo')::INTEGER 
+            ELSE LEAST(GREATEST((produto_item->>'codigo')::NUMERIC, -2147483648), 2147483647)::INTEGER
           END,
           NULLIF((produto_item->>'codigo_barras')::TEXT, ''),
           NULLIF((produto_item->>'referencia')::TEXT, ''),
