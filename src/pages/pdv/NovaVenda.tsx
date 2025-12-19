@@ -483,6 +483,22 @@ export default function NovaVenda() {
     }
   }, [isEditing]);
 
+  // Calcular totais (movido para antes de handleFinalize)
+  const totals = useMemo(() => {
+    const subtotal = cart.reduce((sum, item) => 
+      sum + (item.valor_unitario * item.quantidade), 0
+    );
+    const descontoItens = cart.reduce((sum, item) => sum + (item.desconto || 0), 0);
+    const total = subtotal - descontoItens - descontoTotal;
+    
+    return {
+      subtotal,
+      descontoItens,
+      descontoTotal,
+      total: Math.max(0, total),
+    };
+  }, [cart, descontoTotal]);
+
   // Função auxiliar para validar UUID
   const isValidUUID = (str: string | undefined | null): boolean => {
     if (!str) return false;
@@ -647,22 +663,6 @@ export default function NovaVenda() {
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [cart, handleFinalize, isSaving]);
-
-  // Calcular totais
-  const totals = useMemo(() => {
-    const subtotal = cart.reduce((sum, item) => 
-      sum + (item.valor_unitario * item.quantidade), 0
-    );
-    const descontoItens = cart.reduce((sum, item) => sum + (item.desconto || 0), 0);
-    const total = subtotal - descontoItens - descontoTotal;
-    
-    return {
-      subtotal,
-      descontoItens,
-      descontoTotal,
-      total: Math.max(0, total),
-    };
-  }, [cart, descontoTotal]);
 
   // Adicionar produto ao carrinho
   const handleAddProduct = (produto: any) => {
