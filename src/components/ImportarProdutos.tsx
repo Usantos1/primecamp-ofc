@@ -77,7 +77,12 @@ export function ImportarProdutos() {
   };
 
   const handleImport = async () => {
+    console.log('[ImportarProdutos] ========== BOTÃO CLICADO ==========');
+    console.log('[ImportarProdutos] File:', file?.name);
+    console.log('[ImportarProdutos] Loading:', loading);
+    
     if (!file) {
+      console.error('[ImportarProdutos] ERRO: Arquivo não selecionado');
       toast({
         title: 'Arquivo não selecionado',
         description: 'Por favor, selecione um arquivo Excel para importar',
@@ -86,12 +91,15 @@ export function ImportarProdutos() {
       return;
     }
 
+    console.log('[ImportarProdutos] Iniciando importação...');
     setLoading(true);
     setResultado(null);
 
     try {
+      console.log('[ImportarProdutos] Processando planilha...');
       // Processar planilha
       const produtosPlanilha = await processarPlanilha(file);
+      console.log('[ImportarProdutos] Planilha processada:', produtosPlanilha.length, 'linhas');
       
       if (produtosPlanilha.length === 0) {
         toast({
