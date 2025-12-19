@@ -64,161 +64,192 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           size: 80mm auto;
           margin: 0;
         }
+        @media print {
+          * {
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            -webkit-font-smoothing: none !important;
+            text-rendering: optimizeLegibility !important;
+          }
+        }
         * {
           margin: 0;
           padding: 0;
           box-sizing: border-box;
+          color: #000000 !important;
+          -webkit-font-smoothing: none;
+          text-rendering: optimizeLegibility;
         }
         body {
           width: 80mm;
           margin: 0 auto;
           padding: 2mm;
-          font-family: 'Courier New', 'Courier', monospace;
+          font-family: Arial, Helvetica, sans-serif;
           font-size: 10px;
-          color: #000;
-          background: #fff;
+          color: #000000 !important;
+          background: #ffffff;
           line-height: 1.2;
-          font-weight: 600;
+          font-weight: 700;
+          -webkit-font-smoothing: none;
+          text-rendering: optimizeLegibility;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .center {
           text-align: center;
         }
         .bold {
-          font-weight: 900;
+          font-weight: 900 !important;
+          color: #000000 !important;
         }
         .divider {
-          border-top: 1px solid #000;
+          border-top: 2px solid #000000 !important;
           margin: 3px 0;
         }
         .divider-dashed {
-          border-top: 1px dashed #000;
+          border-top: 1px dashed #000000 !important;
           margin: 3px 0;
         }
         .line {
           display: flex;
           justify-content: space-between;
           margin: 1px 0;
+          font-weight: 700;
+          color: #000000 !important;
         }
         .item-line {
           margin: 2px 0;
         }
         .item-name {
-          font-weight: 800;
+          font-weight: 800 !important;
           margin-bottom: 1px;
+          color: #000000 !important;
         }
         .total-line {
-          font-weight: 900;
+          font-weight: 900 !important;
           font-size: 11px;
+          color: #000000 !important;
         }
         span {
-          font-weight: 600;
+          font-weight: 700 !important;
+          color: #000000 !important;
         }
         strong {
-          font-weight: 900;
+          font-weight: 900 !important;
+          color: #000000 !important;
+        }
+        div {
+          color: #000000 !important;
+          font-weight: 700;
+        }
+        p {
+          color: #000000 !important;
+          font-weight: 700;
         }
       </style>
     </head>
     <body>
-      <div class="center bold" style="font-size: 12px; margin-bottom: 3px;">
+      <div class="center bold" style="font-size: 12px; margin-bottom: 3px; font-weight: 900 !important; color: #000000 !important;">
         ${data.empresa?.nome || 'PRIME CAMP'}
       </div>
-      <div class="center" style="margin-bottom: 2px;">
+      <div class="center" style="margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">
         Assistência Técnica
       </div>
-      ${data.empresa?.cnpj ? `<div class="center" style="margin-bottom: 2px;">CNPJ: ${data.empresa.cnpj}</div>` : ''}
-      ${data.empresa?.endereco ? `<div class="center" style="margin-bottom: 2px;">${data.empresa.endereco}</div>` : ''}
-      ${data.empresa?.telefone ? `<div class="center" style="margin-bottom: 3px;">Tel: ${data.empresa.telefone}</div>` : ''}
+      ${data.empresa?.cnpj ? `<div class="center" style="margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">CNPJ: ${data.empresa.cnpj}</div>` : ''}
+      ${data.empresa?.endereco ? `<div class="center" style="margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">${data.empresa.endereco}</div>` : ''}
+      ${data.empresa?.telefone ? `<div class="center" style="margin-bottom: 3px; font-weight: 700 !important; color: #000000 !important;">Tel: ${data.empresa.telefone}</div>` : ''}
       
       <div class="divider"></div>
       
-      <div class="center bold" style="margin: 3px 0;">
+      <div class="center bold" style="margin: 3px 0; font-weight: 900 !important; color: #000000 !important;">
         CUPOM NÃO FISCAL
       </div>
-      <div class="line">
-        <span>Venda #${data.numero}</span>
+      <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">Venda #${data.numero}</span>
       </div>
-      <div class="line">
-        <span>Data: ${data.data} ${data.hora}</span>
+      <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">Data: ${data.data} ${data.hora}</span>
       </div>
       
       ${data.cliente?.nome ? `
-        <div class="line" style="margin-top: 3px;">
-          <span>Cliente: ${data.cliente.nome}</span>
+        <div class="line" style="margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">Cliente: ${data.cliente.nome}</span>
         </div>
-        ${data.cliente.cpf_cnpj ? `<div class="line"><span>CPF/CNPJ: ${data.cliente.cpf_cnpj}</span></div>` : ''}
-        ${data.cliente.telefone ? `<div class="line"><span>Tel: ${data.cliente.telefone}</span></div>` : ''}
+        ${data.cliente.cpf_cnpj ? `<div class="line" style="font-weight: 700 !important; color: #000000 !important;"><span style="font-weight: 700 !important; color: #000000 !important;">CPF/CNPJ: ${data.cliente.cpf_cnpj}</span></div>` : ''}
+        ${data.cliente.telefone ? `<div class="line" style="font-weight: 700 !important; color: #000000 !important;"><span style="font-weight: 700 !important; color: #000000 !important;">Tel: ${data.cliente.telefone}</span></div>` : ''}
       ` : ''}
       
       <div class="divider-dashed" style="margin: 4px 0;"></div>
       
       ${data.itens.map(item => `
-        <div class="item-line">
-          <div class="item-name">${item.nome}</div>
-          <div class="line">
-            <span>${item.quantidade}x ${formatCurrency(item.valor_unitario)}</span>
-            ${item.desconto > 0 ? `<span>Desc: -${formatCurrency(item.desconto)}</span>` : ''}
-            <span class="bold">${formatCurrency(item.valor_total)}</span>
+        <div class="item-line" style="font-weight: 700 !important; color: #000000 !important;">
+          <div class="item-name" style="font-weight: 800 !important; color: #000000 !important;">${item.nome}</div>
+          <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
+            <span style="font-weight: 700 !important; color: #000000 !important;">${item.quantidade}x ${formatCurrency(item.valor_unitario)}</span>
+            ${item.desconto > 0 ? `<span style="font-weight: 700 !important; color: #000000 !important;">Desc: -${formatCurrency(item.desconto)}</span>` : ''}
+            <span class="bold" style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(item.valor_total)}</span>
           </div>
         </div>
       `).join('')}
       
       <div class="divider" style="margin: 4px 0;"></div>
       
-      <div class="line">
-        <span>Subtotal:</span>
-        <span>${formatCurrency(data.subtotal)}</span>
+      <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">Subtotal:</span>
+        <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(data.subtotal)}</span>
       </div>
       ${data.desconto_total > 0 ? `
-        <div class="line">
-          <span>Desconto:</span>
-          <span>-${formatCurrency(data.desconto_total)}</span>
+        <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">Desconto:</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">-${formatCurrency(data.desconto_total)}</span>
         </div>
       ` : ''}
-      <div class="line total-line" style="margin-top: 2px;">
-        <span>TOTAL:</span>
-        <span>${formatCurrency(data.total)}</span>
+      <div class="line total-line" style="margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">TOTAL:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
       </div>
       
       <div class="divider" style="margin: 4px 0;"></div>
       
       ${data.pagamentos.map(pag => `
-        <div class="line">
-          <span>${pag.forma}:</span>
-          <span>${formatCurrency(pag.valor)}</span>
+        <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">${pag.forma}:</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
         </div>
         ${pag.troco ? `
-          <div class="line" style="font-size: 9px; margin-top: 1px;">
-            <span>Troco:</span>
-            <span>${formatCurrency(pag.troco)}</span>
+          <div class="line" style="font-size: 9px; margin-top: 1px; font-weight: 700 !important; color: #000000 !important;">
+            <span style="font-weight: 700 !important; color: #000000 !important;">Troco:</span>
+            <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(pag.troco)}</span>
           </div>
         ` : ''}
       `).join('')}
       
       ${data.vendedor ? `
-        <div class="line" style="margin-top: 3px;">
-          <span>Vendedor: ${data.vendedor}</span>
+        <div class="line" style="margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">Vendedor: ${data.vendedor}</span>
         </div>
       ` : ''}
       
       ${data.observacoes ? `
-        <div style="margin-top: 3px;">
-          <span class="bold">Obs:</span> ${data.observacoes}
+        <div style="margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
+          <span class="bold" style="font-weight: 900 !important; color: #000000 !important;">Obs:</span> <span style="font-weight: 700 !important; color: #000000 !important;">${data.observacoes}</span>
         </div>
       ` : ''}
       
       ${data.termos_garantia ? `
         <div class="divider-dashed" style="margin: 4px 0;"></div>
-        <div style="font-size: 8px; line-height: 1.3;">
-          <div class="bold" style="margin-bottom: 2px;">TERMOS DE GARANTIA:</div>
-          <div style="text-align: justify;">${data.termos_garantia}</div>
+        <div style="font-size: 8px; line-height: 1.3; font-weight: 700 !important; color: #000000 !important;">
+          <div class="bold" style="margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">TERMOS DE GARANTIA:</div>
+          <div style="text-align: justify; font-weight: 700 !important; color: #000000 !important;">${data.termos_garantia}</div>
         </div>
       ` : ''}
       
       <div class="divider" style="margin: 5px 0;"></div>
       
-      <div class="center" style="margin-top: 5px;">
-        <div>Obrigado pela preferência!</div>
-        <div>Volte sempre</div>
+      <div class="center" style="margin-top: 5px; font-weight: 700 !important; color: #000000 !important;">
+        <div style="font-weight: 700 !important; color: #000000 !important;">Obrigado pela preferência!</div>
+        <div style="font-weight: 700 !important; color: #000000 !important;">Volte sempre</div>
         ${qrCodeImg ? `
           <div style="margin-top: 5px;">
             ${qrCodeImg}
