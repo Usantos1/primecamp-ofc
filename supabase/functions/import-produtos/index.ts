@@ -236,25 +236,55 @@ serve(async (req) => {
       } else {
         // Apenas inserir (ignorar duplicados se skipDuplicates = true)
         try {
-          const { data, error } = await supabaseClient
-            .from('produtos')
-            .insert(batch)
-            .select();
+          // Se skipDuplicates, verificar duplicados antes de inserir
+          if (skipDuplicates) {
+            let countInserted = 0;
+            for (const produto of batch) {
+              const nomeLower = produto.nome.toLowerCase();
+              
+              // Verificar se já existe
+              const { data: existing } = await supabaseClient
+                .from('produtos')
+                .select('id')
+                .ilike('nome', nomeLower)
+                .limit(1)
+                .single();
+              
+              if (!existing) {
+                // Não existe, pode inserir
+                const { error: insertError } = await supabaseClient
+                  .from('produtos')
+                  .insert(produto);
+                
+                if (!insertError) {
+                  countInserted++;
+                } else {
+                  console.error(`[import-produtos] Erro ao inserir produto "${produto.nome}":`, insertError);
+                }
+              } else {
+                console.log(`[import-produtos] Produto duplicado ignorado: "${produto.nome}"`);
+              }
+            }
+            
+            inseridos += countInserted;
+            console.log(`[import-produtos] Lote ${batchNum} processado: ${countInserted} produtos inseridos (${batch.length - countInserted} duplicados ignorados)`);
+          } else {
+            // Inserir todos, deixar erro de duplicata aparecer
+            const { data, error } = await supabaseClient
+              .from('produtos')
+              .insert(batch)
+              .select();
 
-          if (error) {
-            // Se for erro de duplicata e skipDuplicates = true, ignorar
-            if (skipDuplicates && (error.code === '23505' || error.message?.includes('duplicate'))) {
-              console.log(`[import-produtos] Duplicados ignorados no lote ${batchNum}`);
-            } else {
+            if (error) {
               console.error(`[import-produtos] Erro no lote ${batchNum}:`, error);
               console.error(`[import-produtos] Detalhes do erro:`, JSON.stringify(error, null, 2));
               erros += batch.length;
               errosDetalhes.push(`Lote ${batchNum}: ${error.message || JSON.stringify(error)}`);
+            } else {
+              const count = data?.length || 0;
+              console.log(`[import-produtos] Lote ${batchNum} processado: ${count} produtos inseridos`);
+              inseridos += count;
             }
-          } else {
-            const count = data?.length || 0;
-            console.log(`[import-produtos] Lote ${batchNum} processado: ${count} produtos inseridos`);
-            inseridos += count;
           }
         } catch (err: any) {
           console.error(`[import-produtos] Exceção no lote ${batchNum}:`, err);
