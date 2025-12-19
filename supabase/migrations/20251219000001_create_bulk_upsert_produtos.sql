@@ -94,8 +94,13 @@ BEGIN
       END IF;
     EXCEPTION WHEN OTHERS THEN
       v_erros := v_erros + 1;
-      -- Log do erro (pode ser melhorado com logging)
-      RAISE WARNING 'Erro ao processar produto %: %', produto_item->>'nome', SQLERRM;
+      -- Log do erro com mais detalhes
+      RAISE WARNING 'Erro ao processar produto %: % (SQLSTATE: %, SQLERRM: %)', 
+        produto_item->>'nome', 
+        SQLERRM,
+        SQLSTATE,
+        SQLERRM;
+      -- Continuar processando outros produtos mesmo se um falhar
     END;
   END LOOP;
   

@@ -359,13 +359,24 @@ serve(async (req) => {
             errosDetalhes.push(`Lote ${batchNum}: ${rpcError.message || JSON.stringify(rpcError)}`);
           } else if (result && result.length > 0) {
             const stats = result[0];
-            inseridos += stats.inseridos || 0;
-            atualizados += stats.atualizados || 0;
-            erros += stats.erros || 0;
-            console.log(`[import-produtos] Lote ${batchNum} processado: ${stats.inseridos || 0} inseridos, ${stats.atualizados || 0} atualizados, ${stats.erros || 0} erros`);
+            const inseridosLote = stats.inseridos || 0;
+            const atualizadosLote = stats.atualizados || 0;
+            const errosLote = stats.erros || 0;
+            
+            inseridos += inseridosLote;
+            atualizados += atualizadosLote;
+            erros += errosLote;
+            
+            console.log(`[import-produtos] Lote ${batchNum} processado: ${inseridosLote} inseridos, ${atualizadosLote} atualizados, ${errosLote} erros`);
+            
+            // Se houver erros, logar mais detalhes
+            if (errosLote > 0) {
+              console.warn(`[import-produtos] Lote ${batchNum} teve ${errosLote} erros de ${batch.length} produtos`);
+            }
           } else {
             console.error(`[import-produtos] Resultado vazio do lote ${batchNum}. Result:`, result);
             erros += batch.length;
+            errosDetalhes.push(`Lote ${batchNum}: Resultado vazio da função SQL`);
           }
         } catch (err: any) {
           console.error(`[import-produtos] Exceção no lote ${batchNum}:`, err);
