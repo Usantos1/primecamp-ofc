@@ -29,6 +29,7 @@ interface ProdutoImport {
 }
 
 serve(async (req) => {
+  console.log('[import-produtos] ========== NOVA REQUISIÇÃO ==========');
   console.log('[import-produtos] Requisição recebida:', {
     method: req.method,
     url: req.url,
@@ -362,7 +363,8 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[import-produtos] Importação concluída: ${inseridos} inseridos, ${atualizados} atualizados, ${erros} erros`);
+    console.log(`[import-produtos] ========== IMPORTAÇÃO CONCLUÍDA ==========`);
+    console.log(`[import-produtos] Resumo: ${inseridos} inseridos, ${atualizados} atualizados, ${erros} erros`);
 
     return new Response(
       JSON.stringify({
@@ -387,12 +389,16 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('[import-produtos] Erro inesperado:', error);
+    console.error('[import-produtos] ========== ERRO INESPERADO ==========');
+    console.error('[import-produtos] Erro:', error);
+    console.error('[import-produtos] Stack:', error.stack);
+    console.error('[import-produtos] Mensagem:', error.message);
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: 'Erro interno do servidor',
-        message: error.message 
+        message: error.message,
+        stack: error.stack 
       }),
       {
         status: 500,
