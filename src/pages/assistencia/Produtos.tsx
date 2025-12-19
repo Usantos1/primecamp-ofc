@@ -2002,6 +2002,16 @@ export default function Produtos() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Dialog de Importação */}
+        <Dialog open={showImport} onOpenChange={setShowImport}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Importar Produtos em Massa</DialogTitle>
+            </DialogHeader>
+            <ImportarProdutos />
+          </DialogContent>
+        </Dialog>
       </div>
     </ModernLayout>
   );
