@@ -141,19 +141,24 @@ export function ImportarProdutos() {
         throw new Error('Usuário não autenticado');
       }
 
+      console.log('[ImportarProdutos] Sessão válida, iniciando importação...');
+
       const batchSize = 500;
       let totalInseridos = 0;
       let totalAtualizados = 0;
       let totalErros = 0;
       let totalInvalidos = 0;
       const errosDetalhes: string[] = [];
+      const totalBatches = Math.ceil(produtosMapeados.length / batchSize);
+
+      console.log(`[ImportarProdutos] Total de lotes a processar: ${totalBatches}`);
 
       for (let i = 0; i < produtosMapeados.length; i += batchSize) {
         const batch = produtosMapeados.slice(i, i + batchSize);
         const batchNum = Math.floor(i / batchSize) + 1;
-        const totalBatches = Math.ceil(produtosMapeados.length / batchSize);
 
         console.log(`[ImportarProdutos] Processando lote ${batchNum}/${totalBatches} (${batch.length} produtos)`);
+        console.log(`[ImportarProdutos] Primeiro produto do lote:`, batch[0]);
 
         try {
           const { data, error } = await supabase.functions.invoke('import-produtos', {
@@ -166,14 +171,17 @@ export function ImportarProdutos() {
             },
           });
 
+          console.log(`[ImportarProdutos] Resposta do lote ${batchNum}:`, { data, error });
+
           if (error) {
             console.error(`[ImportarProdutos] Erro no lote ${batchNum}:`, error);
-            errosDetalhes.push(`Lote ${batchNum}: ${error.message || 'Erro desconhecido'}`);
+            errosDetalhes.push(`Lote ${batchNum}: ${error.message || JSON.stringify(error)}`);
             totalErros += batch.length;
             continue;
           }
 
           if (data && data.success) {
+            console.log(`[ImportarProdutos] Lote ${batchNum} processado com sucesso:`, data.resultado);
             totalInseridos += data.resultado?.inseridos || 0;
             totalAtualizados += data.resultado?.atualizados || 0;
             totalErros += data.resultado?.erros || 0;
@@ -183,14 +191,22 @@ export function ImportarProdutos() {
               errosDetalhes.push(...data.resultado.erros_detalhes.map((e: string) => `Lote ${batchNum}: ${e}`));
             }
           } else {
+            console.error(`[ImportarProdutos] Lote ${batchNum} falhou:`, data);
             throw new Error(data?.error || 'Erro na importação');
           }
         } catch (error: any) {
           console.error(`[ImportarProdutos] Erro no lote ${batchNum}:`, error);
-          errosDetalhes.push(`Lote ${batchNum}: ${error.message || 'Erro desconhecido'}`);
+          errosDetalhes.push(`Lote ${batchNum}: ${error.message || JSON.stringify(error)}`);
           totalErros += batch.length;
         }
       }
+
+      console.log('[ImportarProdutos] Importação concluída:', {
+        totalInseridos,
+        totalAtualizados,
+        totalErros,
+        totalInvalidos,
+      });
 
       // Resultado final
       setResultado({
