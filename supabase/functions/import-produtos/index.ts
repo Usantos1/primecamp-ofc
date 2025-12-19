@@ -216,17 +216,33 @@ serve(async (req) => {
 
     // Validar produtos
     console.log('[import-produtos] Validando produtos mapeados...');
-    const produtosValidos = produtosMapeados.filter(p => p.nome && p.marca && p.modelo);
+    console.log('[import-produtos] Exemplo de produto mapeado:', JSON.stringify(produtosMapeados[0], null, 2));
+    
+    // Verificar produtos inválidos com mais detalhes
+    const produtosInvalidosDetalhes = produtosMapeados
+      .map((p, idx) => ({ idx, nome: p.nome, marca: p.marca, modelo: p.modelo, temNome: !!p.nome, temMarca: !!p.marca, temModelo: !!p.modelo }))
+      .filter(p => !p.temNome || !p.temMarca || !p.temModelo)
+      .slice(0, 5); // Primeiros 5 inválidos
+    
+    if (produtosInvalidosDetalhes.length > 0) {
+      console.log('[import-produtos] Exemplos de produtos inválidos:', produtosInvalidosDetalhes);
+    }
+    
+    const produtosValidos = produtosMapeados.filter(p => p.nome && p.nome.trim() !== '' && p.marca && p.modelo);
     const produtosInvalidos = produtosMapeados.length - produtosValidos.length;
     console.log('[import-produtos] Produtos válidos:', produtosValidos.length);
     console.log('[import-produtos] Produtos inválidos:', produtosInvalidos);
 
     if (produtosValidos.length === 0) {
+      console.error('[import-produtos] ERRO: Nenhum produto válido encontrado!');
+      console.error('[import-produtos] Total de produtos mapeados:', produtosMapeados.length);
+      console.error('[import-produtos] Primeiros produtos inválidos:', produtosInvalidosDetalhes);
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: 'Nenhum produto válido encontrado. Verifique os dados.',
-          detalhes: `${produtosInvalidos} produtos inválidos`
+          detalhes: `${produtosInvalidos} produtos inválidos`,
+          exemplo_invalido: produtosInvalidosDetalhes[0]
         }),
         {
           status: 400,
