@@ -368,21 +368,33 @@ serve(async (req) => {
             const nomesLower = batch.map(p => p.nome.toLowerCase());
             
             // Usar RPC para buscar produtos existentes em lote (case-insensitive)
-            const { data: existingProducts } = await supabaseClient
-              .rpc('buscar_produtos_por_nomes', { nomes: nomesLower })
-              .catch(() => {
-                // Se a função não existir, fazer busca manual (mais lento mas funciona)
-                return { data: null };
-              });
-            
             let existingNames = new Set<string>();
-            if (existingProducts) {
-              existingNames = new Set(
-                existingProducts.map((p: any) => p.nome?.toLowerCase() || '')
-              );
-            } else {
+            try {
+              const { data: existingProducts, error: searchError } = await supabaseClient
+                .rpc('buscar_produtos_por_nomes', { nomes: nomesLower });
+              
+              if (existingProducts) {
+                existingNames = new Set(
+                  existingProducts.map((p: any) => p.nome?.toLowerCase() || '')
+                );
+              } else if (searchError) {
+                // Se a função não existir, fazer busca manual (mais lento mas funciona)
+                console.log(`[import-produtos] Função RPC não disponível, usando fallback. Erro:`, searchError);
+                for (const nomeLower of nomesLower) {
+                  const { data: existing } = await supabaseClient
+                    .from('produtos')
+                    .select('nome')
+                    .ilike('nome', nomeLower)
+                    .limit(1)
+                    .single();
+                  if (existing) {
+                    existingNames.add(existing.nome.toLowerCase());
+                  }
+                }
+              }
+            } catch (rpcError: any) {
               // Fallback: buscar um por um (mais lento, mas funciona)
-              console.log(`[import-produtos] Função RPC não disponível, usando fallback`);
+              console.log(`[import-produtos] Erro ao chamar RPC, usando fallback:`, rpcError);
               for (const nomeLower of nomesLower) {
                 const { data: existing } = await supabaseClient
                   .from('produtos')
