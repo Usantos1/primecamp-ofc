@@ -62,10 +62,16 @@ serve(async (req) => {
       );
     }
 
-    // Criar cliente Supabase
+    // Criar cliente Supabase com Service Role (bypass RLS)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    // Obter usuário autenticado para usar como criado_por
+    const supabaseAuthClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
           headers: { Authorization: authHeader },
@@ -73,16 +79,13 @@ serve(async (req) => {
       }
     );
 
-    // Obter usuário autenticado
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseAuthClient.auth.getUser();
+    const userId = user?.id || null;
+    
     if (userError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Usuário não autenticado' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      console.warn('[import-produtos] Usuário não autenticado, continuando sem criado_por');
+    } else {
+      console.log('[import-produtos] Usuário autenticado:', userId);
     }
 
     // Parse do body
@@ -164,6 +167,7 @@ serve(async (req) => {
         qualidade: qualidade,
         valor_dinheiro_pix: valorVenda,
         valor_parcelado_6x: valorParcelado,
+        criado_por: userId || null, // Adicionar criado_por se disponível
       };
     });
 
