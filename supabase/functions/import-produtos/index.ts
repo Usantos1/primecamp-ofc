@@ -160,8 +160,10 @@ serve(async (req) => {
       const valorVenda = prod.vi_venda || prod.valor_dinheiro_pix || 0;
       const valorParcelado = prod.valor_parcelado_6x || valorVenda * 1.2; // 20% de acréscimo padrão
 
+      const nomeProduto = (prod.descricao || prod.nome || '').trim();
+      
       return {
-        nome: prod.descricao || prod.nome || '',
+        nome: nomeProduto.toLowerCase(), // Converter para lowercase para evitar duplicatas
         marca: marca || 'Geral',
         modelo: modelo || 'Geral',
         qualidade: qualidade,
@@ -218,26 +220,51 @@ serve(async (req) => {
       console.log(`[import-produtos] Exemplo de produto do lote:`, JSON.stringify(batch[0], null, 2));
       
       if (updateExisting) {
-        // Atualizar ou inserir (upsert) - usar nome como chave única
+        // Atualizar ou inserir (upsert) - usar lower(nome) como chave única
         try {
-          const { data, error } = await supabaseClient
-            .from('produtos')
-            .upsert(batch, {
-              onConflict: 'nome',
-              ignoreDuplicates: false,
-            })
-            .select();
-
-          if (error) {
-            console.error(`[import-produtos] Erro no lote ${batchNum}:`, error);
-            console.error(`[import-produtos] Detalhes do erro:`, JSON.stringify(error, null, 2));
-            erros += batch.length;
-            errosDetalhes.push(`Lote ${batchNum}: ${error.message || JSON.stringify(error)}`);
-          } else {
-            const count = data?.length || 0;
-            console.log(`[import-produtos] Lote ${batchNum} processado: ${count} produtos`);
-            atualizados += count;
+          // Para cada produto, verificar se existe e atualizar ou inserir
+          let countProcessed = 0;
+          for (const produto of batch) {
+            const nomeLower = produto.nome.toLowerCase();
+            
+            // Verificar se já existe (case-insensitive)
+            const { data: existing } = await supabaseClient
+              .from('produtos')
+              .select('id')
+              .ilike('nome', nomeLower)
+              .limit(1)
+              .single();
+            
+            if (existing) {
+              // Atualizar produto existente
+              const { error: updateError } = await supabaseClient
+                .from('produtos')
+                .update(produto)
+                .eq('id', existing.id);
+              
+              if (updateError) {
+                console.error(`[import-produtos] Erro ao atualizar produto "${produto.nome}":`, updateError);
+                erros++;
+              } else {
+                countProcessed++;
+              }
+            } else {
+              // Inserir novo produto
+              const { error: insertError } = await supabaseClient
+                .from('produtos')
+                .insert(produto);
+              
+              if (insertError) {
+                console.error(`[import-produtos] Erro ao inserir produto "${produto.nome}":`, insertError);
+                erros++;
+              } else {
+                countProcessed++;
+              }
+            }
           }
+          
+          console.log(`[import-produtos] Lote ${batchNum} processado: ${countProcessed} produtos`);
+          atualizados += countProcessed;
         } catch (err: any) {
           console.error(`[import-produtos] Exceção no lote ${batchNum}:`, err);
           erros += batch.length;
