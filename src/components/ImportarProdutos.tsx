@@ -220,17 +220,31 @@ export function ImportarProdutos() {
           console.log(`[ImportarProdutos] Tamanho do batch: ${batch.length} produtos`);
           console.log(`[ImportarProdutos] Primeiro produto:`, JSON.stringify(batch[0]));
           
+          // Serializar o body manualmente para garantir que está correto
+          const requestBody = {
+            produtos: batch,
+            opcoes: {
+              skipDuplicates,
+              updateExisting,
+            },
+          };
+          
+          // Verificar tamanho do JSON
+          const jsonString = JSON.stringify(requestBody);
+          console.log(`[ImportarProdutos] Tamanho do JSON: ${jsonString.length} caracteres`);
+          console.log(`[ImportarProdutos] Tamanho do JSON: ${(jsonString.length / 1024).toFixed(2)} KB`);
+          
+          // Verificar se o JSON é válido
+          try {
+            JSON.parse(jsonString);
+            console.log(`[ImportarProdutos] JSON válido`);
+          } catch (jsonError) {
+            console.error(`[ImportarProdutos] ERRO: JSON inválido!`, jsonError);
+            throw jsonError;
+          }
+          
           const { data, error } = await supabase.functions.invoke('import-produtos', {
-            body: {
-              produtos: batch,
-              opcoes: {
-                skipDuplicates,
-                updateExisting,
-              },
-            },
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            body: requestBody,
           });
           
           console.log(`[ImportarProdutos] Edge Function respondeu para lote ${batchNum}`);
