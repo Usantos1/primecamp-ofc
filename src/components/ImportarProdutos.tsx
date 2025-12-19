@@ -153,6 +153,7 @@ export function ImportarProdutos() {
       const totalBatches = Math.ceil(produtosMapeados.length / batchSize);
 
       console.log(`[ImportarProdutos] Total de lotes a processar: ${totalBatches}`);
+      setProgresso({ atual: 0, total: produtosMapeados.length, lote: 0, totalLotes: totalBatches });
 
       for (let i = 0; i < produtosMapeados.length; i += batchSize) {
         const batch = produtosMapeados.slice(i, i + batchSize);
@@ -160,6 +161,14 @@ export function ImportarProdutos() {
 
         console.log(`[ImportarProdutos] Processando lote ${batchNum}/${totalBatches} (${batch.length} produtos)`);
         console.log(`[ImportarProdutos] Primeiro produto do lote:`, batch[0]);
+        
+        // Atualizar progresso
+        setProgresso({ 
+          atual: Math.min(i + batch.length, produtosMapeados.length), 
+          total: produtosMapeados.length, 
+          lote: batchNum, 
+          totalLotes: totalBatches 
+        });
 
         try {
           const { data, error } = await supabase.functions.invoke('import-produtos', {
@@ -208,6 +217,9 @@ export function ImportarProdutos() {
         totalErros,
         totalInvalidos,
       });
+      
+      // Limpar progresso
+      setProgresso(null);
 
       // Resultado final
       setResultado({
@@ -228,13 +240,15 @@ export function ImportarProdutos() {
 
     } catch (error: any) {
       console.error('[ImportarProdutos] Erro:', error);
+      setProgresso(null);
       toast({
         title: 'Erro na importação',
-        description: error.message || 'Erro ao processar a planilha',
+        description: error.message || 'Erro ao processar a planilha. Verifique o console para mais detalhes.',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
+      setProgresso(null);
     }
   };
 
@@ -306,7 +320,7 @@ export function ImportarProdutos() {
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Importando...
+              {progresso ? `Importando... Lote ${progresso.lote}/${progresso.totalLotes}` : 'Importando...'}
             </>
           ) : (
             <>
@@ -315,6 +329,25 @@ export function ImportarProdutos() {
             </>
           )}
         </Button>
+
+        {/* Barra de Progresso */}
+        {progresso && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">Processando lote {progresso.lote} de {progresso.totalLotes}</span>
+              <span className="text-muted-foreground">{progresso.atual} de {progresso.total} produtos</span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-2.5">
+              <div 
+                className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${(progresso.atual / progresso.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              {Math.round((progresso.atual / progresso.total) * 100)}% concluído
+            </p>
+          </div>
+        )}
 
         {/* Resultado */}
         {resultado && (
