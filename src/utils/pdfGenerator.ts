@@ -167,7 +167,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         <div class="info">Assistência Técnica</div>
         ${data.empresa?.cnpj ? `<div class="info">CNPJ: ${data.empresa.cnpj}</div>` : ''}
         ${data.empresa?.endereco ? `<div class="info">${data.empresa.endereco}</div>` : ''}
-        ${data.empresa?.telefone ? `<div class="info">Telefone: ${data.empresa.telefone}</div>` : ''}
+        ${data.empresa?.telefone ? `<div class="info">Tel: ${data.empresa.telefone}</div>` : ''}
       </div>
       
       <div class="info">
@@ -248,9 +248,9 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       ` : ''}
       
       ${data.termos_garantia ? `
-        <div style="border-top: 1px dashed #000; margin: 5px 0; padding-top: 5px; font-size: 7px;">
-          <div style="font-weight: bold; margin-bottom: 3px;">TERMOS DE GARANTIA:</div>
-          <div style="text-align: justify; line-height: 1.3;">${data.termos_garantia}</div>
+        <div style="border-top: 1px dashed #000; margin: 5px 0; padding-top: 5px; font-size: 8px;">
+          <div style="font-weight: bold; margin-bottom: 2px;">TERMOS DE GARANTIA:</div>
+          <div style="text-align: justify; line-height: 1.2;">${data.termos_garantia}</div>
         </div>
       ` : ''}
       
