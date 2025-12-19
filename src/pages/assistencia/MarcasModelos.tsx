@@ -23,35 +23,52 @@ export default function MarcasModelos() {
   
   // Popular marcas e modelos padrão se não existirem
   useEffect(() => {
-    // Verificar se já existem marcas e modelos
-    const marcasStored = JSON.parse(localStorage.getItem('assistencia_marcas') || '[]');
-    const modelosStored = JSON.parse(localStorage.getItem('assistencia_modelos') || '[]');
-    
-    // Popular marcas se não existirem
-    if (marcasStored.length === 0) {
-      MARCAS_MODELOS_PADRAO.forEach(mp => {
-        createMarca({ nome: mp.marca });
-      });
-    }
-    
-    // Popular modelos se não existirem (aguardar um pouco para garantir que as marcas foram criadas)
-    if (marcasStored.length > 0 && modelosStored.length === 0) {
-      setTimeout(() => {
-        const marcasAtualizadas = JSON.parse(localStorage.getItem('assistencia_marcas') || '[]');
-        MARCAS_MODELOS_PADRAO.forEach(mp => {
-          const marca = marcasAtualizadas.find((m: any) => m.nome === mp.marca);
-          if (marca) {
-            mp.modelos.forEach(nomeModelo => {
-              const modeloExistente = modelosStored.find((m: any) => m.nome === nomeModelo && m.marca_id === marca.id);
-              if (!modeloExistente) {
-                createModelo({ marca_id: marca.id, nome: nomeModelo });
-              }
-            });
+    const popularMarcasModelos = async () => {
+      // Popular marcas se não existirem
+      if (marcas.length === 0) {
+        for (const mp of MARCAS_MODELOS_PADRAO) {
+          try {
+            await createMarca(mp.marca);
+          } catch (error: any) {
+            // Ignorar erros de duplicata (marca já existe)
+            if (error?.code !== '23505') {
+              console.log(`[MarcasModelos] Erro ao criar marca ${mp.marca}:`, error);
+            }
           }
-        });
-      }, 1000);
-    }
-  }, []); // Executar apenas uma vez ao montar o componente
+        }
+      }
+      
+      // Popular modelos se não existirem (aguardar um pouco para garantir que as marcas foram criadas)
+      if (marcas.length > 0 && modelos.length === 0) {
+        // Aguardar um pouco para garantir que as marcas foram criadas
+        setTimeout(async () => {
+          // Buscar marcas atualizadas
+          const marcasAtualizadas = marcas;
+          
+          for (const mp of MARCAS_MODELOS_PADRAO) {
+            const marca = marcasAtualizadas.find(m => m.nome === mp.marca);
+            if (marca) {
+              for (const nomeModelo of mp.modelos) {
+                try {
+                  const modeloExistente = modelos.find(m => m.nome === nomeModelo && m.marca_id === marca.id);
+                  if (!modeloExistente) {
+                    await createModelo(marca.id, nomeModelo);
+                  }
+                } catch (error: any) {
+                  // Ignorar erros de duplicata (modelo já existe)
+                  if (error?.code !== '23505') {
+                    console.log(`[MarcasModelos] Erro ao criar modelo ${nomeModelo}:`, error);
+                  }
+                }
+              }
+            }
+          }
+        }, 2000);
+      }
+    };
+
+    popularMarcasModelos();
+  }, [marcas.length, modelos.length, createMarca, createModelo]); // Executar quando marcas ou modelos mudarem
   
   const [activeTab, setActiveTab] = useState('marcas');
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,11 +155,15 @@ export default function MarcasModelos() {
     }
   };
 
-  const handleDeleteMarca = () => {
+  const handleDeleteMarca = async () => {
     if (deletingMarcaId) {
-      deleteMarca(deletingMarcaId);
-      setDeleteMarcaDialog(false);
-      setDeletingMarcaId(null);
+      try {
+        await deleteMarca(deletingMarcaId);
+        setDeleteMarcaDialog(false);
+        setDeletingMarcaId(null);
+      } catch (error) {
+        console.error('[handleDeleteMarca] Erro:', error);
+      }
     }
   };
 
