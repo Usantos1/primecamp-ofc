@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Check, Search, Filter, Eye } from 'lucide-react';
+import { Check, Search, Eye } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -26,14 +26,14 @@ interface AccountReceivable {
   sale_id?: string;
   ordem_servico_id?: string;
   valor: number;
-  valor_pago: number;
+  valor_pago?: number;
   data_vencimento: string;
   data_pagamento?: string;
   status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
   metodo_pagamento?: string;
   observacoes?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export function AccountsReceivableManager({ month }: AccountsReceivableManagerProps) {
@@ -115,7 +115,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
 
   const totalPago = filteredAccounts
     .filter(a => a.status === 'pago')
-    .reduce((sum, a) => sum + a.valor_pago, 0);
+    .reduce((sum, a) => sum + (a.valor_pago || 0), 0);
 
   if (isLoading) {
     return <LoadingSkeleton type="table" count={5} />;
