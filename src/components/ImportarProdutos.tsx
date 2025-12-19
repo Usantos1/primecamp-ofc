@@ -24,97 +24,6 @@ interface ProdutoPlanilha {
   'Margem %'?: number;
 }
 
-// Função para sincronizar produtos do Supabase para localStorage
-async function sincronizarProdutosParaLocalStorage(produtosMapeados: any[]) {
-  const STORAGE_KEY = 'assistencia_produtos';
-  
-  try {
-    // Buscar produtos importados do Supabase pelos nomes
-    const nomes = produtosMapeados.map(p => p.descricao || p.nome).filter(Boolean);
-    if (nomes.length === 0) return;
-    
-    console.log(`[ImportarProdutos] Buscando ${nomes.length} produtos do Supabase para sincronizar...`);
-    
-    const { data: produtosSupabase, error } = await supabase
-      .from('produtos')
-      .select('*')
-      .in('nome', nomes.map(n => n.toLowerCase()));
-    
-    if (error) {
-      console.error('[ImportarProdutos] Erro ao buscar produtos do Supabase:', error);
-      return;
-    }
-    
-    if (!produtosSupabase || produtosSupabase.length === 0) {
-      console.warn('[ImportarProdutos] Nenhum produto encontrado no Supabase para sincronizar');
-      return;
-    }
-    
-    console.log(`[ImportarProdutos] ${produtosSupabase.length} produtos encontrados no Supabase`);
-    
-    // Carregar produtos existentes do localStorage
-    const produtosExistentes: Produto[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || '[]'
-    );
-    
-    // Mapear produtos do Supabase para o formato do localStorage
-    const produtosParaAdicionar: Produto[] = produtosSupabase.map((p: any) => {
-      // Gerar ID único se não existir
-      const produtoExistente = produtosExistentes.find(
-        ep => ep.descricao?.toLowerCase() === p.nome?.toLowerCase()
-      );
-      
-      return {
-        id: produtoExistente?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        situacao: 'ativo',
-        tipo: 'peca' as const,
-        descricao: p.nome || '',
-        codigo: p.codigo || undefined,
-        codigo_barras: p.codigo_barras || undefined,
-        referencia: p.referencia || undefined,
-        categoria: p.grupo || undefined,
-        marca: p.marca || 'Geral',
-        modelo_compativel: p.modelo || 'Geral',
-        preco_custo: Number(p.vi_compra || p.vi_custo || 0),
-        preco_venda: Number(p.valor_dinheiro_pix || 0),
-        estoque_atual: Number(p.quantidade || 0),
-        created_at: p.created_at || new Date().toISOString(),
-        updated_at: p.updated_at || new Date().toISOString(),
-      };
-    });
-    
-    // Mesclar produtos: atualizar existentes e adicionar novos
-    const produtosAtualizados = [...produtosExistentes];
-    
-    produtosParaAdicionar.forEach(produtoNovo => {
-      const indexExistente = produtosAtualizados.findIndex(
-        p => p.id === produtoNovo.id || 
-        (p.descricao?.toLowerCase() === produtoNovo.descricao?.toLowerCase())
-      );
-      
-      if (indexExistente >= 0) {
-        // Atualizar produto existente
-        produtosAtualizados[indexExistente] = {
-          ...produtosAtualizados[indexExistente],
-          ...produtoNovo,
-          id: produtosAtualizados[indexExistente].id, // Manter ID original
-        };
-      } else {
-        // Adicionar novo produto
-        produtosAtualizados.push(produtoNovo);
-      }
-    });
-    
-    // Salvar no localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(produtosAtualizados));
-    console.log(`[ImportarProdutos] ✅ ${produtosAtualizados.length} produtos salvos no localStorage`);
-    
-  } catch (error) {
-    console.error('[ImportarProdutos] Erro ao sincronizar produtos para localStorage:', error);
-    throw error;
-  }
-}
-
 export function ImportarProdutos() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -391,17 +300,7 @@ export function ImportarProdutos() {
         totalInvalidos,
       });
       
-      // Sincronizar produtos importados para localStorage (para /pdv/produtos)
-      if (totalInseridos > 0 || totalAtualizados > 0) {
-        try {
-          console.log('[ImportarProdutos] Sincronizando produtos para localStorage...');
-          await sincronizarProdutosParaLocalStorage(produtosMapeados);
-          console.log('[ImportarProdutos] Produtos sincronizados para localStorage com sucesso');
-        } catch (syncError) {
-          console.error('[ImportarProdutos] Erro ao sincronizar para localStorage:', syncError);
-          // Não falhar a importação se a sincronização falhar
-        }
-      }
+      // Produtos já estão salvos no Supabase, não precisa sincronizar localStorage
       
       // Limpar progresso
       setProgresso(null);
