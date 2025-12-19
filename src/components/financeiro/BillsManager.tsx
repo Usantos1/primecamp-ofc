@@ -350,6 +350,34 @@ export function BillsManager({ month }: BillsManagerProps) {
             </div>
 
             <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="recurring"
+                  checked={formData.recurring}
+                  onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="recurring" className="cursor-pointer">
+                  Conta recorrente
+                </Label>
+              </div>
+              {formData.recurring && (
+                <div className="space-y-2 pl-6">
+                  <Label>Dia do mês para recorrência</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={formData.recurring_day || ''}
+                    onChange={(e) => setFormData({ ...formData, recurring_day: parseInt(e.target.value) || undefined })}
+                    placeholder="Ex: 5 (dia 5 de cada mês)"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label>Observações</Label>
               <Textarea
                 value={formData.notes}

@@ -31,6 +31,9 @@ interface AccountReceivable {
   data_vencimento?: string;
   data_pagamento?: string;
   status: 'pendente' | 'parcial' | 'pago' | 'atrasado' | 'cancelado';
+  recurring?: boolean;
+  recurring_day?: number;
+  parent_receivable_id?: string;
   observacoes?: string;
   created_at: string;
   updated_at?: string;
