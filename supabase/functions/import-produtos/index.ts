@@ -194,44 +194,68 @@ serve(async (req) => {
     let erros = 0;
     const errosDetalhes: string[] = [];
 
+    console.log(`[import-produtos] Iniciando inserção de ${produtosValidos.length} produtos em lotes de ${batchSize}`);
+
     for (let i = 0; i < produtosValidos.length; i += batchSize) {
       const batch = produtosValidos.slice(i, i + batchSize);
+      const batchNum = Math.floor(i / batchSize) + 1;
+      
+      console.log(`[import-produtos] Processando lote ${batchNum} (${batch.length} produtos)`);
+      console.log(`[import-produtos] Exemplo de produto do lote:`, JSON.stringify(batch[0], null, 2));
       
       if (updateExisting) {
-        // Atualizar ou inserir (upsert)
-        const { data, error } = await supabaseClient
-          .from('produtos')
-          .upsert(batch, {
-            onConflict: 'nome',
-            ignoreDuplicates: false,
-          })
-          .select();
+        // Atualizar ou inserir (upsert) - usar nome como chave única
+        try {
+          const { data, error } = await supabaseClient
+            .from('produtos')
+            .upsert(batch, {
+              onConflict: 'nome',
+              ignoreDuplicates: false,
+            })
+            .select();
 
-        if (error) {
-          console.error(`[import-produtos] Erro no lote ${i / batchSize + 1}:`, error);
+          if (error) {
+            console.error(`[import-produtos] Erro no lote ${batchNum}:`, error);
+            console.error(`[import-produtos] Detalhes do erro:`, JSON.stringify(error, null, 2));
+            erros += batch.length;
+            errosDetalhes.push(`Lote ${batchNum}: ${error.message || JSON.stringify(error)}`);
+          } else {
+            const count = data?.length || 0;
+            console.log(`[import-produtos] Lote ${batchNum} processado: ${count} produtos`);
+            atualizados += count;
+          }
+        } catch (err: any) {
+          console.error(`[import-produtos] Exceção no lote ${batchNum}:`, err);
           erros += batch.length;
-          errosDetalhes.push(`Lote ${i / batchSize + 1}: ${error.message}`);
-        } else {
-          atualizados += data?.length || 0;
+          errosDetalhes.push(`Lote ${batchNum}: ${err.message || JSON.stringify(err)}`);
         }
       } else {
         // Apenas inserir (ignorar duplicados se skipDuplicates = true)
-        const { data, error } = await supabaseClient
-          .from('produtos')
-          .insert(batch)
-          .select();
+        try {
+          const { data, error } = await supabaseClient
+            .from('produtos')
+            .insert(batch)
+            .select();
 
-        if (error) {
-          // Se for erro de duplicata e skipDuplicates = true, ignorar
-          if (skipDuplicates && error.code === '23505') {
-            console.log(`[import-produtos] Duplicados ignorados no lote ${i / batchSize + 1}`);
+          if (error) {
+            // Se for erro de duplicata e skipDuplicates = true, ignorar
+            if (skipDuplicates && (error.code === '23505' || error.message?.includes('duplicate'))) {
+              console.log(`[import-produtos] Duplicados ignorados no lote ${batchNum}`);
+            } else {
+              console.error(`[import-produtos] Erro no lote ${batchNum}:`, error);
+              console.error(`[import-produtos] Detalhes do erro:`, JSON.stringify(error, null, 2));
+              erros += batch.length;
+              errosDetalhes.push(`Lote ${batchNum}: ${error.message || JSON.stringify(error)}`);
+            }
           } else {
-            console.error(`[import-produtos] Erro no lote ${i / batchSize + 1}:`, error);
-            erros += batch.length;
-            errosDetalhes.push(`Lote ${i / batchSize + 1}: ${error.message}`);
+            const count = data?.length || 0;
+            console.log(`[import-produtos] Lote ${batchNum} processado: ${count} produtos inseridos`);
+            inseridos += count;
           }
-        } else {
-          inseridos += data?.length || 0;
+        } catch (err: any) {
+          console.error(`[import-produtos] Exceção no lote ${batchNum}:`, err);
+          erros += batch.length;
+          errosDetalhes.push(`Lote ${batchNum}: ${err.message || JSON.stringify(err)}`);
         }
       }
     }
