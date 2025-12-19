@@ -167,7 +167,7 @@ export function useProdutos() {
   const grupos = useMemo(() => [], []);
 
   return {
-    produtos, // Já filtrado por disponivel = true
+    produtos: produtos.filter(p => p.situacao === 'ativo'), // Filtrar apenas ativos
     grupos,
     isLoading,
     createProduto,
