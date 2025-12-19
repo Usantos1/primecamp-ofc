@@ -115,29 +115,50 @@ export function ImportarProdutos() {
 
       // Mapear para formato da API
       console.log('[ImportarProdutos] Iniciando mapeamento de produtos...');
+      console.log('[ImportarProdutos] Primeiro produto da planilha (exemplo):', produtosPlanilha[0]);
+      console.log('[ImportarProdutos] Chaves do primeiro produto:', Object.keys(produtosPlanilha[0] || {}));
+      
       const produtosMapeados = produtosPlanilha.map((prod, index) => {
+        const descricao = prod.Descricao || prod.descricao || prod['Descrição'] || '';
+        const viVenda = prod['VI Venda'] || prod['Vl Venda'] || prod.vi_venda || 0;
+        
         if (index < 3) {
-          console.log(`[ImportarProdutos] Produto ${index} antes do mapeamento:`, prod);
+          console.log(`[ImportarProdutos] Produto ${index} - Descricao original:`, descricao);
+          console.log(`[ImportarProdutos] Produto ${index} - VI Venda original:`, viVenda);
         }
-        return {
-          codigo: prod.Codigo,
-          codigo_barras: prod['Código Barras']?.toString(),
-          descricao: prod.Descricao || '',
-          referencia: prod.Referencia,
-          grupo: prod.Grupo,
-          sub_grupo: prod['Sub Grupo'],
-          vi_compra: prod['VI Compra'] || 0,
-          vi_custo: prod['VI Custo'] || 0,
-          vi_venda: prod['VI Venda'] || 0,
-          quantidade: prod.Quantidade || 0,
-          margem: prod['Margem %'] || 0,
+        
+        const produtoMapeado = {
+          codigo: prod.Codigo || prod.codigo,
+          codigo_barras: (prod['Código Barras'] || prod.codigo_barras)?.toString(),
+          descricao: descricao,
+          referencia: prod.Referencia || prod.referencia,
+          grupo: prod.Grupo || prod.grupo,
+          sub_grupo: prod['Sub Grupo'] || prod.sub_grupo,
+          vi_compra: prod['VI Compra'] || prod['Vl Compra'] || prod.vi_compra || 0,
+          vi_custo: prod['VI Custo'] || prod['Vl Custo'] || prod.vi_custo || 0,
+          vi_venda: viVenda,
+          quantidade: prod.Quantidade || prod.quantidade || 0,
+          margem: prod['Margem %'] || prod.margem || 0,
           // Campos diretos se existirem
-          nome: prod.Descricao || '',
-          valor_dinheiro_pix: prod['VI Venda'] || 0,
-          valor_parcelado_6x: prod['VI Venda'] ? prod['VI Venda'] * 1.2 : 0,
+          nome: descricao,
+          valor_dinheiro_pix: viVenda,
+          valor_parcelado_6x: viVenda ? viVenda * 1.2 : 0,
         };
+        
+        if (index < 3) {
+          console.log(`[ImportarProdutos] Produto ${index} mapeado:`, produtoMapeado);
+        }
+        
+        return produtoMapeado;
       });
       console.log('[ImportarProdutos] Produtos mapeados (antes do filtro):', produtosMapeados.length);
+      
+      // Verificar quantos têm descrição vazia
+      const semDescricao = produtosMapeados.filter(prod => !prod.descricao || prod.descricao.trim() === '');
+      console.log('[ImportarProdutos] Produtos SEM descrição:', semDescricao.length);
+      if (semDescricao.length > 0 && semDescricao.length <= 5) {
+        console.log('[ImportarProdutos] Exemplos de produtos sem descrição:', semDescricao);
+      }
       
       const produtosFiltrados = produtosMapeados.filter(prod => prod.descricao && prod.descricao.trim() !== ''); // Filtrar produtos sem descrição
       console.log('[ImportarProdutos] Produtos após filtro:', produtosFiltrados.length);
