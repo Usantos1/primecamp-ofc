@@ -68,99 +68,96 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           body {
             width: 80mm;
             margin: 0;
-            padding: 5mm;
+            padding: 3mm;
             font-family: 'Courier New', monospace;
-            font-size: 13px;
+            font-size: 11px;
             color: #000;
             background: #fff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            line-height: 1.3;
           }
         }
         body {
           width: 80mm;
           margin: 0;
-          padding: 5mm;
+          padding: 3mm;
           font-family: 'Courier New', monospace;
-          font-size: 14px;
-          color: #000000 !important;
-          background: #ffffff !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          font-weight: 600;
+          font-size: 11px;
+          color: #000;
+          background: #fff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          line-height: 1.3;
         }
         .header {
           text-align: center;
-          border-bottom: 3px solid #000000 !important;
-          padding-bottom: 10px;
-          margin-bottom: 10px;
+          border-bottom: 1px solid #000;
+          padding-bottom: 5px;
+          margin-bottom: 5px;
         }
         .title {
-          font-weight: 900 !important;
-          font-size: 18px !important;
-          color: #000000 !important;
+          font-weight: bold;
+          font-size: 13px;
+          color: #000;
           text-transform: uppercase;
-          letter-spacing: 1px;
         }
         .info {
-          font-size: 13px !important;
-          margin: 5px 0;
-          color: #000000 !important;
-          font-weight: 600 !important;
+          font-size: 10px;
+          margin: 2px 0;
+          color: #000;
+          line-height: 1.4;
         }
         .item {
-          margin: 6px 0;
-          font-size: 13px !important;
-          color: #000000 !important;
-          font-weight: 600 !important;
+          margin: 3px 0;
+          font-size: 10px;
+          color: #000;
         }
         .item-name {
-          font-weight: 800 !important;
-          font-size: 14px !important;
-          color: #000000 !important;
+          font-weight: bold;
+          font-size: 11px;
+          color: #000;
+          margin-bottom: 1px;
         }
         .item-details {
           display: flex;
           justify-content: space-between;
-          font-size: 12px !important;
-          color: #000000 !important;
-          font-weight: 700 !important;
+          font-size: 9px;
+          color: #000;
         }
         .total {
-          border-top: 3px solid #000000 !important;
-          margin-top: 10px;
-          padding-top: 10px;
-          font-weight: 900 !important;
-          font-size: 16px !important;
-          color: #000000 !important;
+          border-top: 1px solid #000;
+          margin-top: 5px;
+          padding-top: 5px;
+          font-weight: bold;
+          font-size: 11px;
+          color: #000;
         }
         .payment {
-          margin: 5px 0;
-          font-size: 13px !important;
-          color: #000000 !important;
-          font-weight: 700 !important;
+          margin: 2px 0;
+          font-size: 10px;
+          color: #000;
         }
         .footer {
           text-align: center;
-          margin-top: 15px;
-          font-size: 12px !important;
-          border-top: 3px solid #000000 !important;
-          padding-top: 10px;
-          color: #000000 !important;
-          font-weight: 600 !important;
+          margin-top: 8px;
+          font-size: 9px;
+          border-top: 1px solid #000;
+          padding-top: 5px;
+          color: #000;
         }
         .qr-code {
           text-align: center;
-          margin: 10px 0;
+          margin: 8px 0;
         }
         * {
-          color: #000000 !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+          color: #000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         strong {
-          font-weight: 900 !important;
-          color: #000000 !important;
+          font-weight: bold;
+          color: #000;
         }
       </style>
     </head>
@@ -205,33 +202,33 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       </div>
       
       <div class="total">
-        <div style="display: flex; justify-content: space-between; font-weight: 800 !important;">
-          <span><strong>Subtotal:</strong></span>
-          <span><strong>${formatCurrency(data.subtotal)}</strong></span>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Subtotal:</span>
+          <span>${formatCurrency(data.subtotal)}</span>
         </div>
         ${data.desconto_total > 0 ? `
-          <div style="display: flex; justify-content: space-between; font-weight: 800 !important;">
-            <span><strong>Desconto:</strong></span>
-            <span><strong>-${formatCurrency(data.desconto_total)}</strong></span>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Desconto:</span>
+            <span>-${formatCurrency(data.desconto_total)}</span>
           </div>
         ` : ''}
-        <div style="display: flex; justify-content: space-between; font-size: 16px !important; font-weight: 900 !important; margin-top: 5px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 3px;">
           <span><strong>TOTAL:</strong></span>
           <span><strong>${formatCurrency(data.total)}</strong></span>
         </div>
       </div>
       
-      <div style="border-top: 2px solid #000000 !important; margin: 8px 0; padding-top: 8px;">
+      <div style="border-top: 1px solid #000; margin: 5px 0; padding-top: 5px;">
         ${data.pagamentos.map(pag => `
           <div class="payment">
-            <div style="display: flex; justify-content: space-between; font-weight: 800 !important;">
-              <span><strong>${pag.forma}:</strong></span>
-              <span><strong>${formatCurrency(pag.valor)}</strong></span>
+            <div style="display: flex; justify-content: space-between;">
+              <span>${pag.forma}:</span>
+              <span>${formatCurrency(pag.valor)}</span>
             </div>
             ${pag.troco ? `
-              <div style="display: flex; justify-content: space-between; font-size: 13px !important; font-weight: 800 !important; margin-top: 3px;">
-                <span><strong>Troco:</strong></span>
-                <span><strong>${formatCurrency(pag.troco)}</strong></span>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 2px;">
+                <span>Troco:</span>
+                <span>${formatCurrency(pag.troco)}</span>
               </div>
             ` : ''}
           </div>
