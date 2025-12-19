@@ -103,7 +103,7 @@ export function AppSidebar() {
   );
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(
     currentPath.startsWith('/pdv/clientes') || 
-    currentPath.startsWith('/pdv/produtos') || 
+    currentPath.startsWith('/produtos') || 
     currentPath.startsWith('/pdv/marcas-modelos')
   );
   const [isGestaoOperacionalOpen, setIsGestaoOperacionalOpen] = useState(
@@ -299,7 +299,7 @@ export function AppSidebar() {
                               </SidebarMenuItem>
                               <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
-                                  <NavLink to="/pdv/produtos">
+                                  <NavLink to="/produtos">
                                     {({ isActive }) => (
                                       <div
                                         className={`flex items-center transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
