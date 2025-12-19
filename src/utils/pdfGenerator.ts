@@ -120,14 +120,14 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         body {
           width: 80mm;
           max-width: 80mm;
-          margin: 0 auto;
-          padding: 3mm 4mm;
+          margin: 0;
+          padding: 2mm 5mm 2mm 5mm;
           font-family: Arial, Helvetica, sans-serif;
           font-size: 9px;
           color: #000000 !important;
           background: #ffffff;
           line-height: 1.3;
-          font-weight: 700;
+          font-weight: 900;
           -webkit-font-smoothing: none;
           text-rendering: optimizeLegibility;
           -webkit-print-color-adjust: exact;
@@ -142,25 +142,25 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           color: #000000 !important;
         }
         .divider {
-          border-top: 2px solid #000000 !important;
+          border-top: 3px solid #000000 !important;
           margin: 3px 0;
         }
         .divider-dashed {
-          border-top: 1px dashed #000000 !important;
+          border-top: 2px dashed #000000 !important;
           margin: 3px 0;
         }
         .line {
           display: flex;
           justify-content: space-between;
           margin: 1px 0;
-          font-weight: 700;
+          font-weight: 900 !important;
           color: #000000 !important;
         }
         .item-line {
           margin: 2px 0;
         }
         .item-name {
-          font-weight: 800 !important;
+          font-weight: 900 !important;
           margin-bottom: 1px;
           color: #000000 !important;
         }
@@ -170,7 +170,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           color: #000000 !important;
         }
         span {
-          font-weight: 700 !important;
+          font-weight: 900 !important;
           color: #000000 !important;
         }
         strong {
@@ -179,29 +179,33 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         }
         div {
           color: #000000 !important;
-          font-weight: 700;
+          font-weight: 900 !important;
         }
         p {
           color: #000000 !important;
-          font-weight: 700;
+          font-weight: 900 !important;
+        }
+        img {
+          filter: contrast(1.5) brightness(0.9);
+          -webkit-filter: contrast(1.5) brightness(0.9);
         }
       </style>
     </head>
     <body>
       ${mostrarLogo && logoUrl ? `
         <div class="center" style="margin-bottom: 3px;">
-          <img src="${logoUrl}" style="max-width: 60mm; max-height: 20mm; object-fit: contain;" alt="Logo" />
+          <img src="${logoUrl}" style="max-width: 60mm; max-height: 20mm; object-fit: contain; filter: contrast(2) brightness(0.8) saturate(1.2); -webkit-filter: contrast(2) brightness(0.8) saturate(1.2); image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;" alt="Logo" />
         </div>
       ` : ''}
       
-      <div class="center bold" style="font-size: 11px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
+      <div class="center bold" style="font-size: 11px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important; text-shadow: 0.5px 0.5px 0px #000;">
         ${empresaNome}
       </div>
-      ${empresaCnpj ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 700 !important; color: #000000 !important;">CNPJ: ${empresaCnpj}</div>` : ''}
-      ${empresaIe ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 700 !important; color: #000000 !important;">IE: ${empresaIe}</div>` : ''}
-      ${empresaEndereco ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 700 !important; color: #000000 !important;">${empresaEndereco}</div>` : ''}
+      ${empresaCnpj ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">CNPJ: ${empresaCnpj}</div>` : ''}
+      ${empresaIe ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">IE: ${empresaIe}</div>` : ''}
+      ${empresaEndereco ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 900 !important; color: #000000 !important;">${empresaEndereco}</div>` : ''}
       ${empresaTelefone || empresaWhatsapp ? `
-        <div class="center" style="font-size: 8px; margin-bottom: 3px; font-weight: 700 !important; color: #000000 !important;">
+        <div class="center" style="font-size: 8px; margin-bottom: 3px; font-weight: 900 !important; color: #000000 !important;">
           ${empresaTelefone ? `Tel:${empresaTelefone}` : ''}${empresaTelefone && empresaWhatsapp ? ' / ' : ''}${empresaWhatsapp ? `WhatsApp:${empresaWhatsapp}` : ''}
         </div>
       ` : ''}
@@ -211,60 +215,60 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       <div class="center bold" style="font-size: 10px; margin: 3px 0; font-weight: 900 !important; color: #000000 !important;">
         PEDIDO N° ${data.numero}
       </div>
-      <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">Operação:</span>
-        <span style="font-weight: 700 !important; color: #000000 !important;">VENDA</span>
+      <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">Operação:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">VENDA</span>
       </div>
-      <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}</span>
+      <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}</span>
       </div>
       ${data.vendedor ? `
-        <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">VENDEDOR:</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">${data.vendedor}</span>
+        <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+          <span style="font-weight: 900 !important; color: #000000 !important;">VENDEDOR:</span>
+          <span style="font-weight: 900 !important; color: #000000 !important;">${data.vendedor}</span>
         </div>
       ` : ''}
       
-      <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">CLIENTE:</span>
-        <span style="font-weight: 700 !important; color: #000000 !important;">${data.cliente?.nome || 'CONSUMIDOR FINAL'}</span>
+      <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">CLIENTE:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">${data.cliente?.nome || 'CONSUMIDOR FINAL'}</span>
       </div>
       ${data.cliente?.cidade ? `
-        <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">CIDADE:</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">${data.cliente.cidade}</span>
+        <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+          <span style="font-weight: 900 !important; color: #000000 !important;">CIDADE:</span>
+          <span style="font-weight: 900 !important; color: #000000 !important;">${data.cliente.cidade}</span>
         </div>
       ` : ''}
       
       <div class="divider-dashed" style="margin: 3px 0;"></div>
       
-      <div style="font-size: 7px; margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding: 1px 0;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">Cod</span>
-          <span style="font-weight: 700 !important; color: #000000 !important; flex: 1; text-align: center;">Descrição</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">Qtd</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">Vl Item</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">Vl Total</span>
+      <div style="font-size: 7px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding: 1px 0;">
+          <span style="font-weight: 900 !important; color: #000000 !important;">Cod</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: center;">Descrição</span>
+          <span style="font-weight: 900 !important; color: #000000 !important;">Qtd</span>
+          <span style="font-weight: 900 !important; color: #000000 !important;">Vl Item</span>
+          <span style="font-weight: 900 !important; color: #000000 !important;">Vl Total</span>
         </div>
       </div>
       
       ${data.itens.map((item, idx) => `
-        <div style="font-size: 7px; margin: 1px 0; font-weight: 700 !important; color: #000000 !important;">
+        <div style="font-size: 7px; margin: 1px 0; font-weight: 900 !important; color: #000000 !important;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <span style="font-weight: 700 !important; color: #000000 !important; width: 30px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
-            <span style="font-weight: 700 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 2px;">${item.nome}</span>
-            <span style="font-weight: 700 !important; color: #000000 !important; width: 20px; text-align: right;">${item.quantidade}</span>
-            <span style="font-weight: 700 !important; color: #000000 !important; width: 35px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
-            <span style="font-weight: 700 !important; color: #000000 !important; width: 40px; text-align: right;">${formatCurrency(item.valor_total)}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 30px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 2px;">${item.nome}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 20px; text-align: right;">${item.quantidade}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 35px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 40px; text-align: right;">${formatCurrency(item.valor_total)}</span>
           </div>
         </div>
       `).join('')}
       
       <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">Total Desconto:</span>
-        <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(data.desconto_total)}</span>
+      <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">Total Desconto:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.desconto_total)}</span>
       </div>
       <div class="line total-line" style="font-size: 9px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">Total:</span>
@@ -275,40 +279,40 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         const valorPago = pag.valor;
         const troco = pag.troco || 0;
         return `
-          <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 700 !important; color: #000000 !important;">
-            <span style="font-weight: 700 !important; color: #000000 !important;">Valor Pago:</span>
-            <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(valorPago)}</span>
+          <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+            <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
+            <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(valorPago)}</span>
           </div>
           ${troco > 0 ? `
-            <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-              <span style="font-weight: 700 !important; color: #000000 !important;">Troco:</span>
-              <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(troco)}</span>
+            <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+              <span style="font-weight: 900 !important; color: #000000 !important;">Troco:</span>
+              <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(troco)}</span>
             </div>
           ` : ''}
-          <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
-            <span style="font-weight: 700 !important; color: #000000 !important;">${pag.forma}:</span>
-            <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
+          <div class="line" style="font-size: 8px; font-weight: 900 !important; color: #000000 !important;">
+            <span style="font-weight: 900 !important; color: #000000 !important;">${pag.forma}:</span>
+            <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
           </div>
         `;
       }).join('')}
       
       ${termosGarantia ? `
         <div class="divider-dashed" style="margin: 3px 0;"></div>
-        <div style="font-size: 7px; line-height: 1.2; font-weight: 700 !important; color: #000000 !important; text-align: justify;">
+        <div style="font-size: 7px; line-height: 1.2; font-weight: 900 !important; color: #000000 !important; text-align: justify;">
           ${termosGarantia}
         </div>
       ` : ''}
       
       <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="center" style="font-size: 8px; margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
-        <div style="font-weight: 700 !important; color: #000000 !important;">${mensagemRodape}</div>
+      <div class="center" style="font-size: 8px; margin-top: 3px; font-weight: 900 !important; color: #000000 !important;">
+        <div style="font-weight: 900 !important; color: #000000 !important;">${mensagemRodape}</div>
         ${qrCodeImg ? `
           <div style="margin-top: 3px;">
             ${qrCodeImg}
           </div>
         ` : ''}
-        <div style="font-size: 7px; margin-top: 2px; font-weight: 700 !important; color: #000000 !important;">
+        <div style="font-size: 7px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
           Impresso em ${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}
         </div>
       </div>
