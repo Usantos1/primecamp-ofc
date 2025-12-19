@@ -85,7 +85,6 @@ export default function Produtos() {
   const [searchTerm, setSearchTerm] = useState('');
   const [situacaoFilter, setSituacaoFilter] = useState<string>('ativo');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
-  const [grupoFilter, setGrupoFilter] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
@@ -147,11 +146,6 @@ export default function Produtos() {
       result = result.filter(p => p.tipo === tipoFilter);
     }
 
-    // Filtro por grupo
-    if (grupoFilter !== 'all') {
-      result = result.filter(p => p.grupo_id === grupoFilter);
-    }
-
     // Filtro por descrição
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -164,7 +158,7 @@ export default function Produtos() {
     }
 
     return result;
-  }, [produtos, situacaoFilter, tipoFilter, grupoFilter, searchTerm]);
+  }, [produtos, situacaoFilter, tipoFilter, searchTerm]);
 
   // Calcular margem de lucro
   const calcularMargem = (custo: number, venda: number): number => {
@@ -203,7 +197,6 @@ export default function Produtos() {
     setSearchTerm('');
     setSituacaoFilter('ativo');
     setTipoFilter('all');
-    setGrupoFilter('all');
   };
 
   // Abrir form para novo produto
@@ -490,26 +483,6 @@ export default function Produtos() {
                 </SelectContent>
               </Select>
 
-              <Select value={grupoFilter} onValueChange={setGrupoFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">TODOS</SelectItem>
-                  {grupos.map(g => (
-                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value="all" disabled>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sub Grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">TODOS</SelectItem>
-                </SelectContent>
-              </Select>
 
               <div className="col-span-2">
                 <Input
