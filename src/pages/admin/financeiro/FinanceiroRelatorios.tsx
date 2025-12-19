@@ -8,6 +8,7 @@ import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, TrendingDown 
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { CashFlowChart } from '@/components/financeiro/CashFlowChart';
+import { DREComplete } from '@/components/financeiro/DREComplete';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
