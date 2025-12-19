@@ -8,7 +8,6 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'luc
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
-import type { Produto } from '@/types/assistencia';
 
 interface ProdutoPlanilha {
   Codigo?: number;
