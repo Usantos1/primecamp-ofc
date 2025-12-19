@@ -167,7 +167,17 @@ serve(async (req) => {
         qualidade: qualidade,
         valor_dinheiro_pix: valorVenda,
         valor_parcelado_6x: valorParcelado,
-        criado_por: userId || null, // Adicionar criado_por se disponível
+        criado_por: userId || null,
+        // Campos adicionais da planilha
+        codigo: prod.codigo || null,
+        codigo_barras: prod.codigo_barras || null,
+        referencia: prod.referencia || null,
+        grupo: prod.grupo || null,
+        sub_grupo: prod.sub_grupo || null,
+        vi_compra: prod.vi_compra || 0,
+        vi_custo: prod.vi_custo || 0,
+        quantidade: prod.quantidade || 0,
+        margem_percentual: prod.margem || 0,
       };
     });
 
