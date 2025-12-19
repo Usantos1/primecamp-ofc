@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { ImportarProdutos } from '@/components/ImportarProdutos';
 import { Badge } from '@/components/ui/badge';
-import { useProdutos, useMarcasModelos } from '@/hooks/useAssistencia';
+import { useProdutos } from '@/hooks/useProdutosSupabase';
+import { useMarcasModelos } from '@/hooks/useAssistencia';
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -350,7 +351,7 @@ export default function Produtos() {
       
       // Se o produto não tinha código de barras, atualizar
       if (!selectedProduto.codigo_barras) {
-        updateProduto(selectedProduto.id, {
+        await updateProduto(selectedProduto.id, {
           ...selectedProduto,
           codigo_barras: codigoBarras,
         });
@@ -415,9 +416,9 @@ export default function Produtos() {
   };
 
   // Inativar produto
-  const handleInativar = () => {
+  const handleInativar = async () => {
     if (selectedProduto) {
-      deleteProduto(selectedProduto.id);
+      await deleteProduto(selectedProduto.id);
       toast({ title: 'Produto inativado!' });
       setSelectedProduto(null);
     }
@@ -443,10 +444,10 @@ export default function Produtos() {
       };
       
       if (editingProduto) {
-        updateProduto(editingProduto.id, produtoData);
+        await updateProduto(editingProduto.id, produtoData);
         toast({ title: 'Produto atualizado!' });
       } else {
-        createProduto(produtoData);
+        await createProduto(produtoData);
         toast({ title: 'Produto cadastrado!' });
       }
       setShowForm(false);
