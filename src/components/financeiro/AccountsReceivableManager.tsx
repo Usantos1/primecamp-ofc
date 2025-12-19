@@ -341,6 +341,141 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de criação */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nova Conta a Receber</DialogTitle>
+            <DialogDescription>
+              Cadastre uma nova conta a receber
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Cliente *</Label>
+              <Input
+                value={formData.cliente_nome}
+                onChange={(e) => setFormData({ ...formData, cliente_nome: e.target.value })}
+                placeholder="Nome do cliente"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Valor Total *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.valor_total}
+                  onChange={(e) => setFormData({ ...formData, valor_total: parseFloat(e.target.value) || 0 })}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Vencimento *</Label>
+                <Input
+                  type="date"
+                  value={formData.data_vencimento}
+                  onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                <input
+                  type="checkbox"
+                  id="recurring-receivable"
+                  checked={formData.recurring}
+                  onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                />
+                <Label htmlFor="recurring-receivable" className="cursor-pointer font-medium">
+                  Conta recorrente
+                </Label>
+              </div>
+              {formData.recurring && (
+                <div className="space-y-2 pl-2">
+                  <Label>Dia do mês para recorrência *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={formData.recurring_day || ''}
+                    onChange={(e) => setFormData({ ...formData, recurring_day: parseInt(e.target.value) || undefined })}
+                    placeholder="Ex: 5 (dia 5 de cada mês)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    A conta será criada automaticamente todo mês neste dia
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea
+                value={formData.observacoes}
+                onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                placeholder="Notas adicionais..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsCreateDialogOpen(false);
+              setFormData({
+                cliente_nome: '',
+                valor_total: 0,
+                data_vencimento: new Date().toISOString().split('T')[0],
+                recurring: false,
+                recurring_day: undefined,
+                observacoes: '',
+              });
+            }}>
+              Cancelar
+            </Button>
+            <LoadingButton
+              onClick={async () => {
+                if (!formData.cliente_nome || !formData.valor_total || !formData.data_vencimento) {
+                  return;
+                }
+                const { error } = await supabase
+                  .from('accounts_receivable')
+                  .insert({
+                    cliente_nome: formData.cliente_nome,
+                    valor_total: formData.valor_total,
+                    data_vencimento: formData.data_vencimento,
+                    recurring: formData.recurring,
+                    recurring_day: formData.recurring ? formData.recurring_day : null,
+                    observacoes: formData.observacoes || null,
+                    status: 'pendente',
+                  });
+                if (error) {
+                  console.error('Erro ao criar conta a receber:', error);
+                  return;
+                }
+                queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] });
+                setIsCreateDialogOpen(false);
+                setFormData({
+                  cliente_nome: '',
+                  valor_total: 0,
+                  data_vencimento: new Date().toISOString().split('T')[0],
+                  recurring: false,
+                  recurring_day: undefined,
+                  observacoes: '',
+                });
+              }}
+            >
+              Cadastrar
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
