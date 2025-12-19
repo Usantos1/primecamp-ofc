@@ -66,7 +66,7 @@ export function useProdutos() {
       const { data, error } = await supabase
         .from('produtos')
         .select('*')
-        .or('disponivel.is.null,disponivel.eq.true') // Incluir produtos disponíveis ou sem campo disponivel
+        // Não filtrar por disponivel - mostrar todos os produtos
         .order('nome', { ascending: true });
 
       if (error) throw error;
