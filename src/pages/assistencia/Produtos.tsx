@@ -12,8 +12,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Plus, Search, Edit, Trash2, Package, X, Barcode, Warehouse, Plug, 
-  DoorOpen, Filter, XCircle, Save, AlertTriangle, Check
+  DoorOpen, Filter, XCircle, Save, AlertTriangle, Check, FileSpreadsheet
 } from 'lucide-react';
+import { ImportarProdutos } from '@/components/ImportarProdutos';
 import { Badge } from '@/components/ui/badge';
 import { useProdutos, useMarcasModelos } from '@/hooks/useAssistencia';
 import { Produto, ProdutoFormData } from '@/types/assistencia';
@@ -93,6 +94,7 @@ export default function Produtos() {
   const [showEtiquetaModal, setShowEtiquetaModal] = useState(false);
   const [quantidadeEtiquetas, setQuantidadeEtiquetas] = useState(1);
   const [showEstoqueModal, setShowEstoqueModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   
   // Campos adicionais do formulário completo
   const [formDataExtended, setFormDataExtended] = useState({
@@ -607,6 +609,10 @@ export default function Produtos() {
           <CardContent className="py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setShowImport(true)} className="gap-2" variant="outline">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Importar
+                </Button>
                 <Button onClick={handleNew} className="gap-2" variant="default">
                   <Plus className="h-4 w-4" />
                   Novo Produto
