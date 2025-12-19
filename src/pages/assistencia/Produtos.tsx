@@ -459,7 +459,7 @@ export default function Produtos() {
 
   return (
     <ModernLayout title="Pesquisa de Produtos" subtitle="Gerenciar produtos e serviços">
-      <div className="space-y-4">
+      <div className="space-y-4 relative pb-20">
         {/* Filtros */}
         <Card>
           <CardHeader>
@@ -605,11 +605,11 @@ export default function Produtos() {
           </CardContent>
         </Card>
 
-        {/* Barra de ações fixa no rodapé */}
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 shadow-lg">
+        {/* Barra de ações fixa no rodapé do conteúdo */}
+        <div className="sticky bottom-0 bg-background border-t z-50 shadow-lg -mx-4 px-4">
           <Card className="border-0 shadow-none rounded-none">
             <CardContent className="py-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 max-w-[1920px] mx-auto px-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => setShowImport(true)} className="gap-2" variant="outline">
                   <FileSpreadsheet className="h-4 w-4" />
@@ -676,9 +676,6 @@ export default function Produtos() {
             </CardContent>
           </Card>
         </div>
-        
-        {/* Espaçamento para a barra fixa */}
-        <div className="h-20"></div>
 
         {/* Form Dialog Completo */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
