@@ -994,7 +994,6 @@ export default function NovaVenda() {
           })),
         vendedor: sale.vendedor_nome || undefined,
         observacoes: sale.observacoes || undefined,
-        termos_garantia: 'A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega. A garantia não cobre danos causados por mau uso, quedas, água ou outros fatores externos.',
       };
 
       const qrCodeData = `venda:${sale.id}`;
@@ -1048,7 +1047,6 @@ export default function NovaVenda() {
           })),
         vendedor: saleToUse.vendedor_nome || undefined,
         observacoes: saleToUse.observacoes || undefined,
-        termos_garantia: 'A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega. A garantia não cobre danos causados por mau uso, quedas, água ou outros fatores externos.',
       };
 
       const qrCodeData = `venda:${saleToUse.id}`;
@@ -1168,7 +1166,6 @@ export default function NovaVenda() {
           })),
         vendedor: sale.vendedor_nome || undefined,
         observacoes: sale.observacoes || undefined,
-        termos_garantia: 'A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega. A garantia não cobre danos causados por mau uso, quedas, água ou outros fatores externos.',
       };
 
       const qrCodeData = `venda:${sale.id}`;

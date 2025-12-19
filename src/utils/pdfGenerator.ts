@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
+import { supabase } from '@/integrations/supabase/client';
+import type { CupomConfig } from '@/hooks/useCupomConfig';
 
 // ==================== GERADOR DE CUPOM NÃO FISCAL ====================
 
@@ -10,15 +12,20 @@ export interface CupomData {
   empresa?: {
     nome?: string;
     cnpj?: string;
+    ie?: string;
     endereco?: string;
     telefone?: string;
+    whatsapp?: string;
+    logo_url?: string;
   };
   cliente?: {
     nome?: string;
     cpf_cnpj?: string;
     telefone?: string;
+    cidade?: string;
   };
   itens: Array<{
+    codigo?: string;
     nome: string;
     quantidade: number;
     valor_unitario: number;
@@ -36,12 +43,41 @@ export interface CupomData {
   vendedor?: string;
   observacoes?: string;
   termos_garantia?: string;
+  mostrar_logo?: boolean;
+  mostrar_qr_code?: boolean;
+  mensagem_rodape?: string;
 }
 
 export async function generateCupomTermica(data: CupomData, qrCodeData?: string): Promise<string> {
-  // Gerar QR Code se fornecido
+  // Buscar configurações do cupom
+  let config: CupomConfig | null = null;
+  try {
+    const { data: configData } = await supabase
+      .from('cupom_config')
+      .select('*')
+      .limit(1)
+      .single();
+    config = configData as CupomConfig | null;
+  } catch (error) {
+    console.warn('Não foi possível carregar configurações do cupom, usando valores padrão');
+  }
+
+  // Usar configurações do banco ou valores padrão
+  const empresaNome = data.empresa?.nome || config?.empresa_nome || 'PRIME CAMP ASSISTÊNCIA TÉCNICA';
+  const empresaCnpj = data.empresa?.cnpj || config?.empresa_cnpj || '';
+  const empresaIe = data.empresa?.ie || config?.empresa_ie || '';
+  const empresaEndereco = data.empresa?.endereco || config?.empresa_endereco || '';
+  const empresaTelefone = data.empresa?.telefone || config?.empresa_telefone || '';
+  const empresaWhatsapp = data.empresa?.whatsapp || config?.empresa_whatsapp || '';
+  const logoUrl = data.empresa?.logo_url || config?.logo_url || '';
+  const mostrarLogo = data.mostrar_logo !== undefined ? data.mostrar_logo : (config?.mostrar_logo ?? true);
+  const mostrarQrCode = data.mostrar_qr_code !== undefined ? data.mostrar_qr_code : (config?.mostrar_qr_code ?? true);
+  const termosGarantia = data.termos_garantia || config?.termos_garantia || '';
+  const mensagemRodape = data.mensagem_rodape || config?.mensagem_rodape || 'Obrigado pela preferência! Volte sempre';
+
+  // Gerar QR Code se fornecido e configurado
   let qrCodeImg = '';
-  if (qrCodeData) {
+  if (qrCodeData && mostrarQrCode) {
     try {
       const qrCodeUrl = await QRCode.toDataURL(qrCodeData, {
         width: 60,
@@ -83,18 +119,20 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         }
         body {
           width: 80mm;
+          max-width: 80mm;
           margin: 0 auto;
-          padding: 2mm;
+          padding: 3mm 4mm;
           font-family: Arial, Helvetica, sans-serif;
-          font-size: 10px;
+          font-size: 9px;
           color: #000000 !important;
           background: #ffffff;
-          line-height: 1.2;
+          line-height: 1.3;
           font-weight: 700;
           -webkit-font-smoothing: none;
           text-rendering: optimizeLegibility;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          overflow: hidden;
         }
         .center {
           text-align: center;
@@ -150,111 +188,129 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       </style>
     </head>
     <body>
-      <div class="center bold" style="font-size: 12px; margin-bottom: 3px; font-weight: 900 !important; color: #000000 !important;">
-        ${data.empresa?.nome || 'PRIME CAMP'}
-      </div>
-      <div class="center" style="margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">
-        Assistência Técnica
-      </div>
-      ${data.empresa?.cnpj ? `<div class="center" style="margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">CNPJ: ${data.empresa.cnpj}</div>` : ''}
-      ${data.empresa?.endereco ? `<div class="center" style="margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">${data.empresa.endereco}</div>` : ''}
-      ${data.empresa?.telefone ? `<div class="center" style="margin-bottom: 3px; font-weight: 700 !important; color: #000000 !important;">Tel: ${data.empresa.telefone}</div>` : ''}
-      
-      <div class="divider"></div>
-      
-      <div class="center bold" style="margin: 3px 0; font-weight: 900 !important; color: #000000 !important;">
-        CUPOM NÃO FISCAL
-      </div>
-      <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">Venda #${data.numero}</span>
-      </div>
-      <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">Data: ${data.data} ${data.hora}</span>
-      </div>
-      
-      ${data.cliente?.nome ? `
-        <div class="line" style="margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">Cliente: ${data.cliente.nome}</span>
+      ${mostrarLogo && logoUrl ? `
+        <div class="center" style="margin-bottom: 3px;">
+          <img src="${logoUrl}" style="max-width: 60mm; max-height: 20mm; object-fit: contain;" alt="Logo" />
         </div>
-        ${data.cliente.cpf_cnpj ? `<div class="line" style="font-weight: 700 !important; color: #000000 !important;"><span style="font-weight: 700 !important; color: #000000 !important;">CPF/CNPJ: ${data.cliente.cpf_cnpj}</span></div>` : ''}
-        ${data.cliente.telefone ? `<div class="line" style="font-weight: 700 !important; color: #000000 !important;"><span style="font-weight: 700 !important; color: #000000 !important;">Tel: ${data.cliente.telefone}</span></div>` : ''}
       ` : ''}
       
-      <div class="divider-dashed" style="margin: 4px 0;"></div>
+      <div class="center bold" style="font-size: 11px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
+        ${empresaNome}
+      </div>
+      ${empresaCnpj ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 700 !important; color: #000000 !important;">CNPJ: ${empresaCnpj}</div>` : ''}
+      ${empresaIe ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 700 !important; color: #000000 !important;">IE: ${empresaIe}</div>` : ''}
+      ${empresaEndereco ? `<div class="center" style="font-size: 8px; margin-bottom: 1px; font-weight: 700 !important; color: #000000 !important;">${empresaEndereco}</div>` : ''}
+      ${empresaTelefone || empresaWhatsapp ? `
+        <div class="center" style="font-size: 8px; margin-bottom: 3px; font-weight: 700 !important; color: #000000 !important;">
+          ${empresaTelefone ? `Tel:${empresaTelefone}` : ''}${empresaTelefone && empresaWhatsapp ? ' / ' : ''}${empresaWhatsapp ? `WhatsApp:${empresaWhatsapp}` : ''}
+        </div>
+      ` : ''}
       
-      ${data.itens.map(item => `
-        <div class="item-line" style="font-weight: 700 !important; color: #000000 !important;">
-          <div class="item-name" style="font-weight: 800 !important; color: #000000 !important;">${item.nome}</div>
-          <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
-            <span style="font-weight: 700 !important; color: #000000 !important;">${item.quantidade}x ${formatCurrency(item.valor_unitario)}</span>
-            ${item.desconto > 0 ? `<span style="font-weight: 700 !important; color: #000000 !important;">Desc: -${formatCurrency(item.desconto)}</span>` : ''}
-            <span class="bold" style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(item.valor_total)}</span>
+      <div class="divider" style="margin: 3px 0;"></div>
+      
+      <div class="center bold" style="font-size: 10px; margin: 3px 0; font-weight: 900 !important; color: #000000 !important;">
+        PEDIDO N° ${data.numero}
+      </div>
+      <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">Operação:</span>
+        <span style="font-weight: 700 !important; color: #000000 !important;">VENDA</span>
+      </div>
+      <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}</span>
+      </div>
+      ${data.vendedor ? `
+        <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">VENDEDOR:</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">${data.vendedor}</span>
+        </div>
+      ` : ''}
+      
+      <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">CLIENTE:</span>
+        <span style="font-weight: 700 !important; color: #000000 !important;">${data.cliente?.nome || 'CONSUMIDOR FINAL'}</span>
+      </div>
+      ${data.cliente?.cidade ? `
+        <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">CIDADE:</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">${data.cliente.cidade}</span>
+        </div>
+      ` : ''}
+      
+      <div class="divider-dashed" style="margin: 3px 0;"></div>
+      
+      <div style="font-size: 7px; margin-bottom: 2px; font-weight: 700 !important; color: #000000 !important;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding: 1px 0;">
+          <span style="font-weight: 700 !important; color: #000000 !important;">Cod</span>
+          <span style="font-weight: 700 !important; color: #000000 !important; flex: 1; text-align: center;">Descrição</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">Qtd</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">Vl Item</span>
+          <span style="font-weight: 700 !important; color: #000000 !important;">Vl Total</span>
+        </div>
+      </div>
+      
+      ${data.itens.map((item, idx) => `
+        <div style="font-size: 7px; margin: 1px 0; font-weight: 700 !important; color: #000000 !important;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <span style="font-weight: 700 !important; color: #000000 !important; width: 30px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
+            <span style="font-weight: 700 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 2px;">${item.nome}</span>
+            <span style="font-weight: 700 !important; color: #000000 !important; width: 20px; text-align: right;">${item.quantidade}</span>
+            <span style="font-weight: 700 !important; color: #000000 !important; width: 35px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
+            <span style="font-weight: 700 !important; color: #000000 !important; width: 40px; text-align: right;">${formatCurrency(item.valor_total)}</span>
           </div>
         </div>
       `).join('')}
       
-      <div class="divider" style="margin: 4px 0;"></div>
+      <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
-        <span style="font-weight: 700 !important; color: #000000 !important;">Subtotal:</span>
-        <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(data.subtotal)}</span>
+      <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+        <span style="font-weight: 700 !important; color: #000000 !important;">Total Desconto:</span>
+        <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(data.desconto_total)}</span>
       </div>
-      ${data.desconto_total > 0 ? `
-        <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">Desconto:</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">-${formatCurrency(data.desconto_total)}</span>
-        </div>
-      ` : ''}
-      <div class="line total-line" style="margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
-        <span style="font-weight: 900 !important; color: #000000 !important;">TOTAL:</span>
+      <div class="line total-line" style="font-size: 9px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">Total:</span>
         <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
       </div>
       
-      <div class="divider" style="margin: 4px 0;"></div>
-      
-      ${data.pagamentos.map(pag => `
-        <div class="line" style="font-weight: 700 !important; color: #000000 !important;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">${pag.forma}:</span>
-          <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
-        </div>
-        ${pag.troco ? `
-          <div class="line" style="font-size: 9px; margin-top: 1px; font-weight: 700 !important; color: #000000 !important;">
-            <span style="font-weight: 700 !important; color: #000000 !important;">Troco:</span>
-            <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(pag.troco)}</span>
+      ${data.pagamentos.map(pag => {
+        const valorPago = pag.valor;
+        const troco = pag.troco || 0;
+        return `
+          <div class="line" style="font-size: 8px; margin-top: 2px; font-weight: 700 !important; color: #000000 !important;">
+            <span style="font-weight: 700 !important; color: #000000 !important;">Valor Pago:</span>
+            <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(valorPago)}</span>
           </div>
-        ` : ''}
-      `).join('')}
+          ${troco > 0 ? `
+            <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+              <span style="font-weight: 700 !important; color: #000000 !important;">Troco:</span>
+              <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(troco)}</span>
+            </div>
+          ` : ''}
+          <div class="line" style="font-size: 8px; font-weight: 700 !important; color: #000000 !important;">
+            <span style="font-weight: 700 !important; color: #000000 !important;">${pag.forma}:</span>
+            <span style="font-weight: 700 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
+          </div>
+        `;
+      }).join('')}
       
-      ${data.vendedor ? `
-        <div class="line" style="margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
-          <span style="font-weight: 700 !important; color: #000000 !important;">Vendedor: ${data.vendedor}</span>
+      ${termosGarantia ? `
+        <div class="divider-dashed" style="margin: 3px 0;"></div>
+        <div style="font-size: 7px; line-height: 1.2; font-weight: 700 !important; color: #000000 !important; text-align: justify;">
+          ${termosGarantia}
         </div>
       ` : ''}
       
-      ${data.observacoes ? `
-        <div style="margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
-          <span class="bold" style="font-weight: 900 !important; color: #000000 !important;">Obs:</span> <span style="font-weight: 700 !important; color: #000000 !important;">${data.observacoes}</span>
-        </div>
-      ` : ''}
+      <div class="divider" style="margin: 3px 0;"></div>
       
-      ${data.termos_garantia ? `
-        <div class="divider-dashed" style="margin: 4px 0;"></div>
-        <div style="font-size: 8px; line-height: 1.3; font-weight: 700 !important; color: #000000 !important;">
-          <div class="bold" style="margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">TERMOS DE GARANTIA:</div>
-          <div style="text-align: justify; font-weight: 700 !important; color: #000000 !important;">${data.termos_garantia}</div>
-        </div>
-      ` : ''}
-      
-      <div class="divider" style="margin: 5px 0;"></div>
-      
-      <div class="center" style="margin-top: 5px; font-weight: 700 !important; color: #000000 !important;">
-        <div style="font-weight: 700 !important; color: #000000 !important;">Obrigado pela preferência!</div>
-        <div style="font-weight: 700 !important; color: #000000 !important;">Volte sempre</div>
+      <div class="center" style="font-size: 8px; margin-top: 3px; font-weight: 700 !important; color: #000000 !important;">
+        <div style="font-weight: 700 !important; color: #000000 !important;">${mensagemRodape}</div>
         ${qrCodeImg ? `
-          <div style="margin-top: 5px;">
+          <div style="margin-top: 3px;">
             ${qrCodeImg}
           </div>
         ` : ''}
+        <div style="font-size: 7px; margin-top: 2px; font-weight: 700 !important; color: #000000 !important;">
+          Impresso em ${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}
+        </div>
       </div>
     </body>
     </html>
