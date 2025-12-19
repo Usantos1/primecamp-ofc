@@ -205,30 +205,43 @@ serve(async (req) => {
         }
       }
 
+      // Função auxiliar para converter string com vírgula para número
+      const parseValor = (valor: any): number => {
+        if (typeof valor === 'number') return valor;
+        if (!valor) return 0;
+        const str = String(valor).replace(/\./g, '').replace(',', '.');
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : num;
+      };
+
       // Calcular valor parcelado (6x) se não vier
-      const valorVenda = prod.vi_venda || prod.valor_dinheiro_pix || 0;
-      const valorParcelado = prod.valor_parcelado_6x || valorVenda * 1.2; // 20% de acréscimo padrão
+      // Garantir que valores sejam números (converter strings com vírgula)
+      const valorVenda = parseValor(prod.vi_venda || prod.valor_dinheiro_pix || 0);
+      const valorParcelado = parseValor(prod.valor_parcelado_6x) || valorVenda * 1.2; // 20% de acréscimo padrão
 
       const nomeProduto = (prod.descricao || prod.nome || '').trim();
       
+      // Se não tiver nome, usar uma descrição padrão
+      const nomeFinal = nomeProduto || 'Produto sem descrição';
+      
       return {
-        nome: nomeProduto.toLowerCase(), // Converter para lowercase para evitar duplicatas
+        nome: nomeFinal.toLowerCase(), // Converter para lowercase para evitar duplicatas
         marca: marca || 'Geral',
         modelo: modelo || 'Geral',
         qualidade: qualidade,
         valor_dinheiro_pix: valorVenda,
         valor_parcelado_6x: valorParcelado,
         criado_por: userId || null,
-        // Campos adicionais da planilha
-        codigo: prod.codigo || null,
+        // Campos adicionais da planilha - garantir tipos corretos
+        codigo: prod.codigo ? Number(prod.codigo) : null,
         codigo_barras: prod.codigo_barras || null,
         referencia: prod.referencia || null,
         grupo: prod.grupo || null,
         sub_grupo: prod.sub_grupo || null,
-        vi_compra: prod.vi_compra || 0,
-        vi_custo: prod.vi_custo || 0,
-        quantidade: prod.quantidade || 0,
-        margem_percentual: prod.margem || 0,
+        vi_compra: parseValor(prod.vi_compra || 0),
+        vi_custo: parseValor(prod.vi_custo || 0),
+        quantidade: Math.round(parseValor(prod.quantidade || 0)),
+        margem_percentual: parseValor(prod.margem || 0),
       };
     });
 
