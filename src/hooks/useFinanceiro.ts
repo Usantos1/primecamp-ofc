@@ -26,14 +26,24 @@ export function useFinancialCategories() {
         const { data, error } = await (supabase as any)
           .from('financial_categories')
           .select('*')
-          .eq('is_active', true)
           .order('name');
 
         if (error) {
-          console.warn('Tabela financial_categories não existe ainda:', error.message);
-          return [];
+          console.warn('Erro ao buscar categorias financeiras:', error);
+          // Se a tabela não existe, retornar array vazio
+          if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+            console.warn('Tabela financial_categories não existe ainda. Aplique as migrations do banco de dados.');
+            return [];
+          }
+          throw error;
         }
-        return data as FinancialCategory[];
+        
+        // Filtrar apenas categorias ativas se o campo existir
+        const activeCategories = (data || []).filter((cat: FinancialCategory) => 
+          cat.is_active !== false
+        );
+        
+        return activeCategories as FinancialCategory[];
       } catch (err) {
         console.warn('Erro ao buscar categorias financeiras:', err);
         return [];

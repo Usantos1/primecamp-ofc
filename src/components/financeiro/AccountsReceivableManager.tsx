@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Check, Search, Eye } from 'lucide-react';
+import { Check, Search, Eye, Plus } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -46,6 +48,15 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
   const [payingAccountId, setPayingAccountId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>('pix');
   const [viewingAccount, setViewingAccount] = useState<AccountReceivable | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    cliente_nome: '',
+    valor_total: 0,
+    data_vencimento: new Date().toISOString().split('T')[0],
+    recurring: false,
+    recurring_day: undefined as number | undefined,
+    observacoes: '',
+  });
 
   const queryClient = useQueryClient();
 

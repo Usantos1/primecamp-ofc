@@ -350,21 +350,21 @@ export function BillsManager({ month }: BillsManagerProps) {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 p-3 border rounded-lg">
                 <input
                   type="checkbox"
                   id="recurring"
                   checked={formData.recurring}
                   onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-gray-300 cursor-pointer"
                 />
-                <Label htmlFor="recurring" className="cursor-pointer">
+                <Label htmlFor="recurring" className="cursor-pointer font-medium">
                   Conta recorrente
                 </Label>
               </div>
               {formData.recurring && (
-                <div className="space-y-2 pl-6">
-                  <Label>Dia do mês para recorrência</Label>
+                <div className="space-y-2 pl-2">
+                  <Label>Dia do mês para recorrência *</Label>
                   <Input
                     type="number"
                     min="1"
@@ -373,6 +373,9 @@ export function BillsManager({ month }: BillsManagerProps) {
                     onChange={(e) => setFormData({ ...formData, recurring_day: parseInt(e.target.value) || undefined })}
                     placeholder="Ex: 5 (dia 5 de cada mês)"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    A conta será criada automaticamente todo mês neste dia
+                  </p>
                 </div>
               )}
             </div>
