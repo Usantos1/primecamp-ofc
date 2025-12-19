@@ -958,8 +958,6 @@ export default function NovaVenda() {
         console.error('Dados insuficientes para imprimir cupom:', { saleToUse, items, payments });
         return;
       }
-
-    try {
       const cupomData = {
         numero: saleToUse.numero,
         data: new Date(saleToUse.created_at).toLocaleDateString('pt-BR'),
