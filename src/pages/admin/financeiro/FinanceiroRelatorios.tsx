@@ -9,6 +9,7 @@ import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { CashFlowChart } from '@/components/financeiro/CashFlowChart';
 import { DREComplete } from '@/components/financeiro/DREComplete';
+import { FinancialCharts } from '@/components/financeiro/FinancialCharts';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -89,6 +90,7 @@ export function FinanceiroRelatorios() {
                 <SelectItem value="contas">Contas a Pagar/Receber</SelectItem>
                 <SelectItem value="vendas">Vendas por Período</SelectItem>
                 <SelectItem value="balanco">Balanço Patrimonial</SelectItem>
+                <SelectItem value="graficos">Gráficos e Visualizações</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -414,6 +416,11 @@ export function FinanceiroRelatorios() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Gráficos e Visualizações */}
+      {selectedReport === 'graficos' && (
+        <FinancialCharts month={month} />
       )}
     </div>
   );
