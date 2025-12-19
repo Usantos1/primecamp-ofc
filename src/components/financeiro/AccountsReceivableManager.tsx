@@ -25,12 +25,12 @@ interface AccountReceivable {
   cliente_nome?: string;
   sale_id?: string;
   ordem_servico_id?: string;
-  valor: number;
+  valor_total: number; // Campo correto da tabela
   valor_pago?: number;
-  data_vencimento: string;
+  valor_restante?: number; // Campo calculado
+  data_vencimento?: string;
   data_pagamento?: string;
-  status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
-  metodo_pagamento?: string;
+  status: 'pendente' | 'parcial' | 'pago' | 'atrasado' | 'cancelado';
   observacoes?: string;
   created_at: string;
   updated_at?: string;
@@ -75,13 +75,16 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
 
   const payAccount = useMutation({
     mutationFn: async ({ id, paymentMethod }: { id: string; paymentMethod: string }) => {
+      const account = accounts.find(a => a.id === id);
+      if (!account) throw new Error('Conta não encontrada');
+
       const { data: result, error } = await supabase
         .from('accounts_receivable')
         .update({
           status: 'pago',
           data_pagamento: new Date().toISOString().split('T')[0],
-          metodo_pagamento: paymentMethod,
-          valor_pago: accounts.find(a => a.id === id)?.valor || 0,
+          valor_pago: account.valor_total,
+          paid_at: new Date().toISOString(),
         })
         .eq('id', id)
         .select()
@@ -102,16 +105,17 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
     account.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusColor = (status: string, dueDate: string) => {
+  const getStatusColor = (status: string, dueDate?: string) => {
     if (status === 'pago') return 'bg-success/10 text-success border-success/30';
     if (status === 'cancelado') return 'bg-muted text-muted-foreground border-muted';
-    if (new Date(dueDate) < new Date()) return 'bg-destructive/10 text-destructive border-destructive/30';
+    if (status === 'parcial') return 'bg-blue-50 text-blue-600 border-blue-300';
+    if (dueDate && new Date(dueDate) < new Date()) return 'bg-destructive/10 text-destructive border-destructive/30';
     return 'bg-warning/10 text-warning border-warning/30';
   };
 
   const totalPendente = filteredAccounts
-    .filter(a => a.status === 'pendente')
-    .reduce((sum, a) => sum + (a.valor - (a.valor_pago || 0)), 0);
+    .filter(a => a.status === 'pendente' || a.status === 'parcial')
+    .reduce((sum, a) => sum + (a.valor_restante || a.valor_total - (a.valor_pago || 0)), 0);
 
   const totalPago = filteredAccounts
     .filter(a => a.status === 'pago')
@@ -191,11 +195,11 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                 {filteredAccounts.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell className="font-medium">{account.cliente_nome || '-'}</TableCell>
-                    <TableCell className="font-semibold">{currencyFormatters.brl(account.valor)}</TableCell>
-                    <TableCell>{dateFormatters.short(account.data_vencimento)}</TableCell>
+                    <TableCell className="font-semibold">{currencyFormatters.brl(account.valor_total)}</TableCell>
+                    <TableCell>{account.data_vencimento ? dateFormatters.short(account.data_vencimento) : '-'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(account.status, account.data_vencimento)}>
-                        {account.status}
+                        {account.status === 'parcial' ? 'Parcial' : account.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -208,7 +212,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {account.status === 'pendente' && (
+                        {(account.status === 'pendente' || account.status === 'parcial') && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -247,14 +251,12 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="dinheiro">Dinheiro</SelectItem>
                 <SelectItem value="pix">PIX</SelectItem>
+                <SelectItem value="dinheiro">Dinheiro</SelectItem>
                 <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
                 <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
                 <SelectItem value="boleto">Boleto</SelectItem>
                 <SelectItem value="transferencia">Transferência</SelectItem>
-                <SelectItem value="cheque">Cheque</SelectItem>
-                <SelectItem value="outro">Outro</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -289,17 +291,17 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                   <p className="font-medium">{viewingAccount.cliente_nome || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Valor</p>
-                  <p className="font-bold text-lg">{currencyFormatters.brl(viewingAccount.valor)}</p>
+                  <p className="text-sm text-muted-foreground">Valor Total</p>
+                  <p className="font-bold text-lg">{currencyFormatters.brl(viewingAccount.valor_total)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Vencimento</p>
-                  <p className="font-medium">{dateFormatters.short(viewingAccount.data_vencimento)}</p>
+                  <p className="font-medium">{viewingAccount.data_vencimento ? dateFormatters.short(viewingAccount.data_vencimento) : '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   <Badge className={getStatusColor(viewingAccount.status, viewingAccount.data_vencimento)}>
-                    {viewingAccount.status}
+                    {viewingAccount.status === 'parcial' ? 'Parcial' : viewingAccount.status}
                   </Badge>
                 </div>
                 {viewingAccount.data_pagamento && (
@@ -307,10 +309,6 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                     <div>
                       <p className="text-sm text-muted-foreground">Data de Pagamento</p>
                       <p className="font-medium">{dateFormatters.short(viewingAccount.data_pagamento)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Método</p>
-                      <p className="font-medium">{viewingAccount.metodo_pagamento || '-'}</p>
                     </div>
                   </>
                 )}
