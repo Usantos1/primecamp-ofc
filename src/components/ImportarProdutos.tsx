@@ -140,11 +140,28 @@ export function ImportarProdutos() {
           console.log(`[ImportarProdutos] Produto ${index} - VI Venda original:`, prod['VI Venda'], '->', viVenda);
         }
         
+        // Extrair codigo - verificar se existe (pode ser 0, então usar !== undefined)
+        const codigoRaw = prod.Codigo !== undefined ? prod.Codigo : (prod.codigo !== undefined ? prod.codigo : null);
+        const codigo = codigoRaw !== null && codigoRaw !== undefined ? Number(codigoRaw) : null;
+        
+        // Extrair referencia - verificar se existe
+        const referenciaRaw = prod.Referencia !== undefined ? prod.Referencia : (prod.referencia !== undefined ? prod.referencia : null);
+        const referencia = referenciaRaw !== null && referenciaRaw !== undefined && referenciaRaw !== '' ? String(referenciaRaw) : null;
+        
+        // Extrair codigo_barras
+        const codigoBarrasRaw = prod['Código Barras'] !== undefined ? prod['Código Barras'] : (prod.codigo_barras !== undefined ? prod.codigo_barras : null);
+        const codigo_barras = codigoBarrasRaw !== null && codigoBarrasRaw !== undefined && codigoBarrasRaw !== '' ? String(codigoBarrasRaw) : null;
+        
+        if (index < 3) {
+          console.log(`[ImportarProdutos] Produto ${index} - Codigo raw:`, codigoRaw, '-> codigo:', codigo);
+          console.log(`[ImportarProdutos] Produto ${index} - Referencia raw:`, referenciaRaw, '-> referencia:', referencia);
+        }
+        
         const produtoMapeado = {
-          codigo: prod.Codigo || prod.codigo ? Number(prod.Codigo || prod.codigo) : null,
-          codigo_barras: (prod['Código Barras'] || prod.codigo_barras)?.toString() || null,
+          codigo: codigo,
+          codigo_barras: codigo_barras,
           descricao: descricao,
-          referencia: prod.Referencia || prod.referencia || null,
+          referencia: referencia,
           grupo: prod.Grupo || prod.grupo || null,
           sub_grupo: prod['Sub Grupo'] || prod.sub_grupo || null,
           vi_compra: viCompra,
