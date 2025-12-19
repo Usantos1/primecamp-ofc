@@ -59,7 +59,7 @@ function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
   };
 }
 
-export function useProdutos() {
+export function useProdutosSupabase() {
   const queryClient = useQueryClient();
 
   // Buscar produtos do Supabase
@@ -203,4 +203,7 @@ export function useProdutos() {
     deleteProduto,
   };
 }
+
+// Alias para compatibilidade
+export const useProdutos = useProdutosSupabase;
 
