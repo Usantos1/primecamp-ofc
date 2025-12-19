@@ -876,6 +876,28 @@ export default function NovaVenda() {
     }
   };
 
+  // Limpar PDV para nova venda
+  const limparPDV = () => {
+    setCart([]);
+    setSelectedCliente(null);
+    setClienteSearch('');
+    setProductSearch('');
+    setObservacoes('');
+    setDescontoTotal(0);
+    setShowProductSearch(false);
+    setShowClienteSearch(false);
+    setShowCheckout(false);
+    setCheckoutPayment({
+      forma_pagamento: 'dinheiro',
+      valor: undefined,
+      troco: 0,
+    });
+    // Focar no campo de busca
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  };
+
   // Confirmar emissão de cupom
   const handleConfirmEmitCupom = async () => {
     setShowEmitirCupomDialog(false);
@@ -888,12 +910,25 @@ export default function NovaVenda() {
         setTimeout(async () => {
           if (sale && items && payments) {
             await handlePrintCupomDirect(pendingSaleForCupom);
+            // Aguardar impressão e limpar PDV
+            setTimeout(() => {
+              limparPDV();
+              toast({ title: 'PDV limpo. Pronto para nova venda!' });
+            }, 1500);
+          } else {
+            // Se não tiver dados, apenas limpar
+            limparPDV();
           }
         }, 500);
       } catch (error) {
         console.error('Erro ao emitir cupom:', error);
         toast({ title: 'Erro ao emitir cupom', variant: 'destructive' });
+        // Limpar mesmo em caso de erro
+        limparPDV();
       }
+    } else {
+      // Se não quiser emitir cupom, apenas limpar
+      limparPDV();
     }
     
     setPendingSaleForCupom(null);

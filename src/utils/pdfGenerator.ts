@@ -82,73 +82,85 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           margin: 0;
           padding: 5mm;
           font-family: 'Courier New', monospace;
-          font-size: 13px;
-          color: #000;
-          background: #fff;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
+          font-size: 14px;
+          color: #000000 !important;
+          background: #ffffff !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          font-weight: 600;
         }
         .header {
           text-align: center;
-          border-bottom: 2px solid #000;
-          padding-bottom: 8px;
-          margin-bottom: 8px;
+          border-bottom: 3px solid #000000 !important;
+          padding-bottom: 10px;
+          margin-bottom: 10px;
         }
         .title {
-          font-weight: bold;
-          font-size: 16px;
-          color: #000;
+          font-weight: 900 !important;
+          font-size: 18px !important;
+          color: #000000 !important;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
         .info {
-          font-size: 12px;
-          margin: 4px 0;
-          color: #000;
+          font-size: 13px !important;
+          margin: 5px 0;
+          color: #000000 !important;
+          font-weight: 600 !important;
         }
         .item {
-          margin: 5px 0;
-          font-size: 12px;
-          color: #000;
+          margin: 6px 0;
+          font-size: 13px !important;
+          color: #000000 !important;
+          font-weight: 600 !important;
         }
         .item-name {
-          font-weight: bold;
-          font-size: 13px;
-          color: #000;
+          font-weight: 800 !important;
+          font-size: 14px !important;
+          color: #000000 !important;
         }
         .item-details {
           display: flex;
           justify-content: space-between;
-          font-size: 11px;
-          color: #000;
+          font-size: 12px !important;
+          color: #000000 !important;
+          font-weight: 700 !important;
         }
         .total {
-          border-top: 2px solid #000;
-          margin-top: 8px;
-          padding-top: 8px;
-          font-weight: bold;
-          font-size: 14px;
-          color: #000;
+          border-top: 3px solid #000000 !important;
+          margin-top: 10px;
+          padding-top: 10px;
+          font-weight: 900 !important;
+          font-size: 16px !important;
+          color: #000000 !important;
         }
         .payment {
-          margin: 4px 0;
-          font-size: 12px;
-          color: #000;
+          margin: 5px 0;
+          font-size: 13px !important;
+          color: #000000 !important;
+          font-weight: 700 !important;
         }
         .footer {
           text-align: center;
-          margin-top: 12px;
-          font-size: 11px;
-          border-top: 2px solid #000;
-          padding-top: 8px;
-          color: #000;
+          margin-top: 15px;
+          font-size: 12px !important;
+          border-top: 3px solid #000000 !important;
+          padding-top: 10px;
+          color: #000000 !important;
+          font-weight: 600 !important;
         }
         .qr-code {
           text-align: center;
           margin: 10px 0;
         }
         * {
-          color: #000 !important;
+          color: #000000 !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+        }
+        strong {
+          font-weight: 900 !important;
+          color: #000000 !important;
         }
       </style>
     </head>
@@ -193,33 +205,33 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       </div>
       
       <div class="total">
-        <div style="display: flex; justify-content: space-between;">
-          <span>Subtotal:</span>
-          <span>${formatCurrency(data.subtotal)}</span>
+        <div style="display: flex; justify-content: space-between; font-weight: 800 !important;">
+          <span><strong>Subtotal:</strong></span>
+          <span><strong>${formatCurrency(data.subtotal)}</strong></span>
         </div>
         ${data.desconto_total > 0 ? `
-          <div style="display: flex; justify-content: space-between;">
-            <span>Desconto:</span>
-            <span>-${formatCurrency(data.desconto_total)}</span>
+          <div style="display: flex; justify-content: space-between; font-weight: 800 !important;">
+            <span><strong>Desconto:</strong></span>
+            <span><strong>-${formatCurrency(data.desconto_total)}</strong></span>
           </div>
         ` : ''}
-        <div style="display: flex; justify-content: space-between; font-size: 11px;">
-          <span>TOTAL:</span>
-          <span>${formatCurrency(data.total)}</span>
+        <div style="display: flex; justify-content: space-between; font-size: 16px !important; font-weight: 900 !important; margin-top: 5px;">
+          <span><strong>TOTAL:</strong></span>
+          <span><strong>${formatCurrency(data.total)}</strong></span>
         </div>
       </div>
       
-      <div style="border-top: 1px dashed #000; margin: 5px 0; padding-top: 5px;">
+      <div style="border-top: 2px solid #000000 !important; margin: 8px 0; padding-top: 8px;">
         ${data.pagamentos.map(pag => `
           <div class="payment">
-            <div style="display: flex; justify-content: space-between;">
-              <span>${pag.forma}:</span>
-              <span>${formatCurrency(pag.valor)}</span>
+            <div style="display: flex; justify-content: space-between; font-weight: 800 !important;">
+              <span><strong>${pag.forma}:</strong></span>
+              <span><strong>${formatCurrency(pag.valor)}</strong></span>
             </div>
             ${pag.troco ? `
-              <div style="display: flex; justify-content: space-between; font-size: 8px;">
-                <span>Troco:</span>
-                <span>${formatCurrency(pag.troco)}</span>
+              <div style="display: flex; justify-content: space-between; font-size: 13px !important; font-weight: 800 !important; margin-top: 3px;">
+                <span><strong>Troco:</strong></span>
+                <span><strong>${formatCurrency(pag.troco)}</strong></span>
               </div>
             ` : ''}
           </div>
