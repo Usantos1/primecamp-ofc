@@ -108,51 +108,106 @@ export function ImportarProdutos() {
       const produtosMapeados = produtosPlanilha.map((prod) => ({
         codigo: prod.Codigo,
         codigo_barras: prod['Código Barras']?.toString(),
-        descricao: prod.Descricao,
+        descricao: prod.Descricao || '',
         referencia: prod.Referencia,
         grupo: prod.Grupo,
         sub_grupo: prod['Sub Grupo'],
-        vi_compra: prod['VI Compra'],
-        vi_custo: prod['VI Custo'],
-        vi_venda: prod['VI Venda'],
-        quantidade: prod.Quantidade,
-        margem: prod['Margem %'],
+        vi_compra: prod['VI Compra'] || 0,
+        vi_custo: prod['VI Custo'] || 0,
+        vi_venda: prod['VI Venda'] || 0,
+        quantidade: prod.Quantidade || 0,
+        margem: prod['Margem %'] || 0,
         // Campos diretos se existirem
-        nome: prod.Descricao,
-        valor_dinheiro_pix: prod['VI Venda'],
+        nome: prod.Descricao || '',
+        valor_dinheiro_pix: prod['VI Venda'] || 0,
         valor_parcelado_6x: prod['VI Venda'] ? prod['VI Venda'] * 1.2 : 0,
-      }));
+      })).filter(prod => prod.descricao && prod.descricao.trim() !== ''); // Filtrar produtos sem descrição
 
-      // Chamar Edge Function
+      if (produtosMapeados.length === 0) {
+        toast({
+          title: 'Nenhum produto válido',
+          description: 'A planilha não contém produtos com descrição válida',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log('[ImportarProdutos] Produtos válidos após filtro:', produtosMapeados.length);
+
+      // Chamar Edge Function - processar em lotes de 500 para evitar payload muito grande
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Usuário não autenticado');
       }
 
-      const { data, error } = await supabase.functions.invoke('import-produtos', {
-        body: {
-          produtos: produtosMapeados,
-          opcoes: {
-            skipDuplicates,
-            updateExisting,
-          },
-        },
+      const batchSize = 500;
+      let totalInseridos = 0;
+      let totalAtualizados = 0;
+      let totalErros = 0;
+      let totalInvalidos = 0;
+      const errosDetalhes: string[] = [];
+
+      for (let i = 0; i < produtosMapeados.length; i += batchSize) {
+        const batch = produtosMapeados.slice(i, i + batchSize);
+        const batchNum = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(produtosMapeados.length / batchSize);
+
+        console.log(`[ImportarProdutos] Processando lote ${batchNum}/${totalBatches} (${batch.length} produtos)`);
+
+        try {
+          const { data, error } = await supabase.functions.invoke('import-produtos', {
+            body: {
+              produtos: batch,
+              opcoes: {
+                skipDuplicates,
+                updateExisting,
+              },
+            },
+          });
+
+          if (error) {
+            console.error(`[ImportarProdutos] Erro no lote ${batchNum}:`, error);
+            errosDetalhes.push(`Lote ${batchNum}: ${error.message || 'Erro desconhecido'}`);
+            totalErros += batch.length;
+            continue;
+          }
+
+          if (data && data.success) {
+            totalInseridos += data.resultado?.inseridos || 0;
+            totalAtualizados += data.resultado?.atualizados || 0;
+            totalErros += data.resultado?.erros || 0;
+            totalInvalidos += data.resultado?.invalidos || 0;
+            
+            if (data.resultado?.erros_detalhes) {
+              errosDetalhes.push(...data.resultado.erros_detalhes.map((e: string) => `Lote ${batchNum}: ${e}`));
+            }
+          } else {
+            throw new Error(data?.error || 'Erro na importação');
+          }
+        } catch (error: any) {
+          console.error(`[ImportarProdutos] Erro no lote ${batchNum}:`, error);
+          errosDetalhes.push(`Lote ${batchNum}: ${error.message || 'Erro desconhecido'}`);
+          totalErros += batch.length;
+        }
+      }
+
+      // Resultado final
+      setResultado({
+        total: produtosPlanilha.length,
+        validos: produtosMapeados.length,
+        invalidos: totalInvalidos + (produtosPlanilha.length - produtosMapeados.length),
+        inseridos: totalInseridos,
+        atualizados: totalAtualizados,
+        erros: totalErros,
+        erros_detalhes: errosDetalhes.length > 0 ? errosDetalhes : undefined,
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.success) {
-        setResultado(data.resultado);
-        toast({
-          title: 'Importação concluída!',
-          description: data.mensagem,
-          variant: 'default',
-        });
-      } else {
-        throw new Error(data.error || 'Erro na importação');
-      }
+      toast({
+        title: 'Importação concluída!',
+        description: `${totalInseridos + totalAtualizados} produtos processados com sucesso`,
+        variant: 'default',
+      });
 
     } catch (error: any) {
       console.error('[ImportarProdutos] Erro:', error);

@@ -86,12 +86,39 @@ serve(async (req) => {
     }
 
     // Parse do body
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (error: any) {
+      console.error('[import-produtos] Erro ao parsear JSON:', error);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Erro ao processar requisição. Body inválido.' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const { produtos, opcoes } = body;
 
     if (!produtos || !Array.isArray(produtos) || produtos.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'Lista de produtos vazia ou inválida' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Limitar tamanho do lote para evitar timeout
+    if (produtos.length > 1000) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Lote muito grande (${produtos.length} produtos). Processe em lotes de até 1000 produtos.` 
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
