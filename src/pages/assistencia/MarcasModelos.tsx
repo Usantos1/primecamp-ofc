@@ -22,34 +22,35 @@ export default function MarcasModelos() {
   
   // Popular marcas e modelos padrão se não existirem
   useEffect(() => {
-    if (marcas.length === 0) {
-      // Criar todas as marcas padrão
+    // Verificar se já existem marcas e modelos
+    const marcasStored = JSON.parse(localStorage.getItem('assistencia_marcas') || '[]');
+    const modelosStored = JSON.parse(localStorage.getItem('assistencia_modelos') || '[]');
+    
+    // Popular marcas se não existirem
+    if (marcasStored.length === 0) {
       MARCAS_MODELOS_PADRAO.forEach(mp => {
-        const marcaExistente = marcas.find(m => m.nome === mp.marca);
-        if (!marcaExistente) {
-          createMarca({ nome: mp.marca });
-        }
+        createMarca({ nome: mp.marca });
       });
     }
     
-    // Aguardar um pouco para garantir que as marcas foram criadas
-    if (marcas.length > 0 && modelos.length === 0) {
+    // Popular modelos se não existirem (aguardar um pouco para garantir que as marcas foram criadas)
+    if (marcasStored.length > 0 && modelosStored.length === 0) {
       setTimeout(() => {
         const marcasAtualizadas = JSON.parse(localStorage.getItem('assistencia_marcas') || '[]');
         MARCAS_MODELOS_PADRAO.forEach(mp => {
           const marca = marcasAtualizadas.find((m: any) => m.nome === mp.marca);
           if (marca) {
             mp.modelos.forEach(nomeModelo => {
-              const modeloExistente = modelos.find(m => m.nome === nomeModelo && m.marca_id === marca.id);
+              const modeloExistente = modelosStored.find((m: any) => m.nome === nomeModelo && m.marca_id === marca.id);
               if (!modeloExistente) {
                 createModelo({ marca_id: marca.id, nome: nomeModelo });
               }
             });
           }
         });
-      }, 500);
+      }, 1000);
     }
-  }, [marcas.length, modelos.length]);
+  }, []); // Executar apenas uma vez ao montar o componente
   
   const [activeTab, setActiveTab] = useState('marcas');
   const [searchTerm, setSearchTerm] = useState('');
