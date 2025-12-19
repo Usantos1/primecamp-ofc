@@ -487,7 +487,9 @@ export default function NovaVenda() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // F2 - Buscar produto
-      if (e.key === 'F2' && !e.ctrlKey && !e.metaKey) {
+      if (e.key === 'F2' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
         e.preventDefault();
         searchInputRef.current?.focus();
       }
