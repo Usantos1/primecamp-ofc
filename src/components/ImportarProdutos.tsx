@@ -114,25 +114,37 @@ export function ImportarProdutos() {
       console.log('[ImportarProdutos] Produtos da planilha:', produtosPlanilha.length);
 
       // Mapear para formato da API
-      const produtosMapeados = produtosPlanilha.map((prod) => ({
-        codigo: prod.Codigo,
-        codigo_barras: prod['Código Barras']?.toString(),
-        descricao: prod.Descricao || '',
-        referencia: prod.Referencia,
-        grupo: prod.Grupo,
-        sub_grupo: prod['Sub Grupo'],
-        vi_compra: prod['VI Compra'] || 0,
-        vi_custo: prod['VI Custo'] || 0,
-        vi_venda: prod['VI Venda'] || 0,
-        quantidade: prod.Quantidade || 0,
-        margem: prod['Margem %'] || 0,
-        // Campos diretos se existirem
-        nome: prod.Descricao || '',
-        valor_dinheiro_pix: prod['VI Venda'] || 0,
-        valor_parcelado_6x: prod['VI Venda'] ? prod['VI Venda'] * 1.2 : 0,
-      })).filter(prod => prod.descricao && prod.descricao.trim() !== ''); // Filtrar produtos sem descrição
+      console.log('[ImportarProdutos] Iniciando mapeamento de produtos...');
+      const produtosMapeados = produtosPlanilha.map((prod, index) => {
+        if (index < 3) {
+          console.log(`[ImportarProdutos] Produto ${index} antes do mapeamento:`, prod);
+        }
+        return {
+          codigo: prod.Codigo,
+          codigo_barras: prod['Código Barras']?.toString(),
+          descricao: prod.Descricao || '',
+          referencia: prod.Referencia,
+          grupo: prod.Grupo,
+          sub_grupo: prod['Sub Grupo'],
+          vi_compra: prod['VI Compra'] || 0,
+          vi_custo: prod['VI Custo'] || 0,
+          vi_venda: prod['VI Venda'] || 0,
+          quantidade: prod.Quantidade || 0,
+          margem: prod['Margem %'] || 0,
+          // Campos diretos se existirem
+          nome: prod.Descricao || '',
+          valor_dinheiro_pix: prod['VI Venda'] || 0,
+          valor_parcelado_6x: prod['VI Venda'] ? prod['VI Venda'] * 1.2 : 0,
+        };
+      });
+      console.log('[ImportarProdutos] Produtos mapeados (antes do filtro):', produtosMapeados.length);
+      
+      const produtosFiltrados = produtosMapeados.filter(prod => prod.descricao && prod.descricao.trim() !== ''); // Filtrar produtos sem descrição
+      console.log('[ImportarProdutos] Produtos após filtro:', produtosFiltrados.length);
+      
+      const produtosMapeadosFinal = produtosFiltrados;
 
-      if (produtosMapeados.length === 0) {
+      if (produtosMapeadosFinal.length === 0) {
         toast({
           title: 'Nenhum produto válido',
           description: 'A planilha não contém produtos com descrição válida',
@@ -142,10 +154,13 @@ export function ImportarProdutos() {
         return;
       }
 
-      console.log('[ImportarProdutos] Produtos válidos após filtro:', produtosMapeados.length);
+      console.log('[ImportarProdutos] Produtos válidos após filtro:', produtosMapeadosFinal.length);
+      console.log('[ImportarProdutos] Exemplo de produto mapeado:', produtosMapeadosFinal[0]);
 
       // Chamar Edge Function - processar em lotes de 500 para evitar payload muito grande
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[ImportarProdutos] Obtendo sessão do Supabase...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[ImportarProdutos] Sessão obtida:', !!session, 'Erro:', sessionError);
       if (!session) {
         throw new Error('Usuário não autenticado');
       }
@@ -163,8 +178,9 @@ export function ImportarProdutos() {
       console.log(`[ImportarProdutos] Total de lotes a processar: ${totalBatches}`);
       setProgresso({ atual: 0, total: produtosMapeados.length, lote: 0, totalLotes: totalBatches });
 
-      for (let i = 0; i < produtosMapeados.length; i += batchSize) {
-        const batch = produtosMapeados.slice(i, i + batchSize);
+      console.log('[ImportarProdutos] Iniciando loop de lotes...');
+      for (let i = 0; i < produtosMapeadosFinal.length; i += batchSize) {
+        const batch = produtosMapeadosFinal.slice(i, i + batchSize);
         const batchNum = Math.floor(i / batchSize) + 1;
 
         console.log(`[ImportarProdutos] Processando lote ${batchNum}/${totalBatches} (${batch.length} produtos)`);
