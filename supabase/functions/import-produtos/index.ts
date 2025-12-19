@@ -90,11 +90,16 @@ serve(async (req) => {
     }
 
     // Parse do body
+    console.log('[import-produtos] Iniciando parse do body...');
     let body;
     try {
-      body = await req.json();
+      const bodyText = await req.text();
+      console.log('[import-produtos] Body recebido (primeiros 500 chars):', bodyText.substring(0, 500));
+      body = JSON.parse(bodyText);
+      console.log('[import-produtos] Body parseado com sucesso');
     } catch (error: any) {
       console.error('[import-produtos] Erro ao parsear JSON:', error);
+      console.error('[import-produtos] Stack:', error.stack);
       return new Response(
         JSON.stringify({ success: false, error: 'Erro ao processar requisição. Body inválido.' }),
         {
@@ -104,9 +109,17 @@ serve(async (req) => {
       );
     }
 
+    console.log('[import-produtos] Extraindo produtos e opcoes do body...');
     const { produtos, opcoes } = body;
+    console.log('[import-produtos] Produtos extraídos:', produtos?.length || 0);
+    console.log('[import-produtos] Opcoes extraídas:', opcoes);
 
+    console.log('[import-produtos] Validando lista de produtos...');
     if (!produtos || !Array.isArray(produtos) || produtos.length === 0) {
+      console.error('[import-produtos] ERRO: Lista de produtos vazia ou inválida');
+      console.error('[import-produtos] Tipo de produtos:', typeof produtos);
+      console.error('[import-produtos] É array?', Array.isArray(produtos));
+      console.error('[import-produtos] Tamanho:', produtos?.length);
       return new Response(
         JSON.stringify({ success: false, error: 'Lista de produtos vazia ou inválida' }),
         {
@@ -115,9 +128,12 @@ serve(async (req) => {
         }
       );
     }
+    console.log('[import-produtos] Lista de produtos válida:', produtos.length, 'produtos');
 
     // Limitar tamanho do lote para evitar timeout
+    console.log('[import-produtos] Verificando tamanho do lote...');
     if (produtos.length > 1000) {
+      console.error('[import-produtos] ERRO: Lote muito grande:', produtos.length);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -129,6 +145,7 @@ serve(async (req) => {
         }
       );
     }
+    console.log('[import-produtos] Tamanho do lote OK:', produtos.length);
 
     console.log(`[import-produtos] Importando ${produtos.length} produtos`);
     console.log(`[import-produtos] Opções recebidas:`, { skipDuplicates: opcoes?.skipDuplicates, updateExisting: opcoes?.updateExisting });
@@ -140,6 +157,7 @@ serve(async (req) => {
     console.log(`[import-produtos] Opções processadas:`, { skipDuplicates, updateExisting });
 
     // Mapear produtos da planilha para estrutura do banco
+    console.log('[import-produtos] Iniciando mapeamento de produtos...');
     const produtosMapeados = produtos.map((prod: ProdutoImport) => {
       // Extrair marca e modelo da descrição se não vierem separados
       let marca = prod.marca || '';
@@ -188,8 +206,11 @@ serve(async (req) => {
     });
 
     // Validar produtos
+    console.log('[import-produtos] Validando produtos mapeados...');
     const produtosValidos = produtosMapeados.filter(p => p.nome && p.marca && p.modelo);
     const produtosInvalidos = produtosMapeados.length - produtosValidos.length;
+    console.log('[import-produtos] Produtos válidos:', produtosValidos.length);
+    console.log('[import-produtos] Produtos inválidos:', produtosInvalidos);
 
     if (produtosValidos.length === 0) {
       return new Response(
