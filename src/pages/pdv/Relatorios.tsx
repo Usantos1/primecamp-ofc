@@ -17,7 +17,6 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useSales } from '@/hooks/usePDV';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
-import { cn } from '@/lib/utils';
 
 export default function Relatorios() {
   const { sales, isLoading } = useSales();
