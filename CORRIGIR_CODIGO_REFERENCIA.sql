@@ -1,10 +1,10 @@
 -- ==========================================
--- ATUALIZAR FUNÇÃO BULK_UPSERT_PRODUTOS
+-- CORRIGIR ATUALIZAÇÃO DE CÓDIGO E REFERÊNCIA
 -- ==========================================
--- Execute este script no Supabase SQL Editor
--- para melhorar o tratamento de erros
+-- Este script corrige a função bulk_upsert_produtos
+-- para atualizar corretamente os campos codigo e referencia
+-- quando eles vêm no JSON, mesmo que sejam null
 
--- Atualizar função para melhor tratamento de erros
 CREATE OR REPLACE FUNCTION public.bulk_upsert_produtos(
   produtos_json JSONB
 )
@@ -28,10 +28,9 @@ BEGIN
   FOR produto_item IN SELECT * FROM jsonb_array_elements(produtos_json)
   LOOP
     BEGIN
-      nome_lower := LOWER(COALESCE(produto_item->>'nome', ''));
-      
       -- Validar nome (não pode ser vazio)
-      IF nome_lower IS NULL OR nome_lower = '' OR nome_lower = 'produto sem descrição' THEN
+      nome_lower := LOWER(TRIM(COALESCE(produto_item->>'nome', '')));
+      IF nome_lower = '' OR nome_lower = 'produto sem descrição' THEN
         v_erros := v_erros + 1;
         CONTINUE;
       END IF;
@@ -42,16 +41,13 @@ BEGIN
       WHERE lower(nome) = nome_lower
       LIMIT 1;
       
-      -- Função auxiliar para converter valores com segurança
-      -- Converter string vazia ou null para NULL, senão converter para tipo
-      
       IF produto_existente IS NOT NULL THEN
         -- Atualizar produto existente
         UPDATE public.produtos
         SET
-          marca = COALESCE(NULLIF((produto_item->>'marca')::TEXT, ''), marca, 'Geral'),
-          modelo = COALESCE(NULLIF((produto_item->>'modelo')::TEXT, ''), modelo, 'Geral'),
-          qualidade = COALESCE(NULLIF((produto_item->>'qualidade')::TEXT, ''), qualidade, 'Original'),
+          marca = COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'marca', '')), ''), marca, 'Geral'),
+          modelo = COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'modelo', '')), ''), modelo, 'Geral'),
+          qualidade = COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'qualidade', '')), ''), qualidade, 'Original'),
           valor_dinheiro_pix = COALESCE(
             CASE 
               WHEN (produto_item->>'valor_dinheiro_pix')::TEXT IS NULL OR (produto_item->>'valor_dinheiro_pix')::TEXT = '' 
@@ -70,26 +66,35 @@ BEGIN
             valor_parcelado_6x,
             0
           ),
+          -- CORRIGIDO: Atualizar codigo se vier no JSON (mesmo que seja null)
           codigo = CASE 
-            WHEN produto_item->>'codigo' IS NULL THEN codigo -- Preservar se não vier no JSON
-            WHEN (produto_item->>'codigo')::TEXT = '' THEN codigo -- Preservar se string vazia
-            WHEN (produto_item->>'codigo')::TEXT = 'null' THEN NULL -- Atualizar para NULL se explicitamente null no JSON
-            ELSE LEAST(GREATEST((produto_item->>'codigo')::NUMERIC, -2147483648), 2147483647)::INTEGER
+            WHEN produto_item ? 'codigo' THEN
+              CASE 
+                WHEN (produto_item->>'codigo')::TEXT = '' OR (produto_item->>'codigo')::TEXT = 'null' THEN NULL
+                ELSE LEAST(GREATEST((produto_item->>'codigo')::NUMERIC, -2147483648), 2147483647)::INTEGER
+              END
+            ELSE codigo -- Preservar se não vier no JSON
           END,
+          -- CORRIGIDO: Atualizar codigo_barras se vier no JSON (mesmo que seja null)
           codigo_barras = CASE 
-            WHEN produto_item->>'codigo_barras' IS NULL THEN codigo_barras -- Preservar se não vier no JSON
-            WHEN (produto_item->>'codigo_barras')::TEXT = '' THEN codigo_barras -- Preservar se string vazia
-            WHEN (produto_item->>'codigo_barras')::TEXT = 'null' THEN NULL -- Atualizar para NULL se explicitamente null no JSON
-            ELSE (produto_item->>'codigo_barras')::TEXT
+            WHEN produto_item ? 'codigo_barras' THEN
+              CASE 
+                WHEN (produto_item->>'codigo_barras')::TEXT = '' OR (produto_item->>'codigo_barras')::TEXT = 'null' THEN NULL
+                ELSE (produto_item->>'codigo_barras')::TEXT
+              END
+            ELSE codigo_barras -- Preservar se não vier no JSON
           END,
+          -- CORRIGIDO: Atualizar referencia se vier no JSON (mesmo que seja null)
           referencia = CASE 
-            WHEN produto_item->>'referencia' IS NULL THEN referencia -- Preservar se não vier no JSON
-            WHEN (produto_item->>'referencia')::TEXT = '' THEN referencia -- Preservar se string vazia
-            WHEN (produto_item->>'referencia')::TEXT = 'null' THEN NULL -- Atualizar para NULL se explicitamente null no JSON
-            ELSE (produto_item->>'referencia')::TEXT
+            WHEN produto_item ? 'referencia' THEN
+              CASE 
+                WHEN (produto_item->>'referencia')::TEXT = '' OR (produto_item->>'referencia')::TEXT = 'null' THEN NULL
+                ELSE (produto_item->>'referencia')::TEXT
+              END
+            ELSE referencia -- Preservar se não vier no JSON
           END,
-          grupo = COALESCE(NULLIF((produto_item->>'grupo')::TEXT, ''), grupo),
-          sub_grupo = COALESCE(NULLIF((produto_item->>'sub_grupo')::TEXT, ''), sub_grupo),
+          grupo = COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'grupo', '')), ''), grupo),
+          sub_grupo = COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'sub_grupo', '')), ''), sub_grupo),
           vi_compra = COALESCE(
             CASE 
               WHEN (produto_item->>'vi_compra')::TEXT IS NULL OR (produto_item->>'vi_compra')::TEXT = '' 
@@ -148,17 +153,18 @@ BEGIN
           vi_custo,
           quantidade,
           margem_percentual,
-          criado_por
+          criado_por,
+          disponivel
         ) VALUES (
           nome_lower,
-          COALESCE(NULLIF((produto_item->>'marca')::TEXT, ''), 'Geral'),
-          COALESCE(NULLIF((produto_item->>'modelo')::TEXT, ''), 'Geral'),
-          COALESCE(NULLIF((produto_item->>'qualidade')::TEXT, ''), 'Original'),
+          COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'marca', '')), ''), 'Geral'),
+          COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'modelo', '')), ''), 'Geral'),
+          COALESCE(NULLIF(TRIM(COALESCE(produto_item->>'qualidade', '')), ''), 'Original'),
           COALESCE(
             CASE 
               WHEN (produto_item->>'valor_dinheiro_pix')::TEXT IS NULL OR (produto_item->>'valor_dinheiro_pix')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'valor_dinheiro_pix')::NUMERIC 
+              ELSE LEAST((produto_item->>'valor_dinheiro_pix')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             0
           ),
@@ -166,19 +172,27 @@ BEGIN
             CASE 
               WHEN (produto_item->>'valor_parcelado_6x')::TEXT IS NULL OR (produto_item->>'valor_parcelado_6x')::TEXT = '' 
               THEN NULL 
-              ELSE (produto_item->>'valor_parcelado_6x')::NUMERIC 
+              ELSE LEAST((produto_item->>'valor_parcelado_6x')::NUMERIC, 9999999999.99)::NUMERIC(12,2)
             END,
             0
           ),
           CASE 
-            WHEN (produto_item->>'codigo')::TEXT IS NULL OR (produto_item->>'codigo')::TEXT = '' 
-            THEN NULL 
-            ELSE LEAST(GREATEST((produto_item->>'codigo')::NUMERIC, -2147483648), 2147483647)::INTEGER
+            WHEN produto_item ? 'codigo' AND (produto_item->>'codigo')::TEXT != '' AND (produto_item->>'codigo')::TEXT != 'null'
+            THEN LEAST(GREATEST((produto_item->>'codigo')::NUMERIC, -2147483648), 2147483647)::INTEGER
+            ELSE NULL
           END,
-          NULLIF((produto_item->>'codigo_barras')::TEXT, ''),
-          NULLIF((produto_item->>'referencia')::TEXT, ''),
-          NULLIF((produto_item->>'grupo')::TEXT, ''),
-          NULLIF((produto_item->>'sub_grupo')::TEXT, ''),
+          CASE 
+            WHEN produto_item ? 'codigo_barras' AND (produto_item->>'codigo_barras')::TEXT != '' AND (produto_item->>'codigo_barras')::TEXT != 'null'
+            THEN (produto_item->>'codigo_barras')::TEXT
+            ELSE NULL
+          END,
+          CASE 
+            WHEN produto_item ? 'referencia' AND (produto_item->>'referencia')::TEXT != '' AND (produto_item->>'referencia')::TEXT != 'null'
+            THEN (produto_item->>'referencia')::TEXT
+            ELSE NULL
+          END,
+          NULLIF(TRIM(COALESCE(produto_item->>'grupo', '')), ''),
+          NULLIF(TRIM(COALESCE(produto_item->>'sub_grupo', '')), ''),
           COALESCE(
             CASE 
               WHEN (produto_item->>'vi_compra')::TEXT IS NULL OR (produto_item->>'vi_compra')::TEXT = '' 
@@ -211,7 +225,8 @@ BEGIN
             END,
             0
           ),
-          (produto_item->>'criado_por')::UUID
+          (produto_item->>'criado_por')::UUID,
+          true
         );
         
         v_inseridos := v_inseridos + 1;
@@ -231,7 +246,4 @@ BEGIN
   RETURN QUERY SELECT v_inseridos, v_atualizados, v_erros;
 END;
 $$;
-
--- Comentário para documentação
-COMMENT ON FUNCTION public.bulk_upsert_produtos(JSONB) IS 'Faz bulk upsert de produtos usando lower(nome) como chave única. Retorna contadores de inseridos, atualizados e erros. Melhorado tratamento de erros e validações.';
 
