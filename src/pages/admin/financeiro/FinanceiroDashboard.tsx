@@ -17,13 +17,19 @@ export function FinanceiroDashboard() {
   const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
   const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
 
+  // Calcular margem líquida corretamente
+  const lucroLiquido = summary.total_entradas - summary.total_saidas;
+  const margemLiquida = summary.total_entradas > 0 
+    ? ((lucroLiquido / summary.total_entradas) * 100) 
+    : 0;
+
   const metrics = {
     totalEntradas: summary.total_entradas,
     totalSaidas: summary.total_saidas,
     saldo: summary.saldo,
-    margemLucro: summary.total_entradas > 0 
-      ? ((summary.saldo / summary.total_entradas) * 100) 
-      : 0,
+    margemLucro: margemLiquida,
+    margemLiquida: margemLiquida,
+    lucroLiquido: lucroLiquido,
     contasPendentes: summary.bills_pending,
     contasAtrasadas: summary.bills_overdue,
     mediaVendasDiaria: summary.total_entradas / (new Date().getDate() || 1),
@@ -70,9 +76,12 @@ export function FinanceiroDashboard() {
         <Card className="border-l-4 border-l-purple-500">
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 text-purple-600 text-sm mb-1">
-              <BarChart3 className="h-4 w-4" />Margem
+              <BarChart3 className="h-4 w-4" />Margem Líquida
             </div>
-            <p className="text-2xl font-bold text-purple-600">{metrics.margemLucro.toFixed(1)}%</p>
+            <p className="text-2xl font-bold text-purple-600">{metrics.margemLiquida.toFixed(2)}%</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Lucro: {currencyFormatters.brl(metrics.lucroLiquido)}
+            </p>
           </CardContent>
         </Card>
       </div>

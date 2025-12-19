@@ -87,6 +87,7 @@ export function FinanceiroRelatorios() {
                 <SelectItem value="fluxo">Fluxo de Caixa</SelectItem>
                 <SelectItem value="contas">Contas a Pagar/Receber</SelectItem>
                 <SelectItem value="vendas">Vendas por Período</SelectItem>
+                <SelectItem value="balanco">Balanço Patrimonial</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -105,73 +106,9 @@ export function FinanceiroRelatorios() {
         </CardContent>
       </Card>
 
-      {/* DRE */}
+      {/* DRE Completo */}
       {selectedReport === 'dre' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>DRE - Demonstrativo de Resultado do Exercício</CardTitle>
-            <CardDescription>Período: {startDate.slice(0, 7).replace('-', '/')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-bold">Descrição</TableHead>
-                    <TableHead className="text-right font-bold">Valor (R$)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {/* Receitas */}
-                  <TableRow className="bg-green-50">
-                    <TableCell className="font-bold text-green-700 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />RECEITAS OPERACIONAIS
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-green-700">
-                      {currencyFormatters.brl(totalReceitas)}
-                    </TableCell>
-                  </TableRow>
-                  {dreData.receitas.map((r, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="pl-8">{r.descricao}</TableCell>
-                      <TableCell className="text-right text-green-600">{currencyFormatters.brl(r.valor)}</TableCell>
-                    </TableRow>
-                  ))}
-
-                  {/* Despesas */}
-                  <TableRow className="bg-red-50">
-                    <TableCell className="font-bold text-red-700 flex items-center gap-2">
-                      <TrendingDown className="h-4 w-4" />DESPESAS OPERACIONAIS
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-red-700">
-                      ({currencyFormatters.brl(totalDespesas)})
-                    </TableCell>
-                  </TableRow>
-                  {dreData.despesas.map((d, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="pl-8">{d.descricao}</TableCell>
-                      <TableCell className="text-right text-red-600">({currencyFormatters.brl(d.valor)})</TableCell>
-                    </TableRow>
-                  ))}
-
-                  {/* Resultado */}
-                  <TableRow className={lucroLiquido >= 0 ? 'bg-blue-50' : 'bg-red-100'}>
-                    <TableCell className="font-bold text-lg">LUCRO LÍQUIDO</TableCell>
-                    <TableCell className={`text-right font-bold text-lg ${lucroLiquido >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                      {currencyFormatters.brl(lucroLiquido)}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Margem de Lucro</TableCell>
-                    <TableCell className={`text-right font-bold ${margemLucro >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                      {margemLucro.toFixed(1)}%
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <DREComplete month={month} />
       )}
 
       {/* Fluxo de Caixa */}
@@ -335,6 +272,145 @@ export function FinanceiroRelatorios() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Balanço Patrimonial */}
+      {selectedReport === 'balanco' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Balanço Patrimonial</CardTitle>
+            <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ATIVO */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-primary/10 p-3 border-b">
+                  <h3 className="font-bold text-primary">ATIVO</h3>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Caixa e Equivalentes</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {currencyFormatters.brl(
+                          cashClosings.reduce((sum, c) => sum + (c.actual_cash || 0), 0)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>Contas a Receber</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {currencyFormatters.brl(
+                          transactions
+                            .filter(t => t.type === 'entrada' && t.reference_type === 'bill')
+                            .reduce((sum, t) => sum + t.amount, 0)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="bg-muted/50">
+                      <TableCell className="font-bold">TOTAL DO ATIVO</TableCell>
+                      <TableCell className="text-right font-bold">
+                        {currencyFormatters.brl(
+                          cashClosings.reduce((sum, c) => sum + (c.actual_cash || 0), 0) +
+                          transactions
+                            .filter(t => t.type === 'entrada' && t.reference_type === 'bill')
+                            .reduce((sum, t) => sum + t.amount, 0)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* PASSIVO */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-destructive/10 p-3 border-b">
+                  <h3 className="font-bold text-destructive">PASSIVO</h3>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>Contas a Pagar</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {currencyFormatters.brl(
+                          bills
+                            .filter(b => b.status === 'pendente')
+                            .reduce((sum, b) => sum + b.amount, 0)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="bg-muted/50">
+                      <TableCell className="font-bold">TOTAL DO PASSIVO</TableCell>
+                      <TableCell className="text-right font-bold">
+                        {currencyFormatters.brl(
+                          bills
+                            .filter(b => b.status === 'pendente')
+                            .reduce((sum, b) => sum + b.amount, 0)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* PATRIMÔNIO LÍQUIDO */}
+            <div className="mt-6 border rounded-lg overflow-hidden">
+              <div className="bg-primary/10 p-3 border-b">
+                <h3 className="font-bold text-primary">PATRIMÔNIO LÍQUIDO</h3>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>Lucro Acumulado</TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {currencyFormatters.brl(
+                        transactions
+                          .filter(t => t.type === 'entrada')
+                          .reduce((sum, t) => sum + t.amount, 0) -
+                        transactions
+                          .filter(t => t.type === 'saida')
+                          .reduce((sum, t) => sum + t.amount, 0)
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className="bg-muted/50">
+                    <TableCell className="font-bold">TOTAL DO PATRIMÔNIO LÍQUIDO</TableCell>
+                    <TableCell className="text-right font-bold">
+                      {currencyFormatters.brl(
+                        transactions
+                          .filter(t => t.type === 'entrada')
+                          .reduce((sum, t) => sum + t.amount, 0) -
+                        transactions
+                          .filter(t => t.type === 'saida')
+                          .reduce((sum, t) => sum + t.amount, 0)
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
