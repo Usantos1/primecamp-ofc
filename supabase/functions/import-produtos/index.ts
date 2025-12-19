@@ -130,10 +130,13 @@ serve(async (req) => {
     }
 
     console.log(`[import-produtos] Importando ${produtos.length} produtos`);
+    console.log(`[import-produtos] Opções recebidas:`, { skipDuplicates: opcoes?.skipDuplicates, updateExisting: opcoes?.updateExisting });
 
     // Opções de importação
     const skipDuplicates = opcoes?.skipDuplicates !== false; // Padrão: true
     const updateExisting = opcoes?.updateExisting === true; // Padrão: false
+    
+    console.log(`[import-produtos] Opções processadas:`, { skipDuplicates, updateExisting });
 
     // Mapear produtos da planilha para estrutura do banco
     const produtosMapeados = produtos.map((prod: ProdutoImport) => {
@@ -203,6 +206,31 @@ serve(async (req) => {
 
     console.log(`[import-produtos] ${produtosValidos.length} produtos válidos, ${produtosInvalidos} inválidos`);
 
+    // Verificar se a função SQL existe (apenas para updateExisting)
+    if (updateExisting) {
+      console.log(`[import-produtos] Verificando se função bulk_upsert_produtos existe...`);
+      const { data: funcCheck, error: funcError } = await supabaseClient
+        .rpc('bulk_upsert_produtos', { produtos_json: [] })
+        .catch(() => ({ data: null, error: { message: 'Função não encontrada' } }));
+      
+      if (funcError && funcError.message?.includes('não encontrada') || funcError?.code === '42883') {
+        console.error(`[import-produtos] ERRO CRÍTICO: Função bulk_upsert_produtos não existe!`);
+        console.error(`[import-produtos] Execute o script APLICAR_TODAS_FUNCOES_IMPORTACAO.sql no Supabase SQL Editor`);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Função SQL bulk_upsert_produtos não encontrada. Execute o script SQL primeiro.',
+            detalhes: 'Execute APLICAR_TODAS_FUNCOES_IMPORTACAO.sql no Supabase SQL Editor'
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      console.log(`[import-produtos] Função bulk_upsert_produtos disponível`);
+    }
+
     // Inserir produtos em lotes
     const batchSize = 100;
     let inseridos = 0;
@@ -222,13 +250,17 @@ serve(async (req) => {
       if (updateExisting) {
         // Usar função SQL para bulk upsert (muito mais rápido)
         try {
+          console.log(`[import-produtos] Chamando bulk_upsert_produtos para lote ${batchNum}...`);
           const { data: result, error: rpcError } = await supabaseClient
             .rpc('bulk_upsert_produtos', {
               produtos_json: batch
             });
 
+          console.log(`[import-produtos] Resposta RPC lote ${batchNum}:`, { result, rpcError });
+
           if (rpcError) {
-            console.error(`[import-produtos] Erro no lote ${batchNum}:`, rpcError);
+            console.error(`[import-produtos] Erro RPC no lote ${batchNum}:`, rpcError);
+            console.error(`[import-produtos] Detalhes do erro:`, JSON.stringify(rpcError, null, 2));
             erros += batch.length;
             errosDetalhes.push(`Lote ${batchNum}: ${rpcError.message || JSON.stringify(rpcError)}`);
           } else if (result && result.length > 0) {
@@ -238,11 +270,12 @@ serve(async (req) => {
             erros += stats.erros || 0;
             console.log(`[import-produtos] Lote ${batchNum} processado: ${stats.inseridos || 0} inseridos, ${stats.atualizados || 0} atualizados, ${stats.erros || 0} erros`);
           } else {
-            console.error(`[import-produtos] Resultado vazio do lote ${batchNum}`);
+            console.error(`[import-produtos] Resultado vazio do lote ${batchNum}. Result:`, result);
             erros += batch.length;
           }
         } catch (err: any) {
           console.error(`[import-produtos] Exceção no lote ${batchNum}:`, err);
+          console.error(`[import-produtos] Stack trace:`, err.stack);
           erros += batch.length;
           errosDetalhes.push(`Lote ${batchNum}: ${err.message || JSON.stringify(err)}`);
         }
