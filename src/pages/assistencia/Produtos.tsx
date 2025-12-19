@@ -672,9 +672,13 @@ export default function Produtos() {
                 <DoorOpen className="h-4 w-4" />
                 Sair
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Espaçamento para a barra fixa */}
+        <div className="h-20"></div>
 
         {/* Form Dialog Completo */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
