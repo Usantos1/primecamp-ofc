@@ -38,20 +38,36 @@ BEGIN
       
       -- SIMPLIFICADO: Extrair valores diretamente, tratando null explicitamente
       -- Para codigo: se existe no JSON e não é null, converter para INTEGER
-      IF produto_item ? 'codigo' AND produto_item->'codigo' IS NOT NULL AND produto_item->'codigo' != 'null'::jsonb THEN
-        BEGIN
-          v_codigo := (produto_item->>'codigo')::INTEGER;
-        EXCEPTION WHEN OTHERS THEN
+      -- JSON null é diferente de string "null" - usar jsonb_typeof para verificar
+      IF produto_item ? 'codigo' THEN
+        IF jsonb_typeof(produto_item->'codigo') = 'null' THEN
           v_codigo := NULL;
-        END;
+        ELSIF jsonb_typeof(produto_item->'codigo') = 'number' THEN
+          BEGIN
+            v_codigo := (produto_item->>'codigo')::INTEGER;
+          EXCEPTION WHEN OTHERS THEN
+            v_codigo := NULL;
+          END;
+        ELSIF (produto_item->>'codigo')::TEXT != '' THEN
+          BEGIN
+            v_codigo := (produto_item->>'codigo')::INTEGER;
+          EXCEPTION WHEN OTHERS THEN
+            v_codigo := NULL;
+          END;
+        ELSE
+          v_codigo := NULL;
+        END IF;
       ELSE
         v_codigo := NULL;
       END IF;
       
       -- Para codigo_barras: se existe no JSON e não é null, usar o valor
-      IF produto_item ? 'codigo_barras' AND produto_item->'codigo_barras' IS NOT NULL AND produto_item->'codigo_barras' != 'null'::jsonb THEN
-        v_codigo_barras := (produto_item->>'codigo_barras')::TEXT;
-        IF v_codigo_barras = '' THEN
+      IF produto_item ? 'codigo_barras' THEN
+        IF jsonb_typeof(produto_item->'codigo_barras') = 'null' THEN
+          v_codigo_barras := NULL;
+        ELSIF jsonb_typeof(produto_item->'codigo_barras') = 'string' AND (produto_item->>'codigo_barras')::TEXT != '' THEN
+          v_codigo_barras := (produto_item->>'codigo_barras')::TEXT;
+        ELSE
           v_codigo_barras := NULL;
         END IF;
       ELSE
@@ -59,9 +75,12 @@ BEGIN
       END IF;
       
       -- Para referencia: se existe no JSON e não é null, usar o valor
-      IF produto_item ? 'referencia' AND produto_item->'referencia' IS NOT NULL AND produto_item->'referencia' != 'null'::jsonb THEN
-        v_referencia := (produto_item->>'referencia')::TEXT;
-        IF v_referencia = '' THEN
+      IF produto_item ? 'referencia' THEN
+        IF jsonb_typeof(produto_item->'referencia') = 'null' THEN
+          v_referencia := NULL;
+        ELSIF jsonb_typeof(produto_item->'referencia') = 'string' AND (produto_item->>'referencia')::TEXT != '' THEN
+          v_referencia := (produto_item->>'referencia')::TEXT;
+        ELSE
           v_referencia := NULL;
         END IF;
       ELSE
