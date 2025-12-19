@@ -241,10 +241,14 @@ export default function Produtos() {
 
   // Abrir form para editar
   const handleEdit = (produto: Produto) => {
+    // Abrir modal imediatamente
+    setShowForm(true);
     setEditingProduto(produto);
     setSelectedProduto(produto);
+    
+    // Preencher dados do formulário
     setFormData({
-      tipo: produto.tipo as any,
+      tipo: produto.tipo as any || 'peca',
       descricao: produto.descricao,
       descricao_abreviada: produto.descricao_abreviada,
       codigo_barras: produto.codigo_barras || '',

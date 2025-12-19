@@ -55,7 +55,7 @@ function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
     vi_custo: produto.preco_custo || 0,
     quantidade: produto.estoque_atual || 0,
     margem_percentual: produto.margem_lucro || 0,
-    tipo: produto.tipo === 'servico' ? 'servico' : 'produto',
+    // tipo foi removido da tabela produtos
   };
 }
 
@@ -104,6 +104,9 @@ export function useProdutos() {
 
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
+    // Remover campos que não existem na tabela
+    delete produtoSupabase.tipo;
+    
     const { data: novoProduto, error } = await supabase
       .from('produtos')
       .insert({
@@ -136,12 +139,16 @@ export function useProdutos() {
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
+    // Remover campos que não existem na tabela
+    delete produtoSupabase.tipo;
+    
     const { error } = await supabase
       .from('produtos')
       .update(produtoSupabase)
       .eq('id', id);
 
     if (error) {
+      console.error('[updateProduto] Erro:', error);
       toast({
         title: 'Erro ao atualizar produto',
         description: error.message,
