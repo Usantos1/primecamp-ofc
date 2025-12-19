@@ -192,7 +192,13 @@ export default function Produtos() {
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle className="text-lg">Lista de Produtos</CardTitle>
-              <Button onClick={() => handleOpenDialog()} className="gap-2"><Plus className="h-4 w-4" />Novo Produto</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Importar
+                </Button>
+                <Button onClick={() => handleOpenDialog()} className="gap-2"><Plus className="h-4 w-4" />Novo Produto</Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
