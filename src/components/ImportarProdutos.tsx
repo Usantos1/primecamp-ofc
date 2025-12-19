@@ -118,27 +118,40 @@ export function ImportarProdutos() {
       console.log('[ImportarProdutos] Primeiro produto da planilha (exemplo):', produtosPlanilha[0]);
       console.log('[ImportarProdutos] Chaves do primeiro produto:', Object.keys(produtosPlanilha[0] || {}));
       
+      // Função auxiliar para converter string com vírgula para número
+      const parseValor = (valor: any): number => {
+        if (typeof valor === 'number') return valor;
+        if (!valor) return 0;
+        const str = String(valor).replace(/\./g, '').replace(',', '.');
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : num;
+      };
+
       const produtosMapeados = produtosPlanilha.map((prod, index) => {
         const descricao = prod.Descricao || prod.descricao || prod['Descrição'] || '';
-        const viVenda = prod['VI Venda'] || prod['Vl Venda'] || prod.vi_venda || 0;
+        const viVenda = parseValor(prod['VI Venda'] || prod['Vl Venda'] || prod.vi_venda || 0);
+        const viCompra = parseValor(prod['VI Compra'] || prod['Vl Compra'] || prod.vi_compra || 0);
+        const viCusto = parseValor(prod['VI Custo'] || prod['Vl Custo'] || prod.vi_custo || 0);
+        const quantidade = parseValor(prod.Quantidade || prod.quantidade || 0);
+        const margem = parseValor(prod['Margem %'] || prod.margem || 0);
         
         if (index < 3) {
           console.log(`[ImportarProdutos] Produto ${index} - Descricao original:`, descricao);
-          console.log(`[ImportarProdutos] Produto ${index} - VI Venda original:`, viVenda);
+          console.log(`[ImportarProdutos] Produto ${index} - VI Venda original:`, prod['VI Venda'], '->', viVenda);
         }
         
         const produtoMapeado = {
-          codigo: prod.Codigo || prod.codigo,
-          codigo_barras: (prod['Código Barras'] || prod.codigo_barras)?.toString(),
+          codigo: prod.Codigo || prod.codigo ? Number(prod.Codigo || prod.codigo) : null,
+          codigo_barras: (prod['Código Barras'] || prod.codigo_barras)?.toString() || null,
           descricao: descricao,
-          referencia: prod.Referencia || prod.referencia,
-          grupo: prod.Grupo || prod.grupo,
-          sub_grupo: prod['Sub Grupo'] || prod.sub_grupo,
-          vi_compra: prod['VI Compra'] || prod['Vl Compra'] || prod.vi_compra || 0,
-          vi_custo: prod['VI Custo'] || prod['Vl Custo'] || prod.vi_custo || 0,
+          referencia: prod.Referencia || prod.referencia || null,
+          grupo: prod.Grupo || prod.grupo || null,
+          sub_grupo: prod['Sub Grupo'] || prod.sub_grupo || null,
+          vi_compra: viCompra,
+          vi_custo: viCusto,
           vi_venda: viVenda,
-          quantidade: prod.Quantidade || prod.quantidade || 0,
-          margem: prod['Margem %'] || prod.margem || 0,
+          quantidade: Math.round(quantidade),
+          margem: margem,
           // Campos diretos se existirem
           nome: descricao,
           valor_dinheiro_pix: viVenda,
