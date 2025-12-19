@@ -500,9 +500,10 @@ export default function NovaVenda() {
       }
       
       // F4 - Finalizar venda
-      if (e.key === 'F4' && !e.ctrlKey && !e.metaKey) {
+      if (e.key === 'F4' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
         e.preventDefault();
-        if (cart.length > 0) {
+        e.stopPropagation();
+        if (cart.length > 0 && !isSaving) {
           handleFinalize();
         }
       }
