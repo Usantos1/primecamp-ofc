@@ -263,6 +263,13 @@ serve(async (req) => {
     console.log('[import-produtos] Exemplo de produto mapeado:', JSON.stringify(produtosMapeados[0], null, 2));
     console.log('[import-produtos] Exemplo - codigo:', produtosMapeados[0]?.codigo, 'tipo:', typeof produtosMapeados[0]?.codigo);
     console.log('[import-produtos] Exemplo - referencia:', produtosMapeados[0]?.referencia, 'tipo:', typeof produtosMapeados[0]?.referencia);
+    console.log('[import-produtos] Exemplo - codigo_barras:', produtosMapeados[0]?.codigo_barras, 'tipo:', typeof produtosMapeados[0]?.codigo_barras);
+    
+    // Verificar quantos produtos têm codigo e referencia
+    const comCodigo = produtosMapeados.filter(p => p.codigo !== null && p.codigo !== undefined).length;
+    const comReferencia = produtosMapeados.filter(p => p.referencia !== null && p.referencia !== undefined && p.referencia !== '').length;
+    console.log(`[import-produtos] Produtos com codigo: ${comCodigo}/${produtosMapeados.length}`);
+    console.log(`[import-produtos] Produtos com referencia: ${comReferencia}/${produtosMapeados.length}`);
     
     // Verificar produtos inválidos com mais detalhes
     const produtosInvalidosDetalhes = produtosMapeados
