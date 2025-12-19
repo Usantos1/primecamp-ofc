@@ -1666,36 +1666,38 @@ export default function NovaVenda() {
       </Dialog>
 
       {/* Dialog de confirmação para emitir cupom */}
-      <Dialog open={showEmitirCupomDialog} onOpenChange={setShowEmitirCupomDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Emitir Cupom Fiscal?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="emitCupom"
-                checked={shouldEmitCupom}
-                onCheckedChange={(checked) => setShouldEmitCupom(checked === true)}
-              />
-              <Label htmlFor="emitCupom" className="cursor-pointer text-sm font-normal">
-                Sim, desejo emitir o cupom fiscal
-              </Label>
+      {showEmitirCupomDialog && (
+        <Dialog open={showEmitirCupomDialog} onOpenChange={setShowEmitirCupomDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Emitir Cupom Fiscal?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="emitCupom"
+                  checked={shouldEmitCupom}
+                  onCheckedChange={(checked) => setShouldEmitCupom(checked === true)}
+                />
+                <Label htmlFor="emitCupom" className="cursor-pointer text-sm font-normal">
+                  Sim, desejo emitir o cupom fiscal
+                </Label>
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowEmitirCupomDialog(false);
-              setPendingSaleForCupom(null);
-            }}>
-              Não
-            </Button>
-            <Button onClick={handleConfirmEmitCupom}>
-              Confirmar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setShowEmitirCupomDialog(false);
+                setPendingSaleForCupom(null);
+              }}>
+                Não
+              </Button>
+              <Button onClick={handleConfirmEmitCupom}>
+                Confirmar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modal de Faturar OS */}
       <Dialog open={showFaturarOSModal} onOpenChange={setShowFaturarOSModal}>
