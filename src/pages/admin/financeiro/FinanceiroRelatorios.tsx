@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, TrendingDown } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { exportDREToCSV, exportTransactionsToCSV, printData } from '@/utils/exportFinancial';
 import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { CashFlowChart } from '@/components/financeiro/CashFlowChart';
 import { DREComplete } from '@/components/financeiro/DREComplete';
@@ -96,13 +97,56 @@ export function FinanceiroRelatorios() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                if (selectedReport === 'dre') {
+                  exportDREToCSV(
+                    dreData.receitas,
+                    dreData.despesas,
+                    totalReceitas,
+                    totalDespesas,
+                    lucroLiquido,
+                    margemLucro,
+                    month
+                  );
+                } else if (selectedReport === 'vendas') {
+                  exportTransactionsToCSV(
+                    transactions.filter(t => t.type === 'entrada'),
+                    month
+                  );
+                }
+              }}
+            >
               <FileSpreadsheet className="h-4 w-4" />Excel
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <FileText className="h-4 w-4" />PDF
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => {
+                if (selectedReport === 'dre') {
+                  printData({
+                    title: `DRE - ${month.replace('-', '/')}`,
+                    headers: ['Descrição', 'Valor (R$)'],
+                    rows: [
+                      ['RECEITAS OPERACIONAIS', ''],
+                      ...dreData.receitas.map(r => [r.descricao, currencyFormatters.brl(r.valor)]),
+                      ['TOTAL RECEITAS', currencyFormatters.brl(totalReceitas)],
+                      ['', ''],
+                      ['DESPESAS OPERACIONAIS', ''],
+                      ...dreData.despesas.map(d => [d.descricao, currencyFormatters.brl(d.valor)]),
+                      ['TOTAL DESPESAS', currencyFormatters.brl(totalDespesas)],
+                      ['', ''],
+                      ['LUCRO LÍQUIDO', currencyFormatters.brl(lucroLiquido)],
+                      ['MARGEM LÍQUIDA (%)', `${margemLucro.toFixed(2)}%`],
+                    ],
+                  }, `Período: ${month.replace('-', '/')}`);
+                }
+              }}
+            >
               <Printer className="h-4 w-4" />Imprimir
             </Button>
           </div>
