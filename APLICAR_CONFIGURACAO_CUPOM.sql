@@ -3,11 +3,6 @@
 -- Execute este script no Supabase Studio > SQL Editor
 -- ============================================
 
--- Aplicar migration
-\i supabase/migrations/20250131000005_create_cupom_config.sql
-
--- Ou executar diretamente:
-
 -- ============================================
 -- CONFIGURAÇÕES DO CUPOM TÉRMICO
 -- ============================================
