@@ -40,6 +40,8 @@ export interface CupomData {
     forma: string;
     valor: number;
     troco?: number;
+    parcelas?: number;
+    valor_parcela?: number;
   }>;
   vendedor?: string;
   observacoes?: string;
@@ -321,16 +323,17 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
       </div>
       
+      <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
+      </div>
+      
       ${data.pagamentos.map(pag => {
-        const valorPago = pag.valor;
         const troco = pag.troco || 0;
         // Traduzir forma de pagamento para português
         const formaPagamentoLabel = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma.toUpperCase();
+        const parcelas = pag.parcelas && pag.parcelas > 1 ? ` (${pag.parcelas}x)` : '';
         return `
-          <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
-            <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
-            <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(valorPago)}</span>
-          </div>
           ${troco > 0 ? `
             <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
               <span style="font-weight: 900 !important; color: #000000 !important;">Troco:</span>
@@ -338,7 +341,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
             </div>
           ` : ''}
           <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-            <span style="font-weight: 900 !important; color: #000000 !important;">${formaPagamentoLabel}:</span>
+            <span style="font-weight: 900 !important; color: #000000 !important;">${formaPagamentoLabel}${parcelas}:</span>
             <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
           </div>
         `;

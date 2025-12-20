@@ -10,12 +10,16 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Calendar, Download, TrendingUp, DollarSign, ShoppingCart, 
-  User, Package, BarChart3
+  User, Package, BarChart3, Badge
 } from 'lucide-react';
+import { Badge as BadgeComponent } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { useSales } from '@/hooks/usePDV';
+import { useSales, usePayments } from '@/hooks/usePDV';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 
 export default function Relatorios() {

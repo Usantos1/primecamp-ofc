@@ -886,19 +886,25 @@ export default function NovaVenda() {
         
         // Aguardar carregar items e payments antes de imprimir
         setPendingSaleForCupom(updatedSale);
+        // Aguardar um pouco mais para garantir que items e payments estejam carregados
         setTimeout(async () => {
           await loadSale();
           setTimeout(async () => {
             // Recarregar sale novamente para garantir dados atualizados
             const finalSale = await getSaleById(id);
             if (finalSale && items && payments && payments.length > 0) {
+              console.log('[IMPRESSÃO] Iniciando impressão automática...', { 
+                saleId: finalSale.id,
+                itemsCount: items.length,
+                paymentsCount: payments.length
+              });
               await handlePrintCupomDirect(finalSale);
               setTimeout(() => {
                 limparPDV();
                 toast({ title: 'PDV limpo. Pronto para nova venda!' });
               }, 2000);
             } else {
-              console.warn('Dados não carregados para impressão:', { 
+              console.warn('[IMPRESSÃO] Dados não carregados para impressão:', { 
                 sale: !!finalSale, 
                 items: !!items, 
                 payments: !!payments,
@@ -906,8 +912,8 @@ export default function NovaVenda() {
                 paymentsCount: payments?.length
               });
             }
-          }, 500);
-        }, 1000);
+          }, 800);
+        }, 1200);
       }
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);

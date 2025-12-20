@@ -280,6 +280,34 @@ export default function Caixa() {
                   </div>
                 </div>
 
+                {/* Cards de Formas de Pagamento */}
+                {Object.keys(pagamentosPorForma).length > 0 && (
+                  <div>
+                    <Label className="text-sm font-semibold mb-3 block">Totais por Forma de Pagamento:</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
+                        <Card key={forma} className="p-3">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-muted-foreground mb-1 capitalize">
+                                {forma === 'dinheiro' ? 'Dinheiro' : 
+                                 forma === 'pix' ? 'PIX' :
+                                 forma === 'debito' ? 'Débito' :
+                                 forma === 'credito' ? 'Crédito' :
+                                 forma === 'link_pagamento' ? 'Link' :
+                                 forma === 'carteira_digital' ? 'Carteira' : forma}
+                              </span>
+                              <span className="text-lg font-bold text-primary">
+                                {currencyFormatters.brl(valor)}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary">
                   <div className="flex items-center justify-between">
                     <div>
