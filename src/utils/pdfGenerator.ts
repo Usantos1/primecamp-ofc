@@ -497,7 +497,9 @@ export async function generateCupomPDF(data: CupomData, qrCodeData?: string): Pr
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   data.pagamentos.forEach(pag => {
-    doc.text(`${pag.forma}:`, margin, y);
+    // Traduzir forma de pagamento para português
+    const formaPagamentoLabel = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma.toUpperCase();
+    doc.text(`${formaPagamentoLabel}:`, margin, y);
     doc.text(formatCurrency(pag.valor), pageWidth - margin, y, { align: 'right' });
     y += 4;
     
