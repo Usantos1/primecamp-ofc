@@ -210,47 +210,46 @@ export function useSales() {
         finalized_at: new Date().toISOString(),
       };
 
-      // Tentar atualizar com cash_register_session_id se houver sessão
+      // SEMPRE tentar vincular ao caixa se houver sessão aberta
       let updatedSale;
       let error;
       
+      // Sempre incluir cash_register_session_id se houver sessão
       if (cashSessionId) {
-        // Tentar primeiro com cash_register_session_id
-        const result = await supabase
+        updateData.cash_register_session_id = cashSessionId;
+      }
+      
+      // Tentar atualizar a venda
+      const result = await supabase
+        .from('sales')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      updatedSale = result.data;
+      error = result.error;
+      
+      // Se der erro de coluna não encontrada (PGRST204), tentar sem o campo
+      if (error && error.code === 'PGRST204' && cashSessionId) {
+        console.warn('Coluna cash_register_session_id não existe, tentando sem vincular ao caixa...');
+        const { cash_register_session_id, ...updateDataWithoutCash } = updateData;
+        const retryResult = await supabase
           .from('sales')
-          .update({
-            ...updateData,
-            cash_register_session_id: cashSessionId,
-          })
+          .update(updateDataWithoutCash)
           .eq('id', id)
           .select()
           .single();
         
-        updatedSale = result.data;
-        error = result.error;
-        
-        // Se der erro de coluna não encontrada (PGRST204), tentar sem o campo
-        if (error && error.code === 'PGRST204') {
-          console.warn('Coluna cash_register_session_id não existe, finalizando sem vincular ao caixa...');
-          const retryResult = await supabase
-            .from('sales')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
-          updatedSale = retryResult.data;
-          error = retryResult.error;
-        }
+        updatedSale = retryResult.data;
+        error = retryResult.error;
+      }
+      
+      // Log para debug
+      if (cashSessionId) {
+        console.log(`Venda ${id} vinculada ao caixa ${cashSessionId}`);
       } else {
-        // Sem sessão de caixa, atualizar normalmente
-        const result = await supabase
-          .from('sales')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single();
-        updatedSale = result.data;
-        error = result.error;
+        console.warn(`Venda ${id} finalizada SEM sessão de caixa aberta`);
       }
 
       if (error) throw error;
