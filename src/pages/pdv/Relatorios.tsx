@@ -13,7 +13,6 @@ import {
   User, Package, BarChart3
 } from 'lucide-react';
 import { Badge as BadgeComponent } from '@/components/ui/badge';
-import { Badge as BadgeComponent } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
