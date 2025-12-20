@@ -1048,6 +1048,8 @@ export default function NovaVenda() {
             forma: p.forma_pagamento,
             valor: Number(p.valor),
             troco: p.troco ? Number(p.troco) : undefined,
+            parcelas: p.parcelas || undefined,
+            valor_parcela: p.parcelas && p.parcelas > 1 ? Number(p.valor) / p.parcelas : undefined,
           })),
         vendedor: saleToUse.vendedor_nome || undefined,
         observacoes: saleToUse.observacoes || undefined,
