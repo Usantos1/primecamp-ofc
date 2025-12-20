@@ -202,6 +202,16 @@ export default function Caixa() {
   // Calcular total de vendas vinculadas ao caixa
   const totalVendas = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   
+  // Calcular totais por forma de pagamento
+  const pagamentosPorForma: Record<string, number> = {};
+  Object.values(salePayments).flat().forEach((payment: any) => {
+    const forma = payment.forma_pagamento;
+    if (!pagamentosPorForma[forma]) {
+      pagamentosPorForma[forma] = 0;
+    }
+    pagamentosPorForma[forma] += Number(payment.valor || 0);
+  });
+  
   const valorEsperado = currentSession 
     ? Number(currentSession.valor_inicial) + totalEntradas - totalSaidas + totalVendas
     : 0;
@@ -337,23 +347,54 @@ export default function Caixa() {
                         <TableHead>Número</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Data/Hora</TableHead>
+                        <TableHead>Formas de Pagamento</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sales.map((sale) => (
-                        <TableRow key={sale.id}>
-                          <TableCell className="font-medium">#{sale.numero}</TableCell>
-                          <TableCell>{sale.cliente_nome || 'Consumidor Final'}</TableCell>
-                          <TableCell>
-                            {dateFormatters.short(sale.created_at)}{' '}
-                            {new Date(sale.created_at).toLocaleTimeString('pt-BR')}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {currencyFormatters.brl(sale.total)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {sales.map((sale) => {
+                        const salePaymentsList = salePayments[sale.id] || [];
+                        return (
+                          <TableRow 
+                            key={sale.id} 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => {
+                              setSelectedSale(sale);
+                              setShowSaleDetails(true);
+                            }}
+                          >
+                            <TableCell className="font-medium">#{sale.numero}</TableCell>
+                            <TableCell>{sale.cliente_nome || 'Consumidor Final'}</TableCell>
+                            <TableCell>
+                              {dateFormatters.short(sale.created_at)}{' '}
+                              {new Date(sale.created_at).toLocaleTimeString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              {salePaymentsList.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {salePaymentsList.map((p: any, idx: number) => (
+                                    <Badge key={idx} variant="outline" className="text-xs">
+                                      {p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                                       p.forma_pagamento === 'pix' ? 'PIX' :
+                                       p.forma_pagamento === 'debito' ? 'Débito' :
+                                       p.forma_pagamento === 'credito' ? 'Crédito' :
+                                       p.forma_pagamento === 'link_pagamento' ? 'Link' :
+                                       p.forma_pagamento === 'carteira_digital' ? 'Carteira' : p.forma_pagamento}
+                                      {' '}
+                                      {currencyFormatters.brl(p.valor)}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {currencyFormatters.brl(sale.total)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   <div className="p-4 bg-muted/50 border-t">
@@ -605,6 +646,141 @@ export default function Caixa() {
             <LoadingButton onClick={handleAddMovement} loading={isProcessing}>
               Registrar
             </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Detalhes da Venda */}
+      <Dialog open={showSaleDetails} onOpenChange={setShowSaleDetails}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Venda #{selectedSale?.numero}</DialogTitle>
+          </DialogHeader>
+          {selectedSale && (
+            <div className="space-y-4">
+              {/* Informações da Venda */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-muted-foreground">Cliente</Label>
+                  <p className="font-medium">{selectedSale.cliente_nome || 'Consumidor Final'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Data/Hora</Label>
+                  <p className="font-medium">
+                    {dateFormatters.short(selectedSale.created_at)}{' '}
+                    {new Date(selectedSale.created_at).toLocaleTimeString('pt-BR')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Vendedor</Label>
+                  <p className="font-medium">{selectedSale.vendedor_nome || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-muted-foreground">Total</Label>
+                  <p className="font-bold text-lg">{currencyFormatters.brl(selectedSale.total)}</p>
+                </div>
+              </div>
+
+              {/* Produtos */}
+              <div>
+                <Label className="text-sm font-semibold mb-2 block">Produtos:</Label>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead className="text-right">Qtd</TableHead>
+                        <TableHead className="text-right">Vl. Unit.</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedSale.items && selectedSale.items.length > 0 ? (
+                        selectedSale.items.map((item: any) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{item.produto_nome}</TableCell>
+                            <TableCell className="text-right">{item.quantidade}</TableCell>
+                            <TableCell className="text-right">{currencyFormatters.brl(item.valor_unitario)}</TableCell>
+                            <TableCell className="text-right font-semibold">{currencyFormatters.brl(item.valor_total)}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            Carregando produtos...
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Pagamentos */}
+              <div>
+                <Label className="text-sm font-semibold mb-2 block">Formas de Pagamento:</Label>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Forma</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        {salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) && (
+                          <TableHead className="text-right">Troco</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {salePayments[selectedSale.id] && salePayments[selectedSale.id].length > 0 ? (
+                        salePayments[selectedSale.id].map((payment: any) => (
+                          <TableRow key={payment.id}>
+                            <TableCell className="capitalize">
+                              {payment.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                               payment.forma_pagamento === 'pix' ? 'PIX' :
+                               payment.forma_pagamento === 'debito' ? 'Débito' :
+                               payment.forma_pagamento === 'credito' ? 'Crédito' :
+                               payment.forma_pagamento === 'link_pagamento' ? 'Link de Pagamento' :
+                               payment.forma_pagamento === 'carteira_digital' ? 'Carteira Digital' : payment.forma_pagamento}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {currencyFormatters.brl(payment.valor)}
+                            </TableCell>
+                            {salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) && (
+                              <TableCell className="text-right">
+                                {payment.troco > 0 ? currencyFormatters.brl(payment.troco) : '-'}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground">
+                            Nenhum pagamento encontrado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  {salePayments[selectedSale.id] && salePayments[selectedSale.id].length > 0 && (
+                    <div className="p-4 bg-muted/50 border-t">
+                      <div className="flex justify-between items-center font-bold">
+                        <span>Total Pago:</span>
+                        <span className="text-lg">
+                          {currencyFormatters.brl(
+                            salePayments[selectedSale.id].reduce((sum: number, p: any) => sum + Number(p.valor || 0), 0)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
+              Fechar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
