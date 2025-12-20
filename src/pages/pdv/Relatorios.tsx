@@ -23,12 +23,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 
 export default function Relatorios() {
+  const { user } = useAuth();
   const { sales, isLoading } = useSales();
   const [periodoInicio, setPeriodoInicio] = useState<Date | undefined>(
     new Date(new Date().setDate(new Date().getDate() - 30))
   );
   const [periodoFim, setPeriodoFim] = useState<Date | undefined>(new Date());
   const [vendedorFilter, setVendedorFilter] = useState<string>('all');
+  const [salePayments, setSalePayments] = useState<Record<string, any[]>>({});
+  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [showSaleDetails, setShowSaleDetails] = useState(false);
 
   // Filtrar vendas por período
   const filteredSales = useMemo(() => {
@@ -79,6 +83,49 @@ export default function Relatorios() {
       vendasPorVendedor: Object.values(vendasPorVendedor).sort((a, b) => b.total - a.total),
     };
   }, [filteredSales]);
+
+  // Carregar pagamentos das vendas
+  useEffect(() => {
+    if (filteredSales.length > 0) {
+      const loadPayments = async () => {
+        const saleIds = filteredSales.map(s => s.id);
+        const { data: paymentsData } = await supabase
+          .from('payments')
+          .select('*')
+          .in('sale_id', saleIds)
+          .eq('status', 'confirmed');
+        
+        if (paymentsData) {
+          const paymentsBySale: Record<string, any[]> = {};
+          paymentsData.forEach((payment: any) => {
+            if (!paymentsBySale[payment.sale_id]) {
+              paymentsBySale[payment.sale_id] = [];
+            }
+            paymentsBySale[payment.sale_id].push(payment);
+          });
+          setSalePayments(paymentsBySale);
+        }
+      };
+      loadPayments();
+    }
+  }, [filteredSales]);
+
+  // Carregar items quando uma venda é selecionada
+  useEffect(() => {
+    if (selectedSale && showSaleDetails) {
+      const loadItems = async () => {
+        const { data: itemsData } = await supabase
+          .from('sale_items')
+          .select('*')
+          .eq('sale_id', selectedSale.id);
+        
+        if (itemsData) {
+          setSelectedSale((prev: any) => ({ ...prev, items: itemsData }));
+        }
+      };
+      loadItems();
+    }
+  }, [selectedSale?.id, showSaleDetails]);
 
   // Lista de vendedores únicos
   const vendedores = useMemo(() => {
@@ -295,21 +342,52 @@ export default function Relatorios() {
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
                       <TableHead>Data</TableHead>
+                      <TableHead>Formas de Pagamento</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredSales.slice(0, 20).map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell className="font-bold text-primary">#{sale.numero}</TableCell>
-                        <TableCell>{sale.cliente_nome || 'Cliente não informado'}</TableCell>
-                        <TableCell>{sale.vendedor_nome || '-'}</TableCell>
-                        <TableCell>{dateFormatters.short(sale.created_at)}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {currencyFormatters.brl(sale.total)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredSales.slice(0, 20).map((sale) => {
+                      const salePaymentsList = salePayments[sale.id] || [];
+                      return (
+                        <TableRow 
+                          key={sale.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            setSelectedSale(sale);
+                            setShowSaleDetails(true);
+                          }}
+                        >
+                          <TableCell className="font-bold text-primary">#{sale.numero}</TableCell>
+                          <TableCell>{sale.cliente_nome || 'Consumidor Final'}</TableCell>
+                          <TableCell>{sale.vendedor_nome || '-'}</TableCell>
+                          <TableCell>{dateFormatters.short(sale.created_at)}</TableCell>
+                          <TableCell>
+                            {salePaymentsList.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {salePaymentsList.map((p: any, idx: number) => (
+                                  <BadgeComponent key={idx} variant="outline" className="text-xs">
+                                    {p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                                     p.forma_pagamento === 'pix' ? 'PIX' :
+                                     p.forma_pagamento === 'debito' ? 'Débito' :
+                                     p.forma_pagamento === 'credito' ? `Crédito${p.parcelas && p.parcelas > 1 ? ` (${p.parcelas}x)` : ''}` :
+                                     p.forma_pagamento === 'link_pagamento' ? 'Link' :
+                                     p.forma_pagamento === 'carteira_digital' ? 'Carteira' : p.forma_pagamento}
+                                    {' '}
+                                    {currencyFormatters.brl(p.valor)}
+                                  </BadgeComponent>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {currencyFormatters.brl(sale.total)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
