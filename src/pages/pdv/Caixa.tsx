@@ -58,19 +58,50 @@ export default function Caixa() {
     if (!currentSession?.id) return;
     try {
       setLoadingSales(true);
-      const { data, error } = await supabase
+      // 1) Preferência: vendas vinculadas diretamente ao caixa (cash_register_session_id)
+      let salesData: any[] | null = null;
+      let salesError: any = null;
+
+      const direct = await supabase
         .from('sales')
         .select('*')
         .eq('cash_register_session_id', currentSession.id)
         .eq('status', 'paid')
         .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setSales(data || []);
+
+      salesData = direct.data || [];
+      salesError = direct.error;
+
+      // 2) Fallback: se a coluna não existe / não está sendo preenchida, buscar por período do caixa (opened_at) e operador
+      if (
+        salesError?.code === 'PGRST204' ||
+        String(salesError?.message || '').includes('cash_register_session_id') ||
+        (Array.isArray(salesData) && salesData.length === 0)
+      ) {
+        const openedAt = (currentSession as any).opened_at || (currentSession as any).created_at;
+        const operadorId = (currentSession as any).operador_id || user?.id;
+
+        if (openedAt && operadorId) {
+          const fallback = await supabase
+            .from('sales')
+            .select('*')
+            .eq('status', 'paid')
+            .eq('vendedor_id', operadorId)
+            .gte('finalized_at', openedAt)
+            .order('created_at', { ascending: false });
+
+          // só sobrescreve se não der erro
+          if (!fallback.error) {
+            salesData = fallback.data || [];
+          }
+        }
+      }
+
+      setSales(salesData || []);
       
       // Carregar pagamentos de todas as vendas
-      if (data && data.length > 0) {
-        const saleIds = data.map(s => s.id);
+      if (salesData && salesData.length > 0) {
+        const saleIds = salesData.map(s => s.id);
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payments')
           .select('*')
@@ -191,7 +222,7 @@ export default function Caixa() {
   };
 
   // Calcular totais
-  const totalEntradas = movements
+  const totalSuprimentos = movements
     .filter(m => m.tipo === 'suprimento')
     .reduce((sum, m) => sum + Number(m.valor), 0);
   
@@ -201,6 +232,9 @@ export default function Caixa() {
 
   // Calcular total de vendas vinculadas ao caixa
   const totalVendas = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+
+  // Total de entradas para conferência: Vendas + Suprimentos
+  const totalEntradas = totalSuprimentos + totalVendas;
   
   // Calcular totais por forma de pagamento
   const pagamentosPorForma: Record<string, number> = {};

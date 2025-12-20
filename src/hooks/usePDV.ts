@@ -26,11 +26,21 @@ export function useSales() {
   const loadSales = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      const isAdmin = profile?.role === 'admin';
+      let query: any = supabase
         .from('sales')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
+
+      // Non-admin: only own sales
+      if (!isAdmin && user?.id) {
+        query = query.eq('vendedor_id', user.id);
+      }
+
+      // Load more history to avoid empty screens
+      query = query.limit(isAdmin ? 2000 : 500);
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setSales(data || []);
@@ -39,7 +49,7 @@ export function useSales() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [profile?.role, user?.id]);
 
   useEffect(() => {
     loadSales();
@@ -185,14 +195,19 @@ export function useSales() {
 
       // Buscar sessão de caixa atual (opcional - não falha se não houver)
       let cashSessionId = null;
-      try {
-        const { data: currentCashSession } = await supabase
+      try {        let cashQuery: any = supabase
           .from('cash_register_sessions')
           .select('id')
           .eq('status', 'open')
           .order('opened_at', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
+
+        // Vincular ao caixa do operador atual (nÃ£o ao Ãºltimo de qualquer pessoa)
+        if (user?.id) {
+          cashQuery = cashQuery.eq('operador_id', user.id);
+        }
+
+        const { data: currentCashSession } = await cashQuery.single();
         cashSessionId = currentCashSession?.id || null;
       } catch (error) {
         // Não falhar se não houver sessão de caixa aberta ou se a tabela não existir

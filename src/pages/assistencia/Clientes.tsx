@@ -50,7 +50,7 @@ export default function Clientes() {
     if (!searchTerm) return clientes;
     const q = searchTerm.toLowerCase();
     return clientes.filter(c => 
-      c.nome.toLowerCase().includes(q) ||
+      (c.nome || '').toLowerCase().includes(q) ||
       c.cpf_cnpj?.includes(searchTerm) ||
       c.telefone?.includes(searchTerm) ||
       c.whatsapp?.includes(searchTerm) ||

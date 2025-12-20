@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,13 +17,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { useSales, usePayments } from '@/hooks/usePDV';
+import { useSales } from '@/hooks/usePDV';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 
 export default function Relatorios() {
-  const { user } = useAuth();
   const { sales, isLoading } = useSales();
   const [periodoInicio, setPeriodoInicio] = useState<Date | undefined>(
     new Date(new Date().setDate(new Date().getDate() - 30))
