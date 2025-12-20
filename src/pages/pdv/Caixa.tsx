@@ -19,6 +19,7 @@ import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Caixa() {
   const navigate = useNavigate();
