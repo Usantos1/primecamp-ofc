@@ -22,7 +22,7 @@ import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
-import { CartItem, PaymentFormData, PaymentMethod } from '@/types/pdv';
+import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
