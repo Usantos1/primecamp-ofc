@@ -659,7 +659,7 @@ export default function Vendas() {
                         <TableCell className="font-bold text-primary">#{sale.numero}</TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{sale.cliente_nome || 'Cliente não informado'}</p>
+                            <p className="font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
                             {sale.cliente_cpf_cnpj && (
                               <p className="text-xs text-muted-foreground">{sale.cliente_cpf_cnpj}</p>
                             )}

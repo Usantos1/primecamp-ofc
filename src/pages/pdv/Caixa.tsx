@@ -40,12 +40,35 @@ export default function Caixa() {
   const [movementValor, setMovementValor] = useState('');
   const [movementMotivo, setMovementMotivo] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [sales, setSales] = useState<any[]>([]);
+  const [loadingSales, setLoadingSales] = useState(false);
 
   useEffect(() => {
     if (currentSession?.id) {
       refreshMovements();
+      loadSales();
     }
   }, [currentSession?.id, refreshMovements]);
+
+  const loadSales = async () => {
+    if (!currentSession?.id) return;
+    try {
+      setLoadingSales(true);
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('cash_register_session_id', currentSession.id)
+        .eq('status', 'paid')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setSales(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar vendas:', error);
+    } finally {
+      setLoadingSales(false);
+    }
+  };
 
   const handleOpenCash = async () => {
     if (!valorInicial || parseFloat(valorInicial) < 0) {
@@ -151,8 +174,11 @@ export default function Caixa() {
     .filter(m => m.tipo === 'sangria')
     .reduce((sum, m) => sum + Number(m.valor), 0);
 
+  // Calcular total de vendas vinculadas ao caixa
+  const totalVendas = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  
   const valorEsperado = currentSession 
-    ? Number(currentSession.valor_inicial) + totalEntradas - totalSaidas
+    ? Number(currentSession.valor_inicial) + totalEntradas - totalSaidas + totalVendas
     : 0;
 
   if (isLoading) {
@@ -260,6 +286,64 @@ export default function Caixa() {
             )}
           </CardContent>
         </Card>
+
+        {/* Vendas */}
+        {currentSession && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Vendas</CardTitle>
+                <Badge variant="outline">{sales.length} venda(s)</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingSales ? (
+                <div className="text-center py-4 text-muted-foreground">Carregando vendas...</div>
+              ) : sales.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Nenhuma venda registrada nesta sessão</p>
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Número</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Data/Hora</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sales.map((sale) => (
+                        <TableRow key={sale.id}>
+                          <TableCell className="font-medium">#{sale.numero}</TableCell>
+                          <TableCell>{sale.cliente_nome || 'Consumidor Final'}</TableCell>
+                          <TableCell>
+                            {dateFormatters.short(sale.created_at)}{' '}
+                            {new Date(sale.created_at).toLocaleTimeString('pt-BR')}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {currencyFormatters.brl(sale.total)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="p-4 bg-muted/50 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Total de Vendas:</span>
+                      <span className="text-xl font-bold text-primary">
+                        {currencyFormatters.brl(totalVendas)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Movimentos */}
         {currentSession && (

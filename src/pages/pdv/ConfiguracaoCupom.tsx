@@ -58,6 +58,19 @@ export default function ConfiguracaoCupom() {
 
   const loadConfig = async () => {
     try {
+      // Tentar carregar de kv_store_2c4defad primeiro (padrão)
+      const { data: kvData, error: kvError } = await supabase
+        .from('kv_store_2c4defad')
+        .select('value')
+        .eq('key', 'cupom_config')
+        .single();
+
+      if (!kvError && kvData) {
+        setConfig({ ...config, ...kvData.value });
+        return;
+      }
+
+      // Fallback para cupom_config (tabela antiga)
       const { data, error } = await supabase
         .from('cupom_config')
         .select('*')
@@ -143,20 +156,35 @@ export default function ConfiguracaoCupom() {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const configToSave = {
-        ...config,
-        created_by: user?.id || null,
-      };
-
-      const { error } = await supabase
-        .from('cupom_config')
-        .upsert(configToSave, {
-          onConflict: 'id',
+      // Salvar em kv_store_2c4defad (padrão)
+      const { error: kvError } = await supabase
+        .from('kv_store_2c4defad')
+        .upsert({
+          key: 'cupom_config',
+          value: config,
+        }, {
+          onConflict: 'key',
         });
 
-      if (error) throw error;
+      if (kvError) throw kvError;
+
+      // Também salvar em cupom_config para compatibilidade (se a tabela existir)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const configToSave = {
+          ...config,
+          created_by: user?.id || null,
+        };
+
+        await supabase
+          .from('cupom_config')
+          .upsert(configToSave, {
+            onConflict: 'id',
+          });
+      } catch (oldTableError) {
+        // Ignorar erro se a tabela antiga não existir
+        console.warn('Tabela cupom_config não existe, usando apenas kv_store:', oldTableError);
+      }
 
       toast({
         title: 'Configurações salvas!',

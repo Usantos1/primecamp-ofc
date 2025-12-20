@@ -248,40 +248,26 @@ export default function CupomView() {
   }
 
   return (
-    <ModernLayout title={`Cupom #${sale.numero}`} subtitle="Segunda via do cupom fiscal">
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap gap-2 justify-center">
-              <Button onClick={handlePrint} className="gap-2">
-                <Printer className="h-4 w-4" />
-                Imprimir Cupom
-              </Button>
-              <Button onClick={handleDownloadPDF} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" />
-                Baixar PDF
-              </Button>
-              <Button onClick={handleShare} variant="outline" className="gap-2">
-                <Share2 className="h-4 w-4" />
-                Compartilhar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div 
-              id="cupom-preview" 
-              className="bg-white p-4 border rounded-lg overflow-auto"
-              style={{ maxWidth: '80mm', margin: '0 auto', minHeight: '200px' }}
-            >
-              {loading ? 'Carregando preview do cupom...' : ''}
-            </div>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-bold">Cupom #{sale.numero}</h1>
+            <Button onClick={handlePrint} size="sm" className="gap-2">
+              <Printer className="h-4 w-4" />
+              Reimprimir
+            </Button>
+          </div>
+          <div 
+            id="cupom-preview" 
+            className="bg-white border rounded-lg overflow-auto"
+            style={{ maxWidth: '80mm', margin: '0 auto', minHeight: '200px' }}
+          >
+            {loading ? 'Carregando preview do cupom...' : ''}
+          </div>
+        </div>
       </div>
-    </ModernLayout>
+    </div>
   );
 }
 
