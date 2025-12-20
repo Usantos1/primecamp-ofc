@@ -1089,40 +1089,8 @@ export default function NovaVenda() {
           setTimeout(() => {
             try {
               printFrame.contentWindow?.focus();
-              
-              // Tentar impressão silenciosa usando beforeprint event
-              const printHandler = () => {
-                // Cancelar o diálogo padrão e imprimir diretamente
-                if (printFrame.contentWindow) {
-                  printFrame.contentWindow.print();
-                }
-              };
-              
-              // Adicionar listener para beforeprint
-              printFrame.contentWindow?.addEventListener('beforeprint', printHandler);
-              
-              // Tentar imprimir diretamente
-              // Nota: Navegadores modernos podem não permitir impressão totalmente silenciosa
-              // mas tentaremos usar a impressora padrão
-              if (imprimirSemDialogo) {
-                // Usar matchMedia para detectar modo de impressão
-                const mediaQueryList = window.matchMedia('print');
-                const handlePrint = () => {
-                  printFrame.contentWindow?.print();
-                };
-                mediaQueryList.addListener(handlePrint);
-                
-                // Tentar imprimir diretamente
-                printFrame.contentWindow?.print();
-                
-                // Remover listener após impressão
-                setTimeout(() => {
-                  mediaQueryList.removeListener(handlePrint);
-                  printFrame.contentWindow?.removeEventListener('beforeprint', printHandler);
-                }, 2000);
-              } else {
-                printFrame.contentWindow?.print();
-              }
+              // Imprimir diretamente - navegadores podem mostrar diálogo
+              printFrame.contentWindow?.print();
               
               // Remover iframe após impressão
               setTimeout(() => {
@@ -1138,7 +1106,7 @@ export default function NovaVenda() {
               console.error('Erro ao imprimir:', e);
               toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
             }
-          }, 500);
+          }, 1000); // Delay para garantir que HTML está totalmente carregado
         }
       };
       
