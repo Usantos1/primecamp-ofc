@@ -1640,7 +1640,16 @@ export default function NovaVenda() {
                 <Label>Forma de Pagamento</Label>
                 <Select
                   value={checkoutPayment.forma_pagamento}
-                  onValueChange={(v: PaymentMethod) => setCheckoutPayment({ ...checkoutPayment, forma_pagamento: v })}
+                  onValueChange={(v: PaymentMethod) => {
+                    const isDinheiro = v === 'dinheiro';
+                    setCheckoutPayment({
+                      ...checkoutPayment,
+                      forma_pagamento: v,
+                      // Se não for dinheiro, preencher automaticamente com o saldo restante
+                      valor: isDinheiro ? undefined : saldoRestante,
+                      troco: 0, // Troco só existe para dinheiro
+                    });
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -1672,6 +1681,8 @@ export default function NovaVenda() {
                   }}
                   step="0.01"
                   placeholder="0,00"
+                  disabled={checkoutPayment.forma_pagamento !== 'dinheiro'}
+                  className={checkoutPayment.forma_pagamento !== 'dinheiro' ? 'bg-muted' : ''}
                 />
               </div>
             </div>
