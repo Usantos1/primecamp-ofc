@@ -97,7 +97,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       <meta charset="UTF-8">
       <style>
         @page {
-          size: 80mm auto;
+          size: 80mm 297mm;
           margin: 0;
           padding: 0;
         }
@@ -135,6 +135,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         body {
           width: 80mm;
           max-width: 80mm;
+          min-height: 297mm;
           margin: 0;
           padding: 2mm 6mm 2mm 5mm;
           font-family: Arial, Helvetica, sans-serif;
@@ -153,6 +154,8 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           image-rendering: crisp-edges;
           transform: scale(1);
           -webkit-transform: scale(1);
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .center {
           text-align: center;
