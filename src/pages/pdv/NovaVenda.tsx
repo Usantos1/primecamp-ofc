@@ -1114,14 +1114,17 @@ export default function NovaVenda() {
       // Imprimir primeira via
       console.log('[IMPRESSÃO] Iniciando impressão da primeira via');
       await printCupom();
+      console.log('[IMPRESSÃO] Primeira via impressa');
       
       // Se configurado para 2 vias, imprimir novamente após um delay
       if (imprimir2Vias) {
-        console.log('[IMPRESSÃO] Aguardando para imprimir segunda via');
-        setTimeout(async () => {
-          console.log('[IMPRESSÃO] Iniciando impressão da segunda via');
-          await printCupom();
-        }, 2000);
+        console.log('[IMPRESSÃO] Configurado para 2 vias, aguardando 3 segundos para imprimir segunda via');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        console.log('[IMPRESSÃO] Iniciando impressão da segunda via');
+        await printCupom();
+        console.log('[IMPRESSÃO] Segunda via impressa com sucesso');
+      } else {
+        console.log('[IMPRESSÃO] Apenas 1 via configurada (imprimir_2_vias = false)');
       }
     } catch (error) {
       console.error('Erro ao gerar cupom:', error);

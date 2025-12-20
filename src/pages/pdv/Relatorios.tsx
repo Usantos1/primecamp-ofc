@@ -10,8 +10,9 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Calendar, Download, TrendingUp, DollarSign, ShoppingCart, 
-  User, Package, BarChart3, Badge
+  User, Package, BarChart3
 } from 'lucide-react';
+import { Badge as BadgeComponent } from '@/components/ui/badge';
 import { Badge as BadgeComponent } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { format } from 'date-fns';
