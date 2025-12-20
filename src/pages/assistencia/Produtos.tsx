@@ -25,6 +25,7 @@ import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
+import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized';
 
 const INITIAL_FORM: ProdutoFormData = {
   tipo: 'peca',
@@ -421,7 +422,48 @@ export default function Produtos() {
     }
   };
 
-  // Salvar produto
+  // Salvar produto (para o novo ProductFormOptimized)
+  const handleSave = async (supabasePayload: any) => {
+    // Converter payload do Supabase para formato Produto
+    const produtoData: Partial<Produto> = {
+      descricao: supabasePayload.nome || '',
+      codigo: supabasePayload.codigo,
+      codigo_barras: supabasePayload.codigo_barras,
+      referencia: supabasePayload.referencia,
+      descricao_abreviada: supabasePayload.nome_abreviado,
+      marca: supabasePayload.marca,
+      modelo_compativel: supabasePayload.modelo,
+      categoria: supabasePayload.grupo,
+      preco_custo: supabasePayload.valor_compra || 0,
+      preco_venda: supabasePayload.valor_dinheiro_pix || supabasePayload.valor_venda || 0,
+      margem_lucro: supabasePayload.margem_percentual,
+      estoque_atual: supabasePayload.quantidade || 0,
+      estoque_minimo: supabasePayload.estoque_minimo,
+      localizacao: supabasePayload.localizacao,
+      situacao: supabasePayload.situacao === 'INATIVO' ? 'inativo' : 'ativo',
+    };
+
+    try {
+      if (editingProduto) {
+        await updateProduto(editingProduto.id, produtoData);
+        toast({ title: 'Produto atualizado com sucesso!' });
+      } else {
+        await createProduto(produtoData);
+        toast({ title: 'Produto criado com sucesso!' });
+      }
+      setEditingProduto(null);
+      setShowForm(false);
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao salvar produto',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  // Salvar produto (função antiga - mantida para compatibilidade)
   const handleSubmit = async () => {
     if (!formData.descricao) {
       toast({ title: 'Descrição é obrigatória', variant: 'destructive' });
@@ -662,8 +704,19 @@ export default function Produtos() {
           </CardContent>
         </Card>
 
-        {/* Form Dialog Completo */}
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        {/* Form Dialog Simplificado */}
+        <ProductFormOptimized
+          open={showForm}
+          onOpenChange={setShowForm}
+          produto={editingProduto}
+          onSave={handleSave}
+          grupos={grupos}
+          marcas={marcas}
+          modelos={modelos}
+        />
+
+        {/* Modal antigo removido - código abaixo está comentado */}
+        {/* <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle className="text-xl">
@@ -1794,7 +1847,7 @@ export default function Produtos() {
               </div>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
 
         {/* Modal de Etiqueta */}
         <Dialog open={showEtiquetaModal} onOpenChange={setShowEtiquetaModal}>
