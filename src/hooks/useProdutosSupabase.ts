@@ -207,3 +207,144 @@ export function useProdutosSupabase() {
 // Alias para compatibilidade
 export const useProdutos = useProdutosSupabase;
 
+
+// VersÃ£o paginada para telas grandes (/produtos)
+export function useProdutosSupabasePaged(params: { page: number; pageSize: number; search?: string }) {
+  const queryClient = useQueryClient();
+
+  const page = Math.max(1, params.page || 1);
+  const pageSize = Math.min(500, Math.max(10, params.pageSize || 100));
+  const search = (params.search || '').trim();
+
+  const { data: queryData, isLoading } = useQuery({
+    queryKey: ['produtos-assistencia', 'paged', page, pageSize, search],
+    queryFn: async () => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let q = supabase
+        .from('produtos')
+        .select('*', { count: 'exact' })
+        .order('nome', { ascending: true })
+        .or('disponivel.is.null,disponivel.eq.true')
+        .range(from, to);
+
+      if (search) {
+        // busca por nome, codigo de barras e referencia
+        const term = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+        q = q.or(`nome.ilike.%${term}%,codigo_barras.ilike.%${term}%,referencia.ilike.%${term}%`);
+      }
+
+      const { data, error, count } = await q;
+      if (error) throw error;
+
+      return {
+        produtos: (data || []).map(mapSupabaseToAssistencia),
+        totalCount: count || 0,
+      };
+    },
+    staleTime: 15000,
+  });
+
+  const produtos = (queryData?.produtos || []) as Produto[];
+  const totalCount = queryData?.totalCount || 0;
+
+  // Criar produto
+  const createProduto = useCallback(async (data: Partial<Produto>): Promise<Produto> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('UsuÃ¡rio nÃ£o autenticado');
+
+    const produtoSupabase = mapAssistenciaToSupabase(data);
+    delete (produtoSupabase as any).tipo;
+
+    const { data: novoProduto, error } = await supabase
+      .from('produtos')
+      .insert({
+        ...produtoSupabase,
+        criado_por: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: 'Erro ao criar produto',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
+
+    toast({
+      title: 'Sucesso',
+      description: 'Produto criado com sucesso!',
+    });
+
+    return mapSupabaseToAssistencia(novoProduto);
+  }, [queryClient]);
+
+  // Atualizar produto
+  const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
+    const produtoSupabase = mapAssistenciaToSupabase(data);
+    delete (produtoSupabase as any).tipo;
+
+    const { error } = await supabase
+      .from('produtos')
+      .update(produtoSupabase)
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: 'Erro ao atualizar produto',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
+
+    toast({
+      title: 'Sucesso',
+      description: 'Produto atualizado com sucesso!',
+    });
+  }, [queryClient]);
+
+  // Deletar produto (soft delete)
+  const deleteProduto = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('produtos')
+      .update({ disponivel: false })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: 'Erro ao deletar produto',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
+
+    toast({
+      title: 'Sucesso',
+      description: 'Produto deletado com sucesso!',
+    });
+  }, [queryClient]);
+
+  const grupos = useMemo(() => [], []);
+
+  return {
+    produtos: produtos.filter(p => p.situacao === 'ativo'),
+    totalCount,
+    grupos,
+    isLoading,
+    createProduto,
+    updateProduto,
+    deleteProduto,
+  };
+}

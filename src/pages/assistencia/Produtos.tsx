@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { ImportarProdutos } from '@/components/ImportarProdutos';
 import { Badge } from '@/components/ui/badge';
-import { useProdutos } from '@/hooks/useProdutosSupabase';
+import { useProdutosSupabasePaged } from '@/hooks/useProdutosSupabase';
 import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
@@ -38,51 +38,20 @@ const INITIAL_FORM: ProdutoFormData = {
 
 export default function Produtos() {
   const navigate = useNavigate();
-  const { produtos, grupos, isLoading, createProduto, updateProduto, deleteProduto } = useProdutos();
+  const { produtos, grupos, isLoading, totalCount, createProduto, updateProduto, deleteProduto } = useProdutosSupabasePaged({ page, pageSize, search: searchDebounced });
   const { marcas, modelos, getModeloById, getMarcaById, getModelosByMarca } = useMarcasModelosSupabase();
   const { toast } = useToast();
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
 
-  // Verificar se há backups disponíveis quando produtos desaparecem
   useEffect(() => {
-    const checkBackups = () => {
-      const backupKeys = Object.keys(localStorage)
-        .filter(k => k.startsWith('assistencia_produtos_backup_'))
-        .sort()
-        .reverse();
-      
-      if (backupKeys.length > 0 && produtos.length === 0) {
-        const latestBackup = localStorage.getItem(backupKeys[0]);
-        if (latestBackup) {
-          try {
-            const backupData = JSON.parse(latestBackup);
-            if (Array.isArray(backupData) && backupData.length > 0) {
-              console.warn(`[PRODUTOS] Backup encontrado com ${backupData.length} produtos!`);
-              toast({
-                title: '⚠️ Backup encontrado!',
-                description: `Encontrado backup com ${backupData.length} produtos. Verifique o console para restaurar.`,
-                variant: 'default',
-                duration: 15000,
-              });
-              // Adicionar função global para restaurar
-              (window as any).restaurarProdutosBackup = () => {
-                localStorage.setItem('assistencia_produtos', latestBackup);
-                window.location.reload();
-              };
-              console.log('[PRODUTOS] Para restaurar, execute: window.restaurarProdutosBackup()');
-            }
-          } catch (error) {
-            console.error('Erro ao verificar backup:', error);
-          }
-        }
-      }
-    };
-
-    // Verificar backups após 2 segundos (dar tempo para carregar)
-    const timeout = setTimeout(checkBackups, 2000);
-    return () => clearTimeout(timeout);
-  }, [produtos.length, toast]);
-
-  const [searchTerm, setSearchTerm] = useState('');
+    const t = setTimeout(() => {
+      setSearchDebounced(searchTerm.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
   const [situacaoFilter, setSituacaoFilter] = useState<string>('ativo');
   const [tipoFilter, setTipoFilter] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
@@ -96,7 +65,7 @@ export default function Produtos() {
   const [showEstoqueModal, setShowEstoqueModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
   
-  // Campos adicionais do formulário completo
+  // Campos adicionais do formulÃ¡rio completo
   const [formDataExtended, setFormDataExtended] = useState({
     codigo_balanca: '',
     situacao: 'ativo' as 'ativo' | 'inativo',
@@ -134,7 +103,7 @@ export default function Produtos() {
   const filteredProdutos = useMemo(() => {
     let result = [...produtos];
 
-    // Filtro por situação
+    // Filtro por situaÃ§Ã£o
     if (situacaoFilter === 'ativo') {
       result = result.filter(p => p.situacao === 'ativo' || p.situacao === undefined);
     } else if (situacaoFilter === 'inativo') {
@@ -146,7 +115,7 @@ export default function Produtos() {
       result = result.filter(p => p.tipo === tipoFilter);
     }
 
-    // Filtro por descrição
+    // Filtro por descriÃ§Ã£o
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       result = result.filter(p => 
@@ -160,13 +129,15 @@ export default function Produtos() {
     return result;
   }, [produtos, situacaoFilter, tipoFilter, searchTerm]);
 
+  const totalPages = Math.max(1, Math.ceil((Number(totalCount) || 0) / pageSize));
+
   // Calcular margem de lucro
   const calcularMargem = (custo: number, venda: number): number => {
     if (custo === 0) return 0;
     return ((venda - custo) / custo) * 100;
   };
 
-  // Gerar código sequencial
+  // Gerar cÃ³digo sequencial
   const getCodigo = (produto: Produto, index: number): number => {
     return produto.codigo || index + 1;
   };
@@ -246,7 +217,7 @@ export default function Produtos() {
     setEditingProduto(produto);
     setSelectedProduto(produto);
     
-    // Preencher dados do formulário
+    // Preencher dados do formulÃ¡rio
     setFormData({
       tipo: produto.tipo as any || 'peca',
       descricao: produto.descricao,
@@ -299,18 +270,18 @@ export default function Produtos() {
     setShowForm(true);
   };
 
-  // Gerar código de barras automaticamente
+  // Gerar cÃ³digo de barras automaticamente
   const gerarCodigoBarras = (produto: Produto): string => {
     if (produto.codigo_barras) {
       return produto.codigo_barras;
     }
     
-    // Gerar EAN13 baseado no código do produto
+    // Gerar EAN13 baseado no cÃ³digo do produto
     if (produto.codigo) {
-      // EAN13 precisa de 13 dígitos
-      // Usar código do produto + zeros à esquerda + dígito verificador
+      // EAN13 precisa de 13 dÃ­gitos
+      // Usar cÃ³digo do produto + zeros Ã  esquerda + dÃ­gito verificador
       const codigoBase = produto.codigo.toString().padStart(12, '0');
-      // Calcular dígito verificador EAN13
+      // Calcular dÃ­gito verificador EAN13
       let soma = 0;
       for (let i = 0; i < 12; i++) {
         const digito = parseInt(codigoBase[i]);
@@ -320,7 +291,7 @@ export default function Produtos() {
       return codigoBase + digitoVerificador.toString();
     }
     
-    // Se não tiver código, gerar baseado no ID
+    // Se nÃ£o tiver cÃ³digo, gerar baseado no ID
     const idBase = produto.id.replace(/-/g, '').substring(0, 12).padStart(12, '0');
     let soma = 0;
     for (let i = 0; i < 12; i++) {
@@ -335,7 +306,7 @@ export default function Produtos() {
   const handleGerarEtiqueta = async () => {
     if (!selectedProduto) {
       toast({
-        title: 'Produto não selecionado',
+        title: 'Produto nÃ£o selecionado',
         description: 'Selecione um produto para gerar a etiqueta.',
         variant: 'destructive',
       });
@@ -343,22 +314,22 @@ export default function Produtos() {
     }
 
     try {
-      // Gerar código de barras se não tiver
+      // Gerar cÃ³digo de barras se nÃ£o tiver
       const codigoBarras = gerarCodigoBarras(selectedProduto);
       
-      // Se o produto não tinha código de barras, atualizar
+      // Se o produto nÃ£o tinha cÃ³digo de barras, atualizar
       if (!selectedProduto.codigo_barras) {
         await updateProduto(selectedProduto.id, {
           ...selectedProduto,
           codigo_barras: codigoBarras,
         });
         toast({
-          title: 'Código de barras gerado',
-          description: `Código de barras ${codigoBarras} foi gerado e salvo no produto.`,
+          title: 'CÃ³digo de barras gerado',
+          description: `CÃ³digo de barras ${codigoBarras} foi gerado e salvo no produto.`,
         });
       }
 
-      // Calcular código do produto (usar código existente ou índice + 1)
+      // Calcular cÃ³digo do produto (usar cÃ³digo existente ou Ã­ndice + 1)
       const produtoIndex = produtos.findIndex(p => p.id === selectedProduto.id);
       const codigoProduto = selectedProduto.codigo || produtoIndex + 1;
 
@@ -375,23 +346,23 @@ export default function Produtos() {
         },
       };
 
-      // Gerar múltiplas etiquetas se necessário
+      // Gerar mÃºltiplas etiquetas se necessÃ¡rio
       if (quantidadeEtiquetas > 1) {
         const produtos = Array(quantidadeEtiquetas).fill(etiquetaData);
         const doc = await generateEtiquetasA4(produtos, 7, 5); // 7 colunas x 5 linhas para etiquetas verticais
-        // Abrir janela de impressão
+        // Abrir janela de impressÃ£o
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
       } else {
         const doc = await generateEtiquetaPDF(etiquetaData);
-        // Abrir janela de impressão
+        // Abrir janela de impressÃ£o
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
       }
 
       toast({
         title: 'Etiqueta gerada',
-        description: `Abrindo janela de impressão para ${quantidadeEtiquetas} etiqueta(s)...`,
+        description: `Abrindo janela de impressÃ£o para ${quantidadeEtiquetas} etiqueta(s)...`,
       });
 
       setShowEtiquetaModal(false);
@@ -424,13 +395,13 @@ export default function Produtos() {
   // Salvar produto
   const handleSubmit = async () => {
     if (!formData.descricao) {
-      toast({ title: 'Descrição é obrigatória', variant: 'destructive' });
+      toast({ title: 'DescriÃ§Ã£o Ã© obrigatÃ³ria', variant: 'destructive' });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Combinar dados do formulário com dados estendidos
+      // Combinar dados do formulÃ¡rio com dados estendidos
       const produtoData: any = {
         ...formData,
         ...formDataExtended,
@@ -455,7 +426,7 @@ export default function Produtos() {
   };
 
   return (
-    <ModernLayout title="Pesquisa de Produtos" subtitle="Gerenciar produtos e serviços">
+    <ModernLayout title="Pesquisa de Produtos" subtitle="Gerenciar produtos e serviÃ§os">
       <div className="space-y-4 relative pb-20">
         {/* Filtros */}
         <Card>
@@ -466,7 +437,7 @@ export default function Produtos() {
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
               <Select value={situacaoFilter} onValueChange={setSituacaoFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Situação" />
+                  <SelectValue placeholder="SituaÃ§Ã£o" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">TODOS</SelectItem>
@@ -481,8 +452,8 @@ export default function Produtos() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">TODOS</SelectItem>
-                  <SelectItem value="peca">Peças</SelectItem>
-                  <SelectItem value="servico">Serviços</SelectItem>
+                  <SelectItem value="peca">PeÃ§as</SelectItem>
+                  <SelectItem value="servico">ServiÃ§os</SelectItem>
                   <SelectItem value="produto">Produtos</SelectItem>
                 </SelectContent>
               </Select>
@@ -490,7 +461,7 @@ export default function Produtos() {
 
               <div className="col-span-2">
                 <Input
-                  placeholder="Descrição"
+                  placeholder="DescriÃ§Ã£o"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -505,7 +476,7 @@ export default function Produtos() {
           </CardContent>
         </Card>
 
-        {/* Barra de ações fixa abaixo dos filtros */}
+        {/* Barra de aÃ§Ãµes fixa abaixo dos filtros */}
         <div className="sticky top-0 bg-background border-b z-40 shadow-sm -mx-4 px-4 py-2">
           <Card className="border-0 shadow-none">
             <CardContent className="py-2">
@@ -585,7 +556,7 @@ export default function Produtos() {
                 <EmptyState
                   icon={<Package className="h-12 w-12" />}
                   title="Nenhum produto encontrado"
-                  description={searchTerm ? "Tente buscar por outro termo" : "Cadastre seu primeiro produto ou serviço"}
+                  description={searchTerm ? "Tente buscar por outro termo" : "Cadastre seu primeiro produto ou serviÃ§o"}
                   action={!searchTerm ? { label: "Novo Produto", onClick: handleNew } : undefined}
                 />
               </div>
@@ -594,17 +565,17 @@ export default function Produtos() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-20">Código</TableHead>
-                      <TableHead className="w-24">Referência</TableHead>
-                      <TableHead className="w-32">Código de Barras</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead className="w-32">Localização</TableHead>
+                      <TableHead className="w-20">CÃ³digo</TableHead>
+                      <TableHead className="w-24">ReferÃªncia</TableHead>
+                      <TableHead className="w-32">CÃ³digo de Barras</TableHead>
+                      <TableHead>DescriÃ§Ã£o</TableHead>
+                      <TableHead className="w-32">LocalizaÃ§Ã£o</TableHead>
                       <TableHead className="w-20">Un</TableHead>
                       <TableHead className="w-28 text-right">Vl Venda</TableHead>
                       <TableHead className="w-32">Modelo</TableHead>
                       <TableHead className="w-32">Marca</TableHead>
                       <TableHead className="w-24 text-right">Estoque</TableHead>
-                      <TableHead className="w-20">Ações</TableHead>
+                      <TableHead className="w-20">AÃ§Ãµes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -657,6 +628,49 @@ export default function Produtos() {
                     ))}
                   </TableBody>
                 </Table>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 border-t bg-background">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando <span className="font-medium text-foreground">{filteredProdutos.length}</span> de{' '}
+                    <span className="font-medium text-foreground">{Number(totalCount) || 0}</span> produtos â€” PÃ¡gina{' '}
+                    <span className="font-medium text-foreground">{page}</span> /{' '}
+                    <span className="font-medium text-foreground">{totalPages}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(v) => {
+                        setPageSize(Number(v));
+                        setPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[110px]">
+                        <SelectValue placeholder="Por pÃ¡g." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="200">200</SelectItem>
+                        <SelectItem value="500">500</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1 || isLoading}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= totalPages || isLoading}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      PrÃ³xima
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
@@ -673,21 +687,21 @@ export default function Produtos() {
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
               <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="manutencao">Manutenção</TabsTrigger>
+                <TabsTrigger value="manutencao">ManutenÃ§Ã£o</TabsTrigger>
                 <TabsTrigger value="fornecedor">Fornecedor</TabsTrigger>
                 <TabsTrigger value="estoque">Estoque</TabsTrigger>
                 <TabsTrigger value="estoque-condicional">Estoque Condicional</TabsTrigger>
-                <TabsTrigger value="preco-venda-empresa">Preço Venda Empresa</TabsTrigger>
-                <TabsTrigger value="preco-fornecedor">Preço Fornecedor</TabsTrigger>
+                <TabsTrigger value="preco-venda-empresa">PreÃ§o Venda Empresa</TabsTrigger>
+                <TabsTrigger value="preco-fornecedor">PreÃ§o Fornecedor</TabsTrigger>
                 <TabsTrigger value="foto">Foto</TabsTrigger>
               </TabsList>
 
               <div className="flex-1 overflow-y-auto p-4">
-                {/* Tab: Manutenção */}
+                {/* Tab: ManutenÃ§Ã£o */}
                 <TabsContent value="manutencao" className="space-y-4 mt-0">
                   <div className="grid grid-cols-4 gap-4">
                     <div className="space-y-2">
-                      <Label>Código</Label>
+                      <Label>CÃ³digo</Label>
                       <Input
                         value={editingProduto?.codigo || (filteredProdutos.length + 1).toString()}
                         disabled
@@ -695,14 +709,14 @@ export default function Produtos() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Cód. Balança</Label>
+                      <Label>CÃ³d. BalanÃ§a</Label>
                       <Input
                         value={formDataExtended.codigo_balanca}
                         onChange={(e) => setFormDataExtended(prev => ({ ...prev, codigo_balanca: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Situação</Label>
+                      <Label>SituaÃ§Ã£o</Label>
                       <Select
                         value={formDataExtended.situacao}
                         onValueChange={(v: any) => setFormDataExtended(prev => ({ ...prev, situacao: v }))}
@@ -726,10 +740,10 @@ export default function Produtos() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="peca">Peça</SelectItem>
-                          <SelectItem value="servico">Serviço</SelectItem>
+                          <SelectItem value="peca">PeÃ§a</SelectItem>
+                          <SelectItem value="servico">ServiÃ§o</SelectItem>
                           <SelectItem value="produto">Produto</SelectItem>
-                          <SelectItem value="assistencia">ASSISTÊNCIA</SelectItem>
+                          <SelectItem value="assistencia">ASSISTÃŠNCIA</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -737,7 +751,7 @@ export default function Produtos() {
 
                   <div className="grid grid-cols-4 gap-4">
                     <div className="space-y-2">
-                      <Label>Código de Barras</Label>
+                      <Label>CÃ³digo de Barras</Label>
                       <div className="flex gap-2">
                         <Input
                           value={formData.codigo_barras}
@@ -749,14 +763,14 @@ export default function Produtos() {
                           variant="outline" 
                           size="icon"
                           onClick={() => {
-                            // Gerar código de barras EAN13
+                            // Gerar cÃ³digo de barras EAN13
                             let codigoBase = '';
                             
-                            // Tentar usar código do produto se existir
+                            // Tentar usar cÃ³digo do produto se existir
                             if (editingProduto?.codigo) {
                               codigoBase = editingProduto.codigo.toString().padStart(12, '0');
                             } else if (formData.codigo_barras && formData.codigo_barras.length >= 12) {
-                              // Se já tiver código de barras parcial, usar ele
+                              // Se jÃ¡ tiver cÃ³digo de barras parcial, usar ele
                               codigoBase = formData.codigo_barras.substring(0, 12).padStart(12, '0');
                             } else {
                               // Gerar baseado em timestamp + random
@@ -765,7 +779,7 @@ export default function Produtos() {
                               codigoBase = (timestamp + random).padStart(12, '0').substring(0, 12);
                             }
                             
-                            // Calcular dígito verificador EAN13
+                            // Calcular dÃ­gito verificador EAN13
                             let soma = 0;
                             for (let i = 0; i < 12; i++) {
                               const digito = parseInt(codigoBase[i] || '0');
@@ -776,11 +790,11 @@ export default function Produtos() {
                             
                             setFormData(prev => ({ ...prev, codigo_barras: codigoBarrasCompleto }));
                             toast({
-                              title: 'Código de barras gerado',
-                              description: `Código EAN13: ${codigoBarrasCompleto}`,
+                              title: 'CÃ³digo de barras gerado',
+                              description: `CÃ³digo EAN13: ${codigoBarrasCompleto}`,
                             });
                           }}
-                          title="Gerar código de barras EAN13"
+                          title="Gerar cÃ³digo de barras EAN13"
                         >
                           <Barcode className="h-4 w-4" />
                         </Button>
@@ -831,7 +845,7 @@ export default function Produtos() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Descrição Detalhada</Label>
+                    <Label>DescriÃ§Ã£o Detalhada</Label>
                     <Textarea
                       value={formData.descricao}
                       onChange={(e) => setFormData(prev => ({ ...prev, descricao: e.target.value }))}
@@ -842,7 +856,7 @@ export default function Produtos() {
 
                   <div className="grid grid-cols-4 gap-4">
                     <div className="space-y-2">
-                      <Label>Descrição Abreviada</Label>
+                      <Label>DescriÃ§Ã£o Abreviada</Label>
                       <Input
                         value={formData.descricao_abreviada || formData.descricao}
                         onChange={(e) => setFormData(prev => ({ ...prev, descricao_abreviada: e.target.value }))}
@@ -859,13 +873,13 @@ export default function Produtos() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="nao">NÃO</SelectItem>
+                          <SelectItem value="nao">NÃƒO</SelectItem>
                           <SelectItem value="sim">SIM</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Referência</Label>
+                      <Label>ReferÃªncia</Label>
                       <Input
                         value={formData.referencia || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, referencia: e.target.value }))}
@@ -886,7 +900,7 @@ export default function Produtos() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Informações Adicionais</Label>
+                      <Label>InformaÃ§Ãµes Adicionais</Label>
                       <Textarea
                         value={formDataExtended.informacoes_adicionais}
                         onChange={(e) => setFormDataExtended(prev => ({ ...prev, informacoes_adicionais: e.target.value }))}
@@ -894,7 +908,7 @@ export default function Produtos() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Serviço NFSE</Label>
+                      <Label>ServiÃ§o NFSE</Label>
                       <Input
                         value={formDataExtended.servico_nfse}
                         onChange={(e) => setFormDataExtended(prev => ({ ...prev, servico_nfse: e.target.value }))}
@@ -1088,7 +1102,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Tipo de preço</Label>
+                        <Label>Tipo de preÃ§o</Label>
                         <Select
                           value={formDataExtended.tipo_preco}
                           onValueChange={(v: any) => setFormDataExtended(prev => ({ ...prev, tipo_preco: v }))}
@@ -1098,19 +1112,19 @@ export default function Produtos() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="fixo">FIXO</SelectItem>
-                            <SelectItem value="variavel">VARIÁVEL</SelectItem>
+                            <SelectItem value="variavel">VARIÃVEL</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Conversão para entradas */}
+                  {/* ConversÃ£o para entradas */}
                   <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-4">Conversão para entradas</h3>
+                    <h3 className="font-semibold mb-4">ConversÃ£o para entradas</h3>
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
-                        <Label>Código Barras</Label>
+                        <Label>CÃ³digo Barras</Label>
                         <Input
                           value={formDataExtended.conversao_codigo_barras || formData.codigo_barras}
                           onChange={(e) => setFormDataExtended(prev => ({ ...prev, conversao_codigo_barras: e.target.value }))}
@@ -1144,7 +1158,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Operação</Label>
+                        <Label>OperaÃ§Ã£o</Label>
                         <RadioGroup
                           value={formDataExtended.conversao_operacao}
                           onValueChange={(v: any) => setFormDataExtended(prev => ({ ...prev, conversao_operacao: v }))}
@@ -1168,7 +1182,7 @@ export default function Produtos() {
                     <h3 className="font-semibold mb-4">Dados Fiscais</h3>
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
-                        <Label>Nat. Operação</Label>
+                        <Label>Nat. OperaÃ§Ã£o</Label>
                         <div className="flex gap-2">
                           <Input
                             value={formDataExtended.natureza_operacao}
@@ -1192,7 +1206,7 @@ export default function Produtos() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Situação Tributária</Label>
+                        <Label>SituaÃ§Ã£o TributÃ¡ria</Label>
                         <div className="flex gap-2">
                           <Input
                             value={formDataExtended.situacao_tributaria}
@@ -1216,7 +1230,7 @@ export default function Produtos() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label>Alíquota ICMS</Label>
+                        <Label>AlÃ­quota ICMS</Label>
                         <div className="flex gap-2">
                           <Input
                             value={formDataExtended.aliquota_icms}
@@ -1299,7 +1313,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Reposição</Label>
+                        <Label>ReposiÃ§Ã£o</Label>
                         <Input
                           type="number"
                           step="0.001"
@@ -1309,7 +1323,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Mínimo</Label>
+                        <Label>MÃ­nimo</Label>
                         <Input
                           type="number"
                           step="0.001"
@@ -1319,7 +1333,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Localização</Label>
+                        <Label>LocalizaÃ§Ã£o</Label>
                         <Input
                           value={formData.localizacao || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))}
@@ -1340,7 +1354,7 @@ export default function Produtos() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Alíquota</Label>
+                          <Label>AlÃ­quota</Label>
                           <Input
                             type="number"
                             step="0.001"
@@ -1367,7 +1381,7 @@ export default function Produtos() {
                 {/* Tab: Fornecedor */}
                 <TabsContent value="fornecedor" className="space-y-4 mt-0">
                   <div className="text-center text-muted-foreground py-8">
-                    <p>Configurações de fornecedor em desenvolvimento</p>
+                    <p>ConfiguraÃ§Ãµes de fornecedor em desenvolvimento</p>
                   </div>
                 </TabsContent>
 
@@ -1389,7 +1403,7 @@ export default function Produtos() {
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Estoque Mínimo</Label>
+                      <Label>Estoque MÃ­nimo</Label>
                       <Input
                         type="number"
                         min="0"
@@ -1399,25 +1413,25 @@ export default function Produtos() {
                         placeholder="0"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Quantidade mínima para alerta
+                        Quantidade mÃ­nima para alerta
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Localização</Label>
+                      <Label>LocalizaÃ§Ã£o</Label>
                       <Input
                         value={formData.localizacao || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, localizacao: e.target.value }))}
                         placeholder="Ex: Prateleira A-01"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Localização física do produto no estoque
+                        LocalizaÃ§Ã£o fÃ­sica do produto no estoque
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Estoque de Reposição</Label>
+                      <Label>Estoque de ReposiÃ§Ã£o</Label>
                       <Input
                         type="number"
                         min="0"
@@ -1427,7 +1441,7 @@ export default function Produtos() {
                         placeholder="0"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Quantidade ideal para reposição
+                        Quantidade ideal para reposiÃ§Ã£o
                       </p>
                     </div>
                   </div>
@@ -1446,7 +1460,7 @@ export default function Produtos() {
                           ) : formData.estoque_atual <= (formData.estoque_minimo * 1.5) ? (
                             <Badge variant="outline" className="gap-1 text-yellow-600 border-yellow-600">
                               <AlertTriangle className="h-3 w-3" />
-                              Atenção
+                              AtenÃ§Ã£o
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
@@ -1463,11 +1477,11 @@ export default function Produtos() {
                         <p className="font-semibold text-lg">{formData.estoque_atual || 0}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Mínimo</p>
+                        <p className="text-muted-foreground">MÃ­nimo</p>
                         <p className="font-semibold text-lg">{formData.estoque_minimo || 0}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Disponível</p>
+                        <p className="text-muted-foreground">DisponÃ­vel</p>
                         <p className="font-semibold text-lg">
                           {Math.max(0, (formData.estoque_atual || 0) - (formData.estoque_minimo || 0))}
                         </p>
@@ -1482,7 +1496,7 @@ export default function Produtos() {
                     <div className="border rounded-lg p-4 bg-muted/50">
                       <Label className="text-base font-semibold mb-2 block">Estoque Reservado</Label>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Produtos reservados para ordens de serviço ou vendas pendentes
+                        Produtos reservados para ordens de serviÃ§o ou vendas pendentes
                       </p>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -1496,7 +1510,7 @@ export default function Produtos() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Estoque Disponível Real</Label>
+                          <Label>Estoque DisponÃ­vel Real</Label>
                           <Input
                             type="number"
                             min="0"
@@ -1534,12 +1548,12 @@ export default function Produtos() {
                   </div>
                 </TabsContent>
 
-                {/* Tab: Preço Venda Empresa */}
+                {/* Tab: PreÃ§o Venda Empresa */}
                 <TabsContent value="preco-venda-empresa" className="space-y-4 mt-0">
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Preço de Venda</Label>
+                        <Label>PreÃ§o de Venda</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1548,7 +1562,7 @@ export default function Produtos() {
                             const venda = parseFloat(e.target.value) || 0;
                             const custo = formData.preco_custo || 0;
                             setFormData(prev => ({ ...prev, preco_venda: venda }));
-                            // Recalcular margem de lucro quando preço de venda muda
+                            // Recalcular margem de lucro quando preÃ§o de venda muda
                             if (custo > 0) {
                               const margem = ((venda - custo) / custo) * 100;
                               setFormDataExtended(prev => ({ ...prev, percentual_lucro: margem }));
@@ -1558,7 +1572,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Preço Mínimo de Venda</Label>
+                        <Label>PreÃ§o MÃ­nimo de Venda</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1569,7 +1583,7 @@ export default function Produtos() {
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label>Preço de Custo</Label>
+                        <Label>PreÃ§o de Custo</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1577,12 +1591,12 @@ export default function Produtos() {
                           onChange={(e) => {
                             const custo = parseFloat(e.target.value) || 0;
                             setFormData(prev => ({ ...prev, preco_custo: custo }));
-                            // Se tiver % lucro definido, recalcular preço de venda
+                            // Se tiver % lucro definido, recalcular preÃ§o de venda
                             if (formDataExtended.percentual_lucro > 0 && custo > 0) {
                               const venda = custo * (1 + formDataExtended.percentual_lucro / 100);
                               setFormData(prev => ({ ...prev, preco_venda: venda }));
                             } else if (formData.preco_venda > 0 && custo > 0) {
-                              // Se não tiver % lucro, recalcular margem baseada no preço de venda atual
+                              // Se nÃ£o tiver % lucro, recalcular margem baseada no preÃ§o de venda atual
                               const margem = ((formData.preco_venda - custo) / custo) * 100;
                               setFormDataExtended(prev => ({ ...prev, percentual_lucro: margem }));
                             }
@@ -1622,7 +1636,7 @@ export default function Produtos() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Tipo de Preço</Label>
+                        <Label>Tipo de PreÃ§o</Label>
                         <Select
                           value={formDataExtended.tipo_preco}
                           onValueChange={(v: any) => setFormDataExtended(prev => ({ ...prev, tipo_preco: v }))}
@@ -1632,12 +1646,12 @@ export default function Produtos() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="fixo">Fixo</SelectItem>
-                            <SelectItem value="variavel">Variável</SelectItem>
+                            <SelectItem value="variavel">VariÃ¡vel</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Percentual de Desconto Máximo (%)</Label>
+                        <Label>Percentual de Desconto MÃ¡ximo (%)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1650,12 +1664,12 @@ export default function Produtos() {
                   </div>
                 </TabsContent>
 
-                {/* Tab: Preço Fornecedor */}
+                {/* Tab: PreÃ§o Fornecedor */}
                 <TabsContent value="preco-fornecedor" className="space-y-4 mt-0">
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Preço de Compra (Fornecedor)</Label>
+                        <Label>PreÃ§o de Compra (Fornecedor)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1665,7 +1679,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Última Compra</Label>
+                        <Label>Ãšltima Compra</Label>
                         <Input
                           type="date"
                           disabled
@@ -1676,7 +1690,7 @@ export default function Produtos() {
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label>Preço Médio de Compra</Label>
+                        <Label>PreÃ§o MÃ©dio de Compra</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -1686,7 +1700,7 @@ export default function Produtos() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Quantidade Mínima de Compra</Label>
+                        <Label>Quantidade MÃ­nima de Compra</Label>
                         <Input
                           type="number"
                           min="1"
@@ -1702,16 +1716,16 @@ export default function Produtos() {
                           <SelectContent>
                             <SelectItem value="UN">UN</SelectItem>
                             <SelectItem value="CX">CX (Caixa)</SelectItem>
-                            <SelectItem value="PC">PC (Peça)</SelectItem>
+                            <SelectItem value="PC">PC (PeÃ§a)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
 
                     <div className="border rounded-lg p-4 bg-muted/50">
-                      <Label className="text-base font-semibold mb-2 block">Histórico de Preços</Label>
+                      <Label className="text-base font-semibold mb-2 block">HistÃ³rico de PreÃ§os</Label>
                       <p className="text-sm text-muted-foreground">
-                        Histórico de preços de compra será exibido aqui
+                        HistÃ³rico de preÃ§os de compra serÃ¡ exibido aqui
                       </p>
                     </div>
                   </div>
@@ -1737,10 +1751,10 @@ export default function Produtos() {
                             input.onchange = (e: any) => {
                               const file = e.target.files[0];
                               if (file) {
-                                // Aqui você pode implementar o upload da imagem
+                                // Aqui vocÃª pode implementar o upload da imagem
                                 toast({
                                   title: 'Upload de foto',
-                                  description: 'Funcionalidade de upload será implementada em breve.',
+                                  description: 'Funcionalidade de upload serÃ¡ implementada em breve.',
                                 });
                               }
                             };
@@ -1751,7 +1765,7 @@ export default function Produtos() {
                           Selecionar Imagem
                         </Button>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Formatos aceitos: JPG, PNG, WEBP (máx. 5MB)
+                          Formatos aceitos: JPG, PNG, WEBP (mÃ¡x. 5MB)
                         </p>
                       </div>
                     </div>
@@ -1784,7 +1798,7 @@ export default function Produtos() {
                   </LoadingButton>
                   <Button variant="outline" className="gap-2">
                     <Save className="h-4 w-4" />
-                    Cópia
+                    CÃ³pia
                   </Button>
                 </div>
                 <Button variant="outline" onClick={() => setShowForm(false)} className="gap-2 text-destructive">
@@ -1810,14 +1824,14 @@ export default function Produtos() {
                     <span className="font-semibold">{selectedProduto.descricao}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Preço:</Label>
+                    <Label>PreÃ§o:</Label>
                     <span className="font-semibold text-lg">
                       {currencyFormatters.brl(selectedProduto.preco_venda)}
                     </span>
                   </div>
                   {selectedProduto.codigo_barras && (
                     <div className="flex items-center justify-between">
-                      <Label>Código de Barras:</Label>
+                      <Label>CÃ³digo de Barras:</Label>
                       <span className="text-sm font-mono">{selectedProduto.codigo_barras}</span>
                     </div>
                   )}
@@ -1834,8 +1848,8 @@ export default function Produtos() {
                 />
                 <p className="text-xs text-muted-foreground">
                   {quantidadeEtiquetas > 1 
-                    ? `${quantidadeEtiquetas} etiquetas serão geradas em uma página A4`
-                    : '1 etiqueta será gerada (50mm x 30mm)'}
+                    ? `${quantidadeEtiquetas} etiquetas serÃ£o geradas em uma pÃ¡gina A4`
+                    : '1 etiqueta serÃ¡ gerada (50mm x 30mm)'}
                 </p>
               </div>
             </div>
@@ -1855,20 +1869,20 @@ export default function Produtos() {
         <Dialog open={showEstoqueModal} onOpenChange={setShowEstoqueModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Informações de Estoque</DialogTitle>
+              <DialogTitle>InformaÃ§Ãµes de Estoque</DialogTitle>
             </DialogHeader>
             {selectedProduto && (
               <div className="space-y-6 py-4">
-                {/* Informações do Produto */}
+                {/* InformaÃ§Ãµes do Produto */}
                 <div className="border-b pb-4">
                   <h3 className="font-semibold text-lg mb-2">{selectedProduto.descricao}</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                     <div>
-                      <span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}
+                      <span className="font-medium">CÃ³digo:</span> {selectedProduto.codigo || selectedProduto.id}
                     </div>
                     {selectedProduto.referencia && (
                       <div>
-                        <span className="font-medium">Referência:</span> {selectedProduto.referencia}
+                        <span className="font-medium">ReferÃªncia:</span> {selectedProduto.referencia}
                       </div>
                     )}
                   </div>
@@ -1883,49 +1897,49 @@ export default function Produtos() {
                         {selectedProduto.estoque_atual || 0}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Quantidade disponível em estoque
+                        Quantidade disponÃ­vel em estoque
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-base font-semibold">Estoque Mínimo</Label>
+                      <Label className="text-base font-semibold">Estoque MÃ­nimo</Label>
                       <div className="text-2xl font-semibold">
                         {selectedProduto.estoque_minimo || 0}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Quantidade mínima para alerta
+                        Quantidade mÃ­nima para alerta
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-base font-semibold">Estoque de Reposição</Label>
+                      <Label className="text-base font-semibold">Estoque de ReposiÃ§Ã£o</Label>
                       <div className="text-2xl font-semibold">
                         {(selectedProduto as any).estoque_reposicao || 0}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Quantidade ideal para reposição
+                        Quantidade ideal para reposiÃ§Ã£o
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label className="text-base font-semibold">Estoque Disponível Real</Label>
+                      <Label className="text-base font-semibold">Estoque DisponÃ­vel Real</Label>
                       <div className="text-2xl font-semibold text-green-600">
                         {Math.max(0, (selectedProduto.estoque_atual || 0))}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Estoque disponível para venda
+                        Estoque disponÃ­vel para venda
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-base font-semibold">Localização</Label>
+                      <Label className="text-base font-semibold">LocalizaÃ§Ã£o</Label>
                       <div className="text-lg font-medium">
                         {selectedProduto.localizacao || '-'}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Localização física no estoque
+                        LocalizaÃ§Ã£o fÃ­sica no estoque
                       </p>
                     </div>
 
@@ -1943,7 +1957,7 @@ export default function Produtos() {
                             ) : selectedProduto.estoque_atual <= (selectedProduto.estoque_minimo * 1.5) ? (
                               <Badge variant="outline" className="text-sm py-1 px-3 border-yellow-500 text-yellow-700">
                                 <AlertTriangle className="h-3 w-3 mr-1" />
-                                Atenção
+                                AtenÃ§Ã£o
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="text-sm py-1 px-3 border-green-500 text-green-700">
@@ -1962,13 +1976,13 @@ export default function Produtos() {
                 <div className="border-t pt-4">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Saldo Disponível</p>
+                      <p className="text-xs text-muted-foreground mb-1">Saldo DisponÃ­vel</p>
                       <p className="text-lg font-semibold">
                         {Math.max(0, (selectedProduto.estoque_atual || 0) - (selectedProduto.estoque_minimo || 0))}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Necessário Repor</p>
+                      <p className="text-xs text-muted-foreground mb-1">NecessÃ¡rio Repor</p>
                       <p className="text-lg font-semibold text-orange-600">
                         {Math.max(0, ((selectedProduto as any).estoque_reposicao || 0) - (selectedProduto.estoque_atual || 0))}
                       </p>
@@ -1991,7 +2005,7 @@ export default function Produtos() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog de Importação */}
+        {/* Dialog de ImportaÃ§Ã£o */}
         <Dialog open={showImport} onOpenChange={setShowImport}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -2004,3 +2018,6 @@ export default function Produtos() {
     </ModernLayout>
   );
 }
+
+
+

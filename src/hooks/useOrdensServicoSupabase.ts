@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCallback } from 'react';
 import { OrdemServico, StatusOS } from '@/types/assistencia';
 
 export function useOrdensServicoSupabase() {
@@ -26,7 +27,7 @@ export function useOrdensServicoSupabase() {
     mutationFn: async (data: Partial<OrdemServico>): Promise<OrdemServico> => {
       const now = new Date();
       
-      // Buscar próximo número
+      // Buscar prÃ³ximo nÃºmero
       const { data: lastOS } = await supabase
         .from('ordens_servico')
         .select('numero')
@@ -164,7 +165,7 @@ export function useOrdensServicoSupabase() {
     },
   });
 
-  // Estatísticas
+  // EstatÃ­sticas
   const getEstatisticas = useCallback(() => {
     const hoje = new Date().toISOString().split('T')[0];
     const aguardandoStatuses = [
@@ -191,6 +192,7 @@ export function useOrdensServicoSupabase() {
         o.previsao_entrega < hoje && 
         !['entregue', 'cancelada'].includes(o.status)
       ).length,
+      atrasadas: ordens.filter(o =>\r\n        o.previsao_entrega &&\r\n        o.previsao_entrega < hoje &&\r\n        !['entregue', 'cancelada'].includes(o.status)\r\n      ).length,
     };
   }, [ordens]);
 
@@ -206,5 +208,4 @@ export function useOrdensServicoSupabase() {
   };
 }
 
-import { useCallback } from 'react';
 

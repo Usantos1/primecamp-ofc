@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
-import { useMarcasModelos } from '@/hooks/useAssistencia';
+import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
@@ -35,11 +35,11 @@ export default function OrdensServico() {
   
   const { ordens, isLoading, getEstatisticas, getOSById } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
-  const { getMarcaById, getModeloById } = useMarcasModelos();
+  const { getMarcaById, getModeloById } = useMarcasModelosSupabase();
 
   const stats = getEstatisticas();
 
-  // Buscar OS por número
+  // Buscar OS por nÃºmero
   useEffect(() => {
     if (searchNumeroOS) {
       const numero = parseInt(searchNumeroOS);
@@ -100,7 +100,7 @@ export default function OrdensServico() {
     return result.sort((a, b) => b.numero - a.numero);
   }, [ordens, statusFilter, searchTerm, dataInicio, dataFim, getClienteById]);
 
-  // Filtros rápidos
+  // Filtros rÃ¡pidos
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const hojeStr = hoje.toISOString().split('T')[0];
@@ -168,9 +168,9 @@ export default function OrdensServico() {
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || dataInicio || dataFim || periodoFilter !== 'all';
 
   return (
-    <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
+    <ModernLayout title="Ordens de ServiÃ§o" subtitle="GestÃ£o de assistÃªncia tÃ©cnica">
       <div className="space-y-6">
-        {/* Cards de estatísticas */}
+        {/* Cards de estatÃ­sticas */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-3 pb-3">
@@ -224,7 +224,7 @@ export default function OrdensServico() {
           )}
         </div>
 
-        {/* Filtros rápidos por prazo */}
+        {/* Filtros rÃ¡pidos por prazo */}
         <div className="flex flex-wrap items-center gap-2">
           <Button 
             variant={!hasActiveFilters ? 'default' : 'outline'} 
@@ -258,7 +258,7 @@ export default function OrdensServico() {
             onClick={() => handlePeriodoFilter('mes')}
           >
             <Calendar className="h-4 w-4" />
-            Este Mês
+            Este MÃªs
           </Button>
           <Button 
             variant="outline" 
@@ -285,28 +285,48 @@ export default function OrdensServico() {
             </Button>
           )}
           
-          {/* Filtro de período na mesma linha */}
-          <div className="ml-auto">
-            <Select value={periodoFilter} onValueChange={handlePeriodoFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="hoje">Hoje</SelectItem>
-                <SelectItem value="semana">Esta Semana</SelectItem>
-                <SelectItem value="mes">Este Mês</SelectItem>
-                <SelectItem value="periodo">Período Personalizado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Filtro de perÃ­odo na mesma linha */}
+          <div className="ml-auto flex items-center gap-2">
+  <Select value={periodoFilter} onValueChange={handlePeriodoFilter}>
+    <SelectTrigger className="w-[180px]">
+      <SelectValue placeholder="PerÃ­odo" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Todos</SelectItem>
+      <SelectItem value="hoje">Hoje</SelectItem>
+      <SelectItem value="semana">Esta Semana</SelectItem>
+      <SelectItem value="mes">Este MÃªs</SelectItem>
+      <SelectItem value="periodo">PerÃ­odo Personalizado</SelectItem>
+    </SelectContent>
+  </Select>
+  <Button
+    variant={showFilters ? 'default' : 'outline'}
+    size="icon"
+    onClick={() => setShowFilters(!showFilters)}
+    aria-label="Filtros avanÃ§ados"
+    title="Filtros avanÃ§ados"
+  >
+    <Filter className="h-4 w-4" />
+  </Button>
+  {hasActiveFilters && (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={clearFilters}
+      aria-label="Limpar filtros"
+      title="Limpar filtros"
+    >
+      <X className="h-4 w-4" />
+    </Button>
+  )}
+</div>
         </div>
 
         {/* Card principal */}
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <CardTitle className="text-lg">Lista de Ordens de Serviço</CardTitle>
+              <CardTitle className="text-lg">Lista de Ordens de ServiÃ§o</CardTitle>
               <Button onClick={() => navigate('/pdv/os/nova')} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Nova OS
@@ -319,7 +339,7 @@ export default function OrdensServico() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
+                  placeholder="Buscar por nÂº OS, cliente, telefone, IMEI..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -328,7 +348,7 @@ export default function OrdensServico() {
               <div className="relative w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nº OS..."
+                  placeholder="Buscar por nÂº OS..."
                   value={searchNumeroOS}
                   onChange={(e) => setSearchNumeroOS(e.target.value)}
                   onKeyDown={(e) => {
@@ -356,22 +376,13 @@ export default function OrdensServico() {
                     <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)}>
-                <Filter className="h-4 w-4" />
-              </Button>
-              {hasActiveFilters && (
-                <Button variant="ghost" size="icon" onClick={clearFilters}>
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+              </Select></div>
 
-            {/* Filtros avançados */}
+            {/* Filtros avanÃ§ados */}
             {showFilters && (
               <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Data Início</label>
+                  <label className="text-sm font-medium">Data InÃ­cio</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -445,8 +456,8 @@ export default function OrdensServico() {
             {filteredOrdens.length === 0 ? (
               <EmptyState
                 variant="no-data"
-                title="Nenhuma ordem de serviço"
-                description="Cadastre uma nova OS para começar."
+                title="Nenhuma ordem de serviÃ§o"
+                description="Cadastre uma nova OS para comeÃ§ar."
                 action={{ label: 'Nova OS', onClick: () => navigate('/pdv/os/nova') }}
               />
             ) : (
@@ -454,16 +465,16 @@ export default function OrdensServico() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[80px]">Nº OS</TableHead>
+                      <TableHead className="w-[80px]">NÂº OS</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Contato</TableHead>
                       <TableHead>Aparelho</TableHead>
                       <TableHead>Problema</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Entrada</TableHead>
-                      <TableHead>Previsão</TableHead>
+                      <TableHead>PrevisÃ£o</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
+                      <TableHead className="text-right">AÃ§Ãµes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -578,3 +589,4 @@ export default function OrdensServico() {
     </ModernLayout>
   );
 }
+

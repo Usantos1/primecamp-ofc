@@ -1,11 +1,11 @@
--- ============================================
+﻿-- ============================================
 -- TABELA DE CLIENTES
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS public.clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
-  -- Tipo e Situação
+  -- Tipo e SituaÃ§Ã£o
   tipo_pessoa TEXT NOT NULL DEFAULT 'fisica' CHECK (tipo_pessoa IN ('fisica', 'juridica')),
   situacao TEXT NOT NULL DEFAULT 'ativo' CHECK (situacao IN ('ativo', 'inativo')),
   
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.clientes (
   sexo TEXT CHECK (sexo IN ('M', 'F', 'Outro')),
   data_nascimento DATE,
   
-  -- Endereço
+  -- EndereÃ§o
   cep TEXT,
   logradouro TEXT,
   numero TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.clientes (
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
--- Índices
+-- Ãndices
 CREATE INDEX IF NOT EXISTS idx_clientes_nome ON public.clientes(nome);
 CREATE INDEX IF NOT EXISTS idx_clientes_cpf_cnpj ON public.clientes(cpf_cnpj) WHERE cpf_cnpj IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_clientes_telefone ON public.clientes(telefone) WHERE telefone IS NOT NULL;
@@ -62,32 +62,37 @@ CREATE TRIGGER trigger_update_clientes_updated_at
 -- RLS Policies
 ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
 
--- Policy: Usuários autenticados podem ver todos os clientes
-CREATE POLICY "Usuários autenticados podem ver clientes"
+-- Policy: UsuÃ¡rios autenticados podem ver todos os clientes
+DROP POLICY IF EXISTS  "UsuÃ¡rios autenticados podem ver clientes" ON public.clientes;
+CREATE POLICY "UsuÃ¡rios autenticados podem ver clientes"
   ON public.clientes
   FOR SELECT
   TO authenticated
   USING (true);
 
--- Policy: Usuários autenticados podem criar clientes
-CREATE POLICY "Usuários autenticados podem criar clientes"
+-- Policy: UsuÃ¡rios autenticados podem criar clientes
+DROP POLICY IF EXISTS  "UsuÃ¡rios autenticados podem criar clientes" ON public.clientes;
+CREATE POLICY "UsuÃ¡rios autenticados podem criar clientes"
   ON public.clientes
   FOR INSERT
   TO authenticated
   WITH CHECK (true);
 
--- Policy: Usuários autenticados podem atualizar clientes
-CREATE POLICY "Usuários autenticados podem atualizar clientes"
+-- Policy: UsuÃ¡rios autenticados podem atualizar clientes
+DROP POLICY IF EXISTS  "UsuÃ¡rios autenticados podem atualizar clientes" ON public.clientes;
+CREATE POLICY "UsuÃ¡rios autenticados podem atualizar clientes"
   ON public.clientes
   FOR UPDATE
   TO authenticated
   USING (true)
   WITH CHECK (true);
 
--- Policy: Usuários autenticados podem deletar clientes
-CREATE POLICY "Usuários autenticados podem deletar clientes"
+-- Policy: UsuÃ¡rios autenticados podem deletar clientes
+DROP POLICY IF EXISTS  "UsuÃ¡rios autenticados podem deletar clientes" ON public.clientes;
+CREATE POLICY "UsuÃ¡rios autenticados podem deletar clientes"
   ON public.clientes
   FOR DELETE
   TO authenticated
   USING (true);
+
 
