@@ -184,7 +184,8 @@ export default function Vendas() {
         observacoes: fullSale.observacoes || undefined,
       };
 
-      const qrCodeData = `venda:${fullSale.id}`;
+      // Gerar QR code com URL para 2ª via do cupom
+      const qrCodeData = `${window.location.origin}/cupom/${fullSale.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData);
       
       // Impressão direta sem abrir janela
@@ -272,7 +273,8 @@ export default function Vendas() {
         termos_garantia: 'A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega. A garantia não cobre danos causados por mau uso, quedas, água ou outros fatores externos.',
       };
 
-      const qrCodeData = `venda:${fullSale.id}`;
+      // Gerar QR code com URL para 2ª via do cupom
+      const qrCodeData = `${window.location.origin}/cupom/${fullSale.id}`;
       const pdf = await generateCupomPDF(cupomData, qrCodeData);
       pdf.save(`cupom-venda-${fullSale.numero}.pdf`);
     } catch (error) {

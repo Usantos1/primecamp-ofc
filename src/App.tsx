@@ -63,6 +63,7 @@ import NovaVenda from "./pages/pdv/NovaVenda";
 import Caixa from "./pages/pdv/Caixa";
 import Relatorios from "./pages/pdv/Relatorios";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
+import CupomView from "./pages/pdv/CupomView";
 
 const queryClient = new QueryClient();
 
@@ -151,6 +152,7 @@ const App = () => (
               <Route path="/pdv/caixa" element={<ProtectedRoute><Caixa /></ProtectedRoute>} />
               <Route path="/pdv/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
               <Route path="/pdv/configuracao-cupom" element={<ProtectedRoute><ConfiguracaoCupom /></ProtectedRoute>} />
+              <Route path="/cupom/:id" element={<CupomView />} />
               <Route path="/pdv/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
               <Route path="/pdv/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
               <Route path="/pdv/os/nova/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />

@@ -998,8 +998,9 @@ export default function NovaVenda() {
         observacoes: sale.observacoes || undefined,
       };
 
-      const qrCodeData = `venda:${sale.id}`;
-      const html = await generateCupomTermica(cupomData, qrCodeData);
+      // Gerar QR code com URL para 2ª via do cupom
+      const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+      const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
       printTermica(html);
     } catch (error) {
       console.error('Erro ao gerar cupom:', error);
@@ -1052,7 +1053,8 @@ export default function NovaVenda() {
         observacoes: saleToUse.observacoes || undefined,
       };
 
-      const qrCodeData = `venda:${saleToUse.id}`;
+      // Gerar QR code com URL para 2ª via do cupom
+      const qrCodeData = `${window.location.origin}/cupom/${saleToUse.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
       
       const imprimirSemDialogo = cupomConfig?.imprimir_sem_dialogo !== false; // Default true
@@ -1188,7 +1190,8 @@ export default function NovaVenda() {
         observacoes: sale.observacoes || undefined,
       };
 
-      const qrCodeData = `venda:${sale.id}`;
+      // Gerar QR code com URL para 2ª via do cupom
+      const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
       const pdf = await generateCupomPDF(cupomData, qrCodeData);
       pdf.save(`cupom-venda-${sale.numero}.pdf`);
       

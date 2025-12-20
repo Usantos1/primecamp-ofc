@@ -79,11 +79,19 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
   let qrCodeImg = '';
   if (qrCodeData && mostrarQrCode) {
     try {
+      // Aumentar resolução do QR code para melhor qualidade
       const qrCodeUrl = await QRCode.toDataURL(qrCodeData, {
-        width: 60,
-        margin: 1
+        width: 120, // Aumentado de 60 para 120 para melhor qualidade
+        margin: 2,
+        errorCorrectionLevel: 'M', // Nível médio de correção de erro
+        type: 'image/png',
+        quality: 1.0,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
       });
-      qrCodeImg = `<img src="${qrCodeUrl}" style="width: 60px; height: 60px; margin: 5px auto; display: block;" />`;
+      qrCodeImg = `<img src="${qrCodeUrl}" style="width: 80px; height: 80px; margin: 5px auto; display: block; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; -webkit-print-color-adjust: exact; print-color-adjust: exact;" alt="QR Code - Segunda Via" />`;
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
     }
@@ -100,6 +108,13 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           size: 80mm 297mm;
           margin: 0;
           padding: 0;
+        }
+        @media print {
+          @page {
+            size: 80mm 297mm;
+            margin: 0;
+            padding: 0;
+          }
         }
         @media print {
           * {
