@@ -168,11 +168,12 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           print-color-adjust: exact !important;
           overflow: hidden;
           letter-spacing: 0.2px;
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
-          transform: scale(1);
-          -webkit-transform: scale(1);
-          -webkit-print-color-adjust: exact;
+          image-rendering: -webkit-optimize-contrast !important;
+          image-rendering: crisp-edges !important;
+          transform: scale(1) !important;
+          -webkit-transform: scale(1) !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
           print-color-adjust: exact;
         }
         .center {
