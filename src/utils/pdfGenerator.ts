@@ -79,19 +79,22 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
   let qrCodeImg = '';
   if (qrCodeData && mostrarQrCode) {
     try {
-      // Aumentar resolução do QR code para melhor qualidade
+      // Aumentar resolução do QR code para melhor qualidade de impressão
       const qrCodeUrl = await QRCode.toDataURL(qrCodeData, {
-        width: 120, // Aumentado de 60 para 120 para melhor qualidade
-        margin: 2,
-        errorCorrectionLevel: 'M', // Nível médio de correção de erro
+        width: 200, // Aumentado para 200px para melhor qualidade/DPI
+        margin: 3,
+        errorCorrectionLevel: 'H', // Alto nível de correção de erro para melhor leitura
         type: 'image/png',
         quality: 1.0,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+          dark: '#000000', // Preto absoluto
+          light: '#FFFFFF' // Branco absoluto
+        },
+        rendererOpts: {
+          quality: 1.0
         }
       });
-      qrCodeImg = `<img src="${qrCodeUrl}" style="width: 80px; height: 80px; margin: 5px auto; display: block; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; -webkit-print-color-adjust: exact; print-color-adjust: exact;" alt="QR Code - Segunda Via" />`;
+      qrCodeImg = `<img src="${qrCodeUrl}" style="width: 80px; height: 80px; margin: 5px auto; display: block; image-rendering: -webkit-optimize-contrast !important; image-rendering: crisp-edges !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; filter: contrast(1.2) brightness(0.95);" alt="QR Code - Segunda Via" />`;
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
     }
@@ -520,13 +523,25 @@ export async function generateCupomPDF(data: CupomData, qrCodeData?: string): Pr
   // QR Code
   if (qrCodeData) {
     try {
+      // Aumentar resolução do QR code para melhor qualidade no PDF
       const qrCodeUrl = await QRCode.toDataURL(qrCodeData, {
-        width: 40,
-        margin: 1
+        width: 200, // Alta resolução para melhor qualidade
+        margin: 3,
+        errorCorrectionLevel: 'H', // Alto nível de correção de erro
+        type: 'image/png',
+        quality: 1.0,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        rendererOpts: {
+          quality: 1.0
+        }
       });
       
-      doc.addImage(qrCodeUrl, 'PNG', (pageWidth - 40) / 2, y, 40, 40);
-      y += 45;
+      // Adicionar QR code com tamanho maior e melhor qualidade
+      doc.addImage(qrCodeUrl, 'PNG', (pageWidth - 50) / 2, y, 50, 50, undefined, 'FAST');
+      y += 55;
     } catch (error) {
       console.error('Erro ao gerar QR Code:', error);
     }

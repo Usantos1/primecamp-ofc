@@ -174,13 +174,7 @@ export default function CupomView() {
 
     const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
     const pdf = await generateCupomPDF(cupomData, qrCodeData);
-    const blob = new Blob([pdf], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cupom-${sale.numero}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    pdf.save(`cupom-${sale.numero}.pdf`);
   };
 
   const handleShare = () => {
