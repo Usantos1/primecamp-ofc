@@ -99,6 +99,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         @page {
           size: 80mm auto;
           margin: 0;
+          padding: 0;
         }
         @media print {
           * {
@@ -111,8 +112,14 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
             image-rendering: crisp-edges !important;
           }
           body {
-            transform: scale(1);
-            -webkit-transform: scale(1);
+            font-size: 12px !important;
+            padding: 2mm 6mm 2mm 5mm !important;
+            transform: scale(1) !important;
+            -webkit-transform: scale(1) !important;
+            -webkit-font-smoothing: none !important;
+            text-rendering: optimizeLegibility !important;
+            image-rendering: -webkit-optimize-contrast !important;
+            image-rendering: crisp-edges !important;
           }
         }
         * {
@@ -120,14 +127,16 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           padding: 0;
           box-sizing: border-box;
           color: #000000 !important;
-          -webkit-font-smoothing: none;
-          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: none !important;
+          text-rendering: optimizeLegibility !important;
+          image-rendering: -webkit-optimize-contrast !important;
+          image-rendering: crisp-edges !important;
         }
         body {
           width: 80mm;
           max-width: 80mm;
           margin: 0;
-          padding: 2mm 4mm 2mm 3mm;
+          padding: 2mm 6mm 2mm 5mm;
           font-family: Arial, Helvetica, sans-serif;
           font-size: 12px;
           color: #000000 !important;
@@ -142,6 +151,8 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
           letter-spacing: 0.2px;
           image-rendering: -webkit-optimize-contrast;
           image-rendering: crisp-edges;
+          transform: scale(1);
+          -webkit-transform: scale(1);
         }
         .center {
           text-align: center;
