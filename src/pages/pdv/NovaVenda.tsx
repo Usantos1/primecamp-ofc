@@ -877,25 +877,35 @@ export default function NovaVenda() {
       });
       
       // Verificar se está totalmente pago
-      const sale = await getSaleById(id);
-      if (sale && Number(sale.total_pago) >= Number(sale.total)) {
+      const updatedSale = await getSaleById(id);
+      if (updatedSale && Number(updatedSale.total_pago) >= Number(updatedSale.total)) {
         toast({ title: 'Venda finalizada com sucesso!' });
         setShowCheckout(false);
         
         // Aguardar carregar items e payments antes de imprimir
-        setPendingSaleForCupom(sale);
+        setPendingSaleForCupom(updatedSale);
         setTimeout(async () => {
           await loadSale();
           setTimeout(async () => {
-            if (sale && items && payments && payments.length > 0) {
-              await handlePrintCupomDirect(sale);
+            // Recarregar sale novamente para garantir dados atualizados
+            const finalSale = await getSaleById(id);
+            if (finalSale && items && payments && payments.length > 0) {
+              await handlePrintCupomDirect(finalSale);
               setTimeout(() => {
                 limparPDV();
                 toast({ title: 'PDV limpo. Pronto para nova venda!' });
               }, 2000);
+            } else {
+              console.warn('Dados não carregados para impressão:', { 
+                sale: !!finalSale, 
+                items: !!items, 
+                payments: !!payments,
+                itemsCount: items?.length,
+                paymentsCount: payments?.length
+              });
             }
-          }, 300);
-        }, 800);
+          }, 500);
+        }, 1000);
       }
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);
@@ -1065,56 +1075,68 @@ export default function NovaVenda() {
       const imprimirSemDialogo = cupomConfig?.imprimir_sem_dialogo !== false; // Default true
       const imprimir2Vias = cupomConfig?.imprimir_2_vias === true;
       
+      console.log('[IMPRESSÃO] Configurações:', { imprimirSemDialogo, imprimir2Vias, cupomConfig });
+      
       const printCupom = () => {
-        // Impressão direta sem abrir janela
-        const printFrame = document.createElement('iframe');
-        printFrame.style.position = 'fixed';
-        printFrame.style.right = '0';
-        printFrame.style.bottom = '0';
-        printFrame.style.width = '0';
-        printFrame.style.height = '0';
-        printFrame.style.border = '0';
-        document.body.appendChild(printFrame);
-        
-        const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-        if (printDoc) {
-          printDoc.open();
-          printDoc.write(html);
-          printDoc.close();
+        return new Promise<void>((resolve) => {
+          // Impressão direta sem abrir janela
+          const printFrame = document.createElement('iframe');
+          printFrame.style.position = 'fixed';
+          printFrame.style.right = '0';
+          printFrame.style.bottom = '0';
+          printFrame.style.width = '0';
+          printFrame.style.height = '0';
+          printFrame.style.border = '0';
+          document.body.appendChild(printFrame);
           
-          // Aguardar carregamento e imprimir
-          setTimeout(() => {
-            try {
-              printFrame.contentWindow?.focus();
-              // Imprimir diretamente - navegadores podem mostrar diálogo
-              printFrame.contentWindow?.print();
-              
-              // Remover iframe após impressão
-              setTimeout(() => {
-                try {
-                  if (printFrame.parentNode) {
-                    document.body.removeChild(printFrame);
+          const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
+          if (printDoc) {
+            printDoc.open();
+            printDoc.write(html);
+            printDoc.close();
+            
+            // Aguardar carregamento e imprimir
+            setTimeout(() => {
+              try {
+                printFrame.contentWindow?.focus();
+                // Imprimir diretamente - navegadores podem mostrar diálogo
+                printFrame.contentWindow?.print();
+                console.log('[IMPRESSÃO] Comando de impressão enviado');
+                
+                // Remover iframe após impressão
+                setTimeout(() => {
+                  try {
+                    if (printFrame.parentNode) {
+                      document.body.removeChild(printFrame);
+                    }
+                  } catch (e) {
+                    console.error('Erro ao remover iframe:', e);
                   }
-                } catch (e) {
-                  console.error('Erro ao remover iframe:', e);
-                }
-              }, 2000);
-            } catch (e) {
-              console.error('Erro ao imprimir:', e);
-              toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
-            }
-          }, 1000); // Delay para garantir que HTML está totalmente carregado
-        }
+                  resolve();
+                }, 2000);
+              } catch (e) {
+                console.error('Erro ao imprimir:', e);
+                toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
+                resolve();
+              }
+            }, 1000); // Delay para garantir que HTML está totalmente carregado
+          } else {
+            resolve();
+          }
+        });
       };
       
       // Imprimir primeira via
-      printCupom();
+      console.log('[IMPRESSÃO] Iniciando impressão da primeira via');
+      await printCupom();
       
       // Se configurado para 2 vias, imprimir novamente após um delay
       if (imprimir2Vias) {
-        setTimeout(() => {
-          printCupom();
-        }, 1500);
+        console.log('[IMPRESSÃO] Aguardando para imprimir segunda via');
+        setTimeout(async () => {
+          console.log('[IMPRESSÃO] Iniciando impressão da segunda via');
+          await printCupom();
+        }, 2000);
       }
     } catch (error) {
       console.error('Erro ao gerar cupom:', error);
