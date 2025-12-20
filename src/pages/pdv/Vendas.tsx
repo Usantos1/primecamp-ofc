@@ -57,7 +57,8 @@ export default function Vendas() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('today');
+  // Default: mostrar histórico (últimos 30 dias) para não ficar "tudo zerado"
+  const [dateFilter, setDateFilter] = useState<string>('month');
   
   // Estado do modal de cancelamento
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -105,6 +106,8 @@ export default function Vendas() {
       const monthAgo = new Date(today);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       result = result.filter(sale => new Date(sale.created_at) >= monthAgo);
+    } else if (dateFilter === 'all') {
+      // Sem filtro de data
     }
 
     // Filtro por busca
