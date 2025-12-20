@@ -24,6 +24,61 @@ export default function CupomView() {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (sale && items && payments && cupomConfig !== undefined) {
+      renderCupomPreview();
+    }
+  }, [sale, items, payments, cupomConfig]);
+
+  const renderCupomPreview = async () => {
+    if (!sale || !items || !payments) return;
+
+    const cupomData = {
+      numero: sale.numero,
+      data: new Date(sale.created_at).toLocaleDateString('pt-BR'),
+      hora: new Date(sale.created_at).toLocaleTimeString('pt-BR'),
+      empresa: {
+        nome: 'PRIME CAMP',
+        cnpj: '31.833.574/0001-74',
+        endereco: undefined,
+        telefone: undefined,
+      },
+      cliente: sale.cliente_nome ? {
+        nome: sale.cliente_nome,
+        cpf_cnpj: sale.cliente_cpf_cnpj || undefined,
+        telefone: sale.cliente_telefone || undefined,
+      } : undefined,
+      itens: items.map((item: any) => ({
+        codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
+        nome: item.produto_nome,
+        quantidade: Number(item.quantidade),
+        valor_unitario: Number(item.valor_unitario),
+        desconto: Number(item.desconto || 0),
+        valor_total: Number(item.valor_total),
+      })),
+      subtotal: Number(sale.subtotal),
+      desconto_total: Number(sale.desconto_total),
+      total: Number(sale.total),
+      pagamentos: payments
+        .filter((p: any) => p.status === 'confirmed')
+        .map((p: any) => ({
+          forma: p.forma_pagamento,
+          valor: Number(p.valor),
+          troco: p.troco ? Number(p.troco) : undefined,
+        })),
+      vendedor: sale.vendedor_nome || undefined,
+      observacoes: sale.observacoes || undefined,
+    };
+
+    const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+    const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
+    
+    const previewElement = document.getElementById('cupom-preview');
+    if (previewElement) {
+      previewElement.innerHTML = html;
+    }
+  };
+
   const loadSale = async () => {
     if (!id) return;
     try {
@@ -185,12 +240,11 @@ export default function CupomView() {
           <CardContent className="pt-6">
             <div 
               id="cupom-preview" 
-              className="bg-white p-4 border rounded-lg"
-              style={{ maxWidth: '80mm', margin: '0 auto' }}
-              dangerouslySetInnerHTML={{
-                __html: 'Carregando preview do cupom...'
-              }}
-            />
+              className="bg-white p-4 border rounded-lg overflow-auto"
+              style={{ maxWidth: '80mm', margin: '0 auto', minHeight: '200px' }}
+            >
+              {loading ? 'Carregando preview do cupom...' : ''}
+            </div>
           </CardContent>
         </Card>
       </div>
