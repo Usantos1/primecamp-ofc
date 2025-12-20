@@ -15,7 +15,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useOrdensServico, useClientes, useMarcasModelos } from '@/hooks/useAssistencia';
+import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
+import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
+import { useMarcasModelos } from '@/hooks/useAssistencia';
 import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';

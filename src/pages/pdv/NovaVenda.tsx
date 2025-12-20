@@ -17,7 +17,9 @@ import {
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useSaleItems, usePayments, useCashRegister } from '@/hooks/usePDV';
-import { useClientes, useOrdensServico, useItensOS } from '@/hooks/useAssistencia';
+import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
+import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
+import { useItensOS } from '@/hooks/useAssistencia';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';

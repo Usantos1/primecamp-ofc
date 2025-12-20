@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Phone, MessageCircle, User, Building, Users } from 'lucide-react';
-import { useClientes } from '@/hooks/useAssistencia';
+import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { Cliente, ClienteFormData, TipoPessoa, TipoCliente } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';

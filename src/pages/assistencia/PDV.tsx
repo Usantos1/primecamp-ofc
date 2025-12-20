@@ -3,7 +3,9 @@ import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Users, Package, Wrench, DollarSign, ShoppingCart, UserCircle } from 'lucide-react';
-import { useOrdensServico, useProdutos, useClientes } from '@/hooks/useAssistencia';
+import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
+import { useProdutosSupabase as useProdutos } from '@/hooks/useProdutosSupabase';
+import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { currencyFormatters } from '@/utils/formatters';
 
 export default function PDV() {

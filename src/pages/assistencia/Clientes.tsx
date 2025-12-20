@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User
 } from 'lucide-react';
-import { useClientes, buscarCEP } from '@/hooks/useAssistencia';
+import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
+import { buscarCEP } from '@/hooks/useAssistencia';
 import { Cliente, ClienteFormData } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
