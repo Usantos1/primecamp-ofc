@@ -60,31 +60,8 @@ export default function NovaVenda() {
   const { ordens } = useOrdensServico();
   
   // Buscar todos os itens do localStorage
-  const [todosItensOS, setTodosItensOS] = useState<any[]>([]);
-  
-  useEffect(() => {
-    // Carregar todos os itens do localStorage
-    const loadAllItens = () => {
-      try {
-        const stored = localStorage.getItem('assistencia_itens_os');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setTodosItensOS(Array.isArray(parsed) ? parsed : []);
-          console.log(`Carregados ${parsed.length} itens do localStorage`);
-        } else {
-          setTodosItensOS([]);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar itens do localStorage:', error);
-        setTodosItensOS([]);
-      }
-    };
-    
-    loadAllItens();
-    // Recarregar periodicamente para pegar atualizações
-    const interval = setInterval(loadAllItens, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Removido: não precisa mais carregar itens do localStorage
+  // Os itens de OS agora são carregados diretamente do Supabase quando necessário
 
   // Estados
   const [sale, setSale] = useState<any>(null);
