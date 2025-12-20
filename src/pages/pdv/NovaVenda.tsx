@@ -879,18 +879,26 @@ export default function NovaVenda() {
         // Recarregar dados da venda
         await loadSale();
         
-        // Imprimir cupom direto sem perguntar
+        // Aguardar carregar items e payments antes de imprimir
         setPendingSaleForCupom(sale);
+        // Aguardar um pouco mais para garantir que items e payments estejam carregados
         setTimeout(async () => {
-          if (sale && items && payments) {
-            await handlePrintCupomDirect(sale);
-            // Aguardar impressão e limpar PDV
-            setTimeout(() => {
-              limparPDV();
-              toast({ title: 'PDV limpo. Pronto para nova venda!' });
-            }, 1500);
-          }
-        }, 500);
+          // Recarregar items e payments para garantir que estão atualizados
+          await loadSale();
+          // Aguardar mais um pouco para garantir que o estado foi atualizado
+          setTimeout(async () => {
+            if (sale && items && payments && payments.length > 0) {
+              await handlePrintCupomDirect(sale);
+              // Aguardar impressão e limpar PDV
+              setTimeout(() => {
+                limparPDV();
+                toast({ title: 'PDV limpo. Pronto para nova venda!' });
+              }, 2000);
+            } else {
+              console.warn('Dados não carregados para impressão:', { sale: !!sale, items: !!items, payments: !!payments });
+            }
+          }, 300);
+        }, 800);
       }
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);
@@ -1081,9 +1089,40 @@ export default function NovaVenda() {
           setTimeout(() => {
             try {
               printFrame.contentWindow?.focus();
-              // Sempre imprimir direto na impressora padrão sem diálogo
-              // O navegador usará a impressora padrão do sistema automaticamente
-              printFrame.contentWindow?.print();
+              
+              // Tentar impressão silenciosa usando beforeprint event
+              const printHandler = () => {
+                // Cancelar o diálogo padrão e imprimir diretamente
+                if (printFrame.contentWindow) {
+                  printFrame.contentWindow.print();
+                }
+              };
+              
+              // Adicionar listener para beforeprint
+              printFrame.contentWindow?.addEventListener('beforeprint', printHandler);
+              
+              // Tentar imprimir diretamente
+              // Nota: Navegadores modernos podem não permitir impressão totalmente silenciosa
+              // mas tentaremos usar a impressora padrão
+              if (imprimirSemDialogo) {
+                // Usar matchMedia para detectar modo de impressão
+                const mediaQueryList = window.matchMedia('print');
+                const handlePrint = () => {
+                  printFrame.contentWindow?.print();
+                };
+                mediaQueryList.addListener(handlePrint);
+                
+                // Tentar imprimir diretamente
+                printFrame.contentWindow?.print();
+                
+                // Remover listener após impressão
+                setTimeout(() => {
+                  mediaQueryList.removeListener(handlePrint);
+                  printFrame.contentWindow?.removeEventListener('beforeprint', printHandler);
+                }, 2000);
+              } else {
+                printFrame.contentWindow?.print();
+              }
               
               // Remover iframe após impressão
               setTimeout(() => {
@@ -1094,7 +1133,7 @@ export default function NovaVenda() {
                 } catch (e) {
                   console.error('Erro ao remover iframe:', e);
                 }
-              }, 1000);
+              }, 2000);
             } catch (e) {
               console.error('Erro ao imprimir:', e);
               toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });

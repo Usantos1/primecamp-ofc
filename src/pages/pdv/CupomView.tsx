@@ -5,17 +5,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, Share2 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
-import { useSales, useSaleItems, usePayments } from '@/hooks/usePDV';
-import { useCupomConfig } from '@/hooks/useCupomConfig';
+import { supabase } from '@/integrations/supabase/client';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 export default function CupomView() {
   const { id } = useParams<{ id: string }>();
-  const { getSaleById } = useSales();
-  const { items, isLoading: itemsLoading } = useSaleItems(id || '');
-  const { payments, isLoading: paymentsLoading } = usePayments(id || '');
-  const { data: cupomConfig } = useCupomConfig();
   const [sale, setSale] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [cupomConfig, setCupomConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,8 +81,49 @@ export default function CupomView() {
     if (!id) return;
     try {
       setLoading(true);
-      const saleData = await getSaleById(id);
+      
+      // Carregar venda diretamente do Supabase (público)
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (saleError) throw saleError;
       setSale(saleData);
+      
+      // Carregar items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('sale_items')
+        .select('*')
+        .eq('sale_id', id);
+      
+      if (itemsError) throw itemsError;
+      setItems(itemsData || []);
+      
+      // Carregar payments
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('sale_id', id);
+      
+      if (paymentsError) throw paymentsError;
+      setPayments(paymentsData || []);
+      
+      // Carregar configuração do cupom (pode falhar se não houver, mas não é crítico)
+      try {
+        const { data: configData } = await supabase
+          .from('kv_store_2c4defad')
+          .select('value')
+          .eq('key', 'cupom_config')
+          .single();
+        
+        if (configData) {
+          setCupomConfig(configData.value);
+        }
+      } catch (configError) {
+        console.warn('Não foi possível carregar configuração do cupom:', configError);
+      }
     } catch (error) {
       console.error('Erro ao carregar venda:', error);
     } finally {
@@ -190,7 +229,7 @@ export default function CupomView() {
     }
   };
 
-  if (loading || itemsLoading || paymentsLoading) {
+  if (loading) {
     return <LoadingSkeleton type="cards" count={3} />;
   }
 

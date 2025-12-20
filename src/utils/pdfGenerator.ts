@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { supabase } from '@/integrations/supabase/client';
 import type { CupomConfig } from '@/hooks/useCupomConfig';
+import { PAYMENT_METHOD_LABELS } from '@/types/pdv';
 
 // ==================== GERADOR DE CUPOM NÃO FISCAL ====================
 
@@ -323,6 +324,8 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       ${data.pagamentos.map(pag => {
         const valorPago = pag.valor;
         const troco = pag.troco || 0;
+        // Traduzir forma de pagamento para português
+        const formaPagamentoLabel = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma.toUpperCase();
         return `
           <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
             <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
@@ -335,7 +338,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
             </div>
           ` : ''}
           <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-            <span style="font-weight: 900 !important; color: #000000 !important;">${pag.forma}:</span>
+            <span style="font-weight: 900 !important; color: #000000 !important;">${formaPagamentoLabel}:</span>
             <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
           </div>
         `;
