@@ -43,6 +43,9 @@ export default function Caixa() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [sales, setSales] = useState<any[]>([]);
   const [loadingSales, setLoadingSales] = useState(false);
+  const [salePayments, setSalePayments] = useState<Record<string, any[]>>({});
+  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [showSaleDetails, setShowSaleDetails] = useState(false);
 
   useEffect(() => {
     if (currentSession?.id) {
@@ -64,6 +67,27 @@ export default function Caixa() {
       
       if (error) throw error;
       setSales(data || []);
+      
+      // Carregar pagamentos de todas as vendas
+      if (data && data.length > 0) {
+        const saleIds = data.map(s => s.id);
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from('payments')
+          .select('*')
+          .in('sale_id', saleIds)
+          .eq('status', 'confirmed');
+        
+        if (!paymentsError && paymentsData) {
+          const paymentsBySale: Record<string, any[]> = {};
+          paymentsData.forEach((payment: any) => {
+            if (!paymentsBySale[payment.sale_id]) {
+              paymentsBySale[payment.sale_id] = [];
+            }
+            paymentsBySale[payment.sale_id].push(payment);
+          });
+          setSalePayments(paymentsBySale);
+        }
+      }
     } catch (error) {
       console.error('Erro ao carregar vendas:', error);
     } finally {

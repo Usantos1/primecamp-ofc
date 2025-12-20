@@ -865,37 +865,34 @@ export default function NovaVenda() {
       await confirmPayment(payment.id);
       
       toast({ title: 'Pagamento adicionado com sucesso!' });
+      
+      // Recarregar dados para atualizar saldo restante
+      await loadSale();
+      
+      // Resetar formulário mas manter modal aberto
       setCheckoutPayment({
         forma_pagamento: 'dinheiro',
         valor: undefined,
         troco: 0,
       });
       
-      // Verificar se está pago
+      // Verificar se está totalmente pago
       const sale = await getSaleById(id);
       if (sale && Number(sale.total_pago) >= Number(sale.total)) {
         toast({ title: 'Venda finalizada com sucesso!' });
         setShowCheckout(false);
-        // Recarregar dados da venda
-        await loadSale();
         
         // Aguardar carregar items e payments antes de imprimir
         setPendingSaleForCupom(sale);
-        // Aguardar um pouco mais para garantir que items e payments estejam carregados
         setTimeout(async () => {
-          // Recarregar items e payments para garantir que estão atualizados
           await loadSale();
-          // Aguardar mais um pouco para garantir que o estado foi atualizado
           setTimeout(async () => {
             if (sale && items && payments && payments.length > 0) {
               await handlePrintCupomDirect(sale);
-              // Aguardar impressão e limpar PDV
               setTimeout(() => {
                 limparPDV();
                 toast({ title: 'PDV limpo. Pronto para nova venda!' });
               }, 2000);
-            } else {
-              console.warn('Dados não carregados para impressão:', { sale: !!sale, items: !!items, payments: !!payments });
             }
           }, 300);
         }, 800);
@@ -1645,6 +1642,27 @@ export default function NovaVenda() {
             <DialogTitle>Finalizar Pagamento</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Pagamentos já adicionados */}
+            {payments && payments.filter((p: any) => p.status === 'confirmed').length > 0 && (
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <Label className="text-sm font-semibold mb-2 block">Pagamentos Adicionados:</Label>
+                <div className="space-y-2">
+                  {payments
+                    .filter((p: any) => p.status === 'confirmed')
+                    .map((payment: any) => (
+                      <div key={payment.id} className="flex justify-between items-center text-sm">
+                        <span className="capitalize">{PAYMENT_METHOD_LABELS[payment.forma_pagamento as PaymentMethod] || payment.forma_pagamento}</span>
+                        <span className="font-semibold">{currencyFormatters.brl(payment.valor)}</span>
+                      </div>
+                    ))}
+                  <div className="flex justify-between items-center pt-2 border-t font-semibold">
+                    <span>Total Pago:</span>
+                    <span>{currencyFormatters.brl(totalPago)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Forma de Pagamento</Label>
@@ -1655,9 +1673,9 @@ export default function NovaVenda() {
                     setCheckoutPayment({
                       ...checkoutPayment,
                       forma_pagamento: v,
-                      // Se não for dinheiro, preencher automaticamente com o saldo restante
-                      valor: isDinheiro ? undefined : saldoRestante,
-                      troco: 0, // Troco só existe para dinheiro
+                      // Não preencher automaticamente - deixar usuário escolher o valor
+                      valor: undefined,
+                      troco: 0,
                     });
                   }}
                 >
@@ -1690,9 +1708,7 @@ export default function NovaVenda() {
                     });
                   }}
                   step="0.01"
-                  placeholder="0,00"
-                  disabled={checkoutPayment.forma_pagamento !== 'dinheiro'}
-                  className={checkoutPayment.forma_pagamento !== 'dinheiro' ? 'bg-muted' : ''}
+                  placeholder={`Máx: ${currencyFormatters.brl(saldoRestante)}`}
                 />
               </div>
             </div>
@@ -1739,10 +1755,20 @@ export default function NovaVenda() {
               </div>
             )}
 
-            <div className="border-t pt-4">
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total a Pagar:</span>
-                <span>{currencyFormatters.brl(saldoRestante)}</span>
+            <div className="border-t pt-4 space-y-2">
+              <div className="flex justify-between">
+                <span>Total da Venda:</span>
+                <span className="font-semibold">{currencyFormatters.brl(sale?.total || 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Pago:</span>
+                <span className="font-semibold">{currencyFormatters.brl(totalPago)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <span>Saldo Restante:</span>
+                <span className={saldoRestante > 0 ? 'text-red-600' : 'text-green-600'}>
+                  {currencyFormatters.brl(saldoRestante)}
+                </span>
               </div>
             </div>
           </div>
