@@ -50,8 +50,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { toast } = useToast();
 
   // Hooks
-  const { createOS, updateOS, getOSById, updateStatus } = useOrdensServico();
-  const { clientes, searchClientes, createCliente, getClienteById } = useClientes();
+  const { createOS, updateOS, getOSById, updateStatus } = useOrdensServicoSupabase();
+  const { clientes, searchClientes, createCliente, getClienteById } = useClientesSupabase();
   const { marcas, modelos, getModelosByMarca } = useMarcasModelos();
   const { produtos, searchProdutos, updateProduto } = useProdutos();
   const { configuracoes, getConfigByStatus } = useConfiguracaoStatus();
