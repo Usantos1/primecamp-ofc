@@ -1031,6 +1031,7 @@ export default function NovaVenda() {
           telefone: saleToUse.cliente_telefone || undefined,
         } : undefined,
         itens: items.map(item => ({
+          codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
           nome: item.produto_nome,
           quantidade: Number(item.quantidade),
           valor_unitario: Number(item.valor_unitario),
@@ -1078,21 +1079,9 @@ export default function NovaVenda() {
           setTimeout(() => {
             try {
               printFrame.contentWindow?.focus();
-              if (imprimirSemDialogo) {
-                // Impressão silenciosa (sem diálogo) - usar impressora padrão
-                // Tentar usar a API de impressão silenciosa se disponível
-                try {
-                  // Usar window.print() que respeita a impressora padrão do sistema
-                  printFrame.contentWindow?.print();
-                } catch (e) {
-                  console.error('Erro na impressão silenciosa:', e);
-                  // Fallback para impressão normal
-                  printFrame.contentWindow?.print();
-                }
-              } else {
-                // Impressão com diálogo
-                printFrame.contentWindow?.print();
-              }
+              // Sempre imprimir direto na impressora padrão sem diálogo
+              // O navegador usará a impressora padrão do sistema automaticamente
+              printFrame.contentWindow?.print();
               
               // Remover iframe após impressão
               setTimeout(() => {

@@ -151,6 +151,11 @@ export function useSales() {
         sale = saleData as Sale;
       }
 
+      // Verificar se a venda já foi finalizada
+      if (sale.status === 'paid' || sale.status === 'partial') {
+        throw new Error('Esta venda já foi finalizada e não pode ser faturada novamente');
+      }
+
       // Calcular totais
       const { data: items } = await supabase
         .from('sale_items')
