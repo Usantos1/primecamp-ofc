@@ -63,43 +63,55 @@ export function useProdutosSupabase() {
   const queryClient = useQueryClient();
 
   // Buscar produtos do Supabase
-  const { data: produtosData, isLoading, error } = useQuery({
+  const queryResult = useQuery({
     queryKey: ['produtos-assistencia'],
     queryFn: async () => {
-      // Buscar todos os produtos sem limite (Supabase tem limite padrão de 1000)
-      // Usar paginação para buscar todos
-      let allData: any[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      let hasMore = true;
+      try {
+        // Buscar todos os produtos sem limite (Supabase tem limite padrão de 1000)
+        // Usar paginação para buscar todos
+        let allData: any[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('produtos')
-          .select('*')
-          .order('nome', { ascending: true })
-          .range(from, from + pageSize - 1);
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('produtos')
+            .select('*')
+            .order('nome', { ascending: true })
+            .range(from, from + pageSize - 1);
 
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          allData = [...allData, ...data];
-          from += pageSize;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
         }
-      }
 
-      const mapped = allData.map(mapSupabaseToAssistencia);
-      return Array.isArray(mapped) ? mapped : [];
+        const mapped = allData.map(mapSupabaseToAssistencia);
+        return Array.isArray(mapped) ? mapped : [];
+      } catch (err) {
+        console.error('[useProdutosSupabase] Erro ao buscar produtos:', err);
+        return [];
+      }
     },
     initialData: [], // Garantir que sempre comece com array vazio
+    placeholderData: [], // Dados placeholder enquanto carrega
   });
 
+  const { data: produtosData, isLoading, error } = queryResult;
+
   const produtos = useMemo(() => {
-    if (!produtosData) return [];
-    if (!Array.isArray(produtosData)) return [];
+    // Garantir que sempre seja um array
+    if (produtosData === undefined || produtosData === null) return [];
+    if (!Array.isArray(produtosData)) {
+      console.warn('[useProdutosSupabase] produtosData não é um array:', produtosData);
+      return [];
+    }
     return produtosData;
   }, [produtosData]);
 
@@ -202,12 +214,21 @@ export function useProdutosSupabase() {
 
   // Garantir que produtos filtrados seja sempre um array
   const produtosAtivos = useMemo(() => {
-    if (!produtos || !Array.isArray(produtos)) return [];
-    return produtos.filter(p => p && p.situacao === 'ativo');
+    try {
+      if (!produtos || !Array.isArray(produtos)) {
+        console.warn('[useProdutosSupabase] produtos não é um array válido:', produtos);
+        return [];
+      }
+      return produtos.filter(p => p && p.situacao === 'ativo');
+    } catch (err) {
+      console.error('[useProdutosSupabase] Erro ao filtrar produtos:', err);
+      return [];
+    }
   }, [produtos]);
 
+  // Garantir que o retorno sempre tenha produtos como array
   return {
-    produtos: produtosAtivos,
+    produtos: Array.isArray(produtosAtivos) ? produtosAtivos : [],
     grupos,
     isLoading,
     createProduto,
