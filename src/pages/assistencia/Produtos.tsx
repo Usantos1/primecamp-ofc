@@ -39,7 +39,8 @@ const INITIAL_FORM: ProdutoFormData = {
 
 export default function Produtos() {
   const navigate = useNavigate();
-  const { produtos, grupos, isLoading, createProduto, updateProduto, deleteProduto } = useProdutos();
+  const { produtos: produtosRaw, grupos, isLoading, createProduto, updateProduto, deleteProduto } = useProdutos();
+  const produtos = Array.isArray(produtosRaw) ? produtosRaw : [];
   const { marcas, modelos, getModeloById, getMarcaById, getModelosByMarca } = useMarcasModelosSupabase();
   const { toast } = useToast();
 
@@ -51,7 +52,7 @@ export default function Produtos() {
         .sort()
         .reverse();
       
-      if (backupKeys.length > 0 && produtos.length === 0) {
+      if (backupKeys.length > 0 && produtos && Array.isArray(produtos) && produtos.length === 0) {
         const latestBackup = localStorage.getItem(backupKeys[0]);
         if (latestBackup) {
           try {
@@ -132,7 +133,7 @@ export default function Produtos() {
 
   // Filtrar produtos
   const filteredProdutos = useMemo(() => {
-    let result = [...produtos];
+    let result = Array.isArray(produtos) ? [...produtos] : [];
 
     // Filtro por situação
     if (situacaoFilter === 'ativo') {
@@ -359,7 +360,7 @@ export default function Produtos() {
       }
 
       // Calcular código do produto (usar código existente ou índice + 1)
-      const produtoIndex = produtos.findIndex(p => p.id === selectedProduto.id);
+      const produtoIndex = Array.isArray(produtos) ? produtos.findIndex(p => p.id === selectedProduto.id) : -1;
       const codigoProduto = selectedProduto.codigo || produtoIndex + 1;
 
       const etiquetaData: EtiquetaData = {

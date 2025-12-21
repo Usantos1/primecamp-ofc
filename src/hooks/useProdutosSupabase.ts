@@ -91,13 +91,16 @@ export function useProdutosSupabase() {
         }
       }
 
-      return allData.map(mapSupabaseToAssistencia);
+      const mapped = allData.map(mapSupabaseToAssistencia);
+      return Array.isArray(mapped) ? mapped : [];
     },
+    initialData: [], // Garantir que sempre comece com array vazio
   });
 
   const produtos = useMemo(() => {
     if (!produtosData) return [];
-    return Array.isArray(produtosData) ? produtosData : [];
+    if (!Array.isArray(produtosData)) return [];
+    return produtosData;
   }, [produtosData]);
 
   // Criar produto
@@ -197,8 +200,14 @@ export function useProdutosSupabase() {
   // Grupos (mock - não temos grupos no Supabase ainda)
   const grupos = useMemo(() => [], []);
 
+  // Garantir que produtos filtrados seja sempre um array
+  const produtosAtivos = useMemo(() => {
+    if (!produtos || !Array.isArray(produtos)) return [];
+    return produtos.filter(p => p && p.situacao === 'ativo');
+  }, [produtos]);
+
   return {
-    produtos: Array.isArray(produtos) ? produtos.filter(p => p.situacao === 'ativo') : [], // Filtrar apenas ativos
+    produtos: produtosAtivos,
     grupos,
     isLoading,
     createProduto,
