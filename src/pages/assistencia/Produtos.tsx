@@ -715,130 +715,107 @@ export default function Produtos() {
           modelos={modelos}
         />
 
-        {/* Modal antigo removido - código abaixo está comentado */}
-        {/* <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+        {/* Modal antigo removido - código foi movido para ProductFormOptimized */}
+
+        {/* Modal de Etiqueta */}
+        <Dialog open={showEtiquetaModal} onOpenChange={setShowEtiquetaModal}>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-xl">
-                {editingProduto ? 'Editar Produto' : 'Cadastro de Produto'}
-              </DialogTitle>
+              <DialogTitle>Gerar Etiqueta</DialogTitle>
             </DialogHeader>
+            <div className="space-y-4 py-4">
+              {selectedProduto && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Produto</Label>
+                    <span className="font-semibold">{selectedProduto.descricao}</span>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Quantidade de Etiquetas</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={quantidadeEtiquetas}
+                  onChange={(e) => setQuantidadeEtiquetas(Math.max(1, parseInt(e.target.value) || 1))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {quantidadeEtiquetas > 1 
+                    ? `${quantidadeEtiquetas} etiquetas serão geradas em uma página A4`
+                    : '1 etiqueta será gerada (50mm x 30mm)'}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEtiquetaModal(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleGerarEtiqueta}>
+                <Barcode className="h-4 w-4 mr-2" />
+                Gerar Etiqueta
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="manutencao">Manutenção</TabsTrigger>
-                <TabsTrigger value="fornecedor">Fornecedor</TabsTrigger>
-                <TabsTrigger value="estoque">Estoque</TabsTrigger>
-                <TabsTrigger value="estoque-condicional">Estoque Condicional</TabsTrigger>
-                <TabsTrigger value="preco-venda-empresa">Preço Venda Empresa</TabsTrigger>
-                <TabsTrigger value="preco-fornecedor">Preço Fornecedor</TabsTrigger>
-                <TabsTrigger value="foto">Foto</TabsTrigger>
-              </TabsList>
+        {/* Modal de Estoque */}
+        <Dialog open={showEstoqueModal} onOpenChange={setShowEstoqueModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Informações de Estoque</DialogTitle>
+            </DialogHeader>
+            {selectedProduto && (
+              <div className="space-y-6 py-4">
+                {/* Informações do Produto */}
+                <div className="border-b pb-4">
+                  <h3 className="font-semibold text-lg mb-2">{selectedProduto.descricao}</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                    <div>
+                      <span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}
+                    </div>
+                    {selectedProduto.referencia && (
+                      <div>
+                        <span className="font-medium">Referência:</span> {selectedProduto.referencia}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
-                {/* Tab: Manutenção */}
-                <TabsContent value="manutencao" className="space-y-4 mt-0">
-                  <div className="grid grid-cols-4 gap-4">
+                {/* Quantidades */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Código</Label>
-                      <Input
-                        value={editingProduto?.codigo || (filteredProdutos.length + 1).toString()}
-                        disabled
-                        className="bg-muted"
-                      />
+                      <Label className="text-base font-semibold">Estoque Atual</Label>
+                      <div className="text-3xl font-bold text-primary">
+                        {selectedProduto.estoque_atual || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade disponível em estoque
+                      </p>
                     </div>
+
                     <div className="space-y-2">
-                      <Label>Cód. Balança</Label>
-                      <Input
-                        value={formDataExtended.codigo_balanca}
-                        onChange={(e) => setFormDataExtended(prev => ({ ...prev, codigo_balanca: e.target.value }))}
-                      />
+                      <Label className="text-base font-semibold">Estoque Mínimo</Label>
+                      <div className="text-2xl font-semibold">
+                        {selectedProduto.estoque_minimo || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade mínima para alerta
+                      </p>
                     </div>
+
                     <div className="space-y-2">
-                      <Label>Situação</Label>
-                      <Select
-                        value={formDataExtended.situacao}
-                        onValueChange={(v: any) => setFormDataExtended(prev => ({ ...prev, situacao: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ativo">ATIVO</SelectItem>
-                          <SelectItem value="inativo">INATIVO</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tipo Produto</Label>
-                      <Select 
-                        value={formData.tipo} 
-                        onValueChange={(v: any) => setFormData(prev => ({ ...prev, tipo: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="peca">Peça</SelectItem>
-                          <SelectItem value="servico">Serviço</SelectItem>
-                          <SelectItem value="produto">Produto</SelectItem>
-                          <SelectItem value="assistencia">ASSISTÊNCIA</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-base font-semibold">Estoque de Reposição</Label>
+                      <div className="text-2xl font-semibold">
+                        {(selectedProduto as any).estoque_reposicao || 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quantidade ideal para reposição
+                      </p>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label>Código de Barras</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={formData.codigo_barras}
-                          onChange={(e) => setFormData(prev => ({ ...prev, codigo_barras: e.target.value }))}
-                          placeholder="7890000030922"
-                        />
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => {
-                            // Gerar código de barras EAN13
-                            let codigoBase = '';
-                            
-                            // Tentar usar código do produto se existir
-                            if (editingProduto?.codigo) {
-                              codigoBase = editingProduto.codigo.toString().padStart(12, '0');
-                            } else if (formData.codigo_barras && formData.codigo_barras.length >= 12) {
-                              // Se já tiver código de barras parcial, usar ele
-                              codigoBase = formData.codigo_barras.substring(0, 12).padStart(12, '0');
-                            } else {
-                              // Gerar baseado em timestamp + random
-                              const timestamp = Date.now().toString().slice(-8);
-                              const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-                              codigoBase = (timestamp + random).padStart(12, '0').substring(0, 12);
-                            }
-                            
-                            // Calcular dígito verificador EAN13
-                            let soma = 0;
-                            for (let i = 0; i < 12; i++) {
-                              const digito = parseInt(codigoBase[i] || '0');
-                              soma += i % 2 === 0 ? digito : digito * 3;
-                            }
-                            const digitoVerificador = (10 - (soma % 10)) % 10;
-                            const codigoBarrasCompleto = codigoBase + digitoVerificador.toString();
-                            
-                            setFormData(prev => ({ ...prev, codigo_barras: codigoBarrasCompleto }));
-                            toast({
-                              title: 'Código de barras gerado',
-                              description: `Código EAN13: ${codigoBarrasCompleto}`,
-                            });
-                          }}
-                          title="Gerar código de barras EAN13"
-                        >
-                          <Barcode className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
                     <div className="space-y-2">
                       <Label>NCM</Label>
                       <div className="flex gap-2">
@@ -1806,48 +1783,18 @@ export default function Produtos() {
                         <p className="text-xs text-muted-foreground mt-2">
                           Formatos aceitos: JPG, PNG, WEBP (máx. 5MB)
                         </p>
-                      </div>
                     </div>
-
-                    {editingProduto && (
-                      <div className="space-y-2">
-                        <Label>Foto Atual</Label>
-                        <div className="border rounded-lg p-4 bg-muted/50 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            Nenhuma foto cadastrada
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                </TabsContent>
-              </div>
-            </Tabs>
-
-            <DialogFooter className="border-t pt-4">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex gap-2">
-                  <Button variant="outline" className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Novo
-                  </Button>
-                  <LoadingButton onClick={handleSubmit} loading={isSubmitting} className="gap-2">
-                    <Save className="h-4 w-4" />
-                    Salvar
-                  </LoadingButton>
-                  <Button variant="outline" className="gap-2">
-                    <Save className="h-4 w-4" />
-                    Cópia
-                  </Button>
                 </div>
-                <Button variant="outline" onClick={() => setShowForm(false)} className="gap-2 text-destructive">
-                  <X className="h-4 w-4" />
-                  Sair
-                </Button>
               </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEstoqueModal(false)}>
+                Fechar
+              </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog> */}
+        </Dialog>
 
         {/* Modal de Etiqueta */}
         <Dialog open={showEtiquetaModal} onOpenChange={setShowEtiquetaModal}>
