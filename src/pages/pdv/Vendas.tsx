@@ -246,8 +246,7 @@ export default function Vendas() {
         empresa: {
           nome: 'PRIME CAMP', // TODO: Buscar de configuração
           cnpj: '31.833.574/0001-74', // TODO: Buscar de configuração
-          endereco: undefined, // TODO: Buscar de configuração
-          telefone: undefined, // TODO: Buscar de configuração
+          // endereco e telefone serão buscados da configuração no pdfGenerator
         },
         cliente: fullSale.cliente_nome ? {
           nome: fullSale.cliente_nome,

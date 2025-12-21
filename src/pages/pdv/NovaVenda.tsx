@@ -969,8 +969,7 @@ export default function NovaVenda() {
         empresa: {
           nome: 'PRIME CAMP', // TODO: Buscar de configuração
           cnpj: '31.833.574/0001-74', // TODO: Buscar de configuração
-          endereco: undefined, // TODO: Buscar de configuração
-          telefone: undefined, // TODO: Buscar de configuração
+          // endereco e telefone serão buscados da configuração no pdfGenerator
         },
         cliente: sale.cliente_nome ? {
           nome: sale.cliente_nome,
@@ -1023,8 +1022,7 @@ export default function NovaVenda() {
         empresa: {
           nome: 'PRIME CAMP',
           cnpj: '31.833.574/0001-74',
-          endereco: undefined,
-          telefone: undefined,
+          // endereco e telefone serão buscados da configuração no pdfGenerator
         },
         cliente: saleToUse.cliente_nome ? {
           nome: saleToUse.cliente_nome,
@@ -1177,8 +1175,7 @@ export default function NovaVenda() {
         empresa: {
           nome: 'PRIME CAMP', // TODO: Buscar de configuração
           cnpj: '31.833.574/0001-74', // TODO: Buscar de configuração
-          endereco: undefined, // TODO: Buscar de configuração
-          telefone: undefined, // TODO: Buscar de configuração
+          // endereco e telefone serão buscados da configuração no pdfGenerator
         },
         cliente: sale.cliente_nome ? {
           nome: sale.cliente_nome,
