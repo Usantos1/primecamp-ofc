@@ -25,7 +25,6 @@ import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
-// import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized'; // Componente não implementado
 
 const INITIAL_FORM: ProdutoFormData = {
   tipo: 'peca',
