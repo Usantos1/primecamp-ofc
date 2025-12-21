@@ -767,55 +767,20 @@ export default function Produtos() {
               <DialogTitle>Informações de Estoque</DialogTitle>
             </DialogHeader>
             {selectedProduto && (
-              <div className="space-y-6 py-4">
-                {/* Informações do Produto */}
-                <div className="border-b pb-4">
-                  <h3 className="font-semibold text-lg mb-2">{selectedProduto.descricao}</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                    <div>
-                      <span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}
-                    </div>
-                    {selectedProduto.referencia && (
-                      <div>
-                        <span className="font-medium">Referência:</span> {selectedProduto.referencia}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <Tabs defaultValue="fiscal" className="w-full">
+                <TabsList className="grid w-full grid-cols-7 mb-4">
+                  <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
+                  <TabsTrigger value="fornecedor">Fornecedor</TabsTrigger>
+                  <TabsTrigger value="estoque">Estoque</TabsTrigger>
+                  <TabsTrigger value="estoque-condicional">Est. Cond.</TabsTrigger>
+                  <TabsTrigger value="preco-venda-empresa">Preço Venda</TabsTrigger>
+                  <TabsTrigger value="preco-fornecedor">Preço Forn.</TabsTrigger>
+                  <TabsTrigger value="foto">Foto</TabsTrigger>
+                </TabsList>
 
-                {/* Quantidades */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Estoque Atual</Label>
-                      <div className="text-3xl font-bold text-primary">
-                        {selectedProduto.estoque_atual || 0}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Quantidade disponível em estoque
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Estoque Mínimo</Label>
-                      <div className="text-2xl font-semibold">
-                        {selectedProduto.estoque_minimo || 0}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Quantidade mínima para alerta
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-base font-semibold">Estoque de Reposição</Label>
-                      <div className="text-2xl font-semibold">
-                        {(selectedProduto as any).estoque_reposicao || 0}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Quantidade ideal para reposição
-                      </p>
-                    </div>
-                  </div>
+                {/* Tab: Fiscal */}
+                <TabsContent value="fiscal" className="space-y-4 mt-0">
+                  <div className="space-y-6 py-4">
                     <div className="space-y-2">
                       <Label>NCM</Label>
                       <div className="flex gap-2">
@@ -1783,10 +1748,11 @@ export default function Produtos() {
                         <p className="text-xs text-muted-foreground mt-2">
                           Formatos aceitos: JPG, PNG, WEBP (máx. 5MB)
                         </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEstoqueModal(false)}>
