@@ -61,7 +61,6 @@ export default function Produtos() {
               toast({
                 title: '⚠️ Backup encontrado!',
                 description: `Encontrado backup com ${backupData.length} produtos. Verifique o console para restaurar.`,
-                variant: 'default',
                 duration: 15000,
               });
               // Adicionar função global para restaurar
@@ -378,8 +377,8 @@ export default function Produtos() {
 
       // Gerar múltiplas etiquetas se necessário
       if (quantidadeEtiquetas > 1) {
-        const produtos = Array(quantidadeEtiquetas).fill(etiquetaData);
-        const doc = await generateEtiquetasA4(produtos, 7, 5); // 7 colunas x 5 linhas para etiquetas verticais
+        const produtosEtiquetas = Array(quantidadeEtiquetas).fill(etiquetaData);
+        const doc = await generateEtiquetasA4(produtosEtiquetas, 7, 5); // 7 colunas x 5 linhas para etiquetas verticais
         // Abrir janela de impressão
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
@@ -761,62 +760,7 @@ export default function Produtos() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de Estoque - O modal correto está mais abaixo - código duplicado removido */}
-
-        {/* Modal de Etiqueta */}
-        <Dialog open={showEtiquetaModal} onOpenChange={setShowEtiquetaModal}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Gerar Etiqueta</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              {selectedProduto && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Produto:</Label>
-                    <span className="font-semibold">{selectedProduto.descricao}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Preço:</Label>
-                    <span className="font-semibold text-lg">
-                      {currencyFormatters.brl(selectedProduto.preco_venda)}
-                    </span>
-                  </div>
-                  {selectedProduto.codigo_barras && (
-                    <div className="flex items-center justify-between">
-                      <Label>Código de Barras:</Label>
-                      <span className="text-sm font-mono">{selectedProduto.codigo_barras}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label>Quantidade de Etiquetas</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={quantidadeEtiquetas}
-                  onChange={(e) => setQuantidadeEtiquetas(Math.max(1, parseInt(e.target.value) || 1))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {quantidadeEtiquetas > 1 
-                    ? `${quantidadeEtiquetas} etiquetas serão geradas em uma página A4`
-                    : '1 etiqueta será gerada (50mm x 30mm)'}
-                </p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEtiquetaModal(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleGerarEtiqueta}>
-                <Barcode className="h-4 w-4 mr-2" />
-                Gerar Etiqueta
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Modal de Estoque - O modal correto está mais abaixo */}
 
         {/* Modal de Estoque */}
         <Dialog open={showEstoqueModal} onOpenChange={setShowEstoqueModal}>
