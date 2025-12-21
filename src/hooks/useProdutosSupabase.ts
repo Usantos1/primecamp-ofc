@@ -95,7 +95,10 @@ export function useProdutosSupabase() {
     },
   });
 
-  const produtos = produtosData || [];
+  const produtos = useMemo(() => {
+    if (!produtosData) return [];
+    return Array.isArray(produtosData) ? produtosData : [];
+  }, [produtosData]);
 
   // Criar produto
   const createProduto = useCallback(async (data: Partial<Produto>): Promise<Produto> => {
@@ -195,7 +198,7 @@ export function useProdutosSupabase() {
   const grupos = useMemo(() => [], []);
 
   return {
-    produtos: produtos.filter(p => p.situacao === 'ativo'), // Filtrar apenas ativos
+    produtos: Array.isArray(produtos) ? produtos.filter(p => p.situacao === 'ativo') : [], // Filtrar apenas ativos
     grupos,
     isLoading,
     createProduto,
