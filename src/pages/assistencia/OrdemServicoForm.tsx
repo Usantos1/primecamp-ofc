@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,25 +17,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Save, X, Plus, Search, Phone, Printer, Send, Trash2, Edit,
-  User, Smartphone, FileText, Check, AlertTriangle, Package, DollarSign, Download, ArrowLeft, Image, Upload, Settings, ChevronDown, ChevronUp
+  User, Smartphone, FileText, Check, AlertTriangle, Package, DollarSign, Download, ArrowLeft, Image, Upload, Settings, ChevronDown, ChevronUp,
+  CreditCard, Wallet, QrCode, Banknote
 } from 'lucide-react';
 import { 
-  useOrdensServico, useClientes, useMarcasModelos, useProdutos, 
-  useItensOS, usePagamentos, buscarCEP, useConfiguracaoStatus
+  useOrdensServico, useClientes, useMarcasModelos, 
+  usePagamentos, buscarCEP, useConfiguracaoStatus
 } from '@/hooks/useAssistencia';
+import { useItensOSSupabase } from '@/hooks/useItensOSSupabase';
+import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
+import { useOrdensServicoSupabase } from '@/hooks/useOrdensServicoSupabase';
+import { useClientesSupabase } from '@/hooks/useClientesSupabase';
+import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { useCargos } from '@/hooks/useCargos';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
 import { 
   OrdemServicoFormData, CHECKLIST_ITENS, ItemOS,
   STATUS_OS_LABELS, STATUS_OS_COLORS, StatusOS, CARGOS_LABELS
 } from '@/types/assistencia';
-import { PhoneDrawing, PhoneDrawingLegend } from '@/components/assistencia/PhoneDrawing';
 import { PatternLock } from '@/components/assistencia/PatternLock';
+import { useOSImageReference } from '@/hooks/useOSImageReference';
+import { OSImageReferenceViewer } from '@/components/assistencia/OSImageReferenceViewer';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useTelegram } from '@/hooks/useTelegram';
+import { OSSummaryHeader } from '@/components/assistencia/OSSummaryHeader';
+import { OSProgressIndicator } from '@/components/assistencia/OSProgressIndicator';
+import { generateOSTermica } from '@/utils/osTermicaGenerator';
+import { generateOSPDF } from '@/utils/osPDFGenerator';
+import { printTermica } from '@/utils/pdfGenerator';
+import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 
 interface OrdemServicoFormProps {
   osId?: string;
@@ -48,12 +62,25 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const id = osId || routeId;
   const isEditing = Boolean(id);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Hooks
   const { createOS, updateOS, getOSById, updateStatus } = useOrdensServicoSupabase();
   const { clientes, searchClientes, createCliente, getClienteById } = useClientesSupabase();
-  const { marcas, modelos, getModelosByMarca } = useMarcasModelos();
-  const { produtos, searchProdutos, updateProduto } = useProdutos();
+  const { marcas, modelos, getModelosByMarca } = useMarcasModelosSupabase();
+  const { produtos, searchProdutos, updateProduto, isLoading: isLoadingProdutos } = useProdutosSupabase();
+  
+  // Debug: verificar produtos carregados
+  useEffect(() => {
+    if (!isLoadingProdutos) {
+      console.log('[OrdemServicoForm] Produtos carregados:', {
+        total: produtos.length,
+        comEstoque: produtos.filter(p => (p.quantidade || 0) > 0).length,
+        semEstoque: produtos.filter(p => (p.quantidade || 0) === 0).length,
+        amostra: produtos.slice(0, 5).map(p => ({ nome: p.nome, quantidade: p.quantidade, tipo: p.tipo }))
+      });
+    }
+  }, [produtos, isLoadingProdutos]);
   const { configuracoes, getConfigByStatus } = useConfiguracaoStatus();
   const { tecnicos, colaboradores, getColaboradorById, isLoading: isLoadingCargos } = useCargos();
   
@@ -66,6 +93,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   }, [tecnicos, colaboradores, isLoadingCargos]);
   const { sendMessage, loading: whatsappLoading } = useWhatsApp();
   const { sendMultiplePhotos: sendTelegramPhotos, deleteMessage: deleteTelegramMessage, loading: telegramLoading } = useTelegram();
+  const { imageUrl: osImageReferenceUrl } = useOSImageReference();
+  const { itemsEntrada: checklistEntradaConfig, itemsSaida: checklistSaidaConfig } = useChecklistConfig();
 
   // Estados para Chat IDs do Telegram - carrega automaticamente do localStorage
   const [telegramChatIdEntrada, setTelegramChatIdEntrada] = useState<string>(() => {
@@ -151,11 +180,19 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     orcamento_autorizado: false,
   });
 
+  // Estados para checklist de saída
+  const [showChecklistSaidaModal, setShowChecklistSaidaModal] = useState(false);
+  const [checklistSaidaMarcados, setChecklistSaidaMarcados] = useState<string[]>([]);
+  const [checklistSaidaAprovado, setChecklistSaidaAprovado] = useState<boolean | null>(null);
+  const [checklistSaidaObservacoes, setChecklistSaidaObservacoes] = useState('');
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+
   const [currentOS, setCurrentOS] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [localActiveTab, setLocalActiveTab] = useState('dados');
   const activeTab = isModal ? localActiveTab : (routeTab || 'dados');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [osLoaded, setOsLoaded] = useState(false); // Flag para evitar recarregar OS
 
   // Função para navegar entre as abas
   const handleTabChange = (tab: string) => {
@@ -190,7 +227,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     valor_unitario: 0,
     valor_minimo: 0,
     desconto: 0,
-    garantia: 0,
+    garantia: 90, // Padrão de 90 dias
     colaborador_id: '',
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
@@ -198,16 +235,20 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Itens e pagamentos (apenas para edição)
   // Usar um ID temporário se a OS ainda não foi criada
   const osIdParaItens = id || currentOS?.id || 'temp';
-  const { itens, total, addItem, updateItem, removeItem } = useItensOS(osIdParaItens);
+  const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens } = useItensOSSupabase(osIdParaItens);
   const { pagamentos, totalPago, addPagamento } = usePagamentos(osIdParaItens);
 
-  // Carregar OS existente
+  // Carregar OS existente - APENAS UMA VEZ
   useEffect(() => {
-    if (isEditing && id) {
-      const os = getOSById(id);
-      if (os) {
-        setCurrentOS(os);
-        setFormData({
+    if (isEditing && id && !osLoaded) {
+      // Tentar carregar múltiplas vezes se não encontrar (para casos de criação recente)
+      let tentativas = 0;
+      const carregarOS = () => {
+        const os = getOSById(id);
+        if (os) {
+          console.log('[OrdemServicoForm] Carregando OS pela primeira vez:', os.id);
+          setCurrentOS(os);
+          setFormData({
           cliente_id: os.cliente_id,
           telefone_contato: os.telefone_contato || '',
           tipo_aparelho: os.tipo_aparelho || 'celular',
@@ -255,9 +296,42 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         if (os.telegram_chat_id_saida) {
           setTelegramChatIdSaida(os.telegram_chat_id_saida);
         }
+        
+        setOsLoaded(true); // Marcar como carregado para não recarregar
+        } else if (tentativas < 5) {
+          tentativas++;
+          setTimeout(carregarOS, 500);
+        }
+      };
+      carregarOS();
+    }
+  }, [id, isEditing, getOSById, getClienteById, osLoaded]);
+
+  // Atualizar valor_total da OS quando itens mudarem
+  useEffect(() => {
+    if (isEditing && currentOS && total !== undefined && total >= 0 && !isLoadingItens) {
+      // Atualizar valor_total na OS quando o total dos itens mudar
+      const valorTotalAtual = Number(currentOS.valor_total || 0);
+      const novoTotal = Number(total || 0);
+      
+      // Sempre atualizar se houver diferença (mesmo que pequena) ou se o total mudou
+      if (Math.abs(novoTotal - valorTotalAtual) > 0.01 || (novoTotal > 0 && valorTotalAtual === 0)) {
+        console.log('[OrdemServicoForm] Atualizando valor_total da OS:', {
+          osId: currentOS.id,
+          valorAtual: valorTotalAtual,
+          novoTotal: novoTotal,
+          itens: itens.length
+        });
+        updateOS(currentOS.id, { valor_total: novoTotal }).then(() => {
+          // Invalidar queries relacionadas para atualizar a lista
+          queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
+          queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
+        }).catch(error => {
+          console.error('[OrdemServicoForm] Erro ao atualizar valor_total:', error);
+        });
       }
     }
-  }, [id, isEditing, getOSById, getClienteById]);
+  }, [total, isEditing, currentOS, updateOS, itens.length, queryClient, isLoadingItens]);
 
   // Atualizar nomes de colaboradores que estão faltando nos itens
   useEffect(() => {
@@ -284,34 +358,51 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   }, [clienteSearch, searchClientes]);
 
-  // Buscar produtos - filtrar conforme o tipo selecionado
+  // Buscar produtos - SEMPRE filtrar apenas produtos com estoque disponível
   useEffect(() => {
     if (produtoSearch.length >= 2) {
+      console.log('[OrdemServicoForm] Buscando produtos:', {
+        termo: produtoSearch,
+        totalProdutos: produtos.length,
+        tipoSelecionado: itemForm.tipo
+      });
+      
       const results = searchProdutos(produtoSearch);
-      console.log('Resultados da busca (antes do filtro):', results.length, results);
+      console.log('[OrdemServicoForm] Resultados da busca (antes do filtro de estoque):', results.length, results.map(p => ({
+        nome: p.nome,
+        quantidade: p.quantidade,
+        tipo: p.tipo
+      })));
       
-      // Se o tipo for "peca", filtrar apenas peças com estoque
-      // Se for "servico" ou "mao_de_obra", mostrar todos os produtos
-      let produtosFiltrados = results;
+      // SEMPRE filtrar apenas produtos com estoque > 0
+      // Usar o campo 'quantidade' que é o campo correto no banco
+      let produtosFiltrados = results.filter(prod => {
+        const estoque = prod.quantidade || 0;
+        const temEstoque = estoque > 0;
+        if (!temEstoque) {
+          console.log(`[OrdemServicoForm] Produto ${prod.nome} descartado: estoque=${estoque}`);
+        }
+        return temEstoque;
+      });
       
+      console.log('[OrdemServicoForm] Produtos com estoque > 0:', produtosFiltrados.length);
+      
+      // Se o tipo for "peca", também filtrar por tipo
       if (itemForm.tipo === 'peca') {
-        produtosFiltrados = results.filter(prod => {
-          const isPeca = prod.tipo === 'peca' || prod.tipo === 'produto';
-          const temEstoque = (prod.estoque_atual || 0) > 0;
-          console.log(`Produto: ${prod.descricao}, Tipo: ${prod.tipo}, Estoque: ${prod.estoque_atual}, isPeca: ${isPeca}, temEstoque: ${temEstoque}`);
-          return isPeca && temEstoque;
+        const antes = produtosFiltrados.length;
+        produtosFiltrados = produtosFiltrados.filter(prod => {
+          const isPeca = prod.tipo === 'peca' || prod.tipo === 'produto' || prod.tipo === 'PECA' || prod.tipo === 'PRODUTO';
+          return isPeca;
         });
-        console.log('Produtos com estoque (tipo peça):', produtosFiltrados.length, produtosFiltrados);
-      } else {
-        // Para serviços e mão de obra, mostrar todos os produtos encontrados
-        console.log('Mostrando todos os produtos (tipo serviço/mão de obra):', produtosFiltrados.length);
+        console.log(`[OrdemServicoForm] Após filtrar por tipo peça: ${antes} → ${produtosFiltrados.length}`);
       }
       
+      console.log('[OrdemServicoForm] Produtos finais para exibir:', produtosFiltrados.length);
       setProdutoResults(produtosFiltrados.slice(0, 10));
     } else {
       setProdutoResults([]);
     }
-  }, [produtoSearch, searchProdutos, itemForm.tipo]);
+  }, [produtoSearch, searchProdutos, itemForm.tipo, produtos.length]);
 
   // Modelos filtrados por marca
   const modelosFiltrados = useMemo(() => {
@@ -353,7 +444,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   };
 
   // Adicionar/Editar item
-  const handleSubmitItem = () => {
+  const handleSubmitItem = async () => {
     try {
       console.log('=== INICIANDO ADIÇÃO DE ITEM ===');
       console.log('Item form:', itemForm);
@@ -390,12 +481,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           }
           
           console.log('Produto encontrado:', produto);
-          console.log(`Estoque disponível: ${produto.estoque_atual}, Quantidade solicitada: ${itemForm.quantidade}`);
+          const estoqueDisponivel = produto.quantidade || 0;
+          console.log(`Estoque disponível: ${estoqueDisponivel}, Quantidade solicitada: ${itemForm.quantidade}`);
           
-          if (produto.estoque_atual < itemForm.quantidade) {
+          if (estoqueDisponivel < itemForm.quantidade) {
             toast({
               title: 'Estoque insuficiente',
-              description: `Estoque disponível: ${produto.estoque_atual} unidades. Quantidade solicitada: ${itemForm.quantidade}`,
+              description: `Estoque disponível: ${estoqueDisponivel} unidades. Quantidade solicitada: ${itemForm.quantidade}`,
               variant: 'destructive',
             });
             return;
@@ -446,26 +538,28 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             const diferenca = quantidadeNova - quantidadeAntiga;
             
             if (diferenca !== 0) {
-              const novoEstoque = Math.max(0, (produto.estoque_atual || 0) - diferenca);
+              const estoqueAtual = produto.quantidade || 0;
+              const novoEstoque = Math.max(0, estoqueAtual - diferenca);
               
               // Validar se há estoque suficiente para a diferença
-              if (diferenca > 0 && (produto.estoque_atual || 0) < diferenca) {
+              if (diferenca > 0 && estoqueAtual < diferenca) {
                 toast({
                   title: 'Estoque insuficiente',
-                  description: `Estoque disponível: ${produto.estoque_atual} unidades. Não é possível aumentar a quantidade em ${diferenca} unidades.`,
+                  description: `Estoque disponível: ${estoqueAtual} unidades. Não é possível aumentar a quantidade em ${diferenca} unidades.`,
                   variant: 'destructive',
                 });
                 return;
               }
               
-              updateProduto(produto.id, { estoque_atual: novoEstoque });
-              console.log(`Estoque ajustado: ${produto.estoque_atual} → ${novoEstoque} (diferença: ${diferenca})`);
+              updateProduto(produto.id, { quantidade: novoEstoque });
+              console.log(`Estoque ajustado: ${estoqueAtual} → ${novoEstoque} (diferença: ${diferenca})`);
             }
           } else {
             // Ao adicionar: decrementar estoque
-            const novoEstoque = Math.max(0, (produto.estoque_atual || 0) - itemForm.quantidade);
-            updateProduto(produto.id, { estoque_atual: novoEstoque });
-            console.log(`Estoque decrementado: ${produto.estoque_atual} → ${novoEstoque} (quantidade: ${itemForm.quantidade})`);
+            const estoqueAtual = produto.quantidade || 0;
+            const novoEstoque = Math.max(0, estoqueAtual - itemForm.quantidade);
+            updateProduto(produto.id, { quantidade: novoEstoque });
+            console.log(`Estoque decrementado: ${estoqueAtual} → ${novoEstoque} (quantidade: ${itemForm.quantidade})`);
           }
         }
       }
@@ -487,7 +581,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         valor_unitario: itemForm.valor_unitario,
         valor_minimo: itemForm.valor_minimo || 0,
         desconto: itemForm.desconto,
-        garantia: itemForm.garantia || 0,
+        garantia: itemForm.garantia || 90,
         colaborador_id: itemForm.colaborador_id || undefined,
         colaborador_nome: colaborador?.nome || undefined, // Sempre recalcular o nome
         valor_total: valorTotal,
@@ -497,7 +591,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       
       if (editingItem) {
         console.log('Editando item:', editingItem.id);
-        updateItem(editingItem.id, itemData);
+        await updateItem(editingItem.id, itemData);
         setEditingItem(null);
         toast({
           title: 'Item atualizado',
@@ -505,7 +599,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         });
       } else {
         console.log('Adicionando novo item...');
-        addItem(itemData);
+        await addItem(itemData);
         toast({
           title: 'Item adicionado',
           description: 'O item foi adicionado à ordem de serviço.',
@@ -523,7 +617,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         valor_unitario: 0,
         valor_minimo: 0,
         desconto: 0,
-        garantia: 0,
+        garantia: 90,
         colaborador_id: '',
       });
       setProdutoSearch('');
@@ -559,7 +653,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   };
 
   // Remover item (com reversão de estoque)
-  const handleRemoveItem = (itemId: string) => {
+  const handleRemoveItem = async (itemId: string) => {
     const item = itens.find(i => i.id === itemId);
     if (!item) return;
 
@@ -568,13 +662,14 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const produto = produtos.find(p => p.id === item.produto_id);
       if (produto) {
         const quantidadeRemovida = item.quantidade || 0;
-        const novoEstoque = (produto.estoque_atual || 0) + quantidadeRemovida;
-        updateProduto(produto.id, { estoque_atual: novoEstoque });
-        console.log(`Estoque revertido: ${produto.estoque_atual} → ${novoEstoque} (quantidade removida: ${quantidadeRemovida})`);
+        const estoqueAtual = produto.quantidade || 0;
+        const novoEstoque = estoqueAtual + quantidadeRemovida;
+        updateProduto(produto.id, { quantidade: novoEstoque });
+        console.log(`Estoque revertido: ${estoqueAtual} → ${novoEstoque} (quantidade removida: ${quantidadeRemovida})`);
       }
     }
 
-    removeItem(itemId);
+    await removeItem(itemId);
     toast({
       title: 'Item removido',
       description: 'O item foi removido da ordem de serviço e o estoque foi revertido.',
@@ -582,12 +677,16 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   };
 
   // Selecionar produto
-  const handleSelectProduto = (produto: any) => {
+  const handleSelectProduto = (produto: Produto) => {
+    // Usar garantia do produto ou padrão de 90 dias
+    const garantiaProduto = produto.garantia_dias || 90;
+    
     setItemForm(prev => ({
       ...prev,
       produto_id: produto.id,
-      descricao: produto.descricao,
-      valor_unitario: produto.preco_venda,
+      descricao: produto.nome || produto.descricao || '', // Usar nome (campo correto)
+      valor_unitario: produto.valor_dinheiro_pix || produto.valor_venda || produto.preco_venda || 0,
+      garantia: garantiaProduto, // Usar garantia do produto ou 90 dias como padrão
       tipo: produto.tipo === 'peca' ? 'peca' : (produto.tipo === 'produto' ? 'peca' : 'servico'),
       quantidade: 1, // Resetar quantidade ao selecionar novo produto
     }));
@@ -597,6 +696,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
   // Salvar OS
   const handleSubmit = async () => {
+    // Prevenir múltiplos cliques
+    if (isLoading) {
+      toast({ title: 'Aguarde...', description: 'Salvando OS...', variant: 'default' });
+      return;
+    }
+
     if (!formData.cliente_id) {
       toast({ title: 'Selecione um cliente', variant: 'destructive' });
       return;
@@ -616,6 +721,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const tecnico = formData.tecnico_id ? getColaboradorById(formData.tecnico_id) : null;
       
       if (isEditing && currentOS) {
+        // Marcar orçamento como autorizado se houver valores
+        const temOrcamento = (formData.orcamento_desconto && formData.orcamento_desconto > 0) || 
+                            (formData.orcamento_parcelado && formData.orcamento_parcelado > 0);
+        
         updateOS(currentOS.id, {
           ...formData,
           cliente_nome: selectedCliente?.nome,
@@ -623,6 +732,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           marca_nome: marcas.find(m => m.id === formData.marca_id)?.nome,
           modelo_nome: modelos.find(m => m.id === formData.modelo_id)?.nome,
           tecnico_nome: tecnico?.nome,
+          orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
         });
         // Recarregar dados atualizados da OS
         const osAtualizada = getOSById(currentOS.id);
@@ -641,15 +751,34 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           setShowSuccessToast(false);
         }, 2000);
       } else {
-        const novaOS = createOS({
+        // Marcar orçamento como autorizado se houver valores
+        const temOrcamento = (formData.orcamento_desconto && formData.orcamento_desconto > 0) || 
+                            (formData.orcamento_parcelado && formData.orcamento_parcelado > 0);
+        
+        const novaOS = await createOS({
           ...formData,
           cliente_nome: selectedCliente?.nome,
           cliente_empresa: selectedCliente?.nome_fantasia,
           marca_nome: marcas.find(m => m.id === formData.marca_id)?.nome,
           modelo_nome: modelos.find(m => m.id === formData.modelo_id)?.nome,
           tecnico_nome: tecnico?.nome,
+          orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
         } as any);
+        
         toast({ title: `OS #${novaOS.numero} criada!` });
+        
+        // Invalidar queries para garantir que a OS seja recarregada
+        queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
+        
+        // Aguardar um pouco para garantir que a query foi invalidada e a OS está disponível
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Recarregar a OS criada
+        const osCriada = getOSById(novaOS.id);
+        if (osCriada) {
+          setCurrentOS(osCriada);
+        }
+        
         if (isModal && onClose) {
           // Se estiver no modal, fecha e deixa o usuário abrir novamente se quiser
           onClose();
@@ -657,6 +786,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           navigate(`/pdv/os/${novaOS.id}`);
         }
       }
+    } catch (error: any) {
+      console.error('Erro ao salvar OS:', error);
+      toast({ 
+        title: 'Erro ao salvar OS', 
+        description: error.message || 'Ocorreu um erro inesperado',
+        variant: 'destructive' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -665,6 +801,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Alterar status
   const handleChangeStatus = async (status: StatusOS | string) => {
     if (!currentOS) return;
+    
+    // Se mudar para "manutenção finalizada" ou "finalizada", abrir modal de checklist de saída
+    if (status === 'finalizada' || status === 'manutencao_finalizada' || status.toLowerCase().includes('finalizada')) {
+      setPendingStatusChange(status);
+      setShowChecklistSaidaModal(true);
+      return; // Não atualizar status ainda, aguardar aprovação do checklist
+    }
     
     const config = getConfigByStatus(status);
     
@@ -721,23 +864,195 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     });
   };
 
+  // Finalizar checklist de saída
+  const handleFinalizarChecklistSaida = async () => {
+    console.log('[handleFinalizarChecklistSaida] Iniciando finalização do checklist de saída', {
+      currentOS: currentOS?.id,
+      pendingStatusChange,
+      checklistSaidaAprovado,
+      checklistSaidaMarcados: checklistSaidaMarcados.length,
+      checklistSaidaObservacoes
+    });
+
+    if (!currentOS || !pendingStatusChange) {
+      console.error('[handleFinalizarChecklistSaida] OS ou status pendente não encontrado');
+      toast({ 
+        title: 'Erro', 
+        description: 'OS não encontrada ou status não definido.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    // Validar se foi marcado como aprovado ou reprovado
+    if (checklistSaidaAprovado === null) {
+      toast({ 
+        title: 'Selecione o resultado', 
+        description: 'Marque se o aparelho foi aprovado ou reprovado no checklist de saída.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    try {
+      // Atualizar OS com checklist de saída
+      const checklistSaidaIds = checklistSaidaMarcados;
+      console.log('[handleFinalizarChecklistSaida] Atualizando OS com dados:', {
+        osId: currentOS.id,
+        checklist_saida: checklistSaidaIds,
+        observacoes_checklist_saida: checklistSaidaObservacoes,
+        checklist_saida_aprovado: checklistSaidaAprovado,
+      });
+
+      const updatedOS = await updateOS(currentOS.id, {
+        checklist_saida: checklistSaidaIds,
+        observacoes_checklist_saida: checklistSaidaObservacoes || null,
+        checklist_saida_aprovado: checklistSaidaAprovado,
+      });
+
+      console.log('[handleFinalizarChecklistSaida] OS atualizada com sucesso:', updatedOS);
+
+      // Atualizar status
+      console.log('[handleFinalizarChecklistSaida] Atualizando status da OS:', pendingStatusChange);
+      const config = getConfigByStatus(pendingStatusChange);
+      await updateStatus(currentOS.id, pendingStatusChange as StatusOS, config?.notificar_whatsapp);
+      console.log('[handleFinalizarChecklistSaida] Status atualizado com sucesso');
+
+      // Notificar cliente via WhatsApp
+      const cliente = getClienteById(currentOS.cliente_id);
+      const telefone = currentOS.telefone_contato || cliente?.whatsapp || cliente?.telefone;
+
+      if (telefone && checklistSaidaAprovado) {
+        // Aprovado - enviar mensagem padrão
+        try {
+          const marca = marcas.find(m => m.id === currentOS.marca_id);
+          const modelo = modelos.find(m => m.id === currentOS.modelo_id);
+          
+          let numero = telefone.replace(/\D/g, '');
+          numero = numero.replace(/^0+/, '');
+          if (!numero.startsWith('55')) {
+            if (numero.startsWith('0')) {
+              numero = numero.substring(1);
+            }
+            if (numero.length === 10 || numero.length === 11) {
+              numero = '55' + numero;
+            }
+          }
+          
+          if (numero.length >= 12 && numero.length <= 13) {
+            const mensagem = `Olá ${cliente?.nome || currentOS.cliente_nome || 'Cliente'}! Sua OS #${currentOS.numero} do ${marca?.nome || currentOS.marca_nome || ''} ${modelo?.nome || currentOS.modelo_nome || ''} está pronta para retirada. O aparelho foi aprovado no checklist de saída.`;
+            await sendMessage({ number: numero, body: mensagem });
+          }
+        } catch (error: any) {
+          console.error('Erro ao enviar notificação de aprovação:', error);
+        }
+      } else if (telefone && !checklistSaidaAprovado) {
+        // Reprovar - perguntar se quer avisar mesmo assim
+        const avisarCliente = window.confirm(
+          'O aparelho foi reprovado no checklist de saída. Deseja avisar o cliente mesmo assim?'
+        );
+
+        if (avisarCliente) {
+          try {
+            const marca = marcas.find(m => m.id === currentOS.marca_id);
+            const modelo = modelos.find(m => m.id === currentOS.modelo_id);
+            
+            let numero = telefone.replace(/\D/g, '');
+            numero = numero.replace(/^0+/, '');
+            if (!numero.startsWith('55')) {
+              if (numero.startsWith('0')) {
+                numero = numero.substring(1);
+              }
+              if (numero.length === 10 || numero.length === 11) {
+                numero = '55' + numero;
+              }
+            }
+            
+            if (numero.length >= 12 && numero.length <= 13) {
+              const mensagem = `Olá ${cliente?.nome || currentOS.cliente_nome || 'Cliente'}! Sua OS #${currentOS.numero} do ${marca?.nome || currentOS.marca_nome || ''} ${modelo?.nome || currentOS.modelo_nome || ''} está pronta para retirada. ${checklistSaidaObservacoes ? `Observações: ${checklistSaidaObservacoes}` : 'Por favor, entre em contato conosco para mais informações.'}`;
+              await sendMessage({ number: numero, body: mensagem });
+            }
+          } catch (error: any) {
+            console.error('Erro ao enviar notificação de reprovação:', error);
+          }
+        }
+      }
+
+      // Atualizar estado local
+      setCurrentOS((prev: any) => prev ? { 
+        ...prev, 
+        status: pendingStatusChange,
+        checklist_saida: checklistSaidaIds,
+        checklist_saida_aprovado: checklistSaidaAprovado,
+      } : null);
+
+      // Fechar modal e limpar estados
+      setShowChecklistSaidaModal(false);
+      setChecklistSaidaMarcados([]);
+      setChecklistSaidaAprovado(null);
+      setChecklistSaidaObservacoes('');
+      setPendingStatusChange(null);
+
+      toast({ 
+        title: 'Checklist de saída finalizado', 
+        description: checklistSaidaAprovado 
+          ? 'Aparelho aprovado e cliente notificado.' 
+          : 'Checklist de saída registrado com ressalvas.'
+      });
+    } catch (error: any) {
+      console.error('[handleFinalizarChecklistSaida] Erro completo ao finalizar checklist de saída:', {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stack: error.stack
+      });
+      
+      let errorMessage = 'Ocorreu um erro ao finalizar o checklist de saída.';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.details) {
+        errorMessage = error.details;
+      } else if (error.hint) {
+        errorMessage = error.hint;
+      }
+      
+      toast({ 
+        title: 'Erro ao finalizar checklist', 
+        description: errorMessage,
+        variant: 'destructive',
+        duration: 8000
+      });
+    }
+  };
+
   // WhatsApp - Enviar via API do Ativa CRM
   const handleWhatsApp = async () => {
+    console.log('[handleWhatsApp] Iniciando envio de mensagem da OS');
+    
     if (!currentOS && !isEditing) {
+      console.warn('[handleWhatsApp] OS não salva ainda');
       toast({ title: 'Salve a OS antes de enviar', variant: 'destructive' });
       return;
     }
     
     const os = currentOS || (isEditing ? getOSById(id || '') : null);
     if (!os) {
+      console.error('[handleWhatsApp] OS não encontrada');
       toast({ title: 'OS não encontrada', variant: 'destructive' });
       return;
     }
 
+    console.log('[handleWhatsApp] OS encontrada:', { id: os.id, numero: os.numero });
+
     const cliente = getClienteById(os.cliente_id);
     const telefone = os.telefone_contato || cliente?.whatsapp || cliente?.telefone;
     
+    console.log('[handleWhatsApp] Telefone encontrado:', { telefone, cliente_id: os.cliente_id, cliente_nome: cliente?.nome });
+    
     if (!telefone) {
+      console.error('[handleWhatsApp] Telefone não encontrado');
       toast({ title: 'Telefone não encontrado', variant: 'destructive' });
       return;
     }
@@ -764,6 +1079,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 5 - Os aparelhos não retirados em no máximo 30 dias serão acrescido despesas de armazenamento de 6% ao mês.
 6 - Os aparelhos não retirados em até 90 dias a partir da data da comunicação para sua retirada, serão descartados.`;
 
+      console.log('[handleWhatsApp] Mensagem preparada:', mensagem.substring(0, 100) + '...');
+
       // Formatar número para API do Ativa CRM
       // A API espera: número com código do país SEM o +, apenas dígitos
       let numero = telefone.replace(/\D/g, '');
@@ -786,6 +1103,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       
       // Validar formato final: deve ter 12 ou 13 dígitos (55 + 10 ou 11 dígitos)
       if (numero.length < 12 || numero.length > 13) {
+        console.error('[handleWhatsApp] Número inválido após formatação:', { numero, length: numero.length, original: telefone });
         toast({
           title: 'Número inválido',
           description: `O número "${telefone}" não está em um formato válido. Use: (DDD) 9XXXX-XXXX ou (DDD) XXXX-XXXX`,
@@ -795,20 +1113,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       }
 
       // Log para debug
-      console.log('[handleWhatsApp] Número original:', telefone);
-      console.log('[handleWhatsApp] Número formatado:', numero, 'Tamanho:', numero.length);
-      
-      console.log(`[handleWhatsApp] Número formatado: ${numero} (original: ${telefone})`);
+      console.log('[handleWhatsApp] Dados finais para envio:', {
+        numeroOriginal: telefone,
+        numeroFormatado: numero,
+        tamanho: numero.length,
+        mensagemLength: mensagem.length,
+        osNumero: os.numero
+      });
 
       // Enviar via API do Ativa CRM
-      await sendMessage({
+      console.log('[handleWhatsApp] Chamando sendMessage do hook useWhatsApp...');
+      const result = await sendMessage({
         number: numero,
         body: mensagem
       });
 
+      console.log('[handleWhatsApp] Resposta do sendMessage:', result);
+
       // O hook useWhatsApp já exibe toast de sucesso
+      toast({ 
+        title: 'Mensagem enviada com sucesso!', 
+        description: `Mensagem da OS #${os.numero} enviada para ${telefone}`,
+      });
     } catch (error: any) {
-      console.error('Erro ao enviar WhatsApp:', error);
+      console.error('[handleWhatsApp] Erro completo ao enviar WhatsApp:', {
+        error,
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       toast({ 
         title: 'Erro ao enviar WhatsApp', 
         description: error.message || 'Não foi possível enviar a mensagem. Verifique se o Ativa CRM está configurado.',
@@ -830,17 +1163,136 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       return;
     }
 
-    if (tipo === 'pdf') {
-      await handleGeneratePDF(os);
-    } else if (tipo === 'a4') {
-      await handlePrintA4(os);
-    } else {
-      // Impressão térmica - usar API específica
-      toast({ title: 'Impressão térmica em desenvolvimento' });
+    if (tipo === 'pdf' || tipo === 'a4') {
+      // Usar a mesma função para PDF e A4 (baseada na térmica)
+      try {
+        const cliente = getClienteById(os.cliente_id);
+        const marca = marcas.find(m => m.id === os.marca_id);
+        const modelo = modelos.find(m => m.id === os.modelo_id);
+        
+        // Buscar primeira foto de entrada
+        const fotoEntrada = os.fotos_telegram_entrada?.[0];
+        const fotoEntradaUrl = fotoEntrada 
+          ? (typeof fotoEntrada === 'string' ? fotoEntrada : (fotoEntrada.url || fotoEntrada.thumbnailUrl))
+          : undefined;
+
+        // Buscar imagem de referência do aparelho
+        const imagemReferenciaUrl = osImageReferenceUrl || null;
+        const areasDefeito = os.areas_defeito || [];
+
+        // Gerar uma única página com ambas as vias lado a lado
+        const htmlCompleto = await generateOSPDF({
+          os,
+          clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
+          marcaNome: marca?.nome || os.marca_nome,
+          modeloNome: modelo?.nome || os.modelo_nome,
+          checklistEntrada: checklistEntradaConfig,
+          checklistEntradaMarcados: os.checklist_entrada || [],
+          fotoEntradaUrl,
+          imagemReferenciaUrl,
+          areasDefeito,
+          via: 'cliente', // Não importa, pois ambas as vias são geradas juntas
+          formato: tipo === 'pdf' ? 'pdf' : 'a4',
+        });
+
+        if (tipo === 'pdf') {
+          // Para PDF, abrir em nova janela e permitir download
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(htmlCompleto);
+            printWindow.document.close();
+            printWindow.onload = () => {
+              printWindow.focus();
+              printWindow.print();
+            };
+          }
+        } else {
+          // Para A4, apenas imprimir
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(htmlCompleto);
+            printWindow.document.close();
+            printWindow.onload = () => {
+              printWindow.focus();
+              printWindow.print();
+            };
+          }
+        }
+
+        toast({ title: `${tipo === 'pdf' ? 'PDF' : 'A4'} gerado`, description: '2 vias geradas (Cliente e Empresa)' });
+      } catch (error: any) {
+        console.error(`Erro ao gerar ${tipo}:`, error);
+        toast({ 
+          title: `Erro ao gerar ${tipo}`, 
+          description: error.message || 'Ocorreu um erro ao gerar o documento.',
+          variant: 'destructive' 
+        });
+      }
+    } else if (tipo === 'termica') {
+      // Impressão térmica com 2 vias
+      try {
+        const cliente = getClienteById(os.cliente_id);
+        const marca = marcas.find(m => m.id === os.marca_id);
+        const modelo = modelos.find(m => m.id === os.modelo_id);
+        
+        // Buscar primeira foto de entrada
+        const fotoEntrada = os.fotos_telegram_entrada?.[0];
+        const fotoEntradaUrl = fotoEntrada 
+          ? (typeof fotoEntrada === 'string' ? fotoEntrada : (fotoEntrada.url || fotoEntrada.thumbnailUrl))
+          : undefined;
+
+        // Buscar imagem de referência do aparelho
+        const imagemReferenciaUrl = osImageReferenceUrl || null;
+        const areasDefeito = os.areas_defeito || [];
+
+        // Gerar via do cliente
+        const htmlCliente = await generateOSTermica({
+          os,
+          clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
+          marcaNome: marca?.nome || os.marca_nome,
+          modeloNome: modelo?.nome || os.modelo_nome,
+          checklistEntrada: checklistEntradaConfig,
+          checklistEntradaMarcados: os.checklist_entrada || [],
+          fotoEntradaUrl,
+          imagemReferenciaUrl,
+          areasDefeito,
+          via: 'cliente',
+        });
+
+        // Gerar via da loja
+        const htmlLoja = await generateOSTermica({
+          os,
+          clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
+          marcaNome: marca?.nome || os.marca_nome,
+          modeloNome: modelo?.nome || os.modelo_nome,
+          checklistEntrada: checklistEntradaConfig,
+          checklistEntradaMarcados: os.checklist_entrada || [],
+          fotoEntradaUrl,
+          imagemReferenciaUrl,
+          areasDefeito,
+          via: 'loja',
+        });
+
+        // Imprimir ambas as vias
+        printTermica(htmlCliente);
+        setTimeout(() => {
+          printTermica(htmlLoja);
+        }, 1000);
+
+        toast({ title: 'Impressão térmica gerada', description: '2 vias impressas (Cliente e Loja)' });
+      } catch (error: any) {
+        console.error('Erro ao gerar impressão térmica:', error);
+        toast({ 
+          title: 'Erro ao gerar impressão térmica', 
+          description: error.message || 'Ocorreu um erro ao gerar a impressão.',
+          variant: 'destructive' 
+        });
+      }
     }
   };
 
-  // Gerar PDF
+  // Funções antigas removidas - agora usando generateOSPDF baseado na térmica
+  /*
   const handleGeneratePDF = async (os: any) => {
     try {
       const cliente = getClienteById(os.cliente_id);
@@ -850,8 +1302,24 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       const formatCurrency = (value?: number) =>
         value !== undefined && value !== null ? currencyFormatters.brl(value) : '-';
 
-      const checklistEntrada = (os.checklist_entrada || []).join(', ') || 'Não informado';
-      const areasDefeito = (os.areas_defeito || []).join(', ') || 'Não informado';
+      // Formatar checklist de entrada (separando físico e funcional)
+      const checklistFisico = checklistEntradaConfig
+        .filter(item => item.categoria === 'fisico' && (os.checklist_entrada || []).includes(item.item_id))
+        .map(item => item.nome)
+        .join(', ') || 'Nenhum problema encontrado';
+
+      const checklistFuncional = checklistEntradaConfig
+        .filter(item => item.categoria === 'funcional' && (os.checklist_entrada || []).includes(item.item_id))
+        .map(item => item.nome)
+        .join(', ') || 'Nenhum item funcional verificado';
+
+      // Buscar primeira foto de entrada
+      const fotoEntrada = os.fotos_telegram_entrada?.[0];
+      const fotoEntradaUrl = fotoEntrada 
+        ? (typeof fotoEntrada === 'string' ? fotoEntrada : (fotoEntrada.url || fotoEntrada.thumbnailUrl))
+        : undefined;
+
+      // Removido: areasDefeito (agora apenas checklist)
       const senhaInfo = os.possui_senha
         ? (os.possui_senha_tipo || 'Sim')
         : 'Não';
@@ -865,9 +1333,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       const senhaLabel = os.possui_senha
         ? (os.possui_senha_tipo || 'Sim - senha')
         : 'Não';
-      const areasDefeitoTexto = os.areas_defeito?.length
-        ? `${os.areas_defeito.length} ponto(s) marcado(s)`
-        : '-';
+      // Removido: areasDefeitoTexto (agora apenas checklist)
 
       const formatAddress = () => {
         const parts = [
@@ -911,26 +1377,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         `;
       };
 
-      const defectsToSvg = (areas: string[] | undefined) => {
-        if (!areas || !areas.length) return '';
-        const normalized = areas.slice(0, 4);
-        const positions: [number, number][] = [
-          [50, 20], [80, 50], [50, 80], [20, 50],
-        ];
-        const circles = normalized.map((_, idx) => {
-          const [x, y] = positions[idx];
-          return `<circle cx="${x}" cy="${y}" r="6" fill="#ef4444" stroke="#111" stroke-width="1.5" />`;
-        }).join('');
-        return `
-          <svg width="60" height="60" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;">
-            <rect x="20" y="8" width="60" height="84" rx="8" ry="8" fill="#fff" stroke="#111" stroke-width="1.5" />
-            ${circles}
-          </svg>
-        `;
-      };
+      // Função removida: defectsToSvg (não mais necessário - defeitos apenas via checklist)
 
       const patternSvg = patternToSvg(os.padrao_desbloqueio);
-      const defectsSvg = defectsToSvg(os.areas_defeito || []);
+      // Removido: SVG de defeitos (agora apenas checklist)
+      const defectsSvg = '';
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -1026,12 +1477,36 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div class="muted" style="margin-top:2px;"><span class="label">Possui Senha:</span> ${senhaLabel}</div>
                   ${patternSvg ? `<div style="margin-top:2px;">${patternSvg}</div>` : ''}
                 </div>
+                ${fotoEntradaUrl ? `
+                <h3>Foto de Entrada</h3>
+                <div class="card" style="text-align: center; padding: 8px;">
+                  <img src="${fotoEntradaUrl}" style="max-width: 100%; max-height: 300px; object-fit: contain; border: 1px solid #ddd;" alt="Foto de Entrada" />
+                </div>
+                ` : ''}
+                <h3>Checklist de Entrada</h3>
+                <div class="card">
+                  ${checklistFisico !== 'Nenhum problema encontrado' ? `
+                    <div style="margin-bottom: 4px;">
+                      <div class="label" style="color: #dc2626;">Problemas Encontrados:</div>
+                      <div style="font-size: 8px; margin-left: 8px; margin-top: 2px;">${checklistFisico}</div>
+                    </div>
+                  ` : ''}
+                  ${checklistFuncional !== 'Nenhum item funcional verificado' ? `
+                    <div style="margin-top: 4px;">
+                      <div class="label" style="color: #16a34a;">Funcional OK:</div>
+                      <div style="font-size: 8px; margin-left: 8px; margin-top: 2px;">${checklistFuncional}</div>
+                    </div>
+                  ` : ''}
+                  ${os.observacoes_checklist ? `
+                    <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #ddd;">
+                      <div class="label">Observações:</div>
+                      <div style="font-size: 8px; margin-left: 8px; margin-top: 2px;">${os.observacoes_checklist}</div>
+                    </div>
+                  ` : ''}
+                </div>
                 <h3>Condições do Aparelho</h3>
                 <div class="card">
                   <div>${os.condicoes_equipamento || os.observacoes || '-'}</div>
-                  <div class="muted" style="margin-top:2px;"><span class="label">Checklist:</span> ${checklistEntrada}</div>
-                  <div class="muted" style="margin-top:2px;"><span class="label">Áreas com defeito:</span> ${areasDefeitoTexto}</div>
-                  ${defectsSvg ? `<div style="margin-top:2px;">${defectsSvg}</div>` : ''}
                 </div>
                 <h3>Status da Ordem</h3>
                 <div class="card grid-2">
@@ -1096,13 +1571,32 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
     }
   };
+  */
 
+  /*
   // Impressão A4
   const handlePrintA4 = async (os: any) => {
     try {
       const cliente = getClienteById(os.cliente_id);
       const marca = marcas.find(m => m.id === os.marca_id);
       const modelo = modelos.find(m => m.id === os.modelo_id);
+      
+      // Formatar checklist de entrada
+      const checklistFisicoA4 = checklistEntradaConfig
+        .filter(item => item.categoria === 'fisico' && (os.checklist_entrada || []).includes(item.item_id))
+        .map(item => item.nome)
+        .join(', ') || 'Nenhum problema encontrado';
+
+      const checklistFuncionalA4 = checklistEntradaConfig
+        .filter(item => item.categoria === 'funcional' && (os.checklist_entrada || []).includes(item.item_id))
+        .map(item => item.nome)
+        .join(', ') || 'Nenhum item funcional verificado';
+
+      // Buscar primeira foto de entrada
+      const fotoEntradaA4 = os.fotos_telegram_entrada?.[0];
+      const fotoEntradaUrlA4 = fotoEntradaA4 
+        ? (typeof fotoEntradaA4 === 'string' ? fotoEntradaA4 : (fotoEntradaA4.url || fotoEntradaA4.thumbnailUrl))
+        : undefined;
       
       const htmlContent = `
         <!DOCTYPE html>
@@ -1122,6 +1616,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             .termo h3 { margin-top: 0; }
             .termo ol { margin: 10px 0; padding-left: 20px; }
             .termo li { margin: 5px 0; }
+            .checklist-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; background: #fafafa; }
+            .checklist-section h3 { margin-top: 0; color: #333; }
+            .checklist-item { margin: 5px 0; padding-left: 20px; }
+            .checklist-fisico { color: #dc2626; }
+            .checklist-funcional { color: #16a34a; }
+            .foto-entrada { text-align: center; margin: 20px 0; }
+            .foto-entrada img { max-width: 100%; max-height: 400px; border: 1px solid #ddd; }
           </style>
         </head>
         <body>
@@ -1152,6 +1653,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             <strong>Previsão Entrega:</strong> ${os.previsao_entrega ? dateFormatters.short(os.previsao_entrega) : '-'}
           </div>
           
+          ${fotoEntradaUrlA4 ? `
+          <div class="foto-entrada">
+            <h3>Foto de Entrada</h3>
+            <img src="${fotoEntradaUrlA4}" alt="Foto de Entrada" />
+          </div>
+          ` : ''}
+          
+          <div class="checklist-section">
+            <h3>Checklist de Entrada</h3>
+            ${checklistFisicoA4 !== 'Nenhum problema encontrado' ? `
+              <div class="checklist-fisico">
+                <strong>Problemas Encontrados:</strong>
+                <div class="checklist-item">${checklistFisicoA4}</div>
+              </div>
+            ` : ''}
+            ${checklistFuncionalA4 !== 'Nenhum item funcional verificado' ? `
+              <div class="checklist-funcional" style="margin-top: 15px;">
+                <strong>Funcional OK:</strong>
+                <div class="checklist-item">${checklistFuncionalA4}</div>
+              </div>
+            ` : ''}
+            ${os.observacoes_checklist ? `
+              <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <strong>Observações:</strong>
+                <div style="margin-top: 5px;">${os.observacoes_checklist}</div>
+              </div>
+            ` : ''}
+          </div>
+          
           <div class="termo">
             <h3>Sobre a Garantia do Serviço:</h3>
             <ol>
@@ -1179,15 +1709,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       toast({ title: 'Erro ao imprimir', variant: 'destructive' });
     }
   };
+  */
 
   const content = (
-    <div className={cn("w-full flex flex-col", isModal ? "h-full overflow-hidden" : "min-h-[calc(100dvh-8rem)]")}>
+    <div className={cn("w-full flex flex-col overflow-x-hidden", isModal ? "h-full overflow-hidden" : "min-h-[calc(100dvh-8rem)]")}>
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Header com tabs */}
           <div className="border-b-2 mb-2">
             <div className="overflow-x-auto">
               <TabsList className="w-max min-w-full justify-start bg-transparent h-auto p-0 gap-0">
+                {/* GRUPO: ENTRADA */}
                 <TabsTrigger 
                   value="dados" 
                   className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
@@ -1206,6 +1738,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </TabsTrigger>
                 {isEditing && (
                   <>
+                    {/* Separador visual */}
+                    <div className="h-6 w-px bg-border mx-1" />
+                    
+                    {/* GRUPO: EXECUÇÃO */}
                     <TabsTrigger 
                       value="resolucao" 
                       className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
@@ -1214,6 +1750,19 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <span className="hidden sm:inline">Resolução</span>
                       <span className="sm:hidden">Resol</span>
                     </TabsTrigger>
+                    <TabsTrigger 
+                      value="tecnico" 
+                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span className="hidden sm:inline">Info. Técnicas</span>
+                      <span className="sm:hidden">Técnico</span>
+                    </TabsTrigger>
+                    
+                    {/* Separador visual */}
+                    <div className="h-6 w-px bg-border mx-1" />
+                    
+                    {/* GRUPO: VENDA */}
                     <TabsTrigger 
                       value="itens" 
                       className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
@@ -1230,19 +1779,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <span className="hidden sm:inline">Financeiro</span>
                       <span className="sm:hidden">Fin</span>
                     </TabsTrigger>
-                    <TabsTrigger 
-                      value="tecnico" 
-                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span className="hidden sm:inline">Informações Técnicas</span>
-                      <span className="sm:hidden">Técnico</span>
-                    </TabsTrigger>
+                    
+                    {/* Separador visual */}
+                    <div className="h-6 w-px bg-border mx-1" />
+                    
+                    {/* GRUPO: ENTREGA */}
                     <TabsTrigger 
                       value="fotos" 
                       className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
                     >
-                      <FileText className="h-4 w-4" />
+                      <Image className="h-4 w-4" />
                       <span className="hidden sm:inline">Fotos</span>
                       <span className="sm:hidden">Fotos</span>
                     </TabsTrigger>
@@ -1252,11 +1798,42 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </div>
           </div>
 
+          {/* Resumo Fixo da OS - Apenas uma vez no topo */}
+          {isEditing && currentOS && (
+            <div className="mb-4 space-y-3">
+              <OSSummaryHeader
+                numeroOS={currentOS.numero}
+                clienteNome={selectedCliente?.nome || getClienteById(currentOS.cliente_id)?.nome}
+                modeloNome={modelos.find(m => m.id === currentOS.modelo_id)?.nome || currentOS.modelo_nome}
+                status={currentOS.status}
+                valorTotal={total}
+                valorPago={totalPago}
+                previsaoEntrega={currentOS.previsao_entrega}
+                tecnicoNome={currentOS.tecnico_id ? getColaboradorById(currentOS.tecnico_id)?.nome || currentOS.tecnico_nome : undefined}
+              />
+              {/* Indicador de Progresso */}
+              <Card>
+                <CardContent className="pt-4">
+                  <OSProgressIndicator
+                    etapas={[
+                      { id: 'dados', label: 'Dados', concluida: !!currentOS.cliente_id && !!currentOS.descricao_problema },
+                      { id: 'checklist', label: 'Checklist', concluida: (currentOS.checklist_entrada?.length || 0) > 0 },
+                      { id: 'resolucao', label: 'Resolução', concluida: !!currentOS.problema_constatado },
+                      { id: 'itens', label: 'Peças/Serviços', concluida: itens.length > 0 },
+                      { id: 'financeiro', label: 'Financeiro', concluida: totalPago >= total },
+                      { id: 'entrega', label: 'Entrega', concluida: currentOS.status === 'entregue' || currentOS.status === 'finalizada' },
+                    ]}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Tab Dados */}
-          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2">
-            <div className="grid grid-cols-1 xl:grid-cols-[80%_20%] gap-3 flex-1 min-h-0 items-stretch">
+          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2 overflow-x-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-3 flex-1 min-h-0 items-stretch w-full max-w-full">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="flex flex-col h-full overflow-hidden border-2">
+              <Card className="flex flex-col h-full overflow-hidden border-2 min-w-0 w-full max-w-full">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0 border-b-2">
                   <CardTitle className="text-base font-semibold">Dados da OS</CardTitle>
                 </CardHeader>
@@ -1540,17 +2117,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha e Áreas com Defeito */}
-              <Card className="flex flex-col h-full overflow-visible border-2">
+              <Card className="flex flex-col h-full overflow-hidden border-2 min-w-0 w-full max-w-full">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0 border-b-2">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    Senha e Áreas com Defeito
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 truncate">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">Senha e Áreas com Defeito</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-visible space-y-4 px-2">
+                <CardContent className="pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-4 px-2 box-border">
                   {/* Seção Senha */}
-                  <div className="space-y-3 flex-shrink-0">
-                    <Label className="text-sm font-medium">Possui senha</Label>
+                  <div className="space-y-3 flex-shrink-0 w-full min-w-0">
+                    <Label className="text-sm font-medium truncate">Possui senha</Label>
                     <Select 
                       value={formData.possui_senha_tipo || 'nao'} 
                       onValueChange={(v) => {
@@ -1561,8 +2138,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-10 text-sm">
-                        <SelectValue>
+                      <SelectTrigger className="w-full h-10 text-sm min-w-0">
+                        <SelectValue className="truncate">
                           {formData.possui_senha_tipo === 'sim' && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && 'SIM - DESLIZAR (DESENHO)'}
                           {(formData.possui_senha_tipo === 'nao' || !formData.possui_senha_tipo) && 'NÃO'}
@@ -1581,32 +2158,32 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                     {/* Senha - Campo de texto quando SIM */}
                     {formData.possui_senha_tipo === 'sim' && (
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full min-w-0">
                         <Input
                           type="text"
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                           placeholder="Digite a senha"
-                          className="h-10 text-sm"
+                          className="h-10 text-sm w-full min-w-0"
                         />
                       </div>
                     )}
 
                     {/* Senha - PatternLock quando DESLIZAR */}
                     {formData.possui_senha_tipo === 'deslizar' && (
-                      <div className="space-y-2 flex-shrink-0">
-                        <div className="flex justify-center items-center w-full overflow-visible">
+                      <div className="space-y-2 flex-shrink-0 w-full min-w-0">
+                        <div className="flex justify-center items-center w-full overflow-hidden">
                           <PatternLock
                             value={formData.padrao_desbloqueio}
                             onChange={(pattern) => setFormData(prev => ({ ...prev, padrao_desbloqueio: pattern }))}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 max-w-full"
                           />
                         </div>
                         <Input
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                           placeholder="Senha adicional"
-                          className="h-10 text-sm"
+                          className="h-10 text-sm w-full min-w-0"
                         />
                       </div>
                     )}
@@ -1615,14 +2192,34 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Divisor */}
                   <div className="border-t flex-shrink-0"></div>
 
-                  {/* Seção Áreas com Defeito */}
-                  <div className="flex-1 flex flex-col min-h-0">
-                    <Label className="text-sm font-medium mb-2 flex-shrink-0">Áreas com Defeito</Label>
-                    <div className="flex-1 flex items-center justify-center min-h-0 overflow-visible">
-                      <PhoneDrawing
-                        areas={formData.areas_defeito}
-                        onAreasChange={(areas) => setFormData(prev => ({ ...prev, areas_defeito: areas }))}
+                  {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
+                  <div className="flex-1 flex flex-col min-h-0 w-full min-w-0">
+                    <Label className="text-sm font-medium mb-2 flex-shrink-0 truncate">Referência Visual do Aparelho</Label>
+                    <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden w-full max-w-full bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-2">
+                      <OSImageReferenceViewer
+                        imageUrl={osImageReferenceUrl || null}
+                        defects={formData.areas_defeito || []}
+                        onDefectsChange={(defects) => setFormData(prev => ({ ...prev, areas_defeito: defects }))}
+                        readOnly={false}
                       />
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 mt-2">
+                      <p className="text-xs text-muted-foreground text-center">
+                        Clique na imagem para marcar defeitos • {formData.areas_defeito?.length || 0} ponto{formData.areas_defeito?.length !== 1 ? 's' : ''} marcado{formData.areas_defeito?.length !== 1 ? 's' : ''}
+                      </p>
+                      {formData.areas_defeito && formData.areas_defeito.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFormData(prev => ({ ...prev, areas_defeito: [] }));
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded p-0.5 transition-colors flex-shrink-0"
+                          title="Limpar todos os defeitos"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -1632,101 +2229,267 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Checklist */}
           <TabsContent value="checklist" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
-              {/* Estado Físico */}
-              <Card className="flex flex-col h-full m-2">
-                <CardHeader className="pb-2 pt-3">
-                  <CardTitle className="text-base text-destructive">Estado Físico</CardTitle>
-                  <CardDescription className="text-xs">Marque os problemas encontrados</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 pt-2">
-                  <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
-                    <div className="grid grid-cols-1 gap-1 pr-4">
-                      {CHECKLIST_ITENS.filter(i => i.categoria === 'fisico').map(item => (
-                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
-                          <Checkbox
-                            id={item.id}
-                            checked={formData.checklist_entrada.includes(item.id)}
-                            onCheckedChange={() => toggleChecklist(item.id)}
-                          />
-                          <Label htmlFor={item.id} className="text-sm cursor-pointer flex-1">
-                            {item.nome}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+            <Tabs defaultValue="entrada" className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full justify-start mb-4">
+                <TabsTrigger value="entrada">Checklist de Entrada</TabsTrigger>
+                {isEditing && currentOS && (
+                  <TabsTrigger value="saida">Checklist de Saída</TabsTrigger>
+                )}
+              </TabsList>
 
-              {/* Estado Funcional */}
-              <Card className="flex flex-col h-full m-2">
-                <CardHeader className="pb-2 pt-3">
-                  <CardTitle className="text-base text-green-600">Estado Funcional</CardTitle>
-                  <CardDescription className="text-xs">Marque o que está funcionando</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 pt-2">
-                  <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
-                    <div className="grid grid-cols-1 gap-1 pr-4">
-                      {CHECKLIST_ITENS.filter(i => i.categoria === 'funcional').map(item => (
-                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
-                          <Checkbox
-                            id={item.id}
-                            checked={formData.checklist_entrada.includes(item.id)}
-                            onCheckedChange={() => toggleChecklist(item.id)}
-                          />
-                          <Label htmlFor={item.id} className="text-sm cursor-pointer flex-1">
-                            {item.nome}
-                          </Label>
+              {/* Checklist de Entrada */}
+              <TabsContent value="entrada" className="flex-1 flex flex-col min-h-0 space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
+                  {/* Problemas Encontrados - Entrada */}
+                  <Card className="flex flex-col h-full m-2">
+                    <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
+                          <CardDescription className="text-xs">Marque os problemas encontrados</CardDescription>
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Observações do Checklist */}
-            <Card>
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-base">Observações Gerais do Checklist</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <Textarea
-                  value={formData.observacoes_checklist || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, observacoes_checklist: e.target.value }))}
-                  placeholder="Adicione observações gerais sobre o checklist..."
-                  rows={3}
-                  className="resize-none"
-                />
-              </CardContent>
-            </Card>
+                        <Badge variant="destructive" className="text-xs">
+                          {checklistEntradaConfig.filter(i => i.categoria === 'fisico').filter(item => (formData.checklist_entrada || []).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'fisico').length}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 pt-2">
+                      <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
+                        <div className="grid grid-cols-1 gap-1 pr-4">
+                          {checklistEntradaConfig.filter(i => i.categoria === 'fisico').map(item => (
+                            <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                              <Checkbox
+                                id={`entrada-fisico-${item.id}`}
+                                checked={(formData.checklist_entrada || []).includes(item.item_id)}
+                                onCheckedChange={() => toggleChecklist(item.item_id)}
+                                disabled={isEditing && currentOS}
+                              />
+                              <Label htmlFor={`entrada-fisico-${item.id}`} className={cn("text-sm cursor-pointer flex-1", isEditing && currentOS && "cursor-default opacity-75")}>
+                                {item.nome}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+
+                  {/* Funcional OK - Entrada */}
+                  <Card className="flex flex-col h-full m-2">
+                    <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
+                          <CardDescription className="text-xs">Marque o que está funcionando</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                            {checklistEntradaConfig.filter(i => i.categoria === 'funcional').filter(item => (formData.checklist_entrada || []).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'funcional').length}
+                          </Badge>
+                          {!isEditing || !currentOS ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                const funcionalIds = checklistEntradaConfig.filter(i => i.categoria === 'funcional').map(i => i.item_id);
+                                const novosIds = [...new Set([...(formData.checklist_entrada || []), ...funcionalIds])];
+                                setFormData(prev => ({ ...prev, checklist_entrada: novosIds }));
+                              }}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Marcar tudo OK
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 pt-2">
+                      <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
+                        <div className="grid grid-cols-1 gap-1 pr-4">
+                          {checklistEntradaConfig.filter(i => i.categoria === 'funcional').map(item => (
+                            <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                              <Checkbox
+                                id={`entrada-funcional-${item.id}`}
+                                checked={(formData.checklist_entrada || []).includes(item.item_id)}
+                                onCheckedChange={() => toggleChecklist(item.item_id)}
+                                disabled={isEditing && currentOS}
+                              />
+                              <Label htmlFor={`entrada-funcional-${item.id}`} className={cn("text-sm cursor-pointer flex-1", isEditing && currentOS && "cursor-default opacity-75")}>
+                                {item.nome}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Observações do Checklist de Entrada */}
+                <Card>
+                  <CardHeader className="pb-2 pt-3">
+                    <CardTitle className="text-base">Observações do Checklist de Entrada</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-2">
+                    <Textarea
+                      value={formData.observacoes_checklist || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, observacoes_checklist: e.target.value }))}
+                      placeholder="Adicione observações gerais sobre o checklist de entrada..."
+                      rows={3}
+                      className="resize-none"
+                      disabled={isEditing && currentOS}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Checklist de Saída */}
+              {isEditing && currentOS && (
+                <TabsContent value="saida" className="flex-1 flex flex-col min-h-0 space-y-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
+                    {/* Problemas Encontrados - Saída */}
+                    <Card className="flex flex-col h-full m-2">
+                      <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
+                            <CardDescription className="text-xs">Itens verificados na saída</CardDescription>
+                          </div>
+                          <Badge variant="destructive" className="text-xs">
+                            {checklistSaidaConfig.filter(i => i.categoria === 'fisico').filter(item => (currentOS.checklist_saida || []).includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'fisico').length}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 pt-2">
+                        <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
+                          <div className="grid grid-cols-1 gap-1 pr-4">
+                            {checklistSaidaConfig.filter(i => i.categoria === 'fisico').map(item => (
+                              <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                                <Checkbox
+                                  id={`saida-fisico-${item.id}`}
+                                  checked={(currentOS.checklist_saida || []).includes(item.item_id)}
+                                  disabled
+                                />
+                                <Label htmlFor={`saida-fisico-${item.id}`} className="text-sm cursor-default opacity-75 flex-1">
+                                  {item.nome}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+
+                    {/* Funcional OK - Saída */}
+                    <Card className="flex flex-col h-full m-2">
+                      <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
+                            <CardDescription className="text-xs">Itens funcionais verificados na saída</CardDescription>
+                          </div>
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                            {checklistSaidaConfig.filter(i => i.categoria === 'funcional').filter(item => (currentOS.checklist_saida || []).includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'funcional').length}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 pt-2">
+                        <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
+                          <div className="grid grid-cols-1 gap-1 pr-4">
+                            {checklistSaidaConfig.filter(i => i.categoria === 'funcional').map(item => (
+                              <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                                <Checkbox
+                                  id={`saida-funcional-${item.id}`}
+                                  checked={(currentOS.checklist_saida || []).includes(item.item_id)}
+                                  disabled
+                                />
+                                <Label htmlFor={`saida-funcional-${item.id}`} className="text-sm cursor-default opacity-75 flex-1">
+                                  {item.nome}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  {/* Status do Checklist de Saída */}
+                  {currentOS.checklist_saida_aprovado !== null && (
+                    <Card>
+                      <CardHeader className="pb-2 pt-3">
+                        <CardTitle className="text-base">Resultado do Checklist de Saída</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className={cn(
+                            "text-sm",
+                            currentOS.checklist_saida_aprovado 
+                              ? "bg-green-600 text-white" 
+                              : "bg-red-600 text-white"
+                          )}>
+                            {currentOS.checklist_saida_aprovado ? '✓ Aprovado' : '✗ Reprovado'}
+                          </Badge>
+                          {currentOS.observacoes_checklist_saida && (
+                            <p className="text-sm text-muted-foreground">
+                              {currentOS.observacoes_checklist_saida}
+                            </p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+              )}
+            </Tabs>
           </TabsContent>
           
           {/* Tab Resolução do Problema */}
           {isEditing && (
-            <TabsContent value="resolucao" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
-              <Card className="border-2 m-2 flex flex-col h-full">
+            <TabsContent value="resolucao" className="space-y-2 mt-2">
+              <Card className="border-2 m-2">
                 <CardHeader className="pb-2 pt-3 border-b-2 flex-shrink-0">
                   <CardTitle className="text-base font-semibold">Resolução do Problema</CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0 pt-3">
-                  <div className="space-y-2 flex-1 flex flex-col min-h-0">
-                    <Label className="text-sm font-medium flex-shrink-0">Problema Constatado</Label>
+                <CardContent className="pt-3 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="problema-constatado" className="text-sm font-medium">Problema Constatado</Label>
                     <Textarea
+                      id="problema-constatado"
                       value={formData.problema_constatado || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, problema_constatado: e.target.value }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        console.log('[OrdemServicoForm] Problema constatado onChange - valor:', value);
+                        setFormData(prev => {
+                          console.log('[OrdemServicoForm] Estado anterior:', prev.problema_constatado);
+                          const updated = { ...prev, problema_constatado: value };
+                          console.log('[OrdemServicoForm] Estado atualizado:', updated.problema_constatado);
+                          return updated;
+                        });
+                      }}
                       placeholder="Descreva o problema constatado após análise técnica..."
-                      className="min-h-[220px] md:min-h-[320px] resize-none flex-1"
+                      rows={12}
+                      className="min-h-[220px]"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Caracteres: {(formData.problema_constatado || '').length}
+                    </p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0 mt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Técnico Responsável</Label>
                       <Select
                         value={formData.tecnico_id || ''}
-                        onValueChange={(v) => setFormData(prev => ({ ...prev, tecnico_id: v }))}
+                        onValueChange={(v) => {
+                          console.log('[OrdemServicoForm] Técnico selecionado:', v);
+                          setFormData(prev => {
+                            const updated = { ...prev, tecnico_id: v };
+                            console.log('[OrdemServicoForm] Estado atualizado técnico:', updated.tecnico_id);
+                            return updated;
+                          });
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o técnico" />
@@ -1769,14 +2532,25 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                     
                     <div className="space-y-2">
-                      <Label>Serviço Executado</Label>
-                      <Input
+                      <Label htmlFor="servico-executado">Serviço Executado</Label>
+                      <Textarea
+                        id="servico-executado"
                         value={formData.servico_executado || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, servico_executado: e.target.value }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          console.log('[OrdemServicoForm] Serviço executado onChange - valor:', value);
+                          setFormData(prev => {
+                            console.log('[OrdemServicoForm] Estado anterior servico:', prev.servico_executado);
+                            const updated = { ...prev, servico_executado: value };
+                            console.log('[OrdemServicoForm] Estado atualizado servico:', updated.servico_executado);
+                            return updated;
+                          });
+                        }}
                         placeholder="Descreva o serviço executado (ex.: troca de tela, troca de bateria, conector, limpeza, atualização, etc.)"
+                        rows={4}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Campo livre para digitar exatamente o serviço realizado.
+                        Campo livre para digitar exatamente o serviço realizado. Caracteres: {(formData.servico_executado || '').length}
                       </p>
                     </div>
                   </div>
@@ -2282,6 +3056,34 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                   </div>
 
+                  {/* Resumo de Fotos com Badges */}
+                  {(currentOS?.fotos_telegram_entrada?.length || 0) > 0 ||
+                   (currentOS?.fotos_telegram_processo?.length || 0) > 0 ||
+                   (currentOS?.fotos_telegram_saida?.length || 0) > 0 ? (
+                    <div className="flex items-center gap-3 mb-4 p-3 bg-muted/50 rounded-lg">
+                      <Image className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium">Fotos:</span>
+                      {currentOS?.fotos_telegram_entrada?.length > 0 && (
+                        <Badge variant="outline" className="gap-1">
+                          <Image className="h-3 w-3" />
+                          Entrada: {currentOS.fotos_telegram_entrada.length}
+                        </Badge>
+                      )}
+                      {currentOS?.fotos_telegram_processo?.length > 0 && (
+                        <Badge variant="outline" className="gap-1">
+                          <Image className="h-3 w-3" />
+                          Processo: {currentOS.fotos_telegram_processo.length}
+                        </Badge>
+                      )}
+                      {currentOS?.fotos_telegram_saida?.length > 0 && (
+                        <Badge variant="outline" className="gap-1">
+                          <Image className="h-3 w-3" />
+                          Saída: {currentOS.fotos_telegram_saida.length}
+                        </Badge>
+                      )}
+                    </div>
+                  ) : null}
+
                   {/* Galeria de fotos com preview */}
                   {(currentOS?.fotos_telegram_entrada && currentOS.fotos_telegram_entrada.length > 0) ||
                    (currentOS?.fotos_telegram_processo && currentOS.fotos_telegram_processo.length > 0) ||
@@ -2291,10 +3093,19 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <div>
                           <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                             <Image className="h-4 w-4" />
-                            Fotos de Entrada ({currentOS.fotos_telegram_entrada.length})
+                            Fotos de Entrada
+                            <Badge variant="secondary" className="ml-1">
+                              {currentOS.fotos_telegram_entrada.length}
+                            </Badge>
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {currentOS.fotos_telegram_entrada.map((foto, index) => {
+                            {[...currentOS.fotos_telegram_entrada]
+                              .sort((a, b) => {
+                                const aData = typeof a === 'string' ? new Date(0) : (a.enviadoEm ? new Date(a.enviadoEm) : new Date(0));
+                                const bData = typeof b === 'string' ? new Date(0) : (b.enviadoEm ? new Date(b.enviadoEm) : new Date(0));
+                                return bData.getTime() - aData.getTime(); // Mais recente primeiro
+                              })
+                              .map((foto, index) => {
                               const fotoData = typeof foto === 'string' 
                                 ? { url: foto, fileName: `foto_${index + 1}.jpg`, tipo: 'entrada' as const } 
                                 : foto;
@@ -2439,7 +3250,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <div>
                           <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                             <Image className="h-4 w-4" />
-                            Fotos de Processo ({currentOS.fotos_telegram_processo.length})
+                            Fotos de Processo
+                            <Badge variant="secondary" className="ml-1">
+                              {currentOS.fotos_telegram_processo.length}
+                            </Badge>
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {currentOS.fotos_telegram_processo.map((foto, index) => {
@@ -2567,7 +3381,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <div>
                           <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
                             <Image className="h-4 w-4" />
-                            Fotos de Saída ({currentOS.fotos_telegram_saida.length})
+                            Fotos de Saída
+                            <Badge variant="secondary" className="ml-1">
+                              {currentOS.fotos_telegram_saida.length}
+                            </Badge>
                           </h4>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             {currentOS.fotos_telegram_saida.map((foto, index) => {
@@ -2692,8 +3509,15 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      Nenhuma foto cadastrada ainda
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Image className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-base font-medium mb-2">Nenhuma foto cadastrada ainda</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Adicione fotos de entrada, processo ou saída para documentar a OS
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Configure os Chat IDs do Telegram acima para enviar fotos automaticamente
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -2710,7 +3534,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <CardTitle className="text-base">Peças e Serviços</CardTitle>
                     <Button onClick={() => {
                       setEditingItem(null);
-                      setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 0, colaborador_id: '' });
+                      setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: '' });
                       setShowAddItem(true);
                     }} size="sm" className="gap-2">
                       <Plus className="h-4 w-4" />
@@ -2720,9 +3544,24 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </CardHeader>
                 <CardContent className="pt-2 flex-1 flex flex-col min-h-0">
                   {itens.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Nenhum item adicionado ainda.
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-base font-medium mb-2">Nenhum item adicionado ainda</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Adicione peças ou serviços para compor o orçamento da OS
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          setEditingItem(null);
+                          setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: '' });
+                          setShowAddItem(true);
+                        }}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Adicionar Primeiro Item
+                      </Button>
+                    </div>
                   ) : (
                     <ScrollArea className="flex-1">
                       <div className="w-full overflow-x-auto">
@@ -2802,6 +3641,48 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           {/* Tab Financeiro */}
           {isEditing && (
             <TabsContent value="financeiro" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
+
+              {/* Saldo Pendente em Destaque */}
+              {total - totalPago > 0 && (
+                <Card className="border-2 border-orange-500 bg-orange-50/50">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className="h-6 w-6 text-orange-600" />
+                        <div>
+                          <p className="text-sm font-medium text-orange-900">Saldo Pendente</p>
+                          <p className="text-2xl font-bold text-orange-600">
+                            {currencyFormatters.brl(total - totalPago)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          if (!currentOS?.id) {
+                            toast({ 
+                              title: 'Erro', 
+                              description: 'OS não encontrada',
+                              variant: 'destructive'
+                            });
+                            return;
+                          }
+                          // Navegar para o PDV com a OS pré-carregada
+                          // Salvar o ID da OS no localStorage para o PDV importar
+                          localStorage.setItem('pdv_import_os_id', currentOS.id);
+                          localStorage.setItem('pdv_import_os_numero', currentOS.numero?.toString() || '');
+                          navigate('/pdv/nova');
+                        }}
+                        className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
+                        size="lg"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Registrar Pagamento
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-2 flex-shrink-0">
                 <Card className="m-2">
                   <CardContent className="pt-4">
@@ -2827,13 +3708,40 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
               <Card className="m-2 flex flex-col flex-1 min-h-0">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0">
-                  <CardTitle className="text-base">Pagamentos</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Pagamentos</CardTitle>
+                    <Button 
+                      onClick={() => {
+                        // TODO: Abrir dialog de pagamento
+                        toast({ title: 'Funcionalidade em desenvolvimento', description: 'Dialog de pagamento será implementado' });
+                      }}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Adicionar Pagamento
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-2 flex-1 flex flex-col min-h-0">
                   {pagamentos.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">
-                      Nenhum pagamento registrado.
-                    </p>
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-base font-medium mb-2">Nenhum pagamento registrado</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Registre o primeiro pagamento para começar a controlar o financeiro desta OS
+                      </p>
+                      <Button 
+                        onClick={() => {
+                          // TODO: Abrir dialog de pagamento
+                          toast({ title: 'Funcionalidade em desenvolvimento', description: 'Dialog de pagamento será implementado' });
+                        }}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Registrar Primeiro Pagamento
+                      </Button>
+                    </div>
                   ) : (
                     <ScrollArea className="flex-1">
                       <div className="w-full overflow-x-auto">
@@ -2842,26 +3750,40 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <TableHeader>
                               <TableRow>
                                 <TableHead>Data</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Forma</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pagamentos.map(pag => (
-                            <TableRow key={pag.id}>
-                              <TableCell>{dateFormatters.short(pag.data_pagamento)}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline">
-                                  {pag.tipo === 'adiantamento' ? 'Adiantamento' : 'Pagamento Final'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="capitalize">{pag.forma_pagamento}</TableCell>
-                              <TableCell className="text-right font-semibold">{currencyFormatters.brl(pag.valor)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                                <TableHead>Tipo</TableHead>
+                                <TableHead>Forma de Pagamento</TableHead>
+                                <TableHead className="text-right">Valor</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {pagamentos.map(pag => {
+                                const getPaymentIcon = (forma: string) => {
+                                  const formaLower = forma?.toLowerCase() || '';
+                                  if (formaLower.includes('pix')) return <QrCode className="h-4 w-4" />;
+                                  if (formaLower.includes('dinheiro') || formaLower.includes('cash')) return <Banknote className="h-4 w-4" />;
+                                  if (formaLower.includes('cartão') || formaLower.includes('cartao') || formaLower.includes('card')) return <CreditCard className="h-4 w-4" />;
+                                  return <Wallet className="h-4 w-4" />;
+                                };
+                                return (
+                                  <TableRow key={pag.id}>
+                                    <TableCell>{dateFormatters.short(pag.data_pagamento)}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">
+                                        {pag.tipo === 'adiantamento' ? 'Adiantamento' : 'Pagamento Final'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        {getPaymentIcon(pag.forma_pagamento)}
+                                        <span className="capitalize">{pag.forma_pagamento}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold">{currencyFormatters.brl(pag.valor)}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
                         </div>
                       </div>
                     </ScrollArea>
@@ -2899,16 +3821,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <p className="font-medium">{prod.descricao}</p>
+                            <p className="font-medium">{prod.nome}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <p className="text-xs text-muted-foreground">
-                                {currencyFormatters.brl(prod.preco_venda)}
+                                {currencyFormatters.brl(prod.valor_venda || prod.preco_venda || 0)}
                               </p>
                               <Badge 
-                                variant={prod.estoque_atual > 0 ? "default" : "destructive"}
+                                variant={(prod.quantidade || 0) > 0 ? "default" : "destructive"}
                                 className="text-xs"
                               >
-                                Estoque: {prod.estoque_atual || 0}
+                                Estoque: {prod.quantidade || 0}
                               </Badge>
                             </div>
                           </div>
@@ -2920,15 +3842,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 {produtoSearch.length >= 2 && produtoResults.length === 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg p-3">
                     <p className="text-sm text-muted-foreground">
-                      {itemForm.tipo === 'peca' 
-                        ? 'Nenhuma peça encontrada com estoque disponível.' 
-                        : 'Nenhum produto encontrado.'}
+                      Nenhum produto encontrado com estoque disponível.
                     </p>
-                    {itemForm.tipo === 'peca' && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Verifique se a peça está cadastrada e possui estoque maior que zero.
-                      </p>
-                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Apenas produtos com estoque maior que zero são exibidos. Verifique se o produto está cadastrado e possui estoque disponível.
+                    </p>
                   </div>
                 )}
               </div>
@@ -2966,7 +3884,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     type="number"
                     min="1"
                     max={itemForm.tipo === 'peca' && itemForm.produto_id 
-                      ? produtos.find(p => p.id === itemForm.produto_id)?.estoque_atual || undefined
+                      ? produtos.find(p => p.id === itemForm.produto_id)?.quantidade || undefined
                       : undefined}
                     value={itemForm.quantidade}
                     onChange={(e) => {
@@ -2974,10 +3892,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       // Se for peça, validar contra estoque
                       if (itemForm.tipo === 'peca' && itemForm.produto_id) {
                         const produto = produtos.find(p => p.id === itemForm.produto_id);
-                        if (produto && valor > (produto.estoque_atual || 0)) {
+                        const estoqueDisponivel = produto?.quantidade || 0;
+                        if (produto && valor > estoqueDisponivel) {
                           toast({
                             title: 'Quantidade excede estoque',
-                            description: `Estoque disponível: ${produto.estoque_atual} unidades.`,
+                            description: `Estoque disponível: ${estoqueDisponivel} unidades.`,
                             variant: 'destructive',
                           });
                           return;
@@ -2988,7 +3907,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   />
                   {itemForm.tipo === 'peca' && itemForm.produto_id && (
                     <p className="text-xs text-muted-foreground">
-                      Estoque disponível: {produtos.find(p => p.id === itemForm.produto_id)?.estoque_atual || 0} unidades
+                      Estoque disponível: {produtos.find(p => p.id === itemForm.produto_id)?.quantidade || 0} unidades
                     </p>
                   )}
                 </div>
@@ -2999,19 +3918,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 <Input
                   value={itemForm.descricao}
                   onChange={(e) => {
-                    // Se for peça, não permitir editar manualmente (deve vir do estoque)
-                    if (itemForm.tipo === 'peca' && itemForm.produto_id) {
-                      return;
-                    }
+                    // Sempre permitir editar a descrição (pode ser ajustada manualmente)
                     setItemForm(prev => ({ ...prev, descricao: e.target.value }));
                   }}
-                  placeholder={itemForm.tipo === 'peca' ? "Selecione uma peça do estoque acima" : "Descrição do item"}
-                  disabled={itemForm.tipo === 'peca' && !!itemForm.produto_id}
-                  className={itemForm.tipo === 'peca' && !!itemForm.produto_id ? "bg-muted" : ""}
+                  placeholder={itemForm.tipo === 'peca' && !itemForm.produto_id ? "Selecione uma peça do estoque acima ou digite manualmente" : "Descrição do item"}
                 />
                 {itemForm.tipo === 'peca' && !itemForm.produto_id && (
                   <p className="text-xs text-muted-foreground">
-                    Busque e selecione uma peça do estoque acima
+                    Busque e selecione uma peça do estoque acima ou digite manualmente
                   </p>
                 )}
               </div>
@@ -3055,10 +3969,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <Input
                     type="number"
                     min="0"
-                    value={itemForm.garantia || ''}
-                    onChange={(e) => setItemForm(prev => ({ ...prev, garantia: parseInt(e.target.value) || 0 }))}
-                    placeholder="0"
+                    value={itemForm.garantia || 90}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, garantia: parseInt(e.target.value) || 90 }))}
+                    placeholder="90"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Padrão: 90 dias (ou conforme cadastro do produto)
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Colaborador que lançou</Label>
@@ -3223,6 +4140,158 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       subtitle={isEditing ? 'Editar ordem de serviço' : 'Cadastrar nova OS'}
     >
       {content}
+
+      {/* Modal de Checklist de Saída */}
+      <Dialog open={showChecklistSaidaModal} onOpenChange={setShowChecklistSaidaModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Checklist de Saída - OS #{currentOS?.numero}</DialogTitle>
+            <DialogDescription>
+              Marque os itens verificados antes de finalizar a manutenção. O aparelho será aprovado ou reprovado com base neste checklist.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Grid de Checklist */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Problemas Encontrados */}
+              <Card>
+                <CardHeader className="pb-2 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
+                    <Badge variant="destructive" className="text-xs">
+                      {checklistSaidaConfig.filter(i => i.categoria === 'fisico').filter(item => checklistSaidaMarcados.includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'fisico').length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2 pr-4">
+                      {checklistSaidaConfig.filter(i => i.categoria === 'fisico').map(item => (
+                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                          <Checkbox
+                            id={`saida-${item.item_id}`}
+                            checked={checklistSaidaMarcados.includes(item.item_id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setChecklistSaidaMarcados(prev => [...prev, item.item_id]);
+                              } else {
+                                setChecklistSaidaMarcados(prev => prev.filter(id => id !== item.item_id));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`saida-${item.item_id}`} className="text-sm cursor-pointer flex-1">
+                            {item.nome}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Funcional OK */}
+              <Card>
+                <CardHeader className="pb-2 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                      {checklistSaidaConfig.filter(i => i.categoria === 'funcional').filter(item => checklistSaidaMarcados.includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'funcional').length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2 pr-4">
+                      {checklistSaidaConfig.filter(i => i.categoria === 'funcional').map(item => (
+                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                          <Checkbox
+                            id={`saida-${item.item_id}`}
+                            checked={checklistSaidaMarcados.includes(item.item_id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setChecklistSaidaMarcados(prev => [...prev, item.item_id]);
+                              } else {
+                                setChecklistSaidaMarcados(prev => prev.filter(id => id !== item.item_id));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`saida-${item.item_id}`} className="text-sm cursor-pointer flex-1">
+                            {item.nome}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Aprovação/Reprovação */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Resultado do Checklist</CardTitle>
+                <CardDescription>O aparelho foi aprovado ou reprovado no checklist de saída?</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <Button
+                    variant={checklistSaidaAprovado === true ? 'default' : 'outline'}
+                    className={cn('flex-1', checklistSaidaAprovado === true && 'bg-green-600 hover:bg-green-700')}
+                    onClick={() => setChecklistSaidaAprovado(true)}
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Aprovado
+                  </Button>
+                  <Button
+                    variant={checklistSaidaAprovado === false ? 'default' : 'outline'}
+                    className={cn('flex-1', checklistSaidaAprovado === false && 'bg-red-600 hover:bg-red-700')}
+                    onClick={() => setChecklistSaidaAprovado(false)}
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Reprovado
+                  </Button>
+                </div>
+
+                {checklistSaidaAprovado === false && (
+                  <div className="space-y-2">
+                    <Label>Observações (Ressalvas)</Label>
+                    <Textarea
+                      value={checklistSaidaObservacoes}
+                      onChange={(e) => setChecklistSaidaObservacoes(e.target.value)}
+                      placeholder="Descreva as ressalvas ou problemas encontrados..."
+                      rows={3}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowChecklistSaidaModal(false);
+              setPendingStatusChange(null);
+              setChecklistSaidaMarcados([]);
+              setChecklistSaidaAprovado(null);
+              setChecklistSaidaObservacoes('');
+            }}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleFinalizarChecklistSaida}
+              disabled={checklistSaidaAprovado === null}
+              className={cn(
+                checklistSaidaAprovado === true && 'bg-green-600 hover:bg-green-700',
+                checklistSaidaAprovado === false && 'bg-red-600 hover:bg-red-700'
+              )}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Finalizar Checklist e Atualizar Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ModernLayout>
   );
 }

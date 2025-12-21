@@ -174,7 +174,7 @@ export default function Clientes() {
           <CardContent className="p-0">
             {filteredClientes.length === 0 ? (
               <EmptyState
-                icon={User}
+                icon={<User className="h-12 w-12" />}
                 title="Nenhum cliente encontrado"
                 description={searchTerm ? "Tente buscar por outro termo" : "Cadastre seu primeiro cliente"}
                 action={!searchTerm ? { label: "Novo Cliente", onClick: handleNew } : undefined}

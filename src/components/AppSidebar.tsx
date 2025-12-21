@@ -1,47 +1,24 @@
-﻿import React, { useState } from "react";
+﻿import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
-  Target,
-  Users,
-  BarChart3,
-  Settings,
-  Shield,
-  Plus,
-  Search,
-  Filter,
-  Folder,
-  Activity,
-  Workflow,
-  Calendar,
-  CheckSquare,
-  Clock,
-  AlertCircle,
-  FileText,
-  ChevronRight,
-  ChevronDown,
-  ClipboardList,
-  TrendingUp,
-  Brain,
-  Building2,
-  Briefcase,
-  FolderOpen,
-  Tag,
-  Package,
-  GraduationCap,
-  Video,
-  DollarSign,
   ShoppingCart,
-  UserCircle,
   Wrench,
-  Smartphone,
-  Store,
-  Receipt,
+  Package,
+  UserCircle,
   Wallet,
-  CreditCard,
-  TrendingDown,
-  TrendingUp as TrendingUpIcon,
-  FileText as FileTextIcon,
+  BarChart3,
+  DollarSign,
+  Users,
+  Target,
+  Shield,
+  Building2,
+  FolderOpen,
+  Settings,
+  Activity,
+  Receipt,
+  FileText,
+  List,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -58,11 +35,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 // Logo da aplicação
 const logoImage = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
@@ -74,58 +47,75 @@ export function AppSidebar() {
 
   const collapsed = state === "collapsed";
   const currentPath = location.pathname;
+
+  // Função para verificar se o item está ativo
+  const isActive = (path: string, exact: boolean = false) => {
+    if (path === '/') {
+      return currentPath === '/';
+    }
+    // Se for exato, apenas marcar se for exatamente igual
+    if (exact) {
+      return currentPath === path;
+    }
+    // Se não for exato, marcar se começar com o path
+    return currentPath === path || currentPath.startsWith(path + '/');
+  };
+
+  // Função para obter classes do item ativo
+  const getItemClasses = (path: string, exact: boolean = false) => {
+    const active = isActive(path, exact);
+    return cn(
+      "flex items-center transition-colors rounded-lg",
+      collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2.5 gap-3",
+      active
+        ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm"
+        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    );
+  };
+
+  // Itens principais sempre visíveis
+  const mainItems = [
+    { label: "Dashboard", path: "/", icon: Home, exact: true },
+    { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true },
+    { label: "Ordem de Serviço", path: "/pdv/os", icon: Wrench, exact: false },
+    { label: "Produtos", path: "/produtos", icon: Package, exact: true },
+    { label: "Clientes", path: "/pdv/clientes", icon: UserCircle, exact: true },
+    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true },
+  ];
   
-  // Estados para controlar quais submenus estão abertos
-  const [isOrgOpen, setIsOrgOpen] = useState(
-    currentPath.startsWith('/admin/users') || 
-    currentPath.startsWith('/admin/positions') || 
-    currentPath.startsWith('/admin/departments') || 
-    currentPath.startsWith('/admin/categories') || 
-    currentPath.startsWith('/admin/tags')
-  );
-  const [isFeaturesOpen, setIsFeaturesOpen] = useState(
-    currentPath.startsWith('/admin/timeclock') || 
-    currentPath.startsWith('/admin/goals') || 
-    currentPath.startsWith('/admin/nps') || 
-    currentPath.startsWith('/admin/disc')
-  );
-  const [isRecruitmentOpen, setIsRecruitmentOpen] = useState(
-    currentPath.startsWith('/admin/job-surveys') || 
-    currentPath.startsWith('/admin/interviews') ||
-    currentPath.startsWith('/admin/talent-bank') ||
-    currentPath.startsWith('/candidato-disc') ||
-    currentPath.startsWith('/disc-externo')
-  );
-  const [isEstoqueVendasOpen, setIsEstoqueVendasOpen] = useState(
-    currentPath.startsWith('/pdv') || 
-    currentPath.startsWith('/assistencia') || 
-    currentPath.startsWith('/vendas') ||
-    currentPath.startsWith('/pdv/configuracao-cupom')
-  );
-  const [isCadastrosOpen, setIsCadastrosOpen] = useState(
-    currentPath.startsWith('/pdv/clientes') || 
-    currentPath.startsWith('/produtos') || 
-    currentPath.startsWith('/pdv/marcas-modelos')
-  );
-  const [isGestaoOperacionalOpen, setIsGestaoOperacionalOpen] = useState(
-    currentPath.startsWith('/tarefas') || 
-    currentPath.startsWith('/processos') || 
-    currentPath.startsWith('/calendario') ||
-    currentPath.startsWith('/ponto')
-  );
-  const [isRecursosHumanosOpen, setIsRecursosHumanosOpen] = useState(
-    currentPath.startsWith('/treinamentos') ||
-    currentPath.startsWith('/metas') ||
-    currentPath.startsWith('/nps') ||
-    currentPath.startsWith('/teste-disc')
-  );
-  const [isFinanceiroOpen, setIsFinanceiroOpen] = useState(
-    currentPath.startsWith('/admin/financeiro')
-  );
+  // Itens de Vendas e OS (acessos rápidos)
+  const vendasItems = [
+    { label: "Lista de Vendas", path: "/pdv/vendas", icon: List },
+    { label: "Dashboard Assistência", path: "/assistencia", icon: BarChart3 },
+    { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt },
+    { label: "Config. Cupom", path: "/pdv/configuracao-cupom", icon: FileText },
+    { label: "Config. Status OS", path: "/pdv/configuracao-status", icon: Settings },
+  ];
+
+  // Grupo Gestão (sem submenus)
+  const gestaoItems = [
+    { label: "Dashboard Gestão", path: "/gestao", icon: Home },
+    { label: "Relatórios", path: "/relatorios", icon: BarChart3 },
+    { label: "Financeiro", path: "/admin/financeiro", icon: DollarSign },
+    { label: "Recursos Humanos", path: "/rh", icon: Users },
+    { label: "Metas", path: "/metas", icon: Target },
+  ];
+
+  // Grupo Administração (apenas para admin)
+  const adminItems = [
+    { label: "Usuários e Permissões", path: "/admin/users", icon: Users },
+    { label: "Estrutura Organizacional", path: "/admin/estrutura", icon: Building2 },
+    { label: "Cadastros Base", path: "/admin/cadastros", icon: FolderOpen },
+    { label: "Integrações", path: "/integracoes", icon: Settings },
+    { label: "Logs", path: "/admin/logs", icon: Activity },
+  ];
 
   return (
     <Sidebar
-      className={`${collapsed ? "w-16" : "w-64"} transition-all duration-300 ease-in-out border-r`}
+      className={cn(
+        "transition-all duration-300 ease-in-out border-r",
+        collapsed ? "w-16" : "w-64"
+      )}
       collapsible="icon"
     >
       {!collapsed && (
@@ -142,739 +132,132 @@ export function AppSidebar() {
         </SidebarHeader>
       )}
 
-      <SidebarContent className={`flex flex-col gap-1 ${collapsed ? "p-1 pt-4" : "p-2"}`}>
+      <SidebarContent className={cn("flex flex-col gap-1", collapsed ? "p-1 pt-4" : "p-2")}>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu className={`space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to="/" end>
-                    {({ isActive }) => (
-                      <div
-                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                      >
-                        <Home className={`${collapsed ? "h-4 w-4" : "h-5 w-5"} flex-shrink-0`} />
-                        {!collapsed && <span className="font-medium text-sm">Dashboard</span>}
+            <SidebarMenu className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
+              {/* === ITENS PRINCIPAIS === */}
+              {mainItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.path} end={item.exact !== false}>
+                      <div className={getItemClasses(item.path, item.exact)}>
+                        <item.icon className={cn("flex-shrink-0", collapsed ? "h-4 w-4" : "h-5 w-5")} />
+                        {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
                       </div>
-                    )}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* === ESTOQUE E VENDAS === */}
-              <Collapsible open={isEstoqueVendasOpen} onOpenChange={setIsEstoqueVendasOpen}>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className={`${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full"}`}>
-                      <Store className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && <span className="font-medium text-sm">Estoque e Vendas</span>}
-                      {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isEstoqueVendasOpen ? 'rotate-180' : ''}`} />}
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className={`mt-1 space-y-1 ${collapsed ? "flex flex-col items-center" : "ml-4 border-l pl-2"}`}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/assistencia" end>
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <BarChart3 className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Dashboard Assistência</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv" end>
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <ShoppingCart className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">PDV - Vendas</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv/os">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Wrench className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Ordem de Serviço</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv/configuracao-status">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Settings className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Status de OS</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv/vendas">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Receipt className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Lista de Vendas</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv/caixa">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <DollarSign className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Caixa</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv/relatorios">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <BarChart3 className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/pdv/configuracao-cupom">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Receipt className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Config. Cupom</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      
-                      {/* Cadastros (sub-collapsible) */}
-                      <Collapsible open={isCadastrosOpen} onOpenChange={setIsCadastrosOpen}>
-                        <SidebarMenuItem>
-                          <CollapsibleTrigger asChild>
-                            <SidebarMenuButton className={`w-full ${collapsed ? 'justify-center' : ''}`}>
-                              <Folder className="h-4 w-4 flex-shrink-0" />
-                              {!collapsed && <span className="font-medium text-sm">Cadastros</span>}
-                              {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isCadastrosOpen ? 'rotate-180' : ''}`} />}
-                            </SidebarMenuButton>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <div className="ml-4 mt-1 space-y-1 border-l pl-2">
-                              <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                  <NavLink to="/pdv/clientes">
-                                    {({ isActive }) => (
-                                      <div
-                                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                      >
-                                        <UserCircle className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                        {!collapsed && <span className="font-medium text-sm">Clientes</span>}
-                                      </div>
-                                    )}
-                                  </NavLink>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                              <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                  <NavLink to="/produtos">
-                                    {({ isActive }) => (
-                                      <div
-                                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                      >
-                                        <Package className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                        {!collapsed && <span className="font-medium text-sm">Produtos</span>}
-                                      </div>
-                                    )}
-                                  </NavLink>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                              <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                  <NavLink to="/pdv/marcas-modelos">
-                                    {({ isActive }) => (
-                                      <div
-                                        className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                      >
-                                        <Smartphone className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                        {!collapsed && <span className="font-medium text-sm">Marcas e Modelos</span>}
-                                      </div>
-                                    )}
-                                  </NavLink>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            </div>
-                          </CollapsibleContent>
-                        </SidebarMenuItem>
-                      </Collapsible>
-                    </div>
-                  </CollapsibleContent>
+                    </NavLink>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
-              </Collapsible>
+              ))}
 
-              {/* === GESTÃO OPERACIONAL === */}
-              <Collapsible open={isGestaoOperacionalOpen} onOpenChange={setIsGestaoOperacionalOpen}>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className={`${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full"}`}>
-                      <Settings className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && <span className="font-medium text-sm">Gestão Operacional</span>}
-                      {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isGestaoOperacionalOpen ? 'rotate-180' : ''}`} />}
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className={`mt-1 space-y-1 ${collapsed ? "flex flex-col items-center" : "ml-4 border-l pl-2"}`}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/tarefas">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <CheckSquare className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Tarefas</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/processos">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Workflow className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Processos</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/calendario">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Calendar className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Calendário</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/ponto">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Clock className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Ponto</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </div>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              {/* Separador visual */}
+              {!collapsed && (
+                <div className="px-2 py-3">
+                  <div className="h-px bg-border" />
+                </div>
+              )}
 
-              {/* === RECURSOS HUMANOS === */}
-              <Collapsible open={isRecursosHumanosOpen} onOpenChange={setIsRecursosHumanosOpen}>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className={`${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full"}`}>
-                      <Users className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && <span className="font-medium text-sm">Recursos Humanos</span>}
-                      {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isRecursosHumanosOpen ? 'rotate-180' : ''}`} />}
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className={`mt-1 space-y-1 ${collapsed ? "flex flex-col items-center" : "ml-4 border-l pl-2"}`}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/treinamentos">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <GraduationCap className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Treinamentos</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/metas">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Target className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Metas</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/nps">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <TrendingUp className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">NPS</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/teste-disc">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Brain className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Teste DISC</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </div>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
-              {/* === FINANCEIRO === */}
-              <Collapsible open={isFinanceiroOpen} onOpenChange={setIsFinanceiroOpen}>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="w-full">
-                      <DollarSign className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-sm">Financeiro</span>
-                      <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isFinanceiroOpen ? 'rotate-180' : ''}`} />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className={`mt-1 space-y-1 ${collapsed ? "flex flex-col items-center" : "ml-4 border-l pl-2"}`}>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/admin/financeiro">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <BarChart3 className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Dashboard</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/admin/financeiro/contas">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Receipt className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Contas a Pagar</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/admin/financeiro/caixa">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <Wallet className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Caixa</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/admin/financeiro/transacoes">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <CreditCard className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Transações</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton asChild>
-                          <NavLink to="/admin/financeiro/relatorios">
-                            {({ isActive }) => (
-                              <div
-                                className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                              >
-                                <FileTextIcon className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                {!collapsed && <span className="font-medium text-sm">Relatórios</span>}
-                              </div>
-                            )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </div>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
-
-              {isAdmin && !collapsed && (
-                <>
-                  <div className="px-2 py-2 mt-4">
-                    <div className="flex items-center gap-2 px-2 py-1">
-                      <Shield className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Administração
-                      </span>
-                    </div>
+              {/* === VENDAS E OS (Acessos Rápidos) === */}
+              {!collapsed && (
+                <div className="px-2 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Vendas e OS
+                    </span>
                   </div>
+                </div>
+              )}
 
-                  {/* Estrutura Organizacional */}
-                  <Collapsible open={isOrgOpen} onOpenChange={setIsOrgOpen}>
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className={`${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full"}`}>
-                          <Building2 className="h-4 w-4 flex-shrink-0" />
-                          {!collapsed && <span className="font-medium text-sm">Estrutura Organizacional</span>}
-                          {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isOrgOpen ? 'rotate-180' : ''}`} />}
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className={`mt-1 space-y-1 ${collapsed ? "flex flex-col items-center" : "ml-4 border-l pl-2"}`}>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/users">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Users className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Usuários</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/positions">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Briefcase className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Cargos</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/departments">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Building2 className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Departamentos</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/categories">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <FolderOpen className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Categorias</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/tags">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Tag className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Tags</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        </div>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
+              {vendasItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.path} end>
+                      <div className={getItemClasses(item.path, true)}>
+                        <item.icon className={cn("flex-shrink-0", collapsed ? "h-4 w-4" : "h-5 w-5")} />
+                        {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                      </div>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
 
-                  {/* Gestão de Funcionalidades */}
-                  <Collapsible open={isFeaturesOpen} onOpenChange={setIsFeaturesOpen}>
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className={`${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full"}`}>
-                          <Settings className="h-4 w-4 flex-shrink-0" />
-                          {!collapsed && <span className="font-medium text-sm">Gestão de Funcionalidades</span>}
-                          {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isFeaturesOpen ? 'rotate-180' : ''}`} />}
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="ml-4 mt-1 space-y-1 border-l pl-2">
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/timeclock">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Clock className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Ponto Admin</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/goals">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Target className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">Metas Admin</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/nps">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <TrendingUp className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">NPS Admin</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/disc">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Brain className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm">DISC Admin</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        </div>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
+              {/* Separador visual */}
+              {!collapsed && (
+                <div className="px-2 py-3">
+                  <div className="h-px bg-border" />
+                </div>
+              )}
 
-                  {/* Recrutamento */}
-                  <Collapsible open={isRecruitmentOpen} onOpenChange={setIsRecruitmentOpen}>
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className={`${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full"}`}>
-                          <ClipboardList className="h-4 w-4 flex-shrink-0" />
-                          {!collapsed && <span className="font-medium text-sm">Recrutamento</span>}
-                          {!collapsed && <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${isRecruitmentOpen ? 'rotate-180' : ''}`} />}
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="ml-4 mt-1 space-y-1 border-l pl-2">
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/job-surveys">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center justify-start transition-colors rounded-lg w-full p-2 gap-2 ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <ClipboardList className="h-4 w-4 flex-shrink-0" />
-                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Formulários de Vagas</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/interviews">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Video className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Entrevistas com IA</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/admin/talent-bank">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Users className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">Banco de Talentos</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                            <SidebarMenuButton asChild>
-                              <NavLink to="/candidato-disc">
-                                {({ isActive }) => (
-                                  <div
-                                    className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                                  >
-                                    <Brain className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                                    {!collapsed && <span className="font-medium text-sm whitespace-nowrap">DISC Externo</span>}
-                                  </div>
-                                )}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        </div>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
+              {/* === GRUPO GESTÃO === */}
+              {!collapsed && (
+                <div className="px-2 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Gestão
+                    </span>
+                  </div>
+                </div>
+              )}
 
+              {gestaoItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.path} end={item.path === '/gestao' || item.path === '/relatorios' || item.path === '/metas' || item.path === '/rh'}>
+                      <div className={getItemClasses(item.path, item.path === '/gestao' || item.path === '/relatorios' || item.path === '/metas' || item.path === '/rh')}>
+                        <item.icon className={cn("flex-shrink-0", collapsed ? "h-4 w-4" : "h-5 w-5")} />
+                        {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                      </div>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
 
-                  {/* Relatórios - Removido duplicata, já existe dentro de Estoque e Vendas */}
+              {/* Separador visual para Administração */}
+              {isAdmin && !collapsed && (
+                <div className="px-2 py-3">
+                  <div className="h-px bg-border" />
+                </div>
+              )}
 
-                  {/* Integrações */}
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink to="/integracoes">
-                        {({ isActive }) => (
-                          <div
-                            className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                          >
-                            <Shield className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                            {!collapsed && <span className="font-medium text-sm">Integrações</span>}
+              {/* === GRUPO ADMINISTRAÇÃO (apenas admin) === */}
+              {isAdmin && (
+                <>
+                  {!collapsed && (
+                    <div className="px-2 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Administração
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {adminItems.map((item) => (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton asChild>
+                        <NavLink to={item.path}>
+                          <div className={getItemClasses(item.path)}>
+                            <item.icon className={cn("flex-shrink-0", collapsed ? "h-4 w-4" : "h-5 w-5")} />
+                            {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
                           </div>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-
-                  {/* Sistema */}
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink to="/admin/logs">
-                        {({ isActive }) => (
-                          <div
-                            className={`flex items-center transition-colors rounded-lg ${collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2 gap-2"} ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                          >
-                            <Activity className={`${collapsed ? "h-4 w-4" : "h-4 w-4"} flex-shrink-0`} />
-                            {!collapsed && <span className="font-medium text-sm">Logs</span>}
-                          </div>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </>
               )}
 
+              {/* Modo colapsado - mostrar apenas ícone de admin */}
               {isAdmin && collapsed && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <NavLink to="/admin">
-                      {({ isActive }) => (
-                        <div
-                          className={`flex items-center transition-colors rounded-lg w-10 h-10 justify-center mx-auto ${isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
-                        >
-                          <Settings className="h-4 w-4 flex-shrink-0" />
-                        </div>
-                      )}
+                      <div className={getItemClasses('/admin')}>
+                        <Shield className="h-4 w-4 flex-shrink-0" />
+                      </div>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -884,7 +267,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className={`border-t mt-auto ${collapsed ? "p-1" : "p-2"}`}>
+      <SidebarFooter className={cn("border-t mt-auto", collapsed ? "p-1" : "p-2")}>
         {!collapsed ? (
           <div className="space-y-2">
             <NavLink
@@ -927,7 +310,7 @@ export function AppSidebar() {
               className="w-10 h-10 p-0 flex items-center justify-center mx-auto"
               title="Sair"
             >
-              <ChevronRight className="h-3 w-3 rotate-180" />
+              <Settings className="h-3 w-3" />
             </Button>
           </div>
         )}

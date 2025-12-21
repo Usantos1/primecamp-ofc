@@ -47,7 +47,14 @@ export function useWhatsApp() {
     setLoading(true);
     
     try {
-      console.log('🔥 Sending WhatsApp message via edge function:', data);
+      console.log('🔥 Sending WhatsApp message via edge function:', {
+        action: 'send_message',
+        data: {
+          number: data.number,
+          bodyLength: data.body?.length || 0,
+          hasUrl: !!data.url
+        }
+      });
       
       const { data: result, error } = await supabase.functions.invoke('ativa-crm-api', {
         body: {
@@ -56,7 +63,13 @@ export function useWhatsApp() {
         }
       });
 
-      console.log('🔥 Edge function response:', { result, error });
+      console.log('🔥 Edge function response:', { 
+        result, 
+        error,
+        resultType: typeof result,
+        hasError: !!error,
+        resultKeys: result && typeof result === 'object' ? Object.keys(result) : null
+      });
 
       if (error) {
         console.error('🔥 Error calling edge function:', error);

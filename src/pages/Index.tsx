@@ -1,459 +1,233 @@
-import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProcesses } from '@/hooks/useProcesses';
-import { useCategories } from '@/hooks/useCategories';
-import { ProcessCard } from '@/components/ProcessCard';
-import { CategoryManager } from '@/components/CategoryManager';
 import { ModernLayout } from '@/components/ModernLayout';
-import { TaskManager } from '@/components/TaskManager';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Filter, Settings, Shield, Users, LogOut, Target, BarChart3, Activity, TrendingUp, CheckCircle, FileText, Folder, CheckSquare, Clock, AlertTriangle } from 'lucide-react';
-import { Dashboard } from '@/components/Dashboard';
-import { supabase } from '@/integrations/supabase/client';
-import { Process } from '@/types/process';
-import { useTasks } from '@/hooks/useTasks';
+import { 
+  ShoppingCart, 
+  Wrench, 
+  Package, 
+  UserCircle, 
+  Wallet, 
+  BarChart3,
+  Plus,
+  List,
+  Receipt,
+  FileText,
+  Settings,
+  Search,
+  TrendingUp
+} from 'lucide-react';
+import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
+import { useProdutosSupabase as useProdutos } from '@/hooks/useProdutosSupabase';
+import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
+import { currencyFormatters } from '@/utils/formatters';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, profile, isAdmin, isApproved, signOut } = useAuth();
-  const { processes, loading: processesLoading, createProcess } = useProcesses();
-  const { categories, loading: categoriesLoading } = useCategories();
-  const { tasks } = useTasks();
-  
-  console.log('Index - Auth state:', { user: !!user, profile, isAdmin, isApproved });
-  
-  const [showProcessForm, setShowProcessForm] = useState(false);
-  const [editingProcess, setEditingProcess] = useState<Process | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  
-  const [stats, setStats] = useState({
-    totalProcesses: 0,
-    activeProcesses: 0,
-    totalUsers: 0,
-    totalCategories: 0,
-    totalTasks: 0,
-    tasksInProgress: 0,
-    tasksCompleted: 0,
-    tasksDelayed: 0
-  });
+  const { getEstatisticas } = useOrdensServico();
+  const { produtos } = useProdutos();
+  const { clientes } = useClientes();
 
-  // Calculate stats from tasks hook data
-  useEffect(() => {
-    const calculateStats = async () => {
-      try {
-        // Fetch processes count
-        const { count: processesCount } = await supabase
-          .from('processes')
-          .select('*', { count: 'exact', head: true });
+  const stats = getEstatisticas();
 
-        // Fetch active processes count
-        const { count: activeProcessesCount } = await supabase
-          .from('processes')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+  // Calcular estatísticas rápidas
+  const totalProdutos = produtos.length;
+  const totalClientes = clientes.length;
+  const osAbertas = stats.abertas;
+  const osEmAndamento = stats.emAndamento;
 
-        // Fetch users count
-        const { count: usersCount } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('approved', true);
+  // Cards de acesso rápido
+  const quickActions = [
+    {
+      title: 'Nova Venda',
+      description: 'Iniciar uma nova venda',
+      icon: ShoppingCart,
+      path: '/pdv',
+      color: 'bg-blue-500 hover:bg-blue-600',
+    },
+    {
+      title: 'Nova OS',
+      description: 'Criar ordem de serviço',
+      icon: Wrench,
+      path: '/pdv/os/nova',
+      color: 'bg-green-500 hover:bg-green-600',
+    },
+    {
+      title: 'Buscar Produto',
+      description: 'Consultar produtos',
+      icon: Search,
+      path: '/produtos',
+      color: 'bg-purple-500 hover:bg-purple-600',
+    },
+    {
+      title: 'Buscar Cliente',
+      description: 'Consultar clientes',
+      icon: UserCircle,
+      path: '/pdv/clientes',
+      color: 'bg-orange-500 hover:bg-orange-600',
+    },
+  ];
 
-        // Fetch categories count
-        const { count: categoriesCount } = await supabase
-          .from('categories')
-          .select('*', { count: 'exact', head: true });
-
-        // Calculate task stats from the tasks array
-        const totalTasks = tasks.length;
-        const tasksInProgress = tasks.filter(task => task.status === 'in_progress').length;
-        const tasksCompleted = tasks.filter(task => task.status === 'completed').length;
-        const tasksDelayed = tasks.filter(task => task.status === 'delayed').length;
-
-        setStats({
-          totalProcesses: processesCount || 0,
-          activeProcesses: activeProcessesCount || 0,
-          totalUsers: usersCount || 0,
-          totalCategories: categoriesCount || 0,
-          totalTasks,
-          tasksInProgress,
-          tasksCompleted,
-          tasksDelayed
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      }
-    };
-
-    calculateStats();
-  }, [tasks]);
-
-  // Check URL for category filter or new process trigger
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const categoryParam = urlParams.get('category');
-    const hash = window.location.hash;
-    
-    if (categoryParam) {
-      setSelectedCategory(categoryParam);
-    }
-    
-    if (hash === '#new-process' && isAdmin) {
-      navigate('/processos/novo');
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  }, [isAdmin]);
-
-  // Filtrar processos por busca e categoria
-  const filteredProcesses = useMemo(() => {
-    return processes.filter(process => {
-      const matchesSearch = process.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           process.objective.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           process.owner.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = selectedCategory === 'all' || 
-                             process.categoryId === selectedCategory ||
-                             (!process.categoryId && selectedCategory === 'uncategorized');
-      
-      return matchesSearch && matchesCategory;
-    });
-  }, [processes, searchTerm, selectedCategory]);
-
-  // Agrupar processos por categoria
-  const processesByCategory = useMemo(() => {
-    const grouped: { [key: string]: Process[] } = {};
-    
-    categories.forEach(category => {
-      grouped[category.id] = filteredProcesses.filter(p => p.categoryId === category.id);
-    });
-    
-    // Processos sem categoria
-    grouped['uncategorized'] = filteredProcesses.filter(p => !p.categoryId);
-    
-    return grouped;
-  }, [filteredProcesses, categories]);
-
-  const handleViewProcess = (process: Process) => {
-    navigate(`/processo/${process.id}`);
-  };
-
-  const handleEditProcess = (process: Process) => {
-    // Redireciona para página de edição dedicada
-    navigate(`/processo/${process.id}/edit`);
-  };
-
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Sistema de Processos</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-muted-foreground">
-              Bem-vindo ao sistema de gestão de processos empresariais
-            </p>
-            <Button onClick={() => navigate('/login')} className="w-full">
-              Fazer Login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Check approval status for non-admins or if not explicitly approved
-  if (user && profile && !isApproved && !isAdmin) {
-    navigate('/pending-approval');
-    return null;
-  }
-
-  if (processesLoading || categoriesLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
+  // Seções principais
+  const mainSections = [
+    {
+      title: 'Vendas',
+      icon: ShoppingCart,
+      items: [
+        { label: 'Nova Venda', path: '/pdv', icon: Plus },
+        { label: 'Lista de Vendas', path: '/pdv/vendas', icon: List },
+        { label: 'Caixa', path: '/pdv/caixa', icon: Wallet },
+        { label: 'Relatórios', path: '/pdv/relatorios', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'Ordem de Serviço',
+      icon: Wrench,
+      items: [
+        { label: 'Nova OS', path: '/pdv/os/nova', icon: Plus },
+        { label: 'Lista de OS', path: '/pdv/os', icon: List },
+        { label: 'Config. Status', path: '/pdv/configuracao-status', icon: Settings },
+      ],
+    },
+    {
+      title: 'Produtos',
+      icon: Package,
+      items: [
+        { label: 'Lista de Produtos', path: '/produtos', icon: List },
+        { label: 'Marcas e Modelos', path: '/pdv/marcas-modelos', icon: FileText },
+      ],
+    },
+    {
+      title: 'Clientes',
+      icon: UserCircle,
+      items: [
+        { label: 'Lista de Clientes', path: '/pdv/clientes', icon: List },
+        { label: 'Buscar Cliente', path: '/pdv/clientes', icon: Search },
+      ],
+    },
+  ];
 
   return (
     <ModernLayout 
       title="Dashboard" 
-      subtitle={`Bem-vindo, ${profile?.display_name || user.email}`}
-      onSearch={setSearchTerm}
-      headerActions={null}
+      subtitle="Acesso rápido às principais funcionalidades"
     >
       <div className="space-y-6">
-        {/* Tabs - Moved to top */}
-        <Tabs defaultValue="dashboard" className="w-full">
-          <div className="flex items-center justify-between mb-6">
-            <TabsList className="bg-muted/50 backdrop-blur-sm">
-              <TabsTrigger value="dashboard" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger value="processes" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <Target className="h-4 w-4 mr-2" />
-                Processos
-              </TabsTrigger>
-              <TabsTrigger value="tasks" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Tarefas
-              </TabsTrigger>
-            </TabsList>
-            
-            {profile && isAdmin && (
-              <Button 
-                onClick={() => navigate('/processos/novo')}
-                className="bg-gradient-to-r from-primary to-primary-glow hover:from-primary/90 hover:to-primary-glow/90 shadow-lg"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Processo
-              </Button>
-            )}
+        {/* Cards de Estatísticas Rápidas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pdv/os')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">OS Abertas</CardTitle>
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{osAbertas}</div>
+              <p className="text-xs text-muted-foreground">
+                {osEmAndamento} em andamento
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/produtos')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Produtos</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalProdutos}</div>
+              <p className="text-xs text-muted-foreground">
+                Produtos cadastrados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pdv/clientes')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+              <UserCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalClientes}</div>
+              <p className="text-xs text-muted-foreground">
+                Clientes cadastrados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/pdv/caixa')}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Caixa</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">-</div>
+              <p className="text-xs text-muted-foreground">
+                Ver movimentações
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ações Rápidas */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Ações Rápidas</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Card 
+                  key={action.path}
+                  className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+                  onClick={() => navigate(action.path)}
+                >
+                  <CardHeader>
+                    <div className={`w-12 h-12 rounded-lg ${action.color} flex items-center justify-center mb-2`}>
+                      <Icon className="h-6 w-6 text-white" />
+                    </div>
+                    <CardTitle className="text-base">{action.title}</CardTitle>
+                    <CardDescription>{action.description}</CardDescription>
+                  </CardHeader>
+                </Card>
+              );
+            })}
           </div>
-          
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                    Total de Processos
-                  </CardTitle>
-                  <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{stats.totalProcesses}</div>
-                </CardContent>
-              </Card>
+        </div>
 
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200 dark:border-green-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
-                    Processos Ativos
-                  </CardTitle>
-                  <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-900 dark:text-green-100">{stats.activeProcesses}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200 dark:border-purple-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">
-                    Total de Usuários
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">{stats.totalUsers}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900 border-orange-200 dark:border-orange-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                    Total de Categorias
-                  </CardTitle>
-                  <Folder className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">{stats.totalCategories}</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Task Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900 border-cyan-200 dark:border-cyan-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-cyan-700 dark:text-cyan-300">
-                    Total de Tarefas
-                  </CardTitle>
-                  <CheckSquare className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-cyan-900 dark:text-cyan-100">{stats.totalTasks}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900 border-yellow-200 dark:border-yellow-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
-                    Em Andamento
-                  </CardTitle>
-                  <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">{stats.tasksInProgress}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900 border-emerald-200 dark:border-emerald-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                    Concluídas
-                  </CardTitle>
-                  <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">{stats.tasksCompleted}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 border-red-200 dark:border-red-800">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-red-700 dark:text-red-300">
-                    Atrasadas
-                  </CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-900 dark:text-red-100">{stats.tasksDelayed}</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Dashboard />
-          </TabsContent>
-          
-          <TabsContent value="processes" className="space-y-6">
-            {/* Search and Filters */}
-            <Card className="border-0 bg-card/50 backdrop-blur-sm">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Buscar processos por nome, objetivo ou responsável..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 bg-background/50 border-border/50 focus:bg-background"
-                    />
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      variant={selectedCategory === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedCategory('all')}
-                      className={selectedCategory === 'all' ? 'bg-gradient-to-r from-primary to-primary-glow' : ''}
-                    >
-                      Todos ({processes.length})
-                    </Button>
-                    {categories.map(category => (
-                      <Button
-                        key={category.id}
-                        variant={selectedCategory === category.id ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setSelectedCategory(category.id)}
-                        className={selectedCategory === category.id ? 'bg-gradient-to-r from-primary to-primary-glow' : ''}
-                      >
-                        <span className="mr-1">{category.icon}</span>
-                        {category.name} ({processesByCategory[category.id]?.length || 0})
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Processes by Category */}
-            {selectedCategory === 'all' ? (
-              <div className="space-y-8">
-                {categories.map(category => {
-                  const categoryProcesses = processesByCategory[category.id] || [];
-                  if (categoryProcesses.length === 0) return null;
-                  
-                  return (
-                    <div key={category.id}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <span className="text-2xl">{category.icon}</span>
-                        <h2 className="text-xl font-semibold">{category.name}</h2>
-                        <Badge variant="secondary">{categoryProcesses.length}</Badge>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {categoryProcesses.map((process) => (
-                          <ProcessCard
-                            key={process.id}
-                            process={process}
-                            onView={handleViewProcess}
-                            onEdit={handleEditProcess}
-                          />
-                        ))}
-                      </div>
+        {/* Seções Principais */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Acesso Rápido</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {mainSections.map((section) => {
+              const SectionIcon = section.icon;
+              return (
+                <Card key={section.title}>
+                  <CardHeader>
+                    <div className="flex items-center gap-2 mb-2">
+                      <SectionIcon className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-base">{section.title}</CardTitle>
                     </div>
-                  );
-                })}
-                
-                {/* Uncategorized processes */}
-                {processesByCategory['uncategorized']?.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="text-2xl">📁</span>
-                      <h2 className="text-xl font-semibold">Sem Categoria</h2>
-                      <Badge variant="secondary">{processesByCategory['uncategorized'].length}</Badge>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                      {processesByCategory['uncategorized'].map((process) => (
-                        <ProcessCard
-                          key={process.id}
-                          process={process}
-                          onView={handleViewProcess}
-                          onEdit={handleEditProcess}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredProcesses.map((process) => (
-                  <ProcessCard
-                    key={process.id}
-                    process={process}
-                    onView={handleViewProcess}
-                    onEdit={handleEditProcess}
-                  />
-                ))}
-              </div>
-            )}
-
-            {filteredProcesses.length === 0 && (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhum processo encontrado</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchTerm ? 'Nenhum processo encontrado para sua busca.' : 'Nenhum processo encontrado.'}
-                  </p>
-                  {!searchTerm && profile && isAdmin && (
-                    <Button onClick={() => navigate('/processos/novo')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Criar Primeiro Processo
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="tasks">
-            <TaskManager />
-          </TabsContent>
-        </Tabs>
-
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {section.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <Button
+                          key={item.path}
+                          variant="ghost"
+                          className="w-full justify-start gap-2"
+                          onClick={() => navigate(item.path)}
+                        >
+                          <ItemIcon className="h-4 w-4" />
+                          {item.label}
+                        </Button>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </ModernLayout>
   );

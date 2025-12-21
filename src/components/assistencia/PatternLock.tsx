@@ -223,10 +223,10 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
   };
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('space-y-2 w-full min-w-0 max-w-full', className)}>
       <div
         ref={containerRef}
-        className="relative inline-block cursor-pointer select-none"
+        className="relative inline-block cursor-pointer select-none max-w-full"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -239,7 +239,8 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
           ref={canvasRef}
           width={DOT_SPACING * (GRID_SIZE - 1) + DOT_SIZE}
           height={DOT_SPACING * (GRID_SIZE - 1) + DOT_SIZE}
-          className="block"
+          className="block max-w-full h-auto"
+          style={{ maxWidth: '100%', height: 'auto' }}
         />
       </div>
       {selectedDots.length > 0 && (

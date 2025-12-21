@@ -11,6 +11,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
+import DashboardGestao from "./pages/DashboardGestao";
 import Auth from "./pages/Auth";
 import ProcessView from "./pages/ProcessView";
 import ProcessEdit from "./pages/ProcessEdit";
@@ -45,6 +46,9 @@ import AdminGoals from "./pages/admin/AdminGoals";
 import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
 import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
+import EstruturaOrganizacional from "./pages/admin/EstruturaOrganizacional";
+import CadastrosBase from "./pages/admin/CadastrosBase";
+import RH from "./pages/RH";
 import AdminJobSurveys from "./pages/admin/AdminJobSurveys";
 import JobSurveyDetail from "./pages/admin/JobSurveyDetail";
 import TalentBank from "./pages/admin/TalentBank";
@@ -88,6 +92,7 @@ const App = () => (
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
             {/* Add import */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/gestao" element={<ProtectedRoute><DashboardGestao /></ProtectedRoute>} />
               <Route path="/processos" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
               <Route path="/processos/*" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
               <Route path="/tarefas" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
@@ -120,6 +125,9 @@ const App = () => (
               <Route path="/admin/interviews" element={<ProtectedRoute><AdminInterviews /></ProtectedRoute>} />
               <Route path="/admin/interviews/evaluate/:interview_id" element={<ProtectedRoute><InterviewEvaluation /></ProtectedRoute>} />
               <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
+              <Route path="/admin/estrutura" element={<ProtectedRoute><EstruturaOrganizacional /></ProtectedRoute>} />
+              <Route path="/admin/cadastros" element={<ProtectedRoute><CadastrosBase /></ProtectedRoute>} />
+              <Route path="/rh" element={<ProtectedRoute><RH /></ProtectedRoute>} />
               
               {/* Public job application routes */}
               <Route path="/job-application/:surveyId" element={<JobApplication />} />
@@ -143,6 +151,7 @@ const App = () => (
               
               {/* PDV - Frente de Caixa */}
               <Route path="/pdv" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
+              <Route path="/pdv/nova" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
               <Route path="/pdv/vendas" element={<ProtectedRoute><Vendas /></ProtectedRoute>} />
               {/* Dashboard Assistência Técnica */}
               <Route path="/assistencia" element={<ProtectedRoute><PDV /></ProtectedRoute>} />

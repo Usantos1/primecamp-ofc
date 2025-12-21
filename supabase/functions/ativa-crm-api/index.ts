@@ -28,6 +28,8 @@ serve(async (req) => {
         return await createContact(data);
       case 'get_contacts':
         return await getContacts();
+      case 'update_os_status':
+        return await updateOSStatus(data);
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -184,4 +186,130 @@ async function getContacts() {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     }
   );
+}
+
+async function updateOSStatus(data: { 
+  os_id: string; 
+  os_numero: number; 
+  status: string; 
+  cliente_nome?: string;
+  cliente_telefone?: string;
+  valor_total?: number;
+}) {
+  const token = Deno.env.get('ATIVA_CRM_TOKEN');
+  
+  if (!token) {
+    console.warn('ATIVA_CRM_TOKEN não configurado - pulando envio de status para API');
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Status update skipped (no API token configured)',
+        warning: 'ATIVA_CRM_TOKEN not configured'
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  const { os_id, os_numero, status, cliente_nome, cliente_telefone, valor_total } = data;
+
+  try {
+    // Preparar payload para enviar status da OS para API externa
+    // Ajuste a URL e estrutura conforme a API que você está usando
+    const apiUrl = Deno.env.get('ATIVA_CRM_API_URL') || 'https://api.ativacrm.com/api';
+    
+    const payload = {
+      type: 'os_status_update',
+      os_id,
+      os_numero,
+      status,
+      cliente_nome,
+      cliente_telefone,
+      valor_total,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('Enviando status de OS para API:', payload);
+
+    const response = await fetch(`${apiUrl}/os/status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const responseText = await response.text();
+    console.log('Resposta da API de status:', responseText);
+
+    // Se a API retornar erro 404 ou não existir o endpoint, não falhar
+    if (response.status === 404) {
+      console.warn('Endpoint de status de OS não encontrado na API - continuando normalmente');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Status update processed (endpoint not found)',
+          warning: 'OS status endpoint not available'
+        }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (!response.ok) {
+      console.error('Erro ao enviar status para API:', response.status, responseText);
+      // Não falhar completamente, apenas logar o erro
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `API returned status ${response.status}`,
+          message: 'Status update attempted but API returned error'
+        }),
+        { 
+          status: 200, // Retornar 200 para não quebrar o fluxo
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.warn('Resposta da API não é JSON válido:', responseText.substring(0, 100));
+      result = { success: true, raw: responseText };
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        data: result,
+        message: 'OS status sent to API successfully'
+      }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+
+  } catch (error) {
+    console.error('Erro ao enviar status de OS para API:', error);
+    // Não falhar completamente, apenas logar o erro
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        message: 'Status update attempted but failed'
+      }),
+      { 
+        status: 200, // Retornar 200 para não quebrar o fluxo
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
 }

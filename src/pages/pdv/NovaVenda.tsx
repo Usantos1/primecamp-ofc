@@ -57,7 +57,7 @@ export default function NovaVenda() {
     );
   };
   const { clientes, searchClientes, createCliente } = useClientes();
-  const { ordens } = useOrdensServico();
+  const { ordens, getOSById } = useOrdensServico();
   
   // Buscar todos os itens do localStorage
   // Removido: não precisa mais carregar itens do localStorage
@@ -106,6 +106,114 @@ export default function NovaVenda() {
       loadSale();
     }
   }, [isEditing, id]);
+
+  // Função para importar OS automaticamente
+  const handleImportarOS = useCallback(async (osId: string) => {
+    try {
+      console.log('[NovaVenda] Importando OS:', osId);
+      
+      // Buscar OS do Supabase
+      const os = getOSById(osId);
+      if (!os) {
+        toast({
+          title: 'OS não encontrada',
+          description: 'A ordem de serviço não foi encontrada.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Buscar itens da OS do Supabase
+      const { data: itensOS, error: itensError } = await supabase
+        .from('os_items')
+        .select('*')
+        .eq('ordem_servico_id', osId)
+        .in('tipo', ['peca', 'produto']);
+
+      if (itensError) {
+        console.error('Erro ao buscar itens da OS:', itensError);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao buscar itens da OS.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!itensOS || itensOS.length === 0) {
+        toast({
+          title: 'OS sem produtos',
+          description: 'Esta OS não possui produtos para faturar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Buscar cliente
+      const cliente = clientes.find(c => c.id === os.cliente_id);
+
+      // Criar venda vinculada à OS
+      const novaVenda = await createSale({
+        cliente_id: os.cliente_id || null,
+        cliente_nome: os.cliente_nome || cliente?.nome || 'Cliente não informado',
+        cliente_cpf_cnpj: cliente?.cpf_cnpj || null,
+        cliente_telefone: os.telefone_contato || cliente?.telefone || null,
+        ordem_servico_id: os.id,
+        is_draft: true,
+        observacoes: `Faturamento da OS #${os.numero}`,
+      });
+
+      // Adicionar itens da OS ao carrinho
+      for (const itemOS of itensOS) {
+        // Buscar produto se tiver produto_id
+        let produto = null;
+        if (itemOS.produto_id) {
+          produto = produtos.find(p => p.id === itemOS.produto_id);
+        }
+
+        await addItem({
+          produto_id: itemOS.produto_id || undefined,
+          produto_nome: itemOS.descricao,
+          produto_tipo: itemOS.tipo === 'peca' ? 'produto' : 'produto',
+          quantidade: Number(itemOS.quantidade) || 1,
+          valor_unitario: Number(itemOS.valor_unitario) || 0,
+          desconto: Number(itemOS.desconto || 0),
+          observacao: `OS #${os.numero}`,
+        }, novaVenda.id);
+      }
+
+      toast({
+        title: 'OS importada com sucesso!',
+        description: `OS #${os.numero} foi importada para o PDV.`,
+      });
+
+      // Navegar para editar a venda
+      navigate(`/pdv/venda/${novaVenda.id}/editar`);
+    } catch (error: any) {
+      console.error('Erro ao importar OS:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao importar ordem de serviço.',
+        variant: 'destructive',
+      });
+    }
+  }, [getOSById, clientes, produtos, createSale, addItem, navigate, toast]);
+
+  // Importar OS do localStorage se houver
+  useEffect(() => {
+    if (!isEditing && !id) {
+      const osIdParaImportar = localStorage.getItem('pdv_import_os_id');
+      const osNumeroParaImportar = localStorage.getItem('pdv_import_os_numero');
+      
+      if (osIdParaImportar) {
+        console.log('[NovaVenda] Importando OS:', osIdParaImportar, 'Número:', osNumeroParaImportar);
+        handleImportarOS(osIdParaImportar);
+        // Limpar após importar
+        localStorage.removeItem('pdv_import_os_id');
+        localStorage.removeItem('pdv_import_os_numero');
+      }
+    }
+  }, [isEditing, id, handleImportarOS]);
 
   // Função auxiliar para normalizar tipo do produto
   const normalizeProdutoTipo = (tipo: any): 'produto' | 'servico' | undefined => {

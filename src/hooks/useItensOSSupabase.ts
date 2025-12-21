@@ -62,6 +62,7 @@ export function useItensOSSupabase(osId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os_items_all'] }); // Invalidar query da lista
     },
   });
 
@@ -80,6 +81,7 @@ export function useItensOSSupabase(osId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os_items_all'] }); // Invalidar query da lista
     },
   });
 
@@ -95,6 +97,7 @@ export function useItensOSSupabase(osId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
+      queryClient.invalidateQueries({ queryKey: ['os_items_all'] }); // Invalidar query da lista
     },
   });
 

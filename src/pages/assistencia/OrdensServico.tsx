@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Plus, Search, Eye, Edit, Phone, Filter,
   Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X
@@ -22,6 +23,8 @@ import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistenci
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function OrdensServico() {
   const navigate = useNavigate();
@@ -36,6 +39,30 @@ export default function OrdensServico() {
   const { ordens, isLoading, getEstatisticas, getOSById } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
   const { getMarcaById, getModeloById } = useMarcasModelos();
+
+  // Buscar todos os itens de todas as OSs para calcular totais
+  const { data: todosItens = [] } = useQuery({
+    queryKey: ['os_items_all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('os_items')
+        .select('ordem_servico_id, valor_total');
+      
+      if (error) throw error;
+      return (data || []) as Array<{ ordem_servico_id: string; valor_total: number }>;
+    },
+  });
+
+  // Calcular totais por OS
+  const totaisPorOS = useMemo(() => {
+    const totais: Record<string, number> = {};
+    todosItens.forEach(item => {
+      const osId = item.ordem_servico_id;
+      const valor = Number(item.valor_total || 0);
+      totais[osId] = (totais[osId] || 0) + valor;
+    });
+    return totais;
+  }, [todosItens]);
 
   const stats = getEstatisticas();
 
@@ -112,8 +139,8 @@ export default function OrdensServico() {
   
   const osAtrasadas = ordens.filter(os => {
     if (!os.previsao_entrega) return false;
-    const previsaoDate = new Date(os.previsao_entrega.split('T')[0]);
-    return previsaoDate < hoje && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
+    const previsaoDate = os.previsao_entrega.split('T')[0];
+    return previsaoDate < hojeStr && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
   });
   
   const osPrazoHoje = ordens.filter(os => {
@@ -169,9 +196,9 @@ export default function OrdensServico() {
 
   return (
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
-      <div className="space-y-6">
-        {/* Cards de estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
+        {/* Cards de estatísticas - shrink-0 para não encolher */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 shrink-0 px-4 pt-4 pb-3">
           <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-3 pb-3">
               <p className="text-xs text-muted-foreground">Total</p>
@@ -224,355 +251,384 @@ export default function OrdensServico() {
           )}
         </div>
 
-        {/* Filtros rápidos por prazo */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button 
-            variant={!hasActiveFilters ? 'default' : 'outline'} 
-            size="sm"
-            onClick={clearFilters}
-          >
-            Todas
-          </Button>
-          <Button 
-            variant={periodoFilter === 'hoje' ? 'default' : 'outline'} 
-            size="sm" 
-            className="gap-2"
-            onClick={() => handlePeriodoFilter('hoje')}
-          >
-            <Calendar className="h-4 w-4" />
-            Hoje ({osHoje.length})
-          </Button>
-          <Button 
-            variant={periodoFilter === 'semana' ? 'default' : 'outline'} 
-            size="sm" 
-            className="gap-2"
-            onClick={() => handlePeriodoFilter('semana')}
-          >
-            <Calendar className="h-4 w-4" />
-            Esta Semana
-          </Button>
-          <Button 
-            variant={periodoFilter === 'mes' ? 'default' : 'outline'} 
-            size="sm" 
-            className="gap-2"
-            onClick={() => handlePeriodoFilter('mes')}
-          >
-            <Calendar className="h-4 w-4" />
-            Este Mês
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-2 text-yellow-600 border-yellow-300 hover:bg-yellow-50"
-            onClick={() => { 
-              setStatusFilter('all');
-              setDataInicio(undefined);
-              setDataFim(undefined);
-              setPeriodoFilter('prazo-hoje');
-            }}
-          >
-            <Clock className="h-4 w-4" />
-            Prazo Hoje ({osPrazoHoje.length})
-          </Button>
-          {osAtrasadas.length > 0 && (
+        {/* Barra de filtros e ações - fixa no topo */}
+        <div className="sticky top-0 z-30 bg-background border-b shadow-sm shrink-0">
+          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-wrap md:flex-nowrap px-3 py-2">
+            {/* Filtros rápidos */}
             <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2 text-red-600 border-red-300 hover:bg-red-50"
+              variant={!hasActiveFilters ? 'default' : 'outline'} 
+              size="sm"
+              onClick={clearFilters}
+              className="h-9 shrink-0 px-2"
             >
-              <AlertTriangle className="h-4 w-4" />
-              Em Atraso ({osAtrasadas.length})
+              Todas
             </Button>
-          )}
-          
-          {/* Filtro de período na mesma linha */}
-          <div className="ml-auto">
-            <Select value={periodoFilter} onValueChange={handlePeriodoFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Período" />
+            <Button 
+              variant={periodoFilter === 'hoje' ? 'default' : 'outline'} 
+              size="sm" 
+              className="gap-1 h-9 shrink-0 px-2"
+              onClick={() => handlePeriodoFilter('hoje')}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline text-xs">Hoje ({osHoje.length})</span>
+            </Button>
+            <Button 
+              variant={periodoFilter === 'semana' ? 'default' : 'outline'} 
+              size="sm" 
+              className="gap-1 h-9 shrink-0 px-2"
+              onClick={() => handlePeriodoFilter('semana')}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline text-xs">Esta Semana</span>
+            </Button>
+            <Button 
+              variant={periodoFilter === 'mes' ? 'default' : 'outline'} 
+              size="sm" 
+              className="gap-1 h-9 shrink-0 px-2"
+              onClick={() => handlePeriodoFilter('mes')}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline text-xs">Este Mês</span>
+            </Button>
+            
+            {/* Busca */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9 text-xs"
+              />
+            </div>
+            
+            {/* Status */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 w-[160px] shrink-0 text-xs">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="hoje">Hoje</SelectItem>
-                <SelectItem value="semana">Esta Semana</SelectItem>
-                <SelectItem value="mes">Este Mês</SelectItem>
-                <SelectItem value="periodo">Período Personalizado</SelectItem>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            
+            {/* Botões de ação */}
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 shrink-0 px-2">
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            
+            <div className="w-px h-5 bg-border mx-0.5 shrink-0"></div>
+            
+            <Button onClick={() => navigate('/pdv/os/nova')} size="sm" className="gap-1 h-9 shrink-0 px-2">
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline text-xs">Nova OS</span>
+            </Button>
           </div>
+          
+          {/* Filtros avançados (colapsável) */}
+          {showFilters && (
+            <div className="flex flex-wrap gap-3 p-3 bg-muted/50 border-t">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Data Início</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`h-8 w-[200px] justify-start text-left font-normal text-xs ${!dataInicio && "text-muted-foreground"}`}
+                    >
+                      <Calendar className="mr-2 h-3 w-3" />
+                      {dataInicio ? format(dataInicio, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dataInicio}
+                      onSelect={setDataInicio}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Data Fim</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`h-8 w-[200px] justify-start text-left font-normal text-xs ${!dataFim && "text-muted-foreground"}`}
+                    >
+                      <Calendar className="mr-2 h-3 w-3" />
+                      {dataFim ? format(dataFim, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dataFim}
+                      onSelect={setDataFim}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Card principal */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <CardTitle className="text-lg">Lista de Ordens de Serviço</CardTitle>
-              <Button onClick={() => navigate('/pdv/os/nova')} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Nova OS
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Filtros */}
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="relative w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nº OS..."
-                  value={searchNumeroOS}
-                  onChange={(e) => setSearchNumeroOS(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && searchNumeroOS) {
-                      const numero = parseInt(searchNumeroOS);
-                      if (!isNaN(numero)) {
-                        const os = ordens.find(o => o.numero === numero);
-                        if (os) {
-                          navigate(`/pdv/os/${os.id}`);
-                          setSearchNumeroOS('');
-                        }
-                      }
-                    }
-                  }}
-                  className="pl-9"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Status</SelectItem>
-                  {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)}>
-                <Filter className="h-4 w-4" />
-              </Button>
-              {hasActiveFilters && (
-                <Button variant="ghost" size="icon" onClick={clearFilters}>
-                  <X className="h-4 w-4" />
-                </Button>
+        {/* Área da tabela - apenas o corpo rola */}
+        <div className="flex-1 min-h-0 px-4 pb-4">
+          <Card className="h-full flex flex-col overflow-hidden">
+            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+              {isLoading ? (
+                <div className="p-10 text-center text-muted-foreground">
+                  <div className="space-y-3">
+                    <div className="h-4 bg-muted rounded animate-pulse w-3/4 mx-auto"></div>
+                    <div className="h-4 bg-muted rounded animate-pulse w-1/2 mx-auto"></div>
+                  </div>
+                </div>
+              ) : filteredOrdens.length === 0 ? (
+                <div className="p-12 text-center">
+                  <EmptyState
+                    icon={<Package className="h-12 w-12" />}
+                    title="Nenhuma ordem de serviço"
+                    description={searchTerm ? 'Tente buscar por outro termo' : 'Cadastre uma nova OS para começar.'}
+                    action={!searchTerm ? { label: 'Nova OS', onClick: () => navigate('/pdv/os/nova') } : undefined}
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Estrutura da tabela com cabeçalho fixo e scroll no corpo */}
+                  <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                    {/* Container da tabela com scroll apenas vertical */}
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                      <table className="w-full caption-bottom text-sm border-collapse table-fixed">
+                        {/* Cabeçalho fixo */}
+                        <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
+                          <tr className="border-b-2 border-gray-300">
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[180px]">Cliente</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden lg:table-cell">Contato</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px] hidden md:table-cell">Aparelho</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[200px]">Problema</th>
+                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px]">Status</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px] hidden md:table-cell">Entrada</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px] hidden md:table-cell">Previsão</th>
+                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px]">Valor</th>
+                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 w-[90px]">Ações</th>
+                          </tr>
+                        </thead>
+                        {/* Corpo da tabela */}
+                        <tbody>
+                          {filteredOrdens.map((os, index) => {
+                            const cliente = getClienteById(os.cliente_id);
+                            const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
+                            const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
+                            const isAtrasada = os.previsao_entrega && 
+                              os.previsao_entrega.split('T')[0] < hojeStr && 
+                              !['finalizada', 'entregue', 'cancelada'].includes(os.status);
+                            
+                            const zebraClass = index % 2 === 0 ? 'bg-background' : 'bg-muted/30';
+                            // Calcular valor total: usar o total dos itens (mais confiável) ou o valor_total da OS como fallback
+                            const valorTotalItens = totaisPorOS[os.id] || 0;
+                            const valorTotalOS = Number(os.valor_total || 0);
+                            // Priorizar o total calculado dos itens, mas usar valor_total da OS se os itens não tiverem valor
+                            // Se ambos forem 0, mostrar 0 mesmo assim
+                            const valorTotal = valorTotalItens > 0 ? valorTotalItens : (valorTotalOS > 0 ? valorTotalOS : 0);
+                            const valorPago = Number(os.valor_pago || 0);
+                            const temSaldoPendente = valorTotal > 0 && valorPago < valorTotal;
+                            
+                            // Debug: logar valores para diagnóstico (apenas primeira OS)
+                            if (index === 0) {
+                              console.log('[OrdensServico] Debug valores:', {
+                                osId: os.id,
+                                osNumero: os.numero,
+                                valorTotalItens,
+                                valorTotalOS,
+                                valorTotal,
+                                valorPago,
+                                temSaldoPendente,
+                                osItemsCount: todosItens.filter(i => i.ordem_servico_id === os.id).length,
+                                situacao: os.situacao,
+                                status: os.status
+                              });
+                            }
+                            
+                            return (
+                              <tr 
+                                key={os.id} 
+                                className={cn(
+                                  zebraClass,
+                                  isAtrasada && 'bg-red-50 dark:bg-red-950/20',
+                                  'cursor-pointer hover:bg-muted/60 border-b border-gray-200 transition-colors'
+                                )}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigate(`/pdv/os/${os.id}`);
+                                }}
+                              >
+                                {/* Nº OS */}
+                                <td className="font-bold text-primary py-3.5 px-3 text-left border-r border-gray-200">
+                                  #{os.numero}
+                                </td>
+                                
+                                {/* Cliente */}
+                                <td className="py-3.5 px-3 text-left border-r border-gray-200">
+                                  <div>
+                                    <p className="font-medium">{cliente?.nome || os.cliente_nome || '-'}</p>
+                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj}</p>}
+                                  </div>
+                                </td>
+                                
+                                {/* Contato */}
+                                <td className="py-3.5 px-3 text-left border-r border-gray-200 hidden lg:table-cell">
+                                  {(cliente?.telefone || os.telefone_contato) && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="h-auto p-0 text-green-600 hover:text-green-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleWhatsApp(os.telefone_contato || cliente?.whatsapp || cliente?.telefone);
+                                      }}
+                                    >
+                                      <Phone className="h-3 w-3 mr-1 inline" />
+                                      <span className="text-xs">{os.telefone_contato || cliente?.telefone}</span>
+                                    </Button>
+                                  )}
+                                </td>
+                                
+                                {/* Aparelho */}
+                                <td className="py-3.5 px-3 text-left border-r border-gray-200 hidden md:table-cell">
+                                  <div>
+                                    <p className="font-medium text-sm">{modelo?.nome || os.modelo_nome || '-'}</p>
+                                    <p className="text-xs text-muted-foreground">{marca?.nome || os.marca_nome || '-'}</p>
+                                  </div>
+                                </td>
+                                
+                                {/* Problema */}
+                                <td className="py-3.5 px-3 text-left border-r border-gray-200">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="truncate">
+                                          {os.descricao_problema || '-'}
+                                        </div>
+                                      </TooltipTrigger>
+                                      {os.descricao_problema && os.descricao_problema.length > 30 && (
+                                        <TooltipContent>
+                                          <p className="max-w-xs">{os.descricao_problema}</p>
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </td>
+                                
+                                {/* Status */}
+                                <td className="py-3.5 px-3 text-center border-r border-gray-200">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
+                                      {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
+                                    </Badge>
+                                    {os.situacao && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className={cn(
+                                          'text-xs',
+                                          os.situacao === 'fechada' ? 'border-green-500 text-green-700 bg-green-50' :
+                                          os.situacao === 'cancelada' ? 'border-red-500 text-red-700 bg-red-50' :
+                                          'border-blue-500 text-blue-700 bg-blue-50'
+                                        )}
+                                      >
+                                        {os.situacao === 'fechada' ? 'Fechada' : 
+                                         os.situacao === 'cancelada' ? 'Cancelada' : 
+                                         'Aberta'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                
+                                {/* Entrada */}
+                                <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
+                                  {dateFormatters.short(os.data_entrada)}
+                                </td>
+                                
+                                {/* Previsão */}
+                                <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
+                                  {os.previsao_entrega ? (
+                                    <span className={cn(isAtrasada && 'text-red-600 font-medium')}>
+                                      {dateFormatters.short(os.previsao_entrega)}
+                                    </span>
+                                  ) : '-'}
+                                </td>
+                                
+                                {/* Valor */}
+                                <td className="py-3.5 px-3 text-right border-r border-gray-200">
+                                  {valorTotal > 0 || valorTotalOS > 0 || valorTotalItens > 0 ? (
+                                    <div>
+                                      <p className="font-semibold text-green-600">
+                                        {currencyFormatters.brl(valorTotal)}
+                                      </p>
+                                      {temSaldoPendente && valorPago > 0 && (
+                                        <p className="text-xs text-orange-600">
+                                          Pago: {currencyFormatters.brl(valorPago)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">-</span>
+                                  )}
+                                </td>
+                                
+                                {/* Ações */}
+                                <td className="py-3.5 px-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pdv/os/${os.id}`);
+                                      }}
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pdv/os/${os.id}`);
+                                      }}
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               )}
-            </div>
-
-            {/* Filtros avançados */}
-            {showFilters && (
-              <div className="flex flex-wrap gap-3 p-4 bg-muted/50 rounded-lg">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Data Início</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={`w-[240px] justify-start text-left font-normal ${!dataInicio && "text-muted-foreground"}`}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {dataInicio ? format(dataInicio, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={dataInicio}
-                        onSelect={setDataInicio}
-                        initialFocus
-                        locale={ptBR}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {dataInicio && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs mt-1"
-                      onClick={() => setDataInicio(undefined)}
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Limpar
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Data Fim</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={`w-[240px] justify-start text-left font-normal ${!dataFim && "text-muted-foreground"}`}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {dataFim ? format(dataFim, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={dataFim}
-                        onSelect={setDataFim}
-                        initialFocus
-                        locale={ptBR}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {dataFim && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs mt-1"
-                      onClick={() => setDataFim(undefined)}
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Limpar
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Tabela de OS */}
-            {filteredOrdens.length === 0 ? (
-              <EmptyState
-                variant="no-data"
-                title="Nenhuma ordem de serviço"
-                description="Cadastre uma nova OS para começar."
-                action={{ label: 'Nova OS', onClick: () => navigate('/pdv/os/nova') }}
-              />
-            ) : (
-              <div className="border rounded-lg overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">Nº OS</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Contato</TableHead>
-                      <TableHead>Aparelho</TableHead>
-                      <TableHead>Problema</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Entrada</TableHead>
-                      <TableHead>Previsão</TableHead>
-                      <TableHead className="text-right">Valor</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredOrdens.map((os) => {
-                      const cliente = getClienteById(os.cliente_id);
-                      const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
-                      const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
-                      const isAtrasada = os.previsao_entrega && 
-                        os.previsao_entrega.split('T')[0] < hoje && 
-                        !['finalizada', 'entregue', 'cancelada'].includes(os.status);
-                      
-                      return (
-                        <TableRow 
-                          key={os.id} 
-                          className={cn(
-                            isAtrasada && 'bg-red-50 dark:bg-red-950/20',
-                            'cursor-pointer hover:bg-muted/50'
-                          )}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigate(`/pdv/os/${os.id}`);
-                          }}
-                        >
-                          <TableCell className="font-bold text-primary">#{os.numero}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{cliente?.nome || os.cliente_nome || '-'}</p>
-                              {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj}</p>}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {(cliente?.telefone || os.telefone_contato) && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                className="h-auto p-0 text-green-600 hover:text-green-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleWhatsApp(os.telefone_contato || cliente?.whatsapp || cliente?.telefone);
-                                }}
-                              >
-                                <Phone className="h-3 w-3 mr-1" />
-                                {os.telefone_contato || cliente?.telefone}
-                              </Button>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{modelo?.nome || os.modelo_nome || '-'}</p>
-                              <p className="text-xs text-muted-foreground">{marca?.nome || os.marca_nome}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-[200px]">
-                            <p className="truncate">{os.descricao_problema}</p>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status])}>
-                              {STATUS_OS_LABELS[os.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {dateFormatters.short(os.data_entrada)}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {os.previsao_entrega ? (
-                              <span className={cn(isAtrasada && 'text-red-600 font-medium')}>
-                                {dateFormatters.short(os.previsao_entrega)}
-                              </span>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {os.valor_total > 0 ? currencyFormatters.brl(os.valor_total) : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/pdv/os/${os.id}`);
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/pdv/os/${os.id}`);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
     </ModernLayout>

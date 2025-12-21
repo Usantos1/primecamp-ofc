@@ -139,6 +139,13 @@ export function useOrdensServicoSupabase() {
   // Atualizar status
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: StatusOS | string }): Promise<void> => {
+      // Buscar dados da OS antes de atualizar
+      const { data: osData } = await supabase
+        .from('ordens_servico')
+        .select('id, numero, status, cliente_id, cliente_nome, telefone_contato, valor_total')
+        .eq('id', id)
+        .single();
+
       const updates: any = { status };
       
       if (status === 'entregue') {
@@ -158,6 +165,34 @@ export function useOrdensServicoSupabase() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Enviar status para API externa (não bloquear se falhar)
+      if (osData) {
+        try {
+          const { data: clienteData } = await supabase
+            .from('clientes')
+            .select('nome, telefone, whatsapp')
+            .eq('id', osData.cliente_id)
+            .single();
+
+          await supabase.functions.invoke('ativa-crm-api', {
+            body: {
+              action: 'update_os_status',
+              data: {
+                os_id: id,
+                os_numero: osData.numero || 0,
+                status: status,
+                cliente_nome: osData.cliente_nome || clienteData?.nome || '',
+                cliente_telefone: osData.telefone_contato || clienteData?.telefone || clienteData?.whatsapp || '',
+                valor_total: osData.valor_total || 0
+              }
+            }
+          });
+        } catch (apiError) {
+          console.error('Erro ao enviar status de OS para API externa:', apiError);
+          // Não lançar erro para não bloquear a atualização do status
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });

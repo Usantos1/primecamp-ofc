@@ -7,7 +7,7 @@
 export type TipoAparelho = 'celular' | 'tablet' | 'notebook' | 'outro';
 export type TipoPessoa = 'fisica' | 'juridica';
 export type TipoCliente = 'cliente' | 'fornecedor' | 'ambos';
-export type TipoProduto = 'peca' | 'servico' | 'produto';
+export type TipoProduto = 'PECA' | 'SERVICO' | 'PRODUTO';
 export type TipoItemOS = 'peca' | 'servico' | 'mao_de_obra';
 export type FormaPagamento = 'dinheiro' | 'pix' | 'credito' | 'debito' | 'boleto' | 'transferencia';
 
@@ -202,52 +202,80 @@ export interface Modelo {
 
 export interface Produto {
   id: string;
+  
+  // Identificação
   codigo?: number;
+  nome: string; // descricao no Supabase
+  nome_abreviado?: string; // descricao_abreviada no Supabase
   codigo_barras?: string;
-  situacao?: 'ativo' | 'inativo';
-  ativo?: boolean;
-  tipo: TipoProduto;
-  
-  descricao: string;
-  descricao_abreviada?: string;
   referencia?: string;
-  categoria?: string;
-  
-  grupo_id?: string;
   marca?: string;
-  marca_id?: string;
-  modelo_id?: string;
-  modelo_compativel?: string;
+  modelo?: string;
+  grupo?: string;
+  sub_grupo?: string;
   
-  preco_custo: number;
-  preco_venda: number;
-  margem_lucro?: number;
+  // Preço (BRL)
+  valor_compra?: number; // preco_custo no Supabase
+  valor_venda?: number; // preco_venda no Supabase
+  valor_parcelado_6x?: number;
+  margem_percentual?: number; // margem_lucro no Supabase
+  permitir_desconto_percentual?: number;
   
-  estoque_atual: number;
+  // Estoque
+  quantidade: number; // estoque_atual no Supabase
   estoque_minimo?: number;
   localizacao?: string;
   
-  ncm?: string;
-  unidade?: string;
+  // Configurações
+  situacao?: 'ATIVO' | 'INATIVO';
+  tipo?: TipoProduto;
+  garantia_dias?: number;
+  peso_kg?: number;
   
-  created_at: string;
+  // Campos internos (não enviar no payload)
+  created_at?: string;
   updated_at?: string;
+  
+  // Compatibilidade com código antigo (deprecated)
+  descricao?: string; // usar nome
+  descricao_abreviada?: string; // usar nome_abreviado
+  categoria?: string; // usar grupo
+  preco_custo?: number; // usar valor_compra
+  preco_venda?: number; // usar valor_venda
+  margem_lucro?: number; // usar margem_percentual
+  estoque_atual?: number; // usar quantidade
+  modelo_compativel?: string; // usar modelo
 }
 
 export interface ProdutoFormData {
-  tipo: TipoProduto;
-  descricao: string;
-  descricao_abreviada?: string;
+  // Identificação
+  codigo?: number;
+  nome: string;
+  nome_abreviado?: string;
   codigo_barras?: string;
   referencia?: string;
-  grupo_id?: string;
-  marca_id?: string;
-  modelo_id?: string;
-  preco_custo: number;
-  preco_venda: number;
-  estoque_atual: number;
+  marca?: string;
+  modelo?: string;
+  grupo?: string;
+  sub_grupo?: string;
+  
+  // Preço (BRL)
+  valor_compra?: number;
+  valor_venda?: number;
+  valor_parcelado_6x?: number;
+  margem_percentual?: number;
+  permitir_desconto_percentual?: number;
+  
+  // Estoque
+  quantidade: number;
   estoque_minimo?: number;
   localizacao?: string;
+  
+  // Configurações
+  situacao?: 'ATIVO' | 'INATIVO';
+  tipo?: TipoProduto;
+  garantia_dias?: number;
+  peso_kg?: number;
 }
 
 // ==================== CARGO ====================
@@ -315,8 +343,10 @@ export interface OrdemServico {
   // Checklist
   checklist_entrada: string[];
   checklist_saida?: string[];
+  checklist_saida_aprovado?: boolean; // Se o aparelho foi aprovado no checklist de saída
+  observacoes_checklist?: string; // Observações gerais do checklist de entrada
+  observacoes_checklist_saida?: string; // Observações do checklist de saída (ressalvas)
   areas_defeito: string[];
-  observacoes_checklist?: string; // Observações gerais do checklist
   
   // Condições
   condicoes_equipamento?: string;

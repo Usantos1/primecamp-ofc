@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
@@ -87,10 +87,16 @@ export function EmptyState({
   // Se for JSX ou outro ReactNode, renderiza diretamente
   const renderIcon = () => {
     if (icon) {
+      // Se é uma função (componente React), renderiza como componente
       if (typeof icon === 'function') {
-        const IconComponent = icon;
+        const IconComponent = icon as React.ComponentType<{ className?: string }>;
         return <IconComponent className="h-12 w-12" />;
       }
+      // Se já for um elemento React válido, renderiza diretamente
+      if (React.isValidElement(icon)) {
+        return icon;
+      }
+      // Caso contrário, tenta renderizar como está (pode ser string, número, etc)
       return icon;
     }
     return <DefaultIcon className="h-12 w-12" />;

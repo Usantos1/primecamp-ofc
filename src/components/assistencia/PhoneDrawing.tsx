@@ -82,12 +82,12 @@ export function PhoneDrawing({ areas, onAreasChange, readOnly = false }: PhoneDr
     const aspectRatio = 9 / 19.5;
     
     return (
-      <div className="flex flex-col items-center w-full h-full">
+      <div className="flex flex-col items-center w-full h-full min-w-0 max-w-full box-border">
         <button
           type="button"
           onClick={() => setCurrentSide(side)}
           className={cn(
-            "text-xs font-medium mb-2 px-3 py-1.5 rounded transition-colors",
+            "text-xs font-medium mb-2 px-2 sm:px-3 py-1.5 rounded transition-colors whitespace-nowrap flex-shrink-0",
             isActive 
               ? "bg-primary text-primary-foreground shadow-sm" 
               : "text-muted-foreground hover:bg-muted"
@@ -99,16 +99,26 @@ export function PhoneDrawing({ areas, onAreasChange, readOnly = false }: PhoneDr
         {isActive && (
           <div 
             ref={containerRef}
-            className="relative cursor-crosshair w-full"
-            style={{ aspectRatio: `${aspectRatio}`, maxWidth: '150px', maxHeight: '100%' }}
+            className="relative cursor-crosshair w-full max-w-full min-w-0 box-border"
+            style={{ 
+              aspectRatio: `${aspectRatio}`, 
+              maxWidth: '100%',
+              width: '100%',
+              maxHeight: '100%',
+              height: 'auto'
+            }}
             onClick={(e) => handlePhoneClick(e, side)}
           >
             {/* iPhone Mockup Realista */}
             <svg 
-              className="absolute inset-0 w-full h-full"
+              className="absolute inset-0 w-full h-full max-w-full"
               viewBox="0 0 100 200"
               preserveAspectRatio="xMidYMid meet"
-              style={{ filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25))' }}
+              style={{ 
+                filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25))',
+                maxWidth: '100%',
+                height: 'auto'
+              }}
             >
               {side === 'front' ? (
                 <>
@@ -273,15 +283,19 @@ export function PhoneDrawing({ areas, onAreasChange, readOnly = false }: PhoneDr
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center">
-      {/* Frente e Traseira lado a lado */}
-      <div className="flex items-center justify-center gap-6 flex-1 w-full">
-        {renderPhone('front')}
-        {renderPhone('back')}
+    <div className="h-full flex flex-col items-center justify-center w-full max-w-full min-w-0 box-border">
+      {/* Frente e Traseira lado a lado - responsivo */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 md:gap-6 flex-1 w-full max-w-full min-w-0 box-border px-2">
+        <div className="w-full sm:w-auto flex-shrink-0 min-w-0 max-w-full">
+          {renderPhone('front')}
+        </div>
+        <div className="w-full sm:w-auto flex-shrink-0 min-w-0 max-w-full">
+          {renderPhone('back')}
+        </div>
       </div>
       
       {!readOnly && (
-        <p className="text-sm text-center text-muted-foreground mt-2">
+        <p className="text-xs sm:text-sm text-center text-muted-foreground mt-2 px-2 break-words">
           Clique no celular para marcar defeitos
         </p>
       )}
