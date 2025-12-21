@@ -11,8 +11,8 @@ interface ProductFormOptimizedProps {
   modelos?: any[];
 }
 
-export const ProductFormOptimized: React.FC<ProductFormOptimizedProps> = (props) => {
+export function ProductFormOptimized(props: ProductFormOptimizedProps) {
   return null;
-};
+}
 
 export default ProductFormOptimized;
