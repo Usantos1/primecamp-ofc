@@ -25,7 +25,7 @@ import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
-import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized';
+// import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized'; // Componente não implementado
 
 const INITIAL_FORM: ProdutoFormData = {
   tipo: 'peca',
@@ -705,7 +705,7 @@ export default function Produtos() {
         </Card>
 
         {/* Form Dialog Simplificado */}
-        <ProductFormOptimized
+        {/* <ProductFormOptimized
           open={showForm}
           onOpenChange={setShowForm}
           produto={editingProduto}
@@ -713,7 +713,8 @@ export default function Produtos() {
           grupos={grupos}
           marcas={marcas}
           modelos={modelos}
-        />
+        /> */}
+        {/* TODO: Implementar ProductFormOptimized ou usar formulário inline */}
 
         {/* Modal antigo removido - código foi movido para ProductFormOptimized */}
 
