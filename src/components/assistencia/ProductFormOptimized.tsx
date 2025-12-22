@@ -402,6 +402,7 @@ export function ProductFormOptimized({
                     id="nome"
                     {...register('nome', { required: 'Nome é obrigatório' })}
                     placeholder="Ex: Adaptador iPhone Jack P2"
+                    className="text-base md:text-sm"
                   />
                 </div>
 
@@ -413,6 +414,7 @@ export function ProductFormOptimized({
                     {...register('codigo', { valueAsNumber: true })}
                     placeholder="Código do produto"
                     disabled={isLoadingCodigo || isEditing}
+                    className="text-base md:text-sm"
                   />
                   {isLoadingCodigo && (
                     <p className="text-xs text-muted-foreground mt-1">Carregando próximo código...</p>
@@ -426,7 +428,7 @@ export function ProductFormOptimized({
                       id="codigo_barras"
                       {...register('codigo_barras')}
                       placeholder="7890000000000"
-                      className="flex-1"
+                      className="flex-1 text-base md:text-sm"
                       maxLength={13}
                     />
                     <Button
@@ -448,6 +450,7 @@ export function ProductFormOptimized({
                     id="referencia"
                     {...register('referencia')}
                     placeholder="Ex: AIJ-669"
+                    className="text-base md:text-sm"
                   />
                 </div>
 
@@ -514,6 +517,7 @@ export function ProductFormOptimized({
                     id="sub_grupo"
                     {...register('sub_grupo')}
                     placeholder="Ex: Acessórios"
+                    className="text-base md:text-sm"
                   />
                 </div>
 
@@ -523,6 +527,7 @@ export function ProductFormOptimized({
                     id="qualidade"
                     {...register('qualidade')}
                     placeholder="Ex: Original"
+                    className="text-base md:text-sm"
                   />
                 </div>
               </div>
@@ -543,7 +548,7 @@ export function ProductFormOptimized({
                       setValue('valor_venda', masked as any);
                     }}
                     placeholder="R$ 0,00"
-                    className="text-right font-semibold"
+                    className="text-right font-semibold text-base md:text-sm"
                   />
                 </div>
 
@@ -557,7 +562,7 @@ export function ProductFormOptimized({
                       setValue('valor_parcelado_6x', masked as any);
                     }}
                     placeholder="R$ 0,00"
-                    className="text-right"
+                    className="text-right text-base md:text-sm"
                   />
                 </div>
 
@@ -570,7 +575,7 @@ export function ProductFormOptimized({
                     {...register('margem_percentual', { valueAsNumber: true })}
                     placeholder="0.00"
                     readOnly
-                    className="bg-muted"
+                    className="bg-muted text-base md:text-sm"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Calculada automaticamente: ((Venda - Compra) / Compra) × 100
@@ -589,6 +594,7 @@ export function ProductFormOptimized({
                     type="number"
                     {...register('quantidade', { valueAsNumber: true })}
                     placeholder="0"
+                    className="text-base md:text-sm"
                   />
                 </div>
 
@@ -599,6 +605,7 @@ export function ProductFormOptimized({
                     type="number"
                     {...register('estoque_minimo', { valueAsNumber: true })}
                     placeholder="0"
+                    className="text-base md:text-sm"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Alerta quando estoque ficar abaixo deste valor
@@ -611,6 +618,7 @@ export function ProductFormOptimized({
                     id="localizacao"
                     {...register('localizacao')}
                     placeholder="Ex: Prateleira A3, Gaveta 2"
+                    className="text-base md:text-sm"
                   />
                 </div>
               </div>

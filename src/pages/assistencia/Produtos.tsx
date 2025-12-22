@@ -758,6 +758,7 @@ export default function Produtos() {
                   max="100"
                   value={quantidadeEtiquetas}
                   onChange={(e) => setQuantidadeEtiquetas(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                  className="text-base md:text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
                   {quantidadeEtiquetas > 1

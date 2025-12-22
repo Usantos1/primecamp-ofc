@@ -68,6 +68,7 @@ import Caixa from "./pages/pdv/Caixa";
 import Relatorios from "./pages/pdv/Relatorios";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
 import CupomView from "./pages/pdv/CupomView";
+import AcompanharOS from "./pages/public/AcompanharOS";
 
 const queryClient = new QueryClient();
 
@@ -136,6 +137,9 @@ const App = () => (
               <Route path="/vagas" element={<JobPortal />} />
               <Route path="/candidatura/:protocol?" element={<JobApplicationStatus />} />
               <Route path="/acompanhar-candidatura/:protocol?" element={<JobApplicationStatus />} />
+              
+              {/* Public OS tracking route */}
+              <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/metas" element={<ProtectedRoute><Goals /></ProtectedRoute>} />

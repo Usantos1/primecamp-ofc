@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart
+  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings
 } from 'lucide-react';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { buscarCEP } from '@/hooks/useAssistencia';
@@ -29,6 +31,7 @@ const INITIAL_FORM: ClienteFormData = {
   nome: '',
   cpf_cnpj: '',
   rg: '',
+  data_nascimento: '',
   telefone: '',
   whatsapp: '',
   email: '',
@@ -48,6 +51,12 @@ export default function Clientes() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [formData, setFormData] = useState<ClienteFormData>(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAniversarioConfig, setShowAniversarioConfig] = useState(false);
+  const [aniversarioConfig, setAniversarioConfig] = useState({
+    mensagem: '🎉 *Feliz Aniversário!*\n\nOlá {nome}! 🎂\n\nHoje é um dia muito especial! Desejamos um feliz aniversário repleto de alegria, saúde e muitas realizações!\n\nQue este novo ano de vida seja cheio de momentos especiais e conquistas!\n\nParabéns! 🎈🎁',
+    horario: '09:00',
+    ativo: true,
+  });
   
   const { clientes, createCliente, updateCliente, deleteCliente } = useClientes();
   const { toast } = useToast();
@@ -193,6 +202,57 @@ export default function Clientes() {
     }
   };
 
+  // Carregar configuração de aniversário
+  const loadAniversarioConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('kv_store_2c4defad')
+        .select('value')
+        .eq('key', 'aniversario_config')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao carregar configuração:', error);
+        return;
+      }
+
+      if (data?.value) {
+        setAniversarioConfig(data.value);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configuração de aniversário:', error);
+    }
+  };
+
+  // Salvar configuração de aniversário
+  const handleSaveAniversarioConfig = async () => {
+    try {
+      const { error } = await supabase
+        .from('kv_store_2c4defad')
+        .upsert({
+          key: 'aniversario_config',
+          value: aniversarioConfig,
+        }, {
+          onConflict: 'key',
+        });
+
+      if (error) throw error;
+
+      toast({ 
+        title: 'Configuração salva!', 
+        description: 'A mensagem de aniversário foi atualizada com sucesso.' 
+      });
+      setShowAniversarioConfig(false);
+    } catch (error: any) {
+      console.error('Erro ao salvar configuração:', error);
+      toast({ 
+        title: 'Erro ao salvar', 
+        description: error.message || 'Não foi possível salvar a configuração.',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   return (
     <ModernLayout title="Clientes" subtitle="Gerenciar clientes">
       <div className="space-y-3 md:space-y-4 px-1 md:px-0">
@@ -216,6 +276,18 @@ export default function Clientes() {
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Novo Cliente</span>
                 <span className="sm:hidden">Novo</span>
+              </Button>
+              <Button 
+                onClick={async () => {
+                  await loadAniversarioConfig();
+                  setShowAniversarioConfig(true);
+                }}
+                variant="outline"
+                className="gap-2 h-9 md:h-10 border-2 border-gray-300"
+              >
+                <Cake className="h-4 w-4" />
+                <span className="hidden sm:inline">Config. Aniversário</span>
+                <span className="sm:hidden">Aniversário</span>
               </Button>
             </div>
           </CardContent>
@@ -421,6 +493,18 @@ export default function Clientes() {
                       value={formData.rg || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, rg: e.target.value }))}
                       placeholder="00.000.000-0"
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                    />
+                  </div>
+                )}
+
+                {formData.tipo_pessoa === 'fisica' && (
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Data de Nascimento <span className="text-muted-foreground">(opcional, para envio de mensagem de aniversário)</span></Label>
+                    <Input
+                      type="date"
+                      value={formData.data_nascimento || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: e.target.value }))}
                       className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
@@ -712,6 +796,76 @@ export default function Clientes() {
               >
                 {editingCliente ? 'Atualizar' : 'Cadastrar'}
               </LoadingButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Configuração de Aniversário */}
+        <Dialog open={showAniversarioConfig} onOpenChange={setShowAniversarioConfig}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-3 md:p-6">
+            <DialogHeader className="pb-2 md:pb-4">
+              <DialogTitle className="text-base md:text-lg flex items-center gap-2">
+                <Cake className="h-5 w-5" />
+                Configuração de Mensagem de Aniversário
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 md:py-4">
+              <div className="space-y-2">
+                <Label className="text-xs md:text-sm">Horário de Envio</Label>
+                <Input
+                  type="time"
+                  value={aniversarioConfig.horario}
+                  onChange={(e) => setAniversarioConfig(prev => ({ ...prev, horario: e.target.value }))}
+                  className="h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
+                />
+                <p className="text-[10px] md:text-xs text-muted-foreground">
+                  As mensagens serão enviadas automaticamente neste horário para clientes que fazem aniversário no dia.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs md:text-sm">Mensagem de Aniversário</Label>
+                <Textarea
+                  value={aniversarioConfig.mensagem}
+                  onChange={(e) => setAniversarioConfig(prev => ({ ...prev, mensagem: e.target.value }))}
+                  rows={8}
+                  className="text-sm border-2 border-gray-300 font-mono"
+                  placeholder="Digite a mensagem que será enviada..."
+                />
+                <p className="text-[10px] md:text-xs text-muted-foreground">
+                  Use {'{nome}'} para incluir o nome do cliente na mensagem. A mensagem será enviada via WhatsApp.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between p-3 border-2 border-gray-300 rounded-lg">
+                <div>
+                  <Label className="text-xs md:text-sm">Ativar envio automático</Label>
+                  <p className="text-[10px] md:text-xs text-muted-foreground">
+                    Quando ativado, as mensagens serão enviadas automaticamente
+                  </p>
+                </div>
+                <Switch
+                  checked={aniversarioConfig.ativo}
+                  onCheckedChange={(checked) => setAniversarioConfig(prev => ({ ...prev, ativo: checked }))}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowAniversarioConfig(false)}
+                className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSaveAniversarioConfig}
+                className="w-full sm:w-auto h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
+              >
+                Salvar Configuração
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

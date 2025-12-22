@@ -1,6 +1,6 @@
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, TrendingUp, Brain, Target } from 'lucide-react';
+import { GraduationCap, TrendingUp, Brain, Target, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function RH() {
@@ -34,6 +34,13 @@ export default function RH() {
       icon: Target,
       path: '/metas',
       color: 'text-orange-600',
+    },
+    {
+      title: 'Ponto Eletrônico',
+      description: 'Registro de ponto e controle de jornada',
+      icon: Clock,
+      path: '/ponto',
+      color: 'text-indigo-600',
     },
   ];
 
