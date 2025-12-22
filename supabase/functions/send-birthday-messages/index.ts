@@ -18,6 +18,18 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Parse request body early to check for manual trigger
+    let requestBody = {};
+    try {
+      const text = await req.text();
+      if (text) {
+        requestBody = JSON.parse(text);
+      }
+    } catch (e) {
+      // Body might be empty or invalid, continue with default
+      console.log('Request body vazio ou inválido, usando padrão');
+    }
+
     // Get current date
     const today = new Date();
     const todayMonth = today.getMonth() + 1; // JavaScript months are 0-indexed
@@ -54,20 +66,27 @@ serve(async (req) => {
     }
 
     // Check if it's the right time to send (default 09:00)
-    const [configHour, configMinute] = config.horario.split(':').map(Number);
-    const currentHour = today.getHours();
-    const currentMinute = today.getMinutes();
+    // Allow manual trigger (when called with trigger: "manual" in body)
+    const isManualTrigger = requestBody.trigger === 'manual' || requestBody.force === true;
+    
+    if (!isManualTrigger) {
+      const [configHour, configMinute] = config.horario.split(':').map(Number);
+      const currentHour = today.getHours();
+      const currentMinute = today.getMinutes();
 
-    // Only send if it's the configured time (with 1 minute tolerance)
-    if (currentHour !== configHour || Math.abs(currentMinute - configMinute) > 1) {
-      console.log(`Não é o horário de envio. Configurado: ${config.horario}, Atual: ${currentHour}:${currentMinute}`);
-      return new Response(
-        JSON.stringify({ 
-          message: `Não é o horário de envio. Configurado: ${config.horario}`, 
-          sent: 0 
-        }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
-      );
+      // Only send if it's the configured time (with 1 minute tolerance)
+      if (currentHour !== configHour || Math.abs(currentMinute - configMinute) > 1) {
+        console.log(`Não é o horário de envio. Configurado: ${config.horario}, Atual: ${currentHour}:${currentMinute}`);
+        return new Response(
+          JSON.stringify({ 
+            message: `Não é o horário de envio. Configurado: ${config.horario}`, 
+            sent: 0 
+          }),
+          { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+        );
+      }
+    } else {
+      console.log('Envio manual de mensagens de aniversário solicitado');
     }
 
     // Find clients with birthday today
@@ -141,12 +160,18 @@ serve(async (req) => {
         // Replace {nome} in message
         const message = config.mensagem.replace(/{nome}/g, cliente.nome);
 
+        // Format phone number: remove non-digits, ensure it starts with 55 (Brazil country code)
+        const cleanPhone = phone.replace(/\D/g, '');
+        const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+
+        console.log(`Enviando mensagem para ${cliente.nome} (${formattedPhone})`);
+
         // Send WhatsApp message via ativa-crm-api
         const { data: messageResult, error: messageError } = await supabase.functions.invoke('ativa-crm-api', {
           body: {
             action: 'send_message',
             data: {
-              number: phone,
+              number: formattedPhone,
               body: message
             }
           }
@@ -162,12 +187,13 @@ serve(async (req) => {
           console.log(`Mensagem de aniversário enviada com sucesso para ${cliente.nome}`);
           
           // Record that message was sent
+          const [configHour, configMinute] = config.horario.split(':').map(Number);
           await supabase
             .from('aniversario_mensagens_enviadas')
             .insert({
               cliente_id: cliente.id,
               data_envio: todayString,
-              horario_envio: `${configHour}:${configMinute}:00`,
+              horario_envio: `${String(configHour).padStart(2, '0')}:${String(configMinute).padStart(2, '0')}:00`,
               mensagem_enviada: message,
               status: 'enviado'
             });
