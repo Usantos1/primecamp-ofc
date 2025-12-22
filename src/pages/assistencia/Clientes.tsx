@@ -227,7 +227,8 @@ export default function Clientes() {
   // Salvar configuração de aniversário
   const handleSaveAniversarioConfig = async () => {
     try {
-      const { error } = await supabase
+      // Salvar configuração
+      const { error: configError } = await supabase
         .from('kv_store_2c4defad')
         .upsert({
           key: 'aniversario_config',
@@ -236,12 +237,44 @@ export default function Clientes() {
           onConflict: 'key',
         });
 
-      if (error) throw error;
+      if (configError) throw configError;
 
-      toast({ 
-        title: 'Configuração salva!', 
-        description: 'A mensagem de aniversário foi atualizada com sucesso.' 
-      });
+      // Se o envio automático estiver ativado, atualizar o cron job
+      if (aniversarioConfig.ativo && aniversarioConfig.horario) {
+        try {
+          const { data: cronResult, error: cronError } = await supabase.rpc(
+            'atualizar_cron_aniversario',
+            { horario_brt: aniversarioConfig.horario }
+          );
+
+          if (cronError) {
+            console.warn('Erro ao atualizar cron job (pode não ter permissão):', cronError);
+            // Não falha o salvamento se o cron job não atualizar
+            toast({ 
+              title: 'Configuração salva!', 
+              description: 'A mensagem foi salva, mas o cron job pode precisar ser atualizado manualmente.' 
+            });
+          } else {
+            console.log('Cron job atualizado:', cronResult);
+            toast({ 
+              title: 'Configuração salva!', 
+              description: 'A mensagem de aniversário e o agendamento foram atualizados com sucesso.' 
+            });
+          }
+        } catch (cronErr: any) {
+          console.warn('Erro ao atualizar cron job:', cronErr);
+          toast({ 
+            title: 'Configuração salva!', 
+            description: 'A mensagem foi salva, mas o cron job pode precisar ser atualizado manualmente.' 
+          });
+        }
+      } else {
+        toast({ 
+          title: 'Configuração salva!', 
+          description: 'A mensagem de aniversário foi atualizada com sucesso.' 
+        });
+      }
+
       setShowAniversarioConfig(false);
     } catch (error: any) {
       console.error('Erro ao salvar configuração:', error);
