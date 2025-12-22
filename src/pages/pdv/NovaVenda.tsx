@@ -1508,7 +1508,7 @@ export default function NovaVenda() {
                         setClienteSearch(e.target.value);
                       }}
                       onFocus={() => setShowClienteSearch(true)}
-                      className="pl-9 h-10 md:h-10 text-sm md:text-base"
+                      className="pl-9 h-10 md:h-10 text-base"
                     />
                     {selectedCliente && (
                       <Button
@@ -1932,7 +1932,7 @@ export default function NovaVenda() {
                 placeholder="Buscar OS por número, cliente ou telefone..."
                 value={osSearch}
                 onChange={(e) => setOsSearch(e.target.value)}
-                className="w-full"
+                className="w-full text-base"
               />
             </div>
 

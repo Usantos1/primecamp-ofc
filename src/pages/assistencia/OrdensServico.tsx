@@ -348,7 +348,7 @@ export default function OrdensServico() {
                 placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9 text-sm w-full border-2 border-gray-300"
+                className="pl-10 h-9 text-base md:text-sm w-full border-2 border-gray-300"
               />
             </div>
             <Button 
@@ -369,7 +369,7 @@ export default function OrdensServico() {
                 placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9 text-sm"
+                className="pl-10 h-9 text-base md:text-sm"
               />
             </div>
           </div>

@@ -392,7 +392,7 @@ export default function Produtos() {
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-9 flex-1 md:w-[180px] md:flex-none text-xs border-2 border-gray-300"
+                className="h-9 flex-1 md:w-[180px] md:flex-none text-base md:text-xs border-2 border-gray-300"
               />
 
               <Button 

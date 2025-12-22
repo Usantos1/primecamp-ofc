@@ -1903,7 +1903,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setShowClienteSearch(true);
                           }}
                           onFocus={() => setShowClienteSearch(true)}
-                          className="pl-8 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
+                          className="pl-8 md:pl-10 h-9 md:h-10 text-base md:text-sm"
                         />
                         {selectedCliente && (
                           <Button 
@@ -4159,7 +4159,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   placeholder="Buscar produto/serviço..."
                   value={produtoSearch}
                   onChange={(e) => setProdutoSearch(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 text-base"
                 />
                 {produtoResults.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg max-h-40 overflow-auto">

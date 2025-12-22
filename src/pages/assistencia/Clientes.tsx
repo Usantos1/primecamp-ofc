@@ -206,7 +206,7 @@ export default function Clientes() {
                   placeholder="Buscar por nome, CPF, RG, telefone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-9 md:h-10 text-sm border-2 border-gray-300"
+                  className="pl-9 h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
                 />
               </div>
               <Button 
