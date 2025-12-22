@@ -106,6 +106,7 @@ export function useClientesSupabase() {
     return clientes.filter(c => 
       c.nome.toLowerCase().includes(q) ||
       c.cpf_cnpj?.includes(query) ||
+      c.rg?.includes(query) ||
       c.telefone?.includes(query) ||
       c.whatsapp?.includes(query)
     );

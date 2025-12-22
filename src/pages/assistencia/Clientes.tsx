@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User
+  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart
 } from 'lucide-react';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { buscarCEP } from '@/hooks/useAssistencia';
@@ -18,11 +19,16 @@ import { Cliente, ClienteFormData } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 
 const INITIAL_FORM: ClienteFormData = {
   tipo_pessoa: 'fisica',
   nome: '',
   cpf_cnpj: '',
+  rg: '',
   telefone: '',
   whatsapp: '',
   email: '',
@@ -36,6 +42,7 @@ const INITIAL_FORM: ClienteFormData = {
 };
 
 export default function Clientes() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -45,6 +52,40 @@ export default function Clientes() {
   const { clientes, createCliente, updateCliente, deleteCliente } = useClientes();
   const { toast } = useToast();
 
+  // Buscar OSs do cliente
+  const { data: clienteOSs = [], isLoading: loadingOSs } = useQuery({
+    queryKey: ['cliente_os', editingCliente?.id],
+    queryFn: async () => {
+      if (!editingCliente?.id) return [];
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select('*')
+        .eq('cliente_id', editingCliente.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!editingCliente?.id && showForm,
+  });
+
+  // Buscar vendas do cliente
+  const { data: clienteVendas = [], isLoading: loadingVendas } = useQuery({
+    queryKey: ['cliente_vendas', editingCliente?.id],
+    queryFn: async () => {
+      if (!editingCliente?.id) return [];
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('cliente_id', editingCliente.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!editingCliente?.id && showForm,
+  });
+
   // Filtrar clientes
   const filteredClientes = useMemo(() => {
     if (!searchTerm) return clientes;
@@ -52,6 +93,7 @@ export default function Clientes() {
     return clientes.filter(c => 
       (c.nome || '').toLowerCase().includes(q) ||
       c.cpf_cnpj?.includes(searchTerm) ||
+      c.rg?.includes(searchTerm) ||
       c.telefone?.includes(searchTerm) ||
       c.whatsapp?.includes(searchTerm) ||
       c.email?.toLowerCase().includes(q)
@@ -122,6 +164,12 @@ export default function Clientes() {
       return;
     }
 
+    // Validar: CPF ou RG deve ser preenchido para pessoa física
+    if (formData.tipo_pessoa === 'fisica' && !formData.cpf_cnpj && !formData.rg) {
+      toast({ title: 'CPF ou RG deve ser preenchido', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (editingCliente) {
@@ -147,113 +195,203 @@ export default function Clientes() {
 
   return (
     <ModernLayout title="Clientes" subtitle="Gerenciar clientes">
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4 px-1 md:px-0">
         {/* Barra de ações */}
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
+        <Card className="border-2 border-gray-300">
+          <CardContent className="py-2 md:py-3 px-3 md:px-6">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nome, CPF, telefone..."
+                  placeholder="Buscar por nome, CPF, RG, telefone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
-              <Button onClick={handleNew} className="gap-2">
+              <Button 
+                onClick={handleNew} 
+                className="gap-2 h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+              >
                 <Plus className="h-4 w-4" />
-                Novo Cliente
+                <span className="hidden sm:inline">Novo Cliente</span>
+                <span className="sm:hidden">Novo</span>
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Lista de clientes */}
-        <Card>
+        <Card className="border-2 border-gray-300">
           <CardContent className="p-0">
             {filteredClientes.length === 0 ? (
-              <EmptyState
-                icon={<User className="h-12 w-12" />}
-                title="Nenhum cliente encontrado"
-                description={searchTerm ? "Tente buscar por outro termo" : "Cadastre seu primeiro cliente"}
-                action={!searchTerm ? { label: "Novo Cliente", onClick: handleNew } : undefined}
-              />
+              <div className="p-6 md:p-12">
+                <EmptyState
+                  icon={<User className="h-12 w-12" />}
+                  title="Nenhum cliente encontrado"
+                  description={searchTerm ? "Tente buscar por outro termo" : "Cadastre seu primeiro cliente"}
+                  action={!searchTerm ? { label: "Novo Cliente", onClick: handleNew } : undefined}
+                />
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>CPF/CNPJ</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Cidade</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClientes.map(cliente => (
-                    <TableRow key={cliente.id}>
-                      <TableCell className="font-medium">{cliente.nome}</TableCell>
-                      <TableCell>{cliente.cpf_cnpj || '-'}</TableCell>
-                      <TableCell>
-                        {cliente.whatsapp || cliente.telefone || '-'}
-                      </TableCell>
-                      <TableCell>{cliente.email || '-'}</TableCell>
-                      <TableCell>{cliente.cidade || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
+              <>
+                {/* Desktop: Tabela */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b-2 border-gray-300">
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Nome</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">CPF/CNPJ</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">RG</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Telefone</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Email</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cidade</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredClientes.map((cliente, index) => (
+                        <TableRow 
+                          key={cliente.id}
+                          className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                        >
+                          <TableCell className="font-medium border-r border-gray-200">{cliente.nome}</TableCell>
+                          <TableCell className="border-r border-gray-200">{cliente.cpf_cnpj || '-'}</TableCell>
+                          <TableCell className="border-r border-gray-200">{cliente.rg || '-'}</TableCell>
+                          <TableCell className="border-r border-gray-200">
+                            {cliente.whatsapp || cliente.telefone || '-'}
+                          </TableCell>
+                          <TableCell className="border-r border-gray-200">{cliente.email || '-'}</TableCell>
+                          <TableCell className="border-r border-gray-200">{cliente.cidade || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => handleEdit(cliente)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => handleDelete(cliente.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile: Cards */}
+                <div className="md:hidden space-y-3 p-2">
+                  {filteredClientes.map((cliente, index) => (
+                    <Card 
+                      key={cliente.id}
+                      className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
+                    >
+                      <CardContent className="p-3 space-y-2">
+                        {/* Header: Nome */}
+                        <div className="border-b-2 border-gray-200 pb-2">
+                          <h3 className="font-semibold text-sm truncate">{cliente.nome}</h3>
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            {cliente.cpf_cnpj && (
+                              <p className="text-xs text-muted-foreground">CPF/CNPJ: {cliente.cpf_cnpj}</p>
+                            )}
+                            {cliente.rg && (
+                              <p className="text-xs text-muted-foreground">RG: {cliente.rg}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Info: Contato e Localização */}
+                        <div className="space-y-2">
+                          {(cliente.whatsapp || cliente.telefone) && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground">
+                                {cliente.whatsapp || cliente.telefone}
+                              </span>
+                            </div>
+                          )}
+                          {cliente.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground truncate">{cliente.email}</span>
+                            </div>
+                          )}
+                          {cliente.cidade && (
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground">{cliente.cidade}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Footer: Botões de ação */}
+                        <div className="flex justify-end gap-2 pt-2 border-t-2 border-gray-200">
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleEdit(cliente)}
+                            className="h-8 px-3 text-xs border-2 border-gray-300"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3.5 w-3.5 mr-1" />
+                            Editar
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive"
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => handleDelete(cliente.id)}
+                            className="h-8 px-3 text-xs border-2 border-red-300 text-red-600 hover:bg-red-50"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                            Excluir
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </CardContent>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
 
         {/* Form Dialog */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-3 md:p-6">
+            <DialogHeader className="pb-2 md:pb-4">
+              <DialogTitle className="text-base md:text-lg">
                 {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
               </DialogTitle>
             </DialogHeader>
 
             <Tabs defaultValue="dados" className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="dados" className="flex-1">Dados Pessoais</TabsTrigger>
-                <TabsTrigger value="endereco" className="flex-1">Endereço</TabsTrigger>
-                <TabsTrigger value="contato" className="flex-1">Contato</TabsTrigger>
+              <TabsList className={`w-full grid ${editingCliente ? 'grid-cols-4' : 'grid-cols-3'} h-9 md:h-10`}>
+                <TabsTrigger value="dados" className="text-xs md:text-sm">Dados</TabsTrigger>
+                <TabsTrigger value="endereco" className="text-xs md:text-sm">Endereço</TabsTrigger>
+                <TabsTrigger value="contato" className="text-xs md:text-sm">Contato</TabsTrigger>
+                {editingCliente && (
+                  <TabsTrigger value="historico" className="text-xs md:text-sm">Histórico</TabsTrigger>
+                )}
               </TabsList>
 
-              <TabsContent value="dados" className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tipo de Pessoa</Label>
+              <TabsContent value="dados" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Tipo de Pessoa</Label>
                     <Select 
                       value={formData.tipo_pessoa} 
                       onValueChange={(v: any) => setFormData(prev => ({ ...prev, tipo_pessoa: v }))}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -262,140 +400,316 @@ export default function Clientes() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>{formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}</Label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">
+                      {formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}
+                      {formData.tipo_pessoa === 'fisica' && <span className="text-muted-foreground ml-1">(ou RG)</span>}
+                    </Label>
                     <Input
                       value={formData.cpf_cnpj}
                       onChange={(e) => setFormData(prev => ({ ...prev, cpf_cnpj: e.target.value }))}
                       placeholder={formData.tipo_pessoa === 'fisica' ? '000.000.000-00' : '00.000.000/0000-00'}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Nome *</Label>
+                {formData.tipo_pessoa === 'fisica' && (
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">RG <span className="text-muted-foreground">(opcional, se não tiver CPF)</span></Label>
+                    <Input
+                      value={formData.rg || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, rg: e.target.value }))}
+                      placeholder="00.000.000-0"
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-1.5 md:space-y-2">
+                  <Label className="text-xs md:text-sm">Nome *</Label>
                   <Input
                     value={formData.nome}
                     onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
                     placeholder="Nome completo"
+                    className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                   />
                 </div>
 
                 {formData.tipo_pessoa === 'juridica' && (
-                  <div className="space-y-2">
-                    <Label>Nome Fantasia</Label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Nome Fantasia</Label>
                     <Input
                       value={formData.nome_fantasia || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, nome_fantasia: e.target.value }))}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
                 )}
               </TabsContent>
 
-              <TabsContent value="endereco" className="space-y-4 mt-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>CEP</Label>
+              <TabsContent value="endereco" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">CEP</Label>
                     <div className="flex gap-2">
                       <Input
                         value={formData.cep}
                         onChange={(e) => setFormData(prev => ({ ...prev, cep: e.target.value }))}
                         placeholder="00000-000"
+                        className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                       />
-                      <Button type="button" variant="outline" onClick={handleBuscarCEP} disabled={isLoading}>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleBuscarCEP} 
+                        disabled={isLoading}
+                        className="h-9 md:h-10 w-9 md:w-10 p-0 border-2 border-gray-300"
+                      >
                         <Search className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label>Logradouro</Label>
+                  <div className="md:col-span-2 space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Logradouro</Label>
                     <Input
                       value={formData.logradouro}
                       onChange={(e) => setFormData(prev => ({ ...prev, logradouro: e.target.value }))}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>Número</Label>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Número</Label>
                     <Input
                       value={formData.numero}
                       onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
-                  <div className="col-span-3 space-y-2">
-                    <Label>Complemento</Label>
+                  <div className="md:col-span-3 space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Complemento</Label>
                     <Input
                       value={formData.complemento}
                       onChange={(e) => setFormData(prev => ({ ...prev, complemento: e.target.value }))}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Bairro</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Bairro</Label>
                     <Input
                       value={formData.bairro}
                       onChange={(e) => setFormData(prev => ({ ...prev, bairro: e.target.value }))}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Cidade</Label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Cidade</Label>
                     <Input
                       value={formData.cidade}
                       onChange={(e) => setFormData(prev => ({ ...prev, cidade: e.target.value }))}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Estado</Label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Estado</Label>
                     <Input
                       value={formData.estado}
                       onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value }))}
                       maxLength={2}
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="contato" className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Telefone</Label>
+              <TabsContent value="contato" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">Telefone</Label>
                     <Input
                       value={formData.telefone}
                       onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                       placeholder="(00) 0000-0000"
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>WhatsApp</Label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm">WhatsApp</Label>
                     <Input
                       value={formData.whatsapp}
                       onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
                       placeholder="(00) 00000-0000"
+                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Email</Label>
+                <div className="space-y-1.5 md:space-y-2">
+                  <Label className="text-xs md:text-sm">Email</Label>
                   <Input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="email@exemplo.com"
+                    className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
                   />
                 </div>
               </TabsContent>
+
+              {editingCliente && (
+                <TabsContent value="historico" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
+                  {/* Ordens de Serviço */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 pb-2 border-b-2 border-gray-300">
+                      <Wrench className="h-4 w-4 text-blue-600" />
+                      <h3 className="font-semibold text-sm md:text-base">Ordens de Serviço</h3>
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {clienteOSs.length}
+                      </Badge>
+                    </div>
+                    {loadingOSs ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground">Carregando...</div>
+                    ) : clienteOSs.length === 0 ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        Nenhuma ordem de serviço encontrada
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {clienteOSs.map((os: any) => (
+                          <Card 
+                            key={os.id} 
+                            className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all"
+                            onClick={() => {
+                              setShowForm(false);
+                              navigate(`/pdv/os/${os.id}`);
+                            }}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-semibold text-sm">OS #{os.numero}</span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="text-xs"
+                                      style={{ 
+                                        borderColor: STATUS_OS_COLORS[os.status as keyof typeof STATUS_OS_COLORS] || '#gray',
+                                        color: STATUS_OS_COLORS[os.status as keyof typeof STATUS_OS_COLORS] || '#gray'
+                                      }}
+                                    >
+                                      {STATUS_OS_LABELS[os.status as keyof typeof STATUS_OS_LABELS] || os.status}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground line-clamp-1">
+                                    {os.descricao_problema || 'Sem descrição'}
+                                  </p>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                    {os.data_entrada && (
+                                      <span>Entrada: {dateFormatters.short(os.data_entrada)}</span>
+                                    )}
+                                    {os.valor_total > 0 && (
+                                      <span className="font-semibold text-foreground">
+                                        {currencyFormatters.brl(os.valor_total)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vendas/Compras */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 pb-2 border-b-2 border-gray-300">
+                      <ShoppingCart className="h-4 w-4 text-green-600" />
+                      <h3 className="font-semibold text-sm md:text-base">Vendas/Compras</h3>
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {clienteVendas.length}
+                      </Badge>
+                    </div>
+                    {loadingVendas ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground">Carregando...</div>
+                    ) : clienteVendas.length === 0 ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        Nenhuma venda encontrada
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {clienteVendas.map((venda: any) => (
+                          <Card 
+                            key={venda.id} 
+                            className="border-2 border-gray-300 cursor-pointer hover:border-green-400 transition-all"
+                            onClick={() => {
+                              setShowForm(false);
+                              navigate(`/pdv/venda/${venda.id}`);
+                            }}
+                          >
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-semibold text-sm">Venda #{venda.numero}</span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs ${
+                                        venda.status === 'paid' ? 'border-green-500 text-green-600' :
+                                        venda.status === 'open' ? 'border-yellow-500 text-yellow-600' :
+                                        'border-gray-500 text-gray-600'
+                                      }`}
+                                    >
+                                      {venda.status === 'paid' ? 'Paga' :
+                                       venda.status === 'open' ? 'Aberta' :
+                                       venda.status === 'draft' ? 'Rascunho' :
+                                       venda.status}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                                    {venda.created_at && (
+                                      <span>{dateFormatters.short(venda.created_at)}</span>
+                                    )}
+                                    {venda.total > 0 && (
+                                      <span className="font-semibold text-foreground">
+                                        {currencyFormatters.brl(venda.total)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
+            <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowForm(false)}
+                className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+              >
                 Cancelar
               </Button>
-              <LoadingButton onClick={handleSubmit} loading={isLoading}>
+              <LoadingButton 
+                onClick={handleSubmit} 
+                loading={isLoading}
+                className="w-full sm:w-auto h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
+              >
                 {editingCliente ? 'Atualizar' : 'Cadastrar'}
               </LoadingButton>
             </DialogFooter>

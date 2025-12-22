@@ -1337,13 +1337,14 @@ export default function NovaVenda() {
       title={isEditing ? `Venda #${sale?.numero || ''}` : 'Nova Venda'}
       subtitle={isEditing ? 'Editar venda' : 'Criar nova venda'}
     >
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Header com ações */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 md:gap-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
+              className="h-9 md:h-9 text-xs md:text-sm"
               onClick={() => navigate('/pdv/vendas')}
             >
               Voltar
@@ -1352,45 +1353,49 @@ export default function NovaVenda() {
               <Button
                 variant="outline"
                 size="sm"
+                className="h-9 md:h-9 text-xs md:text-sm"
                 onClick={handleOpenFaturarOSModal}
               >
-                <Wrench className="h-4 w-4 mr-2" />
-                Faturar OS
+                <Wrench className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                <span className="hidden md:inline">Faturar OS</span>
               </Button>
             )}
             {isEditing && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-xs">
                 {sale?.is_draft ? 'Rascunho' : 'Finalizada'}
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {isEditing && sale && !sale.is_draft && (
               <>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-9 md:h-9 text-xs md:text-sm"
                   onClick={handlePrintCupom}
                 >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Imprimir Cupom
+                  <Printer className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">Imprimir Cupom</span>
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="h-9 md:h-9 text-xs md:text-sm"
                   onClick={handleSavePDF}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Salvar PDF
+                  <Download className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">Salvar PDF</span>
                 </Button>
                 {selectedCliente?.whatsapp && (
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-9 md:h-9 text-xs md:text-sm"
                     onClick={handleSendWhatsApp}
                   >
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar WhatsApp
+                    <Send className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                    <span className="hidden md:inline">Enviar WhatsApp</span>
                   </Button>
                 )}
               </>
@@ -1399,27 +1404,35 @@ export default function NovaVenda() {
               <>
                 <Button
                   variant="outline"
+                  size="sm"
+                  className="h-9 md:h-10 text-xs md:text-sm flex-1 md:flex-initial"
                   onClick={handleSaveDraft}
                   disabled={isSaving || isDeleting}
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Salvando...' : 'Salvar Rascunho'}
+                  <Save className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">{isSaving ? 'Salvando...' : 'Salvar Rascunho'}</span>
+                  <span className="md:hidden">{isSaving ? 'Salvando...' : 'Salvar'}</span>
                 </Button>
                 <Button
+                  size="sm"
+                  className="h-9 md:h-10 text-xs md:text-sm flex-1 md:flex-initial"
                   onClick={handleFinalize}
                   disabled={cart.length === 0 || isSaving || isDeleting}
                 >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Finalizando...' : 'Finalizar Venda'}
+                  <ShoppingCart className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">{isSaving ? 'Finalizando...' : 'Finalizar Venda'}</span>
+                  <span className="md:hidden">{isSaving ? 'Finalizando...' : 'Finalizar'}</span>
                 </Button>
                 {isEditing && (sale?.is_draft || isAdmin) && (
                   <Button
                     variant="destructive"
+                    size="sm"
+                    className="h-9 md:h-10 text-xs md:text-sm"
                     onClick={handleDelete}
                     disabled={isSaving || isDeleting}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {isDeleting ? 'Excluindo...' : 'Excluir'}
+                    <Trash2 className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                    <span className="hidden md:inline">{isDeleting ? 'Excluindo...' : 'Excluir'}</span>
                   </Button>
                 )}
               </>
@@ -1427,17 +1440,17 @@ export default function NovaVenda() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
           {/* Coluna esquerda - Busca e Cliente */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3 md:space-y-4">
             {/* Busca de produtos */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Buscar Produto (F2)</CardTitle>
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="text-sm md:text-base">Buscar Produto (F2)</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 md:p-6 pt-0">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-4 md:w-4 text-muted-foreground" />
                   <Input
                     ref={searchInputRef}
                     placeholder="Digite o nome, código ou código de barras do produto..."
@@ -1448,23 +1461,23 @@ export default function NovaVenda() {
                         handleAddProduct(productResults[0]);
                       }
                     }}
-                    className="pl-9"
+                    className="pl-9 h-10 md:h-10 text-sm md:text-base"
                   />
                   {showProductSearch && productResults.length > 0 && (
                     <div className="absolute z-50 w-full bg-background border rounded shadow-lg max-h-64 overflow-auto mt-1">
                       {productResults.map(produto => (
                         <div
                           key={produto.id}
-                          className="p-3 hover:bg-muted cursor-pointer border-b last:border-0"
+                          className="p-2 md:p-3 hover:bg-muted cursor-pointer border-b last:border-0 active:bg-muted"
                           onClick={() => handleAddProduct(produto)}
                         >
-                          <p className="font-medium">{produto.descricao || ''}</p>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-xs text-muted-foreground">
+                          <p className="font-medium text-sm md:text-base">{produto.descricao || ''}</p>
+                          <div className="flex items-center justify-between mt-1 gap-2">
+                            <p className="text-xs text-muted-foreground truncate">
                               {produto.codigo && `Cód: ${produto.codigo}`}
                               {produto.codigo_barras && ` • Barras: ${produto.codigo_barras}`}
                             </p>
-                            <p className="text-sm font-semibold">
+                            <p className="text-xs md:text-sm font-semibold flex-shrink-0">
                               {currencyFormatters.brl(produto.preco_venda || 0)}
                             </p>
                           </div>
@@ -1478,13 +1491,13 @@ export default function NovaVenda() {
 
             {/* Cliente */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Cliente (Opcional)</CardTitle>
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="text-sm md:text-base">Cliente (Opcional)</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 md:p-6 pt-0">
                 <div className="space-y-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-4 md:w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar cliente por nome, CPF/CNPJ ou telefone..."
                       value={selectedCliente ? selectedCliente.nome : clienteSearch}
@@ -1495,7 +1508,7 @@ export default function NovaVenda() {
                         setClienteSearch(e.target.value);
                       }}
                       onFocus={() => setShowClienteSearch(true)}
-                      className="pl-9"
+                      className="pl-9 h-10 md:h-10 text-sm md:text-base"
                     />
                     {selectedCliente && (
                       <Button
@@ -1516,11 +1529,11 @@ export default function NovaVenda() {
                       {clienteResults.map(cliente => (
                         <div
                           key={cliente.id}
-                          className="p-2 hover:bg-muted cursor-pointer text-sm"
+                          className="p-2 hover:bg-muted cursor-pointer text-sm active:bg-muted"
                           onClick={() => handleSelectCliente(cliente)}
                         >
-                          <p className="font-medium">{cliente.nome}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="font-medium text-xs md:text-sm">{cliente.nome}</p>
+                          <p className="text-xs text-muted-foreground truncate">
                             {cliente.cpf_cnpj} • {cliente.telefone || cliente.whatsapp}
                           </p>
                         </div>
@@ -1528,17 +1541,18 @@ export default function NovaVenda() {
                     </div>
                   )}
                   {selectedCliente && (
-                    <div className="p-3 bg-muted/50 rounded-md">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{selectedCliente.nome}</p>
-                          <p className="text-xs text-muted-foreground">
+                    <div className="p-2 md:p-3 bg-muted/50 rounded-md">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm md:text-base truncate">{selectedCliente.nome}</p>
+                          <p className="text-xs text-muted-foreground truncate">
                             {selectedCliente.cpf_cnpj} • {selectedCliente.telefone || selectedCliente.whatsapp}
                           </p>
                         </div>
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-8 w-8 md:h-6 md:w-6 flex-shrink-0"
                           onClick={() => {
                             setSelectedCliente(null);
                             setClienteSearch('');
@@ -1555,23 +1569,23 @@ export default function NovaVenda() {
 
             {/* Carrinho */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Carrinho ({cart.length})</CardTitle>
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="text-sm md:text-base">Carrinho ({cart.length})</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 md:p-6 pt-0">
                 {cart.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Nenhum item no carrinho</p>
-                    <p className="text-sm">Use F2 para buscar produtos</p>
+                  <div className="text-center py-6 md:py-8 text-muted-foreground">
+                    <ShoppingCart className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm md:text-base">Nenhum item no carrinho</p>
+                    <p className="text-xs md:text-sm">Use F2 para buscar produtos</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 md:space-y-3">
                     {cart.map((item, index) => (
-                      <div key={index} className="border rounded-lg p-3">
+                      <div key={index} className="border rounded-lg p-2 md:p-3">
                         <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <p className="font-medium">{item.produto_nome}</p>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <p className="font-medium text-sm md:text-base truncate">{item.produto_nome}</p>
                             {item.produto_codigo && (
                               <p className="text-xs text-muted-foreground">Cód: {item.produto_codigo}</p>
                             )}
@@ -1579,20 +1593,20 @@ export default function NovaVenda() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-8 w-8 md:h-6 md:w-6 flex-shrink-0"
                             onClick={() => handleRemoveItem(index)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 items-center">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
                           <div>
                             <Label className="text-xs">Qtd</Label>
                             <div className="flex items-center gap-1">
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-7 w-7"
+                                className="h-8 w-8 md:h-7 md:w-7"
                                 onClick={() => handleUpdateQuantity(index, -1)}
                               >
                                 <Minus className="h-3 w-3" />
@@ -1606,14 +1620,14 @@ export default function NovaVenda() {
                                     i === index ? { ...it, quantidade: Math.max(0.001, qtd) } : it
                                   ));
                                 }}
-                                className="w-16 h-7 text-center text-sm"
+                                className="w-14 md:w-16 h-8 md:h-7 text-center text-xs md:text-sm"
                                 min="0.001"
                                 step="0.001"
                               />
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-7 w-7"
+                                className="h-8 w-8 md:h-7 md:w-7"
                                 onClick={() => handleUpdateQuantity(index, 1)}
                               >
                                 <Plus className="h-3 w-3" />
@@ -1631,7 +1645,7 @@ export default function NovaVenda() {
                                   i === index ? { ...it, valor_unitario: valor } : it
                                 ));
                               }}
-                              className="h-7 text-sm"
+                              className="h-8 md:h-7 text-xs md:text-sm"
                               step="0.01"
                             />
                           </div>
@@ -1644,13 +1658,13 @@ export default function NovaVenda() {
                                 const desconto = parseFloat(e.target.value) || 0;
                                 handleUpdateItemDiscount(index, desconto);
                               }}
-                              className="h-7 text-sm"
+                              className="h-8 md:h-7 text-xs md:text-sm"
                               step="0.01"
                             />
                           </div>
                           <div className="text-right">
                             <Label className="text-xs">Total</Label>
-                            <p className="font-semibold">
+                            <p className="font-semibold text-sm md:text-base">
                               {currencyFormatters.brl((item.valor_unitario * item.quantidade) - (item.desconto || 0))}
                             </p>
                           </div>
@@ -1666,7 +1680,7 @@ export default function NovaVenda() {
                                 ));
                               }}
                               placeholder="Ex: Película aplicada"
-                              className="h-7 text-sm"
+                              className="h-8 md:h-7 text-xs md:text-sm"
                             />
                           </div>
                         )}
@@ -1679,41 +1693,41 @@ export default function NovaVenda() {
           </div>
 
           {/* Coluna direita - Resumo */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Resumo</CardTitle>
+          <div className="space-y-3 md:space-y-4">
+            <Card className="sticky top-4 md:static">
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="text-sm md:text-base">Resumo</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm">
+              <CardContent className="p-3 md:p-6 pt-0 space-y-2 md:space-y-3">
+                <div className="flex justify-between text-xs md:text-sm">
                   <span>Subtotal:</span>
-                  <span>{currencyFormatters.brl(totals.subtotal)}</span>
+                  <span className="font-medium">{currencyFormatters.brl(totals.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-xs md:text-sm">
                   <span>Desconto Itens:</span>
-                  <span className="text-red-600">-{currencyFormatters.brl(totals.descontoItens)}</span>
+                  <span className="text-red-600 font-medium">-{currencyFormatters.brl(totals.descontoItens)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between items-center text-xs md:text-sm gap-2">
                   <span>Desconto Total:</span>
                   <Input
                     type="number"
                     value={descontoTotal}
                     onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
-                    className="h-7 w-24 text-sm"
+                    className="h-8 md:h-7 w-20 md:w-24 text-xs md:text-sm"
                     step="0.01"
                   />
                 </div>
-                <div className="border-t pt-2 flex justify-between font-bold text-lg">
+                <div className="border-t pt-2 flex justify-between font-bold text-base md:text-lg">
                   <span>Total:</span>
                   <span>{currencyFormatters.brl(totals.total)}</span>
                 </div>
                 {isEditing && (
                   <>
-                    <div className="border-t pt-2 flex justify-between text-sm">
+                    <div className="border-t pt-2 flex justify-between text-xs md:text-sm">
                       <span>Total Pago:</span>
-                      <span className="text-green-600">{currencyFormatters.brl(totalPago)}</span>
+                      <span className="text-green-600 font-medium">{currencyFormatters.brl(totalPago)}</span>
                     </div>
-                    <div className="flex justify-between font-semibold">
+                    <div className="flex justify-between font-semibold text-sm md:text-base">
                       <span>Saldo Restante:</span>
                       <span className={cn(
                         saldoRestante > 0 ? "text-orange-600" : "text-green-600"
@@ -1728,16 +1742,16 @@ export default function NovaVenda() {
 
             {/* Observações */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Observações</CardTitle>
+              <CardHeader className="p-3 md:p-6">
+                <CardTitle className="text-sm md:text-base">Observações</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 md:p-6 pt-0">
                 <Textarea
                   value={observacoes}
                   onChange={(e) => setObservacoes(e.target.value)}
                   placeholder="Observações gerais da venda..."
-                  rows={4}
-                  className="resize-none"
+                  rows={3}
+                  className="resize-none text-sm md:text-base"
                 />
               </CardContent>
             </Card>

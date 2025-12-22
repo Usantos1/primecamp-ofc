@@ -38,6 +38,7 @@ import {
 import { PatternLock } from '@/components/assistencia/PatternLock';
 import { useOSImageReference } from '@/hooks/useOSImageReference';
 import { OSImageReferenceViewer } from '@/components/assistencia/OSImageReferenceViewer';
+import { CameraCapture } from '@/components/assistencia/CameraCapture';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
@@ -1716,81 +1717,127 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Header com tabs */}
-          <div className="border-b-2 mb-2">
-            <div className="overflow-x-auto">
-              <TabsList className="w-max min-w-full justify-start bg-transparent h-auto p-0 gap-0">
-                {/* GRUPO: ENTRADA */}
+          <div className="border-b-2 border-gray-300 mb-2">
+            {/* Mobile: 2 linhas */}
+            <div className="md:hidden">
+              <TabsList className="w-full grid grid-cols-2 bg-gradient-to-br from-gray-50 to-gray-100 h-auto p-1 gap-1 rounded-lg border-2 border-gray-200">
+                {/* Linha 1 */}
                 <TabsTrigger 
                   value="dados" 
-                  className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                  className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
                 >
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Dados da OS</span>
-                  <span className="sm:hidden">Dados</span>
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Dados</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="checklist" 
-                  className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                  className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Check</span>
+                </TabsTrigger>
+                {isEditing && (
+                  <>
+                    <TabsTrigger 
+                      value="resolucao" 
+                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <span>Resol</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="tecnico" 
+                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      <span>Técnico</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="itens" 
+                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      <span>Itens ({itens.length})</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="fotos" 
+                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-pink-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-pink-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                    >
+                      <Image className="h-3.5 w-3.5" />
+                      <span>Fotos</span>
+                    </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+            </div>
+            {/* Desktop: linha única */}
+            <div className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <TabsList className="w-max min-w-full justify-start bg-gradient-to-r from-gray-50 to-gray-100/50 h-auto p-1 gap-1 rounded-lg border-2 border-gray-200">
+                {/* GRUPO: ENTRADA */}
+                <TabsTrigger 
+                  value="dados" 
+                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Dados da OS</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="checklist" 
+                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
                 >
                   <Check className="h-4 w-4" />
-                  <span className="hidden sm:inline">Checklist</span>
-                  <span className="sm:hidden">Check</span>
+                  <span>Checklist</span>
                 </TabsTrigger>
                 {isEditing && (
                   <>
                     {/* Separador visual */}
-                    <div className="h-6 w-px bg-border mx-1" />
+                    <div className="h-8 w-px bg-gray-300 mx-1" />
                     
                     {/* GRUPO: EXECUÇÃO */}
                     <TabsTrigger 
                       value="resolucao" 
-                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
                     >
                       <AlertTriangle className="h-4 w-4" />
-                      <span className="hidden sm:inline">Resolução</span>
-                      <span className="sm:hidden">Resol</span>
+                      <span>Resolução</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="tecnico" 
-                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
                     >
                       <Settings className="h-4 w-4" />
-                      <span className="hidden sm:inline">Info. Técnicas</span>
-                      <span className="sm:hidden">Técnico</span>
+                      <span>Info. Técnicas</span>
                     </TabsTrigger>
                     
                     {/* Separador visual */}
-                    <div className="h-6 w-px bg-border mx-1" />
+                    <div className="h-8 w-px bg-gray-300 mx-1" />
                     
                     {/* GRUPO: VENDA */}
                     <TabsTrigger 
                       value="itens" 
-                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
                     >
                       <Package className="h-4 w-4" />
-                      <span className="hidden sm:inline">Peças/Serviços ({itens.length})</span>
-                      <span className="sm:hidden">Itens ({itens.length})</span>
+                      <span>Peças/Serviços ({itens.length})</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="financeiro" 
-                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
                     >
                       <DollarSign className="h-4 w-4" />
-                      <span className="hidden sm:inline">Financeiro</span>
-                      <span className="sm:hidden">Fin</span>
+                      <span>Financeiro</span>
                     </TabsTrigger>
                     
                     {/* Separador visual */}
-                    <div className="h-6 w-px bg-border mx-1" />
+                    <div className="h-8 w-px bg-gray-300 mx-1" />
                     
                     {/* GRUPO: ENTREGA */}
                     <TabsTrigger 
                       value="fotos" 
-                      className="whitespace-nowrap gap-2 px-3 sm:px-4 py-2.5 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-semibold text-xs sm:text-sm data-[state=active]:text-primary"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-pink-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-pink-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
                     >
                       <Image className="h-4 w-4" />
-                      <span className="hidden sm:inline">Fotos</span>
-                      <span className="sm:hidden">Fotos</span>
+                      <span>Fotos</span>
                     </TabsTrigger>
                   </>
                 )}
@@ -1812,8 +1859,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 tecnicoNome={currentOS.tecnico_id ? getColaboradorById(currentOS.tecnico_id)?.nome || currentOS.tecnico_nome : undefined}
               />
               {/* Indicador de Progresso */}
-              <Card>
-                <CardContent className="pt-4">
+              <Card className="border-2 border-gray-300">
+                <CardContent className="pt-3 md:pt-4 px-3 md:px-6">
                   <OSProgressIndicator
                     etapas={[
                       { id: 'dados', label: 'Dados', concluida: !!currentOS.cliente_id && !!currentOS.descricao_problema },
@@ -1830,20 +1877,20 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Tab Dados */}
-          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2 overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-3 flex-1 min-h-0 items-stretch w-full max-w-full">
+          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2 md:p-2 overflow-x-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-2 md:gap-3 flex-1 min-h-0 items-stretch w-full max-w-full">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="flex flex-col h-full overflow-hidden border-2 min-w-0 w-full max-w-full">
-                <CardHeader className="pb-2 pt-3 flex-shrink-0 border-b-2">
-                  <CardTitle className="text-base font-semibold">Dados da OS</CardTitle>
+              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0 w-full max-w-full">
+                <CardHeader className="pb-2 pt-2 md:pt-3 flex-shrink-0 border-b-2 border-gray-300">
+                  <CardTitle className="text-sm md:text-base font-semibold">Dados da OS</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-3 flex-1 overflow-y-auto">
+                <CardContent className="space-y-2 md:space-y-3 pt-2 md:pt-3 flex-1 overflow-y-auto">
                   {/* Cliente */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-sm font-medium">Cliente</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
+                    <div className="space-y-1.5 md:space-y-2 md:col-span-2">
+                      <Label className="text-xs md:text-sm font-medium">Cliente</Label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
                         <Input
                           placeholder="Buscar cliente..."
                           value={selectedCliente ? selectedCliente.nome : clienteSearch}
@@ -1856,7 +1903,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setShowClienteSearch(true);
                           }}
                           onFocus={() => setShowClienteSearch(true)}
-                          className="pl-10 h-10 text-sm"
+                          className="pl-8 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
                         />
                         {selectedCliente && (
                           <Button 
@@ -1890,22 +1937,22 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </div>
                       )}
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Telefone *</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Telefone *</Label>
                       <Input
                         value={formData.telefone_contato || selectedCliente?.telefone || selectedCliente?.whatsapp || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, telefone_contato: e.target.value }))}
                         placeholder="(99) 99999-9999"
-                        className="h-10 text-sm"
+                        className="h-9 md:h-10 text-xs md:text-sm"
                         required
                       />
                     </div>
                   </div>
                   
                   {/* Aparelho - Linha 1 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Marca *</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Marca *</Label>
                       <Select 
                         value={formData.marca_id || ''} 
                         onValueChange={(v) => {
@@ -1916,7 +1963,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }));
                         }}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm">
+                        <SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm">
                           <SelectValue placeholder="Marca">
                             {formData.marca_id && marcas.length > 0 
                               ? (marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome || '')
@@ -1934,8 +1981,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Modelo *</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Modelo *</Label>
                       <Select 
                         value={formData.modelo_id || ''} 
                         onValueChange={(v) => {
@@ -1943,7 +1990,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }}
                         disabled={!formData.marca_id}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm" disabled={!formData.marca_id}>
+                        <SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm" disabled={!formData.marca_id}>
                           <SelectValue placeholder="Modelo">
                             {formData.modelo_id && modelosFiltrados.length > 0
                               ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
@@ -1963,17 +2010,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">IMEI</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">IMEI</Label>
                       <Input
                         value={formData.imei}
                         onChange={(e) => setFormData(prev => ({ ...prev, imei: e.target.value }))}
                         placeholder="IMEI"
-                        className="h-10 text-sm"
+                        className="h-9 md:h-10 text-xs md:text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Nº Série</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Nº Série</Label>
                       <Input
                         value={formData.numero_serie}
                         onChange={(e) => setFormData(prev => ({ ...prev, numero_serie: e.target.value }))}
@@ -1984,48 +2031,48 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Aparelho - Linha 2 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Cor</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Cor</Label>
                       <Input
                         value={formData.cor}
                         onChange={(e) => setFormData(prev => ({ ...prev, cor: e.target.value }))}
                         placeholder="Cor"
-                        className="h-10 text-sm"
+                        className="h-9 md:h-10 text-xs md:text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Operadora</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Operadora</Label>
                       <Input
                         value={formData.operadora}
                         onChange={(e) => setFormData(prev => ({ ...prev, operadora: e.target.value }))}
                         placeholder="Operadora"
-                        className="h-10 text-sm"
+                        className="h-9 md:h-10 text-xs md:text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Previsão Entrega</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Previsão Entrega</Label>
                       <Input
                         type="date"
                         value={formData.previsao_entrega}
                         onChange={(e) => setFormData(prev => ({ ...prev, previsao_entrega: e.target.value }))}
-                        className="h-10 text-sm"
+                        className="h-9 md:h-10 text-xs md:text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Hora</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Hora</Label>
                       <Input
                         type="time"
                         value={formData.hora_previsao || '18:00'}
                         onChange={(e) => setFormData(prev => ({ ...prev, hora_previsao: e.target.value }))}
-                        className="h-10 text-sm"
+                        className="h-9 md:h-10 text-xs md:text-sm"
                       />
                     </div>
                   </div>
 
                   {/* Deixou Aparelho */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Deixou aparelho</Label>
+                  <div className="space-y-1.5 md:space-y-2">
+                    <Label className="text-xs md:text-sm font-medium">Deixou aparelho</Label>
                     <Select 
                       value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
                       onValueChange={(v) => {
@@ -2036,7 +2083,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-10 text-sm">
+                      <SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm">
                         <SelectValue placeholder="Selecione">
                           {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'HORÁRIO AGENDADO' : 'NÃO'}
                         </SelectValue>
@@ -2050,25 +2097,25 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Descrição e Condições */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Descrição do Problema *</Label>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-3">
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Descrição do Problema *</Label>
                       <Textarea
                         value={formData.descricao_problema}
                         onChange={(e) => setFormData(prev => ({ ...prev, descricao_problema: e.target.value }))}
                         placeholder="Descreva o problema..."
                         rows={3}
-                        className="resize-none text-sm"
+                        className="resize-none text-xs md:text-sm"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Condições do Equipamento</Label>
+                    <div className="space-y-1.5 md:space-y-2">
+                      <Label className="text-xs md:text-sm font-medium">Condições do Equipamento</Label>
                       <Textarea
                         value={formData.condicoes_equipamento}
                         onChange={(e) => setFormData(prev => ({ ...prev, condicoes_equipamento: e.target.value }))}
                         placeholder="Estado físico..."
                         rows={3}
-                        className="resize-none text-sm"
+                        className="resize-none text-xs md:text-sm"
                       />
                     </div>
                   </div>
@@ -2077,8 +2124,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Orçamento pré autorizado</Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Cartão Débito/Crédito até 6x</Label>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <Label className="text-[10px] md:text-xs text-muted-foreground">Cartão Débito/Crédito até 6x</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -2091,11 +2138,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setFormData(prev => ({ ...prev, orcamento_parcelado: numValue }));
                           }}
                           placeholder="0,00"
-                          className="h-10 text-sm"
+                          className="h-9 md:h-10 text-xs md:text-sm"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Dinheiro ou PIX</Label>
+                      <div className="space-y-1.5 md:space-y-2">
+                        <Label className="text-[10px] md:text-xs text-muted-foreground">Dinheiro ou PIX</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -2108,7 +2155,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setFormData(prev => ({ ...prev, orcamento_desconto: numValue }));
                           }}
                           placeholder="0,00"
-                          className="h-10 text-sm"
+                          className="h-9 md:h-10 text-xs md:text-sm"
                         />
                       </div>
                     </div>
@@ -2117,17 +2164,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha e Áreas com Defeito */}
-              <Card className="flex flex-col h-full overflow-hidden border-2 min-w-0 w-full max-w-full">
-                <CardHeader className="pb-2 pt-3 flex-shrink-0 border-b-2">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 truncate">
-                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0 w-full max-w-full">
+                <CardHeader className="pb-2 pt-2 md:pt-3 flex-shrink-0 border-b-2 border-gray-300">
+                  <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2 truncate">
+                    <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="truncate">Senha e Áreas com Defeito</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-4 px-2 box-border">
+                <CardContent className="pt-2 md:pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3 md:space-y-4 px-2 box-border">
                   {/* Seção Senha */}
-                  <div className="space-y-3 flex-shrink-0 w-full min-w-0">
-                    <Label className="text-sm font-medium truncate">Possui senha</Label>
+                  <div className="space-y-2 md:space-y-3 flex-shrink-0 w-full min-w-0">
+                    <Label className="text-xs md:text-sm font-medium truncate">Possui senha</Label>
                     <Select 
                       value={formData.possui_senha_tipo || 'nao'} 
                       onValueChange={(v) => {
@@ -2171,12 +2218,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                     {/* Senha - PatternLock quando DESLIZAR */}
                     {formData.possui_senha_tipo === 'deslizar' && (
-                      <div className="space-y-2 flex-shrink-0 w-full min-w-0">
-                        <div className="flex justify-center items-center w-full overflow-hidden">
+                      <div className="space-y-2 flex-shrink-0 w-full min-w-0 py-4 md:py-2">
+                        <div className="flex justify-center items-center w-full">
                           <PatternLock
                             value={formData.padrao_desbloqueio}
                             onChange={(pattern) => setFormData(prev => ({ ...prev, padrao_desbloqueio: pattern }))}
-                            className="flex-shrink-0 max-w-full"
+                            className="flex-shrink-0"
                           />
                         </div>
                         <Input
@@ -2448,9 +2495,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           {/* Tab Resolução do Problema */}
           {isEditing && (
             <TabsContent value="resolucao" className="space-y-2 mt-2">
-              <Card className="border-2 m-2">
-                <CardHeader className="pb-2 pt-3 border-b-2 flex-shrink-0">
-                  <CardTitle className="text-base font-semibold">Resolução do Problema</CardTitle>
+              <Card className="border-2 border-gray-300 m-2">
+                <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
+                  <CardTitle className="text-sm md:text-base font-semibold">Resolução do Problema</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-3 space-y-4">
                   <div className="space-y-2">
@@ -2563,9 +2610,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           {isEditing && (
             <TabsContent value="tecnico" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
               <Card className="border-2 m-2 flex flex-col h-full">
-                <CardHeader className="pb-2 pt-3 border-b-2 flex-shrink-0">
-                  <CardTitle className="text-base font-semibold">Informações Técnicas Internas</CardTitle>
-                  <CardDescription className="text-xs">Anotações internas que não aparecem para o cliente</CardDescription>
+                <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
+                  <CardTitle className="text-sm md:text-base font-semibold">Informações Técnicas Internas</CardTitle>
+                  <CardDescription className="text-[10px] md:text-xs">Anotações internas que não aparecem para o cliente</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-3 flex-1 flex flex-col min-h-0">
                   <Textarea
@@ -2582,14 +2629,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           {/* Tab Fotos */}
           {isEditing && (
             <TabsContent value="fotos" className="flex-1 flex flex-col min-h-0 space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Fotos da Ordem de Serviço</CardTitle>
-                  <CardDescription>
+              <Card className="border-2 border-gray-300 shadow-lg">
+                <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b-2 border-gray-300">
+                  <CardTitle className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <Image className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+                    Fotos da Ordem de Serviço
+                  </CardTitle>
+                  <CardDescription className="text-xs md:text-sm text-gray-600">
                     Fotos serão enviadas automaticamente para o Telegram
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-4">
                   {/* Configuração dos Chat IDs do Telegram - Colapsável */}
                   <Collapsible>
                     <CollapsibleTrigger asChild>
@@ -2671,8 +2721,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                   {/* Botões de upload por tipo */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Fotos de Entrada</Label>
+                    <div className="space-y-2 p-3 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50">
+                      <Label className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                        <Image className="h-4 w-4 text-blue-600" />
+                        Fotos de Entrada
+                      </Label>
                       <div className="flex gap-2">
                         <input
                           type="file"
@@ -2780,15 +2833,112 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full"
+                          className="flex-1 border-2 border-blue-300 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
                           disabled={!telegramChatIdEntrada || telegramLoading}
                           onClick={() => {
                             document.getElementById('upload-entrada')?.click();
                           }}
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {telegramLoading ? 'Enviando...' : 'Adicionar Fotos Entrada'}
+                          <Upload className="h-4 w-4 mr-2 text-blue-600" />
+                          <span className="hidden sm:inline">{telegramLoading ? 'Enviando...' : 'Adicionar Fotos'}</span>
+                          <span className="sm:hidden">{telegramLoading ? '...' : 'Arquivo'}</span>
                         </Button>
+                        <CameraCapture
+                          onCapture={async (files) => {
+                            if (files.length === 0) return;
+                            
+                            if (!currentOS?.numero) {
+                              toast({
+                                title: 'Erro',
+                                description: 'Salve a OS antes de adicionar fotos',
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            const chatId = telegramChatIdEntrada || currentOS?.telegram_chat_id_entrada;
+                            if (!chatId) {
+                              toast({
+                                title: 'Erro',
+                                description: 'Configure o Chat ID de Entrada acima',
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            toast({
+                              title: 'Enviando fotos...',
+                              description: `Enviando ${files.length} foto(s) de entrada para o Telegram`,
+                            });
+
+                            try {
+                              const results = await sendTelegramPhotos(
+                                files,
+                                currentOS.numero,
+                                'entrada',
+                                chatId,
+                                `OS-${currentOS.numero} - Fotos de Entrada`
+                              );
+
+                              const successful = results.filter(r => r.success);
+                              const failed = results.filter(r => !r.success);
+
+                              if (successful.length > 0) {
+                                const newPhotos = successful.map((r, idx) => ({
+                                  url: r.fileUrl || undefined,
+                                  thumbnailUrl: r.thumbnailUrl || undefined,
+                                  postLink: r.postLink || undefined,
+                                  fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
+                                  tipo: 'entrada' as const,
+                                  enviadoEm: new Date().toISOString(),
+                                  messageId: r.messageId,
+                                  fileId: r.fileId,
+                                  chatId: chatId,
+                                }));
+                                const updatedFotos = [
+                                  ...(currentOS.fotos_telegram_entrada || []),
+                                  ...newPhotos
+                                ];
+
+                                await updateOS(currentOS.id, {
+                                  fotos_telegram_entrada: updatedFotos,
+                                  telegram_chat_id_entrada: chatId,
+                                });
+                                
+                                const osAtualizada = getOSById(currentOS.id);
+                                if (osAtualizada) {
+                                  setCurrentOS(osAtualizada);
+                                }
+
+                                if (failed.length > 0) {
+                                  toast({
+                                    title: 'Parcialmente enviado',
+                                    description: `${successful.length} foto(s) enviada(s), ${failed.length} falharam`,
+                                  });
+                                } else {
+                                  toast({
+                                    title: '✅ Fotos enviadas!',
+                                    description: `${successful.length} foto(s) de entrada enviada(s) com sucesso`,
+                                  });
+                                }
+                              } else {
+                                toast({
+                                  title: 'Erro no envio',
+                                  description: failed[0]?.error || 'Falha ao enviar fotos',
+                                  variant: 'destructive'
+                                });
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: 'Erro',
+                                description: error.message || 'Erro ao enviar fotos',
+                                variant: 'destructive'
+                              });
+                            }
+                          }}
+                          multiple={true}
+                          disabled={!telegramChatIdEntrada || telegramLoading || !currentOS?.numero}
+                        />
                       </div>
                       {currentOS?.fotos_telegram_entrada && currentOS.fotos_telegram_entrada.length > 0 && (
                         <div className="text-xs text-muted-foreground">
@@ -2797,8 +2947,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Fotos de Processo</Label>
+                    <div className="space-y-2 p-3 rounded-lg border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100/50">
+                      <Label className="text-sm font-semibold text-orange-900 flex items-center gap-2">
+                        <Image className="h-4 w-4 text-orange-600" />
+                        Fotos de Processo
+                      </Label>
                       <div className="flex gap-2">
                         <input
                           type="file"
@@ -2910,15 +3063,112 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full"
+                          className="flex-1 border-2 border-orange-300 hover:border-orange-500 hover:bg-orange-50 transition-all duration-200"
                           disabled={!telegramChatIdProcesso || telegramLoading}
                           onClick={() => {
                             document.getElementById('upload-processo')?.click();
                           }}
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {telegramLoading ? 'Enviando...' : 'Adicionar Fotos Processo'}
+                          <Upload className="h-4 w-4 mr-2 text-orange-600" />
+                          <span className="hidden sm:inline">{telegramLoading ? 'Enviando...' : 'Adicionar Fotos'}</span>
+                          <span className="sm:hidden">{telegramLoading ? '...' : 'Arquivo'}</span>
                         </Button>
+                        <CameraCapture
+                          onCapture={async (files) => {
+                            if (files.length === 0) return;
+                            
+                            if (!currentOS?.numero) {
+                              toast({
+                                title: 'Erro',
+                                description: 'Salve a OS antes de adicionar fotos',
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            const chatId = telegramChatIdProcesso || currentOS?.telegram_chat_id_processo;
+                            if (!chatId) {
+                              toast({
+                                title: 'Erro',
+                                description: 'Configure o Chat ID de Processo acima',
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            toast({
+                              title: 'Enviando fotos...',
+                              description: `Enviando ${files.length} foto(s) de processo para o Telegram`,
+                            });
+
+                            try {
+                              const results = await sendTelegramPhotos(
+                                files,
+                                currentOS.numero,
+                                'processo',
+                                chatId,
+                                `OS-${currentOS.numero} - Fotos de Processo`
+                              );
+
+                              const successful = results.filter(r => r.success);
+                              const failed = results.filter(r => !r.success);
+
+                              if (successful.length > 0) {
+                                const newPhotos = successful.map((r, idx) => ({
+                                  url: r.fileUrl || undefined,
+                                  thumbnailUrl: r.thumbnailUrl || undefined,
+                                  postLink: r.postLink || undefined,
+                                  fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
+                                  tipo: 'processo' as const,
+                                  enviadoEm: new Date().toISOString(),
+                                  messageId: r.messageId,
+                                  fileId: r.fileId,
+                                  chatId: chatId,
+                                }));
+                                const updatedFotos = [
+                                  ...(currentOS.fotos_telegram_processo || []),
+                                  ...newPhotos
+                                ];
+
+                                await updateOS(currentOS.id, {
+                                  fotos_telegram_processo: updatedFotos,
+                                  telegram_chat_id_processo: chatId,
+                                });
+                                
+                                const osAtualizada = getOSById(currentOS.id);
+                                if (osAtualizada) {
+                                  setCurrentOS(osAtualizada);
+                                }
+
+                                if (failed.length > 0) {
+                                  toast({
+                                    title: 'Parcialmente enviado',
+                                    description: `${successful.length} foto(s) enviada(s), ${failed.length} falharam`,
+                                  });
+                                } else {
+                                  toast({
+                                    title: '✅ Fotos enviadas!',
+                                    description: `${successful.length} foto(s) de processo enviada(s) com sucesso`,
+                                  });
+                                }
+                              } else {
+                                toast({
+                                  title: 'Erro no envio',
+                                  description: failed[0]?.error || 'Falha ao enviar fotos',
+                                  variant: 'destructive'
+                                });
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: 'Erro',
+                                description: error.message || 'Erro ao enviar fotos',
+                                variant: 'destructive'
+                              });
+                            }
+                          }}
+                          multiple={true}
+                          disabled={!telegramChatIdProcesso || telegramLoading || !currentOS?.numero}
+                        />
                       </div>
                       {currentOS?.fotos_telegram_processo && currentOS.fotos_telegram_processo.length > 0 && (
                         <div className="text-xs text-muted-foreground">
@@ -2927,8 +3177,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Fotos de Saída</Label>
+                    <div className="space-y-2 p-3 rounded-lg border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100/50">
+                      <Label className="text-sm font-semibold text-green-900 flex items-center gap-2">
+                        <Image className="h-4 w-4 text-green-600" />
+                        Fotos de Saída
+                      </Label>
                       <div className="flex gap-2">
                         <input
                           type="file"
@@ -3038,15 +3291,112 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full"
+                          className="flex-1 border-2 border-green-300 hover:border-green-500 hover:bg-green-50 transition-all duration-200"
                           disabled={!telegramChatIdSaida || telegramLoading}
                           onClick={() => {
                             document.getElementById('upload-saida')?.click();
                           }}
                         >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {telegramLoading ? 'Enviando...' : 'Adicionar Fotos Saída'}
+                          <Upload className="h-4 w-4 mr-2 text-green-600" />
+                          <span className="hidden sm:inline">{telegramLoading ? 'Enviando...' : 'Adicionar Fotos'}</span>
+                          <span className="sm:hidden">{telegramLoading ? '...' : 'Arquivo'}</span>
                         </Button>
+                        <CameraCapture
+                          onCapture={async (files) => {
+                            if (files.length === 0) return;
+                            
+                            if (!currentOS?.numero) {
+                              toast({
+                                title: 'Erro',
+                                description: 'Salve a OS antes de adicionar fotos',
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            const chatId = telegramChatIdSaida || currentOS?.telegram_chat_id_saida;
+                            if (!chatId) {
+                              toast({
+                                title: 'Erro',
+                                description: 'Configure o Chat ID de Saída acima',
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            toast({
+                              title: 'Enviando fotos...',
+                              description: `Enviando ${files.length} foto(s) de saída para o Telegram`,
+                            });
+
+                            try {
+                              const results = await sendTelegramPhotos(
+                                files,
+                                currentOS.numero,
+                                'saida',
+                                chatId,
+                                `OS-${currentOS.numero} - Fotos de Saída`
+                              );
+
+                              const successful = results.filter(r => r.success);
+                              const failed = results.filter(r => !r.success);
+
+                              if (successful.length > 0) {
+                                const newPhotos = successful.map((r, idx) => ({
+                                  url: r.fileUrl || undefined,
+                                  thumbnailUrl: r.thumbnailUrl || undefined,
+                                  postLink: r.postLink || undefined,
+                                  fileName: files[idx]?.name || `foto_${idx + 1}.jpg`,
+                                  tipo: 'saida' as const,
+                                  enviadoEm: new Date().toISOString(),
+                                  messageId: r.messageId,
+                                  fileId: r.fileId,
+                                  chatId: chatId,
+                                }));
+                                const updatedFotos = [
+                                  ...(currentOS.fotos_telegram_saida || []),
+                                  ...newPhotos
+                                ];
+
+                                await updateOS(currentOS.id, {
+                                  fotos_telegram_saida: updatedFotos,
+                                  telegram_chat_id_saida: chatId,
+                                });
+                                
+                                const osAtualizada = getOSById(currentOS.id);
+                                if (osAtualizada) {
+                                  setCurrentOS(osAtualizada);
+                                }
+
+                                if (failed.length > 0) {
+                                  toast({
+                                    title: 'Parcialmente enviado',
+                                    description: `${successful.length} foto(s) enviada(s), ${failed.length} falharam`,
+                                  });
+                                } else {
+                                  toast({
+                                    title: '✅ Fotos enviadas!',
+                                    description: `${successful.length} foto(s) de saída enviada(s) com sucesso`,
+                                  });
+                                }
+                              } else {
+                                toast({
+                                  title: 'Erro no envio',
+                                  description: failed[0]?.error || 'Falha ao enviar fotos',
+                                  variant: 'destructive'
+                                });
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: 'Erro',
+                                description: error.message || 'Erro ao enviar fotos',
+                                variant: 'destructive'
+                              });
+                            }
+                          }}
+                          multiple={true}
+                          disabled={!telegramChatIdSaida || telegramLoading || !currentOS?.numero}
+                        />
                       </div>
                       {currentOS?.fotos_telegram_saida && currentOS.fotos_telegram_saida.length > 0 && (
                         <div className="text-xs text-muted-foreground">
@@ -3060,23 +3410,23 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {(currentOS?.fotos_telegram_entrada?.length || 0) > 0 ||
                    (currentOS?.fotos_telegram_processo?.length || 0) > 0 ||
                    (currentOS?.fotos_telegram_saida?.length || 0) > 0 ? (
-                    <div className="flex items-center gap-3 mb-4 p-3 bg-muted/50 rounded-lg">
-                      <Image className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Fotos:</span>
+                    <div className="flex items-center gap-3 mb-4 p-4 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 rounded-lg border-2 border-gray-200 shadow-md">
+                      <Image className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+                      <span className="text-sm md:text-base font-semibold text-gray-800">Fotos:</span>
                       {currentOS?.fotos_telegram_entrada?.length > 0 && (
-                        <Badge variant="outline" className="gap-1">
+                        <Badge variant="outline" className="gap-1 border-2 border-blue-300 bg-blue-100 text-blue-900 font-semibold hover:bg-blue-200 transition-colors">
                           <Image className="h-3 w-3" />
                           Entrada: {currentOS.fotos_telegram_entrada.length}
                         </Badge>
                       )}
                       {currentOS?.fotos_telegram_processo?.length > 0 && (
-                        <Badge variant="outline" className="gap-1">
+                        <Badge variant="outline" className="gap-1 border-2 border-orange-300 bg-orange-100 text-orange-900 font-semibold hover:bg-orange-200 transition-colors">
                           <Image className="h-3 w-3" />
                           Processo: {currentOS.fotos_telegram_processo.length}
                         </Badge>
                       )}
                       {currentOS?.fotos_telegram_saida?.length > 0 && (
-                        <Badge variant="outline" className="gap-1">
+                        <Badge variant="outline" className="gap-1 border-2 border-green-300 bg-green-100 text-green-900 font-semibold hover:bg-green-200 transition-colors">
                           <Image className="h-3 w-3" />
                           Saída: {currentOS.fotos_telegram_saida.length}
                         </Badge>
@@ -4031,9 +4381,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         </Dialog>
 
         {/* Rodapé com ações */}
-        <div className="border-t bg-background p-3 sm:p-4 flex-shrink-0 mt-auto">
+        <div className="border-t-2 border-gray-300 bg-background p-3 sm:p-4 flex-shrink-0 mt-auto">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
               {!isModal && (
                 <Button
                   variant="ghost"
@@ -4081,7 +4431,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               )}
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+            <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
               {isEditing && currentOS && (
                 <>
                   <Button 

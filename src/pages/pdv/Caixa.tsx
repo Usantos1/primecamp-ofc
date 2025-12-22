@@ -262,53 +262,53 @@ export default function Caixa() {
 
   return (
     <ModernLayout title="Caixa" subtitle="Abertura, fechamento e movimentos de caixa">
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
         {/* Status do Caixa */}
-        <Card>
-          <CardHeader>
+        <Card className="border-2 border-gray-300">
+          <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Status do Caixa</CardTitle>
+              <CardTitle className="text-base md:text-lg">Status do Caixa</CardTitle>
               {currentSession ? (
-                <Badge className="bg-green-100 text-green-800">
+                <Badge className="bg-green-100 text-green-800 text-xs md:text-sm">
                   <Unlock className="h-3 w-3 mr-1" />
                   Aberto
                 </Badge>
               ) : (
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs md:text-sm">
                   <Lock className="h-3 w-3 mr-1" />
                   Fechado
                 </Badge>
               )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 md:p-6">
             {currentSession ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <Label className="text-sm text-muted-foreground">Valor Inicial</Label>
+              <div className="space-y-3 md:space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
+                  <div className="p-3 md:p-4 bg-muted rounded-lg border-2 border-gray-300">
+                    <div className="flex items-center gap-2 mb-1 md:mb-2">
+                      <DollarSign className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+                      <Label className="text-xs md:text-sm text-muted-foreground">Valor Inicial</Label>
                     </div>
-                    <p className="text-2xl font-bold">{currencyFormatters.brl(currentSession.valor_inicial)}</p>
+                    <p className="text-xl md:text-2xl font-bold">{currencyFormatters.brl(currentSession.valor_inicial)}</p>
                   </div>
                   
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                      <Label className="text-sm text-muted-foreground">Total Entradas</Label>
+                  <div className="p-3 md:p-4 bg-muted rounded-lg border-2 border-gray-300">
+                    <div className="flex items-center gap-2 mb-1 md:mb-2">
+                      <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" />
+                      <Label className="text-xs md:text-sm text-muted-foreground">Total Entradas</Label>
                     </div>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className="text-xl md:text-2xl font-bold text-green-600">
                       {currencyFormatters.brl(totalEntradas)}
                     </p>
                   </div>
                   
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                      <Label className="text-sm text-muted-foreground">Total Saídas</Label>
+                  <div className="p-3 md:p-4 bg-muted rounded-lg border-2 border-gray-300">
+                    <div className="flex items-center gap-2 mb-1 md:mb-2">
+                      <TrendingDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" />
+                      <Label className="text-xs md:text-sm text-muted-foreground">Total Saídas</Label>
                     </div>
-                    <p className="text-2xl font-bold text-red-600">
+                    <p className="text-xl md:text-2xl font-bold text-red-600">
                       {currencyFormatters.brl(totalSaidas)}
                     </p>
                   </div>
@@ -317,13 +317,13 @@ export default function Caixa() {
                 {/* Cards de Formas de Pagamento */}
                 {Object.keys(pagamentosPorForma).length > 0 && (
                   <div>
-                    <Label className="text-sm font-semibold mb-3 block">Totais por Forma de Pagamento:</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <Label className="text-xs md:text-sm font-semibold mb-2 md:mb-3 block">Totais por Forma de Pagamento:</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
                       {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
-                        <Card key={forma} className="p-3">
+                        <Card key={forma} className="p-2 md:p-3 border-2 border-gray-300">
                           <CardContent className="p-0">
                             <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground mb-1 capitalize">
+                              <span className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1 capitalize">
                                 {forma === 'dinheiro' ? 'Dinheiro' : 
                                  forma === 'pix' ? 'PIX' :
                                  forma === 'debito' ? 'Débito' :
@@ -331,7 +331,7 @@ export default function Caixa() {
                                  forma === 'link_pagamento' ? 'Link' :
                                  forma === 'carteira_digital' ? 'Carteira' : forma}
                               </span>
-                              <span className="text-lg font-bold text-primary">
+                              <span className="text-base md:text-lg font-bold text-primary">
                                 {currencyFormatters.brl(valor)}
                               </span>
                             </div>
@@ -342,40 +342,53 @@ export default function Caixa() {
                   </div>
                 )}
 
-                <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary">
-                  <div className="flex items-center justify-between">
+                <div className="p-3 md:p-4 bg-primary/10 rounded-lg border-2 border-primary">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-0">
                     <div>
-                      <Label className="text-sm text-muted-foreground">Valor Esperado</Label>
-                      <p className="text-3xl font-bold text-primary">
+                      <Label className="text-xs md:text-sm text-muted-foreground">Valor Esperado</Label>
+                      <p className="text-2xl md:text-3xl font-bold text-primary">
                         {currencyFormatters.brl(valorEsperado)}
                       </p>
                     </div>
-                    <Button onClick={() => setShowCloseDialog(true)} variant="destructive">
+                    <Button 
+                      onClick={() => setShowCloseDialog(true)} 
+                      variant="destructive"
+                      className="w-full md:w-auto h-9 md:h-10"
+                    >
                       <Lock className="h-4 w-4 mr-2" />
                       Fechar Caixa
                     </Button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  <span>Operador: {currentSession.operador_nome}</span>
-                  <span>•</span>
-                  <Calendar className="h-4 w-4" />
-                  <span>{dateFormatters.short(currentSession.opened_at)}</span>
-                  <span>•</span>
-                  <Clock className="h-4 w-4" />
-                  <span>{new Date(currentSession.opened_at).toLocaleTimeString('pt-BR')}</span>
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-1 md:gap-2 text-xs md:text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <User className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                    <span>Operador: {currentSession.operador_nome}</span>
+                  </div>
+                  <span className="hidden md:inline">•</span>
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                    <span>{dateFormatters.short(currentSession.opened_at)}</span>
+                  </div>
+                  <span className="hidden md:inline">•</span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                    <span>{new Date(currentSession.opened_at).toLocaleTimeString('pt-BR')}</span>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Lock className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-lg font-medium mb-2">Caixa Fechado</p>
-                <p className="text-sm text-muted-foreground mb-4">
+              <div className="text-center py-6 md:py-8">
+                <Lock className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-3 md:mb-4 text-muted-foreground opacity-50" />
+                <p className="text-base md:text-lg font-medium mb-1 md:mb-2">Caixa Fechado</p>
+                <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                   Abra o caixa para começar a operar
                 </p>
-                <Button onClick={() => setShowOpenDialog(true)}>
+                <Button 
+                  onClick={() => setShowOpenDialog(true)}
+                  className="h-9 md:h-10"
+                >
                   <Unlock className="h-4 w-4 mr-2" />
                   Abrir Caixa
                 </Button>
@@ -386,88 +399,157 @@ export default function Caixa() {
 
         {/* Vendas */}
         {currentSession && (
-          <Card>
-            <CardHeader>
+          <Card className="border-2 border-gray-300">
+            <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Vendas</CardTitle>
-                <Badge variant="outline">{sales.length} venda(s)</Badge>
+                <CardTitle className="text-base md:text-lg">Vendas</CardTitle>
+                <Badge variant="outline" className="text-xs md:text-sm">{sales.length} venda(s)</Badge>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 md:p-6">
               {loadingSales ? (
-                <div className="text-center py-4 text-muted-foreground">Carregando vendas...</div>
+                <div className="text-center py-4 text-muted-foreground text-sm">Carregando vendas...</div>
               ) : sales.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Nenhuma venda registrada nesta sessão</p>
+                <div className="text-center py-6 md:py-8 text-muted-foreground">
+                  <FileText className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs md:text-sm">Nenhuma venda registrada nesta sessão</p>
                 </div>
               ) : (
-                <div className="border rounded-lg overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Número</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Data/Hora</TableHead>
-                        <TableHead>Formas de Pagamento</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sales.map((sale) => {
-                        const salePaymentsList = salePayments[sale.id] || [];
-                        return (
-                          <TableRow 
-                            key={sale.id} 
-                            className="cursor-pointer hover:bg-muted/50"
-                            onClick={() => {
-                              setSelectedSale(sale);
-                              setShowSaleDetails(true);
-                            }}
-                          >
-                            <TableCell className="font-medium">#{sale.numero}</TableCell>
-                            <TableCell>{sale.cliente_nome || 'Consumidor Final'}</TableCell>
-                            <TableCell>
-                              {dateFormatters.short(sale.created_at)}{' '}
-                              {new Date(sale.created_at).toLocaleTimeString('pt-BR')}
-                            </TableCell>
-                            <TableCell>
-                              {salePaymentsList.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {salePaymentsList.map((p: any, idx: number) => (
-                                    <Badge key={idx} variant="outline" className="text-xs">
-                                      {p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
-                                       p.forma_pagamento === 'pix' ? 'PIX' :
-                                       p.forma_pagamento === 'debito' ? 'Débito' :
-                                       p.forma_pagamento === 'credito' ? 'Crédito' :
-                                       p.forma_pagamento === 'link_pagamento' ? 'Link' :
-                                       p.forma_pagamento === 'carteira_digital' ? 'Carteira' : p.forma_pagamento}
-                                      {' '}
-                                      {currencyFormatters.brl(p.valor)}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {currencyFormatters.brl(sale.total)}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  <div className="p-4 bg-muted/50 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">Total de Vendas:</span>
-                      <span className="text-xl font-bold text-primary">
-                        {currencyFormatters.brl(totalVendas)}
-                      </span>
+                <>
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b-2 border-gray-300">
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Número</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cliente</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Data/Hora</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Formas de Pagamento</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sales.map((sale, index) => {
+                          const salePaymentsList = salePayments[sale.id] || [];
+                          return (
+                            <TableRow 
+                              key={sale.id} 
+                              className={`cursor-pointer hover:bg-muted/50 border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                              onClick={() => {
+                                setSelectedSale(sale);
+                                setShowSaleDetails(true);
+                              }}
+                            >
+                              <TableCell className="font-medium border-r border-gray-200">#{sale.numero}</TableCell>
+                              <TableCell className="border-r border-gray-200">{sale.cliente_nome || 'Consumidor Final'}</TableCell>
+                              <TableCell className="border-r border-gray-200">
+                                {dateFormatters.short(sale.created_at)}{' '}
+                                {new Date(sale.created_at).toLocaleTimeString('pt-BR')}
+                              </TableCell>
+                              <TableCell className="border-r border-gray-200">
+                                {salePaymentsList.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {salePaymentsList.map((p: any, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-xs">
+                                        {p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                                         p.forma_pagamento === 'pix' ? 'PIX' :
+                                         p.forma_pagamento === 'debito' ? 'Débito' :
+                                         p.forma_pagamento === 'credito' ? 'Crédito' :
+                                         p.forma_pagamento === 'link_pagamento' ? 'Link' :
+                                         p.forma_pagamento === 'carteira_digital' ? 'Carteira' : p.forma_pagamento}
+                                        {' '}
+                                        {currencyFormatters.brl(p.valor)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {currencyFormatters.brl(sale.total)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                    <div className="p-4 bg-muted/50 border-t-2 border-gray-300">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Total de Vendas:</span>
+                        <span className="text-xl font-bold text-primary">
+                          {currencyFormatters.brl(totalVendas)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-3">
+                    {sales.map((sale) => {
+                      const salePaymentsList = salePayments[sale.id] || [];
+                      return (
+                        <Card 
+                          key={sale.id}
+                          className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
+                          onClick={() => {
+                            setSelectedSale(sale);
+                            setShowSaleDetails(true);
+                          }}
+                        >
+                          <CardContent className="p-3 space-y-2">
+                            <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
+                              <span className="font-semibold text-sm">Venda #{sale.numero}</span>
+                              <span className="text-base font-bold text-primary">
+                                {currencyFormatters.brl(sale.total)}
+                              </span>
+                            </div>
+                            <div className="space-y-1.5">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Cliente</p>
+                                <p className="text-sm font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Data/Hora</p>
+                                <p className="text-sm">
+                                  {dateFormatters.short(sale.created_at)}{' '}
+                                  {new Date(sale.created_at).toLocaleTimeString('pt-BR')}
+                                </p>
+                              </div>
+                              {salePaymentsList.length > 0 && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Formas de Pagamento</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {salePaymentsList.map((p: any, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-[10px] border-2 border-gray-300">
+                                        {p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                                         p.forma_pagamento === 'pix' ? 'PIX' :
+                                         p.forma_pagamento === 'debito' ? 'Débito' :
+                                         p.forma_pagamento === 'credito' ? 'Crédito' :
+                                         p.forma_pagamento === 'link_pagamento' ? 'Link' :
+                                         p.forma_pagamento === 'carteira_digital' ? 'Carteira' : p.forma_pagamento}
+                                        {' '}
+                                        {currencyFormatters.brl(p.valor)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                    <div className="p-3 bg-muted/50 border-2 border-gray-300 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm">Total de Vendas:</span>
+                        <span className="text-lg font-bold text-primary">
+                          {currencyFormatters.brl(totalVendas)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -475,10 +557,10 @@ export default function Caixa() {
 
         {/* Movimentos */}
         {currentSession && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Movimentos</CardTitle>
+          <Card className="border-2 border-gray-300">
+            <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 md:gap-0">
+                <CardTitle className="text-base md:text-lg">Movimentos</CardTitle>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -487,9 +569,10 @@ export default function Caixa() {
                       setMovementType('suprimento');
                       setShowMovementDialog(true);
                     }}
+                    className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Suprimento
+                    <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
+                    <span className="text-xs md:text-sm">Suprimento</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -498,37 +581,78 @@ export default function Caixa() {
                       setMovementType('sangria');
                       setShowMovementDialog(true);
                     }}
+                    className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
                   >
-                    <Minus className="h-4 w-4 mr-2" />
-                    Sangria
+                    <Minus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
+                    <span className="text-xs md:text-sm">Sangria</span>
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 md:p-6">
               {movements.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Nenhum movimento registrado</p>
+                <div className="text-center py-6 md:py-8 text-muted-foreground">
+                  <FileText className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs md:text-sm">Nenhum movimento registrado</p>
                 </div>
               ) : (
-                <div className="border rounded-lg overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Motivo</TableHead>
-                        <TableHead>Operador</TableHead>
-                        <TableHead>Data/Hora</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {movements.map((movement) => (
-                        <TableRow key={movement.id}>
-                          <TableCell>
+                <>
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b-2 border-gray-300">
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Tipo</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Valor</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Motivo</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Operador</TableHead>
+                          <TableHead className="font-semibold bg-muted/60">Data/Hora</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {movements.map((movement, index) => (
+                          <TableRow 
+                            key={movement.id}
+                            className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                          >
+                            <TableCell className="border-r border-gray-200">
+                              <Badge
+                                className={cn(
+                                  movement.tipo === 'sangria'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-green-100 text-green-800'
+                                )}
+                              >
+                                {movement.tipo === 'sangria' ? 'Sangria' : 'Suprimento'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-semibold border-r border-gray-200">
+                              {currencyFormatters.brl(movement.valor)}
+                            </TableCell>
+                            <TableCell className="border-r border-gray-200">{movement.motivo || '-'}</TableCell>
+                            <TableCell className="border-r border-gray-200">{movement.operador_nome}</TableCell>
+                            <TableCell>
+                              {dateFormatters.short(movement.created_at)}{' '}
+                              {new Date(movement.created_at).toLocaleTimeString('pt-BR')}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-3">
+                    {movements.map((movement) => (
+                      <Card 
+                        key={movement.id}
+                        className="border-2 border-gray-300"
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
                             <Badge
                               className={cn(
+                                'text-xs',
                                 movement.tipo === 'sangria'
                                   ? 'bg-red-100 text-red-800'
                                   : 'bg-green-100 text-green-800'
@@ -536,21 +660,34 @@ export default function Caixa() {
                             >
                               {movement.tipo === 'sangria' ? 'Sangria' : 'Suprimento'}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="font-semibold">
-                            {currencyFormatters.brl(movement.valor)}
-                          </TableCell>
-                          <TableCell>{movement.motivo || '-'}</TableCell>
-                          <TableCell>{movement.operador_nome}</TableCell>
-                          <TableCell>
-                            {dateFormatters.short(movement.created_at)}{' '}
-                            {new Date(movement.created_at).toLocaleTimeString('pt-BR')}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                            <span className="text-base font-bold">
+                              {currencyFormatters.brl(movement.valor)}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {movement.motivo && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Motivo</p>
+                                <p className="text-sm">{movement.motivo}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs text-muted-foreground">Operador</p>
+                              <p className="text-sm font-medium">{movement.operador_nome}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Data/Hora</p>
+                              <p className="text-sm">
+                                {dateFormatters.short(movement.created_at)}{' '}
+                                {new Date(movement.created_at).toLocaleTimeString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -559,13 +696,13 @@ export default function Caixa() {
 
       {/* Dialog: Abrir Caixa */}
       <Dialog open={showOpenDialog} onOpenChange={setShowOpenDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Abrir Caixa</DialogTitle>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-md">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">Abrir Caixa</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div>
-              <Label>Valor Inicial (R$)</Label>
+              <Label className="text-xs md:text-sm">Valor Inicial (R$)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -573,17 +710,26 @@ export default function Caixa() {
                 onChange={(e) => setValorInicial(e.target.value)}
                 placeholder="0.00"
                 autoFocus
+                className="h-9 md:h-10 text-sm border-2 border-gray-300"
               />
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs md:text-sm text-muted-foreground">
               <p>Informe o valor em dinheiro que está no caixa no momento da abertura.</p>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOpenDialog(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowOpenDialog(false)}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
               Cancelar
             </Button>
-            <LoadingButton onClick={handleOpenCash} loading={isProcessing}>
+            <LoadingButton 
+              onClick={handleOpenCash} 
+              loading={isProcessing}
+              className="w-full sm:w-auto h-9 md:h-10"
+            >
               Abrir Caixa
             </LoadingButton>
           </DialogFooter>
@@ -592,26 +738,26 @@ export default function Caixa() {
 
       {/* Dialog: Fechar Caixa */}
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Fechar Caixa</DialogTitle>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">Fechar Caixa</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div>
-                <Label>Valor Esperado (R$)</Label>
+                <Label className="text-xs md:text-sm">Valor Esperado (R$)</Label>
                 <Input
                   type="number"
                   value={valorEsperado.toFixed(2)}
                   disabled
-                  className="bg-muted"
+                  className="bg-muted h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
                   Calculado automaticamente
                 </p>
               </div>
               <div>
-                <Label>Valor Final Contado (R$)</Label>
+                <Label className="text-xs md:text-sm">Valor Final Contado (R$)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -624,22 +770,24 @@ export default function Caixa() {
                   }}
                   placeholder="0.00"
                   autoFocus
+                  className="h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
             </div>
             
             <div>
-              <Label>Divergência (R$)</Label>
+              <Label className="text-xs md:text-sm">Divergência (R$)</Label>
               <Input
                 type="number"
                 value={divergencia}
                 onChange={(e) => setDivergencia(e.target.value)}
                 className={cn(
-                  parseFloat(divergencia || '0') !== 0 && 'border-orange-500'
+                  'h-9 md:h-10 text-sm border-2',
+                  parseFloat(divergencia || '0') !== 0 ? 'border-orange-500' : 'border-gray-300'
                 )}
                 disabled
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
                 {parseFloat(divergencia || '0') > 0 
                   ? 'Sobra no caixa' 
                   : parseFloat(divergencia || '0') < 0 
@@ -650,21 +798,30 @@ export default function Caixa() {
 
             {parseFloat(divergencia || '0') !== 0 && (
               <div>
-                <Label>Justificativa da Divergência</Label>
+                <Label className="text-xs md:text-sm">Justificativa da Divergência</Label>
                 <Textarea
                   value={justificativa}
                   onChange={(e) => setJustificativa(e.target.value)}
                   placeholder="Explique a divergência encontrada..."
                   rows={3}
+                  className="text-sm border-2 border-gray-300"
                 />
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCloseDialog(false)}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
               Cancelar
             </Button>
-            <LoadingButton onClick={handleCloseCash} loading={isProcessing}>
+            <LoadingButton 
+              onClick={handleCloseCash} 
+              loading={isProcessing}
+              className="w-full sm:w-auto h-9 md:h-10"
+            >
               Fechar Caixa
             </LoadingButton>
           </DialogFooter>
@@ -673,15 +830,15 @@ export default function Caixa() {
 
       {/* Dialog: Movimento */}
       <Dialog open={showMovementDialog} onOpenChange={setShowMovementDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-md">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">
               {movementType === 'sangria' ? 'Registrar Sangria' : 'Registrar Suprimento'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div>
-              <Label>Valor (R$)</Label>
+              <Label className="text-xs md:text-sm">Valor (R$)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -689,23 +846,33 @@ export default function Caixa() {
                 onChange={(e) => setMovementValor(e.target.value)}
                 placeholder="0.00"
                 autoFocus
+                className="h-9 md:h-10 text-sm border-2 border-gray-300"
               />
             </div>
             <div>
-              <Label>Motivo (Opcional)</Label>
+              <Label className="text-xs md:text-sm">Motivo (Opcional)</Label>
               <Textarea
                 value={movementMotivo}
                 onChange={(e) => setMovementMotivo(e.target.value)}
                 placeholder="Descreva o motivo do movimento..."
                 rows={3}
+                className="text-sm border-2 border-gray-300"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMovementDialog(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowMovementDialog(false)}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
               Cancelar
             </Button>
-            <LoadingButton onClick={handleAddMovement} loading={isProcessing}>
+            <LoadingButton 
+              onClick={handleAddMovement} 
+              loading={isProcessing}
+              className="w-full sm:w-auto h-9 md:h-10"
+            >
               Registrar
             </LoadingButton>
           </DialogFooter>
@@ -714,120 +881,188 @@ export default function Caixa() {
 
       {/* Dialog: Detalhes da Venda */}
       <Dialog open={showSaleDetails} onOpenChange={setShowSaleDetails}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes da Venda #{selectedSale?.numero}</DialogTitle>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">Detalhes da Venda #{selectedSale?.numero}</DialogTitle>
           </DialogHeader>
           {selectedSale && (
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {/* Informações da Venda */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
-                  <Label className="text-sm text-muted-foreground">Cliente</Label>
-                  <p className="font-medium">{selectedSale.cliente_nome || 'Consumidor Final'}</p>
+                  <Label className="text-xs md:text-sm text-muted-foreground">Cliente</Label>
+                  <p className="font-medium text-sm md:text-base">{selectedSale.cliente_nome || 'Consumidor Final'}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Data/Hora</Label>
-                  <p className="font-medium">
+                  <Label className="text-xs md:text-sm text-muted-foreground">Data/Hora</Label>
+                  <p className="font-medium text-sm md:text-base">
                     {dateFormatters.short(selectedSale.created_at)}{' '}
                     {new Date(selectedSale.created_at).toLocaleTimeString('pt-BR')}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Vendedor</Label>
-                  <p className="font-medium">{selectedSale.vendedor_nome || '-'}</p>
+                  <Label className="text-xs md:text-sm text-muted-foreground">Vendedor</Label>
+                  <p className="font-medium text-sm md:text-base">{selectedSale.vendedor_nome || '-'}</p>
                 </div>
                 <div>
-                  <Label className="text-sm text-muted-foreground">Total</Label>
-                  <p className="font-bold text-lg">{currencyFormatters.brl(selectedSale.total)}</p>
+                  <Label className="text-xs md:text-sm text-muted-foreground">Total</Label>
+                  <p className="font-bold text-base md:text-lg">{currencyFormatters.brl(selectedSale.total)}</p>
                 </div>
               </div>
 
               {/* Produtos */}
               <div>
-                <Label className="text-sm font-semibold mb-2 block">Produtos:</Label>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
-                        <TableHead className="text-right">Vl. Unit.</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {selectedSale.items && selectedSale.items.length > 0 ? (
-                        selectedSale.items.map((item: any) => (
-                          <TableRow key={item.id}>
-                            <TableCell>{item.produto_nome}</TableCell>
-                            <TableCell className="text-right">{item.quantidade}</TableCell>
-                            <TableCell className="text-right">{currencyFormatters.brl(item.valor_unitario)}</TableCell>
-                            <TableCell className="text-right font-semibold">{currencyFormatters.brl(item.valor_total)}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground">
-                            Carregando produtos...
-                          </TableCell>
+                <Label className="text-xs md:text-sm font-semibold mb-2 block">Produtos:</Label>
+                <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b-2 border-gray-300">
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Produto</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Qtd</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Vl. Unit.</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 text-right">Total</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedSale.items && selectedSale.items.length > 0 ? (
+                          selectedSale.items.map((item: any, index: number) => (
+                            <TableRow 
+                              key={item.id}
+                              className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                            >
+                              <TableCell className="border-r border-gray-200">{item.produto_nome}</TableCell>
+                              <TableCell className="text-right border-r border-gray-200">{item.quantidade}</TableCell>
+                              <TableCell className="text-right border-r border-gray-200">{currencyFormatters.brl(item.valor_unitario)}</TableCell>
+                              <TableCell className="text-right font-semibold">{currencyFormatters.brl(item.valor_total)}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                              Carregando produtos...
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-2 p-2">
+                    {selectedSale.items && selectedSale.items.length > 0 ? (
+                      selectedSale.items.map((item: any) => (
+                        <Card key={item.id} className="border-2 border-gray-300">
+                          <CardContent className="p-2 space-y-1">
+                            <p className="font-medium text-sm">{item.produto_nome}</p>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Qtd: {item.quantidade}</span>
+                              <span>Unit: {currencyFormatters.brl(item.valor_unitario)}</span>
+                            </div>
+                            <div className="text-right pt-1 border-t border-gray-200">
+                              <span className="font-bold text-sm">Total: {currencyFormatters.brl(item.valor_total)}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        Carregando produtos...
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Pagamentos */}
               <div>
-                <Label className="text-sm font-semibold mb-2 block">Formas de Pagamento:</Label>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Forma</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                        {salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) && (
-                          <TableHead className="text-right">Troco</TableHead>
+                <Label className="text-xs md:text-sm font-semibold mb-2 block">Formas de Pagamento:</Label>
+                <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b-2 border-gray-300">
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Forma</TableHead>
+                          <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Valor</TableHead>
+                          {salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) && (
+                            <TableHead className="font-semibold bg-muted/60 text-right">Troco</TableHead>
+                          )}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {salePayments[selectedSale.id] && salePayments[selectedSale.id].length > 0 ? (
+                          salePayments[selectedSale.id].map((payment: any, index: number) => (
+                            <TableRow 
+                              key={payment.id}
+                              className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                            >
+                              <TableCell className="capitalize border-r border-gray-200">
+                                {payment.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
+                                 payment.forma_pagamento === 'pix' ? 'PIX' :
+                                 payment.forma_pagamento === 'debito' ? 'Débito' :
+                                 payment.forma_pagamento === 'credito' ? 'Crédito' :
+                                 payment.forma_pagamento === 'link_pagamento' ? 'Link de Pagamento' :
+                                 payment.forma_pagamento === 'carteira_digital' ? 'Carteira Digital' : payment.forma_pagamento}
+                              </TableCell>
+                              <TableCell className={`text-right font-semibold ${salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) ? 'border-r border-gray-200' : ''}`}>
+                                {currencyFormatters.brl(payment.valor)}
+                              </TableCell>
+                              {salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) && (
+                                <TableCell className="text-right">
+                                  {payment.troco > 0 ? currencyFormatters.brl(payment.troco) : '-'}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground">
+                              Nenhum pagamento encontrado
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {salePayments[selectedSale.id] && salePayments[selectedSale.id].length > 0 ? (
-                        salePayments[selectedSale.id].map((payment: any) => (
-                          <TableRow key={payment.id}>
-                            <TableCell className="capitalize">
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-2 p-2">
+                    {salePayments[selectedSale.id] && salePayments[selectedSale.id].length > 0 ? (
+                      salePayments[selectedSale.id].map((payment: any) => (
+                        <Card key={payment.id} className="border-2 border-gray-300">
+                          <CardContent className="p-2 space-y-1">
+                            <p className="font-medium text-sm capitalize">
                               {payment.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 
                                payment.forma_pagamento === 'pix' ? 'PIX' :
                                payment.forma_pagamento === 'debito' ? 'Débito' :
                                payment.forma_pagamento === 'credito' ? 'Crédito' :
                                payment.forma_pagamento === 'link_pagamento' ? 'Link de Pagamento' :
                                payment.forma_pagamento === 'carteira_digital' ? 'Carteira Digital' : payment.forma_pagamento}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">
-                              {currencyFormatters.brl(payment.valor)}
-                            </TableCell>
-                            {salePayments[selectedSale.id]?.some((p: any) => p.troco > 0) && (
-                              <TableCell className="text-right">
-                                {payment.troco > 0 ? currencyFormatters.brl(payment.troco) : '-'}
-                              </TableCell>
+                            </p>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Valor:</span>
+                              <span className="font-bold">{currencyFormatters.brl(payment.valor)}</span>
+                            </div>
+                            {payment.troco > 0 && (
+                              <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
+                                <span className="text-muted-foreground">Troco:</span>
+                                <span className="font-semibold">{currencyFormatters.brl(payment.troco)}</span>
+                              </div>
                             )}
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">
-                            Nenhum pagamento encontrado
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        Nenhum pagamento encontrado
+                      </div>
+                    )}
+                  </div>
                   {salePayments[selectedSale.id] && salePayments[selectedSale.id].length > 0 && (
-                    <div className="p-4 bg-muted/50 border-t">
-                      <div className="flex justify-between items-center font-bold">
+                    <div className="p-3 md:p-4 bg-muted/50 border-t-2 border-gray-300">
+                      <div className="flex justify-between items-center font-bold text-sm md:text-base">
                         <span>Total Pago:</span>
-                        <span className="text-lg">
+                        <span className="text-base md:text-lg">
                           {currencyFormatters.brl(
                             salePayments[selectedSale.id].reduce((sum: number, p: any) => sum + Number(p.valor || 0), 0)
                           )}
@@ -839,8 +1074,12 @@ export default function Caixa() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSaleDetails(false)}>
+          <DialogFooter className="pt-3 md:pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSaleDetails(false)}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
               Fechar
             </Button>
           </DialogFooter>

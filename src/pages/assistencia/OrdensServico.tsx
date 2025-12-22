@@ -198,136 +198,180 @@ export default function OrdensServico() {
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
       <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
         {/* Cards de estatísticas - shrink-0 para não encolher */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 shrink-0 px-4 pt-4 pb-3">
-          <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('all')}>
-            <CardContent className="pt-3 pb-3">
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3">
+          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('all')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-muted-foreground font-medium md:mb-0">Total:</p>
+                <p className="text-base md:text-2xl font-bold md:mt-1">{stats.total}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-yellow-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('aberta')}>
-            <CardContent className="pt-3 pb-3">
-              <p className="text-xs text-yellow-600">Abertas</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.abertas}</p>
+          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-yellow-50/50 dark:bg-yellow-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('aberta')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-yellow-600 font-medium md:mb-0">Abertas:</p>
+                <p className="text-base md:text-2xl font-bold text-yellow-600 md:mt-1">{stats.abertas}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-purple-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('em_andamento')}>
-            <CardContent className="pt-3 pb-3">
-              <p className="text-xs text-purple-600">Em Andamento</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.emAndamento}</p>
+          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-purple-50/50 dark:bg-purple-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('em_andamento')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-purple-600 font-medium md:mb-0">Em Andamento:</p>
+                <p className="text-base md:text-2xl font-bold text-purple-600 md:mt-1">{stats.emAndamento}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('aguardando_orcamento')}>
-            <CardContent className="pt-3 pb-3">
-              <p className="text-xs text-orange-600">Aguardando</p>
-              <p className="text-2xl font-bold text-orange-600">{stats.aguardando || 0}</p>
+          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-orange-50/50 dark:bg-orange-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('aguardando_orcamento')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-orange-600 font-medium md:mb-0">Aguardando:</p>
+                <p className="text-base md:text-2xl font-bold text-orange-600 md:mt-1">{stats.aguardando || 0}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-emerald-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('finalizada')}>
-            <CardContent className="pt-3 pb-3">
-              <p className="text-xs text-emerald-600">Finalizadas</p>
-              <p className="text-2xl font-bold text-emerald-600">{stats.finalizadas}</p>
+          <Card className="border-2 border-l-4 border-l-emerald-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-emerald-50/50 dark:bg-emerald-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('finalizada')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-emerald-600 font-medium md:mb-0">Finalizadas:</p>
+                <p className="text-base md:text-2xl font-bold text-emerald-600 md:mt-1">{stats.finalizadas}</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-cyan-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('aguardando_retirada')}>
-            <CardContent className="pt-3 pb-3">
-              <p className="text-xs text-cyan-600">Ag. Retirada</p>
-              <p className="text-2xl font-bold text-cyan-600">{ordens.filter(o => o.status === 'aguardando_retirada').length}</p>
+          <Card className="border-2 border-l-4 border-l-cyan-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-cyan-50/50 dark:bg-cyan-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('aguardando_retirada')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-cyan-600 font-medium md:mb-0">Ag. Retirada:</p>
+                <p className="text-base md:text-2xl font-bold text-cyan-600 md:mt-1">{ordens.filter(o => o.status === 'aguardando_retirada').length}</p>
+              </div>
             </CardContent>
           </Card>
 
           {stats.atrasadas > 0 && (
-            <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20 cursor-pointer hover:shadow-md">
-              <CardContent className="pt-3 pb-3">
-                <p className="text-xs text-red-600">Atrasadas</p>
-                <p className="text-2xl font-bold text-red-600">{stats.atrasadas}</p>
+            <Card className="border-2 border-l-4 border-l-red-500 border-red-300 bg-red-50 dark:bg-red-950/20 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100">
+              <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+                <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                  <p className="text-xs md:text-xs text-red-600 font-medium md:mb-0">Atrasadas:</p>
+                  <p className="text-base md:text-2xl font-bold text-red-600 md:mt-1">{stats.atrasadas}</p>
+                </div>
               </CardContent>
             </Card>
           )}
         </div>
 
         {/* Barra de filtros e ações - fixa no topo */}
-        <div className="sticky top-0 z-30 bg-background border-b shadow-sm shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-wrap md:flex-nowrap px-3 py-2">
-            {/* Filtros rápidos */}
+        <div className="sticky top-0 z-30 bg-background border-b-2 border-gray-300 shadow-sm shrink-0">
+          {/* Filtros rápidos - linha superior */}
+          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-nowrap px-4 md:px-3 py-2">
             <Button 
               variant={!hasActiveFilters ? 'default' : 'outline'} 
               size="sm"
               onClick={clearFilters}
-              className="h-9 shrink-0 px-2"
+              className="h-9 shrink-0 px-3 text-xs whitespace-nowrap border-2 border-gray-300"
             >
               Todas
             </Button>
             <Button 
               variant={periodoFilter === 'hoje' ? 'default' : 'outline'} 
               size="sm" 
-              className="gap-1 h-9 shrink-0 px-2"
+              className="gap-1.5 h-9 shrink-0 px-3 whitespace-nowrap border-2 border-gray-300"
               onClick={() => handlePeriodoFilter('hoje')}
             >
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline text-xs">Hoje ({osHoje.length})</span>
+              <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="text-xs">Hoje</span>
+              <span className="text-xs opacity-70">({osHoje.length})</span>
             </Button>
             <Button 
               variant={periodoFilter === 'semana' ? 'default' : 'outline'} 
               size="sm" 
-              className="gap-1 h-9 shrink-0 px-2"
+              className="gap-1.5 h-9 shrink-0 px-3 whitespace-nowrap border-2 border-gray-300"
               onClick={() => handlePeriodoFilter('semana')}
             >
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline text-xs">Esta Semana</span>
+              <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="text-xs">Semana</span>
             </Button>
             <Button 
               variant={periodoFilter === 'mes' ? 'default' : 'outline'} 
               size="sm" 
-              className="gap-1 h-9 shrink-0 px-2"
+              className="gap-1.5 h-9 shrink-0 px-3 whitespace-nowrap border-2 border-gray-300"
               onClick={() => handlePeriodoFilter('mes')}
             >
-              <Calendar className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline text-xs">Este Mês</span>
+              <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="text-xs">Mês</span>
             </Button>
             
-            {/* Busca */}
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            {/* Status e ações - continua na mesma linha no mobile */}
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 w-[120px] md:w-[160px] shrink-0 text-xs border-2 border-gray-300">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Status</SelectItem>
+                  {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Botões de ação */}
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 shrink-0 px-2 border-2 border-gray-300">
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+              
+              <div className="w-px h-5 bg-gray-300 mx-0.5 shrink-0 hidden md:block"></div>
+              
+              <Button 
+                onClick={() => navigate('/pdv/os/nova')} 
+                size="sm" 
+                className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
+              </Button>
+            </div>
+          </div>
+          
+          {/* Busca e Nova OS - linha separada abaixo dos filtros no mobile */}
+          <div className="px-4 md:px-3 pb-2 md:pb-0 md:hidden flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9 text-xs"
+                className="pl-10 h-9 text-sm w-full border-2 border-gray-300"
               />
             </div>
-            
-            {/* Status */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[160px] shrink-0 text-xs">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            {/* Botões de ação */}
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 shrink-0 px-2">
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            )}
-            
-            <div className="w-px h-5 bg-border mx-0.5 shrink-0"></div>
-            
-            <Button onClick={() => navigate('/pdv/os/nova')} size="sm" className="gap-1 h-9 shrink-0 px-2">
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Nova OS</span>
+            <Button 
+              onClick={() => navigate('/pdv/os/nova')} 
+              size="sm" 
+              className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
             </Button>
+          </div>
+          
+          {/* Busca no desktop - mantém na mesma linha */}
+          <div className="hidden md:flex items-center gap-2 px-3 pb-2">
+            <div className="relative flex-1 min-w-[250px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-9 text-sm"
+              />
+            </div>
           </div>
           
           {/* Filtros avançados (colapsável) */}
@@ -386,8 +430,8 @@ export default function OrdensServico() {
         </div>
 
         {/* Área da tabela - apenas o corpo rola */}
-        <div className="flex-1 min-h-0 px-4 pb-4">
-          <Card className="h-full flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 px-2 md:px-4 pb-3 md:pb-4">
+          <Card className="h-full flex flex-col overflow-hidden border-2 border-gray-300">
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
               {isLoading ? (
                 <div className="p-10 text-center text-muted-foreground">
@@ -397,7 +441,7 @@ export default function OrdensServico() {
                   </div>
                 </div>
               ) : filteredOrdens.length === 0 ? (
-                <div className="p-12 text-center">
+                <div className="p-8 md:p-12 text-center">
                   <EmptyState
                     icon={<Package className="h-12 w-12" />}
                     title="Nenhuma ordem de serviço"
@@ -407,10 +451,144 @@ export default function OrdensServico() {
                 </div>
               ) : (
                 <>
-                  {/* Estrutura da tabela com cabeçalho fixo e scroll no corpo */}
+                  {/* Cards no mobile, tabela no desktop */}
                   <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {/* Container da tabela com scroll apenas vertical */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                    {/* Cards Mobile */}
+                    <div className="md:hidden flex-1 overflow-y-auto space-y-3 p-2">
+                      {filteredOrdens.map((os, index) => {
+                        const cliente = getClienteById(os.cliente_id);
+                        const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
+                        const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
+                        const isAtrasada = os.previsao_entrega && 
+                          os.previsao_entrega.split('T')[0] < hojeStr && 
+                          !['finalizada', 'entregue', 'cancelada'].includes(os.status);
+                        
+                        const valorTotalItens = totaisPorOS[os.id] || 0;
+                        const valorTotalOS = Number(os.valor_total || 0);
+                        const valorTotal = valorTotalItens > 0 ? valorTotalItens : (valorTotalOS > 0 ? valorTotalOS : 0);
+                        const valorPago = Number(os.valor_pago || 0);
+                        const temSaldoPendente = valorTotal > 0 && valorPago < valorTotal;
+                        
+                        return (
+                          <Card 
+                            key={os.id}
+                            className={cn(
+                              "border-2 border-gray-300 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]",
+                              isAtrasada && 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                            )}
+                            onClick={() => navigate(`/pdv/os/${os.id}`)}
+                          >
+                            <CardContent className="p-3 space-y-2">
+                              {/* Header com Nº OS e Status */}
+                              <div className="flex items-start justify-between border-b border-gray-200 pb-2">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-bold text-primary text-base">#{os.numero}</p>
+                                  <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
+                                    {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/pdv/os/${os.id}`);
+                                    }}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/pdv/os/${os.id}`);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              {/* Cliente */}
+                              <div className="border-b border-gray-200 pb-2">
+                                <p className="font-medium text-sm">{cliente?.nome || os.cliente_nome || '-'}</p>
+                                {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj}</p>}
+                                {(cliente?.telefone || os.telefone_contato) && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="h-auto p-0 text-green-600 hover:text-green-700 text-xs mt-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleWhatsApp(os.telefone_contato || cliente?.whatsapp || cliente?.telefone);
+                                    }}
+                                  >
+                                    <Phone className="h-3 w-3 mr-1 inline" />
+                                    {os.telefone_contato || cliente?.telefone}
+                                  </Button>
+                                )}
+                              </div>
+                              
+                              {/* Aparelho */}
+                              {(modelo?.nome || os.modelo_nome || marca?.nome || os.marca_nome) && (
+                                <div className="border-b border-gray-200 pb-2">
+                                  <p className="text-xs text-muted-foreground">Aparelho</p>
+                                  <p className="font-medium text-sm">{modelo?.nome || os.modelo_nome || '-'}</p>
+                                  <p className="text-xs text-muted-foreground">{marca?.nome || os.marca_nome || '-'}</p>
+                                </div>
+                              )}
+                              
+                              {/* Problema */}
+                              {os.descricao_problema && (
+                                <div className="border-b border-gray-200 pb-2">
+                                  <p className="text-xs text-muted-foreground">Problema</p>
+                                  <p className="text-sm line-clamp-2">{os.descricao_problema}</p>
+                                </div>
+                              )}
+                              
+                              {/* Datas e Valor */}
+                              <div className="flex items-center justify-between pt-2 border-t-2 border-gray-300">
+                                <div className="space-y-1">
+                                  {os.data_entrada && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Entrada: {dateFormatters.short(os.data_entrada)}
+                                    </p>
+                                  )}
+                                  {os.previsao_entrega && (
+                                    <p className={cn("text-xs", isAtrasada ? "text-red-600 font-medium" : "text-muted-foreground")}>
+                                      Previsão: {dateFormatters.short(os.previsao_entrega)}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  {valorTotal > 0 ? (
+                                    <div>
+                                      <p className="font-semibold text-green-600 text-sm">
+                                        {currencyFormatters.brl(valorTotal)}
+                                      </p>
+                                      {temSaldoPendente && valorPago > 0 && (
+                                        <p className="text-xs text-orange-600">
+                                          Pago: {currencyFormatters.brl(valorPago)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs">-</span>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Tabela Desktop */}
+                    <div className="hidden md:flex flex-1 overflow-y-auto overflow-x-hidden min-h-0">
                       <table className="w-full caption-bottom text-sm border-collapse table-fixed">
                         {/* Cabeçalho fixo */}
                         <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">

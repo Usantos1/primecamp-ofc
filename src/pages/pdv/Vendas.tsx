@@ -526,54 +526,58 @@ export default function Vendas() {
 
   return (
     <ModernLayout title="Vendas" subtitle="Gerenciamento de vendas do PDV">
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Hoje</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 px-4 md:px-0">
+          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium">Vendas Hoje</CardTitle>
+              <Calendar className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalHoje}</div>
-              <p className="text-xs text-muted-foreground">
-                {currencyFormatters.brl(stats.totalHojeValor)}
-              </p>
+            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <div className="text-base md:text-2xl font-bold">{stats.totalHoje}</div>
+                <p className="text-[10px] md:text-xs text-muted-foreground md:mt-1">
+                  {currencyFormatters.brl(stats.totalHojeValor)}
+                </p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Geral</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-2 border-l-4 border-l-green-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-green-50/50 dark:bg-green-950/10 md:bg-transparent md:dark:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium">Total Geral</CardTitle>
+              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalGeral}</div>
-              <p className="text-xs text-muted-foreground">
-                {currencyFormatters.brl(stats.totalGeralValor)}
-              </p>
+            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <div className="text-base md:text-2xl font-bold">{stats.totalGeral}</div>
+                <p className="text-[10px] md:text-xs text-muted-foreground md:mt-1">
+                  {currencyFormatters.brl(stats.totalGeralValor)}
+                </p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rascunhos</CardTitle>
-              <Edit className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-yellow-50/50 dark:bg-yellow-950/10 md:bg-transparent md:dark:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium">Rascunhos</CardTitle>
+              <Edit className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
+              <div className="text-base md:text-2xl font-bold">
                 {sales.filter(s => s.is_draft).length}
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-orange-50/50 dark:bg-orange-950/10 md:bg-transparent md:dark:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium">Pendentes</CardTitle>
+              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
+            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
+              <div className="text-base md:text-2xl font-bold">
                 {sales.filter(s => s.status === 'partial' || s.status === 'open').length}
               </div>
             </CardContent>
@@ -581,30 +585,33 @@ export default function Vendas() {
         </div>
 
         {/* Card principal */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <CardTitle className="text-lg">Lista de Vendas</CardTitle>
-              <Button onClick={() => navigate('/pdv/venda/nova')} className="gap-2">
+        <Card className="border-2 border-gray-300">
+          <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
+              <CardTitle className="text-base md:text-lg">Lista de Vendas</CardTitle>
+              <Button 
+                onClick={() => navigate('/pdv/venda/nova')} 
+                className="gap-2 h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+              >
                 <Plus className="h-4 w-4" />
-                Nova Venda
+                <span className="text-xs md:text-sm">Nova Venda</span>
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">
             {/* Filtros */}
-            <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex flex-col md:flex-row gap-2 md:gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nº venda, cliente, CPF/CNPJ..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full md:w-[180px] h-9 md:h-10 text-sm border-2 border-gray-300">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -617,7 +624,7 @@ export default function Vendas() {
                 </SelectContent>
               </Select>
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full md:w-[180px] h-9 md:h-10 text-sm border-2 border-gray-300">
                   <SelectValue placeholder="Período" />
                 </SelectTrigger>
                 <SelectContent>
@@ -638,172 +645,187 @@ export default function Vendas() {
                 action={{ label: 'Nova Venda', onClick: () => navigate('/pdv/venda/nova') }}
               />
             ) : (
-              <div className="border rounded-lg overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">Nº</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Vendedor</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Pago</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSales.map((sale) => (
-                      <TableRow 
-                        key={sale.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/pdv/venda/${sale.id}`)}
-                      >
-                        <TableCell className="font-bold text-primary">#{sale.numero}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
-                            {sale.cliente_cpf_cnpj && (
-                              <p className="text-xs text-muted-foreground">{sale.cliente_cpf_cnpj}</p>
+              <>
+                {/* Desktop: Tabela */}
+                <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b-2 border-gray-300">
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 w-[80px]">Nº</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cliente</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Vendedor</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Status</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Data</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Total</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Pago</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSales.map((sale, index) => (
+                        <TableRow 
+                          key={sale.id}
+                          className={`cursor-pointer hover:bg-muted/50 border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                          onClick={() => navigate(`/pdv/venda/${sale.id}`)}
+                        >
+                          <TableCell className="font-bold text-primary border-r border-gray-200">#{sale.numero}</TableCell>
+                          <TableCell className="border-r border-gray-200">
+                            <div>
+                              <p className="font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
+                              {sale.cliente_cpf_cnpj && (
+                                <p className="text-xs text-muted-foreground">{sale.cliente_cpf_cnpj}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="border-r border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{sale.vendedor_nome || '-'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="border-r border-gray-200">
+                            <Badge className={cn(SALE_STATUS_COLORS[sale.status])}>
+                              {SALE_STATUS_LABELS[sale.status]}
+                            </Badge>
+                            {sale.is_draft && (
+                              <Badge variant="outline" className="ml-2">Rascunho</Badge>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{sale.vendedor_nome || '-'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn(SALE_STATUS_COLORS[sale.status])}>
-                            {SALE_STATUS_LABELS[sale.status]}
-                          </Badge>
-                          {sale.is_draft && (
-                            <Badge variant="outline" className="ml-2">Rascunho</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {dateFormatters.short(sale.created_at)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {currencyFormatters.brl(sale.total)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className={cn(
-                            "font-semibold",
-                            Number(sale.total_pago) >= Number(sale.total) ? "text-green-600" : "text-orange-600"
-                          )}>
-                            {currencyFormatters.brl(sale.total_pago)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                await handleViewSale(sale);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {!sale.is_draft && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                  <DropdownMenuItem 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePrintCupom(sale);
-                                    }}
-                                  >
-                                    <Printer className="h-4 w-4 mr-2" />
-                                    Reimprimir Cupom
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
+                          </TableCell>
+                          <TableCell className="border-r border-gray-200">
+                            {dateFormatters.short(sale.created_at)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold border-r border-gray-200">
+                            {currencyFormatters.brl(sale.total)}
+                          </TableCell>
+                          <TableCell className="text-right border-r border-gray-200">
+                            <span className={cn(
+                              "font-semibold",
+                              Number(sale.total_pago) >= Number(sale.total) ? "text-green-600" : "text-orange-600"
+                            )}>
+                              {currencyFormatters.brl(sale.total_pago)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await handleViewSale(sale);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {!sale.is_draft && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePrintCupom(sale);
+                                      }}
+                                    >
+                                      <Printer className="h-4 w-4 mr-2" />
+                                      Reimprimir Cupom
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pdv/venda/${sale.id}/editar`);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Editar Venda
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSavePDF(sale);
+                                      }}
+                                    >
+                                      <Download className="h-4 w-4 mr-2" />
+                                      Salvar PDF
+                                    </DropdownMenuItem>
+                                    {sale.cliente_telefone && (
+                                      <DropdownMenuItem 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSendWhatsApp(sale);
+                                        }}
+                                      >
+                                        <Send className="h-4 w-4 mr-2" />
+                                        Enviar WhatsApp
+                                      </DropdownMenuItem>
+                                    )}
+                                    {!sale.is_draft && sale.status !== 'canceled' && (
+                                      <DropdownMenuItem 
+                                        onSelect={(e) => {
+                                          e.preventDefault();
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          handleOpenCancelDialog(sale, e);
+                                        }}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Cancelar Venda
+                                      </DropdownMenuItem>
+                                    )}
+                                    {(sale.is_draft || canDelete) && (
+                                      <DropdownMenuItem 
+                                        onSelect={(e) => {
+                                          e.preventDefault();
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          handleOpenDeleteDialog(sale, e);
+                                        }}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Excluir Venda
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                              {sale.is_draft && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(`/pdv/venda/${sale.id}/editar`);
                                     }}
                                   >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Editar Venda
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleSavePDF(sale);
+                                      handleOpenDeleteDialog(sale, e);
                                     }}
                                   >
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Salvar PDF
-                                  </DropdownMenuItem>
-                                  {sale.cliente_telefone && (
-                                    <DropdownMenuItem 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSendWhatsApp(sale);
-                                      }}
-                                    >
-                                      <Send className="h-4 w-4 mr-2" />
-                                      Enviar WhatsApp
-                                    </DropdownMenuItem>
-                                  )}
-                                  {!sale.is_draft && sale.status !== 'canceled' && (
-                                    <DropdownMenuItem 
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        handleOpenCancelDialog(sale, e);
-                                      }}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <X className="h-4 w-4 mr-2" />
-                                      Cancelar Venda
-                                    </DropdownMenuItem>
-                                  )}
-                                  {/* Opção de excluir - apenas para admin/gestor ou rascunhos */}
-                                  {(sale.is_draft || canDelete) && (
-                                    <DropdownMenuItem 
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        handleOpenDeleteDialog(sale, e);
-                                      }}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Excluir Venda
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                            {sale.is_draft && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/pdv/venda/${sale.id}/editar`);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {!sale.is_draft && canDelete && sale.status !== 'canceled' && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -815,29 +837,183 @@ export default function Vendas() {
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </>
-                            )}
-                            {/* Botão de excluir para vendas finalizadas (apenas admin/gestor) */}
-                            {!sale.is_draft && canDelete && sale.status !== 'canceled' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenDeleteDialog(sale, e);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile: Cards */}
+                <div className="md:hidden space-y-3">
+                  {filteredSales.map((sale) => (
+                    <Card 
+                      key={sale.id}
+                      className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
+                      onClick={() => navigate(`/pdv/venda/${sale.id}`)}
+                    >
+                      <CardContent className="p-3 space-y-2">
+                        {/* Header: Número e Total */}
+                        <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
+                          <span className="font-semibold text-sm">Venda #{sale.numero}</span>
+                          <span className="text-base font-bold text-primary">
+                            {currencyFormatters.brl(sale.total)}
+                          </span>
+                        </div>
+
+                        {/* Info: Cliente e Vendedor */}
+                        <div className="space-y-1.5">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Cliente</p>
+                            <p className="text-sm font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
+                            {sale.cliente_cpf_cnpj && (
+                              <p className="text-xs text-muted-foreground">{sale.cliente_cpf_cnpj}</p>
                             )}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Vendedor</p>
+                            <p className="text-sm">{sale.vendedor_nome || '-'}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={cn('text-xs', SALE_STATUS_COLORS[sale.status])}>
+                              {SALE_STATUS_LABELS[sale.status]}
+                            </Badge>
+                            {sale.is_draft && (
+                              <Badge variant="outline" className="text-xs border-2 border-gray-300">Rascunho</Badge>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Data</p>
+                            <p className="text-sm">{dateFormatters.short(sale.created_at)}</p>
+                          </div>
+                        </div>
+
+                        {/* Footer: Pago e Ações */}
+                        <div className="flex items-center justify-between pt-2 border-t-2 border-gray-200">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Pago</p>
+                            <span className={cn(
+                              "text-sm font-semibold",
+                              Number(sale.total_pago) >= Number(sale.total) ? "text-green-600" : "text-orange-600"
+                            )}>
+                              {currencyFormatters.brl(sale.total_pago)}
+                            </span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleViewSale(sale);
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            {sale.is_draft && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/pdv/venda/${sale.id}/editar`);
+                                  }}
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDeleteDialog(sale, e);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                            {!sale.is_draft && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenuItem 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/pdv/venda/${sale.id}/editar`);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePrintCupom(sale);
+                                    }}
+                                  >
+                                    <Printer className="h-4 w-4 mr-2" />
+                                    Imprimir
+                                  </DropdownMenuItem>
+                                  {sale.cliente_telefone && (
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSendWhatsApp(sale);
+                                      }}
+                                    >
+                                      <Send className="h-4 w-4 mr-2" />
+                                      WhatsApp
+                                    </DropdownMenuItem>
+                                  )}
+                                  {!sale.is_draft && sale.status !== 'canceled' && (
+                                    <DropdownMenuItem 
+                                      onSelect={(e) => e.preventDefault()}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        handleOpenCancelDialog(sale, e);
+                                      }}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Cancelar
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(sale.is_draft || canDelete) && (
+                                    <DropdownMenuItem 
+                                      onSelect={(e) => e.preventDefault()}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        handleOpenDeleteDialog(sale, e);
+                                      }}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Excluir
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -845,23 +1021,23 @@ export default function Vendas() {
 
       {/* Modal de Preview da Venda */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Visualizar Venda #{previewSale?.numero || ''}</DialogTitle>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">Visualizar Venda #{previewSale?.numero || ''}</DialogTitle>
           </DialogHeader>
           
           {isLoadingPreview ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Carregando...</p>
+              <p className="text-muted-foreground text-sm">Carregando...</p>
             </div>
           ) : previewSale ? (
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {/* Informações da Venda */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Informações da Venda</CardTitle>
+              <Card className="border-2 border-gray-300">
+                <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+                  <CardTitle className="text-base md:text-lg">Informações da Venda</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 p-3 md:p-6">
                   <div>
                     <Label className="text-xs text-muted-foreground">Status</Label>
                     <div>
@@ -887,12 +1063,12 @@ export default function Vendas() {
 
               {/* Cliente */}
               {previewSale.cliente_nome && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Cliente</CardTitle>
+                <Card className="border-2 border-gray-300">
+                  <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+                    <CardTitle className="text-base md:text-lg">Cliente</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <CardContent className="p-3 md:p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                       <div>
                         <Label className="text-xs text-muted-foreground">Nome</Label>
                         <p className="text-sm">{previewSale.cliente_nome}</p>
@@ -915,26 +1091,26 @@ export default function Vendas() {
               )}
 
               {/* Itens */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Itens ({previewItems.length})</CardTitle>
+              <Card className="border-2 border-gray-300">
+                <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+                  <CardTitle className="text-base md:text-lg">Itens ({previewItems.length})</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 md:p-6">
                   <div className="space-y-2">
                     {previewItems.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center py-2 border-b">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.produto_nome}</p>
+                      <div key={item.id} className="flex justify-between items-center py-2 border-b-2 border-gray-200">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm md:text-base truncate">{item.produto_nome}</p>
                           <p className="text-xs text-muted-foreground">
                             {item.quantidade}x {currencyFormatters.brl(item.valor_unitario)}
                             {item.desconto > 0 && ` - Desc: ${currencyFormatters.brl(item.desconto)}`}
                           </p>
                         </div>
-                        <p className="font-semibold">{currencyFormatters.brl(item.valor_total)}</p>
+                        <p className="font-semibold text-sm md:text-base ml-2">{currencyFormatters.brl(item.valor_total)}</p>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-4 border-t space-y-1">
+                  <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t-2 border-gray-300 space-y-1 text-sm md:text-base">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
                       <span>{currencyFormatters.brl(previewSale.subtotal)}</span>
@@ -955,29 +1131,29 @@ export default function Vendas() {
 
               {/* Pagamentos */}
               {previewPayments.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Pagamentos</CardTitle>
+                <Card className="border-2 border-gray-300">
+                  <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+                    <CardTitle className="text-base md:text-lg">Pagamentos</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 md:p-6">
                     <div className="space-y-2">
                       {previewPayments
                         .filter((p: any) => p.status === 'confirmed')
                         .map((payment: any) => (
-                          <div key={payment.id} className="flex justify-between items-center py-2 border-b">
-                            <div>
-                              <p className="font-medium capitalize">{payment.forma_pagamento}</p>
+                          <div key={payment.id} className="flex justify-between items-center py-2 border-b-2 border-gray-200">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm md:text-base capitalize">{payment.forma_pagamento}</p>
                               {payment.troco > 0 && (
                                 <p className="text-xs text-muted-foreground">
                                   Troco: {currencyFormatters.brl(payment.troco)}
                                 </p>
                               )}
                             </div>
-                            <p className="font-semibold">{currencyFormatters.brl(payment.valor)}</p>
+                            <p className="font-semibold text-sm md:text-base ml-2">{currencyFormatters.brl(payment.valor)}</p>
                           </div>
                         ))}
                     </div>
-                    <div className="mt-4 pt-4 border-t">
+                    <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t-2 border-gray-300 text-sm md:text-base">
                       <div className="flex justify-between">
                         <span>Total Pago:</span>
                         <span className={cn(
@@ -1002,24 +1178,28 @@ export default function Vendas() {
 
               {/* Observações */}
               {previewSale.observacoes && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Observações</CardTitle>
+                <Card className="border-2 border-gray-300">
+                  <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+                    <CardTitle className="text-base md:text-lg">Observações</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{previewSale.observacoes}</p>
+                  <CardContent className="p-3 md:p-6">
+                    <p className="text-xs md:text-sm whitespace-pre-wrap">{previewSale.observacoes}</p>
                   </CardContent>
                 </Card>
               )}
             </div>
           ) : (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Venda não encontrada</p>
+              <p className="text-muted-foreground text-sm">Venda não encontrada</p>
             </div>
           )}
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setPreviewDialogOpen(false)}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
               Fechar
             </Button>
             {previewSale && (
@@ -1030,6 +1210,7 @@ export default function Vendas() {
                     setPreviewDialogOpen(false);
                     navigate(`/pdv/venda/${previewSale.id}`);
                   }}
+                  className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
@@ -1041,6 +1222,7 @@ export default function Vendas() {
                       await handlePrintCupom(previewSale);
                     }
                   }}
+                  className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
                 >
                   <Printer className="h-4 w-4 mr-2" />
                   Imprimir
@@ -1061,9 +1243,9 @@ export default function Vendas() {
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+        <AlertDialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-md">
+          <AlertDialogHeader className="pb-2 md:pb-4">
+            <AlertDialogTitle className="text-base md:text-lg">
               {selectedSaleToDelete?.is_draft ? 'Excluir Rascunho' : 'Excluir Venda'}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -1091,25 +1273,29 @@ export default function Vendas() {
           </AlertDialogHeader>
           {!selectedSaleToDelete?.is_draft && (
             <div className="space-y-2">
-              <Label htmlFor="delete-motivo">Motivo da Exclusão *</Label>
+              <Label htmlFor="delete-motivo" className="text-xs md:text-sm">Motivo da Exclusão *</Label>
               <Textarea
                 id="delete-motivo"
                 placeholder="Informe o motivo da exclusão desta venda..."
                 value={deleteMotivo}
                 onChange={(e) => setDeleteMotivo(e.target.value)}
                 rows={3}
-                className="resize-none"
+                className="resize-none text-sm border-2 border-gray-300"
               />
             </div>
           )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} onClick={(e) => {
-              if (!isDeleting) {
-                setDeleteDialogOpen(false);
-                setSelectedSaleToDelete(null);
-                setDeleteMotivo('');
-              }
-            }}>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <AlertDialogCancel 
+              disabled={isDeleting} 
+              onClick={(e) => {
+                if (!isDeleting) {
+                  setDeleteDialogOpen(false);
+                  setSelectedSaleToDelete(null);
+                  setDeleteMotivo('');
+                }
+              }}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1119,7 +1305,7 @@ export default function Vendas() {
                 handleConfirmDelete(e);
               }}
               disabled={isDeleting || (!selectedSaleToDelete?.is_draft && !deleteMotivo.trim())}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto h-9 md:h-10 bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
             </AlertDialogAction>
@@ -1129,9 +1315,9 @@ export default function Vendas() {
 
       {/* Modal de Cancelamento */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancelar Venda</AlertDialogTitle>
+        <AlertDialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-md">
+          <AlertDialogHeader className="pb-2 md:pb-4">
+            <AlertDialogTitle className="text-base md:text-lg">Cancelar Venda</AlertDialogTitle>
             <AlertDialogDescription>
               {canCancelDirectly ? (
                 <>
@@ -1148,25 +1334,30 @@ export default function Vendas() {
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-3 md:space-y-4 py-3 md:py-4">
             <div>
-              <Label htmlFor="cancel-motivo">Motivo do Cancelamento *</Label>
+              <Label htmlFor="cancel-motivo" className="text-xs md:text-sm">Motivo do Cancelamento *</Label>
               <Textarea
                 id="cancel-motivo"
                 placeholder="Descreva o motivo do cancelamento..."
                 value={cancelMotivo}
                 onChange={(e) => setCancelMotivo(e.target.value)}
                 rows={4}
-                className="mt-2"
+                className="mt-2 text-sm border-2 border-gray-300"
               />
             </div>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isCanceling}>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <AlertDialogCancel 
+              disabled={isCanceling}
+              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+            >
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmCancel}
               disabled={isCanceling || !cancelMotivo.trim()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto h-9 md:h-10 bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isCanceling ? (
                 'Processando...'

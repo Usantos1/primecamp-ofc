@@ -13,12 +13,30 @@ const GRID_SIZE = 3;
 const DOT_SIZE = 20;
 const DOT_SPACING = 50;
 
+// Mobile: tamanhos maiores
+const DOT_SIZE_MOBILE = 30;
+const DOT_SPACING_MOBILE = 80;
+
 export function PatternLock({ value = '', onChange, disabled = false, className }: PatternLockProps) {
   const [selectedDots, setSelectedDots] = useState<number[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [clickStartPos, setClickStartPos] = useState<{x: number, y: number} | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar se é mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const currentDotSize = isMobile ? DOT_SIZE_MOBILE : DOT_SIZE;
+  const currentDotSpacing = isMobile ? DOT_SPACING_MOBILE : DOT_SPACING;
 
   // Converter string de padrão para array de índices
   useEffect(() => {
@@ -38,13 +56,16 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const dotSize = isMobile ? DOT_SIZE_MOBILE : DOT_SIZE;
+    const dotSpacing = isMobile ? DOT_SPACING_MOBILE : DOT_SPACING;
+
     // Limpar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Desenhar linhas conectando os pontos
     if (selectedDots.length > 1) {
       ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = isMobile ? 5 : 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
@@ -57,10 +78,10 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
         const toRow = Math.floor(to / GRID_SIZE);
         const toCol = to % GRID_SIZE;
 
-        const fromX = fromCol * DOT_SPACING + DOT_SIZE / 2;
-        const fromY = fromRow * DOT_SPACING + DOT_SIZE / 2;
-        const toX = toCol * DOT_SPACING + DOT_SIZE / 2;
-        const toY = toRow * DOT_SPACING + DOT_SIZE / 2;
+        const fromX = fromCol * dotSpacing + dotSize / 2;
+        const fromY = fromRow * dotSpacing + dotSize / 2;
+        const toX = toCol * dotSpacing + dotSize / 2;
+        const toY = toRow * dotSpacing + dotSize / 2;
 
         ctx.beginPath();
         ctx.moveTo(fromX, fromY);
@@ -73,37 +94,37 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
     for (let row = 0; row < GRID_SIZE; row++) {
       for (let col = 0; col < GRID_SIZE; col++) {
         const index = row * GRID_SIZE + col;
-        const x = col * DOT_SPACING + DOT_SIZE / 2;
-        const y = row * DOT_SPACING + DOT_SIZE / 2;
+        const x = col * dotSpacing + dotSize / 2;
+        const y = row * dotSpacing + dotSize / 2;
         const isSelected = selectedDots.includes(index);
 
         // Círculo externo
         ctx.beginPath();
-        ctx.arc(x, y, DOT_SIZE / 2, 0, 2 * Math.PI);
+        ctx.arc(x, y, dotSize / 2, 0, 2 * Math.PI);
         ctx.fillStyle = isSelected ? '#3b82f6' : '#e5e7eb';
         ctx.fill();
         ctx.strokeStyle = isSelected ? '#2563eb' : '#9ca3af';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = isMobile ? 3 : 2;
         ctx.stroke();
 
         // Círculo interno (selecionado) e número da sequência
         if (isSelected) {
           ctx.beginPath();
-          ctx.arc(x, y, DOT_SIZE / 4, 0, 2 * Math.PI);
+          ctx.arc(x, y, dotSize / 4, 0, 2 * Math.PI);
           ctx.fillStyle = '#ffffff';
           ctx.fill();
           
           // Desenhar número da sequência
           const sequenceNumber = selectedDots.indexOf(index) + 1;
           ctx.fillStyle = '#2563eb';
-          ctx.font = 'bold 12px Arial';
+          ctx.font = isMobile ? 'bold 18px Arial' : 'bold 12px Arial';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(sequenceNumber.toString(), x, y);
         }
       }
     }
-  }, [selectedDots]);
+  }, [selectedDots, isMobile]);
 
   const getDotIndex = (x: number, y: number): number | null => {
     if (!containerRef.current) return null;
@@ -112,8 +133,11 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
     const relativeX = x - rect.left;
     const relativeY = y - rect.top;
 
-    const col = Math.round((relativeX - DOT_SIZE / 2) / DOT_SPACING);
-    const row = Math.round((relativeY - DOT_SIZE / 2) / DOT_SPACING);
+    const dotSize = isMobile ? DOT_SIZE_MOBILE : DOT_SIZE;
+    const dotSpacing = isMobile ? DOT_SPACING_MOBILE : DOT_SPACING;
+
+    const col = Math.round((relativeX - dotSize / 2) / dotSpacing);
+    const row = Math.round((relativeY - dotSize / 2) / dotSpacing);
 
     if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) {
       return null;
@@ -144,11 +168,14 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
   const handleStart = (x: number, y: number) => {
     if (disabled) return;
     const index = getDotIndex(x, y);
-    if (index !== null && !selectedDots.includes(index)) {
-      // Inicia arrasto adicionando o primeiro ponto
-      const newDots = [index];
-      setSelectedDots(newDots);
-      onChange?.(newDots.join('-'));
+    if (index !== null) {
+      // Se já está selecionado, não faz nada (permite continuar desenhando)
+      if (!selectedDots.includes(index)) {
+        // Inicia arrasto adicionando o primeiro ponto
+        const newDots = [index];
+        setSelectedDots(newDots);
+        onChange?.(newDots.join('-'));
+      }
     }
   };
 
@@ -208,25 +235,37 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
   // Handlers para touch
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (disabled) return;
     const touch = e.touches[0];
+    setIsDrawing(true);
     handleStart(touch.clientX, touch.clientY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (!isDrawing || disabled) return;
     const touch = e.touches[0];
     handleMove(touch.clientX, touch.clientY);
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     handleEnd();
   };
 
+  const canvasWidth = isMobile 
+    ? DOT_SPACING_MOBILE * (GRID_SIZE - 1) + DOT_SIZE_MOBILE
+    : DOT_SPACING * (GRID_SIZE - 1) + DOT_SIZE;
+  const canvasHeight = canvasWidth;
+
   return (
-    <div className={cn('space-y-2 w-full min-w-0 max-w-full', className)}>
+    <div className={cn('space-y-2 w-full min-w-0 max-w-full flex flex-col items-center', className)}>
       <div
         ref={containerRef}
-        className="relative inline-block cursor-pointer select-none max-w-full"
+        className="relative inline-block cursor-pointer select-none touch-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -234,13 +273,18 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        style={{ touchAction: 'none' }}
       >
         <canvas
           ref={canvasRef}
-          width={DOT_SPACING * (GRID_SIZE - 1) + DOT_SIZE}
-          height={DOT_SPACING * (GRID_SIZE - 1) + DOT_SIZE}
-          className="block max-w-full h-auto"
-          style={{ maxWidth: '100%', height: 'auto' }}
+          width={canvasWidth}
+          height={canvasHeight}
+          className="block"
+          style={{ 
+            maxWidth: isMobile ? '100%' : '100%',
+            height: 'auto',
+            display: 'block'
+          }}
         />
       </div>
       {selectedDots.length > 0 && (
@@ -248,7 +292,7 @@ export function PatternLock({ value = '', onChange, disabled = false, className 
           type="button"
           onClick={handleClear}
           disabled={disabled}
-          className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="text-xs md:text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           Limpar padrão
         </button>

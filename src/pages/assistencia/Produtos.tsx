@@ -364,121 +364,124 @@ export default function Produtos() {
       {/* Container principal com altura calculada - compensa padding do ModernLayout */}
       <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
         {/* Barra de filtros e ações - fixa no topo do container */}
-        <div className="sticky top-0 z-30 bg-background border-b shadow-sm shrink-0">
-          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-wrap md:flex-nowrap px-3 py-2">
-            {/* Filtros */}
-            <Select 
-              value={grupo && grupo.trim() !== '' ? grupo : 'all'} 
-              onValueChange={(value) => {
-                setGrupo(value === 'all' ? '' : value);
-                // Resetar para página 1 ao mudar filtro
-                hookResult.setPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 w-[140px] shrink-0 text-xs">
-                <SelectValue placeholder="Grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">TODOS</SelectItem>
-                {grupos.map((g) => (
-                  <SelectItem key={g.id || g.nome} value={g.nome}>
-                    {g.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="sticky top-0 z-30 bg-background border-b-2 border-gray-300 shadow-sm shrink-0">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 px-3 py-2">
+            {/* Filtros - linha superior no mobile */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select 
+                value={grupo && grupo.trim() !== '' ? grupo : 'all'} 
+                onValueChange={(value) => {
+                  setGrupo(value === 'all' ? '' : value);
+                  hookResult.setPage(1);
+                }}
+              >
+                <SelectTrigger className="h-9 w-[140px] md:w-[140px] shrink-0 text-xs border-2 border-gray-300">
+                  <SelectValue placeholder="Grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">TODOS</SelectItem>
+                  {grupos.map((g) => (
+                    <SelectItem key={g.id || g.nome} value={g.nome}>
+                      {g.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Input
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-[180px] shrink-0 text-xs"
-            />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 flex-1 md:w-[180px] md:flex-none text-xs border-2 border-gray-300"
+              />
 
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleClearFilters} 
-              className="gap-1 h-9 shrink-0 px-2"
-            >
-              <XCircle className="h-3 w-3" />
-              <span className="hidden lg:inline text-xs">Limpar</span>
-            </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleClearFilters} 
+                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs">Limpar</span>
+              </Button>
+            </div>
 
-            <div className="w-px h-5 bg-border mx-0.5 shrink-0"></div>
+            {/* Ações - linha inferior no mobile */}
+            <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-wrap md:flex-nowrap">
+              <div className="w-px h-5 bg-gray-300 mx-0.5 shrink-0 hidden md:block"></div>
 
-            {/* Ações */}
-            <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="gap-1 h-9 shrink-0 px-2">
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Importar</span>
-            </Button>
+              <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Importar</span>
+              </Button>
 
-            <Button onClick={handleNew} size="sm" className="gap-1 h-9 shrink-0 px-2">
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Novo</span>
-            </Button>
+              <Button onClick={handleNew} size="sm" className="gap-1 h-9 shrink-0 px-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md">
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Novo</span>
+              </Button>
 
-            <Button
-              onClick={() => selectedProduto && handleEdit(selectedProduto)}
-              size="sm"
-              variant="outline"
-              disabled={!selectedProduto}
-              className="gap-1 h-9 shrink-0 px-2"
-            >
-              <Edit className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Abrir</span>
-            </Button>
+              <Button
+                onClick={() => selectedProduto && handleEdit(selectedProduto)}
+                size="sm"
+                variant="outline"
+                disabled={!selectedProduto}
+                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Abrir</span>
+              </Button>
 
-            <Button
-              onClick={handleInativar}
-              size="sm"
-              variant="outline"
-              disabled={!selectedProduto}
-              className="gap-1 h-9 shrink-0 px-2"
-            >
-              <X className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Inativar</span>
-            </Button>
+              <Button
+                onClick={handleInativar}
+                size="sm"
+                variant="outline"
+                disabled={!selectedProduto}
+                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Inativar</span>
+              </Button>
 
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!selectedProduto}
-              onClick={() => setShowEtiquetaModal(true)}
-              className="gap-1 h-9 shrink-0 px-2"
-            >
-              <Barcode className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Etiqueta</span>
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!selectedProduto}
+                onClick={() => setShowEtiquetaModal(true)}
+                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+              >
+                <Barcode className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Etiqueta</span>
+              </Button>
 
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!selectedProduto}
-              onClick={() => setShowEstoqueModal(true)}
-              className="gap-1 h-9 shrink-0 px-2"
-            >
-              <Warehouse className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Estoque</span>
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!selectedProduto}
+                onClick={() => setShowEstoqueModal(true)}
+                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+              >
+                <Warehouse className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Estoque</span>
+              </Button>
 
-            <div className="flex-1 min-w-0"></div>
+              <div className="flex-1 min-w-0 hidden md:block"></div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(-1)}
-              className="gap-1 h-9 shrink-0 px-2 text-destructive"
-            >
-              <DoorOpen className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline text-xs">Sair</span>
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="gap-1 h-9 shrink-0 px-2 text-destructive border-2 border-red-300"
+              >
+                <DoorOpen className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline text-xs">Sair</span>
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Área da tabela - apenas o corpo rola */}
-        <div className="flex-1 min-h-0 px-4 pb-4">
-          <Card className="h-full flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 px-2 md:px-4 pb-2 md:pb-4 flex flex-col">
+          <Card className="h-full flex flex-col overflow-hidden border-2 border-gray-300">
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
             {hookResult.error ? (
               <div className="p-12 text-center">
@@ -508,21 +511,21 @@ export default function Produtos() {
               </div>
             ) : (
               <>
-                {/* Estrutura da tabela com cabeçalho fixo e scroll no corpo */}
-                <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                {/* Desktop: Tabela */}
+                <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
                   {/* Container da tabela com scroll apenas vertical */}
                   <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
                     <table className="w-full caption-bottom text-sm border-collapse table-fixed">
                       {/* Cabeçalho fixo */}
                       <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
                         <tr className="border-b-2 border-gray-300">
-                          <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px] hidden md:table-cell">Código</th>
+                          <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Código</th>
                           <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px] hidden lg:table-cell">Referência</th>
                           <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px] hidden lg:table-cell">Código de Barras</th>
                           <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[200px]">Descrição</th>
                           <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden lg:table-cell">Localização</th>
                           <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Estoque</th>
-                          <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[70px] hidden md:table-cell">Unidade</th>
+                          <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[70px]">Unidade</th>
                           <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px]">Valor de Venda</th>
                           <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 w-[80px]">Ações</th>
                         </tr>
@@ -530,7 +533,6 @@ export default function Produtos() {
                       {/* Corpo da tabela */}
                       <tbody>
                           {isFetching && !isLoading && produtos.length > 0 ? (
-                            // Skeleton loading ao trocar página - manter estrutura
                             produtos.map((produto, index) => (
                               <tr key={`skeleton-${produto.id}`} className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
                                 <td colSpan={9} className="py-3.5 px-3">
@@ -560,8 +562,8 @@ export default function Produtos() {
                     </table>
                   </div>
 
-                  {/* Controles de Paginação - fixo no final, compacto */}
-                  <div className="shrink-0 border-t-2 border-border bg-background px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-2">
+                  {/* Controles de Paginação Desktop - fixo no final, compacto */}
+                  <div className="shrink-0 border-t-2 border-gray-300 bg-background px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-2">
                     <div className="text-xs text-muted-foreground text-center sm:text-left">
                       Mostrando {produtos.length > 0 && totalCount > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0} a {totalCount > 0 ? Math.min(page * (hookResult?.pageSize || 50), totalCount) : 0} de {totalCount} produtos
                     </div>
@@ -571,7 +573,7 @@ export default function Produtos() {
                         size="sm"
                         onClick={goToPreviousPage}
                         disabled={page === 1 || isFetching}
-                        className="h-7 text-xs"
+                        className="h-7 text-xs border-2 border-gray-300"
                       >
                         <ChevronLeft className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Anterior</span>
@@ -584,7 +586,7 @@ export default function Produtos() {
                         size="sm"
                         onClick={goToNextPage}
                         disabled={!totalPages || page >= totalPages || isFetching}
-                        className="h-7 text-xs"
+                        className="h-7 text-xs border-2 border-gray-300"
                       >
                         <span className="hidden sm:inline">Próxima</span>
                         <ChevronRight className="h-3.5 w-3.5" />
@@ -592,10 +594,132 @@ export default function Produtos() {
                     </div>
                   </div>
                 </div>
+
+                {/* Mobile: Cards */}
+                <div className="md:hidden flex-1 overflow-y-auto min-h-0 space-y-3 p-2">
+                  {isFetching && !isLoading && produtos.length > 0 ? (
+                    produtos.map((produto) => (
+                      <Card key={`skeleton-${produto.id}`} className="border-2 border-gray-300">
+                        <CardContent className="p-3">
+                          <div className="h-20 bg-muted rounded animate-pulse"></div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : produtos.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      Nenhum produto encontrado
+                    </div>
+                  ) : (
+                    produtos.map((produto, index) => {
+                      const valorVenda = currencyFormatters.brl(produto.preco_venda || produto.valor_venda || 0);
+                      const descricaoCompleta = produto.nome || produto.descricao || '';
+                      const infoSecundaria = [
+                        produto.referencia && `Ref: ${produto.referencia}`,
+                        produto.codigo_barras && `EAN: ${produto.codigo_barras}`,
+                        produto.codigo && `Código: ${produto.codigo}`
+                      ].filter(Boolean).join(' • ');
+                      
+                      const quantidade = produto.quantidade || 0;
+                      const estoqueMinimo = produto.estoque_minimo || 0;
+                      let estoqueStatus;
+                      if (quantidade === 0) {
+                        estoqueStatus = { status: 'zerado', label: 'Zerado', className: 'bg-red-100 text-red-700 border-red-300' };
+                      } else if (quantidade <= estoqueMinimo && estoqueMinimo > 0) {
+                        estoqueStatus = { status: 'baixo', label: 'Baixo', className: 'bg-orange-100 text-orange-700 border-orange-300' };
+                      } else {
+                        estoqueStatus = { status: 'ok', label: 'OK', className: 'bg-green-100 text-green-700 border-green-300' };
+                      }
+
+                      return (
+                        <Card 
+                          key={produto.id}
+                          className={`border-2 ${selectedProduto?.id === produto.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-300'} cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]`}
+                          onClick={() => setSelectedProduto(produto)}
+                        >
+                          <CardContent className="p-3 space-y-2">
+                            {/* Header: Descrição */}
+                            <div className="border-b-2 border-gray-200 pb-2">
+                              <h3 className="font-semibold text-sm uppercase truncate">{descricaoCompleta}</h3>
+                              {infoSecundaria && (
+                                <p className="text-xs text-muted-foreground mt-1">{infoSecundaria}</p>
+                              )}
+                            </div>
+
+                            {/* Info: Estoque e Valor */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-muted-foreground">Estoque</p>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-semibold text-base">{quantidade}</span>
+                                  <Badge variant="outline" className={`${estoqueStatus.className} text-[10px] px-1.5 py-0 border-2 font-medium`}>
+                                    {estoqueStatus.label}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-muted-foreground">Valor de Venda</p>
+                                <p className="font-semibold text-base text-green-600">{valorVenda}</p>
+                              </div>
+                            </div>
+
+                            {/* Footer: Botão de ação */}
+                            <div className="flex justify-end pt-2 border-t-2 border-gray-200">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(produto);
+                                }}
+                                className="h-8 px-3 text-xs border-2 border-gray-300"
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1" />
+                                Editar
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+                </div>
+
               </>
             )}
             </CardContent>
           </Card>
+
+          {/* Mobile: Paginação - fora do Card */}
+          <div className="md:hidden shrink-0 border-t-2 border-gray-300 bg-background mt-2 px-3 py-3 flex flex-col items-center justify-between gap-2 rounded-lg">
+            <div className="text-xs text-muted-foreground text-center">
+              Mostrando {produtos.length > 0 && totalCount > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0} a {totalCount > 0 ? Math.min(page * (hookResult?.pageSize || 50), totalCount) : 0} de {totalCount} produtos
+            </div>
+            <div className="flex items-center gap-2 w-full justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={page === 1 || isFetching}
+                className="h-8 text-xs border-2 border-gray-300 flex-1 max-w-[120px]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Anterior</span>
+              </Button>
+              <div className="text-xs font-semibold px-3 py-1 bg-gray-100 rounded border-2 border-gray-300">
+                {page} / {totalPages || 1}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={!totalPages || page >= totalPages || isFetching}
+                className="h-8 text-xs border-2 border-gray-300 flex-1 max-w-[120px]"
+              >
+                <span>Próxima</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Modal único de cadastro/edição */}
