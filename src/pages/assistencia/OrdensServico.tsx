@@ -529,28 +529,103 @@ export default function OrdensServico() {
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/pdv/os/${os.id}`);
-                                    }}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/pdv/os/${os.id}`);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(`/pdv/os/${os.id}`);
+                                        }}
+                                      >
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Editar
+                                      </DropdownMenuItem>
+                                      
+                                      {os.status !== 'finalizada' && (
+                                        <DropdownMenuItem
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await updateStatus(os.id, 'finalizada');
+                                              toast({
+                                                title: 'OS Finalizada',
+                                                description: `OS #${os.numero} foi finalizada com sucesso.`,
+                                              });
+                                            } catch (error) {
+                                              toast({
+                                                title: 'Erro',
+                                                description: 'Não foi possível finalizar a OS.',
+                                                variant: 'destructive',
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                                          Finalizar
+                                        </DropdownMenuItem>
+                                      )}
+                                      
+                                      {os.status !== 'entregue' && (
+                                        <DropdownMenuItem
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await updateStatus(os.id, 'entregue');
+                                              toast({
+                                                title: 'OS Entregue',
+                                                description: `OS #${os.numero} foi marcada como entregue sem reparo.`,
+                                              });
+                                            } catch (error) {
+                                              toast({
+                                                title: 'Erro',
+                                                description: 'Não foi possível marcar como entregue.',
+                                                variant: 'destructive',
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <Package className="mr-2 h-4 w-4" />
+                                          Entregue sem reparo
+                                        </DropdownMenuItem>
+                                      )}
+                                      
+                                      {(os.situacao === 'fechada' || os.status === 'entregue' || os.status === 'finalizada' || os.status === 'cancelada') && (
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOsToReabrir({ id: os.id, motivo: '' });
+                                          }}
+                                        >
+                                          <RotateCcw className="mr-2 h-4 w-4" />
+                                          Reabrir OS
+                                        </DropdownMenuItem>
+                                      )}
+                                      
+                                      <PermissionGate permission="os.delete">
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-red-600 focus:text-red-600"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOsToDelete(os.id);
+                                          }}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </PermissionGate>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                               
