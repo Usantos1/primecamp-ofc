@@ -615,11 +615,11 @@ export default function OrdensServico() {
                         {/* Cabeçalho fixo */}
                         <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
                           <tr className="border-b-2 border-gray-300">
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[180px]">Cliente</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px] hidden md:table-cell">Aparelho</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[200px]">Problema</th>
-                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px]">Status</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[150px]">Cliente</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Aparelho</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[180px]">Problema</th>
+                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px]">Status</th>
                             <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Entrada</th>
                             <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Previsão</th>
                             <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px]">Valor</th>
@@ -677,15 +677,30 @@ export default function OrdensServico() {
                                 }}
                               >
                                 {/* Nº OS */}
-                                <td className="font-bold text-primary py-3.5 px-3 text-left border-r border-gray-200">
-                                  {os.numero}
+                                <td className="font-bold text-primary py-3.5 px-2 text-center border-r border-gray-200">
+                                  <div className="flex flex-col items-center">
+                                    <span>{os.numero}</span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={cn(
+                                        'text-xs mt-1',
+                                        os.situacao === 'fechada' ? 'border-green-500 text-green-700 bg-green-50' :
+                                        os.situacao === 'cancelada' ? 'border-red-500 text-red-700 bg-red-50' :
+                                        'border-blue-500 text-blue-700 bg-blue-50'
+                                      )}
+                                    >
+                                      {os.situacao === 'fechada' ? 'Fechada' : 
+                                       os.situacao === 'cancelada' ? 'Cancelada' : 
+                                       'Aberta'}
+                                    </Badge>
+                                  </div>
                                 </td>
                                 
                                 {/* Cliente */}
                                 <td className="py-3.5 px-3 text-left border-r border-gray-200">
-                                  <div>
-                                    <p className="font-medium">{cliente?.nome || os.cliente_nome || '-'}</p>
-                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj}</p>}
+                                  <div className="min-w-0">
+                                    <p className="font-medium truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
+                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground truncate">{cliente.cpf_cnpj}</p>}
                                   </div>
                                 </td>
                                 
@@ -699,44 +714,16 @@ export default function OrdensServico() {
                                 
                                 {/* Problema */}
                                 <td className="py-3.5 px-3 text-left border-r border-gray-200">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="truncate">
-                                          {os.descricao_problema || '-'}
-                                        </div>
-                                      </TooltipTrigger>
-                                      {os.descricao_problema && os.descricao_problema.length > 30 && (
-                                        <TooltipContent>
-                                          <p className="max-w-xs">{os.descricao_problema}</p>
-                                        </TooltipContent>
-                                      )}
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <div className="text-sm break-words line-clamp-2">
+                                    {os.descricao_problema || '-'}
+                                  </div>
                                 </td>
                                 
                                 {/* Status */}
                                 <td className="py-3.5 px-3 text-center border-r border-gray-200">
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
-                                      {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
-                                    </Badge>
-                                    {os.situacao && (
-                                      <Badge 
-                                        variant="outline" 
-                                        className={cn(
-                                          'text-xs',
-                                          os.situacao === 'fechada' ? 'border-green-500 text-green-700 bg-green-50' :
-                                          os.situacao === 'cancelada' ? 'border-red-500 text-red-700 bg-red-50' :
-                                          'border-blue-500 text-blue-700 bg-blue-50'
-                                        )}
-                                      >
-                                        {os.situacao === 'fechada' ? 'Fechada' : 
-                                         os.situacao === 'cancelada' ? 'Cancelada' : 
-                                         'Aberta'}
-                                      </Badge>
-                                    )}
-                                  </div>
+                                  <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
+                                    {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
+                                  </Badge>
                                 </td>
                                 
                                 {/* Entrada */}
