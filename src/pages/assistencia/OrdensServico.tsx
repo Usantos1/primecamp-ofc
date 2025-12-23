@@ -199,7 +199,7 @@ export default function OrdensServico() {
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
       <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
         {/* Cards de estatísticas - shrink-0 para não encolher */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3">
           <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
@@ -254,6 +254,15 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
+          <Card className="border-2 border-l-4 border-l-gray-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gray-50/50 dark:bg-gray-950/10 md:bg-transparent md:dark:bg-transparent" onClick={() => setStatusFilter('entregue')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
+                <p className="text-xs md:text-xs text-gray-600 font-medium md:mb-0">Entregues:</p>
+                <p className="text-base md:text-2xl font-bold text-gray-600 md:mt-1">{stats.entregues || 0}</p>
+              </div>
+            </CardContent>
+          </Card>
+
           {stats.atrasadas > 0 && (
             <Card className="border-2 border-l-4 border-l-red-500 border-red-300 bg-red-50 dark:bg-red-950/20 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100">
               <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
@@ -264,6 +273,19 @@ export default function OrdensServico() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Barra de busca - destacada e visível */}
+        <div className="shrink-0 px-4 md:px-4 pb-3 md:pb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-11 h-11 text-base md:text-sm w-full border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
         </div>
 
         {/* Barra de filtros e ações - fixa no topo */}
@@ -340,42 +362,6 @@ export default function OrdensServico() {
                   <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
                 </Button>
               </PermissionGate>
-            </div>
-          </div>
-          
-          {/* Busca e Nova OS - linha separada abaixo dos filtros no mobile */}
-          <div className="px-4 md:px-3 pb-2 md:pb-0 md:hidden flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9 text-base md:text-sm w-full border-2 border-gray-300"
-              />
-            </div>
-            <PermissionGate permission="os.create">
-              <Button 
-                onClick={() => navigate('/pdv/os/nova')} 
-                size="sm" 
-                className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
-              </Button>
-            </PermissionGate>
-          </div>
-          
-          {/* Busca no desktop - mantém na mesma linha */}
-          <div className="hidden md:flex items-center gap-2 px-3 pb-2">
-            <div className="relative flex-1 min-w-[250px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9 text-base md:text-sm"
-              />
             </div>
           </div>
           
