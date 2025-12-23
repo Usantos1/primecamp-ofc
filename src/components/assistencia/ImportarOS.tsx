@@ -586,7 +586,10 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
                     <div><strong>Condições:</strong> {dadosExtraidos.condicoes_equipamento}</div>
                   )}
                   {dadosExtraidos.possui_senha && (
-                    <div><strong>Possui Senha:</strong> {dadosExtraidos.possui_senha}</div>
+                    <div>
+                      <strong>Possui Senha:</strong>{' '}
+                      {dadosExtraidos.possui_senha.replace(/^Possui Senha:\s*/i, '').trim() || dadosExtraidos.possui_senha}
+                    </div>
                   )}
                 </CardContent>
               </Card>
