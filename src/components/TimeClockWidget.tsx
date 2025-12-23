@@ -347,26 +347,28 @@ export const TimeClockWidget = () => {
 
   return (
     <>
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="text-center pb-4">
-          <CardTitle className="flex items-center justify-center gap-2 text-xl">
-            <Clock className="h-6 w-6" />
+      <Card className="w-full max-w-md mx-auto border-2 border-gray-300 shadow-sm">
+        <CardHeader className="text-center pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+          <CardTitle className="flex items-center justify-center gap-2 text-base md:text-xl">
+            <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-indigo-100 to-white border-2 border-gray-200">
+              <Clock className="h-4 w-4 md:h-6 md:w-6 text-indigo-600" />
+            </div>
             Ponto Eletrônico
           </CardTitle>
-          <div className="space-y-2">
-            <div className="text-3xl font-bold text-primary">
+          <div className="space-y-2 mt-3 md:mt-4">
+            <div className="text-2xl md:text-3xl font-bold text-indigo-600 md:text-primary">
               {format(currentTime, 'HH:mm:ss')}
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs md:text-sm text-muted-foreground">
               {format(currentTime, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </div>
-            <Badge className={`${statusInfo.color} text-white`}>
+            <Badge className={`${statusInfo.color} text-white text-[10px] md:text-xs border-2 border-gray-200`}>
               {statusInfo.text}
             </Badge>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">
           {/* Resumo do dia atual */}
           {todayRecord && (
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
