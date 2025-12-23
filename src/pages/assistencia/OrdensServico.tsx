@@ -617,12 +617,11 @@ export default function OrdensServico() {
                           <tr className="border-b-2 border-gray-300">
                             <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
                             <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[180px]">Cliente</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden lg:table-cell">Contato</th>
                             <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px] hidden md:table-cell">Aparelho</th>
                             <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[200px]">Problema</th>
                             <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px]">Status</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px] hidden md:table-cell">Entrada</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px] hidden md:table-cell">Previsão</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Entrada</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Previsão</th>
                             <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px]">Valor</th>
                             <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 w-[90px]">Ações</th>
                           </tr>
@@ -761,23 +760,41 @@ export default function OrdensServico() {
                                 {/* Entrada */}
                                 <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
                                   <div>
-                                    {os.data_entrada && (
-                                      <p className="font-medium">{dateFormatters.short(os.data_entrada)}</p>
+                                    {os.data_entrada ? (
+                                      <>
+                                        <p className="font-medium">{dateFormatters.short(os.data_entrada)}</p>
+                                        {os.hora_entrada ? (
+                                          <p className="text-xs text-muted-foreground">Horário: {os.hora_entrada}</p>
+                                        ) : (
+                                          <p className="text-xs text-muted-foreground">Horário: 00:00:00</p>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
                                     )}
-                                    {os.hora_entrada && (
-                                      <p className="text-xs text-muted-foreground">{os.hora_entrada}</p>
-                                    )}
-                                    {!os.data_entrada && <span className="text-muted-foreground">-</span>}
                                   </div>
                                 </td>
                                 
                                 {/* Previsão */}
                                 <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
                                   {os.previsao_entrega ? (
-                                    <span className={cn(isAtrasada && 'text-red-600 font-medium')}>
-                                      {dateFormatters.short(os.previsao_entrega)}
-                                    </span>
-                                  ) : '-'}
+                                    <div>
+                                      <p className={cn("font-medium", isAtrasada && 'text-red-600')}>
+                                        {dateFormatters.short(os.previsao_entrega)}
+                                      </p>
+                                      {os.hora_previsao ? (
+                                        <p className={cn("text-xs", isAtrasada ? "text-red-600" : "text-muted-foreground")}>
+                                          Horário: {os.hora_previsao}
+                                        </p>
+                                      ) : (
+                                        <p className={cn("text-xs", isAtrasada ? "text-red-600" : "text-muted-foreground")}>
+                                          Horário: 00:00:00
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
                                 </td>
                                 
                                 {/* Valor */}
