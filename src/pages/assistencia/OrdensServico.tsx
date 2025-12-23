@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Plus, Search, Eye, Edit, Phone, Filter,
-  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X, FileText
+  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X, FileText, Trash2
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -27,6 +27,17 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PermissionGate } from '@/components/PermissionGate';
 import { ImportarOS } from '@/components/assistencia/ImportarOS';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function OrdensServico() {
   const navigate = useNavigate();
@@ -38,6 +49,8 @@ export default function OrdensServico() {
   const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
   const [showImportarOS, setShowImportarOS] = useState(false);
+  const [osToDelete, setOsToDelete] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const { ordens, isLoading, getEstatisticas, getOSById, deleteOS } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
@@ -810,6 +823,19 @@ export default function OrdensServico() {
                                     >
                                       <Edit className="h-3.5 w-3.5" />
                                     </Button>
+                                    <PermissionGate permission="os.delete" fallback={null}>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOsToDelete(os.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </PermissionGate>
                                   </div>
                                 </td>
                               </tr>
@@ -834,6 +860,44 @@ export default function OrdensServico() {
           window.location.reload();
         }}
       />
+      
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={osToDelete !== null} onOpenChange={(open) => !open && setOsToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta OS? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (osToDelete) {
+                  try {
+                    await deleteOS.mutateAsync(osToDelete);
+                    toast({
+                      title: 'Sucesso',
+                      description: 'OS excluída com sucesso!',
+                    });
+                    setOsToDelete(null);
+                  } catch (error: any) {
+                    toast({
+                      title: 'Erro',
+                      description: error.message || 'Erro ao excluir OS',
+                      variant: 'destructive',
+                    });
+                  }
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ModernLayout>
   );
 }
