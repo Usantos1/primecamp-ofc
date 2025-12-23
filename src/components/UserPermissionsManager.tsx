@@ -168,12 +168,91 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
     const finalRoleId = roleId === 'none' ? '' : roleId;
     setSelectedRoleId(finalRoleId);
 
-    // Se selecionou um role, limpar permissões customizadas (será aplicado via role)
+    // Se selecionou um role, atualizar user_position_departments
     if (finalRoleId) {
-      // Atualizar user_position_departments
-      const { data: updData } = await supabase
+      // Buscar registro primário primeiro
+      let { data: updData, error: selectError } = await supabase
         .from('user_position_departments')
         .select('id, position_id, department_name')
+        .eq('user_id', userId)
+        .eq('is_primary', true)
+        .maybeSingle();
+
+      if (selectError) {
+        console.error('Erro ao buscar user_position_departments:', selectError);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao buscar dados do usuário',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (updData) {
+        // Atualizar registro existente
+        const { error: updateError } = await supabase
+          .from('user_position_departments')
+          .update({ role_id: finalRoleId })
+          .eq('id', updData.id);
+
+        if (updateError) {
+          console.error('Erro ao atualizar role:', updateError);
+          toast({
+            title: 'Erro',
+            description: 'Erro ao salvar role do usuário',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // Se não houver primário, tentar promover um registro existente
+        const { data: anyRecord } = await supabase
+          .from('user_position_departments')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+
+        if (anyRecord?.id) {
+          const { error: promoteError } = await supabase
+            .from('user_position_departments')
+            .update({ is_primary: true, role_id: finalRoleId })
+            .eq('id', anyRecord.id);
+
+          if (promoteError) {
+            console.error('Erro ao promover registro existente:', promoteError);
+            toast({
+              title: 'Erro',
+              description: 'Erro ao salvar role do usuário',
+              variant: 'destructive',
+            });
+            return;
+          }
+        } else {
+          // Criar registro primário mínimo (evita conflito de chave)
+          const { error: insertError } = await supabase
+            .from('user_position_departments')
+            .insert({
+              user_id: userId,
+              is_primary: true,
+              role_id: finalRoleId,
+            });
+
+          if (insertError) {
+            console.error('Erro ao criar registro de role:', insertError);
+            toast({
+              title: 'Erro',
+              description: 'Erro ao salvar role do usuário',
+              variant: 'destructive',
+            });
+            return;
+          }
+        }
+      }
+    } else {
+      // Remover role se selecionou "none"
+      const { data: updData } = await supabase
+        .from('user_position_departments')
+        .select('id')
         .eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
@@ -181,19 +260,8 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       if (updData) {
         await supabase
           .from('user_position_departments')
-          .update({ role_id: finalRoleId || null })
+          .update({ role_id: null })
           .eq('id', updData.id);
-      } else {
-        // Criar se não existir (mantém is_primary e insere mesmo sem position/department)
-        await supabase
-          .from('user_position_departments')
-          .insert({
-            user_id: userId,
-            position_id: null,
-            department_name: null,
-            is_primary: true,
-            role_id: finalRoleId || null,
-          });
       }
     }
   };
@@ -251,7 +319,74 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       // Salvar role se selecionado
       if (selectedRoleId) {
         const selectedRole = roles.find(r => r.id === selectedRoleId);
-        await handleRoleChange(selectedRoleId);
+        
+        // Buscar registro primário antes de salvar
+        const { data: currentUpdData } = await supabase
+          .from('user_position_departments')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_primary', true)
+          .maybeSingle();
+
+        if (currentUpdData?.id) {
+          const { error: updateError } = await supabase
+            .from('user_position_departments')
+            .update({ role_id: selectedRoleId })
+            .eq('id', currentUpdData.id);
+
+          if (updateError) {
+            console.error('Erro ao atualizar role:', updateError);
+            toast({
+              title: 'Erro',
+              description: 'Erro ao salvar role do usuário',
+              variant: 'destructive',
+            });
+            return;
+          }
+        } else {
+          // Promover registro existente ou criar mínimo
+          const { data: anyRecord } = await supabase
+            .from('user_position_departments')
+            .select('id')
+            .eq('user_id', userId)
+            .limit(1)
+            .maybeSingle();
+
+          if (anyRecord?.id) {
+            const { error: promoteError } = await supabase
+              .from('user_position_departments')
+              .update({ is_primary: true, role_id: selectedRoleId })
+              .eq('id', anyRecord.id);
+
+            if (promoteError) {
+              console.error('Erro ao promover registro existente:', promoteError);
+              toast({
+                title: 'Erro',
+                description: 'Erro ao salvar role do usuário',
+                variant: 'destructive',
+              });
+              return;
+            }
+          } else {
+            const { error: insertError } = await supabase
+              .from('user_position_departments')
+              .insert({
+                user_id: userId,
+                is_primary: true,
+                role_id: selectedRoleId,
+              });
+
+            if (insertError) {
+              console.error('Erro ao criar registro de role:', insertError);
+              toast({
+                title: 'Erro',
+                description: 'Erro ao salvar role do usuário',
+                variant: 'destructive',
+              });
+              return;
+            }
+          }
+        }
 
         // Log de mudança de role
         if (oldRoleName !== selectedRole?.display_name) {
@@ -267,7 +402,22 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           );
         }
       } else if (oldRoleName) {
-        // Role removido
+        // Remover role se não há seleção
+        const { data: updData } = await supabase
+          .from('user_position_departments')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_primary', true)
+          .maybeSingle();
+
+        if (updData) {
+          await supabase
+            .from('user_position_departments')
+            .update({ role_id: null })
+            .eq('id', updData.id);
+        }
+
+        // Log de remoção de role
         await logPermissionChange(
           'role_removed',
           null,
