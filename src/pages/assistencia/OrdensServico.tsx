@@ -199,7 +199,7 @@ export default function OrdensServico() {
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
       <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
         {/* Cards de estatísticas - shrink-0 para não encolher */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 justify-items-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 justify-items-center">
           <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
@@ -259,6 +259,15 @@ export default function OrdensServico() {
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-gray-600 font-medium md:mb-0">Entregues:</p>
                 <p className="text-base md:text-2xl font-bold text-gray-600 md:mt-1">{stats.entregues || 0}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-l-4 border-l-red-400 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-red-50/50 dark:bg-red-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('cancelada')}>
+            <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
+              <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
+                <p className="text-xs md:text-xs text-red-600 font-medium md:mb-0">Canceladas:</p>
+                <p className="text-base md:text-2xl font-bold text-red-600 md:mt-1">{stats.canceladas || 0}</p>
               </div>
             </CardContent>
           </Card>
