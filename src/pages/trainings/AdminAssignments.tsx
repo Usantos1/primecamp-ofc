@@ -38,7 +38,7 @@ export default function AdminAssignments() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <UserCheck className="h-5 w-5" />
-          Atribuir Treinamentos
+          Atribuir Treinamentos na Academy
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

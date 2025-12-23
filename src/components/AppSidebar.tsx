@@ -123,7 +123,7 @@ export function AppSidebar() {
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Metas", path: "/metas", icon: Target, permission: "rh.metas" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
-    { label: "Treinamentos", path: "/treinamentos", icon: GraduationCap, permission: "rh.treinamentos" },
+    { label: "Academy", path: "/treinamentos", icon: GraduationCap, permission: "rh.treinamentos" },
   ].filter(item => !item.permission || hasPermission(item.permission));
 
   // Grupo Administração (apenas para admin)

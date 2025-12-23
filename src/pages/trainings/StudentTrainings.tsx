@@ -54,7 +54,7 @@ export default function StudentTrainings() {
 
   if (isLoading) {
     return (
-      <ModernLayout title="Meus Treinamentos">
+      <ModernLayout title="Minha Academy">
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -64,7 +64,7 @@ export default function StudentTrainings() {
 
   return (
     <ModernLayout 
-      title="Meus Treinamentos" 
+      title="Minha Academy" 
       subtitle="Acompanhe seu progresso nos treinamentos atribuídos"
     >
       {/* Search and Filters */}
@@ -72,7 +72,7 @@ export default function StudentTrainings() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar treinamentos..."
+            placeholder="Buscar treinamentos na Academy..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"

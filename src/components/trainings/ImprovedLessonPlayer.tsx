@@ -396,16 +396,40 @@ export function ImprovedLessonPlayer({
   };
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!player || !progressBarRef.current || !duration) return;
+    e.stopPropagation();
+    e.preventDefault();
+    
+    if (!player || !progressBarRef.current) {
+      console.warn('Player ou progressBarRef não disponível');
+      return;
+    }
 
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const percentage = clickX / rect.width;
-    const newTime = percentage * duration;
+    try {
+      const total = player.getDuration();
+      if (!total || total <= 0) {
+        console.warn('Duração do vídeo não disponível');
+        return;
+      }
 
-    player.seekTo(newTime, true);
-    setCurrentTime(newTime);
-    setProgress((newTime / duration) * 100);
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+      const newTime = percentage * total;
+
+      console.log('Clicou na barra:', { clickX, rectWidth: rect.width, percentage, newTime, total });
+
+      player.seekTo(newTime, true);
+      setCurrentTime(newTime);
+      setProgress((newTime / total) * 100);
+      setDuration(total);
+    } catch (error) {
+      console.error('Erro ao clicar na barra de progresso:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível navegar no vídeo",
+        variant: "destructive"
+      });
+    }
   };
 
   const stopProgressTracking = () => {
@@ -481,51 +505,33 @@ export function ImprovedLessonPlayer({
 
   return (
     <div className="space-y-4">
-      <div 
-        ref={containerRef}
-        className="relative aspect-video w-full rounded-lg overflow-hidden bg-black group cursor-pointer"
-        onMouseEnter={() => {
-          setShowControls(true);
-        }}
-        onMouseLeave={() => {
-          setShowControls(false);
-        }}
-        onClick={handleVideoClick}
-      >
+      <div className="flex justify-center">
         <div 
-          ref={playerRef} 
-          className="w-full h-full relative z-0 youtube-player-container"
-        />
-        
-        {/* Máscara clicável para play/pause - sempre ativa mas invisível */}
-        <div 
-          className="absolute inset-0 z-5 cursor-pointer"
-          style={{ 
-            pointerEvents: showControls ? 'none' : 'auto',
-            backgroundColor: 'transparent'
+          ref={containerRef}
+          className="relative aspect-video w-[80%] rounded-lg overflow-hidden bg-black group cursor-pointer"
+          onMouseEnter={() => {
+            setShowControls(true);
+          }}
+          onMouseLeave={() => {
+            setShowControls(false);
           }}
           onClick={handleVideoClick}
-        />
-        
-        {/* Overlay Controls estilo YouTube - aparecem no hover */}
-        <div 
-          className={`absolute inset-0 transition-opacity duration-300 z-10 video-controls ${
-            showControls ? 'opacity-100' : 'opacity-0'
-          }`}
-          style={{ 
-            pointerEvents: showControls ? 'auto' : 'none'
-          }}
         >
-          {/* Gradiente de fundo mais transparente */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" style={{ pointerEvents: 'none' }} />
+          <div 
+            ref={playerRef} 
+            className="w-full h-full relative z-0 youtube-player-container"
+          />
           
-          {/* Barra de progresso estilo YouTube na parte inferior */}
+          {/* Barra de progresso estilo YouTube - sempre visível e funcional */}
           <div 
             ref={progressBarRef}
-            className="absolute bottom-0 left-0 right-0 h-1 bg-black/30 cursor-pointer group/progress"
-            onClick={handleProgressBarClick}
+            className="absolute bottom-0 left-0 right-0 h-2 bg-black/50 cursor-pointer z-20 group/progress"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleProgressBarClick(e);
+            }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.height = '4px';
+              e.currentTarget.style.height = '6px';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.height = '4px';
@@ -536,21 +542,43 @@ export function ImprovedLessonPlayer({
               className="h-full bg-red-600 transition-all duration-100"
               style={{ width: `${progress}%` }}
             />
-            {/* Indicador de posição */}
+            {/* Indicador de posição - aparece no hover */}
             <div 
-              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-red-600 rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity"
-              style={{ left: `calc(${progress}% - 6px)` }}
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-red-600 rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-lg border-2 border-white"
+              style={{ left: `calc(${progress}% - 8px)` }}
             />
           </div>
           
-          {/* Controles no centro inferior - mais transparentes */}
+          {/* Máscara clicável para play/pause - sempre ativa mas invisível */}
           <div 
-            className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1.5 border border-white/10 shadow-lg video-controls"
-            style={{ pointerEvents: 'auto' }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-0 z-5 cursor-pointer"
+            style={{ 
+              pointerEvents: showControls ? 'none' : 'auto',
+              backgroundColor: 'transparent'
+            }}
+            onClick={handleVideoClick}
+          />
+          
+          {/* Overlay Controls estilo YouTube - aparecem no hover */}
+          <div 
+            className={`absolute inset-0 transition-opacity duration-300 z-10 video-controls ${
+              showControls ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ 
+              pointerEvents: showControls ? 'auto' : 'none'
+            }}
           >
+            {/* Gradiente de fundo mais transparente */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" style={{ pointerEvents: 'none' }} />
+            
+            {/* Controles no centro inferior - mais transparentes */}
+            <div 
+              className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2 py-1.5 border border-white/10 shadow-lg video-controls"
+              style={{ pointerEvents: 'auto' }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
             <Button
               variant="ghost"
               size="sm"
@@ -686,6 +714,7 @@ export function ImprovedLessonPlayer({
                 <Maximize2 className="h-3 w-3" />
               )}
             </Button>
+          </div>
           </div>
         </div>
       </div>

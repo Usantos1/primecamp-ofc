@@ -317,7 +317,7 @@ export default function Reports() {
     const boxHeight = 25;
     
     addMetricBox('Tarefas', overviewStats.tasks.total, margin, yPos, boxWidth, [59, 130, 246]);
-    addMetricBox('Treinamentos', overviewStats.trainings.total, margin + boxWidth + 5, yPos, boxWidth, [16, 185, 129]);
+    addMetricBox('Academy', overviewStats.trainings.total, margin + boxWidth + 5, yPos, boxWidth, [16, 185, 129]);
     addMetricBox('Usuários', overviewStats.users.active, margin + (boxWidth + 5) * 2, yPos, boxWidth, [139, 92, 246]);
     addMetricBox('Processos', overviewStats.processes.active, margin + (boxWidth + 5) * 3, yPos, boxWidth, [245, 158, 11]);
     
@@ -372,7 +372,7 @@ export default function Reports() {
         yPos = margin;
       }
       
-      yPos = addSectionHeader('RESUMO DE TREINAMENTOS', yPos);
+      yPos = addSectionHeader('RESUMO DA ACADEMY', yPos);
       
       const trainingBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
       addMetricBox('Total', trainingsData.total, margin, yPos, trainingBoxWidth, [16, 185, 129]);
@@ -643,7 +643,7 @@ export default function Reports() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Treinamentos</p>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Academy</p>
                   <p className="text-2xl font-bold text-green-900 dark:text-green-100">
                     {overviewStats.trainings.total}
                   </p>
@@ -696,7 +696,7 @@ export default function Reports() {
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-            <TabsTrigger value="trainings">Treinamentos</TabsTrigger>
+            <TabsTrigger value="trainings">Academy</TabsTrigger>
             <TabsTrigger value="disc">DISC</TabsTrigger>
             <TabsTrigger value="processes">Processos</TabsTrigger>
           </TabsList>
@@ -742,12 +742,12 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              {/* Treinamentos por Departamento */}
+              {/* Academy por Departamento */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <GraduationCap className="h-5 w-5" />
-                    Treinamentos por Departamento
+                    Academy por Departamento
                   </CardTitle>
             </CardHeader>
                 <CardContent>
@@ -917,12 +917,12 @@ export default function Reports() {
             </Card>
           </TabsContent>
 
-          {/* Relatório de Treinamentos */}
+          {/* Relatório da Academy */}
           <TabsContent value="trainings" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Treinamentos por Status</CardTitle>
+                  <CardTitle>Academy por Status</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {trainingsData?.byStatus && Object.keys(trainingsData.byStatus).length > 0 ? (
@@ -956,7 +956,7 @@ export default function Reports() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Treinamentos por Departamento</CardTitle>
+                  <CardTitle>Academy por Departamento</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {trainingsData?.byDepartment && trainingsData.byDepartment.length > 0 ? (
@@ -981,7 +981,7 @@ export default function Reports() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Métricas de Treinamentos</CardTitle>
+                <CardTitle>Métricas da Academy</CardTitle>
             </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

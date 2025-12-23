@@ -128,7 +128,7 @@ export default function AdminTrainings() {
 
   if (isLoading) {
     return (
-      <ModernLayout title="Treinamentos">
+      <ModernLayout title="Academy">
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -138,12 +138,12 @@ export default function AdminTrainings() {
 
   return (
     <ModernLayout 
-      title="Gestão de Treinamentos" 
+      title="Gestão da Academy" 
       subtitle="Crie e gerencie treinamentos para a equipe"
     >
       <Tabs defaultValue="trainings" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="trainings">Treinamentos</TabsTrigger>
+          <TabsTrigger value="trainings">Academy</TabsTrigger>
           <TabsTrigger value="assignments">Atribuições</TabsTrigger>
         </TabsList>
 
@@ -153,7 +153,7 @@ export default function AdminTrainings() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar treinamentos..."
+                placeholder="Buscar treinamentos na Academy..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"

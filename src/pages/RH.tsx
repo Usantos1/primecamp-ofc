@@ -8,7 +8,7 @@ export default function RH() {
 
   const rhSections = [
     {
-      title: 'Treinamentos',
+      title: 'Academy',
       description: 'Gerencie cursos, aulas e progresso dos colaboradores',
       icon: GraduationCap,
       path: '/treinamentos',

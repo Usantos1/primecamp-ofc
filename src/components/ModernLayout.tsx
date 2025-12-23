@@ -12,6 +12,7 @@ import { SettingsModal } from "./SettingsModal"
 import { useProcesses } from "@/hooks/useProcesses"
 import { useTasks } from "@/hooks/useTasks"
 import { useNavigate } from "react-router-dom"
+import { PermissionGate } from "./PermissionGate"
 
 interface ModernLayoutProps {
   children: React.ReactNode
@@ -120,13 +121,15 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
                     </Badge>
                   )}
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setIsSettingsOpen(true)}
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
+                <PermissionGate permission="admin.config">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setIsSettingsOpen(true)}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </PermissionGate>
 
                 {/* Header Actions */}
                 {headerActions}
