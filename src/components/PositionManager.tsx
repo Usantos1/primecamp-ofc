@@ -81,54 +81,61 @@ export const PositionManager = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
+    <Card className="border-2 border-gray-300 shadow-sm">
+      <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+            <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-purple-100 to-white border-2 border-gray-200">
+              <Users className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
+            </div>
             Gerenciamento de Cargos
           </CardTitle>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button 
+                onClick={resetForm}
+                className="w-full md:w-auto h-9 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0 shadow-md"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Cargo
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] md:max-w-md p-3 md:p-6">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="text-base md:text-lg">
                   {editingPosition ? 'Editar Cargo' : 'Novo Cargo'}
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
                 <div>
-                  <label className="text-sm font-medium">Nome do Cargo</label>
+                  <label className="text-xs md:text-sm font-medium">Nome do Cargo</label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Ex: Gerente de Vendas"
                     required
+                    className="h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
                   />
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium">Descrição</label>
+                  <label className="text-xs md:text-sm font-medium">Descrição</label>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Descrição das responsabilidades do cargo"
                     rows={3}
+                    className="text-base md:text-sm border-2 border-gray-300"
                   />
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium">Nível Hierárquico</label>
+                  <label className="text-xs md:text-sm font-medium">Nível Hierárquico</label>
                   <Select 
                     value={formData.level.toString()} 
                     onValueChange={(value) => setFormData({ ...formData, level: parseInt(value) })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 md:h-10 text-base md:text-sm border-2 border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -143,11 +150,19 @@ export const PositionManager = () => {
                   </Select>
                 </div>
                 
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <div className="flex flex-col md:flex-row justify-end gap-2 pt-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                    className="w-full md:w-auto h-9 border-2 border-gray-300"
+                  >
                     Cancelar
                   </Button>
-                  <Button type="submit">
+                  <Button 
+                    type="submit"
+                    className="w-full md:w-auto h-9 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white border-0"
+                  >
                     {editingPosition ? 'Atualizar' : 'Criar'}
                   </Button>
                 </div>
@@ -156,70 +171,86 @@ export const PositionManager = () => {
           </Dialog>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="p-3 md:p-6">
+        <div className="space-y-3 md:space-y-4">
           {positions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-sm md:text-base">
               Nenhum cargo encontrado. Crie o primeiro cargo para começar.
             </div>
           ) : (
             positions.map((position) => {
               const LevelIcon = getLevelIcon(position.level);
               return (
-                <div
+                <Card
                   key={position.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="border-2 border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all active:scale-[0.98]"
                 >
-                  <div className="flex items-center gap-3">
-                    <LevelIcon className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{position.name}</span>
-                        <Badge className={`${getLevelColor(position.level)} text-white`}>
-                          Nível {position.level}
-                        </Badge>
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div className="flex items-start md:items-center gap-3">
+                        <div className={`p-2 rounded-lg ${getLevelColor(position.level)}/10 border-2 border-gray-200`}>
+                          <LevelIcon className={`h-4 w-4 md:h-5 md:w-5 ${getLevelColor(position.level).replace('bg-', 'text-')}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm md:text-base">{position.name}</span>
+                            <Badge className={`${getLevelColor(position.level)} text-white text-[10px] md:text-xs border-2 border-gray-200`}>
+                              Nível {position.level}
+                            </Badge>
+                          </div>
+                          {position.description && (
+                            <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
+                              {position.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {position.description && (
-                        <p className="text-sm text-muted-foreground">
-                          {position.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(position)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
+                      
+                      <div className="flex items-center gap-2 justify-end md:justify-start">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(position)}
+                          className="h-8 w-8 md:h-9 md:w-auto md:px-3 border-2 border-gray-300"
+                        >
+                          <Edit className="h-3 w-3 md:h-4 md:w-4" />
+                          <span className="hidden md:inline ml-2">Editar</span>
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o cargo "{position.name}"? 
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(position.id)}>
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="h-8 w-8 md:h-9 md:w-auto md:px-3 border-2 border-red-300 text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                              <span className="hidden md:inline ml-2">Excluir</span>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="max-w-[95vw] md:max-w-md p-3 md:p-6">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-base md:text-lg">Confirmar Exclusão</AlertDialogTitle>
+                              <AlertDialogDescription className="text-xs md:text-sm">
+                                Tem certeza que deseja excluir o cargo "{position.name}"? 
+                                Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="flex-col md:flex-row gap-2">
+                              <AlertDialogCancel className="w-full md:w-auto h-9 border-2 border-gray-300">Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(position.id)}
+                                className="w-full md:w-auto h-9 bg-red-600 hover:bg-red-700"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })
           )}

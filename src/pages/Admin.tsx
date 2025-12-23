@@ -147,75 +147,84 @@ export default function Admin() {
       title="Painel Administrativo"
       subtitle="Central de administração e configurações do sistema"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+          <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow bg-blue-50/50 md:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-2 md:pt-3 px-3 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium text-blue-700 md:text-foreground">Total de Usuários</CardTitle>
+              <Users className="h-3 w-3 md:h-4 md:w-4 text-blue-600 md:text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Usuários registrados</p>
+            <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+              <div className="text-base md:text-2xl font-bold text-blue-700 md:text-foreground">-</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Usuários registrados</p>
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Processos Ativos</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-2 border-gray-300 border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow bg-purple-50/50 md:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-2 md:pt-3 px-3 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium text-purple-700 md:text-foreground">Processos Ativos</CardTitle>
+              <Settings className="h-3 w-3 md:h-4 md:w-4 text-purple-600 md:text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Processos em execução</p>
+            <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+              <div className="text-base md:text-2xl font-bold text-purple-700 md:text-foreground">-</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Processos em execução</p>
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tarefas Pendentes</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-2 border-gray-300 border-l-4 border-l-red-500 shadow-sm hover:shadow-md transition-shadow bg-red-50/50 md:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-2 md:pt-3 px-3 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium text-red-700 md:text-foreground">Tarefas Pendentes</CardTitle>
+              <Target className="h-3 w-3 md:h-4 md:w-4 text-red-600 md:text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Aguardando execução</p>
+            <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+              <div className="text-base md:text-2xl font-bold text-red-700 md:text-foreground">-</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Aguardando execução</p>
             </CardContent>
           </Card>
           
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Atividade Hoje</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+          <Card className="border-2 border-gray-300 border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow bg-emerald-50/50 md:bg-transparent">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-2 md:pt-3 px-3 md:px-6">
+              <CardTitle className="text-[10px] md:text-sm font-medium text-emerald-700 md:text-foreground">Atividade Hoje</CardTitle>
+              <Activity className="h-3 w-3 md:h-4 md:w-4 text-emerald-600 md:text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Ações realizadas</p>
+            <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+              <div className="text-base md:text-2xl font-bold text-emerald-700 md:text-foreground">-</div>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Ações realizadas</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Admin Sections Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
           {adminSections.map((section) => {
             const IconComponent = section.icon;
             return (
-              <Card key={section.path} className="group hover:shadow-md transition-all duration-200 cursor-pointer">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <IconComponent className={`h-8 w-8 ${section.color}`} />
+              <Card 
+                key={section.path} 
+                className="border-2 border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group"
+                onClick={() => navigate(section.path)}
+              >
+                <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`p-2 rounded-lg bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100')} to-white border-2 border-gray-200`}>
+                      <IconComponent className={`h-5 w-5 md:h-6 md:w-6 ${section.color}`} />
+                    </div>
                     <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
-                  <CardTitle className="text-lg">{section.title}</CardTitle>
+                  <CardTitle className="text-sm md:text-lg font-semibold">{section.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0">
-                  <CardDescription className="mb-4">
+                <CardContent className="pt-0 px-3 md:px-6 pb-3 md:pb-6">
+                  <CardDescription className="mb-3 md:mb-4 text-xs md:text-sm line-clamp-2">
                     {section.description}
                   </CardDescription>
                   <Button 
                     variant="outline" 
-                    className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    onClick={() => navigate(section.path)}
+                    className="w-full h-8 md:h-10 text-xs md:text-sm border-2 border-gray-300 group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-purple-500 group-hover:text-white group-hover:border-transparent transition-all"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(section.path);
+                    }}
                   >
                     Acessar
                   </Button>

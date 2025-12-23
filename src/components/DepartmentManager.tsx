@@ -180,48 +180,62 @@ export const DepartmentManager = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
+    <Card className="border-2 border-gray-300 shadow-sm">
+      <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+            <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-green-100 to-white border-2 border-gray-200">
+              <Building2 className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+            </div>
             Gerenciar Departamentos
           </CardTitle>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button 
+                className="w-full md:w-auto h-9 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white border-0 shadow-md gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 Novo Departamento
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-[95vw] md:max-w-md p-3 md:p-6">
               <DialogHeader>
-                <DialogTitle>Criar Novo Departamento</DialogTitle>
+                <DialogTitle className="text-base md:text-lg">Criar Novo Departamento</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome *</Label>
+                  <Label htmlFor="name" className="text-xs md:text-sm">Nome *</Label>
                   <Input
                     id="name"
                     value={newDept.name}
                     onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
                     placeholder="Nome do departamento"
+                    className="h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
+                  <Label htmlFor="description" className="text-xs md:text-sm">Descrição</Label>
                   <Textarea
                     id="description"
                     value={newDept.description}
                     onChange={(e) => setNewDept({ ...newDept, description: e.target.value })}
                     placeholder="Descrição do departamento (opcional)"
+                    className="text-base md:text-sm border-2 border-gray-300"
+                    rows={3}
                   />
                 </div>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                <div className="flex flex-col md:flex-row gap-2 justify-end pt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsCreateOpen(false)}
+                    className="w-full md:w-auto h-9 border-2 border-gray-300"
+                  >
                     Cancelar
                   </Button>
-                  <Button onClick={createDepartment}>
+                  <Button 
+                    onClick={createDepartment}
+                    className="w-full md:w-auto h-9 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white border-0"
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Criar
                   </Button>
@@ -231,114 +245,244 @@ export const DepartmentManager = () => {
           </Dialog>
         </div>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Criado em</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {departments.map((dept) => (
-              <TableRow key={dept.id}>
-                <TableCell>
-                  {editingDept?.id === dept.id ? (
-                    <Input
-                      value={editingDept.name}
-                      onChange={(e) => setEditingDept({ ...editingDept, name: e.target.value })}
-                      className="w-40"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4" />
-                      {dept.name}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editingDept?.id === dept.id ? (
-                    <Textarea
-                      value={editingDept.description || ''}
-                      onChange={(e) => setEditingDept({ ...editingDept, description: e.target.value })}
-                      className="w-60"
-                    />
-                  ) : (
-                    <span className="text-muted-foreground">{dept.description || 'Sem descrição'}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {new Date(dept.created_at).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    {editingDept?.id === dept.id ? (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => updateDepartment(dept.id, {
-                            name: editingDept.name,
-                            description: editingDept.description
-                          })}
-                        >
-                          <Save className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingDept(null)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingDept(dept)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja excluir o departamento "{dept.name}"? 
-                                Esta ação não pode ser desfeita e só é possível se não houver usuários vinculados.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => deleteDepartment(dept.id, dept.name)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {departments.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
+      <CardContent className="p-3 md:p-6">
+        {departments.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm md:text-base">
             Nenhum departamento encontrado. Clique em "Novo Departamento" para começar.
           </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b-2 border-gray-300">
+                    <TableHead className="font-semibold">Nome</TableHead>
+                    <TableHead className="font-semibold">Descrição</TableHead>
+                    <TableHead className="font-semibold">Criado em</TableHead>
+                    <TableHead className="font-semibold">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {departments.map((dept) => (
+                    <TableRow key={dept.id} className="border-b border-gray-200 hover:bg-gray-50/50">
+                      <TableCell>
+                        {editingDept?.id === dept.id ? (
+                          <Input
+                            value={editingDept.name}
+                            onChange={(e) => setEditingDept({ ...editingDept, name: e.target.value })}
+                            className="w-40 h-9 text-sm border-2 border-gray-300"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-green-600" />
+                            <span className="font-medium">{dept.name}</span>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingDept?.id === dept.id ? (
+                          <Textarea
+                            value={editingDept.description || ''}
+                            onChange={(e) => setEditingDept({ ...editingDept, description: e.target.value })}
+                            className="w-60 text-sm border-2 border-gray-300"
+                            rows={2}
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-sm">{dept.description || 'Sem descrição'}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(dept.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {editingDept?.id === dept.id ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => updateDepartment(dept.id, {
+                                  name: editingDept.name,
+                                  description: editingDept.description
+                                })}
+                                className="h-8 w-8 border-2 border-green-300 bg-green-50 hover:bg-green-100"
+                              >
+                                <Save className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingDept(null)}
+                                className="h-8 w-8 border-2 border-gray-300"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingDept(dept)}
+                                className="h-8 w-8 border-2 border-gray-300"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    className="h-8 w-8 border-2 border-red-300 text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="max-w-[95vw] md:max-w-md p-3 md:p-6">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-base md:text-lg">Confirmar Exclusão</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-xs md:text-sm">
+                                      Tem certeza que deseja excluir o departamento "{dept.name}"? 
+                                      Esta ação não pode ser desfeita e só é possível se não houver usuários vinculados.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter className="flex-col md:flex-row gap-2">
+                                    <AlertDialogCancel className="w-full md:w-auto h-9 border-2 border-gray-300">Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deleteDepartment(dept.id, dept.name)}
+                                      className="w-full md:w-auto h-9 bg-red-600 hover:bg-red-700"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-3">
+              {departments.map((dept) => (
+                <Card 
+                  key={dept.id}
+                  className="border-2 border-gray-300 shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
+                >
+                  <CardContent className="p-3">
+                    {editingDept?.id === dept.id ? (
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-xs mb-1 block">Nome</Label>
+                          <Input
+                            value={editingDept.name}
+                            onChange={(e) => setEditingDept({ ...editingDept, name: e.target.value })}
+                            className="w-full h-9 text-base border-2 border-gray-300"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1 block">Descrição</Label>
+                          <Textarea
+                            value={editingDept.description || ''}
+                            onChange={(e) => setEditingDept({ ...editingDept, description: e.target.value })}
+                            className="w-full text-base border-2 border-gray-300"
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex gap-2 pt-2 border-t-2 border-gray-200">
+                          <Button
+                            size="sm"
+                            onClick={() => updateDepartment(dept.id, {
+                              name: editingDept.name,
+                              description: editingDept.description
+                            })}
+                            className="flex-1 h-9 bg-gradient-to-r from-green-500 to-blue-500 text-white"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Salvar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingDept(null)}
+                            className="flex-1 h-9 border-2 border-gray-300"
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="p-1.5 rounded-lg bg-green-50 border-2 border-gray-200">
+                              <Building2 className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm">{dept.name}</h3>
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {dept.description || 'Sem descrição'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t-2 border-gray-200">
+                          <span className="text-[10px] text-muted-foreground">
+                            Criado em {new Date(dept.created_at).toLocaleDateString('pt-BR')}
+                          </span>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingDept(dept)}
+                              className="h-8 w-8 border-2 border-gray-300"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  className="h-8 w-8 border-2 border-red-300 text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="max-w-[95vw] p-3">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-base">Confirmar Exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-xs">
+                                    Tem certeza que deseja excluir o departamento "{dept.name}"? 
+                                    Esta ação não pode ser desfeita e só é possível se não houver usuários vinculados.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex-col gap-2">
+                                  <AlertDialogCancel className="w-full h-9 border-2 border-gray-300">Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => deleteDepartment(dept.id, dept.name)}
+                                    className="w-full h-9 bg-red-600 hover:bg-red-700"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
