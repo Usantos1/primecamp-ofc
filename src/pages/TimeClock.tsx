@@ -14,15 +14,25 @@ export default function TimeClock() {
       title="Ponto Eletrônico"
       subtitle="Controle de jornada de trabalho e presença"
     >
-      <div className={`${isMobile ? 'p-2' : 'p-4'} min-h-screen`}>
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
         {isAdmin ? (
           <Tabs defaultValue="widget" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="widget">Registrar Ponto</TabsTrigger>
-              <TabsTrigger value="timesheet">Espelho de Ponto</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 border-2 border-gray-300 bg-gray-50">
+              <TabsTrigger 
+                value="widget"
+                className="text-xs md:text-sm border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white"
+              >
+                Registrar Ponto
+              </TabsTrigger>
+              <TabsTrigger 
+                value="timesheet"
+                className="text-xs md:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white"
+              >
+                Espelho de Ponto
+              </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="widget" className="mt-6">
+            <TabsContent value="widget" className="mt-4 md:mt-6">
               <div className="flex justify-center w-full">
                 <div className={`${isMobile ? 'w-full' : 'w-full max-w-md'}`}>
                   <TimeClockWidget />
@@ -30,7 +40,7 @@ export default function TimeClock() {
               </div>
             </TabsContent>
             
-            <TabsContent value="timesheet" className="mt-6">
+            <TabsContent value="timesheet" className="mt-4 md:mt-6">
               <TimeSheetManager />
             </TabsContent>
           </Tabs>

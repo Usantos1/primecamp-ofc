@@ -81,77 +81,95 @@ const {
       title="Teste DISC - PrimeCamp"
       subtitle="Descubra seu perfil comportamental através de perguntas objetivas"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="intro" className="flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              Introdução
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 border-2 border-gray-300 bg-gray-50 gap-0">
+            <TabsTrigger 
+              value="intro" 
+              className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white"
+            >
+              <Info className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Introdução</span>
+              <span className="sm:hidden">Intro</span>
             </TabsTrigger>
-            <TabsTrigger value="test" disabled={!hasInProgressTest && activeTab !== "test"} className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              Teste
+            <TabsTrigger 
+              value="test" 
+              disabled={!hasInProgressTest && activeTab !== "test"} 
+              className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white md:border-r-2"
+            >
+              <Brain className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Teste</span>
+              <span className="sm:hidden">Teste</span>
             </TabsTrigger>
-            <TabsTrigger value="result" disabled={!result} className="flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              Resultado
+            <TabsTrigger 
+              value="result" 
+              disabled={!result} 
+              className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white md:border-r-2"
+            >
+              <Trophy className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Resultado</span>
+              <span className="sm:hidden">Result</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Histórico
+            <TabsTrigger 
+              value="history" 
+              className="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white"
+            >
+              <History className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden">Hist</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="intro" className="space-y-6">
+          <TabsContent value="intro" className="mt-4 md:mt-6 space-y-4 md:space-y-6">
             {/* Introdução ao Teste DISC */}
-            <Card className="border-primary/20">
-              <CardHeader className="text-center">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <div className="p-3 rounded-full bg-primary/10">
-                    <Brain className="h-8 w-8 text-primary" />
+            <Card className="border-2 border-gray-300 shadow-sm">
+              <CardHeader className="text-center pb-3 pt-3 md:pt-6 px-3 md:px-6">
+                <div className="flex flex-col md:flex-row items-center justify-center gap-3 mb-4">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-white border-2 border-gray-200">
+                    <Brain className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                   </div>
-                  <CardTitle className="text-2xl">Avaliação de Perfil DISC</CardTitle>
+                  <CardTitle className="text-lg md:text-2xl">Avaliação de Perfil DISC</CardTitle>
                 </div>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
                   O teste DISC é uma ferramenta de avaliação comportamental que identifica como você se comporta em diferentes situações profissionais e pessoais.
                 </p>
               </CardHeader>
             </Card>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* O que você vai descobrir */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">O que você vai descobrir</CardTitle>
+              <Card className="border-2 border-gray-300 shadow-sm">
+                <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+                  <CardTitle className="text-base md:text-lg">O que você vai descobrir</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center text-sm font-bold text-red-600 dark:text-red-300">D</div>
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-red-100 border-2 border-red-300 flex items-center justify-center text-xs md:text-sm font-bold text-red-600">D</div>
                       <div>
-                        <h4 className="font-semibold">Dominância</h4>
-                        <p className="text-sm text-muted-foreground">Como você enfrenta problemas e desafios</p>
+                        <h4 className="font-semibold text-sm md:text-base">Dominância</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground">Como você enfrenta problemas e desafios</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-bold text-blue-600 dark:text-blue-300">I</div>
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-blue-100 border-2 border-blue-300 flex items-center justify-center text-xs md:text-sm font-bold text-blue-600">I</div>
                       <div>
-                        <h4 className="font-semibold">Influência</h4>
-                        <p className="text-sm text-muted-foreground">Como você influencia e se relaciona com pessoas</p>
+                        <h4 className="font-semibold text-sm md:text-base">Influência</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground">Como você influencia e se relaciona com pessoas</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-sm font-bold text-green-600 dark:text-green-300">S</div>
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-green-100 border-2 border-green-300 flex items-center justify-center text-xs md:text-sm font-bold text-green-600">S</div>
                       <div>
-                        <h4 className="font-semibold">Estabilidade</h4>
-                        <p className="text-sm text-muted-foreground">Como você responde ao ritmo e mudanças</p>
+                        <h4 className="font-semibold text-sm md:text-base">Estabilidade</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground">Como você responde ao ritmo e mudanças</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center text-sm font-bold text-yellow-600 dark:text-yellow-300">C</div>
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-yellow-100 border-2 border-yellow-300 flex items-center justify-center text-xs md:text-sm font-bold text-yellow-600">C</div>
                       <div>
-                        <h4 className="font-semibold">Conformidade</h4>
-                        <p className="text-sm text-muted-foreground">Como você segue regras e procedimentos</p>
+                        <h4 className="font-semibold text-sm md:text-base">Conformidade</h4>
+                        <p className="text-xs md:text-sm text-muted-foreground">Como você segue regras e procedimentos</p>
                       </div>
                     </div>
                   </div>
@@ -159,27 +177,27 @@ const {
               </Card>
 
               {/* Como funciona */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Como funciona</CardTitle>
+              <Card className="border-2 border-gray-300 shadow-sm">
+                <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+                  <CardTitle className="text-base md:text-lg">Como funciona</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">1</div>
-                      <p className="text-sm">Responda 20 perguntas objetivas</p>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-white border-2 border-purple-300 flex items-center justify-center text-xs md:text-sm font-bold text-purple-600">1</div>
+                      <p className="text-xs md:text-sm">Responda 20 perguntas objetivas</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">2</div>
-                      <p className="text-sm">Escolha a opção que mais se identifica com você</p>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-white border-2 border-purple-300 flex items-center justify-center text-xs md:text-sm font-bold text-purple-600">2</div>
+                      <p className="text-xs md:text-sm">Escolha a opção que mais se identifica com você</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">3</div>
-                      <p className="text-sm">Receba seu perfil detalhado com gráficos</p>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-white border-2 border-purple-300 flex items-center justify-center text-xs md:text-sm font-bold text-purple-600">3</div>
+                      <p className="text-xs md:text-sm">Receba seu perfil detalhado com gráficos</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">4</div>
-                      <p className="text-sm">Exporte seu resultado em PDF</p>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-100 to-white border-2 border-purple-300 flex items-center justify-center text-xs md:text-sm font-bold text-purple-600">4</div>
+                      <p className="text-xs md:text-sm">Exporte seu resultado em PDF</p>
                     </div>
                   </div>
                 </CardContent>
@@ -187,11 +205,11 @@ const {
             </div>
 
             {/* Informações importantes */}
-            <Card className="bg-accent/30">
-              <CardContent className="pt-6">
+            <Card className="border-2 border-purple-300 bg-purple-50/50 shadow-sm">
+              <CardContent className="p-3 md:p-6 pt-3 md:pt-6">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-primary">Informações importantes:</h3>
-                  <ul className="text-sm text-muted-foreground space-y-1">
+                  <h3 className="font-semibold text-purple-700 text-sm md:text-base">Informações importantes:</h3>
+                  <ul className="text-xs md:text-sm text-muted-foreground space-y-1">
                     <li>• O teste leva aproximadamente 10-15 minutos para ser concluído</li>
                     <li>• Responda com base em seu comportamento natural, não no que acredita ser esperado</li>
                     <li>• Não existem respostas certas ou erradas</li>
@@ -207,13 +225,13 @@ const {
               <Button 
                 size="lg" 
                 onClick={handleStartTest}
-                className="text-lg px-8 py-3"
+                className="text-sm md:text-lg px-6 md:px-8 py-2 md:py-3 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white border-0 shadow-md"
               >
-                <Play className="h-5 w-5 mr-2" />
+                <Play className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                 {hasInProgressTest ? "Continuar Teste" : "Iniciar Teste DISC"}
               </Button>
               {hasInProgressTest && (
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-xs md:text-sm text-muted-foreground mt-2">
                   Você tem um teste em progresso
                 </p>
               )}
