@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { createSupabaseClientWithHeaders } from '@/integrations/supabase/client';
 import { OrdemServico } from '@/types/assistencia';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,12 +13,15 @@ export default function AcompanharOS() {
   const [os, setOS] = useState<OrdemServico | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clienteNome, setClienteNome] = useState<string>('');
-  const [marcaNome, setMarcaNome] = useState<string>('');
-  const [modeloNome, setModeloNome] = useState<string>('');
+  const supabasePublic = useMemo(() => {
+    if (!id) return null;
+    return createSupabaseClientWithHeaders({
+      'x-os-id': id,
+    });
+  }, [id]);
 
   useEffect(() => {
-    if (!id) {
+    if (!id || !supabasePublic) {
       setError('ID da OS não fornecido');
       setLoading(false);
       return;
@@ -32,10 +35,10 @@ export default function AcompanharOS() {
       setLoading(true);
       setError(null);
 
-      // Buscar OS
-      const { data: osData, error: osError } = await supabase
+      // Buscar OS (restrito pelo header x-os-id via RLS)
+      const { data: osData, error: osError } = await supabasePublic
         .from('ordens_servico')
-        .select('*')
+        .select('id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, operadora, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes')
         .eq('id', id)
         .single();
 
@@ -45,46 +48,7 @@ export default function AcompanharOS() {
         setLoading(false);
         return;
       }
-
       setOS(osData as OrdemServico);
-
-      // Buscar cliente
-      if (osData.cliente_id) {
-        const { data: clienteData } = await supabase
-          .from('clientes')
-          .select('nome')
-          .eq('id', osData.cliente_id)
-          .single();
-        
-        if (clienteData) {
-          setClienteNome(clienteData.nome);
-        }
-      }
-
-      // Buscar marca e modelo
-      if (osData.marca_id) {
-        const { data: marcaData } = await supabase
-          .from('marcas')
-          .select('nome')
-          .eq('id', osData.marca_id)
-          .single();
-        
-        if (marcaData) {
-          setMarcaNome(marcaData.nome);
-        }
-      }
-
-      if (osData.modelo_id) {
-        const { data: modeloData } = await supabase
-          .from('modelos')
-          .select('nome')
-          .eq('id', osData.modelo_id)
-          .single();
-        
-        if (modeloData) {
-          setModeloNome(modeloData.nome);
-        }
-      }
     } catch (err: any) {
       console.error('Erro ao carregar OS:', err);
       setError(err.message || 'Erro ao carregar a Ordem de Serviço');
@@ -161,16 +125,16 @@ export default function AcompanharOS() {
                   <p className="text-xs text-muted-foreground mb-1">Cliente</p>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-semibold">{clienteNome || os.cliente_nome || 'Não informado'}</p>
+                    <p className="font-semibold">{os.cliente_nome || 'Não informado'}</p>
                   </div>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Marca</p>
-                  <p className="font-medium">{marcaNome || os.marca_nome || 'Não informado'}</p>
+                  <p className="font-medium">{os.marca_nome || 'Não informado'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Modelo</p>
-                  <p className="font-medium">{modeloNome || os.modelo_nome || 'Não informado'}</p>
+                  <p className="font-medium">{os.modelo_nome || 'Não informado'}</p>
                 </div>
                 {os.imei && (
                   <div>
