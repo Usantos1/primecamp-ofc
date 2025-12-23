@@ -199,8 +199,8 @@ export default function OrdensServico() {
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
       <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
         {/* Cards de estatísticas - shrink-0 para não encolher */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3 justify-items-center">
-          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('all')}>
+        <div className="flex flex-wrap justify-center gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3">
+          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-muted-foreground font-medium md:mb-0">Total:</p>
@@ -209,7 +209,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-yellow-50/50 dark:bg-yellow-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('aberta')}>
+          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-yellow-50/50 dark:bg-yellow-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('aberta')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-yellow-600 font-medium md:mb-0">Abertas:</p>
@@ -218,7 +218,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-purple-50/50 dark:bg-purple-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('em_andamento')}>
+          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-purple-50/50 dark:bg-purple-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('em_andamento')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-purple-600 font-medium md:mb-0">Em Andamento:</p>
@@ -227,7 +227,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-orange-50/50 dark:bg-orange-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('aguardando_orcamento')}>
+          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-orange-50/50 dark:bg-orange-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('aguardando_orcamento')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-orange-600 font-medium md:mb-0">Aguardando:</p>
@@ -236,7 +236,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-emerald-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-emerald-50/50 dark:bg-emerald-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('finalizada')}>
+          <Card className="border-2 border-l-4 border-l-emerald-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-emerald-50/50 dark:bg-emerald-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('finalizada')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-emerald-600 font-medium md:mb-0">Finalizadas:</p>
@@ -245,7 +245,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-cyan-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-cyan-50/50 dark:bg-cyan-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('aguardando_retirada')}>
+          <Card className="border-2 border-l-4 border-l-cyan-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-cyan-50/50 dark:bg-cyan-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('aguardando_retirada')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-cyan-600 font-medium md:mb-0">Ag. Retirada:</p>
@@ -254,7 +254,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-gray-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gray-50/50 dark:bg-gray-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('entregue')}>
+          <Card className="border-2 border-l-4 border-l-gray-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gray-50/50 dark:bg-gray-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('entregue')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-gray-600 font-medium md:mb-0">Entregues:</p>
@@ -263,7 +263,7 @@ export default function OrdensServico() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-red-400 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-red-50/50 dark:bg-red-950/10 md:bg-transparent md:dark:bg-transparent w-full" onClick={() => setStatusFilter('cancelada')}>
+          <Card className="border-2 border-l-4 border-l-red-400 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-red-50/50 dark:bg-red-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('cancelada')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                 <p className="text-xs md:text-xs text-red-600 font-medium md:mb-0">Canceladas:</p>
@@ -273,7 +273,7 @@ export default function OrdensServico() {
           </Card>
 
           {stats.atrasadas > 0 && (
-            <Card className="border-2 border-l-4 border-l-red-500 border-red-300 bg-red-50 dark:bg-red-950/20 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 w-full">
+            <Card className="border-2 border-l-4 border-l-red-500 border-red-300 bg-red-50 dark:bg-red-950/20 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]">
               <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
                 <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">
                   <p className="text-xs md:text-xs text-red-600 font-medium md:mb-0">Atrasadas:</p>
