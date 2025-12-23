@@ -69,21 +69,22 @@ function parsePDFText(texto: string): PDFImportData {
   const dataMatch = texto.match(/Data:\s*(\d{2}\/\d{2}\/\d{4})/i);
   if (dataMatch) dados.data_entrada = dataMatch[1];
   
-  // Extrair hora
-  const horaMatch = texto.match(/Hora:\s*(\d{2}:\d{2}:\d{2})/i);
-  if (horaMatch) dados.hora_entrada = horaMatch[1];
+  // Extrair hora (pode ser HH:MM:SS ou HH:MM)
+  const horaMatch1 = texto.match(/Data:\s*\d{2}\/\d{2}\/\d{4}\s+Hora:\s*(\d{2}:\d{2}:\d{2})/i);
+  const horaMatch2 = texto.match(/Data:\s*\d{2}\/\d{2}\/\d{4}\s+Hora:\s*(\d{2}:\d{2})/i);
+  if (horaMatch1) {
+    dados.hora_entrada = horaMatch1[1];
+  } else if (horaMatch2) {
+    dados.hora_entrada = horaMatch2[1] + ':00';
+  }
   
   // Extrair nome do cliente (parar antes de Contato: ou Telefone:)
-  const clienteMatch = texto.match(/Cliente:\s*([^\n]+?)(?:\s+Contato:|Telefone:|$)/i);
+  const clienteMatch = texto.match(/Cliente:\s*([^\n]+)/i);
   if (clienteMatch) {
-    dados.cliente_nome = clienteMatch[1].trim();
-  } else {
-    // Fallback: tentar sem parar em Contato/Telefone
-    const clienteMatch2 = texto.match(/Cliente:\s*([^\n]+)/i);
-    if (clienteMatch2) {
-      // Remover "Contato:" e "Telefone:" se estiverem no final
-      dados.cliente_nome = clienteMatch2[1].trim().replace(/\s+Contato:.*$/i, '').replace(/\s+Telefone:.*$/i, '').trim();
-    }
+    let nome = clienteMatch[1].trim();
+    // Remover "Contato:" e "Telefone:" e tudo depois deles
+    nome = nome.replace(/Contato:.*$/i, '').replace(/Telefone:.*$/i, '').trim();
+    dados.cliente_nome = nome;
   }
   
   // Extrair CPF/CNPJ
@@ -211,22 +212,31 @@ function parsePDFText(texto: string): PDFImportData {
   if (condicoesMatch) dados.condicoes_equipamento = condicoesMatch[1].trim();
   
   // Extrair possui senha (pode aparecer em diferentes formatos)
+  // Procura por "Possui Senha:" seguido de texto na mesma linha ou próxima linha
   const senhaMatch1 = texto.match(/Possui Senha:\s*([^\n]+)/i);
   const senhaMatch2 = texto.match(/Possui Senha\s*:\s*([^\n]+)/i);
-  const senhaMatch3 = texto.match(/NÃO SABE, VAI PASSAR DEPOIS/i);
-  const senhaMatch4 = texto.match(/VAI PASSAR DEPOIS/i);
+  // Procura por "Possui Senha:" seguido de quebra de linha e depois o valor
+  const senhaMatch3 = texto.match(/Possui Senha:\s*\n\s*([^\n]+)/i);
+  const senhaMatch4 = texto.match(/NÃO SABE, VAI PASSAR DEPOIS/i);
+  const senhaMatch5 = texto.match(/VAI PASSAR DEPOIS/i);
   
   if (senhaMatch1) {
     let valor = senhaMatch1[1].trim();
     // Remover "Possui Senha:" se estiver no valor extraído
     valor = valor.replace(/^Possui Senha:\s*/i, '').trim();
+    // Se o valor está vazio ou só tem espaços, procurar na próxima linha
+    if (!valor || valor.length === 0) {
+      const nextLineMatch = texto.match(/Possui Senha:\s*\n\s*([^\n]+)/i);
+      if (nextLineMatch) valor = nextLineMatch[1].trim();
+    }
     dados.possui_senha = valor || undefined;
   } else if (senhaMatch2) {
     let valor = senhaMatch2[1].trim();
-    // Remover "Possui Senha:" se estiver no valor extraído
     valor = valor.replace(/^Possui Senha:\s*/i, '').trim();
     dados.possui_senha = valor || undefined;
-  } else if (senhaMatch3 || senhaMatch4) {
+  } else if (senhaMatch3) {
+    dados.possui_senha = senhaMatch3[1].trim();
+  } else if (senhaMatch4 || senhaMatch5) {
     dados.possui_senha = 'NÃO SABE, VAI PASSAR DEPOIS';
   }
   
