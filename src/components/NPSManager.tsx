@@ -15,10 +15,15 @@ import { ptBR } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-export const NPSManager = () => {
+interface NPSManagerProps {
+  mode?: 'surveys' | 'manage' | 'analytics';
+  hideTabs?: boolean;
+}
+
+export const NPSManager = ({ mode = 'surveys', hideTabs = false }: NPSManagerProps = {}) => {
   const { surveys, responses, loading, createSurvey, updateSurvey, deleteSurvey, submitResponse, getTodayResponse } = useNPS();
   const { isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState('surveys');
+  const [activeTab, setActiveTab] = useState(mode);
   const [surveyResponses, setSurveyResponses] = useState<Record<string, any>>({});
 
   const activeSurveys = surveys.filter(s => s.is_active);
@@ -146,50 +151,70 @@ export const NPSManager = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <Card className="border-2 border-gray-300 border-l-4 border-l-green-500 shadow-sm bg-green-50/50 md:bg-transparent">
+          <CardContent className="p-3 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Pesquisas Ativas</p>
-                <p className="text-2xl font-bold">{activeSurveys.length}</p>
+                <p className="text-[10px] md:text-sm font-medium text-green-700 md:text-muted-foreground">Pesquisas Ativas</p>
+                <p className="text-base md:text-2xl font-bold text-green-700 md:text-foreground">{activeSurveys.length}</p>
               </div>
-              <BarChart3 className="h-8 w-8 text-primary" />
+              <BarChart3 className="h-3 w-3 md:h-8 md:w-8 text-green-600 md:text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50 md:bg-transparent">
+          <CardContent className="p-3 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Respostas Hoje</p>
-                <p className="text-2xl font-bold">{todayResponses.length}</p>
+                <p className="text-[10px] md:text-sm font-medium text-blue-700 md:text-muted-foreground">Respostas Hoje</p>
+                <p className="text-base md:text-2xl font-bold text-blue-700 md:text-foreground">{todayResponses.length}</p>
               </div>
-              <Calendar className="h-8 w-8 text-primary" />
+              <Calendar className="h-3 w-3 md:h-8 md:w-8 text-blue-600 md:text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border-2 border-gray-300 border-l-4 border-l-purple-500 shadow-sm bg-purple-50/50 md:bg-transparent">
+          <CardContent className="p-3 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total de Respostas</p>
-                <p className="text-2xl font-bold">{responses.length}</p>
+                <p className="text-[10px] md:text-sm font-medium text-purple-700 md:text-muted-foreground">Total de Respostas</p>
+                <p className="text-base md:text-2xl font-bold text-purple-700 md:text-foreground">{responses.length}</p>
               </div>
-              <Users className="h-8 w-8 text-primary" />
+              <Users className="h-3 w-3 md:h-8 md:w-8 text-purple-600 md:text-primary" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="surveys">Responder Pesquisas</TabsTrigger>
-          {isAdmin && <TabsTrigger value="manage">Gerenciar Pesquisas</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="analytics">Análises</TabsTrigger>}
-        </TabsList>
+      {!hideTabs ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3 border-2 border-gray-300 bg-gray-50">
+            <TabsTrigger 
+              value="surveys"
+              className="text-xs md:text-sm border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white"
+            >
+              Responder Pesquisas
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger 
+                value="manage"
+                className="text-xs md:text-sm border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white"
+              >
+                Gerenciar Pesquisas
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger 
+                value="analytics"
+                className="text-xs md:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white"
+              >
+                Análises
+              </TabsTrigger>
+            )}
+          </TabsList>
 
         <TabsContent value="surveys" className="space-y-4">
           {activeSurveys.length === 0 ? (
@@ -394,6 +419,214 @@ export const NPSManager = () => {
           </TabsContent>
         )}
       </Tabs>
+      ) : (
+        <>
+          {mode === 'surveys' && (
+            <div className="space-y-4">
+              {activeSurveys.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-muted-foreground">Nenhuma pesquisa ativa no momento</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                activeSurveys.map(survey => {
+                  const todayResponse = getTodayResponse(survey.id);
+                  
+                  return (
+                    <Card key={survey.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>{survey.title}</CardTitle>
+                            {survey.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {survey.description}
+                              </p>
+                            )}
+                          </div>
+                          {todayResponse && (
+                            <Badge variant="default">Respondido hoje</Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      
+                      {!todayResponse && (
+                        <CardContent className="space-y-6">
+                          {survey.questions.map((question, index) => (
+                            <div key={question.id} className="space-y-3">
+                              <Label className="text-base font-medium">
+                                {index + 1}. {question.question}
+                                {question.required && <span className="text-red-500 ml-1">*</span>}
+                              </Label>
+                              {renderQuestionInput(question, survey.id)}
+                            </div>
+                          ))}
+                          
+                          <Button 
+                            onClick={() => handleResponseSubmit(survey)}
+                            className="w-full"
+                          >
+                            Enviar Resposta
+                          </Button>
+                        </CardContent>
+                      )}
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          )}
+          
+          {mode === 'manage' && isAdmin && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Gerenciar Pesquisas NPS</h3>
+                <NPSSurveyForm
+                  onSubmit={createSurvey}
+                  trigger={
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nova Pesquisa
+                    </Button>
+                  }
+                />
+              </div>
+
+              <div className="grid gap-4">
+                {surveys.map(survey => (
+                  <Card key={survey.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            {survey.title}
+                            <Badge variant={survey.is_active ? 'default' : 'secondary'}>
+                              {survey.is_active ? 'Ativa' : 'Inativa'}
+                            </Badge>
+                          </CardTitle>
+                          {survey.description && (
+                            <p className="text-sm text-muted-foreground">
+                              {survey.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <NPSSurveyForm
+                            survey={survey}
+                            onSubmit={(data) => updateSurvey(survey.id, data)}
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                            }
+                          />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir pesquisa</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir esta pesquisa? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteSurvey(survey.id)}>
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">
+                        {survey.questions.length} pergunta(s) • 
+                        Criada em {format(new Date(survey.created_at), "d 'de' MMM 'de' yyyy", { locale: ptBR })}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {mode === 'analytics' && isAdmin && (
+            <div className="space-y-6">
+              {surveys.map(survey => {
+                const chartData = getResponseChartData(survey);
+                const surveyResponses = responses.filter(r => r.survey_id === survey.id);
+                
+                return (
+                  <Card key={survey.id}>
+                    <CardHeader>
+                      <CardTitle>{survey.title} - Análises</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <p className="text-2xl font-bold">{surveyResponses.length}</p>
+                          <p className="text-sm text-muted-foreground">Total de Respostas</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">
+                            {chartData.reduce((sum, day) => sum + day.responses, 0)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Últimos 30 dias</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">
+                            {Math.round(chartData.reduce((sum, day) => sum + day.responses, 0) / 30 * 10) / 10}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Média diária</p>
+                        </div>
+                      </div>
+
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis />
+                            <Tooltip />
+                            <Line 
+                              type="monotone" 
+                              dataKey="responses" 
+                              stroke="hsl(var(--primary))" 
+                              strokeWidth={2}
+                              name="Respostas"
+                            />
+                            {survey.questions
+                              .filter(q => q.type === 'scale' || q.type === 'rating')
+                              .map((question, index) => (
+                                <Line
+                                  key={question.id}
+                                  type="monotone"
+                                  dataKey={question.id}
+                                  stroke={`hsl(${(index * 60) % 360}, 70%, 50%)`}
+                                  strokeWidth={2}
+                                  name={question.question}
+                                />
+                              ))
+                            }
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

@@ -38,7 +38,7 @@ export default function NPS() {
           </TabsList>
           
           <TabsContent value="surveys" className="mt-4 md:mt-6">
-            <NPSManager />
+            <NPSManager mode="surveys" hideTabs={true} />
           </TabsContent>
           
           <TabsContent value="personal" className="mt-4 md:mt-6">
@@ -47,7 +47,7 @@ export default function NPS() {
           
           {isAdmin && (
             <TabsContent value="management" className="mt-4 md:mt-6">
-              <NPSManager />
+              <NPSManager mode="manage" hideTabs={true} />
             </TabsContent>
           )}
         </Tabs>
