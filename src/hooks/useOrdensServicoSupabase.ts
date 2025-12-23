@@ -243,7 +243,7 @@ export function useOrdensServicoSupabase() {
     isLoading,
     createOS: createOS.mutateAsync,
     updateOS: (id: string, data: Partial<OrdemServico>) => updateOS.mutateAsync({ id, data }),
-    deleteOS: deleteOS.mutateAsync,
+    deleteOS,
     getOSById,
     updateStatus: (id: string, status: StatusOS | string) => updateStatus.mutateAsync({ id, status }),
     getEstatisticas,
