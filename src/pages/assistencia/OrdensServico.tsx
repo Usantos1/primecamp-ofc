@@ -9,10 +9,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
-  Plus, Search, Eye, Edit, Phone, Filter,
-  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X, FileText, Trash2
+  Plus, Search, Edit, Phone, Filter,
+  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X, FileText, Trash2,
+  MoreVertical, CheckCircle2, XCircle, RotateCcw
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -50,9 +68,10 @@ export default function OrdensServico() {
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
   const [showImportarOS, setShowImportarOS] = useState(false);
   const [osToDelete, setOsToDelete] = useState<string | null>(null);
+  const [osToReabrir, setOsToReabrir] = useState<{ id: string; motivo: string } | null>(null);
   const { toast } = useToast();
   
-  const { ordens, isLoading, getEstatisticas, getOSById, deleteOS } = useOrdensServico();
+  const { ordens, isLoading, getEstatisticas, getOSById, deleteOS: deleteOSMutation, updateOS, updateStatus } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
   const { getMarcaById, getModeloById } = useMarcasModelos();
 
@@ -616,14 +635,14 @@ export default function OrdensServico() {
                         <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
                           <tr className="border-b-2 border-gray-300">
                             <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px]">Cliente</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px] hidden md:table-cell">Aparelho</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[180px]">Problema</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px]">Cliente</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px] hidden md:table-cell">Aparelho</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[180px]">Problema</th>
                             <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px]">Status</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Entrada</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Previsão</th>
-                            <th className="h-11 px-2 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[100px]">Valor</th>
-                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 w-[110px]">Ações</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Entrada</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Previsão</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[100px]">Valor</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 w-[90px]">Ações</th>
                           </tr>
                         </thead>
                         {/* Corpo da tabela */}
@@ -700,7 +719,16 @@ export default function OrdensServico() {
                                 <td className="py-3.5 px-2 text-left border-r border-gray-200">
                                   <div className="min-w-0">
                                     <p className="font-medium truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
-                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground truncate">{cliente.cpf_cnpj}</p>}
+                                    {cliente?.telefone || os.telefone_contato ? (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        Telefone: {cliente?.telefone || os.telefone_contato}
+                                      </p>
+                                    ) : null}
+                                    {cliente?.cpf_cnpj && (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        CPF: {cliente.cpf_cnpj}
+                                      </p>
+                                    )}
                                   </div>
                                 </td>
                                 
@@ -727,7 +755,7 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Entrada */}
-                                <td className="py-3.5 px-2 text-left text-sm border-r border-gray-200 hidden md:table-cell">
+                                <td className="py-3.5 px-2 text-center text-sm border-r border-gray-200 hidden md:table-cell">
                                   <div>
                                     {os.data_entrada ? (
                                       <>
@@ -745,7 +773,7 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Previsão */}
-                                <td className="py-3.5 px-2 text-left text-sm border-r border-gray-200 hidden md:table-cell">
+                                <td className="py-3.5 px-2 text-center text-sm border-r border-gray-200 hidden md:table-cell">
                                   {os.previsao_entrega ? (
                                     <div>
                                       <p className={cn("font-medium", isAtrasada && 'text-red-600')}>
@@ -767,7 +795,7 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Valor */}
-                                <td className="py-3.5 px-2 text-right border-r border-gray-200">
+                                <td className="py-3.5 px-2 text-center border-r border-gray-200">
                                   {valorTotal > 0 || valorTotalOS > 0 || valorTotalItens > 0 ? (
                                     <div>
                                       <p className="font-semibold text-green-600">
@@ -786,43 +814,103 @@ export default function OrdensServico() {
                                 
                                 {/* Ações */}
                                 <td className="py-3.5 px-2 text-center">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(`/pdv/os/${os.id}`);
-                                      }}
-                                    >
-                                      <Eye className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(`/pdv/os/${os.id}`);
-                                      }}
-                                    >
-                                      <Edit className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <PermissionGate permission="os.delete" fallback={null}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        className="h-7 w-7"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Edit className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                      <DropdownMenuItem
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setOsToDelete(os.id);
+                                          navigate(`/pdv/os/${os.id}`);
                                         }}
                                       >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </PermissionGate>
-                                  </div>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Editar
+                                      </DropdownMenuItem>
+                                      
+                                      {os.status !== 'finalizada' && (
+                                        <DropdownMenuItem
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await updateStatus(os.id, 'finalizada');
+                                              toast({
+                                                title: 'OS Finalizada',
+                                                description: `OS #${os.numero} foi finalizada com sucesso.`,
+                                              });
+                                            } catch (error) {
+                                              toast({
+                                                title: 'Erro',
+                                                description: 'Não foi possível finalizar a OS.',
+                                                variant: 'destructive',
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                                          Finalizar
+                                        </DropdownMenuItem>
+                                      )}
+                                      
+                                      {os.status !== 'entregue' && (
+                                        <DropdownMenuItem
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              await updateStatus(os.id, 'entregue');
+                                              toast({
+                                                title: 'OS Entregue',
+                                                description: `OS #${os.numero} foi marcada como entregue sem reparo.`,
+                                              });
+                                            } catch (error) {
+                                              toast({
+                                                title: 'Erro',
+                                                description: 'Não foi possível marcar como entregue.',
+                                                variant: 'destructive',
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          <Package className="mr-2 h-4 w-4" />
+                                          Entregue sem reparo
+                                        </DropdownMenuItem>
+                                      )}
+                                      
+                                      {(os.situacao === 'fechada' || os.status === 'entregue' || os.status === 'finalizada' || os.status === 'cancelada') && (
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOsToReabrir({ id: os.id, motivo: '' });
+                                          }}
+                                        >
+                                          <RotateCcw className="mr-2 h-4 w-4" />
+                                          Reabrir OS
+                                        </DropdownMenuItem>
+                                      )}
+                                      
+                                      <PermissionGate permission="os.delete">
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-red-600 focus:text-red-600"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOsToDelete(os.id);
+                                          }}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </PermissionGate>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </td>
                               </tr>
                             );
@@ -862,7 +950,7 @@ export default function OrdensServico() {
               onClick={async () => {
                 if (osToDelete) {
                   try {
-                    await deleteOS.mutateAsync(osToDelete);
+                    await deleteOSMutation.mutateAsync(osToDelete);
                     toast({
                       title: 'Sucesso',
                       description: 'OS excluída com sucesso!',
@@ -884,6 +972,70 @@ export default function OrdensServico() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog de reabertura de OS */}
+      <Dialog open={osToReabrir !== null} onOpenChange={(open) => !open && setOsToReabrir(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reabrir OS</DialogTitle>
+            <DialogDescription>
+              Informe o motivo da reabertura da OS.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="motivo-reabertura">Motivo da Reabertura</Label>
+              <Textarea
+                id="motivo-reabertura"
+                placeholder="Descreva o motivo da reabertura..."
+                value={osToReabrir?.motivo || ''}
+                onChange={(e) => setOsToReabrir(osToReabrir ? { ...osToReabrir, motivo: e.target.value } : null)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOsToReabrir(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (osToReabrir && osToReabrir.motivo.trim()) {
+                  try {
+                    const osReabrir = ordens.find(o => o.id === osToReabrir.id);
+                    await updateOS(osToReabrir.id, {
+                      status: 'aberta',
+                      situacao: 'aberta',
+                      observacoes_internas: osToReabrir.motivo
+                        ? `${osToReabrir.motivo}${osReabrir?.observacoes_internas ? `\n\n${osReabrir.observacoes_internas}` : ''}`
+                        : osReabrir?.observacoes_internas,
+                    });
+                    toast({
+                      title: 'OS Reaberta',
+                      description: `OS #${osReabrir?.numero || osToReabrir.id} foi reaberta com sucesso.`,
+                    });
+                    setOsToReabrir(null);
+                  } catch (error) {
+                    toast({
+                      title: 'Erro',
+                      description: 'Não foi possível reabrir a OS.',
+                      variant: 'destructive',
+                    });
+                  }
+                } else {
+                  toast({
+                    title: 'Atenção',
+                    description: 'Por favor, informe o motivo da reabertura.',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+            >
+              Reabrir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ModernLayout>
   );
 }
