@@ -1,6 +1,21 @@
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, TrendingUp, Brain, Target, Clock } from 'lucide-react';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  GraduationCap,
+  TrendingUp,
+  Brain,
+  Target,
+  Clock,
+  Users,
+  ShieldCheck,
+  ClipboardCheck,
+  FileText,
+  HeartPulse,
+  BadgeCheck,
+  CalendarCheck,
+  Briefcase,
+  MessageCircle
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function RH() {
@@ -41,6 +56,69 @@ export default function RH() {
       icon: Clock,
       path: '/ponto',
       color: 'text-indigo-600',
+    },
+    {
+      title: 'Colaboradores',
+      description: 'Dados dos colaboradores (via Usuários)',
+      icon: Users,
+      path: '/admin/users',
+      color: 'text-slate-700',
+    },
+    {
+      title: 'Recrutamento',
+      description: 'Banco de talentos e entrevistas',
+      icon: Briefcase,
+      path: '/admin/talent-bank',
+      color: 'text-emerald-700',
+    },
+    {
+      title: 'Job Surveys',
+      description: 'Pesquisas de vaga e aplicações',
+      icon: ClipboardCheck,
+      path: '/admin/job-surveys',
+      color: 'text-amber-700',
+    },
+    {
+      title: 'Entrevistas',
+      description: 'Agendar e avaliar entrevistas',
+      icon: CalendarCheck,
+      path: '/admin/interviews',
+      color: 'text-indigo-700',
+    },
+    {
+      title: 'Avaliações DISC / NPS',
+      description: 'Ferramentas de avaliação e clima',
+      icon: FileText,
+      path: '/admin/disc',
+      color: 'text-orange-600',
+    },
+    {
+      title: 'Compliance / Documentos',
+      description: 'Políticas internas e assinaturas',
+      icon: ShieldCheck,
+      path: '/admin/estrutura',
+      color: 'text-slate-800',
+    },
+    {
+      title: 'Benefícios',
+      description: 'Gestão de benefícios e bem-estar',
+      icon: HeartPulse,
+      path: '/relatorios', // placeholder para definir rota final
+      color: 'text-rose-600',
+    },
+    {
+      title: 'Feedback 1:1',
+      description: 'Registro de conversas e planos',
+      icon: MessageCircle,
+      path: '/tarefas', // placeholder para fluxo de 1:1 em tarefas
+      color: 'text-cyan-700',
+    },
+    {
+      title: 'Checklists de Onboarding',
+      description: 'Passos para entrada de novos colaboradores',
+      icon: BadgeCheck,
+      path: '/processos', // placeholder para checklists via processos
+      color: 'text-green-700',
     },
   ];
 
