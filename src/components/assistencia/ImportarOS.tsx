@@ -570,6 +570,9 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
                   {dadosExtraidos.condicoes_equipamento && (
                     <div><strong>Condições:</strong> {dadosExtraidos.condicoes_equipamento}</div>
                   )}
+                  {dadosExtraidos.possui_senha && (
+                    <div><strong>Possui Senha:</strong> {dadosExtraidos.possui_senha}</div>
+                  )}
                 </CardContent>
               </Card>
             </div>
