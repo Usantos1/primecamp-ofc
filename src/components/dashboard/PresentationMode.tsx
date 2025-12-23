@@ -6,6 +6,7 @@ import { OSStatusCards } from './OSStatusCards';
 import { AlertCards } from './AlertCards';
 import { TrendCharts } from './TrendCharts';
 import { DashboardFinancialData, DashboardOSData, DashboardAlerts, DashboardTrendData } from '@/hooks/useDashboardData';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,7 +20,8 @@ interface PresentationModeProps {
 }
 
 export function PresentationMode({ financialData, osData, alerts, trendData }: PresentationModeProps) {
-  const { togglePresentationMode } = useDashboardConfig();
+  const { togglePresentationMode, config } = useDashboardConfig();
+  const { refresh } = useDashboardData();
 
   const handleExit = useCallback(async () => {
     await togglePresentationMode();
@@ -37,6 +39,19 @@ export function PresentationMode({ financialData, osData, alerts, trendData }: P
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleExit]);
+
+  // Auto-refresh apenas se estiver habilitado e no modo apresentação
+  useEffect(() => {
+    if (!config.autoRefreshEnabled || !config.presentationMode) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      refresh();
+    }, config.autoRefreshInterval * 1000);
+
+    return () => clearInterval(interval);
+  }, [config.autoRefreshEnabled, config.autoRefreshInterval, config.presentationMode, refresh]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 relative">

@@ -11,6 +11,8 @@ export interface DashboardWidgetConfig {
 export interface DashboardConfig {
   widgets: DashboardWidgetConfig[];
   presentationMode: boolean;
+  autoRefreshEnabled: boolean;
+  autoRefreshInterval: number; // em segundos
 }
 
 const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
@@ -27,6 +29,8 @@ export function useDashboardConfig() {
   const [config, setConfig] = useState<DashboardConfig>({
     widgets: DEFAULT_WIDGETS,
     presentationMode: false,
+    autoRefreshEnabled: false,
+    autoRefreshInterval: 60, // 60 segundos padrão
   });
   const [loading, setLoading] = useState(true);
 
@@ -53,7 +57,13 @@ export function useDashboardConfig() {
       }
 
       if (data?.value) {
-        setConfig(data.value as DashboardConfig);
+        const savedConfig = data.value as DashboardConfig;
+        // Garantir valores padrão para novas propriedades
+        setConfig({
+          ...savedConfig,
+          autoRefreshEnabled: savedConfig.autoRefreshEnabled ?? false,
+          autoRefreshInterval: savedConfig.autoRefreshInterval ?? 60,
+        });
       }
     } catch (error) {
       console.error('Erro ao carregar configuração do dashboard:', error);
