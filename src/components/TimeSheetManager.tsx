@@ -158,18 +158,20 @@ export function TimeSheetManager() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+    <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+      <Card className="border-2 border-gray-300 shadow-sm">
+        <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+              <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-indigo-100 to-white border-2 border-gray-200">
+                <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-600" />
+              </div>
               Espelho de Ponto
             </CardTitle>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4">
               {isAdmin && (
                 <Select value={selectedUser} onValueChange={setSelectedUser}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-full md:w-48 h-9 md:h-10 text-base md:text-sm border-2 border-gray-300">
                     <SelectValue placeholder="Selecionar usuário" />
                   </SelectTrigger>
                   <SelectContent>
@@ -185,14 +187,24 @@ export function TimeSheetManager() {
                 </Select>
               )}
               
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
+              <div className="flex items-center justify-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigateMonth('prev')}
+                  className="h-9 w-9 border-2 border-gray-300"
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-medium min-w-32 text-center">
+                <span className="font-medium min-w-[120px] md:min-w-32 text-center text-sm md:text-base">
                   {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
                 </span>
-                <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigateMonth('next')}
+                  className="h-9 w-9 border-2 border-gray-300"
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -200,14 +212,17 @@ export function TimeSheetManager() {
           </div>
         </CardHeader>
         
-        <CardContent>
+        <CardContent className="p-3 md:p-6">
           {loading ? (
-            <div className="text-center py-8">Carregando registros...</div>
+            <div className="text-center py-8 text-sm md:text-base text-muted-foreground">Carregando registros...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-1.5 md:gap-2">
               {/* Headers dos dias da semana */}
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                <div key={day} className="p-2 text-center font-medium text-sm bg-muted rounded">
+                <div 
+                  key={day} 
+                  className="p-1.5 md:p-2 text-center font-semibold text-[10px] md:text-sm bg-gray-100 border-2 border-gray-300 rounded"
+                >
                   {day}
                 </div>
               ))}
@@ -222,18 +237,18 @@ export function TimeSheetManager() {
                 return (
                   <Card 
                     key={date.toISOString()} 
-                    className={`p-3 min-h-24 ${isToday ? 'ring-2 ring-primary' : ''} ${isSundayDay ? 'bg-muted/50' : ''} ${!isCurrentMonth ? 'opacity-30' : ''}`}
+                    className={`p-2 md:p-3 min-h-[80px] md:min-h-24 border-2 ${isToday ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-gray-300'} ${isSundayDay ? 'bg-gray-50' : ''} ${!isCurrentMonth ? 'opacity-30' : ''} shadow-sm`}
                   >
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 md:space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
+                        <span className="text-xs md:text-sm font-semibold">
                           {format(date, 'dd')}
                         </span>
                         {getStatusBadge(date, record)}
                       </div>
                       
                       {!isSundayDay && record && isCurrentMonth && (
-                        <div className="space-y-1 text-xs">
+                        <div className="space-y-1 text-[10px] md:text-xs">
                           <div className="flex justify-between">
                             <span>Entrada:</span>
                             <span className="font-mono">{formatTime(record.clock_in)}</span>
@@ -245,12 +260,12 @@ export function TimeSheetManager() {
                           {record.lunch_start && record.lunch_end && (
                             <div className="flex justify-between text-muted-foreground">
                               <span>Almoço:</span>
-                              <span className="font-mono">
-                                {formatTime(record.lunch_start)} - {formatTime(record.lunch_end)}
+                              <span className="font-mono text-[9px] md:text-xs">
+                                {formatTime(record.lunch_start)}-{formatTime(record.lunch_end)}
                               </span>
                             </div>
                           )}
-                          <div className="flex justify-between font-medium pt-1 border-t">
+                          <div className="flex justify-between font-medium pt-1 border-t border-gray-200">
                             <span>Total:</span>
                             <span className="font-mono">{calculateTotalHours(record)}</span>
                           </div>

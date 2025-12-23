@@ -112,17 +112,22 @@ export const GoalsManager = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
+    <div className="space-y-4 md:space-y-6">
+      <Card className="border-2 border-gray-300 shadow-sm">
+        <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+              <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-orange-100 to-white border-2 border-gray-200">
+                <Target className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
+              </div>
               Sistema de Metas
             </CardTitle>
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
               <DialogTrigger asChild>
-                <Button onClick={resetForm}>
+                <Button 
+                  onClick={resetForm}
+                  className="w-full md:w-auto h-9 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 shadow-md"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Nova Meta
                 </Button>
@@ -291,30 +296,30 @@ export const GoalsManager = () => {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-3 md:p-6">
           {goals.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhuma meta encontrada</p>
-              <p className="text-sm">Crie sua primeira meta para começar!</p>
+              <p className="text-sm md:text-base">Nenhuma meta encontrada</p>
+              <p className="text-xs md:text-sm mt-1">Crie sua primeira meta para começar!</p>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-3 md:gap-4">
               {goals.map((goal) => (
-                <Card key={goal.id} className="bg-card/50 backdrop-blur-sm">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{goal.title}</h3>
+                <Card key={goal.id} className="border-2 border-gray-300 shadow-sm">
+                  <CardContent className="p-3 md:p-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3 md:mb-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm md:text-lg line-clamp-2">{goal.title}</h3>
                         {goal.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="text-xs md:text-sm text-muted-foreground mt-1 line-clamp-2">
                             {goal.description}
                           </p>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <Badge className={getStatusColor(goal.status)}>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge className={`${getStatusColor(goal.status)} text-white text-[10px] md:text-xs border-2 border-gray-200`}>
                           {goal.status === 'active' && 'Ativa'}
                           {goal.status === 'completed' && 'Concluída'}
                           {goal.status === 'paused' && 'Pausada'}
@@ -322,13 +327,19 @@ export const GoalsManager = () => {
                         </Badge>
                         {(goal.user_id === user?.id || isAdmin) && (
                           <>
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(goal)}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEdit(goal)}
+                              className="h-8 w-8 border-2 border-gray-300"
+                            >
                               <Edit className="h-3 w-3" />
                             </Button>
                             <Button 
                               variant="outline" 
                               size="sm" 
                               onClick={() => deleteGoal(goal.id)}
+                              className="h-8 w-8 border-2 border-red-300 text-red-600 hover:bg-red-50"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -338,42 +349,42 @@ export const GoalsManager = () => {
                     </div>
 
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Progresso</span>
-                        <span className="font-medium">
+                      <div className="flex items-center justify-between text-xs md:text-sm">
+                        <span className="font-medium">Progresso</span>
+                        <span className="font-semibold">
                           {goal.current_value} / {goal.target_value} {goal.unit}
                         </span>
                       </div>
                       
                       <Progress 
                         value={getProgressPercentage(goal.current_value, goal.target_value)} 
-                        className="h-2"
+                        className="h-2 md:h-2.5 border border-gray-300"
                       />
 
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {goal.user_name}
+                          <User className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{goal.user_name}</span>
                         </div>
                         
                         {goal.deadline && (
                           <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(goal.deadline), "d 'de' MMM, yyyy", { locale: ptBR })}
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{format(new Date(goal.deadline), "d 'de' MMM, yyyy", { locale: ptBR })}</span>
                           </div>
                         )}
                         
                         {goal.department && (
                           <div className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
-                            {goal.department}
+                            <Building2 className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{goal.department}</span>
                           </div>
                         )}
                         
                         {goal.category && (
                           <div className="flex items-center gap-1">
-                            <TrendingUp className="h-3 w-3" />
-                            {goal.category}
+                            <TrendingUp className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{goal.category}</span>
                           </div>
                         )}
                       </div>

@@ -121,24 +121,36 @@ export function PersonalNPSReport() {
   const averages = calculateAverageScores();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-1 md:px-0">
       {/* Header with Navigation */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+      <Card className="border-2 border-gray-300 shadow-sm">
+        <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base md:text-xl">
+              <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-green-100 to-white border-2 border-gray-200">
+                <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
+              </div>
               Meu Relatório NPS
             </CardTitle>
             
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
+            <div className="flex items-center justify-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigateMonth('prev')}
+                className="h-9 w-9 border-2 border-gray-300"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="font-medium min-w-32 text-center">
+              <span className="font-medium min-w-[120px] md:min-w-32 text-center text-sm md:text-base">
                 {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
               </span>
-              <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigateMonth('next')}
+                className="h-9 w-9 border-2 border-gray-300"
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -147,39 +159,39 @@ export function PersonalNPSReport() {
       </Card>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+        <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50 md:bg-transparent">
+          <CardContent className="p-3 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Respostas no Mês</p>
-                <p className="text-2xl font-bold">{monthlyResponses.length}</p>
+                <p className="text-[10px] md:text-sm font-medium text-blue-700 md:text-muted-foreground">Respostas no Mês</p>
+                <p className="text-base md:text-2xl font-bold text-blue-700 md:text-foreground">{monthlyResponses.length}</p>
               </div>
-              <BarChart3 className="h-8 w-8 text-muted-foreground" />
+              <BarChart3 className="h-3 w-3 md:h-8 md:w-8 text-blue-600 md:text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border-2 border-gray-300 border-l-4 border-l-green-500 shadow-sm bg-green-50/50 md:bg-transparent">
+          <CardContent className="p-3 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Satisfação Média</p>
-                <p className="text-2xl font-bold">{averages.satisfaction}</p>
+                <p className="text-[10px] md:text-sm font-medium text-green-700 md:text-muted-foreground">Satisfação Média</p>
+                <p className="text-base md:text-2xl font-bold text-green-700 md:text-foreground">{averages.satisfaction}</p>
               </div>
-              <div className={`w-3 h-3 rounded-full ${getScoreColor(averages.satisfaction)}`} />
+              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-gray-200 ${getScoreColor(averages.satisfaction)}`} />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        <Card className="border-2 border-gray-300 border-l-4 border-l-purple-500 shadow-sm bg-purple-50/50 md:bg-transparent">
+          <CardContent className="p-3 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Recomendação Média</p>
-                <p className="text-2xl font-bold">{averages.recommendation}</p>
+                <p className="text-[10px] md:text-sm font-medium text-purple-700 md:text-muted-foreground">Recomendação Média</p>
+                <p className="text-base md:text-2xl font-bold text-purple-700 md:text-foreground">{averages.recommendation}</p>
               </div>
-              <div className={`w-3 h-3 rounded-full ${getScoreColor(averages.recommendation)}`} />
+              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-gray-200 ${getScoreColor(averages.recommendation)}`} />
             </div>
           </CardContent>
         </Card>
@@ -187,12 +199,12 @@ export function PersonalNPSReport() {
 
       {/* Chart */}
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolução das Notas</CardTitle>
+        <Card className="border-2 border-gray-300 shadow-sm">
+          <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+            <CardTitle className="text-base md:text-xl">Evolução das Notas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="p-3 md:p-6">
+            <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
               <LineChart data={chartData}>
                 <XAxis dataKey="date" />
                 <YAxis domain={[0, 10]} />
@@ -218,12 +230,12 @@ export function PersonalNPSReport() {
       )}
 
       {/* Calendar View */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Calendário de Respostas</CardTitle>
+      <Card className="border-2 border-gray-300 shadow-sm">
+        <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+          <CardTitle className="text-base md:text-xl">Calendário de Respostas</CardTitle>
         </CardHeader>
         
-        <CardContent>
+        <CardContent className="p-3 md:p-6">
           {loading ? (
             <div className="text-center py-8">Carregando respostas...</div>
           ) : (

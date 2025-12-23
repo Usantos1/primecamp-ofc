@@ -74,33 +74,35 @@ export const GoalUpdateForm = ({ goal, onUpdate }: GoalUpdateFormProps) => {
   const progressPercentage = Math.min((goal.current_value / goal.target_value) * 100, 100);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Target className="h-5 w-5" />
-          {goal.title}
+    <Card className="border-2 border-gray-300 shadow-sm h-full flex flex-col">
+      <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+        <CardTitle className="flex items-center gap-2 text-sm md:text-base">
+          <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-orange-100 to-white border-2 border-gray-200">
+            <Target className="h-3 w-3 md:h-5 md:w-5 text-orange-600" />
+          </div>
+          <span className="line-clamp-2">{goal.title}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4 flex-1 flex flex-col">
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Progresso</span>
-            <span>{goal.current_value}/{goal.target_value} {goal.unit}</span>
+          <div className="flex justify-between text-xs md:text-sm">
+            <span className="font-medium">Progresso</span>
+            <span className="font-semibold">{goal.current_value}/{goal.target_value} {goal.unit}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 rounded-full h-2 md:h-2.5 border border-gray-300">
             <div 
-              className="bg-primary h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-orange-500 to-red-500 h-full rounded-full transition-all duration-300"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-xs md:text-sm text-muted-foreground">
             {progressPercentage.toFixed(1)}% concluído
           </div>
         </div>
 
-        <form onSubmit={handleUpdate} className="space-y-4">
+        <form onSubmit={handleUpdate} className="space-y-3 md:space-y-4 flex-1 flex flex-col">
           <div className="space-y-2">
-            <Label htmlFor="updateValue">Adicionar ao progresso</Label>
+            <Label htmlFor="updateValue" className="text-xs md:text-sm">Adicionar ao progresso</Label>
             <div className="flex gap-2">
               <Input
                 id="updateValue"
@@ -109,35 +111,40 @@ export const GoalUpdateForm = ({ goal, onUpdate }: GoalUpdateFormProps) => {
                 value={updateValue}
                 onChange={(e) => setUpdateValue(e.target.value)}
                 placeholder={`Ex: 5 ${goal.unit}`}
-                className="flex-1"
+                className="flex-1 h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
               />
-              <span className="flex items-center text-sm text-muted-foreground px-2">
+              <span className="flex items-center text-xs md:text-sm text-muted-foreground px-2 whitespace-nowrap">
                 {goal.unit}
               </span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações (opcional)</Label>
+            <Label htmlFor="notes" className="text-xs md:text-sm">Observações (opcional)</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Descreva o que foi realizado..."
               rows={2}
+              className="text-base md:text-sm border-2 border-gray-300"
             />
           </div>
 
-          <Button type="submit" disabled={isLoading} className="w-full">
-            <Plus className="h-4 w-4 mr-2" />
-            {isLoading ? 'Atualizando...' : 'Atualizar Meta'}
+          <Button 
+            type="submit" 
+            disabled={isLoading} 
+            className="w-full h-9 md:h-10 mt-auto bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0"
+          >
+            <Plus className="h-3 w-3 md:h-4 md:w-4 mr-2" />
+            <span className="text-xs md:text-sm">{isLoading ? 'Atualizando...' : 'Atualizar Meta'}</span>
           </Button>
         </form>
 
         {goal.description && (
-          <div className="mt-4 p-3 bg-muted rounded-lg">
-            <Label className="text-sm font-medium">Histórico</Label>
-            <p className="text-sm text-muted-foreground whitespace-pre-line">
+          <div className="mt-3 md:mt-4 p-2 md:p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
+            <Label className="text-xs md:text-sm font-medium">Histórico</Label>
+            <p className="text-xs md:text-sm text-muted-foreground whitespace-pre-line mt-1 line-clamp-3">
               {goal.description}
             </p>
           </div>
