@@ -39,7 +39,7 @@ export default function OrdensServico() {
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
   const [showImportarOS, setShowImportarOS] = useState(false);
   
-  const { ordens, isLoading, getEstatisticas, getOSById } = useOrdensServico();
+  const { ordens, isLoading, getEstatisticas, getOSById, deleteOS } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
   const { getMarcaById, getModeloById } = useMarcasModelos();
 
@@ -666,7 +666,7 @@ export default function OrdensServico() {
                               >
                                 {/* Nº OS */}
                                 <td className="font-bold text-primary py-3.5 px-3 text-left border-r border-gray-200">
-                                  #{os.numero}
+                                  {os.numero}
                                 </td>
                                 
                                 {/* Cliente */}
@@ -747,7 +747,15 @@ export default function OrdensServico() {
                                 
                                 {/* Entrada */}
                                 <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
-                                  {dateFormatters.short(os.data_entrada)}
+                                  <div>
+                                    {os.data_entrada && (
+                                      <p className="font-medium">{dateFormatters.short(os.data_entrada)}</p>
+                                    )}
+                                    {os.hora_entrada && (
+                                      <p className="text-xs text-muted-foreground">{os.hora_entrada}</p>
+                                    )}
+                                    {!os.data_entrada && <span className="text-muted-foreground">-</span>}
+                                  </div>
                                 </td>
                                 
                                 {/* Previsão */}

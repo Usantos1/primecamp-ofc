@@ -87,7 +87,11 @@ function parsePDFText(texto: string): PDFImportData {
   const clienteMatch = texto.match(/Cliente:\s*([^\n]+)/i);
   if (clienteMatch) {
     let nome = clienteMatch[1].trim();
-    // Remover "Contato:" e "Telefone:" e tudo depois deles
+    // Remover "Contato:" e "Telefone:" e tudo depois deles (incluindo números de telefone)
+    nome = nome.replace(/Contato:\s*\([^)]*\)[^\s]*.*$/i, '').replace(/Telefone:\s*\([^)]*\)[^\s]*.*$/i, '').trim();
+    // Remover padrões de telefone que possam ter ficado
+    nome = nome.replace(/\(?\d{2}\)?\s*\d{4,5}[-.]?\d{4}.*$/i, '').trim();
+    // Remover "Contato:" ou "Telefone:" se ainda estiver presente
     nome = nome.replace(/Contato:.*$/i, '').replace(/Telefone:.*$/i, '').trim();
     dados.cliente_nome = nome;
   }
@@ -417,6 +421,7 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
       
       await createOS({
         numero: numeroOS, // Usar número exato da OS do PDF
+        status: statusMapeado, // Usar status mapeado do PDF
         cliente_id: clienteId,
         cliente_nome: dadosExtraidos.cliente_nome,
         telefone_contato: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || '',
