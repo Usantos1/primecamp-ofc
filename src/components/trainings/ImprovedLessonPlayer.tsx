@@ -190,32 +190,73 @@ export function ImprovedLessonPlayer({
   }, [lesson.id]);
 
   const handleStateChange = (event: any) => {
-    if (event.data === window.YT.PlayerState.PLAYING) {
+    console.log('Estado do player mudou:', event.data);
+    
+    if (event.data === window.YT.PlayerState.PLAYING || event.data === 1) {
       setIsPlaying(true);
       startProgressTracking();
-    } else {
+    } else if (event.data === window.YT.PlayerState.PAUSED || event.data === 2) {
       setIsPlaying(false);
       // Continuar rastreando mesmo quando pausado para atualizar o tempo
       startProgressTracking();
+    } else if (event.data === window.YT.PlayerState.ENDED || event.data === 0) {
+      setIsPlaying(false);
+      // Quando terminar, garantir que o progresso está em 100%
+      if (player) {
+        try {
+          const total = player.getDuration();
+          if (total && total > 0) {
+            setCurrentTime(total);
+            setProgress(100);
+            setDuration(total);
+          }
+        } catch (error) {
+          console.error('Erro ao atualizar progresso final:', error);
+        }
+      }
     }
   };
 
   const handlePlayerReady = (playerInstance: any) => {
-    // Inicializar duração e tempo quando o player estiver pronto
-    try {
-      const total = playerInstance.getDuration();
-      const current = playerInstance.getCurrentTime();
-      if (total && total > 0) {
-        setDuration(total);
+    console.log('Player ready chamado');
+    
+    // Função para tentar inicializar
+    const tryInitialize = () => {
+      try {
+        const total = playerInstance.getDuration();
+        const current = playerInstance.getCurrentTime() || 0;
+        
+        console.log('Tentando inicializar:', { total, current, isValid: total > 0 && !isNaN(total) });
+        
+        if (total && total > 0 && !isNaN(total)) {
+          setDuration(total);
+          setCurrentTime(current);
+          const progressValue = total > 0 ? (current / total) * 100 : 0;
+          setProgress(progressValue);
+          console.log('Player inicializado:', { total, current, progress: progressValue });
+          
+          // Iniciar tracking imediatamente
+          startProgressTracking();
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Erro ao inicializar player:', error);
+        return false;
       }
-      if (current !== undefined) {
-        setCurrentTime(current);
-        setProgress((current / total) * 100);
-      }
-      // Iniciar tracking mesmo se não estiver playing
-      startProgressTracking();
-    } catch (error) {
-      console.error('Erro ao inicializar player:', error);
+    };
+
+    // Tentar imediatamente
+    if (!tryInitialize()) {
+      // Se não funcionar, tentar após 500ms
+      setTimeout(() => {
+        if (!tryInitialize()) {
+          // Se ainda não funcionar, tentar após 1s
+          setTimeout(() => {
+            tryInitialize();
+          }, 1000);
+        }
+      }, 500);
     }
   };
 
@@ -332,33 +373,48 @@ export function ImprovedLessonPlayer({
       clearInterval(progressInterval.current);
     }
 
-    progressInterval.current = setInterval(() => {
-      if (player && player.getCurrentTime && player.getDuration) {
-        const current = player.getCurrentTime();
-        const total = player.getDuration();
-        const progressPercent = (current / total) * 100;
-        
-        setCurrentTime(current);
-        setDuration(total);
-        setProgress(progressPercent);
-        
-        // Save progress every 10 seconds
-        if (Math.floor(current) % 10 === 0) {
-          const completed = progressPercent >= 90;
-          updateProgress.mutate({
-            lessonId: lesson.id,
-            trainingId,
-            progress: progressPercent,
-            lastWatchedSeconds: Math.floor(current),
-            completed
-          });
+    // Função para atualizar progresso
+    const updateProgressFn = () => {
+      if (player) {
+        try {
+          const current = player.getCurrentTime();
+          const total = player.getDuration();
           
-          if (completed && !isCompleted) {
-            setIsCompleted(true);
+          if (total && total > 0 && !isNaN(current) && !isNaN(total) && current >= 0) {
+            const progressPercent = Math.min(100, Math.max(0, (current / total) * 100));
+            
+            setCurrentTime(current);
+            setDuration(total);
+            setProgress(progressPercent);
+            
+            // Save progress every 10 seconds
+            const currentSeconds = Math.floor(current);
+            if (currentSeconds > 0 && currentSeconds % 10 === 0) {
+              const completed = progressPercent >= 90;
+              updateProgress.mutate({
+                lessonId: lesson.id,
+                trainingId,
+                progress: progressPercent,
+                lastWatchedSeconds: currentSeconds,
+                completed
+              });
+              
+              if (completed && !isCompleted) {
+                setIsCompleted(true);
+              }
+            }
           }
+        } catch (error) {
+          console.error('Erro ao rastrear progresso:', error);
         }
       }
-    }, 100);
+    };
+
+    // Executar imediatamente
+    updateProgressFn();
+
+    // Depois executar a cada 250ms
+    progressInterval.current = setInterval(updateProgressFn, 250);
   };
 
   const handleVideoClick = (e: React.MouseEvent) => {
@@ -399,15 +455,39 @@ export function ImprovedLessonPlayer({
     e.stopPropagation();
     e.preventDefault();
     
-    if (!player || !progressBarRef.current) {
-      console.warn('Player ou progressBarRef não disponível');
+    if (!player) {
+      console.warn('Player não disponível');
+      toast({
+        title: "Aguarde",
+        description: "O player ainda está carregando",
+      });
+      return;
+    }
+
+    if (!progressBarRef.current) {
+      console.warn('ProgressBarRef não disponível');
       return;
     }
 
     try {
-      const total = player.getDuration();
-      if (!total || total <= 0) {
-        console.warn('Duração do vídeo não disponível');
+      let total = player.getDuration();
+      
+      // Se não tiver duração ainda, tentar obter do estado
+      if (!total || total <= 0 || isNaN(total)) {
+        console.warn('Duração não disponível, tentando novamente...');
+        // Aguardar um pouco e tentar novamente
+        setTimeout(() => {
+          total = player.getDuration();
+          if (total && total > 0) {
+            const rect = progressBarRef.current?.getBoundingClientRect();
+            if (rect) {
+              const clickX = e.clientX - rect.left;
+              const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+              const newTime = percentage * total;
+              player.seekTo(newTime, true);
+            }
+          }
+        }, 100);
         return;
       }
 
@@ -508,26 +588,37 @@ export function ImprovedLessonPlayer({
       <div className="flex justify-center">
         <div 
           ref={containerRef}
-          className="relative aspect-video w-[80%] rounded-lg overflow-hidden bg-black group cursor-pointer"
+          className="relative aspect-video w-[80%] rounded-lg overflow-hidden bg-black group"
           onMouseEnter={() => {
             setShowControls(true);
           }}
           onMouseLeave={() => {
             setShowControls(false);
           }}
-          onClick={handleVideoClick}
         >
           <div 
             ref={playerRef} 
             className="w-full h-full relative z-0 youtube-player-container"
           />
           
-          {/* Barra de progresso estilo YouTube - sempre visível e funcional */}
+          {/* Máscara clicável para play/pause - cobre 100% do vídeo, acima do player mas abaixo dos controles */}
+          <div 
+            className="absolute inset-0 z-[5] cursor-pointer"
+            style={{ 
+              pointerEvents: showControls ? 'none' : 'auto',
+              backgroundColor: 'transparent'
+            }}
+            onClick={handleVideoClick}
+          />
+          
+          {/* Barra de progresso estilo YouTube - sempre visível e funcional, acima de tudo */}
           <div 
             ref={progressBarRef}
-            className="absolute bottom-0 left-0 right-0 h-2 bg-black/50 cursor-pointer z-20 group/progress"
+            className="absolute bottom-0 left-0 right-0 h-[4px] bg-black/50 cursor-pointer z-[30] group/progress"
+            style={{ pointerEvents: 'auto' }}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               handleProgressBarClick(e);
             }}
             onMouseEnter={(e) => {
@@ -540,24 +631,14 @@ export function ImprovedLessonPlayer({
             {/* Barra de progresso preenchida */}
             <div 
               className="h-full bg-red-600 transition-all duration-100"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${Math.max(0, Math.min(100, progress || 0))}%` }}
             />
             {/* Indicador de posição - aparece no hover */}
             <div 
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-red-600 rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-lg border-2 border-white"
-              style={{ left: `calc(${progress}% - 8px)` }}
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-red-600 rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity shadow-lg border-2 border-white pointer-events-none"
+              style={{ left: `calc(${Math.max(0, Math.min(100, progress || 0))}% - 8px)` }}
             />
           </div>
-          
-          {/* Máscara clicável para play/pause - sempre ativa mas invisível */}
-          <div 
-            className="absolute inset-0 z-5 cursor-pointer"
-            style={{ 
-              pointerEvents: showControls ? 'none' : 'auto',
-              backgroundColor: 'transparent'
-            }}
-            onClick={handleVideoClick}
-          />
           
           {/* Overlay Controls estilo YouTube - aparecem no hover */}
           <div 
