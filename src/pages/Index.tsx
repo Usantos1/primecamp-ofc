@@ -116,112 +116,99 @@ const Index = () => {
       title="Dashboard" 
       subtitle="Acesso rápido às principais funcionalidades"
     >
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+      <div className="space-y-6 px-1 md:px-0">
         {/* Cards de Estatísticas Rápidas */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-95 md:active:scale-100" onClick={() => navigate('/pdv/os')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">OS Abertas</CardTitle>
-              <Wrench className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
-            </CardHeader>
-            <CardContent className="p-3 md:p-6 pt-0">
-              <div className="text-xl md:text-2xl font-bold">{osAbertas}</div>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
-                {osEmAndamento} em andamento
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-95 md:active:scale-100" onClick={() => navigate('/produtos')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Total de Produtos</CardTitle>
-              <Package className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
-            </CardHeader>
-            <CardContent className="p-3 md:p-6 pt-0">
-              <div className="text-xl md:text-2xl font-bold">{totalProdutos}</div>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
-                Produtos cadastrados
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-95 md:active:scale-100" onClick={() => navigate('/pdv/clientes')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Total de Clientes</CardTitle>
-              <UserCircle className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
-            </CardHeader>
-            <CardContent className="p-3 md:p-6 pt-0">
-              <div className="text-xl md:text-2xl font-bold">{totalClientes}</div>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
-                Clientes cadastrados
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:shadow-md transition-shadow active:scale-95 md:active:scale-100" onClick={() => navigate('/pdv/caixa')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-6">
-              <CardTitle className="text-xs md:text-sm font-medium">Caixa</CardTitle>
-              <Wallet className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground flex-shrink-0 ml-1" />
-            </CardHeader>
-            <CardContent className="p-3 md:p-6 pt-0">
-              <div className="text-xl md:text-2xl font-bold">-</div>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
-                Ver movimentações
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {[
+            { title: 'OS Abertas', value: osAbertas, subtitle: `${osEmAndamento} em andamento`, icon: Wrench, color: 'bg-emerald-500' },
+            { title: 'Total de Produtos', value: totalProdutos, subtitle: 'Produtos cadastrados', icon: Package, color: 'bg-blue-500' },
+            { title: 'Total de Clientes', value: totalClientes, subtitle: 'Clientes cadastrados', icon: UserCircle, color: 'bg-orange-500' },
+            { title: 'Caixa', value: '-', subtitle: 'Ver movimentações', icon: Wallet, color: 'bg-purple-500' },
+          ].map((card) => {
+            const Icon = card.icon;
+            return (
+              <Card
+                key={card.title}
+                className="border-2 border-gray-200 rounded-xl hover:shadow-lg transition-all bg-white/90 cursor-pointer active:scale-[0.99] md:active:scale-100"
+                onClick={() => {
+                  if (card.title === 'OS Abertas') navigate('/pdv/os');
+                  if (card.title === 'Total de Produtos') navigate('/produtos');
+                  if (card.title === 'Total de Clientes') navigate('/pdv/clientes');
+                  if (card.title === 'Caixa') navigate('/pdv/caixa');
+                }}
+              >
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-4">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <span className={`h-9 w-9 rounded-lg flex items-center justify-center text-white ${card.color} bg-opacity-90`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    {card.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  <div className="text-2xl font-bold">{card.value}</div>
+                  <CardDescription className="text-xs mt-1">{card.subtitle}</CardDescription>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Ações Rápidas */}
-        <div>
-          <h2 className="text-base md:text-lg font-semibold mb-3 md:mb-4 px-1">Ações Rápidas</h2>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Card 
-                  key={action.path}
-                  className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 md:active:scale-100"
-                  onClick={() => navigate(action.path)}
-                >
-                  <CardHeader className="p-3 md:p-6">
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg ${action.color} flex items-center justify-center mb-2`}>
-                      <Icon className="h-5 w-5 md:h-6 md:w-6 text-white" />
+        <div className="space-y-2">
+          <h2 className="text-base md:text-lg font-semibold px-1">Ações Rápidas</h2>
+          <Card className="border-2 border-gray-200 rounded-xl shadow-sm">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardDescription className="text-xs">Criação e consultas frequentes</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={action.title}
+                    variant="outline"
+                    className="h-11 text-xs md:text-sm border-2 border-gray-200 justify-start rounded-lg hover:shadow-md"
+                    onClick={() => navigate(action.path)}
+                  >
+                    <Icon className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+                    <div className="flex flex-col items-start">
+                      <span className="font-semibold">{action.title}</span>
+                      <span className="text-[11px] text-muted-foreground">{action.description}</span>
                     </div>
-                    <CardTitle className="text-sm md:text-base">{action.title}</CardTitle>
-                    <CardDescription className="text-xs md:text-sm">{action.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              );
-            })}
-          </div>
+                  </Button>
+                );
+              })}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Seções Principais */}
-        <div>
-          <h2 className="text-base md:text-lg font-semibold mb-3 md:mb-4 px-1">Acesso Rápido</h2>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+        <div className="space-y-2">
+          <h2 className="text-base md:text-lg font-semibold px-1">Acesso Rápido</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {mainSections.map((section) => {
               const SectionIcon = section.icon;
               return (
-                <Card key={section.title}>
-                  <CardHeader className="p-3 md:p-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <SectionIcon className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground flex-shrink-0" />
-                      <CardTitle className="text-sm md:text-base">{section.title}</CardTitle>
+                <Card key={section.title} className="border-2 border-gray-200 rounded-xl shadow-sm">
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <SectionIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <CardTitle className="text-sm md:text-base font-semibold">{section.title}</CardTitle>
                     </div>
+                    <CardDescription className="text-xs text-muted-foreground">Atalhos do módulo</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-1 md:space-y-2 p-3 md:p-6 pt-0">
+                  <CardContent className="space-y-1.5 p-4 pt-0">
                     {section.items.map((item) => {
                       const ItemIcon = item.icon;
                       return (
                         <Button
                           key={item.path}
                           variant="ghost"
-                          className={`w-full justify-start gap-2 text-xs md:text-sm h-8 md:h-10 ${section.color}`}
+                          className={`w-full justify-start gap-2 text-xs md:text-sm h-9 md:h-10 rounded-lg hover:bg-muted/60 ${section.color}`}
                           onClick={() => navigate(item.path)}
                         >
-                          <ItemIcon className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                          <ItemIcon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                           <span className="truncate">{item.label}</span>
                         </Button>
                       );
