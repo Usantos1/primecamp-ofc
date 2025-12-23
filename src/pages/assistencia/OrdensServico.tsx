@@ -616,14 +616,14 @@ export default function OrdensServico() {
                         <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
                           <tr className="border-b-2 border-gray-300">
                             <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[150px]">Cliente</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Aparelho</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[180px]">Problema</th>
-                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px]">Status</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Entrada</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden md:table-cell">Previsão</th>
-                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px]">Valor</th>
-                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 w-[90px]">Ações</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[180px]">Cliente</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px] hidden md:table-cell">Aparelho</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[220px]">Problema</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px]">Status</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Entrada</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Previsão</th>
+                            <th className="h-11 px-2 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[100px]">Valor</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 w-[90px]">Ações</th>
                           </tr>
                         </thead>
                         {/* Corpo da tabela */}
@@ -697,15 +697,15 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Cliente */}
-                                <td className="py-3.5 px-3 text-left border-r border-gray-200">
+                                <td className="py-3.5 px-2 text-left border-r border-gray-200">
                                   <div className="min-w-0">
-                                    <p className="font-medium truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
-                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground truncate">{cliente.cpf_cnpj}</p>}
+                                    <p className="font-medium break-words">{cliente?.nome || os.cliente_nome || '-'}</p>
+                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj}</p>}
                                   </div>
                                 </td>
                                 
                                 {/* Aparelho */}
-                                <td className="py-3.5 px-3 text-left border-r border-gray-200 hidden md:table-cell">
+                                <td className="py-3.5 px-2 text-left border-r border-gray-200 hidden md:table-cell">
                                   <div>
                                     <p className="font-medium text-sm">{modelo?.nome || os.modelo_nome || '-'}</p>
                                     <p className="text-xs text-muted-foreground">{marca?.nome || os.marca_nome || '-'}</p>
@@ -713,21 +713,21 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Problema */}
-                                <td className="py-3.5 px-3 text-left border-r border-gray-200">
-                                  <div className="text-sm break-words line-clamp-2">
+                                <td className="py-3.5 px-2 text-left border-r border-gray-200">
+                                  <div className="text-sm break-words">
                                     {os.descricao_problema || '-'}
                                   </div>
                                 </td>
                                 
                                 {/* Status */}
-                                <td className="py-3.5 px-3 text-center border-r border-gray-200">
+                                <td className="py-3.5 px-2 text-center border-r border-gray-200">
                                   <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
                                     {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
                                   </Badge>
                                 </td>
                                 
                                 {/* Entrada */}
-                                <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
+                                <td className="py-3.5 px-2 text-left text-sm border-r border-gray-200 hidden md:table-cell">
                                   <div>
                                     {os.data_entrada ? (
                                       <>
@@ -745,7 +745,7 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Previsão */}
-                                <td className="py-3.5 px-3 text-left text-sm border-r border-gray-200 hidden md:table-cell">
+                                <td className="py-3.5 px-2 text-left text-sm border-r border-gray-200 hidden md:table-cell">
                                   {os.previsao_entrega ? (
                                     <div>
                                       <p className={cn("font-medium", isAtrasada && 'text-red-600')}>
@@ -767,7 +767,7 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Valor */}
-                                <td className="py-3.5 px-3 text-right border-r border-gray-200">
+                                <td className="py-3.5 px-2 text-right border-r border-gray-200">
                                   {valorTotal > 0 || valorTotalOS > 0 || valorTotalItens > 0 ? (
                                     <div>
                                       <p className="font-semibold text-green-600">
@@ -785,7 +785,7 @@ export default function OrdensServico() {
                                 </td>
                                 
                                 {/* Ações */}
-                                <td className="py-3.5 px-3 text-center">
+                                <td className="py-3.5 px-2 text-center">
                                   <div className="flex items-center justify-center gap-1">
                                     <Button
                                       variant="ghost"
