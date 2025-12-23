@@ -29,27 +29,10 @@ export function useOrdensServicoSupabase() {
       // Usar número fornecido ou buscar próximo número
       let numero: number;
       if (data.numero) {
-        // Verificar se o número já existe
-        const { data: existingOS } = await supabase
-          .from('ordens_servico')
-          .select('numero')
-          .eq('numero', data.numero)
-          .single();
-        
-        if (existingOS) {
-          // Se já existe, buscar próximo número disponível
-          const { data: lastOS } = await supabase
-            .from('ordens_servico')
-            .select('numero')
-            .order('numero', { ascending: false })
-            .limit(1)
-            .single();
-          numero = lastOS?.numero ? lastOS.numero + 1 : 1;
-        } else {
-          numero = data.numero;
-        }
+        // Usar o número fornecido diretamente (permite números específicos para importação)
+        numero = data.numero;
       } else {
-        // Buscar próximo número
+        // Buscar próximo número apenas se não foi fornecido
         const { data: lastOS } = await supabase
           .from('ordens_servico')
           .select('numero')
