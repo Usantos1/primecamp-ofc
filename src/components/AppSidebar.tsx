@@ -77,18 +77,18 @@ export function AppSidebar() {
     );
   };
 
-  // === NAVEGAÇÃO PRINCIPAL (Acesso Rápido) ===
+  // === NAVEGAÇÃO PRINCIPAL ===
   const mainItems = [
     { label: "Dashboard", path: "/", icon: Home, exact: true },
+  ];
+
+  // === VENDAS E OS ===
+  const vendasOsMainItems = [
     { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true, permission: "vendas.create" },
     { label: "Ordem de Serviço", path: "/pdv/os", icon: Wrench, exact: false, permission: "os.view" },
-    { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
-    { label: "Clientes", path: "/pdv/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
-    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
   ].filter(item => !item.permission || hasPermission(item.permission));
-  
-  // === VENDAS E OS (Acessos Secundários) ===
-  const vendasItems = [
+
+  const vendasSubItems = [
     { label: "Lista de Vendas", path: "/pdv/vendas", icon: List, permission: "vendas.view" },
     { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt, permission: ["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"] },
   ].filter(item => {
@@ -98,6 +98,13 @@ export function AppSidebar() {
     }
     return hasPermission(item.permission);
   });
+
+  // === OUTROS ACESSOS RÁPIDOS ===
+  const outrosItems = [
+    { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
+    { label: "Clientes", path: "/pdv/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
+    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
+  ].filter(item => !item.permission || hasPermission(item.permission));
 
   // === CADASTROS ===
   const cadastrosItems = [
@@ -153,7 +160,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className={cn("space-y-1", collapsed && "flex flex-col items-center gap-1")}>
-              {/* === NAVEGAÇÃO PRINCIPAL === */}
+              {/* === DASHBOARD === */}
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild>
@@ -168,14 +175,14 @@ export function AppSidebar() {
               ))}
 
               {/* Separador */}
-              {!collapsed && vendasItems.length > 0 && (
+              {!collapsed && vendasOsMainItems.length > 0 && (
                 <div className="px-2 py-2">
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                 </div>
               )}
 
               {/* === VENDAS E OS === */}
-              {vendasItems.length > 0 && (
+              {vendasOsMainItems.length > 0 && (
                 <>
                   {!collapsed && (
                     <div className="px-2 py-1.5">
@@ -187,20 +194,66 @@ export function AppSidebar() {
                       </div>
                     </div>
                   )}
-                  {vendasItems.map((item) => (
+                  
+                  {/* Itens principais: Vendas e Ordem de Serviço */}
+                  {vendasOsMainItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton asChild>
-                        <NavLink to={item.path} end>
-                          <div className={getItemClasses(item.path, true)}>
-                            <item.icon className={cn("flex-shrink-0", collapsed ? "h-4 w-4" : "h-4 w-4")} />
-                            {!collapsed && <span className="text-sm">{item.label}</span>}
+                        <NavLink to={item.path} end={item.exact !== false}>
+                          <div className={getItemClasses(item.path, item.exact)}>
+                            <item.icon className={cn("flex-shrink-0 transition-transform", collapsed ? "h-5 w-5" : "h-5 w-5", isActive(item.path, item.exact) && "scale-110")} />
+                            {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
                           </div>
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+
+                  {/* Subitens de Vendas: Lista de Vendas e Relatórios PDV */}
+                  {!collapsed && vendasSubItems.length > 0 && (
+                    <div className="pl-4 space-y-1">
+                      {vendasSubItems.map((item) => (
+                        <SidebarMenuItem key={item.path}>
+                          <SidebarMenuButton asChild>
+                            <NavLink to={item.path} end>
+                              <div className={cn(
+                                "flex items-center transition-all duration-200 rounded-lg p-2 gap-2",
+                                isActive(item.path, true)
+                                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-700 font-medium"
+                                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                              )}>
+                                <item.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span className="text-xs">{item.label}</span>
+                              </div>
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
+
+              {/* Separador */}
+              {!collapsed && outrosItems.length > 0 && (
+                <div className="px-2 py-2">
+                  <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+                </div>
+              )}
+
+              {/* === OUTROS ACESSOS RÁPIDOS === */}
+              {outrosItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.path} end={item.exact !== false}>
+                      <div className={getItemClasses(item.path, item.exact)}>
+                        <item.icon className={cn("flex-shrink-0 transition-transform", collapsed ? "h-5 w-5" : "h-5 w-5", isActive(item.path, item.exact) && "scale-110")} />
+                        {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+                      </div>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
 
               {/* Separador */}
               {!collapsed && cadastrosItems.length > 0 && (
