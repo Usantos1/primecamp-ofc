@@ -25,7 +25,6 @@ import { OSStatusCards } from '@/components/dashboard/OSStatusCards';
 import { AlertCards } from '@/components/dashboard/AlertCards';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
 import { PresentationMode } from '@/components/dashboard/PresentationMode';
-import { DashboardConfigModal } from '@/components/dashboard/DashboardConfigModal';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
@@ -36,7 +35,6 @@ const Index = () => {
   const { financialData, osData, alerts, trendData, loading: dataLoading } = useDashboardData();
   const { config, loading: configLoading } = useDashboardConfig();
   const { getEstatisticas } = useOrdensServico();
-  const [showConfigModal, setShowConfigModal] = useState(false);
 
   const stats = getEstatisticas();
 
@@ -149,20 +147,6 @@ const Index = () => {
       subtitle={isGestor ? "Visão geral e gestão" : "Acesso rápido às principais funcionalidades"}
     >
       <div className="space-y-4 md:space-y-6 px-1 md:px-0">
-        {/* Botão de Configuração (apenas para gestor) */}
-        {isGestor && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowConfigModal(true)}
-              className="h-9 border-2 border-gray-300"
-            >
-              <Settings2 className="h-4 w-4 mr-2" />
-              Configurar Dashboard
-            </Button>
-          </div>
-        )}
 
         {/* Renderizar widgets conforme configuração */}
         {enabledWidgets.map((widget) => {

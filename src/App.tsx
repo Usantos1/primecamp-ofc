@@ -68,6 +68,7 @@ import NovaVenda from "./pages/pdv/NovaVenda";
 import Caixa from "./pages/pdv/Caixa";
 import Relatorios from "./pages/pdv/Relatorios";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
+import Configuracoes from "./pages/admin/Configuracoes";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
 
@@ -132,6 +133,7 @@ const App = () => (
               <Route path="/admin/logs" element={<PermissionRoute permission="admin.logs"><AdminLogs /></PermissionRoute>} />
               <Route path="/admin/estrutura" element={<ProtectedRoute><EstruturaOrganizacional /></ProtectedRoute>} />
               <Route path="/admin/cadastros" element={<ProtectedRoute><CadastrosBase /></ProtectedRoute>} />
+              <Route path="/admin/configuracoes" element={<PermissionRoute permission="admin.config"><Configuracoes /></PermissionRoute>} />
               <Route path="/rh" element={<PermissionRoute permission="rh.view"><RH /></PermissionRoute>} />
               
               {/* Public job application routes */}
