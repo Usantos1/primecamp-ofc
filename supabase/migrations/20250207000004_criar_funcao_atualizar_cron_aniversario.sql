@@ -59,3 +59,4 @@ GRANT EXECUTE ON FUNCTION public.atualizar_cron_aniversario(TEXT) TO authenticat
 
 COMMENT ON FUNCTION public.atualizar_cron_aniversario IS 'Atualiza o cron job de mensagens de aniversário com o horário fornecido (em formato HH:MM BRT)';
 
+

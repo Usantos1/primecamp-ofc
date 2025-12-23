@@ -169,3 +169,4 @@ O sistema de permissões está funcional e pronto para uso. Você pode:
 - Adicionar PermissionGate em botões de ação
 - Criar histórico de alterações de permissões
 
+

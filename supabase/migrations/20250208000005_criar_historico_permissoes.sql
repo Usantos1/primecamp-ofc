@@ -55,3 +55,4 @@ COMMENT ON COLUMN public.permission_changes_history.change_type IS 'Tipo de muda
 COMMENT ON COLUMN public.permission_changes_history.old_value IS 'Valor anterior em formato JSON';
 COMMENT ON COLUMN public.permission_changes_history.new_value IS 'Novo valor em formato JSON';
 
+

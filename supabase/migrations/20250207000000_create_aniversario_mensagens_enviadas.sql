@@ -45,3 +45,4 @@ COMMENT ON COLUMN public.aniversario_mensagens_enviadas.horario_envio IS 'Horár
 COMMENT ON COLUMN public.aniversario_mensagens_enviadas.mensagem_enviada IS 'Conteúdo da mensagem enviada';
 COMMENT ON COLUMN public.aniversario_mensagens_enviadas.status IS 'Status do envio (enviado ou erro)';
 
+

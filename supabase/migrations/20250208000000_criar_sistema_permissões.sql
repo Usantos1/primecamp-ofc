@@ -259,3 +259,4 @@ COMMENT ON TABLE public.role_permissions IS 'Relacionamento entre roles e permis
 COMMENT ON TABLE public.user_permissions IS 'Permissões customizadas por usuário (override)';
 COMMENT ON FUNCTION public.has_permission IS 'Verifica se um usuário tem uma permissão específica';
 
+

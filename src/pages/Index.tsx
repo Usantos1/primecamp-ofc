@@ -135,7 +135,7 @@ const Index = () => {
   if (authLoading || permissionsLoading || configLoading || dataLoading) {
     return (
       <ModernLayout title="Dashboard" subtitle="Carregando...">
-        <LoadingSkeleton type="cards" count={4} />
+        <LoadingSkeleton type="card" count={4} />
       </ModernLayout>
     );
   }
@@ -262,14 +262,6 @@ const Index = () => {
           }
         })}
       </div>
-
-      {/* Modal de Configuração */}
-      {isGestor && (
-        <DashboardConfigModal
-          open={showConfigModal}
-          onOpenChange={setShowConfigModal}
-        />
-      )}
     </ModernLayout>
   );
 };

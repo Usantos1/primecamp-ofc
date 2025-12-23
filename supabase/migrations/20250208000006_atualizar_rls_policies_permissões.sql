@@ -408,3 +408,4 @@ COMMENT ON POLICY "Usuários com permissão podem criar clientes" ON public.clie
 COMMENT ON POLICY "Usuários com permissão podem atualizar clientes" ON public.clientes IS 'Permite atualizar clientes se o usuário tem permissão clientes.edit';
 COMMENT ON POLICY "Usuários com permissão podem deletar clientes" ON public.clientes IS 'Permite deletar clientes se o usuário tem permissão clientes.delete';
 
+

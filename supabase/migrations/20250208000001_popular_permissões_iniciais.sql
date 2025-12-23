@@ -103,3 +103,4 @@ INSERT INTO public.permissions (resource, action, description, category) VALUES
 ('metricas', 'view', 'Ver métricas', 'gestao')
 ON CONFLICT (resource, action) DO NOTHING;
 
+

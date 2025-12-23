@@ -36,3 +36,4 @@ COMMENT ON POLICY "Leitura pública de clientes (apenas nome)" ON public.cliente
 COMMENT ON POLICY "Leitura pública de marcas" ON public.marcas IS 'Permite leitura de marcas para exibir na página pública de acompanhamento';
 COMMENT ON POLICY "Leitura pública de modelos" ON public.modelos IS 'Permite leitura de modelos para exibir na página pública de acompanhamento';
 
+

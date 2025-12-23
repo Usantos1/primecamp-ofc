@@ -50,3 +50,4 @@ export function TrendCharts({ data }: TrendChartsProps) {
   );
 }
 
+

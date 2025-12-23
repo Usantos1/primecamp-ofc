@@ -29,3 +29,4 @@ INSERT INTO public.permissions (resource, action, description, category) VALUES
 ('admin', 'timeclock', 'Gerenciar ponto eletrônico no painel admin', 'admin')
 ON CONFLICT (resource, action) DO NOTHING;
 
+

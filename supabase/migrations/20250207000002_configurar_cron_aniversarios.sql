@@ -29,3 +29,4 @@ SELECT cron.schedule(
 COMMENT ON EXTENSION pg_cron IS 'Extensão para agendamento de tarefas (cron jobs)';
 COMMENT ON EXTENSION pg_net IS 'Extensão para requisições HTTP a partir do PostgreSQL';
 
+

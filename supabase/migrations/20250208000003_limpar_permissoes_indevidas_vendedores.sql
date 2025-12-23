@@ -43,3 +43,4 @@ AND EXISTS (
 
 COMMENT ON FUNCTION public.has_permission IS 'Verifica se um usuário tem uma permissão específica. Vendedores NÃO têm acesso a OS, produtos ou financeiro.';
 
+

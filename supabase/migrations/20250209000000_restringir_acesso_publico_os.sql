@@ -21,3 +21,4 @@ CREATE POLICY "Leitura pública de OS por header seguro"
 COMMENT ON POLICY "Leitura pública de OS por header seguro" ON public.ordens_servico IS
 'Permite leitura anônima apenas da OS cujo ID foi enviado no header x-os-id (QR). Demais tabelas não são mais públicas.';
 
+
