@@ -264,7 +264,7 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
         clienteId = clienteExistente.id;
       } else {
         // Criar novo cliente
-        const novoCliente = await createCliente.mutateAsync({
+        const novoCliente = await createCliente({
           nome: dadosExtraidos.cliente_nome || '',
           cpf_cnpj: dadosExtraidos.cliente_cpf_cnpj || null,
           telefone: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || null,
