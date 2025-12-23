@@ -148,14 +148,14 @@ export default function Relatorios() {
 
   return (
     <ModernLayout title="Relatórios" subtitle="Relatórios de vendas e caixa">
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+      <div className="space-y-4 md:space-y-6 px-2 md:px-6 w-full max-w-none">
         {/* Filtros */}
-        <Card className="border-2 border-gray-300">
+        <Card className="border-2 border-gray-300 shadow-sm rounded-xl bg-white/80 dark:bg-slate-900/50">
           <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
             <CardTitle className="text-base md:text-lg">Filtros</CardTitle>
           </CardHeader>
           <CardContent className="p-3 md:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
               <div className="space-y-1.5 md:space-y-2">
                 <Label className="text-xs md:text-sm">Período Início</Label>
                 <Popover>
@@ -228,7 +228,7 @@ export default function Relatorios() {
               </div>
               <div className="flex items-end">
                 <Button 
-                  className="w-full h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300" 
+                  className="w-full h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300 bg-gradient-to-r from-blue-500/90 to-indigo-500/90 text-white hover:shadow-md"
                   onClick={() => {
                     // Exportar relatório
                     alert('Funcionalidade de exportação em desenvolvimento');
@@ -243,8 +243,8 @@ export default function Relatorios() {
         </Card>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 px-4 md:px-0">
-          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 px-1 md:px-0">
+          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-blue-50 to-blue-100/70 dark:from-blue-950/40 dark:to-blue-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
               <CardTitle className="text-[10px] md:text-sm font-medium">Total de Vendas</CardTitle>
               <ShoppingCart className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
@@ -254,7 +254,7 @@ export default function Relatorios() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-green-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-green-50/50 dark:bg-green-950/10 md:bg-transparent md:dark:bg-transparent">
+          <Card className="border-2 border-l-4 border-l-green-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-emerald-50 to-green-100/70 dark:from-green-950/40 dark:to-green-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
               <CardTitle className="text-[10px] md:text-sm font-medium">Total Recebido</CardTitle>
               <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
@@ -264,7 +264,7 @@ export default function Relatorios() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-purple-50/50 dark:bg-purple-950/10 md:bg-transparent md:dark:bg-transparent">
+          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-purple-50 to-purple-100/70 dark:from-purple-950/40 dark:to-purple-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
               <CardTitle className="text-[10px] md:text-sm font-medium">Ticket Médio</CardTitle>
               <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
@@ -274,7 +274,7 @@ export default function Relatorios() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-orange-50/50 dark:bg-orange-950/10 md:bg-transparent md:dark:bg-transparent">
+          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-amber-50 to-orange-100/70 dark:from-orange-950/40 dark:to-orange-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
               <CardTitle className="text-[10px] md:text-sm font-medium">Vendedores</CardTitle>
               <User className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
@@ -286,7 +286,7 @@ export default function Relatorios() {
         </div>
 
         {/* Vendas por Vendedor */}
-        <Card className="border-2 border-gray-300">
+        <Card className="border-2 border-gray-300 rounded-xl shadow-sm">
           <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
             <CardTitle className="text-base md:text-lg">Vendas por Vendedor</CardTitle>
           </CardHeader>
@@ -299,7 +299,7 @@ export default function Relatorios() {
             ) : (
               <>
                 {/* Desktop: Tabela */}
-                <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                <div className="hidden md:block border-2 border-gray-300 rounded-xl overflow-x-auto shadow-sm">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
@@ -332,7 +332,7 @@ export default function Relatorios() {
                 {/* Mobile: Cards */}
                 <div className="md:hidden space-y-3">
                   {stats.vendasPorVendedor.map((vendedor) => (
-                    <Card key={vendedor.id} className="border-2 border-gray-300">
+                    <Card key={vendedor.id} className="border-2 border-gray-300 rounded-xl shadow-sm">
                       <CardContent className="p-3 space-y-2">
                         <div className="border-b-2 border-gray-200 pb-2">
                           <h3 className="font-semibold text-sm">{vendedor.nome}</h3>
@@ -365,7 +365,7 @@ export default function Relatorios() {
         </Card>
 
         {/* Últimas Vendas */}
-        <Card className="border-2 border-gray-300">
+        <Card className="border-2 border-gray-300 rounded-xl shadow-sm">
           <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
             <CardTitle className="text-base md:text-lg">Últimas Vendas</CardTitle>
           </CardHeader>
@@ -378,7 +378,7 @@ export default function Relatorios() {
             ) : (
               <>
                 {/* Desktop: Tabela */}
-                <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                <div className="hidden md:block border-2 border-gray-300 rounded-xl overflow-x-auto shadow-sm">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
@@ -443,7 +443,7 @@ export default function Relatorios() {
                     return (
                       <Card 
                         key={sale.id}
-                        className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
+                        className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98] rounded-xl shadow-sm"
                         onClick={() => {
                           setSelectedSale(sale);
                           setShowSaleDetails(true);

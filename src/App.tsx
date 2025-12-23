@@ -93,7 +93,18 @@ const App = () => (
           <Route path="/disc-externo" element={<CandidateDisc />} />
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
             {/* Add import */}
-              <Route path="/" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />
+              {/* Página inicial: se não tiver permission dashboard, redireciona para Vendas */}
+              <Route 
+                path="/" 
+                element={
+                  <PermissionRoute 
+                    permission="dashboard.view" 
+                    redirectTo="/pdv/vendas"
+                  >
+                    <Index />
+                  </PermissionRoute>
+                } 
+              />
               <Route path="/gestao" element={<PermissionRoute permission="dashboard.gestao"><DashboardGestao /></PermissionRoute>} />
               <Route path="/processos" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />
               <Route path="/processos/*" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />
@@ -164,7 +175,17 @@ const App = () => (
               <Route path="/pdv/venda/:id" element={<PermissionRoute permission="vendas.view"><NovaVenda /></PermissionRoute>} />
               <Route path="/pdv/venda/:id/editar" element={<PermissionRoute permission="vendas.edit"><NovaVenda /></PermissionRoute>} />
               <Route path="/pdv/caixa" element={<PermissionRoute permission="caixa.view"><Caixa /></PermissionRoute>} />
-              <Route path="/pdv/relatorios" element={<PermissionRoute permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]}><Relatorios /></PermissionRoute>} />
+              <Route 
+                path="/pdv/relatorios" 
+                element={
+                  <PermissionRoute 
+                    permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]} 
+                    redirectTo="/pdv/vendas"
+                  >
+                    <Relatorios />
+                  </PermissionRoute>
+                } 
+              />
               <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission="vendas.manage"><ConfiguracaoCupom /></PermissionRoute>} />
               <Route path="/cupom/:id" element={<CupomView />} />
               <Route path="/pdv/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
