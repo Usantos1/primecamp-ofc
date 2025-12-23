@@ -396,6 +396,8 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
         previsao_entrega: previsaoEntrega,
         hora_previsao: dadosExtraidos.hora_previsao || undefined,
         observacoes: dadosExtraidos.numero_os ? `OS antiga: ${dadosExtraidos.numero_os}` : undefined,
+        vendedor_nome: dadosExtraidos.vendedor_nome || undefined,
+        senha_numerica: dadosExtraidos.senha || undefined,
         checklist_entrada: [],
         areas_defeito: [],
       });

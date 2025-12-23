@@ -78,6 +78,8 @@ export function useOrdensServicoSupabase() {
         tecnico_id: data.tecnico_id || null,
         tecnico_nome: data.tecnico_nome || null,
         servico_executado: data.servico_executado || null,
+        vendedor_id: data.vendedor_id || null,
+        vendedor_nome: data.vendedor_nome || null,
         subtotal: 0,
         desconto: 0,
         valor_total: 0,
