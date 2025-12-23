@@ -1,4 +1,4 @@
-﻿import React from "react";
+﻿import React, { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
@@ -19,8 +19,12 @@ import {
   Receipt,
   FileText,
   List,
+  Clock,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PermissionGate } from "@/components/PermissionGate";
 import {
   Sidebar,
   SidebarContent,
@@ -44,6 +48,19 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const { user, profile, isAdmin, signOut } = useAuth();
+  const { hasPermission, permissions, loading: permissionsLoading } = usePermissions();
+
+  // Debug: log das permissões
+  useEffect(() => {
+    if (!permissionsLoading && user) {
+      console.log('AppSidebar - Permissões do usuário:', {
+        userId: user.id,
+        permissions: permissions,
+        hasOsView: hasPermission('os.view'),
+        hasVendasView: hasPermission('vendas.view'),
+      });
+    }
+  }, [permissions, permissionsLoading, user, hasPermission]);
 
   const collapsed = state === "collapsed";
   const currentPath = location.pathname;
@@ -73,42 +90,50 @@ export function AppSidebar() {
     );
   };
 
-  // Itens principais sempre visíveis
+  // Itens principais sempre visíveis (filtrados por permissão)
   const mainItems = [
-    { label: "Dashboard", path: "/", icon: Home, exact: true },
-    { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true },
-    { label: "Ordem de Serviço", path: "/pdv/os", icon: Wrench, exact: false },
-    { label: "Produtos", path: "/produtos", icon: Package, exact: true },
-    { label: "Clientes", path: "/pdv/clientes", icon: UserCircle, exact: true },
-    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true },
-  ];
+    { label: "Dashboard", path: "/", icon: Home, exact: true, permission: "dashboard.view" },
+    { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true, permission: "vendas.create" },
+    { label: "Ordem de Serviço", path: "/pdv/os", icon: Wrench, exact: false, permission: "os.view" },
+    { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
+    { label: "Clientes", path: "/pdv/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
+    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
+  ].filter(item => !item.permission || hasPermission(item.permission));
   
   // Itens de Vendas e OS (acessos rápidos)
   const vendasItems = [
-    { label: "Lista de Vendas", path: "/pdv/vendas", icon: List },
-    { label: "Dashboard Assistência", path: "/assistencia", icon: BarChart3 },
-    { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt },
-    { label: "Config. Cupom", path: "/pdv/configuracao-cupom", icon: FileText },
-    { label: "Config. Status OS", path: "/pdv/configuracao-status", icon: Settings },
-  ];
+    { label: "Lista de Vendas", path: "/pdv/vendas", icon: List, permission: "vendas.view" },
+    { label: "Dashboard Assistência", path: "/assistencia", icon: BarChart3, permission: "os.view" },
+    { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt, permission: ["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"] },
+    { label: "Config. Cupom", path: "/pdv/configuracao-cupom", icon: FileText, permission: "vendas.manage" },
+    { label: "Config. Status OS", path: "/pdv/configuracao-status", icon: Settings, permission: "os.config.status" },
+  ].filter(item => {
+    if (!item.permission) return true;
+    if (Array.isArray(item.permission)) {
+      return item.permission.some(p => hasPermission(p));
+    }
+    return hasPermission(item.permission);
+  });
 
   // Grupo Gestão (sem submenus)
   const gestaoItems = [
-    { label: "Dashboard Gestão", path: "/gestao", icon: Home },
-    { label: "Relatórios", path: "/relatorios", icon: BarChart3 },
-    { label: "Financeiro", path: "/admin/financeiro", icon: DollarSign },
-    { label: "Recursos Humanos", path: "/rh", icon: Users },
-    { label: "Metas", path: "/metas", icon: Target },
-  ];
+    { label: "Dashboard Gestão", path: "/gestao", icon: Home, permission: "dashboard.gestao" },
+    { label: "Relatórios", path: "/relatorios", icon: BarChart3, permission: "relatorios.geral" },
+    { label: "Financeiro", path: "/admin/financeiro", icon: DollarSign, permission: "financeiro.view" },
+    { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
+    { label: "Metas", path: "/metas", icon: Target, permission: "rh.metas" },
+    { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
+    { label: "Treinamentos", path: "/treinamentos", icon: GraduationCap, permission: "rh.treinamentos" },
+  ].filter(item => !item.permission || hasPermission(item.permission));
 
   // Grupo Administração (apenas para admin)
   const adminItems = [
-    { label: "Usuários e Permissões", path: "/admin/users", icon: Users },
-    { label: "Estrutura Organizacional", path: "/admin/estrutura", icon: Building2 },
-    { label: "Cadastros Base", path: "/admin/cadastros", icon: FolderOpen },
-    { label: "Integrações", path: "/integracoes", icon: Settings },
-    { label: "Logs", path: "/admin/logs", icon: Activity },
-  ];
+    { label: "Usuários e Permissões", path: "/admin/users", icon: Users, permission: "admin.users" },
+    { label: "Estrutura Organizacional", path: "/admin/estrutura", icon: Building2, permission: "admin.config" },
+    { label: "Cadastros Base", path: "/admin/cadastros", icon: FolderOpen, permission: "admin.config" },
+    { label: "Integrações", path: "/integracoes", icon: Settings, permission: "admin.config" },
+    { label: "Logs", path: "/admin/logs", icon: Activity, permission: "admin.logs" },
+  ].filter(item => !item.permission || hasPermission(item.permission));
 
   return (
     <Sidebar
@@ -222,7 +247,7 @@ export function AppSidebar() {
               )}
 
               {/* === GRUPO ADMINISTRAÇÃO (apenas admin) === */}
-              {isAdmin && (
+              {adminItems.length > 0 && (
                 <>
                   {!collapsed && (
                     <div className="px-2 py-1.5">

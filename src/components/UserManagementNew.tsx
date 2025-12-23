@@ -1,0 +1,928 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { UserPlus, Shield, User, Trash2, Edit, Search, Filter, Lock, Unlock, Mail, Phone, Building2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useDepartments } from '@/hooks/useDepartments';
+import { UserPermissionsManager } from '@/components/UserPermissionsManager';
+
+interface UserProfile {
+  id: string;
+  user_id: string;
+  display_name: string | null;
+  role: 'admin' | 'member';
+  department: string | null;
+  approved: boolean;
+  approved_at: string | null;
+  created_at: string;
+  email?: string;
+  phone?: string | null;
+}
+
+interface UserRole {
+  role_id: string;
+  role?: {
+    id: string;
+    name: string;
+    display_name: string;
+  };
+}
+
+interface UserWithRole extends UserProfile {
+  currentRole?: UserRole;
+  authEmail?: string;
+  isBlocked?: boolean;
+}
+
+// Tradução de roles para português
+const roleTranslations: Record<string, string> = {
+  'admin': 'Administrador',
+  'vendedor': 'Vendedor',
+  'tecnico': 'Técnico',
+  'financeiro': 'Financeiro',
+  'rh': 'Recursos Humanos',
+  'visualizador': 'Visualizador',
+  'gerente': 'Gerente',
+  'atendente': 'Atendente',
+};
+
+export const UserManagementNew = () => {
+  const { toast } = useToast();
+  const { departments } = useDepartments();
+  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [newUserDialogOpen, setNewUserDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
+  const [newUser, setNewUser] = useState({
+    email: '',
+    password: '',
+    display_name: '',
+    department: '',
+    role: 'member' as 'admin' | 'member',
+  });
+  const [editFormData, setEditFormData] = useState({
+    display_name: '',
+    email: '',
+    phone: '',
+    department: '',
+    role: 'member' as 'admin' | 'member',
+    approved: true,
+    password: '',
+  });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+
+      // Buscar perfis
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) {
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar usuários",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Buscar roles dos usuários
+      const { data: rolesData } = await supabase
+        .from('user_position_departments')
+        .select(`
+          user_id,
+          role_id,
+          role:roles(id, name, display_name)
+        `)
+        .eq('is_primary', true)
+        .not('role_id', 'is', null);
+
+      // Buscar emails dos usuários via edge function
+      const usersWithRolesAndEmails: UserWithRole[] = await Promise.all(
+        (profilesData || []).map(async (profile) => {
+          const userRole = (rolesData || []).find((r: any) => r.user_id === profile.user_id);
+          
+          // Buscar email do usuário
+          let authEmail = '';
+          try {
+            const { data: userData, error: userError } = await supabase.functions.invoke('admin-get-user', {
+              body: { userId: profile.user_id }
+            });
+            
+            if (!userError && userData?.user?.email) {
+              authEmail = userData.user.email;
+            }
+          } catch (error) {
+            console.error('Erro ao buscar email do usuário:', error);
+          }
+
+          return {
+            ...profile,
+            currentRole: userRole || undefined,
+            authEmail,
+            email: authEmail || profile.email,
+          } as UserWithRole;
+        })
+      );
+
+      setUsers(usersWithRolesAndEmails);
+    } catch (error: any) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar usuários",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = !searchTerm || 
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.authEmail?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesDepartment = departmentFilter === 'all' || user.department === departmentFilter;
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'approved' && user.approved) ||
+      (statusFilter === 'pending' && !user.approved);
+
+    return matchesSearch && matchesDepartment && matchesStatus;
+  });
+
+  const handleEditUser = async (user: UserWithRole) => {
+    try {
+      // Buscar email do usuário
+      let userEmail = user.authEmail || '';
+      if (!userEmail) {
+        const { data: userData } = await supabase.functions.invoke('admin-get-user', {
+          body: { userId: user.user_id }
+        });
+        userEmail = userData?.user?.email || '';
+      }
+
+      setEditFormData({
+        display_name: user.display_name || '',
+        email: userEmail,
+        phone: user.phone || '',
+        department: user.department || '',
+        role: user.role,
+        approved: user.approved,
+        password: '',
+      });
+      setSelectedUser(user);
+      setEditDialogOpen(true);
+    } catch (error: any) {
+      console.error('Erro ao carregar dados do usuário:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados do usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setLoading(true);
+
+      // Atualizar perfil
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          display_name: editFormData.display_name,
+          phone: editFormData.phone,
+          department: editFormData.department,
+          role: editFormData.role,
+          approved: editFormData.approved,
+        })
+        .eq('user_id', selectedUser.user_id);
+
+      if (profileError) throw profileError;
+
+      // Atualizar email e/ou senha via edge function
+      const needsAuthUpdate = editFormData.email !== (selectedUser.authEmail || '') || editFormData.password.trim() !== '';
+      
+      if (needsAuthUpdate) {
+        const updateData: any = {};
+        if (editFormData.email !== (selectedUser.authEmail || '')) {
+          updateData.email = editFormData.email;
+        }
+        if (editFormData.password.trim() !== '') {
+          updateData.password = editFormData.password;
+        }
+
+        const { error: authError } = await supabase.functions.invoke('admin-update-user', {
+          body: {
+            userId: selectedUser.user_id,
+            ...updateData
+          }
+        });
+
+        if (authError) {
+          console.error('Erro ao atualizar auth:', authError);
+          toast({
+            title: "Aviso",
+            description: "Perfil atualizado, mas houve erro ao atualizar email/senha. Verifique se o email é válido.",
+            variant: "destructive"
+          });
+        }
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Usuário atualizado com sucesso",
+      });
+
+      setEditDialogOpen(false);
+      setSelectedUser(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao atualizar usuário:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar usuário",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBlockUser = async (user: UserWithRole) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          approved: !user.approved,
+          approved_at: !user.approved ? new Date().toISOString() : null,
+          approved_by: !user.approved ? (await supabase.auth.getUser()).data.user?.id : null
+        })
+        .eq('user_id', user.user_id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: user.approved ? "Usuário bloqueado com sucesso" : "Usuário desbloqueado com sucesso",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao bloquear/desbloquear usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      setLoading(true);
+
+      // Deletar via edge function (que deleta auth e profile)
+      const { error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: userToDelete.user_id }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Usuário excluído com sucesso",
+      });
+
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir usuário",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approveUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          approved: true,
+          approved_at: new Date().toISOString(),
+          approved_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Usuário aprovado com sucesso",
+      });
+
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao aprovar usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const createUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newUser.email || !newUser.password || !newUser.display_name || !newUser.department) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+        options: {
+          data: {
+            display_name: newUser.display_name
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            display_name: newUser.display_name,
+            department: newUser.department,
+            role: newUser.role,
+            approved: true,
+            approved_at: new Date().toISOString(),
+            approved_by: (await supabase.auth.getUser()).data.user?.id
+          })
+          .eq('user_id', authData.user.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Usuário criado e aprovado automaticamente",
+      });
+
+      setNewUser({
+        email: '',
+        password: '',
+        display_name: '',
+        department: '',
+        role: 'member',
+      });
+      setNewUserDialogOpen(false);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar usuário",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const pendingUsers = filteredUsers.filter(user => !user.approved);
+  const approvedUsers = filteredUsers.filter(user => user.approved);
+
+  return (
+    <div className="space-y-6">
+      {/* Header com busca e filtros */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Gestão de Usuários e Permissões
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Gerencie usuários, roles e permissões do sistema
+              </p>
+            </div>
+            <Button onClick={() => setNewUserDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Novo Usuário
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Departamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os departamentos</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="approved">Aprovados</SelectItem>
+                <SelectItem value="pending">Pendentes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Usuários Pendentes */}
+      {pendingUsers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Usuários Pendentes ({pendingUsers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Departamento</TableHead>
+                  <TableHead>Data de Registro</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.display_name || 'Sem nome'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        {user.authEmail || user.email || '-'}
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.department || '-'}</TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => approveUser(user.user_id)}>
+                          Aprovar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Usuários Aprovados */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Usuários Aprovados ({approvedUsers.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Departamento</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Função</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {approvedUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {user.display_name || 'Sem nome'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3 w-3 text-muted-foreground" />
+                      {user.authEmail || user.email || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3 w-3 text-muted-foreground" />
+                      {user.department || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {user.currentRole?.role ? (
+                      <Badge variant="outline">
+                        {roleTranslations[user.currentRole.role.name] || user.currentRole.role.display_name}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Sem role</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                      {user.role === 'admin' ? 'Administrador' : 'Membro'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.approved ? 'default' : 'destructive'}>
+                      {user.approved ? 'Ativo' : 'Bloqueado'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setPermissionsDialogOpen(true);
+                        }}
+                      >
+                        <Shield className="h-4 w-4 mr-1" />
+                        Permissões
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleBlockUser(user)}
+                      >
+                        {user.approved ? (
+                          <>
+                            <Lock className="h-4 w-4 mr-1" />
+                            Bloquear
+                          </>
+                        ) : (
+                          <>
+                            <Unlock className="h-4 w-4 mr-1" />
+                            Desbloquear
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setUserToDelete(user);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Excluir
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Dialog de Editar Usuário */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Edite as informações do usuário. Deixe a senha em branco para não alterá-la.
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="dados" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="dados">Dados Pessoais</TabsTrigger>
+              <TabsTrigger value="acesso">Acesso e Permissões</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="dados" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_display_name">Nome Completo *</Label>
+                <Input
+                  id="edit_display_name"
+                  value={editFormData.display_name}
+                  onChange={(e) => setEditFormData({ ...editFormData, display_name: e.target.value })}
+                  placeholder="Nome do usuário"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_email">Email *</Label>
+                <Input
+                  id="edit_email"
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  placeholder="email@empresa.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_phone">Telefone</Label>
+                <Input
+                  id="edit_phone"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_department">Departamento *</Label>
+                <Select 
+                  value={editFormData.department} 
+                  onValueChange={(value) => setEditFormData({ ...editFormData, department: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_password">Nova Senha</Label>
+                <Input
+                  id="edit_password"
+                  type="password"
+                  value={editFormData.password}
+                  onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                  placeholder="Deixe em branco para não alterar"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco se não quiser alterar a senha
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="acesso" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_role">Função *</Label>
+                <Select 
+                  value={editFormData.role} 
+                  onValueChange={(value: 'admin' | 'member') => setEditFormData({ ...editFormData, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Membro</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit_approved">Status do Usuário</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {editFormData.approved ? 'Usuário está ativo e pode acessar o sistema' : 'Usuário está bloqueado e não pode acessar'}
+                  </p>
+                </div>
+                <Switch
+                  id="edit_approved"
+                  checked={editFormData.approved}
+                  onCheckedChange={(checked) => setEditFormData({ ...editFormData, approved: checked })}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => {
+              setEditDialogOpen(false);
+              setSelectedUser(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={loading}>
+              {loading ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Permissões */}
+      <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Permissões - {selectedUser?.display_name}</DialogTitle>
+            <DialogDescription>
+              Configure as permissões de acesso deste usuário. Você pode selecionar um role predefinido ou definir permissões customizadas.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedUser && (
+            <UserPermissionsManager
+              userId={selectedUser.user_id}
+              onClose={() => {
+                setPermissionsDialogOpen(false);
+                setSelectedUser(null);
+              }}
+              onSave={() => {
+                fetchUsers();
+                setPermissionsDialogOpen(false);
+                setSelectedUser(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário <strong>{userToDelete?.display_name}</strong>?
+              Esta ação não pode ser desfeita e irá remover todos os dados do usuário do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setUserToDelete(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-destructive text-destructive-foreground"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de Novo Usuário */}
+      <Dialog open={newUserDialogOpen} onOpenChange={setNewUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para criar um novo usuário no sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={createUser} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                placeholder="email@empresa.com"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="display_name">Nome Completo *</Label>
+              <Input
+                id="display_name"
+                value={newUser.display_name}
+                onChange={(e) => setNewUser({...newUser, display_name: e.target.value})}
+                placeholder="Nome do usuário"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha Temporária *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                placeholder="Senha inicial"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department">Departamento *</Label>
+              <Select value={newUser.department} onValueChange={(value) => setNewUser({...newUser, department: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Função *</Label>
+              <Select value={newUser.role} onValueChange={(value: 'admin' | 'member') => setNewUser({...newUser, role: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Membro</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setNewUserDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit">Criar Usuário</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+

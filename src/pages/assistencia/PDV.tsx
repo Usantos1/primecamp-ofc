@@ -2,24 +2,25 @@ import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, Package, Wrench, DollarSign, ShoppingCart, UserCircle } from 'lucide-react';
+import { Plus, Users, Package, Wrench, UserCircle, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useProdutosSupabase as useProdutos } from '@/hooks/useProdutosSupabase';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
-import { currencyFormatters } from '@/utils/formatters';
+import { usePermissions } from '@/hooks/usePermissions';
+import { PermissionGate } from '@/components/PermissionGate';
 
 export default function PDV() {
   const navigate = useNavigate();
   const { getEstatisticas } = useOrdensServico();
   const { produtos } = useProdutos();
   const { clientes } = useClientes();
+  const { hasPermission } = usePermissions();
 
   const stats = getEstatisticas();
-
-  // Calcular valor total dos produtos
-  const valorTotalProdutos = produtos.reduce((sum, produto) => {
-    return sum + ((produto.preco_venda || 0) * (produto.estoque_atual || 0));
-  }, 0);
+  
+  // Contar produtos com estoque baixo (menos de 5 unidades)
+  const produtosEstoqueBaixo = produtos.filter(p => (p.estoque_atual || 0) < 5 && (p.estoque_atual || 0) > 0).length;
+  const produtosSemEstoque = produtos.filter(p => (p.estoque_atual || 0) === 0).length;
 
   return (
     <ModernLayout 
@@ -165,9 +166,12 @@ export default function PDV() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 px-4 md:px-0">
           <Card className="border-2 border-gray-300">
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
-              <CardTitle className="text-sm md:text-base">Resumo do Dia</CardTitle>
+              <CardTitle className="text-sm md:text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Resumo do Dia
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 md:p-6 space-y-2">
+            <CardContent className="p-3 md:p-6 space-y-3">
               <div className="flex justify-between items-center border-b border-gray-200 pb-2">
                 <span className="text-xs md:text-sm text-muted-foreground">OS criadas hoje:</span>
                 <span className="text-xs md:text-sm font-medium">{stats.hoje}</span>
@@ -177,7 +181,10 @@ export default function PDV() {
                 <span className="text-xs md:text-sm font-medium">{stats.prazoHoje}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-muted-foreground">OS em atraso:</span>
+                <span className="text-xs md:text-sm text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3 text-red-500" />
+                  OS em atraso:
+                </span>
                 <span className="text-xs md:text-sm font-medium text-red-600">{stats.emAtraso}</span>
               </div>
             </CardContent>
@@ -185,17 +192,43 @@ export default function PDV() {
 
           <Card className="border-2 border-gray-300">
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
-              <CardTitle className="text-sm md:text-base">Estoque</CardTitle>
+              <CardTitle className="text-sm md:text-base flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Estoque
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-3 md:p-6 space-y-2">
+            <CardContent className="p-3 md:p-6 space-y-3">
               <div className="flex justify-between items-center border-b border-gray-200 pb-2">
                 <span className="text-xs md:text-sm text-muted-foreground">Total de produtos:</span>
                 <span className="text-xs md:text-sm font-medium">{produtos.length}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm text-muted-foreground">Valor total do estoque:</span>
-                <span className="text-xs md:text-sm font-medium">{currencyFormatters.brl(valorTotalProdutos)}</span>
-              </div>
+              {produtosEstoqueBaixo > 0 && (
+                <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                  <span className="text-xs md:text-sm text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 text-yellow-500" />
+                    Estoque baixo:
+                  </span>
+                  <span className="text-xs md:text-sm font-medium text-yellow-600">{produtosEstoqueBaixo} produtos</span>
+                </div>
+              )}
+              {produtosSemEstoque > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs md:text-sm text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 text-red-500" />
+                    Sem estoque:
+                  </span>
+                  <span className="text-xs md:text-sm font-medium text-red-600">{produtosSemEstoque} produtos</span>
+                </div>
+              )}
+              {produtosEstoqueBaixo === 0 && produtosSemEstoque === 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs md:text-sm text-muted-foreground flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    Estoque OK
+                  </span>
+                  <span className="text-xs md:text-sm font-medium text-green-600">Todos os produtos com estoque</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

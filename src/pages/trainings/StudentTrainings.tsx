@@ -20,16 +20,6 @@ export default function StudentTrainings() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'completed'>('all');
   const [filterType, setFilterType] = useState<string>('all');
 
-  if (isLoading) {
-    return (
-      <ModernLayout title="Meus Treinamentos">
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </ModernLayout>
-    );
-  }
-
   const allTrainings = myAssignments || [];
   
   // Get unique types for filter
@@ -61,6 +51,16 @@ export default function StudentTrainings() {
 
   const pendingTrainings = filteredTrainings.filter(a => a.status !== 'completed');
   const completedTrainings = filteredTrainings.filter(a => a.status === 'completed');
+
+  if (isLoading) {
+    return (
+      <ModernLayout title="Meus Treinamentos">
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </ModernLayout>
+    );
+  }
 
   return (
     <ModernLayout 

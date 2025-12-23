@@ -9,6 +9,7 @@ import { ThemeProvider } from "next-themes";
 import { NotificationManager } from "@/components/NotificationManager";
 import { HelmetProvider } from "react-helmet-async";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PermissionRoute } from "@/components/PermissionRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import DashboardGestao from "./pages/DashboardGestao";
@@ -92,43 +93,43 @@ const App = () => (
           <Route path="/disc-externo" element={<CandidateDisc />} />
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
             {/* Add import */}
-              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/gestao" element={<ProtectedRoute><DashboardGestao /></ProtectedRoute>} />
-              <Route path="/processos" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
-              <Route path="/processos/*" element={<ProtectedRoute><Processes /></ProtectedRoute>} />
-              <Route path="/tarefas" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-              <Route path="/tarefas/*" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-              <Route path="/calendario" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-              <Route path="/relatorios" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-              <Route path="/metricas" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />
+              <Route path="/gestao" element={<PermissionRoute permission="dashboard.gestao"><DashboardGestao /></PermissionRoute>} />
+              <Route path="/processos" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />
+              <Route path="/processos/*" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />
+              <Route path="/tarefas" element={<PermissionRoute permission="tarefas.view"><Tasks /></PermissionRoute>} />
+              <Route path="/tarefas/*" element={<PermissionRoute permission="tarefas.view"><Tasks /></PermissionRoute>} />
+              <Route path="/calendario" element={<PermissionRoute permission="calendario.view"><Calendar /></PermissionRoute>} />
+              <Route path="/relatorios" element={<PermissionRoute permission="relatorios.geral"><Reports /></PermissionRoute>} />
+              <Route path="/metricas" element={<PermissionRoute permission="metricas.view"><Reports /></PermissionRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-              <Route path="/search" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/search" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />
+              <Route path="/notifications" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />
               <Route path="/pending-approval" element={<ProtectedRoute><PendingApproval /></ProtectedRoute>} />
-              <Route path="/processo/:processId" element={<ProtectedRoute><ProcessView /></ProtectedRoute>} />
-              <Route path="/processo/:processId/edit" element={<ProtectedRoute><ProcessEdit /></ProtectedRoute>} />
-              <Route path="/processos/novo" element={<ProtectedRoute><ProcessCreate /></ProtectedRoute>} />
-              <Route path="/processos/criar" element={<ProtectedRoute><ProcessCreate /></ProtectedRoute>} />
+              <Route path="/processo/:processId" element={<PermissionRoute permission="processos.view"><ProcessView /></PermissionRoute>} />
+              <Route path="/processo/:processId/edit" element={<PermissionRoute permission="processos.edit"><ProcessEdit /></PermissionRoute>} />
+              <Route path="/processos/novo" element={<PermissionRoute permission="processos.create"><ProcessCreate /></PermissionRoute>} />
+              <Route path="/processos/criar" element={<PermissionRoute permission="processos.create"><ProcessCreate /></PermissionRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-              <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-              <Route path="/admin/positions" element={<ProtectedRoute><AdminPositions /></ProtectedRoute>} />
-              <Route path="/admin/departments" element={<ProtectedRoute><AdminDepartments /></ProtectedRoute>} />
-              <Route path="/admin/categories" element={<ProtectedRoute><AdminCategories /></ProtectedRoute>} />
-              <Route path="/admin/tags" element={<ProtectedRoute><AdminTags /></ProtectedRoute>} />
-              <Route path="/admin/timeclock" element={<ProtectedRoute><AdminTimeClock /></ProtectedRoute>} />
-              <Route path="/admin/goals" element={<ProtectedRoute><AdminGoals /></ProtectedRoute>} />
-              <Route path="/admin/nps" element={<ProtectedRoute><AdminNPS /></ProtectedRoute>} />
-              <Route path="/admin/disc" element={<ProtectedRoute><AdminDisc /></ProtectedRoute>} />
-              <Route path="/admin/financeiro/*" element={<ProtectedRoute><AdminFinanceiro /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<PermissionRoute permission="admin.users"><AdminUsers /></PermissionRoute>} />
+              <Route path="/admin/positions" element={<PermissionRoute permission="admin.positions"><AdminPositions /></PermissionRoute>} />
+              <Route path="/admin/departments" element={<PermissionRoute permission="admin.departments"><AdminDepartments /></PermissionRoute>} />
+              <Route path="/admin/categories" element={<PermissionRoute permission="admin.config"><AdminCategories /></PermissionRoute>} />
+              <Route path="/admin/tags" element={<PermissionRoute permission="admin.config"><AdminTags /></PermissionRoute>} />
+              <Route path="/admin/timeclock" element={<PermissionRoute permission="admin.timeclock"><AdminTimeClock /></PermissionRoute>} />
+              <Route path="/admin/goals" element={<PermissionRoute permission="rh.metas"><AdminGoals /></PermissionRoute>} />
+              <Route path="/admin/nps" element={<PermissionRoute permission="admin.nps"><AdminNPS /></PermissionRoute>} />
+              <Route path="/admin/disc" element={<PermissionRoute permission="admin.disc"><AdminDisc /></PermissionRoute>} />
+              <Route path="/admin/financeiro/*" element={<PermissionRoute permission="financeiro.view"><AdminFinanceiro /></PermissionRoute>} />
               <Route path="/admin/job-surveys" element={<ProtectedRoute><AdminJobSurveys /></ProtectedRoute>} />
               <Route path="/admin/job-surveys/:id" element={<ProtectedRoute><JobSurveyDetail /></ProtectedRoute>} />
               <Route path="/admin/talent-bank" element={<ProtectedRoute><TalentBank /></ProtectedRoute>} />
               <Route path="/admin/interviews" element={<ProtectedRoute><AdminInterviews /></ProtectedRoute>} />
               <Route path="/admin/interviews/evaluate/:interview_id" element={<ProtectedRoute><InterviewEvaluation /></ProtectedRoute>} />
-              <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
+              <Route path="/admin/logs" element={<PermissionRoute permission="admin.logs"><AdminLogs /></PermissionRoute>} />
               <Route path="/admin/estrutura" element={<ProtectedRoute><EstruturaOrganizacional /></ProtectedRoute>} />
               <Route path="/admin/cadastros" element={<ProtectedRoute><CadastrosBase /></ProtectedRoute>} />
-              <Route path="/rh" element={<ProtectedRoute><RH /></ProtectedRoute>} />
+              <Route path="/rh" element={<PermissionRoute permission="rh.view"><RH /></PermissionRoute>} />
               
               {/* Public job application routes */}
               <Route path="/job-application/:surveyId" element={<JobApplication />} />
@@ -142,40 +143,40 @@ const App = () => (
               <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-            <Route path="/metas" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
-            <Route path="/ponto" element={<ProtectedRoute><TimeClock /></ProtectedRoute>} />
-            <Route path="/treinamentos" element={<ProtectedRoute><TrainingsIndex /></ProtectedRoute>} />
-            <Route path="/treinamentos/:trainingId" element={<ProtectedRoute><TrainingsIndex /></ProtectedRoute>} />
+            <Route path="/metas" element={<PermissionRoute permission="rh.metas"><Goals /></PermissionRoute>} />
+            <Route path="/ponto" element={<PermissionRoute permission="rh.ponto"><TimeClock /></PermissionRoute>} />
+            <Route path="/treinamentos" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />
+            <Route path="/treinamentos/:trainingId" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />
             <Route path="/logs" element={<ProtectedRoute><UserLogs /></ProtectedRoute>} />
-            <Route path="/nps" element={<ProtectedRoute><NPS /></ProtectedRoute>} />
-            <Route path="/teste-disc" element={<ProtectedRoute><DiscTest /></ProtectedRoute>} />
-            <Route path="/produtos" element={<ProtectedRoute><AssistenciaProdutos /></ProtectedRoute>} />
+            <Route path="/nps" element={<PermissionRoute permission="nps.view"><NPS /></PermissionRoute>} />
+            <Route path="/teste-disc" element={<PermissionRoute permission="disc.view"><DiscTest /></PermissionRoute>} />
+              <Route path="/produtos" element={<PermissionRoute permission="produtos.view"><AssistenciaProdutos /></PermissionRoute>} />
             <Route path="/productivity" element={<ProtectedRoute><Productivity /></ProtectedRoute>} />
             <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
               
               {/* PDV - Frente de Caixa */}
-              <Route path="/pdv" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
-              <Route path="/pdv/nova" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
-              <Route path="/pdv/vendas" element={<ProtectedRoute><Vendas /></ProtectedRoute>} />
+              <Route path="/pdv" element={<PermissionRoute permission="vendas.create"><NovaVenda /></PermissionRoute>} />
+              <Route path="/pdv/nova" element={<PermissionRoute permission="vendas.create"><NovaVenda /></PermissionRoute>} />
+              <Route path="/pdv/vendas" element={<PermissionRoute permission="vendas.view"><Vendas /></PermissionRoute>} />
               {/* Dashboard Assistência Técnica */}
-              <Route path="/assistencia" element={<ProtectedRoute><PDV /></ProtectedRoute>} />
-              <Route path="/pdv/venda/nova" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
-              <Route path="/pdv/venda/:id" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
-              <Route path="/pdv/venda/:id/editar" element={<ProtectedRoute><NovaVenda /></ProtectedRoute>} />
-              <Route path="/pdv/caixa" element={<ProtectedRoute><Caixa /></ProtectedRoute>} />
-              <Route path="/pdv/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
-              <Route path="/pdv/configuracao-cupom" element={<ProtectedRoute><ConfiguracaoCupom /></ProtectedRoute>} />
+              <Route path="/assistencia" element={<PermissionRoute permission="os.view"><PDV /></PermissionRoute>} />
+              <Route path="/pdv/venda/nova" element={<PermissionRoute permission="vendas.create"><NovaVenda /></PermissionRoute>} />
+              <Route path="/pdv/venda/:id" element={<PermissionRoute permission="vendas.view"><NovaVenda /></PermissionRoute>} />
+              <Route path="/pdv/venda/:id/editar" element={<PermissionRoute permission="vendas.edit"><NovaVenda /></PermissionRoute>} />
+              <Route path="/pdv/caixa" element={<PermissionRoute permission="caixa.view"><Caixa /></PermissionRoute>} />
+              <Route path="/pdv/relatorios" element={<PermissionRoute permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]}><Relatorios /></PermissionRoute>} />
+              <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission="vendas.manage"><ConfiguracaoCupom /></PermissionRoute>} />
               <Route path="/cupom/:id" element={<CupomView />} />
-              <Route path="/pdv/os" element={<ProtectedRoute><AssistenciaOS /></ProtectedRoute>} />
-              <Route path="/pdv/os/nova" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/os/nova/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/os/:id" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/os/:id/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/os/:id/editar" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/os/:id/editar/:tab" element={<ProtectedRoute><OrdemServicoForm /></ProtectedRoute>} />
-              <Route path="/pdv/clientes" element={<ProtectedRoute><AssistenciaClientes /></ProtectedRoute>} />
-              <Route path="/pdv/marcas-modelos" element={<ProtectedRoute><AssistenciaMarcasModelos /></ProtectedRoute>} />
-              <Route path="/pdv/configuracao-status" element={<ProtectedRoute><AssistenciaConfiguracaoStatus /></ProtectedRoute>} />
+              <Route path="/pdv/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
+              <Route path="/pdv/os/nova" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/pdv/os/nova/:tab" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/pdv/os/:id" element={<PermissionRoute permission="os.view"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/pdv/os/:id/:tab" element={<PermissionRoute permission="os.view"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/pdv/os/:id/editar" element={<PermissionRoute permission="os.edit"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/pdv/os/:id/editar/:tab" element={<PermissionRoute permission="os.edit"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/pdv/clientes" element={<PermissionRoute permission="clientes.view"><AssistenciaClientes /></PermissionRoute>} />
+              <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />
+              <Route path="/pdv/configuracao-status" element={<PermissionRoute permission="os.config.status"><AssistenciaConfiguracaoStatus /></PermissionRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

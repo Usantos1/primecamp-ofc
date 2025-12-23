@@ -16,6 +16,7 @@ import { useDepartments } from '@/hooks/useDepartments';
 import { usePositions, Position } from '@/hooks/usePositions';
 import { DepartmentManager } from '@/components/DepartmentManager';
 import { TeamPermissionsManager } from '@/components/TeamPermissionsManager';
+import { UserPermissionsManager } from '@/components/UserPermissionsManager';
 
 interface UserProfile {
   id: string;
@@ -755,6 +756,7 @@ export const UserManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
+                      <UserPermissionsButton user={user} onUpdate={fetchUsers} />
                       <Button 
                         size="sm" 
                         variant="outline"
@@ -1001,6 +1003,44 @@ const UserPositionsManager = ({
             Salvar Cargos
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Componente para botão de gerenciar permissões
+const UserPermissionsButton = ({ 
+  user, 
+  onUpdate 
+}: { 
+  user: UserWithPositions; 
+  onUpdate: () => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Shield className="h-4 w-4 mr-2" />
+          Permissões
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Gerenciar Permissões - {user.display_name}</DialogTitle>
+          <DialogDescription>
+            Configure as permissões de acesso deste usuário. Você pode selecionar um role predefinido ou definir permissões customizadas.
+          </DialogDescription>
+        </DialogHeader>
+        <UserPermissionsManager
+          userId={user.user_id}
+          onClose={() => setIsOpen(false)}
+          onSave={() => {
+            onUpdate();
+            setIsOpen(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -618,17 +618,43 @@ export default function NovaVenda() {
       return;
     }
 
+    // Para vendas existentes, validar pagamentos antes de finalizar
+    if (isEditing && id) {
+      const confirmedPayments = payments.filter(p => p.status === 'confirmed');
+      if (confirmedPayments.length === 0) {
+        toast({ 
+          title: 'Forma de pagamento obrigatória', 
+          description: 'É necessário adicionar pelo menos uma forma de pagamento antes de finalizar a venda.',
+          variant: 'destructive' 
+        });
+        setShowCheckout(true); // Abrir modal de pagamento
+        return;
+      }
+
+      // Validar se o total pago é maior que zero
+      const totalPago = confirmedPayments.reduce((sum, p) => sum + Number(p.valor || 0), 0);
+      if (totalPago <= 0) {
+        toast({ 
+          title: 'Valor de pagamento inválido', 
+          description: 'O valor total dos pagamentos deve ser maior que zero.',
+          variant: 'destructive' 
+        });
+        setShowCheckout(true); // Abrir modal de pagamento
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       if (!isEditing || !id) {
-        // Criar venda primeiro
+        // Criar venda primeiro como rascunho
         const newSale = await createSale({
           cliente_id: selectedCliente?.id && isValidUUID(selectedCliente.id) ? selectedCliente.id : undefined,
           cliente_nome: selectedCliente?.nome,
           cliente_cpf_cnpj: selectedCliente?.cpf_cnpj,
           cliente_telefone: selectedCliente?.telefone || selectedCliente?.whatsapp,
           observacoes,
-          is_draft: false,
+          is_draft: true, // Criar como rascunho primeiro
         });
 
         // Adicionar itens
@@ -636,21 +662,25 @@ export default function NovaVenda() {
           await addItem(cartItem, newSale.id);
         }
 
-        // Atualizar valores da venda antes de finalizar
+        // Atualizar valores da venda
         await updateSale(newSale.id, {
           subtotal: totals.subtotal,
           desconto_total: totals.descontoTotal,
           total: totals.total,
         });
 
-        // Finalizar
-        await finalizeSale(newSale.id);
-        
-        toast({ title: 'Venda finalizada com sucesso!' });
+        // Redirecionar para a página da venda e abrir modal de pagamento
         navigate(`/pdv/venda/${newSale.id}`);
         setShowCheckout(true);
-      } else {
-        // Atualizar itens - IMPORTANTE: não adicionar itens que já existem no banco
+        setIsSaving(false);
+        toast({ 
+          title: 'Venda criada', 
+          description: 'Adicione a forma de pagamento para finalizar a venda.',
+        });
+        return;
+      }
+
+      // Para vendas existentes, atualizar itens - IMPORTANTE: não adicionar itens que já existem no banco
         console.log('=== FINALIZAR VENDA - VERIFICANDO ITENS ===');
         console.log(`Itens no carrinho: ${cart.length}`);
         console.log(`Itens no banco: ${items.length}`);
@@ -714,11 +744,36 @@ export default function NovaVenda() {
           total: totals.total,
         });
 
+        // Validar se há pelo menos um pagamento confirmado
+        const confirmedPayments = payments.filter(p => p.status === 'confirmed');
+        if (confirmedPayments.length === 0) {
+          toast({ 
+            title: 'Forma de pagamento obrigatória', 
+            description: 'É necessário adicionar pelo menos uma forma de pagamento antes de finalizar a venda.',
+            variant: 'destructive' 
+          });
+          setShowCheckout(true); // Abrir modal de pagamento
+          setIsSaving(false);
+          return;
+        }
+
+        // Validar se o total pago é maior que zero
+        const totalPago = confirmedPayments.reduce((sum, p) => sum + Number(p.valor || 0), 0);
+        if (totalPago <= 0) {
+          toast({ 
+            title: 'Valor de pagamento inválido', 
+            description: 'O valor total dos pagamentos deve ser maior que zero.',
+            variant: 'destructive' 
+          });
+          setShowCheckout(true); // Abrir modal de pagamento
+          setIsSaving(false);
+          return;
+        }
+
         // Finalizar
         await finalizeSale(id);
         toast({ title: 'Venda finalizada com sucesso!' });
         setShowCheckout(true);
-      }
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);
       toast({ 
@@ -729,7 +784,7 @@ export default function NovaVenda() {
     } finally {
       setIsSaving(false);
     }
-  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession]);
+  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -963,42 +1018,53 @@ export default function NovaVenda() {
         troco: 0,
       });
       
-      // Verificar se está totalmente pago
+      // Verificar se está totalmente pago e finalizar automaticamente
       const updatedSale = await getSaleById(id);
       if (updatedSale && Number(updatedSale.total_pago) >= Number(updatedSale.total)) {
-        toast({ title: 'Venda finalizada com sucesso!' });
-        setShowCheckout(false);
-        
-        // Aguardar carregar items e payments antes de imprimir
-        setPendingSaleForCupom(updatedSale);
-        // Aguardar um pouco mais para garantir que items e payments estejam carregados
-        setTimeout(async () => {
-          await loadSale();
+        // Finalizar a venda automaticamente
+        try {
+          await finalizeSale(id);
+          toast({ title: 'Venda finalizada com sucesso!' });
+          setShowCheckout(false);
+          
+          // Aguardar carregar items e payments antes de imprimir
+          setPendingSaleForCupom(updatedSale);
+          // Aguardar um pouco mais para garantir que items e payments estejam carregados
           setTimeout(async () => {
-            // Recarregar sale novamente para garantir dados atualizados
-            const finalSale = await getSaleById(id);
-            if (finalSale && items && payments && payments.length > 0) {
-              console.log('[IMPRESSÃO] Iniciando impressão automática...', { 
-                saleId: finalSale.id,
-                itemsCount: items.length,
-                paymentsCount: payments.length
-              });
-              await handlePrintCupomDirect(finalSale);
-              setTimeout(() => {
-                limparPDV();
-                toast({ title: 'PDV limpo. Pronto para nova venda!' });
-              }, 2000);
-            } else {
-              console.warn('[IMPRESSÃO] Dados não carregados para impressão:', { 
-                sale: !!finalSale, 
-                items: !!items, 
-                payments: !!payments,
-                itemsCount: items?.length,
-                paymentsCount: payments?.length
-              });
-            }
-          }, 800);
-        }, 1200);
+            await loadSale();
+            setTimeout(async () => {
+              // Recarregar sale novamente para garantir dados atualizados
+              const finalSale = await getSaleById(id);
+              if (finalSale && items && payments && payments.length > 0) {
+                console.log('[IMPRESSÃO] Iniciando impressão automática...', { 
+                  saleId: finalSale.id,
+                  itemsCount: items.length,
+                  paymentsCount: payments.length
+                });
+                await handlePrintCupomDirect(finalSale);
+                setTimeout(() => {
+                  limparPDV();
+                  toast({ title: 'PDV limpo. Pronto para nova venda!' });
+                }, 2000);
+              } else {
+                console.warn('[IMPRESSÃO] Dados não carregados para impressão:', { 
+                  sale: !!finalSale, 
+                  items: !!items, 
+                  payments: !!payments,
+                  itemsCount: items?.length,
+                  paymentsCount: payments?.length
+                });
+              }
+            }, 800);
+          }, 1200);
+        } catch (error: any) {
+          console.error('Erro ao finalizar venda automaticamente:', error);
+          toast({ 
+            title: 'Pagamento adicionado, mas erro ao finalizar', 
+            description: error.message || 'Finalize manualmente a venda.',
+            variant: 'destructive' 
+          });
+        }
       }
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);

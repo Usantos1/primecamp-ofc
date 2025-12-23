@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PermissionGate } from '@/components/PermissionGate';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -589,13 +590,15 @@ export default function Vendas() {
           <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
               <CardTitle className="text-base md:text-lg">Lista de Vendas</CardTitle>
-              <Button 
-                onClick={() => navigate('/pdv/venda/nova')} 
-                className="gap-2 h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="text-xs md:text-sm">Nova Venda</span>
-              </Button>
+              <PermissionGate permission="vendas.create">
+                <Button 
+                  onClick={() => navigate('/pdv/venda/nova')} 
+                  className="gap-2 h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-xs md:text-sm">Nova Venda</span>
+                </Button>
+              </PermissionGate>
             </div>
           </CardHeader>
           <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">

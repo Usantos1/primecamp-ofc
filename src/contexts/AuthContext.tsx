@@ -25,6 +25,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isAdmin: boolean;
   isApproved: boolean;
+  refreshPermissions: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +60,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Profile fetched:', data);
       setProfile(data as Profile);
+      
+      // Disparar evento customizado para recarregar permissões
+      window.dispatchEvent(new CustomEvent('permissions-changed'));
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
@@ -106,6 +110,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(null);
   };
 
+  // Função para recarregar permissões (dispara evento que será ouvido pelo usePermissions)
+  const refreshPermissions = () => {
+    window.dispatchEvent(new CustomEvent('permissions-changed'));
+  };
+
   // Verificar role do user_roles (sistema seguro)
   const isAdmin = profile?.role === 'admin';
   const isApproved = profile?.approved === true;
@@ -118,7 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signOut,
     isAdmin,
-    isApproved
+    isApproved,
+    refreshPermissions
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

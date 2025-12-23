@@ -25,6 +25,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { PermissionGate } from '@/components/PermissionGate';
 
 export default function OrdensServico() {
   const navigate = useNavigate();
@@ -329,14 +330,16 @@ export default function OrdensServico() {
               
               <div className="w-px h-5 bg-gray-300 mx-0.5 shrink-0 hidden md:block"></div>
               
-              <Button 
-                onClick={() => navigate('/pdv/os/nova')} 
-                size="sm" 
-                className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
-              </Button>
+              <PermissionGate permission="os.create">
+                <Button 
+                  onClick={() => navigate('/pdv/os/nova')} 
+                  size="sm" 
+                  className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
+                </Button>
+              </PermissionGate>
             </div>
           </div>
           
@@ -351,14 +354,16 @@ export default function OrdensServico() {
                 className="pl-10 h-9 text-base md:text-sm w-full border-2 border-gray-300"
               />
             </div>
-            <Button 
-              onClick={() => navigate('/pdv/os/nova')} 
-              size="sm" 
-              className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
-            </Button>
+            <PermissionGate permission="os.create">
+              <Button 
+                onClick={() => navigate('/pdv/os/nova')} 
+                size="sm" 
+                className="gap-1.5 h-9 shrink-0 px-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="text-xs whitespace-nowrap font-semibold">Nova OS</span>
+              </Button>
+            </PermissionGate>
           </div>
           
           {/* Busca no desktop - mantém na mesma linha */}

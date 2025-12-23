@@ -1,13 +1,35 @@
 import { ModernLayout } from "@/components/ModernLayout";
-import { UserManagement } from "@/components/UserManagement";
+import { UserManagementNew } from "@/components/UserManagementNew";
+import { RolesManager } from "@/components/RolesManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Shield } from "lucide-react";
 
 export default function AdminUsers() {
   return (
     <ModernLayout
-      title="Gestão de Usuários"
-      subtitle="Gerencie usuários, departamentos e permissões do sistema"
+      title="Gestão de Usuários e Roles"
+      subtitle="Gerencie usuários, roles e permissões do sistema"
     >
-      <UserManagement />
+      <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Usuários
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Roles
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="users" className="mt-6">
+          <UserManagementNew />
+        </TabsContent>
+
+        <TabsContent value="roles" className="mt-6">
+          <RolesManager />
+        </TabsContent>
+      </Tabs>
     </ModernLayout>
   );
 }

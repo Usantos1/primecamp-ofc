@@ -185,6 +185,11 @@ export function useSales() {
 
       const total_pago = payments?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
 
+      // Validar se há pelo menos um pagamento confirmado
+      if (!payments || payments.length === 0 || total_pago <= 0) {
+        throw new Error('Não é possível finalizar uma venda sem forma de pagamento. Adicione pelo menos uma forma de pagamento antes de finalizar.');
+      }
+
       // Determinar status
       let status: SaleStatus = 'open';
       if (total_pago >= total) {
@@ -195,7 +200,8 @@ export function useSales() {
 
       // Buscar sessão de caixa atual (opcional - não falha se não houver)
       let cashSessionId = null;
-      try {        let cashQuery: any = supabase
+      try {
+        let cashQuery: any = supabase
           .from('cash_register_sessions')
           .select('id')
           .eq('status', 'open')
