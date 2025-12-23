@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { 
   Plus, Search, Edit, Phone, Filter,
   Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X, FileText, Trash2,
-  MoreVertical, CheckCircle2, XCircle, RotateCcw
+  CheckCircle2, RotateCcw
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
