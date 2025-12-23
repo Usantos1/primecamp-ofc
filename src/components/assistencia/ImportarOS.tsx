@@ -412,8 +412,11 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
         possuiSenhaTipo = 'nao_sabe';
       }
       
-      // 8. Criar OS
+      // 8. Criar OS com número exato do PDF
+      const numeroOS = dadosExtraidos.numero_os ? parseInt(dadosExtraidos.numero_os) : undefined;
+      
       await createOS({
+        numero: numeroOS, // Usar número exato da OS do PDF
         cliente_id: clienteId,
         cliente_nome: dadosExtraidos.cliente_nome,
         telefone_contato: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || '',
