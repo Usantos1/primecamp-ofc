@@ -86,36 +86,36 @@ const {
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 border-2 border-gray-300 bg-gray-50 gap-0 overflow-hidden">
             <TabsTrigger 
               value="intro" 
-              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white whitespace-nowrap min-w-0"
+              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white whitespace-nowrap text-center"
             >
               <Info className="h-2.5 w-2.5 md:h-4 md:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">Introdução</span>
-              <span className="sm:hidden truncate">Intro</span>
+              <span className="hidden sm:inline">Introdução</span>
+              <span className="sm:hidden">Intro</span>
             </TabsTrigger>
             <TabsTrigger 
               value="test" 
               disabled={!hasInProgressTest && activeTab !== "test"} 
-              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white md:border-r-2 whitespace-nowrap min-w-0"
+              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white md:border-r-2 whitespace-nowrap text-center"
             >
               <Brain className="h-2.5 w-2.5 md:h-4 md:w-4 flex-shrink-0" />
-              <span className="truncate">Teste</span>
+              <span>Teste</span>
             </TabsTrigger>
             <TabsTrigger 
               value="result" 
               disabled={!result} 
-              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white md:border-r-2 whitespace-nowrap min-w-0"
+              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 border-r-2 border-gray-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white md:border-r-2 whitespace-nowrap text-center"
             >
               <Trophy className="h-2.5 w-2.5 md:h-4 md:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">Resultado</span>
-              <span className="sm:hidden truncate">Result</span>
+              <span className="hidden sm:inline">Resultado</span>
+              <span className="sm:hidden">Result</span>
             </TabsTrigger>
             <TabsTrigger 
               value="history" 
-              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white whitespace-nowrap min-w-0"
+              className="flex items-center justify-center gap-1 md:gap-2 text-[9px] md:text-sm px-1 md:px-3 py-2 md:py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-500 data-[state=active]:text-white whitespace-nowrap text-center"
             >
               <History className="h-2.5 w-2.5 md:h-4 md:w-4 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">Histórico</span>
-              <span className="sm:hidden truncate">Hist</span>
+              <span className="hidden sm:inline">Histórico</span>
+              <span className="sm:hidden">Hist</span>
             </TabsTrigger>
           </TabsList>
 
