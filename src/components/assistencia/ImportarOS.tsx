@@ -370,7 +370,7 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
         modelo_nome: dadosExtraidos.modelo_nome || undefined,
         imei: dadosExtraidos.imei || undefined,
         numero_serie: dadosExtraidos.numero_serie || undefined,
-        possui_senha,
+        possui_senha: possuiSenha,
         possui_senha_tipo: possuiSenhaTipo,
         deixou_aparelho: true,
         apenas_agendamento: false,
