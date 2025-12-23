@@ -151,9 +151,14 @@ function parsePDFText(texto: string): PDFImportData {
   const marcaMatch = texto.match(/Marca:\s*([^\n]+)/i);
   if (marcaMatch) dados.marca_nome = marcaMatch[1].trim();
   
-  // Extrair modelo
-  const modeloMatch = texto.match(/Modelo:\s*([^\n]+)/i);
-  if (modeloMatch) dados.modelo_nome = modeloMatch[1].trim();
+  // Extrair modelo (parar antes de "Marca:")
+  const modeloMatch = texto.match(/Modelo:\s*([^\n]+?)(?:\s+Marca:|$)/i);
+  if (modeloMatch) {
+    let modelo = modeloMatch[1].trim();
+    // Remover "Marca:" se estiver no final
+    modelo = modelo.replace(/\s+Marca:.*$/i, '').trim();
+    dados.modelo_nome = modelo;
+  }
   
   // Extrair tipo de equipamento
   const equipamentoMatch = texto.match(/Equipamento:\s*([^\n]+)/i);
