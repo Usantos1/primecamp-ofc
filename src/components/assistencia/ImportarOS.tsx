@@ -374,7 +374,7 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
       }
       
       // 8. Criar OS
-      await createOS.mutateAsync({
+      await createOS({
         cliente_id: clienteId,
         cliente_nome: dadosExtraidos.cliente_nome,
         telefone_contato: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || '',
