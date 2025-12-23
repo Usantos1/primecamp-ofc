@@ -22,14 +22,26 @@ interface RolePermission {
 }
 
 export function usePermissions() {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !profile) {
+    // Enquanto auth estiver carregando ou perfil não chegou, manter loading
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!user) {
       setPermissions(new Set());
       setLoading(false);
+      return;
+    }
+
+    if (!profile) {
+      // Usuário autenticado mas perfil ainda não carregado
+      setLoading(true);
       return;
     }
 
