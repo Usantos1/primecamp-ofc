@@ -102,17 +102,23 @@ function parsePDFText(texto: string): PDFImportData {
     dados.telefone = `(${telefoneMatch[1]})${telefoneMatch[2].trim()}`;
   }
   
-  // Extrair endereço
-  const enderecoMatch = texto.match(/Endereço:\s*([^\n]+)/i);
+  // Extrair endereço (parar antes de "Comp.:" ou "Bairro:")
+  const enderecoMatch = texto.match(/Endereço:\s*([^\n]+?)(?:\s+Comp\.:|Bairro:|$)/i);
   if (enderecoMatch) {
-    const enderecoCompleto = enderecoMatch[1].trim();
-    // Tentar separar número e complemento
-    const numeroMatch = enderecoCompleto.match(/(.+?)\s*-\s*(\d+)/);
-    if (numeroMatch) {
-      dados.endereco = numeroMatch[1].trim();
-      dados.numero = numeroMatch[2];
-    } else {
-      dados.endereco = enderecoCompleto;
+    let enderecoCompleto = enderecoMatch[1].trim();
+    // Remover "Comp.:" se estiver no final
+    enderecoCompleto = enderecoCompleto.replace(/\s+Comp\.:.*$/i, '').trim();
+    // Remover apenas "-" ou "- Comp.:"
+    enderecoCompleto = enderecoCompleto.replace(/^-\s*Comp\.:?\s*$/i, '').trim();
+    if (enderecoCompleto && enderecoCompleto !== '-') {
+      // Tentar separar número e complemento
+      const numeroMatch = enderecoCompleto.match(/(.+?)\s*-\s*(\d+)/);
+      if (numeroMatch) {
+        dados.endereco = numeroMatch[1].trim();
+        dados.numero = numeroMatch[2];
+      } else {
+        dados.endereco = enderecoCompleto;
+      }
     }
   }
   
@@ -156,13 +162,26 @@ function parsePDFText(texto: string): PDFImportData {
     dados.tipo_aparelho = tipo.includes('celular') ? 'celular' : tipo;
   }
   
-  // Extrair IMEI
-  const imeiMatch = texto.match(/IMEI:\s*([^\n]+)/i);
-  if (imeiMatch && imeiMatch[1].trim()) dados.imei = imeiMatch[1].trim();
+  // Extrair IMEI (parar antes de "Condições" ou outros campos)
+  const imeiMatch = texto.match(/IMEI:\s*([^\n]+?)(?:\s+Condições|Série:|$)/i);
+  if (imeiMatch && imeiMatch[1].trim()) {
+    let imei = imeiMatch[1].trim();
+    // Remover textos inválidos
+    if (!imei.toLowerCase().includes('condições') && !imei.toLowerCase().includes('serviço')) {
+      dados.imei = imei;
+    }
+  }
   
-  // Extrair série
-  const serieMatch = texto.match(/Série:\s*([^\n]+)/i);
-  if (serieMatch && serieMatch[1].trim()) dados.numero_serie = serieMatch[1].trim();
+  // Extrair série (parar antes de "IMEI:" ou outros campos)
+  const serieMatch = texto.match(/Série:\s*([^\n]+?)(?:\s+IMEI:|Problema|$)/i);
+  if (serieMatch && serieMatch[1].trim()) {
+    let serie = serieMatch[1].trim();
+    // Remover "IMEI:" se estiver no valor
+    serie = serie.replace(/^IMEI:\s*/i, '').trim();
+    if (serie && serie !== 'IMEI:') {
+      dados.numero_serie = serie;
+    }
+  }
   
   // Extrair problema
   const problemaMatch = texto.match(/Problema Informado\s*\n([^\n]+)/i);
