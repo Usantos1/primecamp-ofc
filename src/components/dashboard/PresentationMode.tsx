@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FinancialCards } from './FinancialCards';
@@ -21,11 +21,11 @@ interface PresentationModeProps {
 export function PresentationMode({ financialData, osData, alerts, trendData }: PresentationModeProps) {
   const { togglePresentationMode } = useDashboardConfig();
 
-  const handleExit = async () => {
+  const handleExit = useCallback(async () => {
     await togglePresentationMode();
     // Recarregar a página para voltar ao dashboard normal
     window.location.reload();
-  };
+  }, [togglePresentationMode]);
 
   // Listener para tecla ESC
   useEffect(() => {
@@ -36,7 +36,7 @@ export function PresentationMode({ financialData, osData, alerts, trendData }: P
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [handleExit]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 relative">
