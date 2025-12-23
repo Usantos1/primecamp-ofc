@@ -93,14 +93,11 @@ const App = () => (
           <Route path="/disc-externo" element={<CandidateDisc />} />
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
             {/* Add import */}
-              {/* Página inicial: se não tiver permission dashboard, redireciona para Vendas */}
+              {/* Página inicial: se não tiver permission dashboard, mostra acesso negado */}
               <Route 
                 path="/" 
                 element={
-                  <PermissionRoute 
-                    permission="dashboard.view" 
-                    redirectTo="/pdv/vendas"
-                  >
+                  <PermissionRoute permission="dashboard.view">
                     <Index />
                   </PermissionRoute>
                 } 
@@ -178,10 +175,7 @@ const App = () => (
               <Route 
                 path="/pdv/relatorios" 
                 element={
-                  <PermissionRoute 
-                    permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]} 
-                    redirectTo="/pdv/vendas"
-                  >
+                  <PermissionRoute permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]}>
                     <Relatorios />
                   </PermissionRoute>
                 } 
