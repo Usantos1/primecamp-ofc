@@ -20,6 +20,7 @@ import {
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useProdutosSupabase as useProdutos } from '@/hooks/useProdutosSupabase';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
+import { useCashRegister } from '@/hooks/usePDV';
 import { currencyFormatters } from '@/utils/formatters';
 
 const Index = () => {
@@ -27,6 +28,7 @@ const Index = () => {
   const { getEstatisticas } = useOrdensServico();
   const { produtos } = useProdutos();
   const { clientes } = useClientes();
+  const { currentSession, isLoading: isLoadingCaixa } = useCashRegister();
 
   const stats = getEstatisticas();
 
@@ -35,6 +37,15 @@ const Index = () => {
   const totalClientes = clientes.length;
   const osAbertas = stats.abertas;
   const osEmAndamento = stats.emAndamento;
+  
+  // Status do caixa
+  const caixaStatus = currentSession?.status === 'open' ? 'Aberto' : 'Fechado';
+  const caixaValor = currentSession?.status === 'open' 
+    ? currencyFormatters.brl(currentSession.valor_inicial || 0)
+    : '-';
+  const caixaSubtitle = currentSession?.status === 'open' 
+    ? `Valor inicial: ${caixaValor}` 
+    : 'Ver movimentações';
 
   // Cards de acesso rápido
   const quickActions = [
@@ -123,7 +134,7 @@ const Index = () => {
             { title: 'OS Abertas', value: osAbertas, subtitle: `${osEmAndamento} em andamento`, icon: Wrench, color: 'bg-emerald-500' },
             { title: 'Total de Produtos', value: totalProdutos, subtitle: 'Produtos cadastrados', icon: Package, color: 'bg-blue-500' },
             { title: 'Total de Clientes', value: totalClientes, subtitle: 'Clientes cadastrados', icon: UserCircle, color: 'bg-orange-500' },
-            { title: 'Caixa', value: '-', subtitle: 'Ver movimentações', icon: Wallet, color: 'bg-purple-500' },
+            { title: 'Caixa', value: isLoadingCaixa ? '...' : caixaStatus, subtitle: caixaSubtitle, icon: Wallet, color: currentSession?.status === 'open' ? 'bg-green-500' : 'bg-purple-500' },
           ].map((card) => {
             const Icon = card.icon;
             return (
