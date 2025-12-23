@@ -73,9 +73,18 @@ function parsePDFText(texto: string): PDFImportData {
   const horaMatch = texto.match(/Hora:\s*(\d{2}:\d{2}:\d{2})/i);
   if (horaMatch) dados.hora_entrada = horaMatch[1];
   
-  // Extrair nome do cliente
-  const clienteMatch = texto.match(/Cliente:\s*([^\n]+)/i);
-  if (clienteMatch) dados.cliente_nome = clienteMatch[1].trim();
+  // Extrair nome do cliente (parar antes de Contato: ou Telefone:)
+  const clienteMatch = texto.match(/Cliente:\s*([^\n]+?)(?:\s+Contato:|Telefone:|$)/i);
+  if (clienteMatch) {
+    dados.cliente_nome = clienteMatch[1].trim();
+  } else {
+    // Fallback: tentar sem parar em Contato/Telefone
+    const clienteMatch2 = texto.match(/Cliente:\s*([^\n]+)/i);
+    if (clienteMatch2) {
+      // Remover "Contato:" e "Telefone:" se estiverem no final
+      dados.cliente_nome = clienteMatch2[1].trim().replace(/\s+Contato:.*$/i, '').replace(/\s+Telefone:.*$/i, '').trim();
+    }
+  }
   
   // Extrair CPF/CNPJ
   const cpfMatch = texto.match(/CPF\/CNPJ:\s*([\d.\-\/]+)/i);
