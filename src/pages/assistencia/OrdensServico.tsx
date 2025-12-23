@@ -275,19 +275,6 @@ export default function OrdensServico() {
           )}
         </div>
 
-        {/* Barra de busca - destacada e visível */}
-        <div className="shrink-0 px-4 md:px-4 pb-3 md:pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 h-11 text-base md:text-sm w-full border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-            />
-          </div>
-        </div>
-
         {/* Barra de filtros e ações - fixa no topo */}
         <div className="sticky top-0 z-30 bg-background border-b-2 border-gray-300 shadow-sm shrink-0">
           {/* Filtros rápidos - linha superior */}
@@ -328,6 +315,17 @@ export default function OrdensServico() {
               <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="text-xs">Mês</span>
             </Button>
+            
+            {/* Caixa de pesquisa - no meio */}
+            <div className="relative flex-1 min-w-[200px] max-w-[400px] mx-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nº OS, cliente, telefone, IMEI..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-9 text-sm w-full border-2 border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
             
             {/* Status e ações - continua na mesma linha no mobile */}
             <div className="flex items-center gap-2 ml-auto shrink-0">
