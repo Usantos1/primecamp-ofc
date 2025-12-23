@@ -616,14 +616,14 @@ export default function OrdensServico() {
                         <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
                           <tr className="border-b-2 border-gray-300">
                             <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Nº OS</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[180px]">Cliente</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px]">Cliente</th>
                             <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[130px] hidden md:table-cell">Aparelho</th>
-                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[220px]">Problema</th>
+                            <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[180px]">Problema</th>
                             <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px]">Status</th>
                             <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Entrada</th>
                             <th className="h-11 px-2 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[115px] hidden md:table-cell">Previsão</th>
                             <th className="h-11 px-2 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[100px]">Valor</th>
-                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 w-[90px]">Ações</th>
+                            <th className="h-11 px-2 text-center align-middle font-semibold text-foreground bg-muted/60 w-[110px]">Ações</th>
                           </tr>
                         </thead>
                         {/* Corpo da tabela */}
@@ -699,8 +699,8 @@ export default function OrdensServico() {
                                 {/* Cliente */}
                                 <td className="py-3.5 px-2 text-left border-r border-gray-200">
                                   <div className="min-w-0">
-                                    <p className="font-medium break-words">{cliente?.nome || os.cliente_nome || '-'}</p>
-                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground">{cliente.cpf_cnpj}</p>}
+                                    <p className="font-medium truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
+                                    {cliente?.cpf_cnpj && <p className="text-xs text-muted-foreground truncate">{cliente.cpf_cnpj}</p>}
                                   </div>
                                 </td>
                                 
@@ -714,7 +714,7 @@ export default function OrdensServico() {
                                 
                                 {/* Problema */}
                                 <td className="py-3.5 px-2 text-left border-r border-gray-200">
-                                  <div className="text-sm break-words">
+                                  <div className="text-sm line-clamp-2 break-words">
                                     {os.descricao_problema || '-'}
                                   </div>
                                 </td>
