@@ -92,15 +92,10 @@ const App = () => (
           <Route path="/candidato-disc" element={<CandidateDisc />} />
           <Route path="/disc-externo" element={<CandidateDisc />} />
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
-            {/* Add import */}
-              {/* Página inicial: se não tiver permission dashboard, mostra acesso negado */}
+            {/* Dashboard - acesso livre para usuários autenticados, controle interno por perfil */}
               <Route 
                 path="/" 
-                element={
-                  <PermissionRoute permission="dashboard.view">
-                    <Index />
-                  </PermissionRoute>
-                } 
+                element={<ProtectedRoute><Index /></ProtectedRoute>} 
               />
               <Route path="/gestao" element={<PermissionRoute permission="dashboard.gestao"><DashboardGestao /></PermissionRoute>} />
               <Route path="/processos" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />

@@ -31,8 +31,8 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAdmin, profile } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { isAdmin, profile, loading: authLoading } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const { financialData, osData, alerts, trendData, loading: dataLoading } = useDashboardData();
   const { config, loading: configLoading } = useDashboardConfig();
   const { getEstatisticas } = useOrdensServico();
@@ -40,8 +40,8 @@ const Index = () => {
 
   const stats = getEstatisticas();
 
-  // Verificar se é gestor/admin
-  const isGestor = isAdmin || hasPermission('admin.view') || hasPermission('financeiro.view');
+  // Verificar se é gestor/admin (só verifica se não estiver carregando)
+  const isGestor = !permissionsLoading && (isAdmin || hasPermission('admin.view') || hasPermission('financeiro.view'));
 
   // Se modo apresentação está ativo e é gestor, mostrar modo apresentação
   if (config.presentationMode && isGestor && financialData && osData && alerts) {
@@ -85,7 +85,7 @@ const Index = () => {
       path: '/pdv/clientes',
       permission: 'clientes.view',
     },
-  ].filter(action => !action.permission || hasPermission(action.permission));
+  ].filter(action => !action.permission || (permissionsLoading ? false : hasPermission(action.permission)));
 
   // Seções principais (disponível para todos)
   const mainSections = [
@@ -98,7 +98,7 @@ const Index = () => {
         { label: 'Lista de Vendas', path: '/pdv/vendas', icon: List, permission: 'vendas.view' },
         { label: 'Caixa', path: '/pdv/caixa', icon: Wallet, permission: 'caixa.view' },
         { label: 'Relatórios', path: '/pdv/relatorios', icon: BarChart3, permission: 'relatorios.view' },
-      ].filter(item => !item.permission || hasPermission(item.permission)),
+      ].filter(item => !item.permission || (permissionsLoading ? false : hasPermission(item.permission))),
     },
     {
       title: 'Ordem de Serviço',
@@ -108,7 +108,7 @@ const Index = () => {
         { label: 'Nova OS', path: '/pdv/os/nova', icon: Plus, permission: 'os.create' },
         { label: 'Lista de OS', path: '/pdv/os', icon: List, permission: 'os.view' },
         { label: 'Config. Status', path: '/pdv/configuracao-status', icon: Settings, permission: 'os.config' },
-      ].filter(item => !item.permission || hasPermission(item.permission)),
+      ].filter(item => !item.permission || (permissionsLoading ? false : hasPermission(item.permission))),
     },
     {
       title: 'Produtos',
@@ -117,7 +117,7 @@ const Index = () => {
       items: [
         { label: 'Lista de Produtos', path: '/produtos', icon: List, permission: 'produtos.view' },
         { label: 'Marcas e Modelos', path: '/pdv/marcas-modelos', icon: Settings, permission: 'produtos.view' },
-      ].filter(item => !item.permission || hasPermission(item.permission)),
+      ].filter(item => !item.permission || (permissionsLoading ? false : hasPermission(item.permission))),
     },
     {
       title: 'Clientes',
@@ -126,7 +126,7 @@ const Index = () => {
       items: [
         { label: 'Lista de Clientes', path: '/pdv/clientes', icon: List, permission: 'clientes.view' },
         { label: 'Buscar Cliente', path: '/pdv/clientes', icon: Search, permission: 'clientes.view' },
-      ].filter(item => !item.permission || hasPermission(item.permission)),
+      ].filter(item => !item.permission || (permissionsLoading ? false : hasPermission(item.permission))),
     },
   ].filter(section => section.items.length > 0);
 
@@ -135,7 +135,7 @@ const Index = () => {
     .filter(w => w.enabled)
     .sort((a, b) => a.order - b.order);
 
-  if (configLoading || dataLoading) {
+  if (authLoading || permissionsLoading || configLoading || dataLoading) {
     return (
       <ModernLayout title="Dashboard" subtitle="Carregando...">
         <LoadingSkeleton type="cards" count={4} />
