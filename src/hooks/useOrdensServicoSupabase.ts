@@ -38,10 +38,10 @@ export function useOrdensServicoSupabase() {
 
       const novaOS: any = {
         numero,
-        situacao: 'aberta',
-        status: 'aberta',
-        data_entrada: now.toISOString().split('T')[0],
-        hora_entrada: now.toTimeString().slice(0, 5),
+        situacao: (data.status === 'entregue' || data.status === 'cancelada') ? 'fechada' : 'aberta',
+        status: data.status || 'aberta',
+        data_entrada: data.data_entrada || now.toISOString().split('T')[0],
+        hora_entrada: data.hora_entrada || now.toTimeString().slice(0, 5),
         cliente_id: data.cliente_id || null,
         cliente_nome: data.cliente_nome || null,
         cliente_empresa: data.cliente_empresa || null,
