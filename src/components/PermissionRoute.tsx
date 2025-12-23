@@ -15,7 +15,7 @@ export function PermissionRoute({
   children, 
   permission,
   requireAll = false,
-  redirectTo = '/'
+  redirectTo
 }: PermissionRouteProps) {
   const { hasPermission, hasAnyPermission, hasAllPermissions, loading } = usePermissions();
 
