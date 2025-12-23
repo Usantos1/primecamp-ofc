@@ -51,8 +51,13 @@ interface ImportarOSProps {
 const STATUS_MAP: Record<string, StatusOS> = {
   'AGUARDANDO ORÇAMENTO/CONSERTO': 'aguardando_orcamento',
   'AGUARDANDO ORÇAMENTO': 'aguardando_orcamento',
+  'AGUARDANDO CONSERTO': 'aguardando_orcamento',
+  'ORÇAMENTO ENVIADO': 'orcamento_enviado',
+  'APROVADO': 'aprovado',
   'EM ANDAMENTO': 'em_andamento',
+  'AGUARDANDO PEÇA': 'aguardando_peca',
   'FINALIZADA': 'finalizada',
+  'PRONTO AGUARDANDO RETIRADA': 'aguardando_retirada',
   'AGUARDANDO RETIRADA': 'aguardando_retirada',
   'ENTREGUE': 'entregue',
   'CANCELADA': 'cancelada',
