@@ -177,9 +177,19 @@ function parsePDFText(texto: string): PDFImportData {
   const condicoesMatch = texto.match(/Condições do Aparelho\s*\n([^\n]+)/i);
   if (condicoesMatch) dados.condicoes_equipamento = condicoesMatch[1].trim();
   
-  // Extrair possui senha
-  const senhaMatch = texto.match(/Possui Senha:\s*([^\n]+)/i);
-  if (senhaMatch) dados.possui_senha = senhaMatch[1].trim();
+  // Extrair possui senha (pode aparecer em diferentes formatos)
+  const senhaMatch1 = texto.match(/Possui Senha:\s*([^\n]+)/i);
+  const senhaMatch2 = texto.match(/Possui Senha\s*:\s*([^\n]+)/i);
+  const senhaMatch3 = texto.match(/NÃO SABE, VAI PASSAR DEPOIS/i);
+  const senhaMatch4 = texto.match(/VAI PASSAR DEPOIS/i);
+  
+  if (senhaMatch1) {
+    dados.possui_senha = senhaMatch1[1].trim();
+  } else if (senhaMatch2) {
+    dados.possui_senha = senhaMatch2[1].trim();
+  } else if (senhaMatch3 || senhaMatch4) {
+    dados.possui_senha = 'NÃO SABE, VAI PASSAR DEPOIS';
+  }
   
   // Extrair vendedor
   const vendedorMatch = texto.match(/Vendedor:\s*([^\n]+)/i);
@@ -329,10 +339,24 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
       }
       
       // 7. Processar possui senha
-      const possuiSenha = dadosExtraidos.possui_senha?.toLowerCase().includes('sim') || false;
-      const possuiSenhaTipo = dadosExtraidos.possui_senha?.toLowerCase().includes('não sabe') 
-        ? 'nao_sabe' 
-        : possuiSenha ? 'sim' : 'nao';
+      const possuiSenhaTexto = dadosExtraidos.possui_senha?.toLowerCase() || '';
+      let possuiSenha = false;
+      let possuiSenhaTipo: string = 'nao';
+      
+      if (possuiSenhaTexto.includes('sim') || possuiSenhaTexto.includes('yes')) {
+        possuiSenha = true;
+        possuiSenhaTipo = 'sim';
+      } else if (possuiSenhaTexto.includes('não sabe') || possuiSenhaTexto.includes('nao sabe') || possuiSenhaTexto.includes('vai passar')) {
+        possuiSenha = true;
+        possuiSenhaTipo = 'nao_sabe';
+      } else if (possuiSenhaTexto.includes('não') || possuiSenhaTexto.includes('nao') || possuiSenhaTexto.includes('no')) {
+        possuiSenha = false;
+        possuiSenhaTipo = 'nao';
+      } else if (possuiSenhaTexto.trim()) {
+        // Se tem algum texto mas não identificamos, assumir que tem senha mas não sabe
+        possuiSenha = true;
+        possuiSenhaTipo = 'nao_sabe';
+      }
       
       // 8. Criar OS
       await createOS.mutateAsync({
