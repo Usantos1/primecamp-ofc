@@ -1,0 +1,585 @@
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { useClientesSupabase } from '@/hooks/useClientesSupabase';
+import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
+import { useOrdensServicoSupabase } from '@/hooks/useOrdensServicoSupabase';
+import { StatusOS } from '@/types/assistencia';
+import { toast } from '@/hooks/use-toast';
+
+interface PDFImportData {
+  numero_os?: string;
+  data_entrada?: string;
+  hora_entrada?: string;
+  status?: string;
+  previsao_entrega?: string;
+  hora_previsao?: string;
+  senha?: string;
+  cliente_nome?: string;
+  cliente_cpf_cnpj?: string;
+  telefone_contato?: string;
+  telefone?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  tipo_aparelho?: string;
+  marca_nome?: string;
+  modelo_nome?: string;
+  imei?: string;
+  numero_serie?: string;
+  descricao_problema?: string;
+  condicoes_equipamento?: string;
+  possui_senha?: string;
+  vendedor_nome?: string;
+}
+
+interface ImportarOSProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+const STATUS_MAP: Record<string, StatusOS> = {
+  'AGUARDANDO ORÇAMENTO/CONSERTO': 'aguardando_orcamento',
+  'AGUARDANDO ORÇAMENTO': 'aguardando_orcamento',
+  'EM ANDAMENTO': 'em_andamento',
+  'FINALIZADA': 'finalizada',
+  'AGUARDANDO RETIRADA': 'aguardando_retirada',
+  'ENTREGUE': 'entregue',
+  'CANCELADA': 'cancelada',
+};
+
+function parsePDFText(texto: string): PDFImportData {
+  const dados: PDFImportData = {};
+  
+  // Extrair número da OS
+  const osMatch = texto.match(/OS Nº\s*(\d+)/i);
+  if (osMatch) dados.numero_os = osMatch[1];
+  
+  // Extrair data
+  const dataMatch = texto.match(/Data:\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if (dataMatch) dados.data_entrada = dataMatch[1];
+  
+  // Extrair hora
+  const horaMatch = texto.match(/Hora:\s*(\d{2}:\d{2}:\d{2})/i);
+  if (horaMatch) dados.hora_entrada = horaMatch[1];
+  
+  // Extrair nome do cliente
+  const clienteMatch = texto.match(/Cliente:\s*([^\n]+)/i);
+  if (clienteMatch) dados.cliente_nome = clienteMatch[1].trim();
+  
+  // Extrair CPF/CNPJ
+  const cpfMatch = texto.match(/CPF\/CNPJ:\s*([\d.\-\/]+)/i);
+  if (cpfMatch) dados.cliente_cpf_cnpj = cpfMatch[1];
+  
+  // Extrair telefone contato
+  const contatoMatch = texto.match(/Contato:\s*\(([^)]+)\)([\d\-]+)/i);
+  if (contatoMatch) {
+    dados.telefone_contato = `(${contatoMatch[1]})${contatoMatch[2]}`;
+  }
+  
+  // Extrair telefone
+  const telefoneMatch = texto.match(/Telefone:\s*\(([^)]*)\)([^\n]*)/i);
+  if (telefoneMatch && telefoneMatch[2].trim()) {
+    dados.telefone = `(${telefoneMatch[1]})${telefoneMatch[2].trim()}`;
+  }
+  
+  // Extrair endereço
+  const enderecoMatch = texto.match(/Endereço:\s*([^\n]+)/i);
+  if (enderecoMatch) {
+    const enderecoCompleto = enderecoMatch[1].trim();
+    // Tentar separar número e complemento
+    const numeroMatch = enderecoCompleto.match(/(.+?)\s*-\s*(\d+)/);
+    if (numeroMatch) {
+      dados.endereco = numeroMatch[1].trim();
+      dados.numero = numeroMatch[2];
+    } else {
+      dados.endereco = enderecoCompleto;
+    }
+  }
+  
+  // Extrair complemento
+  const compMatch = texto.match(/Comp\.:\s*([^\n]+)/i);
+  if (compMatch) dados.complemento = compMatch[1].trim();
+  
+  // Extrair bairro
+  const bairroMatch = texto.match(/Bairro:\s*([^\n]+)/i);
+  if (bairroMatch) dados.bairro = bairroMatch[1].trim();
+  
+  // Extrair cidade
+  const cidadeMatch = texto.match(/Cidade:\s*([^\n\/]+)/i);
+  if (cidadeMatch) {
+    const cidadeCompleta = cidadeMatch[1].trim();
+    const estadoMatch = cidadeCompleta.match(/(.+?)\s*\/\s*([A-Z]{2})/);
+    if (estadoMatch) {
+      dados.cidade = estadoMatch[1].trim();
+      dados.estado = estadoMatch[2];
+    } else {
+      dados.cidade = cidadeCompleta;
+    }
+  }
+  
+  // Extrair CEP
+  const cepMatch = texto.match(/CEP:\s*([\d\-]+)/i);
+  if (cepMatch) dados.cep = cepMatch[1];
+  
+  // Extrair marca
+  const marcaMatch = texto.match(/Marca:\s*([^\n]+)/i);
+  if (marcaMatch) dados.marca_nome = marcaMatch[1].trim();
+  
+  // Extrair modelo
+  const modeloMatch = texto.match(/Modelo:\s*([^\n]+)/i);
+  if (modeloMatch) dados.modelo_nome = modeloMatch[1].trim();
+  
+  // Extrair tipo de equipamento
+  const equipamentoMatch = texto.match(/Equipamento:\s*([^\n]+)/i);
+  if (equipamentoMatch) {
+    const tipo = equipamentoMatch[1].trim().toLowerCase();
+    dados.tipo_aparelho = tipo.includes('celular') ? 'celular' : tipo;
+  }
+  
+  // Extrair IMEI
+  const imeiMatch = texto.match(/IMEI:\s*([^\n]+)/i);
+  if (imeiMatch && imeiMatch[1].trim()) dados.imei = imeiMatch[1].trim();
+  
+  // Extrair série
+  const serieMatch = texto.match(/Série:\s*([^\n]+)/i);
+  if (serieMatch && serieMatch[1].trim()) dados.numero_serie = serieMatch[1].trim();
+  
+  // Extrair problema
+  const problemaMatch = texto.match(/Problema Informado\s*\n([^\n]+)/i);
+  if (problemaMatch) dados.descricao_problema = problemaMatch[1].trim();
+  
+  // Extrair status
+  const statusMatch = texto.match(/Status da Ordem\s*:\s*([^\n]+)/i);
+  if (statusMatch) dados.status = statusMatch[1].trim();
+  
+  // Extrair previsão de entrega
+  const previsaoMatch = texto.match(/Previsão Entrega:\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if (previsaoMatch) dados.previsao_entrega = previsaoMatch[1];
+  
+  // Extrair hora de previsão
+  const horaPrevisaoMatch = texto.match(/Hora:\s*(\d{2}:\d{2})/i);
+  if (horaPrevisaoMatch && !dados.hora_entrada) {
+    dados.hora_previsao = horaPrevisaoMatch[1];
+  }
+  
+  // Extrair condições do aparelho
+  const condicoesMatch = texto.match(/Condições do Aparelho\s*\n([^\n]+)/i);
+  if (condicoesMatch) dados.condicoes_equipamento = condicoesMatch[1].trim();
+  
+  // Extrair possui senha
+  const senhaMatch = texto.match(/Possui Senha:\s*([^\n]+)/i);
+  if (senhaMatch) dados.possui_senha = senhaMatch[1].trim();
+  
+  // Extrair vendedor
+  const vendedorMatch = texto.match(/Vendedor:\s*([^\n]+)/i);
+  if (vendedorMatch) dados.vendedor_nome = vendedorMatch[1].trim();
+  
+  // Extrair senha (número)
+  const senhaNumMatch = texto.match(/Senha:\s*(\d+)/i);
+  if (senhaNumMatch) dados.senha = senhaNumMatch[1];
+  
+  return dados;
+}
+
+function validarDados(dados: PDFImportData): { valido: boolean; erros: string[]; avisos: string[] } {
+  const erros: string[] = [];
+  const avisos: string[] = [];
+  
+  if (!dados.cliente_nome) erros.push('Nome do cliente é obrigatório');
+  if (!dados.telefone_contato && !dados.telefone) erros.push('Telefone de contato é obrigatório');
+  if (!dados.descricao_problema) erros.push('Descrição do problema é obrigatória');
+  if (!dados.marca_nome) avisos.push('Marca não encontrada - será criada automaticamente');
+  if (!dados.modelo_nome) avisos.push('Modelo não encontrado - será criado automaticamente');
+  if (!dados.data_entrada) avisos.push('Data de entrada não encontrada - será usada a data atual');
+  
+  return {
+    valido: erros.length === 0,
+    erros,
+    avisos,
+  };
+}
+
+export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
+  const [textoPDF, setTextoPDF] = useState('');
+  const [dadosExtraidos, setDadosExtraidos] = useState<PDFImportData | null>(null);
+  const [erros, setErros] = useState<string[]>([]);
+  const [avisos, setAvisos] = useState<string[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [step, setStep] = useState<'input' | 'preview'>('input');
+  
+  const { clientes, createCliente } = useClientesSupabase();
+  const { marcas, createMarca } = useMarcasSupabase();
+  const { modelos, createModelo } = useModelosSupabase();
+  const { createOS } = useOrdensServicoSupabase();
+  
+  const handleParse = () => {
+    if (!textoPDF.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Por favor, cole o texto do PDF',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    const dados = parsePDFText(textoPDF);
+    const validacao = validarDados(dados);
+    
+    setDadosExtraidos(dados);
+    setErros(validacao.erros);
+    setAvisos(validacao.avisos);
+    setStep('preview');
+  };
+  
+  const handleImport = async () => {
+    if (!dadosExtraidos) return;
+    
+    setIsImporting(true);
+    
+    try {
+      // 1. Buscar ou criar cliente
+      let clienteId = '';
+      const cpfLimpo = dadosExtraidos.cliente_cpf_cnpj?.replace(/\D/g, '');
+      const telefoneLimpo = (dadosExtraidos.telefone_contato || dadosExtraidos.telefone)?.replace(/\D/g, '');
+      
+      // Buscar cliente existente
+      const clienteExistente = clientes.find(c => {
+        const cpfCliente = c.cpf_cnpj?.replace(/\D/g, '');
+        const telCliente = c.telefone?.replace(/\D/g, '') || c.whatsapp?.replace(/\D/g, '');
+        return (cpfLimpo && cpfCliente === cpfLimpo) || (telefoneLimpo && telCliente === telefoneLimpo);
+      });
+      
+      if (clienteExistente) {
+        clienteId = clienteExistente.id;
+      } else {
+        // Criar novo cliente
+        const novoCliente = await createCliente.mutateAsync({
+          nome: dadosExtraidos.cliente_nome || '',
+          cpf_cnpj: dadosExtraidos.cliente_cpf_cnpj || null,
+          telefone: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || null,
+          whatsapp: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || null,
+          logradouro: dadosExtraidos.endereco || null,
+          numero: dadosExtraidos.numero || null,
+          complemento: dadosExtraidos.complemento || null,
+          bairro: dadosExtraidos.bairro || null,
+          cidade: dadosExtraidos.cidade || null,
+          estado: dadosExtraidos.estado || null,
+          cep: dadosExtraidos.cep || null,
+        });
+        clienteId = novoCliente.id;
+      }
+      
+      // 2. Buscar ou criar marca
+      let marcaId = '';
+      const marcaExistente = marcas.find(m => 
+        m.nome.toLowerCase() === dadosExtraidos.marca_nome?.toLowerCase()
+      );
+      
+      if (marcaExistente) {
+        marcaId = marcaExistente.id;
+      } else if (dadosExtraidos.marca_nome) {
+        const novaMarca = await createMarca(dadosExtraidos.marca_nome);
+        marcaId = novaMarca.id;
+      }
+      
+      // 3. Buscar ou criar modelo
+      let modeloId = '';
+      if (marcaId && dadosExtraidos.modelo_nome) {
+        const modeloExistente = modelos.find(m => 
+          m.marca_id === marcaId && 
+          m.nome.toLowerCase() === dadosExtraidos.modelo_nome?.toLowerCase()
+        );
+        
+        if (modeloExistente) {
+          modeloId = modeloExistente.id;
+        } else {
+          const novoModelo = await createModelo(marcaId, dadosExtraidos.modelo_nome);
+          modeloId = novoModelo.id;
+        }
+      }
+      
+      // 4. Mapear status
+      const statusMapeado = dadosExtraidos.status 
+        ? STATUS_MAP[dadosExtraidos.status.toUpperCase()] || 'aberta'
+        : 'aberta';
+      
+      // 5. Processar data de entrada
+      let dataEntrada = new Date().toISOString().split('T')[0];
+      if (dadosExtraidos.data_entrada) {
+        const [dia, mes, ano] = dadosExtraidos.data_entrada.split('/');
+        dataEntrada = `${ano}-${mes}-${dia}`;
+      }
+      
+      // 6. Processar previsão de entrega
+      let previsaoEntrega: string | undefined = undefined;
+      if (dadosExtraidos.previsao_entrega) {
+        const [dia, mes, ano] = dadosExtraidos.previsao_entrega.split('/');
+        previsaoEntrega = `${ano}-${mes}-${dia}`;
+      }
+      
+      // 7. Processar possui senha
+      const possuiSenha = dadosExtraidos.possui_senha?.toLowerCase().includes('sim') || false;
+      const possuiSenhaTipo = dadosExtraidos.possui_senha?.toLowerCase().includes('não sabe') 
+        ? 'nao_sabe' 
+        : possuiSenha ? 'sim' : 'nao';
+      
+      // 8. Criar OS
+      await createOS.mutateAsync({
+        status: statusMapeado,
+        cliente_id: clienteId,
+        cliente_nome: dadosExtraidos.cliente_nome,
+        telefone_contato: dadosExtraidos.telefone_contato || dadosExtraidos.telefone || '',
+        tipo_aparelho: dadosExtraidos.tipo_aparelho || 'celular',
+        marca_id: marcaId || undefined,
+        marca_nome: dadosExtraidos.marca_nome || undefined,
+        modelo_id: modeloId || undefined,
+        modelo_nome: dadosExtraidos.modelo_nome || undefined,
+        imei: dadosExtraidos.imei || undefined,
+        numero_serie: dadosExtraidos.numero_serie || undefined,
+        possui_senha,
+        possui_senha_tipo: possuiSenhaTipo,
+        deixou_aparelho: true,
+        apenas_agendamento: false,
+        descricao_problema: dadosExtraidos.descricao_problema || '',
+        condicoes_equipamento: dadosExtraidos.condicoes_equipamento || undefined,
+        data_entrada: dataEntrada,
+        hora_entrada: dadosExtraidos.hora_entrada || undefined,
+        previsao_entrega: previsaoEntrega,
+        hora_previsao: dadosExtraidos.hora_previsao || undefined,
+        observacoes: dadosExtraidos.numero_os ? `OS antiga: ${dadosExtraidos.numero_os}` : undefined,
+        checklist_entrada: [],
+        areas_defeito: [],
+      });
+      
+      toast({
+        title: 'Sucesso!',
+        description: 'OS importada com sucesso!',
+      });
+      
+      onOpenChange(false);
+      setTextoPDF('');
+      setDadosExtraidos(null);
+      setErros([]);
+      setAvisos([]);
+      setStep('input');
+      
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      console.error('Erro ao importar OS:', error);
+      toast({
+        title: 'Erro ao importar',
+        description: error.message || 'Ocorreu um erro ao importar a OS',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+  
+  const handleClose = () => {
+    onOpenChange(false);
+    setTextoPDF('');
+    setDadosExtraidos(null);
+    setErros([]);
+    setAvisos([]);
+    setStep('input');
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Importar OS do PDF
+          </DialogTitle>
+          <DialogDescription>
+            Cole o texto copiado do PDF abaixo. O sistema irá extrair automaticamente os dados.
+          </DialogDescription>
+        </DialogHeader>
+        
+        {step === 'input' && (
+          <div className="space-y-4">
+            <Textarea
+              value={textoPDF}
+              onChange={(e) => setTextoPDF(e.target.value)}
+              placeholder="Cole aqui o texto completo do PDF da OS..."
+              rows={15}
+              className="font-mono text-sm"
+            />
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleClose}>
+                Cancelar
+              </Button>
+              <Button onClick={handleParse} disabled={!textoPDF.trim()}>
+                Extrair Dados
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {step === 'preview' && dadosExtraidos && (
+          <div className="space-y-4">
+            {erros.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="font-semibold mb-2">Erros encontrados:</div>
+                  <ul className="list-disc list-inside space-y-1">
+                    {erros.map((erro, i) => (
+                      <li key={i}>{erro}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {avisos.length > 0 && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="font-semibold mb-2">Avisos:</div>
+                  <ul className="list-disc list-inside space-y-1">
+                    {avisos.map((aviso, i) => (
+                      <li key={i}>{aviso}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Dados da OS</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {dadosExtraidos.numero_os && (
+                    <div><strong>Nº OS Antiga:</strong> {dadosExtraidos.numero_os}</div>
+                  )}
+                  {dadosExtraidos.data_entrada && (
+                    <div><strong>Data:</strong> {dadosExtraidos.data_entrada}</div>
+                  )}
+                  {dadosExtraidos.hora_entrada && (
+                    <div><strong>Hora:</strong> {dadosExtraidos.hora_entrada}</div>
+                  )}
+                  {dadosExtraidos.status && (
+                    <div>
+                      <strong>Status:</strong>{' '}
+                      <Badge>{dadosExtraidos.status}</Badge>
+                    </div>
+                  )}
+                  {dadosExtraidos.previsao_entrega && (
+                    <div><strong>Previsão:</strong> {dadosExtraidos.previsao_entrega}</div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Cliente</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {dadosExtraidos.cliente_nome && (
+                    <div><strong>Nome:</strong> {dadosExtraidos.cliente_nome}</div>
+                  )}
+                  {dadosExtraidos.cliente_cpf_cnpj && (
+                    <div><strong>CPF/CNPJ:</strong> {dadosExtraidos.cliente_cpf_cnpj}</div>
+                  )}
+                  {dadosExtraidos.telefone_contato && (
+                    <div><strong>Contato:</strong> {dadosExtraidos.telefone_contato}</div>
+                  )}
+                  {dadosExtraidos.endereco && (
+                    <div><strong>Endereço:</strong> {dadosExtraidos.endereco}</div>
+                  )}
+                  {dadosExtraidos.bairro && (
+                    <div><strong>Bairro:</strong> {dadosExtraidos.bairro}</div>
+                  )}
+                  {dadosExtraidos.cidade && (
+                    <div><strong>Cidade:</strong> {dadosExtraidos.cidade}/{dadosExtraidos.estado}</div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Equipamento</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {dadosExtraidos.marca_nome && (
+                    <div><strong>Marca:</strong> {dadosExtraidos.marca_nome}</div>
+                  )}
+                  {dadosExtraidos.modelo_nome && (
+                    <div><strong>Modelo:</strong> {dadosExtraidos.modelo_nome}</div>
+                  )}
+                  {dadosExtraidos.tipo_aparelho && (
+                    <div><strong>Tipo:</strong> {dadosExtraidos.tipo_aparelho}</div>
+                  )}
+                  {dadosExtraidos.imei && (
+                    <div><strong>IMEI:</strong> {dadosExtraidos.imei}</div>
+                  )}
+                  {dadosExtraidos.numero_serie && (
+                    <div><strong>Série:</strong> {dadosExtraidos.numero_serie}</div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Problema</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {dadosExtraidos.descricao_problema && (
+                    <div><strong>Descrição:</strong> {dadosExtraidos.descricao_problema}</div>
+                  )}
+                  {dadosExtraidos.condicoes_equipamento && (
+                    <div><strong>Condições:</strong> {dadosExtraidos.condicoes_equipamento}</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setStep('input')} disabled={isImporting}>
+                Voltar
+              </Button>
+              <Button variant="outline" onClick={handleClose} disabled={isImporting}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleImport} 
+                disabled={erros.length > 0 || isImporting}
+                className="bg-gradient-to-r from-blue-500 to-indigo-500"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Importar OS
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+

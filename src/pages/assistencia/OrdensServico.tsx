@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Plus, Search, Eye, Edit, Phone, Filter,
-  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X
+  Clock, AlertTriangle, CheckCircle, Wrench, Package, Calendar, X, FileText
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PermissionGate } from '@/components/PermissionGate';
+import { ImportarOS } from '@/components/assistencia/ImportarOS';
 
 export default function OrdensServico() {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ export default function OrdensServico() {
   const [dataInicio, setDataInicio] = useState<Date | undefined>(undefined);
   const [dataFim, setDataFim] = useState<Date | undefined>(undefined);
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
+  const [showImportarOS, setShowImportarOS] = useState(false);
   
   const { ordens, isLoading, getEstatisticas, getOSById } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
@@ -360,6 +362,15 @@ export default function OrdensServico() {
               <div className="w-px h-5 bg-gray-300 mx-0.5 shrink-0 hidden md:block"></div>
               
               <PermissionGate permission="os.create">
+                <Button 
+                  onClick={() => setShowImportarOS(true)} 
+                  size="sm" 
+                  variant="outline"
+                  className="gap-1.5 h-9 shrink-0 px-3 border-2 border-gray-300"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="text-xs whitespace-nowrap font-semibold">Importar OS</span>
+                </Button>
                 <Button 
                   onClick={() => navigate('/pdv/os/nova')} 
                   size="sm" 
@@ -807,6 +818,14 @@ export default function OrdensServico() {
         </div>
       </div>
 
+      <ImportarOS
+        open={showImportarOS}
+        onOpenChange={setShowImportarOS}
+        onSuccess={() => {
+          // Recarregar a página para atualizar a lista
+          window.location.reload();
+        }}
+      />
     </ModernLayout>
   );
 }
