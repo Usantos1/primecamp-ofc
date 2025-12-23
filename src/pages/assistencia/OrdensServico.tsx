@@ -689,24 +689,6 @@ export default function OrdensServico() {
                                   </div>
                                 </td>
                                 
-                                {/* Contato */}
-                                <td className="py-3.5 px-3 text-left border-r border-gray-200 hidden lg:table-cell">
-                                  {(cliente?.telefone || os.telefone_contato) && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      className="h-auto p-0 text-green-600 hover:text-green-700"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleWhatsApp(os.telefone_contato || cliente?.whatsapp || cliente?.telefone);
-                                      }}
-                                    >
-                                      <Phone className="h-3 w-3 mr-1 inline" />
-                                      <span className="text-xs">{os.telefone_contato || cliente?.telefone}</span>
-                                    </Button>
-                                  )}
-                                </td>
-                                
                                 {/* Aparelho */}
                                 <td className="py-3.5 px-3 text-left border-r border-gray-200 hidden md:table-cell">
                                   <div>
