@@ -107,6 +107,8 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
 
       if (userRoleData?.role_id) {
         setSelectedRoleId(userRoleData.role_id);
+      } else {
+        setSelectedRoleId('');
       }
 
       // Carregar permissões customizadas do usuário
@@ -171,7 +173,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       // Atualizar user_position_departments
       const { data: updData } = await supabase
         .from('user_position_departments')
-        .select('id')
+        .select('id, position_id, department_name')
         .eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
@@ -182,25 +184,16 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           .update({ role_id: finalRoleId || null })
           .eq('id', updData.id);
       } else {
-        // Criar se não existir
-        const { data: positionData } = await supabase
+        // Criar se não existir (mantém is_primary e insere mesmo sem position/department)
+        await supabase
           .from('user_position_departments')
-          .select('position_id, department_name')
-          .eq('user_id', userId)
-          .limit(1)
-          .maybeSingle();
-
-        if (positionData) {
-          await supabase
-            .from('user_position_departments')
-            .insert({
-              user_id: userId,
-              position_id: positionData.position_id,
-              department_name: positionData.department_name,
-              is_primary: true,
-              role_id: finalRoleId || null,
-            });
-        }
+          .insert({
+            user_id: userId,
+            position_id: null,
+            department_name: null,
+            is_primary: true,
+            role_id: finalRoleId || null,
+          });
       }
     }
   };

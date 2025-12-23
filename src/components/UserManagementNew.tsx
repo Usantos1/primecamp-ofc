@@ -810,6 +810,7 @@ export const UserManagementNew = () => {
                 setSelectedUser(null);
               }}
               onSave={() => {
+                // Atualiza a lista sem forçar refresh ou redirect
                 fetchUsers();
                 setPermissionsDialogOpen(false);
                 setSelectedUser(null);
