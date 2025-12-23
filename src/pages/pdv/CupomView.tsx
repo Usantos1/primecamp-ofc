@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, Share2 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
@@ -236,38 +236,76 @@ export default function CupomView() {
   if (!sale) {
     return (
       <ModernLayout title="Cupom não encontrado">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Cupom não encontrado ou você não tem permissão para visualizá-lo.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+          <Card className="border-2 border-gray-300 shadow-sm">
+            <CardContent className="p-6 md:p-8">
+              <div className="text-center">
+                <p className="text-sm md:text-base text-muted-foreground">
+                  Cupom não encontrado ou você não tem permissão para visualizá-lo.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </ModernLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold">Cupom #{sale.numero}</h1>
-            <Button onClick={handlePrint} size="sm" className="gap-2">
-              <Printer className="h-4 w-4" />
-              Reimprimir
-            </Button>
-          </div>
-          <div 
-            id="cupom-preview" 
-            className="bg-white border rounded-lg overflow-auto"
-            style={{ maxWidth: '80mm', margin: '0 auto', minHeight: '200px' }}
-          >
-            {loading ? 'Carregando preview do cupom...' : ''}
-          </div>
-        </div>
+    <ModernLayout title={`Cupom #${sale.numero}`} subtitle="Visualização do cupom fiscal">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+        <Card className="border-2 border-gray-300 shadow-sm">
+          <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h1 className="text-lg md:text-xl font-bold">Cupom #{sale.numero}</h1>
+                <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                  {new Date(sale.created_at).toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: 'long', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleDownloadPDF} 
+                  size="sm" 
+                  variant="outline"
+                  className="h-9 border-2 border-gray-300"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  <span className="hidden md:inline">Baixar PDF</span>
+                </Button>
+                <Button 
+                  onClick={handlePrint} 
+                  size="sm" 
+                  className="h-9 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-md"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Reimprimir
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 md:p-6">
+            <div 
+              id="cupom-preview" 
+              className="bg-white border-2 border-gray-300 rounded-lg overflow-auto mx-auto"
+              style={{ maxWidth: '80mm', minHeight: '200px' }}
+            >
+              {loading ? (
+                <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
+                  Carregando preview do cupom...
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </ModernLayout>
   );
 }
 
