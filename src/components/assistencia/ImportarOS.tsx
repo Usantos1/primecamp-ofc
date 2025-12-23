@@ -193,9 +193,15 @@ function parsePDFText(texto: string): PDFImportData {
   const senhaMatch4 = texto.match(/VAI PASSAR DEPOIS/i);
   
   if (senhaMatch1) {
-    dados.possui_senha = senhaMatch1[1].trim();
+    let valor = senhaMatch1[1].trim();
+    // Remover "Possui Senha:" se estiver no valor extraído
+    valor = valor.replace(/^Possui Senha:\s*/i, '').trim();
+    dados.possui_senha = valor || undefined;
   } else if (senhaMatch2) {
-    dados.possui_senha = senhaMatch2[1].trim();
+    let valor = senhaMatch2[1].trim();
+    // Remover "Possui Senha:" se estiver no valor extraído
+    valor = valor.replace(/^Possui Senha:\s*/i, '').trim();
+    dados.possui_senha = valor || undefined;
   } else if (senhaMatch3 || senhaMatch4) {
     dados.possui_senha = 'NÃO SABE, VAI PASSAR DEPOIS';
   }
