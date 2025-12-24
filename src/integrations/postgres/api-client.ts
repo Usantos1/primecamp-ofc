@@ -109,11 +109,30 @@ class PostgresAPIClient {
   async execute(): Promise<{ data: any[] | null; error: any | null }> {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      
+      // Obter token de autenticação do localStorage (Supabase)
+      const session = localStorage.getItem('sb-gogxicjaqpqbhsfzutij-auth-token');
+      let token = null;
+      if (session) {
+        try {
+          const parsed = JSON.parse(session);
+          token = parsed?.access_token || parsed?.accessToken;
+        } catch (e) {
+          // Ignorar erro de parse
+        }
+      }
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${apiUrl}/query/${this.tableName}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(this.options),
       });
 
@@ -142,15 +161,35 @@ class PostgresAPIClient {
     };
   }
 
-  async insert(data: any): Promise<{ data: any | null; error: any | null }> {
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Obter token de autenticação do localStorage (Supabase)
+    const session = localStorage.getItem('sb-gogxicjaqpqbhsfzutij-auth-token');
+    if (session) {
+      try {
+        const parsed = JSON.parse(session);
+        const token = parsed?.access_token || parsed?.accessToken;
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (e) {
+        // Ignorar erro de parse
+      }
+    }
+    
+    return headers;
+  }
+
+  async execute(): Promise<{ data: any[] | null; error: any | null }> {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
-      const response = await fetch(`${apiUrl}/insert/${this.tableName}`, {
+      const response = await fetch(`${apiUrl}/query/${this.tableName}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(this.options),
       });
 
       if (!response.ok) {
@@ -171,9 +210,7 @@ class PostgresAPIClient {
       const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
       const response = await fetch(`${apiUrl}/update/${this.tableName}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           data,
           where: this.options.where,
@@ -198,9 +235,7 @@ class PostgresAPIClient {
       const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
       const response = await fetch(`${apiUrl}/delete/${this.tableName}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           where: this.options.where,
         }),

@@ -30,12 +30,25 @@ const pool = new Pool({
 });
 
 // Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
   origin: process.env.VITE_API_ORIGIN || 'http://localhost:8080',
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+
+// Middleware para log de requisições (debug)
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    headers: req.headers,
+    body: req.body,
+  });
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
