@@ -56,8 +56,22 @@ export const useTasks = () => {
         .in('user_id', userIds)
         .execute();
 
+      // Buscar categorias e processos separadamente se necessário
+      const categoryIds = [...new Set((data || []).map(t => t.category_id).filter(Boolean))];
+      const processIds = [...new Set((data || []).map(t => t.process_id).filter(Boolean))];
+      
+      const { data: categories } = categoryIds.length > 0 
+        ? await from('categories').select('id, name').in('id', categoryIds).execute()
+        : { data: [] };
+      
+      const { data: processes } = processIds.length > 0
+        ? await from('processes').select('id, name').in('id', processIds).execute()
+        : { data: [] };
+
       const formattedTasks: Task[] = (data || []).map(task => {
         const profile = profiles?.find(p => p.user_id === task.responsible_user_id);
+        const category = categories?.find(c => c.id === task.category_id);
+        const process = processes?.find(p => p.id === task.process_id);
         return {
           id: task.id,
           name: task.name,
@@ -71,8 +85,8 @@ export const useTasks = () => {
           created_at: task.created_at,
           updated_at: task.updated_at,
           responsible_name: profile?.display_name || 'Usuário sem nome',
-          category_name: task.categories?.name || 'Sem categoria',
-          process_name: task.processes?.name || 'Sem processo'
+          category_name: category?.name || 'Sem categoria',
+          process_name: process?.name || 'Sem processo'
         };
       });
 
