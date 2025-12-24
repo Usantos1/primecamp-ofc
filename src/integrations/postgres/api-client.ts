@@ -106,61 +106,6 @@ class PostgresAPIClient {
     return this;
   }
 
-  async execute(): Promise<{ data: any[] | null; error: any | null }> {
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
-      
-      // Obter token de autenticação do localStorage (Supabase)
-      const session = localStorage.getItem('sb-gogxicjaqpqbhsfzutij-auth-token');
-      let token = null;
-      if (session) {
-        try {
-          const parsed = JSON.parse(session);
-          token = parsed?.access_token || parsed?.accessToken;
-        } catch (e) {
-          // Ignorar erro de parse
-        }
-      }
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
-      const response = await fetch(`${apiUrl}/query/${this.tableName}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(this.options),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { data: null, error };
-      }
-
-      const data = await response.json();
-      return { data: data.rows || [], error: null };
-    } catch (error) {
-      console.error('Erro ao executar query:', error);
-      return { data: null, error };
-    }
-  }
-
-  async single(): Promise<{ data: any | null; error: any | null }> {
-    this.options.limit = 1;
-    const result = await this.execute();
-    if (result.error) {
-      return result;
-    }
-    return {
-      data: result.data && result.data.length > 0 ? result.data[0] : null,
-      error: result.data && result.data.length === 0 ? { code: 'PGRST116', message: 'No rows returned' } : null,
-    };
-  }
-
   private getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -198,11 +143,24 @@ class PostgresAPIClient {
       }
 
       const result = await response.json();
-      return { data: result.data || result, error: null };
+      // A API retorna { rows: [...], count: N }
+      return { data: result.rows || result.data || [], error: null };
     } catch (error) {
-      console.error('Erro ao inserir:', error);
+      console.error('Erro ao executar query:', error);
       return { data: null, error };
     }
+  }
+
+  async single(): Promise<{ data: any | null; error: any | null }> {
+    this.options.limit = 1;
+    const result = await this.execute();
+    if (result.error) {
+      return result;
+    }
+    return {
+      data: result.data && result.data.length > 0 ? result.data[0] : null,
+      error: result.data && result.data.length === 0 ? { code: 'PGRST116', message: 'No rows returned' } : null,
+    };
   }
 
   async update(data: any): Promise<{ data: any | null; error: any | null }> {
