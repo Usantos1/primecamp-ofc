@@ -125,18 +125,10 @@ class PostgresAPIClient {
       'Content-Type': 'application/json',
     };
     
-    // Obter token de autenticação do localStorage (Supabase)
-    const session = localStorage.getItem('sb-gogxicjaqpqbhsfzutij-auth-token');
-    if (session) {
-      try {
-        const parsed = JSON.parse(session);
-        const token = parsed?.access_token || parsed?.accessToken;
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-      } catch (e) {
-        // Ignorar erro de parse
-      }
+    // Obter token de autenticação do localStorage (PostgreSQL API)
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     
     return headers;
