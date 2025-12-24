@@ -228,13 +228,14 @@ export default function Clientes() {
   const handleSaveAniversarioConfig = async () => {
     try {
       // Salvar configuração
+      // TODO: Implementar upsert na API quando necessário
+      // Por enquanto, usar insert simples
       const { error: configError } = await from('kv_store_2c4defad')
         .insert({
           key: 'aniversario_config',
           value: aniversarioConfig,
-        }, {
-          onConflict: 'key',
-        });
+        })
+        .execute();
 
       if (configError) throw configError;
 
