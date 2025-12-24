@@ -73,7 +73,7 @@ export function useCreateProduct() {
         throw error;
       }
 
-      return result;
+      return result?.data || result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
@@ -109,7 +109,7 @@ export function useUpdateProduct() {
         throw error;
       }
 
-      return result;
+      return result?.data || result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['produtos'] });
