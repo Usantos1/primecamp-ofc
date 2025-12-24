@@ -10,20 +10,7 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 
 // ⚠️ ATENÇÃO: Supabase Auth foi DESABILITADO
 // Use authAPI de @/integrations/auth/api-client para autenticação
-
-// Interceptar fetch para bloquear requisições Supabase Auth
-const originalFetch = window.fetch;
-window.fetch = function(...args: Parameters<typeof fetch>) {
-  const url = typeof args[0] === 'string' ? args[0] : args[0].url;
-  
-  // Bloquear TODAS as requisições para Supabase Auth
-  if (url && url.includes('supabase.co/auth/v1/token')) {
-    console.warn('🚫 Requisição Supabase Auth bloqueada:', url);
-    return Promise.reject(new Error('Supabase Auth foi desabilitado. Use authAPI.login()'));
-  }
-  
-  return originalFetch.apply(this, args);
-};
+// A interceptação de fetch está em src/main.tsx para garantir que seja executada primeiro
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
