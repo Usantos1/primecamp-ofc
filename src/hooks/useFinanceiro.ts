@@ -233,7 +233,7 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
 
   const createCashClosing = useMutation({
     mutationFn: async (data: CashClosingFormData) => {
-      const userData = await supabase.auth.getUser();
+      const userData = await authAPI.getUser();
       const { data: result, error } = await (supabase as any)
         .from('cash_closings')
         .insert({
@@ -277,7 +277,7 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
 
   const verifyCashClosing = useMutation({
     mutationFn: async (id: string) => {
-      const userData = await supabase.auth.getUser();
+      const userData = await authAPI.getUser();
       const { data: result, error } = await (supabase as any)
         .from('cash_closings')
         .update({
