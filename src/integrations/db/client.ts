@@ -1,39 +1,37 @@
 /**
  * Cliente unificado de banco de dados
  * 
- * Permite alternar entre Supabase e PostgreSQL sem mudar o código do frontend.
- * Configure VITE_DB_MODE no .env para 'supabase' ou 'postgres'
+ * FORÇA uso de PostgreSQL quando VITE_DB_MODE=postgres
+ * Bloqueia acesso ao Supabase para dados (apenas auth permitido)
  */
 
 import { from as postgresFrom } from '@/integrations/postgres/api-client';
 import { supabase } from '@/integrations/supabase/client';
 
-const DB_MODE = import.meta.env.VITE_DB_MODE || 'supabase';
+const DB_MODE = import.meta.env.VITE_DB_MODE || 'postgres'; // Padrão: PostgreSQL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-// Log para debug (apenas em desenvolvimento)
-if (import.meta.env.DEV) {
-  console.log('[DB Client] Configuração:', {
-    DB_MODE,
-    API_URL,
-    usando: DB_MODE === 'postgres' ? 'PostgreSQL' : 'Supabase'
-  });
-}
+// Log para debug (sempre mostrar em produção também para garantir)
+console.log('[DB Client] Configuração:', {
+  DB_MODE,
+  API_URL,
+  usando: DB_MODE === 'postgres' ? 'PostgreSQL' : 'Supabase',
+  FORÇADO: DB_MODE === 'postgres' ? 'PostgreSQL (Supabase BLOQUEADO)' : 'Supabase'
+});
 
 /**
  * Cliente compatível com a API do Supabase
- * Usa PostgreSQL se VITE_DB_MODE=postgres, caso contrário usa Supabase
+ * FORÇA PostgreSQL se VITE_DB_MODE=postgres
+ * BLOQUEIA Supabase para dados quando em modo PostgreSQL
  */
 export const from = (tableName: string) => {
   if (DB_MODE === 'postgres') {
-    if (import.meta.env.DEV) {
-      console.log(`[DB Client] Usando PostgreSQL para tabela: ${tableName}`);
-    }
+    console.log(`[DB Client] ✅ Usando PostgreSQL para tabela: ${tableName}`);
     return postgresFrom(tableName);
   }
-  if (import.meta.env.DEV) {
-    console.log(`[DB Client] Usando Supabase para tabela: ${tableName}`);
-  }
+  
+  // Modo Supabase (apenas se explicitamente configurado)
+  console.warn(`[DB Client] ⚠️ Usando Supabase para tabela: ${tableName} (modo legado)`);
   return supabase.from(tableName);
 };
 

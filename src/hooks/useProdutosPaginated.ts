@@ -84,28 +84,24 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   } = useQuery({
     queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, grupo],
     queryFn: async () => {
-      // Construir query base - buscar apenas colunas existentes no banco
-      // Schema real: id, codigo, nome, codigo_barras, referencia, marca, modelo, grupo, sub_grupo, qualidade, valor_dinheiro_pix, valor_parcelado_6x, margem_percentual, quantidade
-      // Timestamps: usar criado_em/atualizado_em (não created_at/updated_at)
-      let query = supabase
-        .from('produtos')
-        .select('id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em', { count: 'exact' })
-        .order('nome', { ascending: true }); // Ordenar por nome (descrição) de A a Z
+      // Construir query base usando wrapper PostgreSQL
+      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
+      
+      let query = from('produtos')
+        .select(selectFields)
+        .order('nome', { ascending: true });
 
-      // Removido filtro de situação (coluna pode não existir)
-
-      // Aplicar filtro de grupo/categoria (apenas se grupo não estiver vazio)
+      // Aplicar filtro de grupo/categoria
       if (grupo && grupo.trim() !== '') {
         query = query.eq('grupo', grupo);
       }
 
-      // Aplicar busca (nome, codigo, codigo_barras, referencia) - usar debounced
+      // Aplicar busca (nome, codigo, codigo_barras, referencia)
       if (debouncedSearchTerm.trim()) {
         const search = debouncedSearchTerm.trim();
-        // Tentar buscar por código numérico primeiro
         const codigoNum = parseInt(search);
         if (!isNaN(codigoNum)) {
-          // Busca por código numérico ou texto
+          // Busca por código numérico ou texto usando OR
           query = query.or(
             `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
           );
@@ -118,54 +114,23 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       }
 
       // Aplicar paginação
-      // IMPORTANTE: count deve ser buscado ANTES de aplicar range
-      // Primeiro, buscar o count total (sem range)
-      const countQuery = supabase
-        .from('produtos')
-        .select('*', { count: 'exact', head: true });
+      query = query.range(from, to);
       
-      // Aplicar os mesmos filtros no count
-      if (grupo && grupo.trim() !== '') {
-        countQuery.eq('grupo', grupo);
-      }
-      
-      if (debouncedSearchTerm.trim()) {
-        const search = debouncedSearchTerm.trim();
-        const codigoNum = parseInt(search);
-        if (!isNaN(codigoNum)) {
-          countQuery.or(
-            `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
-          );
-        } else {
-          countQuery.or(
-            `nome.ilike.%${search}%,codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
-          );
-        }
-      }
-      
-      // Buscar count e data em paralelo
-      const [countResult, dataResult] = await Promise.all([
-        countQuery,
-        query.range(from, to)
-      ]);
-      
-      const { count, error: countError } = countResult;
-      const { data, error: dataError } = dataResult;
-      const error = dataError || countError;
+      // Executar query (count vem automaticamente)
+      const { data, error, count } = await query.execute();
 
       if (error) {
         console.error('[useProdutosPaginated] Erro na query:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
+          message: error.message || error,
+          error,
         });
-        throw new Error(`Erro ao buscar produtos: ${error.message}${error.hint ? ` (${error.hint})` : ''}`);
+        throw new Error(`Erro ao buscar produtos: ${error.message || error}`);
       }
 
+      const rows = data || [];
       const result = {
-        produtos: (data || []).map(mapSupabaseToAssistencia),
-        totalCount: count || 0,
+        produtos: rows.map(mapSupabaseToAssistencia),
+        totalCount: count || rows.length,
       };
       
       console.log('[useProdutosPaginated] Resultado:', {
@@ -206,10 +171,11 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       queryClient.prefetchQuery({
         queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, grupo],
         queryFn: async () => {
-          let query = supabase
-            .from('produtos')
-            .select('id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em', { count: 'exact' })
-            .order('nome', { ascending: true }); // Ordenar por nome (descrição) de A a Z
+          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
+          
+          let query = from('produtos')
+            .select(selectFields)
+            .order('nome', { ascending: true });
 
           if (grupo && grupo.trim() !== '') {
             query = query.eq('grupo', grupo);
@@ -229,10 +195,11 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
             }
           }
 
-          const { data, error } = await query.range(nextFrom, nextTo);
+          query = query.range(nextFrom, nextTo);
+          const { data, error } = await query.execute();
           if (error) throw error;
           return {
-            produtos: (data || []).map(mapSupabaseToAssistencia),
+            produtos: ((data || []) as any[]).map(mapSupabaseToAssistencia),
             totalCount: 0,
           };
         },
@@ -294,16 +261,17 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   const { data: gruposData } = useQuery({
     queryKey: ['produtos-grupos'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('produtos')
+      const { data, error } = await from('produtos')
         .select('grupo')
-        .not('grupo', 'is', null);
+        .not('grupo', 'is', null)
+        .execute();
 
       if (error) throw error;
 
       // Extrair grupos únicos
+      const rows = data || [];
       const gruposUnicos = Array.from(
-        new Set((data || []).map((p) => p.grupo).filter(Boolean))
+        new Set(rows.map((p: any) => p.grupo).filter(Boolean))
       ).sort();
 
       return gruposUnicos.map((nome) => ({ id: nome, nome }));
@@ -401,14 +369,11 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
-    const { data: novoProduto, error } = await supabase
-      .from('produtos')
+    const { data: novoProduto, error } = await from('produtos')
       .insert({
         ...produtoSupabase,
         criado_por: user.id,
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
       toast({
@@ -427,17 +392,16 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       description: 'Produto criado com sucesso!',
     });
 
-    return mapSupabaseToAssistencia(novoProduto);
+    return mapSupabaseToAssistencia(novoProduto?.data || novoProduto);
   }, [queryClient]);
 
   // Atualizar produto
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
-    const { error } = await supabase
-      .from('produtos')
-      .update(produtoSupabase)
-      .eq('id', id);
+    const { error } = await from('produtos')
+      .eq('id', id)
+      .update(produtoSupabase);
 
     if (error) {
       toast({
@@ -459,10 +423,9 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
   // Deletar produto (deletar fisicamente)
   const deleteProduto = useCallback(async (id: string) => {
-    const { error } = await supabase
-      .from('produtos')
-      .delete()
-      .eq('id', id);
+    const { error } = await from('produtos')
+      .eq('id', id)
+      .delete();
 
     if (error) {
       toast({

@@ -81,7 +81,45 @@ function buildWhereClause(where, params = []) {
   const conditions = [];
   let paramIndex = params.length + 1;
 
+  // Tratar OR primeiro
+  if (where.__or) {
+    const orConditions = [];
+    const orParts = where.__or.split(',');
+    
+    for (const part of orParts) {
+      const [field, operator, ...valueParts] = part.split('.');
+      const value = valueParts.join('.');
+      
+      if (operator === 'ilike') {
+        const searchValue = value.replace(/%/g, '');
+        orConditions.push(`${field} ILIKE $${paramIndex}`);
+        params.push(`%${searchValue}%`);
+        paramIndex++;
+      } else if (operator === 'eq') {
+        orConditions.push(`${field} = $${paramIndex}`);
+        params.push(value);
+        paramIndex++;
+      }
+    }
+    
+    if (orConditions.length > 0) {
+      conditions.push(`(${orConditions.join(' OR ')})`);
+    }
+  }
+  
+  // Tratar NOT
   for (const [field, value] of Object.entries(where)) {
+    if (field.includes('__not__')) {
+      const [actualField, , operator] = field.split('__not__');
+      if (operator === 'is' && value === null) {
+        conditions.push(`${actualField} IS NOT NULL`);
+      }
+      continue;
+    }
+    
+    // Pular __or que já foi tratado
+    if (field === '__or') continue;
+    
     if (field.endsWith('__neq')) {
       const actualField = field.replace('__neq', '');
       conditions.push(`${actualField} != $${paramIndex}`);

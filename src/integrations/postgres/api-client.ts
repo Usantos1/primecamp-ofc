@@ -90,6 +90,20 @@ class PostgresAPIClient {
     return this;
   }
 
+  or(conditions: string) {
+    // Formato: "campo1.ilike.%valor%,campo2.eq.valor"
+    if (!this.options.where) this.options.where = {};
+    this.options.where['__or'] = conditions;
+    return this;
+  }
+
+  not(field: string, operator: string, value: any) {
+    // Exemplo: .not('grupo', 'is', null)
+    if (!this.options.where) this.options.where = {};
+    this.options.where[`${field}__not__${operator}`] = value;
+    return this;
+  }
+
   order(field: string, options?: { ascending?: boolean }) {
     this.options.orderBy = { field, ascending: options?.ascending !== false };
     return this;
@@ -128,7 +142,7 @@ class PostgresAPIClient {
     return headers;
   }
 
-  async execute(): Promise<{ data: any[] | null; error: any | null }> {
+  async execute(): Promise<{ data: any[] | null; error: any | null; count?: number }> {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
       const response = await fetch(`${apiUrl}/query/${this.tableName}`, {
@@ -144,7 +158,11 @@ class PostgresAPIClient {
 
       const result = await response.json();
       // A API retorna { rows: [...], count: N }
-      return { data: result.rows || result.data || [], error: null };
+      return { 
+        data: result.rows || result.data || [], 
+        error: null,
+        count: result.count 
+      };
     } catch (error) {
       console.error('Erro ao executar query:', error);
       return { data: null, error };
