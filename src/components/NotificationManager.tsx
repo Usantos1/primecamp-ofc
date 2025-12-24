@@ -25,21 +25,20 @@ export function NotificationManager({ children }: NotificationManagerProps) {
     // 🚫 SUPABASE REMOVIDO - Real-time desabilitado temporariamente
     // TODO: Implementar real-time via PostgreSQL quando necessário
     
-    // Check current integration settings (usando PostgreSQL)
-    const checkSettings = async () => {
-      try {
-        const { data: settings } = await from('kv_store_2c4defad')
-          .select('value')
-          .eq('key', 'integration_settings')
-          .single()
-          .execute();
-        console.log('NotificationManager: Current integration settings:', settings?.value);
-      } catch (error) {
-        console.error('NotificationManager: Error fetching settings:', error);
-      }
-    };
-    
-    checkSettings();
+    // 🚫 DESABILITADO - Não buscar settings do Supabase
+    // TODO: Implementar busca de settings via API PostgreSQL se necessário
+    // const checkSettings = async () => {
+    //   try {
+    //     const { data: settings } = await from('kv_store_2c4defad')
+    //       .select('value')
+    //       .eq('key', 'integration_settings')
+    //       .single()
+    //       .execute();
+    //     console.log('NotificationManager: Current integration settings:', settings?.value);
+    //   } catch (error) {
+    //     console.error('NotificationManager: Error fetching settings:', error);
+    //   }
+    // };
     
     // 🚫 DESABILITAR TODAS AS SUBSCRIPTIONS - Supabase removido
     // Real-time não está disponível no PostgreSQL ainda
