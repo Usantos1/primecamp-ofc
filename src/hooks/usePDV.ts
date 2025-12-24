@@ -1044,7 +1044,8 @@ export function useCashRegister() {
       }
 
       // Gerar número da sessão
-      const { data: numeroData } = await // 🚫 Supabase RPC removido - TODO: implementar na API
+      // 🚫 Supabase RPC removido - usar timestamp como número temporário
+      const numeroData = Date.now();
       // supabase.rpc('generate_cash_session_number');
       const numero = numeroData || 1;
 
