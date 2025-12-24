@@ -54,6 +54,7 @@ fbq('track', 'PageView');
     <!-- 🚫🚫🚫 INTERCEPTAR SUPABASE ANTES DE QUALQUER CÓDIGO 🚫🚫🚫 -->
     <script>
       (function() {
+        // Interceptar fetch
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
           const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
@@ -64,6 +65,7 @@ fbq('track', 'PageView');
           return originalFetch.apply(this, args);
         };
         
+        // Interceptar XMLHttpRequest
         const originalXHROpen = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function(method, url, ...rest) {
           const urlString = typeof url === 'string' ? url : url.toString();
@@ -75,7 +77,18 @@ fbq('track', 'PageView');
           return originalXHROpen.apply(this, [method, url, ...rest]);
         };
         
-        console.log('🚫 Interceptação Supabase Auth ATIVADA (inline script)');
+        // Interceptar WebSocket
+        const originalWebSocket = window.WebSocket;
+        window.WebSocket = function(url, protocols) {
+          const urlString = typeof url === 'string' ? url : url.toString();
+          if (urlString.includes('supabase.co')) {
+            console.error('🚫🚫🚫 WEBSOCKET SUPABASE BLOQUEADO (inline):', urlString);
+            throw new Error('Supabase WebSocket foi completamente desabilitado. Use PostgreSQL API.');
+          }
+          return new originalWebSocket(url, protocols);
+        };
+        
+        console.log('🚫 Interceptação Supabase COMPLETA ATIVADA (fetch, XMLHttpRequest, WebSocket)');
       })();
     </script>
   </head>

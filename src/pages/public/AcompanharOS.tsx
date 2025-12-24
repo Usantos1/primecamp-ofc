@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { createSupabaseClientWithHeaders } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { OrdemServico } from '@/types/assistencia';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,15 +13,9 @@ export default function AcompanharOS() {
   const [os, setOS] = useState<OrdemServico | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const supabasePublic = useMemo(() => {
-    if (!id) return null;
-    return createSupabaseClientWithHeaders({
-      'x-os-id': id,
-    });
-  }, [id]);
 
   useEffect(() => {
-    if (!id || !supabasePublic) {
+    if (!id) {
       setError('ID da OS não fornecido');
       setLoading(false);
       return;
@@ -35,12 +29,12 @@ export default function AcompanharOS() {
       setLoading(true);
       setError(null);
 
-      // Buscar OS (restrito pelo header x-os-id via RLS)
-      const { data: osData, error: osError } = await supabasePublic
-        .from('ordens_servico')
+      // Buscar OS via PostgreSQL API
+      const { data: osData, error: osError } = await from('ordens_servico')
         .select('id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, operadora, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes')
-        .execute().eq('id', id)
-        .single();
+        .eq('id', id)
+        .single()
+        .execute();
 
       if (osError) throw osError;
       if (!osData) {

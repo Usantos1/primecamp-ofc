@@ -45,5 +45,19 @@ XMLHttpRequest.prototype.send = function(...args: any[]) {
   return originalXHRSend.apply(this, args);
 };
 
-console.log('🚫 Interceptação Supabase Auth ATIVADA');
+// Interceptar WebSocket ANTES de qualquer coisa
+const originalWebSocket = window.WebSocket;
+(window as any).WebSocket = function(url: string | URL, protocols?: string | string[]) {
+  const urlString = typeof url === 'string' ? url : url.toString();
+  
+  if (urlString.includes('supabase.co')) {
+    console.error('🚫🚫🚫 WEBSOCKET SUPABASE BLOQUEADO:', urlString);
+    console.trace('Stack trace da conexão bloqueada:');
+    throw new Error('Supabase WebSocket foi completamente desabilitado. Use PostgreSQL API.');
+  }
+  
+  return new originalWebSocket(url, protocols);
+};
+
+console.log('🚫 Interceptação Supabase COMPLETA ATIVADA (fetch, XMLHttpRequest, WebSocket)');
 
