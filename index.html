@@ -57,9 +57,9 @@ fbq('track', 'PageView');
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
           const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-          if (url && url.includes('supabase.co/auth/v1/token')) {
-            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE AUTH BLOQUEADA via fetch (inline):', url);
-            return Promise.reject(new Error('Supabase Auth foi desabilitado. Use authAPI.login()'));
+          if (url && url.includes('supabase.co')) {
+            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via fetch (inline):', url);
+            return Promise.reject(new Error('Supabase foi completamente desabilitado. Use PostgreSQL API.'));
           }
           return originalFetch.apply(this, args);
         };
@@ -68,9 +68,9 @@ fbq('track', 'PageView');
         XMLHttpRequest.prototype.open = function(method, url, ...rest) {
           const urlString = typeof url === 'string' ? url : url.toString();
           this._url = urlString;
-          if (urlString.includes('supabase.co/auth/v1/token')) {
-            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE AUTH BLOQUEADA via XMLHttpRequest (inline):', urlString);
-            throw new Error('Supabase Auth foi desabilitado. Use authAPI.login()');
+          if (urlString.includes('supabase.co')) {
+            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via XMLHttpRequest (inline):', urlString);
+            throw new Error('Supabase foi completamente desabilitado. Use PostgreSQL API.');
           }
           return originalXHROpen.apply(this, [method, url, ...rest]);
         };
