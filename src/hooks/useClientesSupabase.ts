@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cliente } from '@/types/assistencia';
 
@@ -11,10 +11,10 @@ export function useClientesSupabase() {
   const { data: clientes = [], isLoading } = useQuery({
     queryKey: ['clientes'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clientes')
+      const { data, error } = await from('clientes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
       
       if (error) throw error;
       return (data || []) as Cliente[];
@@ -47,14 +47,13 @@ export function useClientesSupabase() {
         created_by: user?.id || null,
       };
 
-      const { data: inserted, error } = await supabase
-        .from('clientes')
+      const { data: inserted, error } = await from('clientes')
         .insert(novoCliente)
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;
-      return inserted as Cliente;
+      return (inserted?.data || inserted) as Cliente;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
@@ -64,15 +63,14 @@ export function useClientesSupabase() {
   // Atualizar cliente
   const updateCliente = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Cliente> }): Promise<Cliente> => {
-      const { data: updated, error } = await supabase
-        .from('clientes')
+      const { data: updated, error } = await from('clientes')
         .update(data)
         .eq('id', id)
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;
-      return updated as Cliente;
+      return (updated?.data || updated) as Cliente;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
@@ -82,10 +80,10 @@ export function useClientesSupabase() {
   // Deletar cliente
   const deleteCliente = useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await supabase
-        .from('clientes')
+      const { error } = await from('clientes')
         .update({ situacao: 'inativo' })
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
 
       if (error) throw error;
     },

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
+import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
 import { Marca, Modelo } from '@/types/assistencia';
 import { useToast } from '@/hooks/use-toast';
 import { useCallback } from 'react';
@@ -33,14 +34,14 @@ export function useMarcasSupabase() {
   const { data: marcasData, isLoading, error } = useQuery({
     queryKey: ['marcas-assistencia'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('marcas')
+      const { data, error } = await from('marcas')
         .select('*')
         .eq('situacao', 'ativo')
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .execute();
 
       if (error) throw error;
-      return (data || []).map(mapSupabaseToMarca);
+      return ((data || []) as any[]).map(mapSupabaseToMarca);
     },
   });
 
@@ -51,14 +52,13 @@ export function useMarcasSupabase() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data: novaMarca, error } = await supabase
-      .from('marcas')
+    const { data: novaMarca, error } = await from('marcas')
       .insert({
         nome: nome.trim(),
         situacao: 'ativo',
         created_by: user.id,
       })
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -78,19 +78,18 @@ export function useMarcasSupabase() {
       description: 'Marca criada com sucesso!',
     });
 
-    return mapSupabaseToMarca(novaMarca);
+    return mapSupabaseToMarca(novaMarca?.data || novaMarca);
   }, [queryClient, toast]);
 
   // Atualizar marca
   const updateMarca = useCallback(async (id: string, data: Partial<Marca>): Promise<Marca | null> => {
-    const { error } = await supabase
-      .from('marcas')
+    const { error } = await from('marcas')
       .update({
         nome: data.nome?.trim(),
         situacao: data.situacao,
       })
       .eq('id', id)
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -116,10 +115,10 @@ export function useMarcasSupabase() {
 
   // Deletar marca (soft delete)
   const deleteMarca = useCallback(async (id: string): Promise<boolean> => {
-    const { error } = await supabase
-      .from('marcas')
+    const { error } = await from('marcas')
       .update({ situacao: 'inativo' })
-      .eq('id', id);
+      .eq('id', id)
+      .execute();
 
     if (error) {
       console.error('[deleteMarca] Erro:', error);
@@ -166,14 +165,14 @@ export function useModelosSupabase() {
   const { data: modelosData, isLoading, error } = useQuery({
     queryKey: ['modelos-assistencia'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('modelos')
+      const { data, error } = await from('modelos')
         .select('*')
         .eq('situacao', 'ativo')
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .execute();
 
       if (error) throw error;
-      return (data || []).map(mapSupabaseToModelo);
+      return ((data || []) as any[]).map(mapSupabaseToModelo);
     },
   });
 
@@ -184,15 +183,14 @@ export function useModelosSupabase() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data: novoModelo, error } = await supabase
-      .from('modelos')
+    const { data: novoModelo, error } = await from('modelos')
       .insert({
         marca_id: marcaId,
         nome: nome.trim(),
         situacao: 'ativo',
         created_by: user.id,
       })
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -212,20 +210,19 @@ export function useModelosSupabase() {
       description: 'Modelo criado com sucesso!',
     });
 
-    return mapSupabaseToModelo(novoModelo);
+    return mapSupabaseToModelo(novoModelo?.data || novoModelo);
   }, [queryClient, toast]);
 
   // Atualizar modelo
   const updateModelo = useCallback(async (id: string, data: Partial<Modelo>): Promise<Modelo | null> => {
-    const { error } = await supabase
-      .from('modelos')
+    const { error } = await from('modelos')
       .update({
         marca_id: data.marca_id,
         nome: data.nome?.trim(),
         situacao: data.situacao,
       })
       .eq('id', id)
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -250,10 +247,10 @@ export function useModelosSupabase() {
 
   // Deletar modelo (soft delete)
   const deleteModelo = useCallback(async (id: string): Promise<boolean> => {
-    const { error } = await supabase
-      .from('modelos')
+    const { error } = await from('modelos')
       .update({ situacao: 'inativo' })
-      .eq('id', id);
+      .eq('id', id)
+      .execute();
 
     if (error) {
       console.error('[deleteModelo] Erro:', error);

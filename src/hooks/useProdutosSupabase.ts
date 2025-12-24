@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
+import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { toast } from '@/hooks/use-toast';
 
@@ -184,26 +185,27 @@ export function useProdutosSupabase() {
   const { data: produtosData, isLoading, error } = useQuery({
     queryKey: ['produtos-assistencia'],
     queryFn: async () => {
-      // Buscar todos os produtos sem limite (Supabase tem limite padrão de 1000)
+      // Buscar todos os produtos sem limite
       // Usar paginação para buscar todos
       let allData: any[] = [];
-      let from = 0;
+      let offset = 0;
       const pageSize = 1000;
       let hasMore = true;
 
       while (hasMore) {
-        const { data, error } = await supabase
-          .from('produtos')
+        const { data, error } = await from('produtos')
           .select('*')
           .order('nome', { ascending: true })
-          .range(from, from + pageSize - 1);
+          .range(offset, offset + pageSize - 1)
+          .execute();
 
         if (error) throw error;
         
-        if (data && data.length > 0) {
-          allData = [...allData, ...data];
-          from += pageSize;
-          hasMore = data.length === pageSize;
+        const rows = data || [];
+        if (rows.length > 0) {
+          allData = [...allData, ...rows];
+          offset += pageSize;
+          hasMore = rows.length === pageSize;
         } else {
           hasMore = false;
         }
@@ -225,13 +227,12 @@ export function useProdutosSupabase() {
     // Remover campos que não existem na tabela
     delete produtoSupabase.tipo;
     
-    const { data: novoProduto, error } = await supabase
-      .from('produtos')
+    const { data: novoProduto, error } = await from('produtos')
       .insert({
         ...produtoSupabase,
         criado_por: user.id,
       })
-      .select()
+      .select('*')
       .single();
 
     if (error) {
@@ -250,7 +251,7 @@ export function useProdutosSupabase() {
       description: 'Produto criado com sucesso!',
     });
 
-    return mapSupabaseToAssistencia(novoProduto);
+    return mapSupabaseToAssistencia(novoProduto?.data || novoProduto);
   }, [queryClient]);
 
   // Atualizar produto
@@ -260,10 +261,10 @@ export function useProdutosSupabase() {
     // Remover campos que não existem na tabela
     delete produtoSupabase.tipo;
     
-    const { error } = await supabase
-      .from('produtos')
+    const { error } = await from('produtos')
       .update(produtoSupabase)
-      .eq('id', id);
+      .eq('id', id)
+      .execute();
 
     if (error) {
       console.error('[updateProduto] Erro:', error);
@@ -286,10 +287,10 @@ export function useProdutosSupabase() {
   // Deletar produto (soft delete - marcar como inativo)
   const deleteProduto = useCallback(async (id: string) => {
     // Marcar como INATIVO usando o campo situacao
-    const { error } = await supabase
-      .from('produtos')
+    const { error } = await from('produtos')
       .update({ situacao: 'INATIVO' })
-      .eq('id', id);
+      .eq('id', id)
+      .execute();
 
     if (error) {
       toast({
