@@ -45,11 +45,11 @@ export default function Integration() {
 
   const loadSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('kv_store_2c4defad')
+      const { data, error } = await from('kv_store_2c4defad')
         .select('*')
-        .execute().eq('key', 'integration_settings')
-        .single();
+        .eq('key', 'integration_settings')
+        .single()
+        .execute();
 
       if (data && !error) {
         setSettings(data.value as any);
@@ -67,12 +67,31 @@ export default function Integration() {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('kv_store_2c4defad')
-        .upsert({
-          key: 'integration_settings',
-          value: settings as any
-        });
+      // Verificar se já existe
+      const { data: existing } = await from('kv_store_2c4defad')
+        .select('id')
+        .eq('key', 'integration_settings')
+        .single()
+        .execute();
+
+      let error;
+      if (existing?.data) {
+        // Atualizar existente
+        const { error: updateError } = await from('kv_store_2c4defad')
+          .update({ value: settings as any })
+          .eq('key', 'integration_settings')
+          .execute();
+        error = updateError;
+      } else {
+        // Inserir novo
+        const { error: insertError } = await from('kv_store_2c4defad')
+          .insert({
+            key: 'integration_settings',
+            value: settings as any
+          })
+          .execute();
+        error = insertError;
+      }
 
       if (error) throw error;
 

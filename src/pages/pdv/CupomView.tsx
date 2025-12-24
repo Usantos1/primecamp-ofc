@@ -82,41 +82,41 @@ export default function CupomView() {
     try {
       setLoading(true);
       
-      // Carregar venda diretamente do Supabase (público)
-      const { data: saleData, error: saleError } = await supabase
-        .from('sales')
+      // Carregar venda
+      const { data: saleData, error: saleError } = await from('sales')
         .select('*')
-        .execute().eq('id', id)
-        .single();
+        .eq('id', id)
+        .single()
+        .execute();
       
       if (saleError) throw saleError;
       setSale(saleData);
       
       // Carregar items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('sale_items')
+      const { data: itemsData, error: itemsError } = await from('sale_items')
         .select('*')
-        .execute().eq('sale_id', id);
+        .eq('sale_id', id)
+        .execute();
       
       if (itemsError) throw itemsError;
       setItems(itemsData || []);
       
       // Carregar payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
+      const { data: paymentsData, error: paymentsError } = await from('payments')
         .select('*')
-        .execute().eq('sale_id', id);
+        .eq('sale_id', id)
+        .execute();
       
       if (paymentsError) throw paymentsError;
       setPayments(paymentsData || []);
       
       // Carregar configuração do cupom (pode falhar se não houver, mas não é crítico)
       try {
-        const { data: configData } = await supabase
-          .from('kv_store_2c4defad')
+        const { data: configData } = await from('kv_store_2c4defad')
           .select('value')
-          .execute().eq('key', 'cupom_config')
-          .single();
+          .eq('key', 'cupom_config')
+          .single()
+          .execute();
         
         if (configData) {
           setCupomConfig(configData.value);

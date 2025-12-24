@@ -59,11 +59,11 @@ export default function ConfiguracaoCupom() {
   const loadConfig = async () => {
     try {
       // Tentar carregar de kv_store_2c4defad primeiro (padrão)
-      const { data: kvData, error: kvError } = await supabase
-        .from('kv_store_2c4defad')
+      const { data: kvData, error: kvError } = await from('kv_store_2c4defad')
         .select('value')
-        .execute().eq('key', 'cupom_config')
-        .single();
+        .eq('key', 'cupom_config')
+        .single()
+        .execute();
 
       if (!kvError && kvData) {
         setConfig({ ...config, ...kvData.value });
@@ -71,11 +71,11 @@ export default function ConfiguracaoCupom() {
       }
 
       // Fallback para cupom_config (tabela antiga)
-      const { data, error } = await supabase
-        .from('cupom_config')
+      const { data, error } = await from('cupom_config')
         .select('*')
-        .execute().limit(1)
-        .single();
+        .limit(1)
+        .single()
+        .execute();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -156,15 +156,31 @@ export default function ConfiguracaoCupom() {
 
     setLoading(true);
     try {
-      // Salvar em kv_store_2c4defad (padrão)
-      const { error: kvError } = await supabase
-        .from('kv_store_2c4defad')
-        .upsert({
-          key: 'cupom_config',
-          value: config,
-        }, {
-          onConflict: 'key',
-        });
+      // Verificar se já existe
+      const { data: existing } = await from('kv_store_2c4defad')
+        .select('id')
+        .eq('key', 'cupom_config')
+        .single()
+        .execute();
+
+      let kvError;
+      if (existing?.data) {
+        // Atualizar existente
+        const { error: updateError } = await from('kv_store_2c4defad')
+          .update({ value: config })
+          .eq('key', 'cupom_config')
+          .execute();
+        kvError = updateError;
+      } else {
+        // Inserir novo
+        const { error: insertError } = await from('kv_store_2c4defad')
+          .insert({
+            key: 'cupom_config',
+            value: config,
+          })
+          .execute();
+        kvError = insertError;
+      }
 
       if (kvError) throw kvError;
 
@@ -176,11 +192,22 @@ export default function ConfiguracaoCupom() {
           created_by: user?.id || null,
         };
 
-        await supabase
-          .from('cupom_config')
-          .upsert(configToSave, {
-            onConflict: 'id',
-          });
+        const { data: existingCupom } = await from('cupom_config')
+          .select('id')
+          .limit(1)
+          .single()
+          .execute();
+
+        if (existingCupom?.data) {
+          await from('cupom_config')
+            .update(configToSave)
+            .eq('id', existingCupom.data.id)
+            .execute();
+        } else {
+          await from('cupom_config')
+            .insert(configToSave)
+            .execute();
+        }
       } catch (oldTableError) {
         // Ignorar erro se a tabela antiga não existir
         console.warn('Tabela cupom_config não existe, usando apenas kv_store:', oldTableError);
