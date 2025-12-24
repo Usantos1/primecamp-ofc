@@ -1,0 +1,153 @@
+/**
+ * Cliente de autenticação para API PostgreSQL
+ * Substitui o Supabase Auth
+ */
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface SignupData {
+  email: string;
+  password: string;
+  display_name?: string;
+  phone?: string;
+  department?: string;
+  role?: 'admin' | 'member';
+}
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    email_verified: boolean;
+    created_at: string;
+  };
+  profile: any;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  email_verified: boolean;
+  created_at: string;
+}
+
+class AuthAPIClient {
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Obter token do localStorage
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+  }
+
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao fazer login');
+    }
+
+    const data = await response.json();
+    
+    // Salvar token no localStorage
+    if (data.token) {
+      localStorage.setItem('auth_token', data.token);
+    }
+
+    return data;
+  }
+
+  async signup(data: SignupData): Promise<AuthResponse> {
+    const response = await fetch(`${API_URL}/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao criar conta');
+    }
+
+    const result = await response.json();
+    
+    // Salvar token no localStorage
+    if (result.token) {
+      localStorage.setItem('auth_token', result.token);
+    }
+
+    return result;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+      });
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      // Sempre remover token do localStorage
+      localStorage.removeItem('auth_token');
+    }
+  }
+
+  async getCurrentUser(): Promise<{ user: User; profile: any } | null> {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        // Token inválido ou expirado
+        localStorage.removeItem('auth_token');
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Erro ao buscar usuário atual:', error);
+      localStorage.removeItem('auth_token');
+      return null;
+    }
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('auth_token');
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getToken();
+  }
+}
+
+export const authAPI = new AuthAPIClient();
+

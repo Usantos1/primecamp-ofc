@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,6 +17,7 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here_change_in_production';
 
 // Configuração do PostgreSQL
 const pool = new Pool({
@@ -50,16 +53,56 @@ app.use((req, res, next) => {
   next();
 });
 
+// Testar conexão com PostgreSQL
+pool.on('error', (err) => {
+  console.error('Erro inesperado no pool de conexões PostgreSQL', err);
+});
+
+// Middleware de autenticação JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token de autenticação necessário' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido ou expirado' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100, // máximo de 100 requisições por IP
 });
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // máximo de 10 tentativas de login por IP
+});
+
+// Aplicar rate limiting
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
 app.use('/api/', limiter);
 
-// Testar conexão com PostgreSQL
-pool.on('error', (err) => {
-  console.error('Erro inesperado no pool de conexões PostgreSQL', err);
+// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*)
+app.use((req, res, next) => {
+  // Pular autenticação para rotas de auth
+  if (req.path.startsWith('/api/auth/')) {
+    return next();
+  }
+  // Aplicar autenticação para outras rotas /api/*
+  if (req.path.startsWith('/api/')) {
+    return authenticateToken(req, res, next);
+  }
+  next();
 });
 
 // Health check
@@ -71,6 +114,191 @@ app.get('/health', async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
+
+// ============================================
+// ENDPOINTS DE AUTENTICAÇÃO
+// ============================================
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
+    // Buscar usuário no banco
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Email ou senha incorretos' });
+    }
+
+    const user = result.rows[0];
+
+    // Verificar senha
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Email ou senha incorretos' });
+    }
+
+    // Buscar profile do usuário
+    const profileResult = await pool.query(
+      'SELECT * FROM profiles WHERE user_id = $1',
+      [user.id]
+    );
+
+    const profile = profileResult.rows[0] || null;
+
+    // Gerar token JWT
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email,
+        role: profile?.role || 'member'
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        email_verified: user.email_verified,
+        created_at: user.created_at
+      },
+      profile
+    });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Signup (Cadastro)
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password, display_name, phone, department, role } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
+    }
+
+    // Verificar se email já existe
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Este email já está cadastrado' });
+    }
+
+    // Hash da senha
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Criar usuário
+    const userResult = await pool.query(
+      `INSERT INTO users (email, password_hash, email_verified)
+       VALUES ($1, $2, true)
+       RETURNING *`,
+      [email.toLowerCase(), passwordHash]
+    );
+
+    const newUser = userResult.rows[0];
+
+    // Criar profile
+    let profile = null;
+    if (display_name || phone || department || role) {
+      const profileResult = await pool.query(
+        `INSERT INTO profiles (user_id, display_name, phone, department, role, approved, approved_at)
+         VALUES ($1, $2, $3, $4, $5, true, NOW())
+         RETURNING *`,
+        [newUser.id, display_name || email, phone || null, department || null, role || 'member']
+      );
+      profile = profileResult.rows[0];
+    }
+
+    // Gerar token JWT
+    const token = jwt.sign(
+      { 
+        id: newUser.id, 
+        email: newUser.email,
+        role: profile?.role || 'member'
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        email_verified: newUser.email_verified,
+        created_at: newUser.created_at
+      },
+      profile
+    });
+  } catch (error) {
+    console.error('Erro no cadastro:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Obter usuário atual
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Buscar usuário
+    const userResult = await pool.query(
+      'SELECT id, email, email_verified, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Buscar profile
+    const profileResult = await pool.query(
+      'SELECT * FROM profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    const profile = profileResult.rows[0] || null;
+
+    res.json({
+      user,
+      profile
+    });
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Logout (apenas remove token do cliente, não precisa fazer nada no servidor)
+app.post('/api/auth/logout', authenticateToken, (req, res) => {
+  res.json({ message: 'Logout realizado com sucesso' });
+});
+
+// ============================================
+// FIM DOS ENDPOINTS DE AUTENTICAÇÃO
+// ============================================
 
 // Helper para construir WHERE clause
 function buildWhereClause(where, params = []) {

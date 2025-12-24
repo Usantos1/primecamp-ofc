@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { authAPI } from "@/integrations/auth/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,25 +48,19 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        toast({
-          title: "Erro no login",
-          description: error.message === "Invalid login credentials" ? "Email ou senha incorretos" : error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Login realizado",
-          description: "Bem-vindo de volta!",
-        });
-        navigate("/");
-      }
-    } catch {
+      await authAPI.login({ email, password });
+      
       toast({
-        title: "Erro",
-        description: "Erro inesperado ao fazer login",
+        title: "Login realizado",
+        description: "Bem-vindo de volta!",
+      });
+      
+      // Recarregar página para atualizar AuthContext
+      window.location.href = "/";
+    } catch (error: any) {
+      toast({
+        title: "Erro no login",
+        description: error.message || "Email ou senha incorretos",
         variant: "destructive",
       });
     } finally {
@@ -105,45 +99,33 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/`;
-
-      const { error } = await supabase.auth.signUp({
+      await authAPI.signup({
         email,
         password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            display_name: displayName || email,
-            phone: phone,
-          },
-        },
+        display_name: displayName || email,
+        phone: phone || undefined,
       });
 
-      if (error) {
-        toast({
-          title: "Erro no cadastro",
-          description: error.message.includes("already registered")
-            ? "Este email já está cadastrado. Tente fazer login."
-            : error.message,
-          variant: "destructive",
-        });
-      } else {
-        setTheme(selectedTheme);
-        toast({
-          title: "Cadastro realizado",
-          description: "Conta criada com sucesso! Você já pode fazer login.",
-        });
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
-        setDisplayName("");
-        setPhone("");
-        setSelectedTheme("light");
-      }
-    } catch {
+      setTheme(selectedTheme);
       toast({
-        title: "Erro",
-        description: "Erro inesperado ao criar conta",
+        title: "Cadastro realizado",
+        description: "Conta criada com sucesso! Você já pode fazer login.",
+      });
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      setDisplayName("");
+      setPhone("");
+      setSelectedTheme("light");
+      
+      // Recarregar página para atualizar AuthContext
+      window.location.href = "/";
+    } catch (error: any) {
+      toast({
+        title: "Erro no cadastro",
+        description: error.message?.includes("já está cadastrado") || error.message?.includes("already registered")
+          ? "Este email já está cadastrado. Tente fazer login."
+          : error.message || "Erro inesperado ao criar conta",
         variant: "destructive",
       });
     } finally {

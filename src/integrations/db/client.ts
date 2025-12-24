@@ -36,15 +36,37 @@ export const from = (tableName: string) => {
 };
 
 /**
- * Exporta o cliente de autenticação do Supabase
- * (Autenticação ainda usa Supabase por enquanto)
- */
-export const auth = supabase.auth;
-
-/**
- * Exporta o cliente completo do Supabase (para casos especiais)
+ * Exporta o cliente completo do Supabase (apenas para casos especiais de migração)
+ * ⚠️ NÃO USE MAIS supabase.auth - Use authAPI de @/integrations/auth/api-client
  */
 export { supabase };
+
+/**
+ * ⚠️ DEPRECATED: Não use mais supabase.auth
+ * Use authAPI de @/integrations/auth/api-client ao invés
+ */
+export const auth = {
+  signInWithPassword: () => {
+    console.warn('⚠️ DEPRECATED: Use authAPI.login() ao invés de supabase.auth.signInWithPassword()');
+    throw new Error('Supabase Auth foi desabilitado. Use authAPI.login()');
+  },
+  signUp: () => {
+    console.warn('⚠️ DEPRECATED: Use authAPI.signup() ao invés de supabase.auth.signUp()');
+    throw new Error('Supabase Auth foi desabilitado. Use authAPI.signup()');
+  },
+  signOut: () => {
+    console.warn('⚠️ DEPRECATED: Use authAPI.logout() ao invés de supabase.auth.signOut()');
+    throw new Error('Supabase Auth foi desabilitado. Use authAPI.logout()');
+  },
+  onAuthStateChange: () => {
+    console.warn('⚠️ DEPRECATED: AuthContext já gerencia estado de autenticação');
+    return { data: { subscription: { unsubscribe: () => {} } } };
+  },
+  getSession: () => {
+    console.warn('⚠️ DEPRECATED: Use authAPI.getCurrentUser() ao invés de supabase.auth.getSession()');
+    return Promise.resolve({ data: { session: null } });
+  },
+};
 
 /**
  * Verifica qual modo está sendo usado

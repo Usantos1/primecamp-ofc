@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { authAPI, User } from '@/integrations/auth/api-client';
+import { from } from '@/integrations/db/client';
 
 interface Profile {
   id: string;
@@ -19,7 +19,7 @@ interface Profile {
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
+  session: { token: string } | null;
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -40,15 +40,14 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<{ token: string } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
     console.log('Fetching profile for user:', userId);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
+      const { data, error } = await from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
@@ -68,46 +67,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Fetch profile when user signs in
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
+  const checkAuth = async () => {
+    try {
+      const authData = await authAPI.getCurrentUser();
+      
+      if (authData) {
+        setUser(authData.user);
+        const token = authAPI.getToken();
+        if (token) {
+          setSession({ token });
         }
         
-        setLoading(false);
+        if (authData.profile) {
+          setProfile(authData.profile as Profile);
+        } else {
+          // Se não tem profile, tentar buscar
+          await fetchProfile(authData.user.id);
+        }
+      } else {
+        setUser(null);
+        setSession(null);
+        setProfile(null);
       }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      
+    } catch (error) {
+      console.error('Error checking auth:', error);
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    } finally {
       setLoading(false);
-    });
+    }
+  };
 
-    return () => subscription.unsubscribe();
+  useEffect(() => {
+    // Verificar autenticação ao montar o componente
+    checkAuth();
+
+    // Listener para mudanças no localStorage (logout de outras abas)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Verificar autenticação periodicamente (a cada 5 minutos)
+    const interval = setInterval(() => {
+      if (authAPI.isAuthenticated()) {
+        checkAuth();
+      }
+    }, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    }
   };
 
   // Função para recarregar permissões (dispara evento que será ouvido pelo usePermissions)

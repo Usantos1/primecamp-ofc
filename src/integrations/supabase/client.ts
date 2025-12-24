@@ -8,11 +8,24 @@ export const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ey
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// ⚠️ ATENÇÃO: Supabase Auth foi DESABILITADO
+// Use authAPI de @/integrations/auth/api-client para autenticação
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
+    storage: {
+      getItem: () => null, // Sempre retorna null para evitar leitura de tokens
+      setItem: () => {}, // Ignora tentativas de salvar tokens
+      removeItem: () => {}, // Ignora tentativas de remover tokens
+    },
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    flowType: 'pkce', // Usar PKCE mas sem persistência
+  },
+  global: {
+    headers: {
+      // Não enviar tokens de auth
+    }
   }
 });
 
