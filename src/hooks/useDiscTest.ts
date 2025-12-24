@@ -534,13 +534,13 @@ export const useDiscTest = () => {
       }
       
       // Buscar registro existente ou criar um novo
-      let { data: existingResponse, error: fetchError } = await supabase
-        .from('disc_responses')
+      let { data: existingResponse, error: fetchError } = await from('disc_responses')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .eq('test_id', finalTestId)
         .eq('is_completed', false)
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       if (fetchError) {
         console.error(`[DISC] Erro ao buscar resposta existente:`, fetchError);
@@ -550,8 +550,7 @@ export const useDiscTest = () => {
       // Se não encontrou registro existente, criar um novo
       if (!existingResponse) {
         console.log('[DISC] Registro não encontrado, criando novo...');
-        const { data: newResponse, error: createError } = await supabase
-          .from('disc_responses')
+        const { data: newResponse, error: createError } = await from('disc_responses')
           .insert({
             user_id: user.id,
             test_id: finalTestId,
@@ -565,7 +564,8 @@ export const useDiscTest = () => {
             is_completed: true
           })
           .select()
-          .maybeSingle();
+          .maybeSingle()
+          .execute();
           
         if (createError) {
           console.error(`[DISC] Erro ao criar novo registro:`, createError);

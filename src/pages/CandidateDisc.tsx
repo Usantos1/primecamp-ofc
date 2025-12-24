@@ -48,17 +48,15 @@ const CandidateDisc = () => {
       setLoadingCandidateData(true);
       console.log('🔍 Buscando dados da candidatura:', protocol);
       
-      // Chamar função edge para buscar dados de forma segura
-      const SUPABASE_URL = "https://gogxicjaqpqbhsfzutij.supabase.co";
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvZ3hpY2phcXBxYmhzZnp1dGlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNzE2OTksImV4cCI6MjA2ODk0NzY5OX0.2VcH8dJ3qHyuoVihv_484KJgPvnJD1aJvkCDLbK_gCY";
+      // 🚫 SUPABASE REMOVIDO - Usar API PostgreSQL
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
       
       const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/get-candidate-data?protocol=${encodeURIComponent(protocol)}`,
+        `${API_URL}/functions/get-candidate-data?protocol=${encodeURIComponent(protocol)}`,
         {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           }
         }
       );
