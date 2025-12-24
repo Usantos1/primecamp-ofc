@@ -25,11 +25,11 @@ export const useUserLogs = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('user_activity_logs')
+      const { data, error } = await from('user_activity_logs')
         .select('*')
-        .execute().order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .limit(100)
+        .execute();
 
       if (error) {
         console.error('Error fetching logs:', error);
@@ -63,29 +63,23 @@ export const useUserLogs = () => {
       const ipAddress = await getCurrentIP();
       const userAgent = navigator.userAgent;
       
-      await // 🚫 Supabase RPC removido - TODO: implementar na API
-      // supabase.rpc('log_user_activity', {
-        p_user_id: user.id,
-        p_activity_type: activityType,
-        p_description: description,
-        p_entity_type: entityType,
-        p_entity_id: entityId
-      });
+      // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
+      // await supabase.rpc('log_user_activity', { ... });
 
-      // Also log to a more detailed table if we need additional data
-      if (additionalData) {
-        await supabase
-          .from('user_activity_logs')
-          .insert({
-            user_id: user.id,
-            activity_type: activityType,
-            description: `${description} - Dados: ${JSON.stringify(additionalData)}`,
-            entity_type: entityType,
-            entity_id: entityId,
-            ip_address: ipAddress,
-            user_agent: userAgent
-          });
-      }
+      // Log to user_activity_logs table
+      await from('user_activity_logs')
+        .insert({
+          user_id: user.id,
+          activity_type: activityType,
+          description: additionalData 
+            ? `${description} - Dados: ${JSON.stringify(additionalData)}`
+            : description,
+          entity_type: entityType,
+          entity_id: entityId,
+          ip_address: ipAddress,
+          user_agent: userAgent
+        })
+        .execute();
     } catch (error) {
       console.error('Error logging activity:', error);
     }
