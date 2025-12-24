@@ -78,58 +78,25 @@ export const TimeClockWidget = () => {
     fetchAllTodayRecords();
   }, [user]);
 
-  // Real-time subscription para atualizações
+  // 🚫 Real-time subscription DESABILITADA - Supabase removido
+  // TODO: Implementar polling ou WebSockets quando necessário
   useEffect(() => {
     if (!user) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    // 🚫 SUPABASE REMOVIDO - Real-time desabilitado
+    // Por enquanto, usar polling manual se necessário
+    // const today = new Date().toISOString().split('T')[0];
     
-    const channel = supabase
-      .channel('time-clock-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'time_clock',
-          filter: `date=eq.${today}`
-        },
-        (payload) => {
-          console.log('Real-time update:', payload);
-          refetch();
-          
-          // Atualizar lista de todos os registros
-          const fetchAllTodayRecords = async () => {
-            const { data, error } = await supabase
-              .from('time_clock')
-              .select('*')
-              .execute().eq('date', today)
-              .order('created_at', { ascending: false });
-
-            if (!error && data) {
-              setAllRecords(data);
-            }
-          };
-
-          fetchAllTodayRecords();
-
-          // Mostrar notificação para mudanças de outros usuários
-          if (payload.new && (payload.new as any).user_id !== user?.id) {
-            const userName = users.find(u => u.id === (payload.new as any).user_id)?.display_name || 'Usuário';
-            const action = payload.eventType === 'INSERT' ? 'registrou' : 'atualizou';
-            
-            toast({
-              title: "Atualização em tempo real",
-              description: `${userName} ${action} o ponto eletrônico`,
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Exemplo de polling (descomentar se necessário):
+    // const interval = setInterval(() => {
+    //   refetch();
+    // }, 30000); // Atualizar a cada 30 segundos
+    
+    // return () => {
+    //   clearInterval(interval);
+    // };
+    
+    console.log('TimeClockWidget: Real-time desabilitado (Supabase removido)');
   }, [user, users, refetch]);
 
   if (!profile) {
