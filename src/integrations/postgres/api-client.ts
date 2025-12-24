@@ -188,6 +188,29 @@ class PostgresAPIClient {
     }
   }
 
+  async insert(data: any): Promise<{ data: any | null; error: any | null }> {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const response = await fetch(`${apiUrl}/insert/${this.tableName}`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data), // Enviar dados diretamente, não dentro de { data }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { data: null, error };
+      }
+
+      const result = await response.json();
+      // O servidor retorna { data: result.rows[0], rows: result.rows }
+      return { data: result.data || result.rows?.[0] || result, error: null };
+    } catch (error) {
+      console.error('Erro ao inserir:', error);
+      return { data: null, error };
+    }
+  }
+
   async delete(): Promise<{ data: any | null; error: any | null }> {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
