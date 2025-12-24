@@ -66,12 +66,12 @@ export default function Clientes() {
     queryKey: ['cliente_os', editingCliente?.id],
     queryFn: async () => {
       if (!editingCliente?.id) return [];
-      const { data, error } = await supabase
-        .from('ordens_servico')
+      const { data, error } = await from('ordens_servico')
         .select('*')
-        .execute().eq('cliente_id', editingCliente.id)
+        .eq('cliente_id', editingCliente.id)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(50)
+        .execute();
       if (error) throw error;
       return data || [];
     },
@@ -83,10 +83,10 @@ export default function Clientes() {
     queryKey: ['cliente_vendas', editingCliente?.id],
     queryFn: async () => {
       if (!editingCliente?.id) return [];
-      const { data, error } = await supabase
-        .from('sales')
+      const { data, error } = await from('sales')
         .select('*')
-        .execute().eq('cliente_id', editingCliente.id)
+        .eq('cliente_id', editingCliente.id)
+        .execute()
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -205,11 +205,11 @@ export default function Clientes() {
   // Carregar configuração de aniversário
   const loadAniversarioConfig = async () => {
     try {
-      const { data, error } = await supabase
-        .from('kv_store_2c4defad')
+      const { data, error } = await from('kv_store_2c4defad')
         .select('value')
-        .execute().eq('key', 'aniversario_config')
-        .single();
+        .eq('key', 'aniversario_config')
+        .single()
+        .execute();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Erro ao carregar configuração:', error);
@@ -228,9 +228,8 @@ export default function Clientes() {
   const handleSaveAniversarioConfig = async () => {
     try {
       // Salvar configuração
-      const { error: configError } = await supabase
-        .from('kv_store_2c4defad')
-        .upsert({
+      const { error: configError } = await from('kv_store_2c4defad')
+        .insert({
           key: 'aniversario_config',
           value: aniversarioConfig,
         }, {
