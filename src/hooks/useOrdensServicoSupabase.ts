@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { OrdemServico, StatusOS } from '@/types/assistencia';
+import { useCallback } from 'react';
 
 export function useOrdensServicoSupabase() {
   const { user } = useAuth();
@@ -11,10 +12,10 @@ export function useOrdensServicoSupabase() {
   const { data: ordens = [], isLoading } = useQuery({
     queryKey: ['ordens_servico'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ordens_servico')
+      const { data, error } = await from('ordens_servico')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
       
       if (error) throw error;
       return (data || []) as OrdemServico[];
@@ -33,8 +34,7 @@ export function useOrdensServicoSupabase() {
         numero = data.numero;
       } else {
         // Buscar próximo número apenas se não foi fornecido
-        const { data: lastOS } = await supabase
-          .from('ordens_servico')
+        const { data: lastOS } = await from('ordens_servico')
           .select('numero')
           .order('numero', { ascending: false })
           .limit(1)
@@ -93,14 +93,11 @@ export function useOrdensServicoSupabase() {
         created_by: user?.id || null,
       };
 
-      const { data: inserted, error } = await supabase
-        .from('ordens_servico')
-        .insert(novaOS)
-        .select()
-        .single();
+      const { data: inserted, error } = await from('ordens_servico')
+        .insert(novaOS);
 
       if (error) throw error;
-      return inserted as OrdemServico;
+      return (inserted?.data || inserted) as OrdemServico;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
@@ -110,15 +107,12 @@ export function useOrdensServicoSupabase() {
   // Atualizar OS
   const updateOS = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<OrdemServico> }): Promise<OrdemServico> => {
-      const { data: updated, error } = await supabase
-        .from('ordens_servico')
-        .update(data)
+      const { data: updated, error } = await from('ordens_servico')
         .eq('id', id)
-        .select()
-        .single();
+        .update(data);
 
       if (error) throw error;
-      return updated as OrdemServico;
+      return (updated?.data?.[0] || updated?.data || updated) as OrdemServico;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
@@ -128,10 +122,9 @@ export function useOrdensServicoSupabase() {
   // Deletar OS
   const deleteOS = useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await supabase
-        .from('ordens_servico')
-        .delete()
-        .eq('id', id);
+      const { error } = await from('ordens_servico')
+        .eq('id', id)
+        .delete();
 
       if (error) throw error;
     },
@@ -149,9 +142,8 @@ export function useOrdensServicoSupabase() {
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: StatusOS | string }): Promise<void> => {
       // Buscar dados da OS antes de atualizar
-      const { data: osData } = await supabase
-        .from('ordens_servico')
-        .select('id, numero, status, cliente_id, cliente_nome, telefone_contato, valor_total')
+      const { data: osData } = await from('ordens_servico')
+        .select(['id', 'numero', 'status', 'cliente_id', 'cliente_nome', 'telefone_contato', 'valor_total'])
         .eq('id', id)
         .single();
 
@@ -168,35 +160,34 @@ export function useOrdensServicoSupabase() {
         updates.data_conclusao = new Date().toISOString().split('T')[0];
       }
       
-      const { error } = await supabase
-        .from('ordens_servico')
-        .update(updates)
-        .eq('id', id);
+      const { error } = await from('ordens_servico')
+        .eq('id', id)
+        .update(updates);
 
       if (error) throw error;
 
       // Enviar status para API externa (não bloquear se falhar)
       if (osData) {
         try {
-          const { data: clienteData } = await supabase
-            .from('clientes')
-            .select('nome, telefone, whatsapp')
+          const { data: clienteData } = await from('clientes')
+            .select(['nome', 'telefone', 'whatsapp'])
             .eq('id', osData.cliente_id)
             .single();
 
-          await supabase.functions.invoke('ativa-crm-api', {
-            body: {
-              action: 'update_os_status',
-              data: {
-                os_id: id,
-                os_numero: osData.numero || 0,
-                status: status,
-                cliente_nome: osData.cliente_nome || clienteData?.nome || '',
-                cliente_telefone: osData.telefone_contato || clienteData?.telefone || clienteData?.whatsapp || '',
-                valor_total: osData.valor_total || 0
-              }
-            }
-          });
+          // TODO: Migrar chamada de função Supabase para API própria
+          // await supabase.functions.invoke('ativa-crm-api', {
+          //   body: {
+          //     action: 'update_os_status',
+          //     data: {
+          //       os_id: id,
+          //       os_numero: osData.numero || 0,
+          //       status: status,
+          //       cliente_nome: osData.cliente_nome || clienteData?.nome || '',
+          //       cliente_telefone: osData.telefone_contato || clienteData?.telefone || clienteData?.whatsapp || '',
+          //       valor_total: osData.valor_total || 0
+          //     }
+          //   }
+          // });
         } catch (apiError) {
           console.error('Erro ao enviar status de OS para API externa:', apiError);
           // Não lançar erro para não bloquear a atualização do status
@@ -249,6 +240,4 @@ export function useOrdensServicoSupabase() {
     getEstatisticas,
   };
 }
-
-import { useCallback } from 'react';
 
