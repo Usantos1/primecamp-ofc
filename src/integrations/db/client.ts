@@ -9,6 +9,16 @@ import { from as postgresFrom } from '@/integrations/postgres/api-client';
 import { supabase } from '@/integrations/supabase/client';
 
 const DB_MODE = import.meta.env.VITE_DB_MODE || 'supabase';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+// Log para debug (apenas em desenvolvimento)
+if (import.meta.env.DEV) {
+  console.log('[DB Client] Configuração:', {
+    DB_MODE,
+    API_URL,
+    usando: DB_MODE === 'postgres' ? 'PostgreSQL' : 'Supabase'
+  });
+}
 
 /**
  * Cliente compatível com a API do Supabase
@@ -16,7 +26,13 @@ const DB_MODE = import.meta.env.VITE_DB_MODE || 'supabase';
  */
 export const from = (tableName: string) => {
   if (DB_MODE === 'postgres') {
+    if (import.meta.env.DEV) {
+      console.log(`[DB Client] Usando PostgreSQL para tabela: ${tableName}`);
+    }
     return postgresFrom(tableName);
+  }
+  if (import.meta.env.DEV) {
+    console.log(`[DB Client] Usando Supabase para tabela: ${tableName}`);
   }
   return supabase.from(tableName);
 };
