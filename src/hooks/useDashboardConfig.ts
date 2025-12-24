@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface DashboardWidgetConfig {
@@ -46,11 +46,11 @@ export function useDashboardConfig() {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
-        .from('kv_store_2c4defad')
+      const { data, error } = await from('kv_store_2c4defad')
         .select('value')
         .eq('key', `dashboard_config_${user.id}`)
-        .single();
+        .single()
+        .execute();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -76,12 +76,12 @@ export function useDashboardConfig() {
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('kv_store_2c4defad')
-        .upsert({
+      const { error } = await from('kv_store_2c4defad')
+        .insert({
           key: `dashboard_config_${user.id}`,
           value: newConfig,
-        });
+        })
+        .execute();
 
       if (error) throw error;
 

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
+import { useAuth } from '@/contexts/AuthContext';
 import { Produto } from '@/types/assistencia';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from '@/hooks/use-toast';
@@ -56,6 +56,7 @@ interface UseProdutosPaginatedOptions {
 
 export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const {
     page: initialPage = 1,
     pageSize: initialPageSize = 50,
@@ -364,7 +365,6 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
   // Criar produto
   const createProduto = useCallback(async (data: Partial<Produto>): Promise<Produto> => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
     const produtoSupabase = mapAssistenciaToSupabase(data);

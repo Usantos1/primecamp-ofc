@@ -146,15 +146,11 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-
+      // 🚫 Supabase removido - reset de senha via API PostgreSQL
+      // TODO: Implementar endpoint de reset de senha na API
       toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        title: "Funcionalidade em desenvolvimento",
+        description: "Reset de senha será implementado em breve. Entre em contato com o administrador.",
       });
       setEmail("");
     } catch (error: any) {
