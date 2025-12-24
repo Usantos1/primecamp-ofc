@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 
 export interface JobSurvey {
@@ -77,7 +77,7 @@ export const useJobSurveys = (options: JobSurveysOptions = {}) => {
     queryFn: async () => {
       let query = supabase
         .from('job_surveys')
-        .select('*', { count: 'exact' });
+        .select('*', { count: 'exact' }).execute();
 
       // Aplicar filtros
       if (filters.is_active !== undefined) {
@@ -164,7 +164,7 @@ export const useJobSurvey = (slugOrId: string) => {
       let query = supabase
         .from('job_surveys')
         .select('*')
-        .eq('slug', slugOrId)
+        .execute().eq('slug', slugOrId)
         .eq('is_active', true)
         .single();
 
@@ -175,7 +175,7 @@ export const useJobSurvey = (slugOrId: string) => {
         query = supabase
           .from('job_surveys')
           .select('*')
-          .eq('id', slugOrId)
+          .execute().eq('id', slugOrId)
           .eq('is_active', true)
           .single();
         
@@ -230,7 +230,7 @@ export const useJobApplicationStatus = (protocol: string, email?: string) => {
                   title,
                   position_title
                 )
-              `)
+              .execute()`)
               .eq('email', functionData.data.email)
               .order('created_at', { ascending: false })
               .limit(1)
@@ -273,7 +273,7 @@ export const useJobApplicationStatus = (protocol: string, email?: string) => {
               title,
               position_title
             )
-          `)
+          .execute()`)
           .eq('email', email.toLowerCase().trim())
           .order('created_at', { ascending: false })
           .limit(1)
@@ -318,11 +318,11 @@ export const useJobSurveyStats = (surveyId?: string) => {
         supabase
           .from('job_responses')
           .select('id, created_at', { count: 'exact' })
-          .eq('survey_id', surveyId),
+          .execute().eq('survey_id', surveyId),
         supabase
           .from('job_survey_views')
           .select('id', { count: 'exact' })
-          .eq('survey_id', surveyId)
+          .execute().eq('survey_id', surveyId)
           .catch(() => ({ data: null, count: 0, error: null })) // Tabela pode não existir
       ]);
 
@@ -336,7 +336,7 @@ export const useJobSurveyStats = (surveyId?: string) => {
       const { data: recentApplications } = await supabase
         .from('job_responses')
         .select('created_at')
-        .eq('survey_id', surveyId)
+        .execute().eq('survey_id', surveyId)
         .gte('created_at', thirtyDaysAgo.toISOString());
 
       const applicationsByDay = (recentApplications || []).reduce((acc, app) => {

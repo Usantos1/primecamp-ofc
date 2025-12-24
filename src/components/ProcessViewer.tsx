@@ -8,7 +8,7 @@ import { Process, DEPARTMENTS } from "@/types/process";
 import { PriorityCard } from '@/components/PriorityCard';
 import { RichTextEditor } from "./RichTextEditor";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { from } from '@/integrations/db/client';
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProcessViewerProps {

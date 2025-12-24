@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Award, Flame, TrendingUp } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function GamificationPanel() {
@@ -16,7 +16,7 @@ export function GamificationPanel() {
       const { data, error } = await supabase
         .from('user_points')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
       
@@ -36,7 +36,7 @@ export function GamificationPanel() {
       const { data, error } = await supabase
         .from('user_badges')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .order('earned_at', { ascending: false });
       
       if (error) throw error;
@@ -53,7 +53,7 @@ export function GamificationPanel() {
       const { data, error } = await supabase
         .from('user_streaks')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;

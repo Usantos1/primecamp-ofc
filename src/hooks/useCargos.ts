@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Cargo, CARGOS_LABELS } from '@/types/assistencia';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Colaborador {
   id: string;
@@ -36,14 +37,14 @@ export function useCargos() {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .order('display_name', { ascending: true });
+          .execute().order('display_name', { ascending: true });
         
         // Se der erro de RLS, tentar sem order
         if (profilesError && profilesError.code === '42501') {
           console.warn('[useCargos] ⚠️ Erro de permissão, tentando sem order...');
           const { data: profilesData2, error: profilesError2 } = await supabase
             .from('profiles')
-            .select('*');
+            .select('*').execute();
           
           if (!profilesError2 && profilesData2) {
             console.log('[useCargos] ✅ Profiles carregados sem order:', profilesData2.length);
@@ -80,7 +81,7 @@ export function useCargos() {
             const { data: profilesData2, error: profilesError2 } = await supabase
               .from('profiles')
               .select('*')
-              .limit(100);
+              .execute().limit(100);
             
             if (!profilesError2 && profilesData2 && profilesData2.length > 0) {
               console.log('[useCargos] ✅ Profiles carregados com query simplificada:', profilesData2.length);
@@ -139,7 +140,7 @@ export function useCargos() {
             .select(`
               *,
               position:positions(*)
-            `);
+            .execute()`);
 
           if (positionsError) {
             console.warn('[useCargos] Erro ao carregar posições:', positionsError);

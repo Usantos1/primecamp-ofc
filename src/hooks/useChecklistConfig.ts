@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 export interface ChecklistConfigItem {
   id: string;
@@ -23,7 +23,7 @@ export function useChecklistConfig(tipo?: 'entrada' | 'saida') {
       let query = supabase
         .from('os_checklist_config')
         .select('*')
-        .order('ordem', { ascending: true });
+        .execute().order('ordem', { ascending: true });
 
       if (tipo) {
         query = query.eq('tipo', tipo);

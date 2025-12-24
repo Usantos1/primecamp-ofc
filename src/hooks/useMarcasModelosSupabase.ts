@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
+import { from } from '@/integrations/db/client'; // Mantido para auth.getUser()
 import { Marca, Modelo } from '@/types/assistencia';
 import { useToast } from '@/hooks/use-toast';
 import { useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mapear marca do Supabase para assistencia.Marca
 function mapSupabaseToMarca(supabaseMarca: any): Marca {
@@ -36,7 +37,7 @@ export function useMarcasSupabase() {
     queryFn: async () => {
       const { data, error } = await from('marcas')
         .select('*')
-        .eq('situacao', 'ativo')
+        .execute().eq('situacao', 'ativo')
         .order('nome', { ascending: true })
         .execute();
 
@@ -49,7 +50,7 @@ export function useMarcasSupabase() {
 
   // Criar marca
   const createMarca = useCallback(async (nome: string): Promise<Marca> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = useAuth();
     if (!user) throw new Error('Usuário não autenticado');
 
     const { data: novaMarca, error } = await from('marcas')
@@ -59,7 +60,7 @@ export function useMarcasSupabase() {
         created_by: user.id,
       })
       .select('*')
-      .single();
+     .execute() .single();
 
     if (error) {
       console.error('[createMarca] Erro:', error);
@@ -90,7 +91,7 @@ export function useMarcasSupabase() {
       })
       .eq('id', id)
       .select('*')
-      .single();
+     .execute() .single();
 
     if (error) {
       console.error('[updateMarca] Erro:', error);
@@ -167,7 +168,7 @@ export function useModelosSupabase() {
     queryFn: async () => {
       const { data, error } = await from('modelos')
         .select('*')
-        .eq('situacao', 'ativo')
+        .execute().eq('situacao', 'ativo')
         .order('nome', { ascending: true })
         .execute();
 
@@ -180,7 +181,7 @@ export function useModelosSupabase() {
 
   // Criar modelo
   const createModelo = useCallback(async (marcaId: string, nome: string): Promise<Modelo> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = useAuth();
     if (!user) throw new Error('Usuário não autenticado');
 
     const { data: novoModelo, error } = await from('modelos')
@@ -191,7 +192,7 @@ export function useModelosSupabase() {
         created_by: user.id,
       })
       .select('*')
-      .single();
+     .execute() .single();
 
     if (error) {
       console.error('[createModelo] Erro:', error);
@@ -223,7 +224,7 @@ export function useModelosSupabase() {
       })
       .eq('id', id)
       .select('*')
-      .single();
+     .execute() .single();
 
     if (error) {
       console.error('[updateModelo] Erro:', error);

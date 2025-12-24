@@ -22,7 +22,7 @@ import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensS
 import { useItensOS } from '@/hooks/useAssistencia';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
@@ -127,7 +127,7 @@ export default function NovaVenda() {
       const { data: itensOS, error: itensError } = await supabase
         .from('os_items')
         .select('*')
-        .eq('ordem_servico_id', osId)
+        .execute().eq('ordem_servico_id', osId)
         .in('tipo', ['peca', 'produto']);
 
       if (itensError) {
@@ -355,7 +355,7 @@ export default function NovaVenda() {
         const { data: vendasComOS } = await supabase
           .from('sales')
           .select('ordem_servico_id')
-          .not('ordem_servico_id', 'is', null);
+          .execute().not('ordem_servico_id', 'is', null);
         
         if (vendasComOS) {
           osFaturadas = new Set(vendasComOS.map((v: any) => v.ordem_servico_id));
@@ -461,7 +461,7 @@ export default function NovaVenda() {
       const { data: existingItems } = await supabase
         .from('sale_items')
         .select('*')
-        .eq('sale_id', novaVenda.id);
+        .execute().eq('sale_id', novaVenda.id);
       
       console.log(`Itens já existentes na venda: ${existingItems?.length || 0}`);
       

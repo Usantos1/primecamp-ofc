@@ -11,7 +11,7 @@ import { Process, Activity, Department, DEPARTMENTS } from "@/types/process";
 import { useCategories } from "@/hooks/useCategories";
 import { useUsers } from "@/hooks/useUsers";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { from } from '@/integrations/db/client';
 import { PrioritySlider } from "./PrioritySlider";
 import { RichTextEditor } from "./RichTextEditor";
 
@@ -51,7 +51,7 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
         const { data, error } = await supabase
           .from('kv_store_2c4defad')
           .select('*')
-          .eq('key', 'integration_settings')
+          .execute().eq('key', 'integration_settings')
           .maybeSingle();
 
         if (error) return;
@@ -78,8 +78,12 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
     setGeneratingProcess(true);
     try {
       toast({ title: "Gerando processo...", description: "A IA está criando o processo. Aguarde..." });
-      const { data, error } = await supabase.functions.invoke('generate-process', {
-        body: {
+      // 🚫 Supabase Functions removido - usar API direta
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_URL}/ai/generate-process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           processInfo: {
             name: formData.name,
             objective: formData.objective,
@@ -89,8 +93,17 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
           provider: 'openai',
           apiKey: iaApiKey,
           model: iaModel,
-        },
+        }),
       });
+      
+      let data: any = null;
+      let error: any = null;
+      
+      if (!response.ok) {
+        error = await response.json().catch(() => ({ error: 'Erro ao gerar processo' }));
+      } else {
+        data = await response.json();
+      }
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

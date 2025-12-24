@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type Qualidade = {
   id: string;
@@ -26,7 +27,7 @@ export function useQualidades() {
       const { data, error } = await supabase
         .from('product_qualities')
         .select('*')
-        .order('name');
+        .execute().order('name');
 
       if (error) throw error;
       return data as Qualidade[];

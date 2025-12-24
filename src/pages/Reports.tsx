@@ -21,7 +21,7 @@ import {
   Award,
   AlertCircle
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   BarChart, 
@@ -86,7 +86,7 @@ export default function Reports() {
       // Fetch Tasks Data
       let tasksQuery = supabase
           .from('tasks')
-        .select('id, status, deadline, created_at, responsible_user_id, process_id');
+        .select('id, status, deadline, created_at, responsible_user_id, process_id').execute();
       
       if (dateFilter) {
         tasksQuery = tasksQuery.gte('created_at', dateFilter);
@@ -97,7 +97,7 @@ export default function Reports() {
       // Fetch Trainings Data
       let trainingsQuery = supabase
         .from('training_assignments')
-        .select('id, status, progress, completed_at, training_id, user_id, training:trainings(title, department)');
+        .select('id, status, progress, completed_at, training_id, user_id, training:trainings(title, department).execute()');
       
       if (dateFilter) {
         trainingsQuery = trainingsQuery.gte('assigned_at', dateFilter);
@@ -109,17 +109,17 @@ export default function Reports() {
       const { data: discResults } = await supabase
         .from('disc_responses')
         .select('id, dominant, d, i, s, c, created_at, user_id')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       // Fetch Processes Data
         const { data: processes } = await supabase
           .from('processes')
-        .select('id, name, status, department, created_at');
+        .select('id, name, status, department, created_at').execute();
 
       // Fetch Users Data
         const { data: profiles } = await supabase
           .from('profiles')
-        .select('id, user_id, display_name, department, role, approved, created_at');
+        .select('id, user_id, display_name, department, role, approved, created_at').execute();
 
       // Process Tasks Data
       const tasksByStatus = tasks?.reduce((acc: any, task: any) => {

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Category } from '@/types/process';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -12,7 +13,7 @@ export const useCategories = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .order('name', { ascending: true });
+        .execute().order('name', { ascending: true });
 
       if (error) {
         console.error('Error fetching categories:', error);

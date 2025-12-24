@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Produto } from '@/types/assistencia';
 import { parseBRLInput, maskBRL, formatBRL } from '@/utils/currency';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Barcode, Package, DollarSign, Warehouse, History } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -86,7 +86,7 @@ async function buscarProximoCodigo(): Promise<number> {
     const { data, error } = await supabase
       .from('produtos')
       .select('codigo')
-      .not('codigo', 'is', null)
+      .execute().not('codigo', 'is', null)
       .order('codigo', { ascending: false })
       .limit(1)
       .single();
@@ -113,7 +113,7 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
     const { data: itens, error: itensError } = await supabase
       .from('os_items')
       .select('id, quantidade, tipo, descricao, created_at, ordem_servico_id')
-      .eq('produto_id', produtoId)
+      .execute().eq('produto_id', produtoId)
       .eq('tipo', 'peca')
       .order('created_at', { ascending: false });
 
@@ -143,7 +143,7 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
     const { data: ordens, error: ordensError } = await supabase
       .from('ordens_servico')
       .select('id, numero')
-      .in('id', osIds);
+     .execute() .in('id', osIds);
 
     if (ordensError) {
       console.error('Erro ao buscar ordens de serviço:', ordensError);

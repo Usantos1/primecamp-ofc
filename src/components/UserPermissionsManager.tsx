@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -79,7 +79,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       const { data: permsData } = await supabase
         .from('permissions')
         .select('*')
-        .order('category', { ascending: true })
+        .execute().order('category', { ascending: true })
         .order('resource', { ascending: true })
         .order('action', { ascending: true });
 
@@ -91,7 +91,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       const { data: rolesData } = await supabase
         .from('roles')
         .select('*')
-        .order('display_name', { ascending: true });
+        .execute().order('display_name', { ascending: true });
 
       if (rolesData) {
         setRoles(rolesData as Role[]);
@@ -101,7 +101,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       const { data: userRoleData } = await supabase
         .from('user_position_departments')
         .select('role_id')
-        .eq('user_id', userId)
+        .execute().eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
 
@@ -118,7 +118,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           permission_id,
           granted,
           permission:permissions(id, resource, action)
-        `)
+        .execute()`)
         .eq('user_id', userId);
 
       if (userPermsData) {
@@ -144,7 +144,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           description,
           created_at,
           changed_by:profiles!permission_changes_history_changed_by_fkey(display_name)
-        `)
+        .execute()`)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -174,7 +174,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       let { data: updData, error: selectError } = await supabase
         .from('user_position_departments')
         .select('id, position_id, department_name')
-        .eq('user_id', userId)
+        .execute().eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
 
@@ -208,7 +208,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         const { data: anyRecord } = await supabase
           .from('user_position_departments')
           .select('id')
-          .eq('user_id', userId)
+          .execute().eq('user_id', userId)
           .limit(1)
           .maybeSingle();
 
@@ -253,7 +253,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       const { data: updData } = await supabase
         .from('user_position_departments')
         .select('id')
-        .eq('user_id', userId)
+        .execute().eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
 
@@ -309,7 +309,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       // Buscar role anterior para histórico
       const { data: oldRoleData } = await supabase
         .from('user_position_departments')
-        .select('role_id, role:roles(display_name)')
+        .select('role_id, role:roles(display_name).execute()')
         .eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
@@ -324,7 +324,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         const { data: currentUpdData } = await supabase
           .from('user_position_departments')
           .select('id')
-          .eq('user_id', userId)
+          .execute().eq('user_id', userId)
           .eq('is_primary', true)
           .maybeSingle();
 
@@ -348,7 +348,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           const { data: anyRecord } = await supabase
             .from('user_position_departments')
             .select('id')
-            .eq('user_id', userId)
+            .execute().eq('user_id', userId)
             .limit(1)
             .maybeSingle();
 
@@ -406,7 +406,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         const { data: updData } = await supabase
           .from('user_position_departments')
           .select('id')
-          .eq('user_id', userId)
+          .execute().eq('user_id', userId)
           .eq('is_primary', true)
           .maybeSingle();
 
@@ -435,7 +435,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           permission_id,
           granted,
           permission:permissions(resource, action, description)
-        `)
+        .execute()`)
         .eq('user_id', userId);
 
       const oldPermsMap = new Map<string, boolean>();

@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 
@@ -53,7 +53,7 @@ export function CashRegisterSessionsManager({ month }: Props) {
       let q: any = supabase
         .from('cash_register_sessions')
         .select('*')
-        .gte('opened_at', start)
+       .execute() .gte('opened_at', start)
         .lte('opened_at', end)
         .order('opened_at', { ascending: false });
 

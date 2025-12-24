@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUsers } from '@/hooks/useUsers';
 import { LocationPermissionModal } from './LocationPermissionModal';
 import { LocationDisplay } from '@/utils/locationUtils';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -61,7 +61,7 @@ export const TimeClockWidget = () => {
         const { data, error } = await supabase
           .from('time_clock')
           .select('*')
-          .eq('date', today)
+          .execute().eq('date', today)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -103,7 +103,7 @@ export const TimeClockWidget = () => {
             const { data, error } = await supabase
               .from('time_clock')
               .select('*')
-              .eq('date', today)
+              .execute().eq('date', today)
               .order('created_at', { ascending: false });
 
             if (!error && data) {

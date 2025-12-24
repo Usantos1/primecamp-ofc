@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Search, Eye, Brain, Download, Filter, Video, CheckCircle } from 'lucide-react';
@@ -54,7 +54,7 @@ export default function TalentBank() {
       let query = supabase
         .from('job_responses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (selectedSurvey !== 'all') {
         query = query.eq('survey_id', selectedSurvey);
@@ -85,7 +85,7 @@ export default function TalentBank() {
         const { data: surveys, error: surveysError } = await supabase
           .from('job_surveys')
           .select('id, title, position_title, department')
-          .in('id', surveyIds);
+         .execute() .in('id', surveyIds);
 
         if (!surveysError && surveys) {
           surveysMap = surveys.reduce((acc: any, survey: any) => {
@@ -102,7 +102,7 @@ export default function TalentBank() {
         const { data: analyses, error: aiError } = await (supabase as any)
           .from('job_candidate_ai_analysis')
           .select('*')
-          .in('job_response_id', candidateIds);
+         .execute() .in('job_response_id', candidateIds);
 
         if (aiError) {
           console.error('Erro ao carregar análises de IA:', aiError);
@@ -134,7 +134,7 @@ export default function TalentBank() {
     const { data: evaluation } = await supabase
       .from('job_candidate_evaluations')
       .select('*')
-      .eq('job_response_id', candidate.id)
+      .execute().eq('job_response_id', candidate.id)
       .maybeSingle();
     setSelectedEvaluation(evaluation || null);
     setShowEvaluationModal(true);
@@ -158,13 +158,13 @@ export default function TalentBank() {
       const { data: jobResponse, error: responseError } = await supabase
         .from('job_responses')
         .select('*')
-        .eq('id', candidate.id)
+        .execute().eq('id', candidate.id)
         .single();
 
       const { data: jobSurvey, error: surveyError } = await supabase
         .from('job_surveys')
         .select('*')
-        .eq('id', candidate.survey_id)
+        .execute().eq('id', candidate.survey_id)
         .single();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
@@ -174,7 +174,7 @@ export default function TalentBank() {
       const { data: discResult } = await supabase
         .from('candidate_responses')
         .select('*')
-        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
         .maybeSingle();
@@ -247,13 +247,13 @@ export default function TalentBank() {
       const { data: jobResponse, error: responseError } = await supabase
         .from('job_responses')
         .select('*')
-        .eq('id', candidate.id)
+        .execute().eq('id', candidate.id)
         .single();
 
       const { data: jobSurvey, error: surveyError } = await supabase
         .from('job_surveys')
         .select('*')
-        .eq('id', candidate.survey_id)
+        .execute().eq('id', candidate.survey_id)
         .single();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
@@ -263,7 +263,7 @@ export default function TalentBank() {
       const { data: discResult } = await supabase
         .from('candidate_responses')
         .select('*')
-        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
         .maybeSingle();
@@ -304,7 +304,7 @@ export default function TalentBank() {
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .maybeSingle();
 
       if (!profile) {
@@ -314,7 +314,7 @@ export default function TalentBank() {
       const { data: existingEvaluation } = await supabase
         .from('job_candidate_evaluations')
         .select('*')
-        .eq('job_response_id', candidate.id)
+        .execute().eq('job_response_id', candidate.id)
         .maybeSingle();
 
       const evaluationData = {
@@ -373,7 +373,7 @@ export default function TalentBank() {
         const { data: existing } = await supabase
           .from('job_interviews')
           .select('*')
-          .eq('job_response_id', candidate.id)
+          .execute().eq('job_response_id', candidate.id)
           .eq('interview_type', 'online')
           .maybeSingle();
 
@@ -403,7 +403,7 @@ export default function TalentBank() {
       const { data, error } = await supabase
         .from('job_surveys')
         .select('id, title, position_title')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (error) throw error;
       return data || [];

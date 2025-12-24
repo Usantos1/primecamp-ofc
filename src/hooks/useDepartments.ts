@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 export interface Department {
   id: string;
@@ -19,7 +19,7 @@ export const useDepartments = () => {
       const { data, error } = await supabase
         .from('departments')
         .select('*')
-        .order('name');
+        .execute().order('name');
 
       if (error) {
         console.error('Error fetching departments:', error);

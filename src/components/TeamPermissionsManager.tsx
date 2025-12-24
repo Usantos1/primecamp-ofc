@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ModernSwitch } from '@/components/ui/modern-switch';
@@ -43,7 +43,7 @@ export const TeamPermissionsManager = () => {
       const { data, error } = await supabase
         .from('team_permissions')
         .select('*')
-        .order('department_name');
+        .execute().order('department_name');
 
       if (error) {
         toast({ title: "Erro", description: "Erro ao carregar permissões", variant: "destructive" });

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Star, Clock, CheckCircle, AlertCircle, XCircle, UserCheck, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 export interface JobResponse {
   id: string;
@@ -123,7 +123,7 @@ export const CandidateEvaluationModal = ({
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .single();
 
       if (!profile) throw new Error('Profile not found');

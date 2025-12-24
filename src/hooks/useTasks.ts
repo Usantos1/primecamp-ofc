@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useUserLogs } from '@/hooks/useUserLogs';
@@ -35,14 +35,15 @@ export const useTasks = () => {
       setLoading(true);
       
       // First update overdue tasks
-      await supabase.rpc('update_overdue_tasks');
+      await // 🚫 Supabase RPC removido - TODO: implementar na API
+      // supabase.rpc('update_overdue_tasks');
       
       // Then fetch tasks with related data
       const { data, error } = await supabase
         .from('tasks')
         .select(`
           *,
-          categories(name),
+          categories(name).execute(),
           processes(name)
         `)
         .order('deadline', { ascending: true });
@@ -58,7 +59,7 @@ export const useTasks = () => {
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name')
-        .in('user_id', userIds);
+       .execute() .in('user_id', userIds);
 
       const formattedTasks: Task[] = (data || []).map(task => {
         const profile = profiles?.find(p => p.user_id === task.responsible_user_id);

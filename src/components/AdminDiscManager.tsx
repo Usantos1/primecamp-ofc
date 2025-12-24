@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Eye, Download, Search, Filter, Trash2, FileText } from 'lucide-react';
@@ -60,7 +60,7 @@ export const AdminDiscManager = () => {
       const { data, error } = await supabase
         .from('disc_responses')
         .select('*')
-        .eq('is_completed', true)
+        .execute().eq('is_completed', true)
         .order('completion_date', { ascending: false });
 
       if (error) throw error;
@@ -70,7 +70,7 @@ export const AdminDiscManager = () => {
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name')
-        .in('user_id', userIds);
+       .execute() .in('user_id', userIds);
         
       return data.map(item => ({
         id: item.id,
@@ -94,7 +94,7 @@ export const AdminDiscManager = () => {
       const { data, error } = await supabase
         .from('candidate_responses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (error) throw error;
       return data.map(item => ({
@@ -209,7 +209,7 @@ export const AdminDiscManager = () => {
       const { data: existingRecord } = await supabase
         .from('disc_responses')
         .select('*')
-        .eq('id', resultId)
+        .execute().eq('id', resultId)
         .single();
       
       console.log('Registro encontrado:', existingRecord);
@@ -243,7 +243,7 @@ export const AdminDiscManager = () => {
       const { data: existingRecord } = await supabase
         .from('candidate_responses')
         .select('*')
-        .eq('id', resultId)
+        .execute().eq('id', resultId)
         .single();
       
       console.log('Registro encontrado:', existingRecord);

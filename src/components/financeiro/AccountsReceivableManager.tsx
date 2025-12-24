@@ -13,7 +13,7 @@ import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
@@ -66,7 +66,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
       let query = supabase
         .from('accounts_receivable')
         .select('*')
-        .order('data_vencimento', { ascending: true });
+        .execute().order('data_vencimento', { ascending: true });
 
       if (month) {
         const startDate = `${month}-01`;

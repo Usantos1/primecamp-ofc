@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DiscTestResults } from '@/components/DiscTestResults';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 import { ArrowLeft, Share2, Calendar, Clock, CheckCircle } from 'lucide-react';
 import logoImage from '@/assets/prime-camp-logo.png';
@@ -53,7 +53,7 @@ const CandidateDiscResult = () => {
       const { data: completedData, error: completedError } = await supabase
         .from('candidate_responses')
         .select('*')
-        .eq('test_id', sessionId)
+        .execute().eq('test_id', sessionId)
         .eq('is_completed', true)
         .maybeSingle();
 
@@ -74,7 +74,7 @@ const CandidateDiscResult = () => {
       const { data: sessionData, error: sessionError } = await supabase
         .from('candidate_responses')
         .select('*')
-        .eq('test_id', sessionId)
+        .execute().eq('test_id', sessionId)
         .maybeSingle();
 
       if (sessionError) {
@@ -90,7 +90,7 @@ const CandidateDiscResult = () => {
         const { data: completedSessions, error: searchError } = await supabase
           .from('candidate_responses')
           .select('*')
-          .eq('is_completed', true)
+          .execute().eq('is_completed', true)
           .order('completion_date', { ascending: false })
           .limit(1);
 

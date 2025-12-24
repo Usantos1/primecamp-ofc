@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ItemOS } from '@/types/assistencia';
 
@@ -16,7 +16,7 @@ export function useItensOSSupabase(osId: string) {
       const { data, error } = await supabase
         .from('os_items')
         .select('*')
-        .eq('ordem_servico_id', osId)
+        .execute().eq('ordem_servico_id', osId)
         .order('created_at', { ascending: true });
       
       if (error) throw error;

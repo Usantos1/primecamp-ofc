@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 
 interface SendMessageData {
@@ -17,7 +17,7 @@ export function useWhatsApp() {
       
       const { data, error } = await from('profiles')
         .select('phone, display_name, approved')
-        .eq('display_name', displayName)
+        .execute().eq('display_name', displayName)
         .eq('approved', true)
         .maybeSingle()
         .execute();

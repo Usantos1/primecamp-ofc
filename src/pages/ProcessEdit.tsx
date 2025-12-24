@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProcessForm } from '@/components/ProcessForm';
 import { ModernLayout } from '@/components/ModernLayout';
@@ -52,7 +52,7 @@ const ProcessEdit = () => {
       const { data, error } = await supabase
         .from('processes')
         .select('*')
-        .eq('id', processId)
+        .execute().eq('id', processId)
         .single();
 
       if (error) {

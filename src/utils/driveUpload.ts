@@ -15,7 +15,8 @@
  *   │       └── ...
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface DriveUploadResult {
   success: boolean;

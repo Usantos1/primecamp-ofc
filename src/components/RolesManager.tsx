@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,7 @@ export function RolesManager() {
       const { data: rolesData, error: rolesError } = await supabase
         .from('roles')
         .select('*')
-        .order('display_name', { ascending: true });
+        .execute().order('display_name', { ascending: true });
 
       if (rolesError) throw rolesError;
       setRoles(rolesData || []);
@@ -71,7 +71,7 @@ export function RolesManager() {
       const { data: permsData, error: permsError } = await supabase
         .from('permissions')
         .select('*')
-        .order('category', { ascending: true })
+        .execute().order('category', { ascending: true })
         .order('resource', { ascending: true })
         .order('action', { ascending: true });
 
@@ -81,7 +81,7 @@ export function RolesManager() {
       // Carregar contagem de permissões por role
       const { data: rolePermsData } = await supabase
         .from('role_permissions')
-        .select('role_id');
+        .select('role_id').execute();
 
       if (rolePermsData) {
         const countMap = new Map<string, number>();
@@ -112,7 +112,7 @@ export function RolesManager() {
       const { data, error } = await supabase
         .from('role_permissions')
         .select('permission_id')
-        .eq('role_id', roleId);
+        .execute().eq('role_id', roleId);
 
       if (error) throw error;
 
@@ -256,7 +256,7 @@ export function RolesManager() {
       const { data: usersWithRole } = await supabase
         .from('user_position_departments')
         .select('user_id')
-        .eq('role_id', roleToDelete.id)
+        .execute().eq('role_id', roleToDelete.id)
         .limit(1);
 
       if (usersWithRole && usersWithRole.length > 0) {

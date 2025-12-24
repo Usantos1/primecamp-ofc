@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { LoadingButton } from '@/components/LoadingButton';
 import { Upload, Image as ImageIcon, Save } from 'lucide-react';
 
@@ -62,7 +62,7 @@ export default function ConfiguracaoCupom() {
       const { data: kvData, error: kvError } = await supabase
         .from('kv_store_2c4defad')
         .select('value')
-        .eq('key', 'cupom_config')
+        .execute().eq('key', 'cupom_config')
         .single();
 
       if (!kvError && kvData) {
@@ -74,7 +74,7 @@ export default function ConfiguracaoCupom() {
       const { data, error } = await supabase
         .from('cupom_config')
         .select('*')
-        .limit(1)
+        .execute().limit(1)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -170,7 +170,7 @@ export default function ConfiguracaoCupom() {
 
       // Também salvar em cupom_config para compatibilidade (se a tabela existir)
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { user } = useAuth();
         const configToSave = {
           ...config,
           created_by: user?.id || null,

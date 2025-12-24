@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +82,7 @@ export const AdminInterviewsManager = () => {
       const { data: aiAnalyses, error: analysisError } = await supabase
         .from('job_candidate_ai_analysis')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (analysisError) {
         console.error('Error fetching AI analyses:', analysisError);
@@ -98,13 +98,13 @@ export const AdminInterviewsManager = () => {
         const { data: jobResponse } = await supabase
           .from('job_responses')
           .select('*')
-          .eq('id', analysis.job_response_id)
+          .execute().eq('id', analysis.job_response_id)
           .single();
 
         const { data: jobSurvey } = await supabase
           .from('job_surveys')
           .select('*')
-          .eq('id', analysis.survey_id)
+          .execute().eq('id', analysis.survey_id)
           .single();
 
         return {
@@ -130,7 +130,7 @@ export const AdminInterviewsManager = () => {
       const { data: existingInterviews } = await supabase
         .from('job_interviews')
         .select('job_response_id, interview_type, status')
-        .in('job_response_id', responseIds);
+       .execute() .in('job_response_id', responseIds);
 
       const interviewsMap = new Map();
       (existingInterviews || []).forEach(interview => {
@@ -159,7 +159,7 @@ export const AdminInterviewsManager = () => {
       const { data, error } = await supabase
         .from('job_responses')
         .select('id, name, email, survey_id')
-        .order('created_at', { ascending: false })
+        .execute().order('created_at', { ascending: false })
         .limit(1000);
 
       if (error) {
@@ -178,7 +178,7 @@ export const AdminInterviewsManager = () => {
         .from('job_interviews')
         .select(`
           *,
-          job_response:job_responses(id, name, email, phone),
+          job_response:job_responses(id, name, email, phone).execute(),
           job_survey:job_surveys(id, title, position_title)
         `)
         .order('created_at', { ascending: false });
@@ -212,7 +212,7 @@ export const AdminInterviewsManager = () => {
       const { data: aiAnalysis } = await supabase
         .from('job_candidate_ai_analysis')
         .select('*')
-        .eq('job_response_id', interview.job_response_id)
+        .execute().eq('job_response_id', interview.job_response_id)
         .single();
 
       const { data, error } = await supabase.functions.invoke('generate-interview-questions', {
@@ -535,7 +535,7 @@ export const AdminInterviewsManager = () => {
                                             const { data: existing } = await supabase
                                               .from('job_interviews')
                                               .select('*')
-                                              .eq('job_response_id', candidate.job_response_id)
+                                              .execute().eq('job_response_id', candidate.job_response_id)
                                               .eq('interview_type', 'online')
                                               .maybeSingle();
 
@@ -617,7 +617,7 @@ export const AdminInterviewsManager = () => {
                                             const { data: existing } = await supabase
                                               .from('job_interviews')
                                               .select('*')
-                                              .eq('job_response_id', candidate.job_response_id)
+                                              .execute().eq('job_response_id', candidate.job_response_id)
                                               .eq('interview_type', 'presencial')
                                               .maybeSingle();
 
@@ -1218,7 +1218,7 @@ export const AdminInterviewsManager = () => {
                   const { data: jobResponse } = await supabase
                     .from('job_responses')
                     .select('*')
-                    .eq('id', selectedJobResponseId)
+                    .execute().eq('id', selectedJobResponseId)
                     .single();
 
                   if (!jobResponse) {

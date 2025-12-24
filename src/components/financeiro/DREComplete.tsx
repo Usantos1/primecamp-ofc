@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { cn } from '@/lib/utils';
 
 interface DRECompleteProps {
@@ -31,7 +31,7 @@ export function DREComplete({ month }: DRECompleteProps) {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
-        .gte('created_at', start)
+       .execute() .gte('created_at', start)
         .lte('created_at', end)
         .eq('status', 'paid');
       if (error) throw error;

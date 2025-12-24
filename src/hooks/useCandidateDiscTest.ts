@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 
 interface DiscQuestion {
@@ -342,7 +342,7 @@ export const useCandidateDiscTest = () => {
       const { data: existingTest } = await supabase
         .from('candidate_responses')
         .select('id, is_completed, responses')
-        .eq('whatsapp', sanitizedInfo.whatsapp)
+        .execute().eq('whatsapp', sanitizedInfo.whatsapp)
         .eq('is_completed', false)
         .order('created_at', { ascending: false })
         .maybeSingle();

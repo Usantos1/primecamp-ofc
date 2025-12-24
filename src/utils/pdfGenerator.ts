@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import type { CupomConfig } from '@/hooks/useCupomConfig';
 import { PAYMENT_METHOD_LABELS } from '@/types/pdv';
 
@@ -58,7 +58,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
     const { data: configData } = await supabase
       .from('cupom_config')
       .select('*')
-      .limit(1)
+      .execute().limit(1)
       .single();
     config = configData as CupomConfig | null;
   } catch (error) {

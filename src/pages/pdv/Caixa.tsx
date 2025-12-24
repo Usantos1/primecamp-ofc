@@ -19,7 +19,7 @@ import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 export default function Caixa() {
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ export default function Caixa() {
       const direct = await supabase
         .from('sales')
         .select('*')
-        .eq('cash_register_session_id', currentSession.id)
+        .execute().eq('cash_register_session_id', currentSession.id)
         .eq('status', 'paid')
         .order('created_at', { ascending: false });
 
@@ -85,7 +85,7 @@ export default function Caixa() {
           const fallback = await supabase
             .from('sales')
             .select('*')
-            .eq('status', 'paid')
+            .execute().eq('status', 'paid')
             .eq('vendedor_id', operadorId)
             .gte('finalized_at', openedAt)
             .order('created_at', { ascending: false });
@@ -105,7 +105,7 @@ export default function Caixa() {
         const { data: paymentsData, error: paymentsError } = await supabase
           .from('payments')
           .select('*')
-          .in('sale_id', saleIds)
+         .execute() .in('sale_id', saleIds)
           .eq('status', 'confirmed');
         
         if (!paymentsError && paymentsData) {

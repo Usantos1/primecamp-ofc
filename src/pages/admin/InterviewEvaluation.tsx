@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -70,7 +70,7 @@ export default function InterviewEvaluation() {
         .from('job_interviews')
         .select(`
           *,
-          job_response:job_responses(id, name, email, phone),
+          job_response:job_responses(id, name, email, phone).execute(),
           job_survey:job_surveys(id, title, position_title)
         `)
         .eq('id', interview_id)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -25,7 +25,7 @@ export const useTags = () => {
       const { data, error } = await supabase
         .from('tags')
         .select('*')
-        .order('name');
+        .execute().order('name');
 
       if (error) {
         console.error('Error fetching tags:', error);

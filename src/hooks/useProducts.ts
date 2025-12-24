@@ -1,7 +1,8 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
+import { from } from '@/integrations/db/client'; // Mantido para auth.getUser()
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type Produto = {
   id: string;
@@ -27,7 +28,7 @@ export function useProducts(limit = 50, search = '') {
       
       let query = from('produtos')
         .select('*')
-        .order('atualizado_em', { ascending: false });
+        .execute().order('atualizado_em', { ascending: false });
 
       // Apply filters
       if (search) {
@@ -60,7 +61,7 @@ export function useCreateProduct() {
 
   return useMutation({
     mutationFn: async (data: CreateProdutoData) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) throw new Error('Usuário não autenticado');
       
       const { data: result, error } = await from('produtos')
@@ -174,7 +175,7 @@ export function useBulkUpsertProducts() {
           // Check if product exists (case-insensitive name)
           const { data: existingData, error: searchError } = await from('produtos')
             .select('id')
-            .ilike('nome', product.nome)
+            .execute().ilike('nome', product.nome)
             .single();
 
           if (searchError && searchError.code !== 'PGRST116') {
@@ -197,7 +198,7 @@ export function useBulkUpsertProducts() {
             }
           } else {
             // Insert new
-            const { data: { user } } = await supabase.auth.getUser();
+            const { user } = useAuth();
             if (!user) throw new Error('Usuário não autenticado');
             
             const { error: insertError } = await from('produtos')

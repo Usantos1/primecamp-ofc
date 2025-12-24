@@ -2,7 +2,7 @@ import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, FileText, Users, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
 export default function ProcessAnalytics() {
@@ -25,7 +25,7 @@ export default function ProcessAnalytics() {
       
       const { data: processes } = await supabase
         .from('processes')
-        .select('*');
+        .select('*').execute();
 
       const statusCounts = (processes || []).reduce((acc, process) => {
         acc[process.status] = (acc[process.status] || 0) + 1;

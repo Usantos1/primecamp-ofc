@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 
 export function useLessons(moduleId?: string) {
@@ -14,7 +14,7 @@ export function useLessons(moduleId?: string) {
       const { data, error } = await supabase
         .from('training_lessons')
         .select('*')
-        .eq('module_id', moduleId)
+        .execute().eq('module_id', moduleId)
         .order('order_index', { ascending: true });
       
       if (error) throw error;
@@ -79,7 +79,7 @@ export function useLessons(moduleId?: string) {
   const reorderLessons = useMutation({
     mutationFn: async (lessons: { id: string; order_index: number }[]) => {
       const updates = lessons.map(l => 
-        supabase.from('training_lessons').update({ order_index: l.order_index }).eq('id', l.id)
+        from('training_lessons').update({ order_index: l.order_index }).eq('id', l.id)
       );
       
       await Promise.all(updates);

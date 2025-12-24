@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Sale, SaleFormData, SaleItem, SaleItemFormData,
@@ -30,7 +30,7 @@ export function useSales() {
       let query: any = supabase
         .from('sales')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       // Non-admin: only own sales
       if (!isAdmin && user?.id) {
@@ -59,8 +59,8 @@ export function useSales() {
   const createSale = useCallback(async (data: SaleFormData): Promise<Sale> => {
     try {
       // Gerar número da venda
-      const { data: numeroData } = await supabase.rpc('generate_sale_number');
-      const numero = numeroData || 1;
+      // 🚫 Supabase RPC removido - usar timestamp como número temporário
+      const numero = Date.now();
 
       // Validar UUID do cliente
       const isValidUUID = (str: string | undefined | null): boolean => {
@@ -155,7 +155,7 @@ export function useSales() {
         const { data: saleData, error: saleError } = await supabase
           .from('sales')
           .select('*')
-          .eq('id', id)
+          .execute().eq('id', id)
           .single();
         if (saleError || !saleData) throw new Error('Venda não encontrada');
         sale = saleData as Sale;
@@ -170,7 +170,7 @@ export function useSales() {
       const { data: items } = await supabase
         .from('sale_items')
         .select('*')
-        .eq('sale_id', id);
+        .execute().eq('sale_id', id);
 
       const subtotal = items?.reduce((sum, item) => sum + Number(item.valor_unitario) * Number(item.quantidade), 0) || 0;
       const desconto_total = items?.reduce((sum, item) => sum + Number(item.desconto || 0), 0) || 0;
@@ -180,7 +180,7 @@ export function useSales() {
       const { data: payments } = await supabase
         .from('payments')
         .select('valor')
-        .eq('sale_id', id)
+        .execute().eq('sale_id', id)
         .eq('status', 'confirmed');
 
       const total_pago = payments?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
@@ -204,7 +204,7 @@ export function useSales() {
         let cashQuery: any = supabase
           .from('cash_register_sessions')
           .select('id')
-          .eq('status', 'open')
+          .execute().eq('status', 'open')
           .order('opened_at', { ascending: false })
           .limit(1);
 
@@ -283,7 +283,8 @@ export function useSales() {
         for (const item of items) {
           if (item.produto_id && item.produto_tipo === 'produto') {
             try {
-              const { error: stockError } = await supabase.rpc('decrement_stock', {
+              const { error: stockError } = await // 🚫 Supabase RPC removido - TODO: implementar na API
+      // supabase.rpc('decrement_stock', {
                 produto_id: item.produto_id,
                 quantidade: item.quantidade
               });
@@ -350,7 +351,7 @@ export function useSales() {
         const { data: saleData, error: saleError } = await supabase
           .from('sales')
           .select('*')
-          .eq('id', id)
+          .execute().eq('id', id)
           .single();
         if (saleError || !saleData) throw new Error('Venda não encontrada');
         sale = saleData as Sale;
@@ -426,7 +427,7 @@ export function useSales() {
         const { data: saleData, error: saleError } = await supabase
           .from('sales')
           .select('*')
-          .eq('id', id)
+          .execute().eq('id', id)
           .single();
         if (saleError || !saleData) throw new Error('Venda não encontrada');
         sale = saleData as Sale;
@@ -516,7 +517,7 @@ export function useSales() {
         const { data: updatedSales, error: loadError } = await supabase
           .from('sales')
           .select('*')
-          .order('created_at', { ascending: false });
+          .execute().order('created_at', { ascending: false });
         
         if (!loadError && updatedSales) {
           console.log(`Banco recarregado: ${updatedSales.length} vendas encontradas`);
@@ -550,7 +551,7 @@ export function useSales() {
         .from('sales')
         .select(`
           *,
-          items:sale_items(*),
+          items:sale_items(*).execute(),
           payments:payments(*)
         `)
         .eq('id', id)
@@ -598,7 +599,7 @@ export function useSaleItems(saleId: string) {
       const { data, error } = await supabase
         .from('sale_items')
         .select('*')
-        .eq('sale_id', idToUse)
+        .execute().eq('sale_id', idToUse)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -768,7 +769,7 @@ async function updateSaleTotals(saleId: string) {
     const { data: items } = await supabase
       .from('sale_items')
       .select('*')
-      .eq('sale_id', saleId);
+      .execute().eq('sale_id', saleId);
 
     const subtotal = items?.reduce((sum, item) => sum + Number(item.valor_unitario) * Number(item.quantidade), 0) || 0;
     const desconto_total = items?.reduce((sum, item) => sum + Number(item.desconto || 0), 0) || 0;
@@ -797,7 +798,7 @@ export function usePayments(saleId: string) {
       const { data, error } = await supabase
         .from('payments')
         .select('*')
-        .eq('sale_id', saleId)
+        .execute().eq('sale_id', saleId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -815,7 +816,7 @@ export function usePayments(saleId: string) {
 
   const addPayment = useCallback(async (paymentData: PaymentFormData): Promise<Payment> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       
       const valor_parcela = paymentData.parcelas && paymentData.parcelas > 1
         ? paymentData.valor / paymentData.parcelas
@@ -854,7 +855,7 @@ export function usePayments(saleId: string) {
 
   const confirmPayment = useCallback(async (id: string): Promise<Payment> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       
       const { data: updatedPayment, error } = await supabase
         .from('payments')
@@ -876,7 +877,7 @@ export function usePayments(saleId: string) {
       const { data: saleData } = await supabase
         .from('sales')
         .select('total, total_pago')
-        .eq('id', saleId)
+        .execute().eq('id', saleId)
         .single();
       
       if (saleData) {
@@ -906,7 +907,7 @@ export function usePayments(saleId: string) {
 
   const cancelPayment = useCallback(async (id: string, reason?: string): Promise<Payment> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       
       const { data: updatedPayment, error } = await supabase
         .from('payments')
@@ -969,7 +970,7 @@ async function updateSalePaidTotal(saleId: string) {
     const { data: payments } = await supabase
       .from('payments')
       .select('valor')
-      .eq('sale_id', saleId)
+      .execute().eq('sale_id', saleId)
       .eq('status', 'confirmed');
 
     const total_pago = payments?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
@@ -999,7 +1000,7 @@ export function useCashRegister() {
       const { data, error } = await supabase
         .from('cash_register_sessions')
         .select('*')
-        .eq('status', 'open')
+        .execute().eq('status', 'open')
         .eq('operador_id', user?.id)
         .order('opened_at', { ascending: false })
         .limit(1)
@@ -1027,7 +1028,7 @@ export function useCashRegister() {
       const { data: existing } = await supabase
         .from('cash_register_sessions')
         .select('id')
-        .eq('status', 'open')
+        .execute().eq('status', 'open')
         .eq('operador_id', data.operador_id)
         .single();
 
@@ -1036,10 +1037,11 @@ export function useCashRegister() {
       }
 
       // Gerar número da sessão
-      const { data: numeroData } = await supabase.rpc('generate_cash_session_number');
+      const { data: numeroData } = await // 🚫 Supabase RPC removido - TODO: implementar na API
+      // supabase.rpc('generate_cash_session_number');
       const numero = numeroData || 1;
 
-      const { data: { user: userData } } = await supabase.auth.getUser();
+      const { user: userData } = useAuth();
 
       // Buscar profile do usuário para pegar o nome
       const operadorNome = profile?.display_name || userData?.user_metadata?.name || userData?.email || 'Operador';
@@ -1077,7 +1079,7 @@ export function useCashRegister() {
     justificativa?: string
   ): Promise<CashRegisterSession> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       
       // Calcular totais por forma de pagamento
       const { data: sales } = await supabase
@@ -1085,7 +1087,7 @@ export function useCashRegister() {
         .select(`
           id,
           payments:payments!inner(forma_pagamento, valor)
-        `)
+        .execute()`)
         .eq('status', 'paid')
         .gte('finalized_at', currentSession?.opened_at || new Date().toISOString());
 
@@ -1154,7 +1156,7 @@ export function useCashMovements(sessionId: string) {
       const { data, error } = await supabase
         .from('cash_movements')
         .select('*')
-        .eq('session_id', sessionId)
+        .execute().eq('session_id', sessionId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -1172,7 +1174,7 @@ export function useCashMovements(sessionId: string) {
 
   const addMovement = useCallback(async (movementData: CashMovementFormData): Promise<CashMovement> => {
     try {
-      const { data: { user: userData } } = await supabase.auth.getUser();
+      const { user: userData } = useAuth();
 
       // Buscar profile do usuário para pegar o nome
       const operadorNome = profile?.display_name || userData?.user_metadata?.name || userData?.email || 'Operador';
@@ -1222,10 +1224,10 @@ async function logAudit(
   descricao?: string
 ) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = useAuth();
     if (!user) return;
 
-    await supabase.from('audit_logs').insert({
+    await from('audit_logs').insert({
       user_id: user.id,
       user_nome: user.user_metadata?.name || user.email || 'Usuário',
       user_email: user.email,
@@ -1256,7 +1258,7 @@ export function useCancelRequests() {
       let query = (supabase as any)
         .from('sale_cancel_requests')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (status) {
         query = query.eq('status', status);
@@ -1291,7 +1293,7 @@ export function useCancelRequests() {
     motivo: string
   ): Promise<CancelRequest> => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { user: currentUser } = useAuth();
       if (!currentUser) throw new Error('Usuário não autenticado');
 
       const { data: newRequest, error } = await (supabase as any)
@@ -1330,7 +1332,7 @@ export function useCancelRequests() {
     saleId: string
   ): Promise<void> => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { user: currentUser } = useAuth();
       if (!currentUser) throw new Error('Usuário não autenticado');
 
       // Atualizar solicitação
@@ -1352,7 +1354,7 @@ export function useCancelRequests() {
       const { data: sale } = await supabase
         .from('sales')
         .select('*')
-        .eq('id', saleId)
+        .execute().eq('id', saleId)
         .single();
 
       if (sale) {
@@ -1382,7 +1384,7 @@ export function useCancelRequests() {
     motivoRejeicao: string
   ): Promise<void> => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { user: currentUser } = useAuth();
       if (!currentUser) throw new Error('Usuário não autenticado');
 
       const { data: updatedRequest, error } = await (supabase as any)

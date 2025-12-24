@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface OSImageReferenceConfig {
@@ -26,7 +26,7 @@ export function useOSImageReference() {
       const { data, error } = await supabase
         .from('kv_store_2c4defad')
         .select('value')
-        .eq('key', CONFIG_KEY)
+        .execute().eq('key', CONFIG_KEY)
         .single();
 
       if (error && error.code !== 'PGRST116') {

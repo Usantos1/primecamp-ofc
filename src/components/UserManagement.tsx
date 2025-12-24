@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { usePositions, Position } from '@/hooks/usePositions';
 import { DepartmentManager } from '@/components/DepartmentManager';
 import { TeamPermissionsManager } from '@/components/TeamPermissionsManager';
 import { UserPermissionsManager } from '@/components/UserPermissionsManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UserProfile {
   id: string;
@@ -72,7 +73,7 @@ export const UserManagement = () => {
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (profilesError) {
         toast({
@@ -89,7 +90,7 @@ export const UserManagement = () => {
         .select(`
           *,
           position:positions(*)
-        `);
+        .execute()`);
 
       if (positionsError) {
         console.error('Error fetching positions:', positionsError);
@@ -276,7 +277,7 @@ export const UserManagement = () => {
 
   const deleteUser = async (userId: string, displayName: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       
       if (user?.id === userId) {
         toast({

@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { MessageSquare, Send, Settings, Webhook } from 'lucide-react';
 
 interface IntegrationSettings {
@@ -48,7 +48,7 @@ export default function Integration() {
       const { data, error } = await supabase
         .from('kv_store_2c4defad')
         .select('*')
-        .eq('key', 'integration_settings')
+        .execute().eq('key', 'integration_settings')
         .single();
 
       if (data && !error) {
@@ -95,15 +95,28 @@ export default function Integration() {
     try {
       console.log('Testing WhatsApp with:', { number: testPhone, body: testMessage });
       
-      const { data, error } = await supabase.functions.invoke('ativa-crm-api', {
-        body: {
+      // 🚫 Supabase Functions removido - usar API direta
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_URL}/whatsapp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           action: 'send_message',
           data: {
             number: testPhone,
             body: testMessage
           }
-        }
+        }),
       });
+      
+      let data: any = null;
+      let error: any = null;
+      
+      if (!response.ok) {
+        error = await response.json().catch(() => ({ error: 'Erro ao enviar mensagem' }));
+      } else {
+        data = await response.json();
+      }
 
       console.log('Function response:', { data, error });
 

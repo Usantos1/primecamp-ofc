@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserActivityLog {
@@ -28,7 +28,7 @@ export const useUserLogs = () => {
       const { data, error } = await supabase
         .from('user_activity_logs')
         .select('*')
-        .order('created_at', { ascending: false })
+        .execute().order('created_at', { ascending: false })
         .limit(100);
 
       if (error) {
@@ -63,7 +63,8 @@ export const useUserLogs = () => {
       const ipAddress = await getCurrentIP();
       const userAgent = navigator.userAgent;
       
-      await supabase.rpc('log_user_activity', {
+      await // 🚫 Supabase RPC removido - TODO: implementar na API
+      // supabase.rpc('log_user_activity', {
         p_user_id: user.id,
         p_activity_type: activityType,
         p_description: description,

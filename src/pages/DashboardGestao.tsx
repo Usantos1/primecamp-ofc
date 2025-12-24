@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Filter, Settings, Shield, Users, LogOut, Target, BarChart3, Activity, TrendingUp, CheckCircle, FileText, Folder, CheckSquare, Clock, AlertTriangle } from 'lucide-react';
 import { Dashboard } from '@/components/Dashboard';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Process } from '@/types/process';
 import { useTasks } from '@/hooks/useTasks';
 
@@ -48,20 +48,20 @@ const DashboardGestao = () => {
         // Fetch processes count
         const { count: processesCount } = await supabase
           .from('processes')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true }).execute();
         
         const { count: activeProcessesCount } = await supabase
           .from('processes')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'active');
+          .execute().eq('status', 'active');
         
         const { count: usersCount } = await supabase
           .from('profiles')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true }).execute();
         
         const { count: categoriesCount } = await supabase
           .from('categories')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true }).execute();
 
         setStats({
           totalProcesses: processesCount || 0,

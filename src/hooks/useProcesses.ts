@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Process, Department } from '@/types/process';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 import { useUserLogs } from '@/hooks/useUserLogs';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useProcesses = () => {
   const [processes, setProcesses] = useState<Process[]>([]);
@@ -14,7 +15,7 @@ export const useProcesses = () => {
       const { data, error } = await supabase
         .from('processes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching processes:', error);

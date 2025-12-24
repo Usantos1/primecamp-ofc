@@ -22,7 +22,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 
@@ -69,7 +69,7 @@ export default function Clientes() {
       const { data, error } = await supabase
         .from('ordens_servico')
         .select('*')
-        .eq('cliente_id', editingCliente.id)
+        .execute().eq('cliente_id', editingCliente.id)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -86,7 +86,7 @@ export default function Clientes() {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
-        .eq('cliente_id', editingCliente.id)
+        .execute().eq('cliente_id', editingCliente.id)
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -208,7 +208,7 @@ export default function Clientes() {
       const { data, error } = await supabase
         .from('kv_store_2c4defad')
         .select('value')
-        .eq('key', 'aniversario_config')
+        .execute().eq('key', 'aniversario_config')
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -242,7 +242,8 @@ export default function Clientes() {
       // Se o envio automático estiver ativado, atualizar o cron job
       if (aniversarioConfig.ativo && aniversarioConfig.horario) {
         try {
-          const { data: cronResult, error: cronError } = await supabase.rpc(
+          const { data: cronResult, error: cronError } = await // 🚫 Supabase RPC removido - TODO: implementar na API
+      // supabase.rpc(
             'atualizar_cron_aniversario',
             { horario_brt: aniversarioConfig.horario }
           );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useUserLogs } from '@/hooks/useUserLogs';
@@ -39,7 +39,7 @@ export const useTimeClock = () => {
       const { data, error } = await supabase
         .from('time_clock')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(30);
 
@@ -153,7 +153,7 @@ export const useTimeClock = () => {
       const existingRecord = await supabase
         .from('time_clock')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .eq('date', today)
         .single();
 

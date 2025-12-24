@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useQuizzes(trainingId?: string) {
   const { toast } = useToast();
@@ -18,7 +19,7 @@ export function useQuizzes(trainingId?: string) {
           quiz_questions (
             *,
             quiz_question_options (*)
-          )
+          .execute())
         `)
         .eq('training_id', trainingId)
         .order('order_index', { ascending: true });
@@ -198,13 +199,13 @@ export function useQuizzes(trainingId?: string) {
     queryFn: async () => {
       if (!trainingId) return [];
       
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) return [];
 
       const { data: quizzesData } = await supabase
         .from('training_quizzes')
         .select('id')
-        .eq('training_id', trainingId);
+        .execute().eq('training_id', trainingId);
 
       if (!quizzesData || quizzesData.length === 0) return [];
 
@@ -213,7 +214,7 @@ export function useQuizzes(trainingId?: string) {
       const { data, error } = await supabase
         .from('quiz_attempts')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .in('quiz_id', quizIds)
         .order('created_at', { ascending: false });
       
@@ -225,7 +226,7 @@ export function useQuizzes(trainingId?: string) {
 
   const submitQuizAttempt = useMutation({
     mutationFn: async ({ quizId, answers, timeSpent }: any) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) throw new Error('User not authenticated');
 
       // Get quiz and questions
@@ -236,7 +237,7 @@ export function useQuizzes(trainingId?: string) {
           quiz_questions (
             *,
             quiz_question_options (*)
-          )
+          .execute())
         `)
         .eq('id', quizId)
         .single();

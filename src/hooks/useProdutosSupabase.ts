@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
+import { from } from '@/integrations/db/client'; // Mantido para auth.getUser()
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mapear produto do Supabase para tipo assistencia.Produto
 function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
@@ -195,7 +196,7 @@ export function useProdutosSupabase() {
       while (hasMore) {
         const { data, error } = await from('produtos')
           .select('*')
-          .order('nome', { ascending: true })
+          .execute().order('nome', { ascending: true })
           .range(offset, offset + pageSize - 1)
           .execute();
 
@@ -219,7 +220,7 @@ export function useProdutosSupabase() {
 
   // Criar produto
   const createProduto = useCallback(async (data: Partial<Produto>): Promise<Produto> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = useAuth();
     if (!user) throw new Error('Usuário não autenticado');
 
     const produtoSupabase = mapAssistenciaToSupabase(data);
@@ -233,7 +234,7 @@ export function useProdutosSupabase() {
         criado_por: user.id,
       })
       .select('*')
-      .single();
+     .execute() .single();
 
     if (error) {
       toast({

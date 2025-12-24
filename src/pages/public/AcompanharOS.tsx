@@ -39,7 +39,7 @@ export default function AcompanharOS() {
       const { data: osData, error: osError } = await supabasePublic
         .from('ordens_servico')
         .select('id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, operadora, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes')
-        .eq('id', id)
+        .execute().eq('id', id)
         .single();
 
       if (osError) throw osError;

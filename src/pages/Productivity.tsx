@@ -2,7 +2,7 @@ import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, TrendingUp, Clock, Target, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts';
 import { format, subDays } from 'date-fns';
 
@@ -28,7 +28,7 @@ export default function Productivity() {
       const { data: tasks } = await supabase
         .from('tasks')
         .select('*')
-        .gte('created_at', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+       .execute() .gte('created_at', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
 
       // Process data for charts
       const tasksByDate = (tasks || []).reduce((acc, task) => {

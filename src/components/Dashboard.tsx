@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { BarChart3, TrendingUp, Users, Target, Calendar, CheckCircle, Activity } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { format, subDays, startOfMonth, endOfMonth, subMonths, subYears, parseISO, startOfDay, endOfDay } from 'date-fns';
@@ -97,7 +97,7 @@ export function Dashboard() {
       const { data: npsResponses } = await supabase
         .from('nps_responses')
         .select('*')
-        .gte('date', fromDateStr)
+       .execute() .gte('date', fromDateStr)
         .lte('date', toDateStr)
         .order('date', { ascending: true });
 
@@ -105,7 +105,7 @@ export function Dashboard() {
 
       // Fetch goals data - by department or all if admin
       const isAdmin = profile.role === 'admin';
-      let goalsQuery = supabase.from('goals').select('*');
+      let goalsQuery = from('goals').select('*').execute();
       
       if (!isAdmin && profile.department) {
         goalsQuery = goalsQuery.or(`user_id.eq.${user.id},department.eq.${profile.department}`);
@@ -117,7 +117,7 @@ export function Dashboard() {
       let tasksQuery = supabase
         .from('tasks')
         .select('*')
-        .gte('created_at', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+       .execute() .gte('created_at', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
         
       if (!isAdmin) {
         tasksQuery = tasksQuery.eq('responsible_user_id', user.id);
@@ -129,7 +129,7 @@ export function Dashboard() {
       const { data: processes } = await supabase
         .from('processes')
         .select('*')
-        .eq('status', 'active');
+        .execute().eq('status', 'active');
 
       // Generate complete date range for the period (skip Sundays)
       const generateDateRange = (period: NPSPeriod): string[] => {

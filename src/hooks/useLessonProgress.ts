@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useLessonProgress(trainingId?: string) {
   const { toast } = useToast();
@@ -9,13 +10,13 @@ export function useLessonProgress(trainingId?: string) {
   const { data: progress } = useQuery({
     queryKey: ['lesson-progress', trainingId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user || !trainingId) return [];
 
       const { data, error } = await supabase
         .from('lesson_progress')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .eq('training_id', trainingId);
       
       if (error) throw error;
@@ -38,7 +39,7 @@ export function useLessonProgress(trainingId?: string) {
       lastWatchedSeconds: number;
       completed: boolean;
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) throw new Error('Not authenticated');
       
       const { error } = await supabase

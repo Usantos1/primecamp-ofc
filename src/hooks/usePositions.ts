@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,7 +26,7 @@ export const usePositions = () => {
       const { data, error } = await supabase
         .from('positions')
         .select('*')
-        .order('level', { ascending: false });
+        .execute().order('level', { ascending: false });
 
       if (error) {
         console.error('Error fetching positions:', error);

@@ -17,7 +17,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Download, FileSpreadsheet, FileText, Database } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 
@@ -52,9 +52,9 @@ export function ReportExporter() {
 
     try {
       if (options.dataType === 'tasks' || options.dataType === 'all') {
-        let query = supabase.from('tasks').select(`
+        let query = from('tasks').select(`
           *,
-          profiles:responsible_user_id(display_name),
+          profiles:responsible_user_id(display_name).execute(),
           categories(name),
           processes(name)
         `);
@@ -68,10 +68,10 @@ export function ReportExporter() {
       }
 
       if (options.dataType === 'processes' || options.dataType === 'all') {
-        let query = supabase.from('processes').select(`
+        let query = from('processes').select(`
           *,
           categories(name)
-        `);
+        .execute()`);
         
         if (dateFilter) {
           query = query.gte('created_at', dateFilter);
@@ -82,7 +82,7 @@ export function ReportExporter() {
       }
 
       if (options.dataType === 'users' || options.dataType === 'all') {
-        let query = supabase.from('profiles').select('*');
+        let query = from('profiles').select('*').execute();
         
         if (dateFilter) {
           query = query.gte('created_at', dateFilter);
@@ -93,7 +93,7 @@ export function ReportExporter() {
       }
 
       if (options.dataType === 'events' || options.dataType === 'all') {
-        let query = supabase.from('calendar_events').select('*');
+        let query = from('calendar_events').select('*').execute();
         
         if (dateFilter) {
           query = query.gte('created_at', dateFilter);
@@ -104,10 +104,10 @@ export function ReportExporter() {
       }
 
       if (options.dataType === 'time_clock' || options.dataType === 'all') {
-        let query = supabase.from('time_clock').select(`
+        let query = from('time_clock').select(`
           *,
           profiles(display_name)
-        `);
+        .execute()`);
         
         if (dateFilter) {
           query = query.gte('created_at', dateFilter);

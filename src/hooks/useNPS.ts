@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
@@ -51,7 +51,7 @@ export const useNPS = () => {
       const { data, error } = await supabase
         .from('nps_surveys')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching NPS surveys:', error);
@@ -106,7 +106,7 @@ export const useNPS = () => {
       const { data, error } = await supabase
         .from('nps_responses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching NPS responses:', error);

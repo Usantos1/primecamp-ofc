@@ -21,10 +21,11 @@ import {
   Minimize2
 } from 'lucide-react';
 import { useLessonProgress } from '@/hooks/useLessonProgress';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ImprovedLessonPlayerProps {
   lesson: any;
@@ -92,13 +93,13 @@ export function ImprovedLessonPlayer({
   // Load bookmarks
   useEffect(() => {
     const loadBookmarks = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) return;
 
       const { data, error } = await supabase
         .from('lesson_bookmarks')
         .select('*')
-        .eq('lesson_id', lesson.id)
+        .execute().eq('lesson_id', lesson.id)
         .eq('user_id', user.id)
         .order('time', { ascending: true });
 
@@ -274,7 +275,7 @@ export function ImprovedLessonPlayer({
   const handleAddBookmark = async () => {
     if (!player) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = useAuth();
     if (!user) return;
 
     const currentTime = Math.floor(player.getCurrentTime());
@@ -292,7 +293,7 @@ export function ImprovedLessonPlayer({
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = useAuth();
     if (!user) return;
 
     const { data, error } = await supabase

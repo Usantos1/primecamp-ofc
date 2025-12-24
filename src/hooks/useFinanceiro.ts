@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from './use-toast';
 import { useErrorHandler } from './useErrorHandler';
 import {
@@ -26,7 +26,7 @@ export function useFinancialCategories() {
         const { data, error } = await (supabase as any)
           .from('financial_categories')
           .select('*')
-          .order('name');
+          .execute().order('name');
 
         if (error) {
           console.warn('Erro ao buscar categorias financeiras:', error);
@@ -71,7 +71,7 @@ export function useBillsToPay(filters?: {
       try {
         let query = (supabase as any)
           .from('bills_to_pay')
-          .select('*, category:financial_categories(*)')
+          .select('*, category:financial_categories(*).execute()')
           .order('due_date', { ascending: true });
 
         if (filters?.status) {
@@ -205,7 +205,7 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
         let query = (supabase as any)
           .from('cash_closings')
           .select('*')
-          .order('closing_date', { ascending: false });
+          .execute().order('closing_date', { ascending: false });
 
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
@@ -323,7 +323,7 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
       try {
         let query = (supabase as any)
           .from('financial_transactions')
-          .select('*, category:financial_categories(*)')
+          .select('*, category:financial_categories(*).execute()')
           .order('transaction_date', { ascending: false });
 
         if (filters?.month) {
@@ -413,7 +413,7 @@ export function useBillsDueSoon(daysAhead: number = 7) {
 
         const { data, error } = await (supabase as any)
           .from('bills_to_pay')
-          .select('*, category:financial_categories(*)')
+          .select('*, category:financial_categories(*).execute()')
           .eq('status', 'pendente')
           .lte('due_date', futureDate.toISOString().split('T')[0])
           .order('due_date', { ascending: true });

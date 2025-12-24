@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useTrainings() {
   const { toast } = useToast();
@@ -26,7 +27,7 @@ export function useTrainings() {
               duration_minutes,
               order_index
             )
-          )
+          .execute())
         `)
         .order('created_at', { ascending: false });
       
@@ -49,7 +50,7 @@ export function useTrainings() {
   const { data: myAssignments } = useQuery({
     queryKey: ['my-training-assignments'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) return [];
 
       const { data, error } = await supabase
@@ -71,7 +72,7 @@ export function useTrainings() {
                 duration_minutes,
                 order_index
               )
-            )
+            .execute())
           )
         `)
         .eq('user_id', user.id)
@@ -87,7 +88,7 @@ export function useTrainings() {
         const { data: progressData } = await supabase
           .from('lesson_progress')
           .select('*')
-          .eq('user_id', user.id)
+          .execute().eq('user_id', user.id)
           .eq('training_id', training.id);
         
         const modules = training.training_modules
@@ -121,7 +122,7 @@ export function useTrainings() {
 
   const createTraining = useMutation({
     mutationFn: async (training: any) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       
       const { data, error } = await supabase
         .from('trainings')
@@ -183,7 +184,7 @@ export function useTrainings() {
       status: 'in_progress' | 'completed';
       lastWatchedSeconds: number;
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) throw new Error('Not authenticated');
       
       const { error } = await supabase
@@ -215,7 +216,7 @@ export function useTrainings() {
       userIds: string[];
       dueDate?: string;
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = useAuth();
       if (!user) throw new Error('Not authenticated');
       
       const assignments = userIds.map(userId => ({

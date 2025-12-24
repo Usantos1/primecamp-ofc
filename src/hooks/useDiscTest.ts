@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -256,7 +256,7 @@ export const useDiscTest = () => {
         const { data: completedTests, error: completedError } = await supabase
           .from('disc_responses')
           .select('*')
-          .eq('user_id', user.id)
+          .execute().eq('user_id', user.id)
           .eq('is_completed', true)
           .order('completion_date', { ascending: false })
           .limit(1);
@@ -353,7 +353,7 @@ export const useDiscTest = () => {
       const { data: tests, error: testError } = await supabase
         .from('disc_tests')
         .select('*')
-        .eq('is_active', true)
+        .execute().eq('is_active', true)
         .limit(1);
 
       if (testError) {
@@ -378,7 +378,7 @@ export const useDiscTest = () => {
       const { data: existingIncomplete } = await supabase
         .from('disc_responses')
         .select('id')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .eq('test_id', test.id)
         .eq('is_completed', false)
         .maybeSingle();
@@ -522,7 +522,7 @@ export const useDiscTest = () => {
         const { data: tests, error: testError } = await supabase
           .from('disc_tests')
           .select('*')
-          .eq('is_active', true)
+          .execute().eq('is_active', true)
           .limit(1);
           
         if (testError || !tests || tests.length === 0) {
@@ -537,7 +537,7 @@ export const useDiscTest = () => {
       let { data: existingResponse, error: fetchError } = await supabase
         .from('disc_responses')
         .select('*')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .eq('test_id', finalTestId)
         .eq('is_completed', false)
         .maybeSingle();

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Permission {
@@ -67,7 +67,7 @@ export function usePermissions() {
       if (profile?.role === 'admin') {
         const { data: allPermissions } = await supabase
           .from('permissions')
-          .select('resource, action');
+          .select('resource, action').execute();
 
         if (allPermissions) {
           const permSet = new Set(
@@ -86,7 +86,7 @@ export function usePermissions() {
           permission_id,
           granted,
           permission:permissions(resource, action)
-        `)
+        .execute()`)
         .eq('user_id', user.id);
 
       if (userPermsError) {
@@ -101,7 +101,7 @@ export function usePermissions() {
           role:roles(
             role_permissions(
               permission:permissions(resource, action)
-            )
+            .execute())
           )
         `)
         .eq('user_id', user.id)

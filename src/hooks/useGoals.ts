@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
@@ -38,13 +38,13 @@ export const useGoals = () => {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('role, department')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .single();
 
       let query = supabase
         .from('goals')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       // Filter based on role, department, and participation
       if (profileData?.role !== 'admin') {

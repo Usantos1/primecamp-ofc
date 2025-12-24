@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTimeClock } from '@/hooks/useTimeClock';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 interface TimeRecord {
   id: string;
@@ -51,7 +51,7 @@ export function TimeSheetManager() {
       const { data, error } = await supabase
         .from('time_clock')
         .select('*')
-        .eq('user_id', selectedUser)
+        .execute().eq('user_id', selectedUser)
         .gte('date', format(monthStart, 'yyyy-MM-dd'))
         .lte('date', format(monthEnd, 'yyyy-MM-dd'))
         .order('date', { ascending: true });

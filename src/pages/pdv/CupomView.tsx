@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, Share2 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
 export default function CupomView() {
@@ -86,7 +86,7 @@ export default function CupomView() {
       const { data: saleData, error: saleError } = await supabase
         .from('sales')
         .select('*')
-        .eq('id', id)
+        .execute().eq('id', id)
         .single();
       
       if (saleError) throw saleError;
@@ -96,7 +96,7 @@ export default function CupomView() {
       const { data: itemsData, error: itemsError } = await supabase
         .from('sale_items')
         .select('*')
-        .eq('sale_id', id);
+        .execute().eq('sale_id', id);
       
       if (itemsError) throw itemsError;
       setItems(itemsData || []);
@@ -105,7 +105,7 @@ export default function CupomView() {
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select('*')
-        .eq('sale_id', id);
+        .execute().eq('sale_id', id);
       
       if (paymentsError) throw paymentsError;
       setPayments(paymentsData || []);
@@ -115,7 +115,7 @@ export default function CupomView() {
         const { data: configData } = await supabase
           .from('kv_store_2c4defad')
           .select('value')
-          .eq('key', 'cupom_config')
+          .execute().eq('key', 'cupom_config')
           .single();
         
         if (configData) {

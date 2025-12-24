@@ -1,89 +1,164 @@
-# 🎯 Próximos Passos - Migração Frontend
+# 🎯 Próximos Passos - Testar Autenticação
 
-## ✅ O que já está pronto:
-- ✅ API Backend rodando (`http://api.primecamp.cloud`)
-- ✅ PostgreSQL conectado e funcionando
-- ✅ Banco de dados migrado
+## ✅ O QUE JÁ FOI FEITO:
 
-## 🚀 Agora vamos migrar o Frontend:
+1. ✅ Tabela `users` criada
+2. ✅ Usuário admin criado (`admin@primecamp.com`)
+3. ✅ API reiniciada
+4. ✅ Frontend buildado
 
-### Passo 1: Configurar `.env` do Frontend
+## 🔍 VERIFICAÇÃO CRÍTICA: Criar Profile do Admin
 
-Certifique-se que o `.env` na raiz do projeto tem:
+Execute no PostgreSQL:
+
+```sql
+-- Verificar se profile existe
+SELECT * FROM profiles WHERE user_id = (SELECT id FROM users WHERE email = 'admin@primecamp.com');
+
+-- Se não existir, criar:
+INSERT INTO profiles (user_id, display_name, role, approved, approved_at)
+SELECT id, 'Admin', 'admin', true, NOW()
+FROM users WHERE email = 'admin@primecamp.com';
+```
+
+## 📋 PRÓXIMOS PASSOS:
+
+### 1. Copiar Arquivos Buildados para o Servidor Web
+
+Se você usa Nginx, copie os arquivos da pasta `dist`:
+
+```bash
+# Copiar arquivos buildados
+sudo cp -r /root/primecamp-ofc/dist/* /var/www/html/
+
+# Ou se usar outro diretório:
+sudo cp -r /root/primecamp-ofc/dist/* /caminho/do/seu/servidor/web/
+```
+
+### 2. Verificar Variáveis de Ambiente do Frontend
+
+Certifique-se de que o `.env` do frontend tem:
 
 ```env
 VITE_DB_MODE=postgres
 VITE_API_URL=http://api.primecamp.cloud/api
 ```
 
-### Passo 2: Atualizar um Hook de Teste
+**IMPORTANTE:** Se mudou o `.env`, precisa rebuildar:
 
-Vamos começar migrando um hook simples para testar. Vou atualizar o `useOrdensServicoSupabase.ts` como exemplo:
-
-**Mudança necessária:**
-- Trocar `import { supabase }` por `import { from } from '@/integrations/db/client'`
-- Adicionar `.execute()` nas queries
-- Ajustar ordem dos métodos (WHERE antes de UPDATE/DELETE)
-
-### Passo 3: Testar no Navegador
-
-1. Iniciar o frontend: `npm run dev`
-2. Acessar a página de OS
-3. Verificar se os dados aparecem
-4. Verificar console por erros
-
-### Passo 4: Migrar Outros Hooks Gradualmente
-
-Após testar, migrar um hook por vez:
-- `useClientesSupabase.ts`
-- `useProdutosSupabase.ts`
-- `useMarcasModelosSupabase.ts`
-- etc.
-
-## 🔧 Diferenças Importantes:
-
-### Query (SELECT)
-```typescript
-// Antes (Supabase)
-const { data } = await supabase.from('tabela').select('*');
-
-// Depois (PostgreSQL)
-const { data } = await from('tabela').select('*').execute();
+```bash
+cd /root/primecamp-ofc
+npm run build
+sudo cp -r dist/* /var/www/html/
 ```
 
-### Insert
-```typescript
-// Antes
-const { data } = await supabase.from('tabela').insert({ campo: valor });
+### 3. Testar API
 
-// Depois
-const { data } = await from('tabela').insert({ campo: valor });
+```bash
+# Testar health check
+curl http://api.primecamp.cloud/health
+
+# Deve retornar: {"status":"ok","database":"connected"}
 ```
 
-### Update
-```typescript
-// Antes
-const { data } = await supabase
-  .from('tabela')
-  .update({ campo: valor })
-  .eq('id', 123);
+### 4. Testar Login no Frontend
 
-// Depois
-const { data } = await from('tabela')
-  .eq('id', 123)
-  .update({ campo: valor });
+1. Acesse: `https://primecamp.cloud/auth`
+2. Faça login com:
+   - **Email:** `admin@primecamp.com`
+   - **Senha:** A senha que você usou ao criar o hash
+
+### 5. Verificar se Funcionou
+
+Após fazer login:
+
+1. ✅ Deve redirecionar para `/` (dashboard)
+2. ✅ Deve mostrar "Admin" no sidebar
+3. ✅ Deve ter acesso às funcionalidades
+4. ✅ Abra o Console do navegador (F12) e verifique:
+   - Não deve ter erros de "Failed to fetch"
+   - Deve mostrar `[DB Client] ✅ Usando PostgreSQL`
+   - Token deve estar salvo no localStorage como `auth_token`
+
+## 🔧 TROUBLESHOOTING:
+
+### Erro: "Email ou senha incorretos"
+
+**Problema:** Hash da senha não está correto.
+
+**Solução:**
+1. Gere novo hash:
+```bash
+cd /root/primecamp-ofc/server
+node -e "const bcrypt = require('bcrypt'); bcrypt.hash('sua_senha_aqui', 10).then(h => console.log(h))"
 ```
 
-## ⚠️ Importante:
+2. Atualize no PostgreSQL:
+```sql
+UPDATE users 
+SET password_hash = 'novo_hash_gerado_acima'
+WHERE email = 'admin@primecamp.com';
+```
 
-- **Autenticação**: Por enquanto, manter usando Supabase (já configurado no wrapper)
-- **Testar cada hook**: Após migrar, testar no navegador antes de continuar
-- **Rollback fácil**: Se algo der errado, mude `VITE_DB_MODE=supabase` no `.env`
+### Erro: "Token de autenticação necessário"
 
-## 📝 Quer que eu comece migrando algum hook específico?
+**Problema:** Frontend não está conectando à API correta.
 
-Posso começar migrando:
-1. `useOrdensServicoSupabase.ts` (mais usado)
-2. `useClientesSupabase.ts` (mais simples)
-3. Outro que você preferir
+**Solução:**
+1. Verifique `VITE_API_URL` no `.env`
+2. Rebuild o frontend:
+```bash
+cd /root/primecamp-ofc
+npm run build
+sudo cp -r dist/* /var/www/html/
+```
 
+### Erro: "Failed to fetch"
+
+**Problema:** API não está acessível ou CORS bloqueado.
+
+**Solução:**
+1. Verifique se API está rodando:
+```bash
+pm2 status
+pm2 logs primecamp-api
+```
+
+2. Verifique CORS no `server/index.js`:
+```javascript
+origin: process.env.VITE_API_ORIGIN || 'https://primecamp.cloud'
+```
+
+### Frontend mostra dados do Supabase ainda
+
+**Problema:** `VITE_DB_MODE` não está como `postgres`.
+
+**Solução:**
+1. Verifique `.env`:
+```bash
+cat .env | grep VITE_DB_MODE
+# Deve mostrar: VITE_DB_MODE=postgres
+```
+
+2. Se não estiver, edite e rebuild:
+```bash
+nano .env
+# Adicione: VITE_DB_MODE=postgres
+npm run build
+sudo cp -r dist/* /var/www/html/
+```
+
+## ✅ CHECKLIST FINAL:
+
+- [ ] Profile do admin criado no PostgreSQL
+- [ ] Arquivos buildados copiados para servidor web
+- [ ] `.env` do frontend com `VITE_DB_MODE=postgres` e `VITE_API_URL` correto
+- [ ] Frontend rebuildado após mudanças no `.env`
+- [ ] API respondendo (`/health`)
+- [ ] Login funcionando
+- [ ] Token sendo salvo no localStorage
+- [ ] Dados sendo buscados do PostgreSQL (verificar no console)
+
+## 🎉 PRONTO!
+
+Se tudo funcionou, você está 100% migrado do Supabase para PostgreSQL! 🚀

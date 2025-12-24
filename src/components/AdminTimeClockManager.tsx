@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,7 +59,7 @@ export const AdminTimeClockManager = () => {
       let query = supabase
         .from('time_clock')
         .select('*')
-        .order('date', { ascending: false });
+        .execute().order('date', { ascending: false });
 
       // Apply date filter
       if (dateFilter.start) {

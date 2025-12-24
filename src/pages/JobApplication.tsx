@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, Building2, MapPin, Briefcase, UserCheck, Clock, DollarSign, Eye } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -78,7 +78,7 @@ export default function JobApplication() {
       const { data, error } = await supabase
         .from('job_surveys')
         .select('*')
-        .eq('id', surveyId)
+        .execute().eq('id', surveyId)
         .eq('is_active', true)
         .single();
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
@@ -30,7 +30,7 @@ export const useCalendarEvents = () => {
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
-        .order('start_time', { ascending: true });
+        .execute().order('start_time', { ascending: true });
 
       if (error) throw error;
 

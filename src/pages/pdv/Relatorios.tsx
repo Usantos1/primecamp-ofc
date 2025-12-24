@@ -18,7 +18,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useSales } from '@/hooks/usePDV';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 
 export default function Relatorios() {
@@ -90,7 +90,7 @@ export default function Relatorios() {
         const { data: paymentsData } = await supabase
           .from('payments')
           .select('*')
-          .in('sale_id', saleIds)
+         .execute() .in('sale_id', saleIds)
           .eq('status', 'confirmed');
         
         if (paymentsData) {
@@ -115,7 +115,7 @@ export default function Relatorios() {
         const { data: itemsData } = await supabase
           .from('sale_items')
           .select('*')
-          .eq('sale_id', selectedSale.id);
+          .execute().eq('sale_id', selectedSale.id);
         
         if (itemsData) {
           setSelectedSale((prev: any) => ({ ...prev, items: itemsData }));

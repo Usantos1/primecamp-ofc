@@ -90,7 +90,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       
       let query = from('produtos')
         .select(selectFields)
-        .order('nome', { ascending: true });
+        .execute().order('nome', { ascending: true });
 
       // Aplicar filtro de grupo/categoria
       if (grupo && grupo.trim() !== '') {
@@ -176,7 +176,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
           
           let query = from('produtos')
             .select(selectFields)
-            .order('nome', { ascending: true });
+            .execute().order('nome', { ascending: true });
 
           if (grupo && grupo.trim() !== '') {
             query = query.eq('grupo', grupo);
@@ -264,7 +264,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     queryFn: async () => {
       const { data, error } = await from('produtos')
         .select('grupo')
-        .not('grupo', 'is', null)
+        .execute().not('grupo', 'is', null)
         .execute();
 
       if (error) throw error;

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles } from 'lucide-react';
@@ -117,7 +117,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
         const { data, error } = await supabase
           .from('kv_store_2c4defad')
           .select('*')
-          .eq('key', 'integration_settings')
+          .execute().eq('key', 'integration_settings')
           .maybeSingle();
 
         if (error) {
@@ -191,7 +191,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data, error } = await supabase
         .from('job_surveys')
         .select('*')
-        .order('created_at', { ascending: false });
+        .execute().order('created_at', { ascending: false });
 
       if (error) throw error;
       
@@ -227,7 +227,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data, error } = await supabase
         .from('job_responses')
         .select('*')
-        .eq('survey_id', selectedSurvey.id)
+        .execute().eq('survey_id', selectedSurvey.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -245,7 +245,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data, error } = await supabase
         .from('job_application_drafts')
         .select('*')
-        .eq('survey_id', selectedSurvey.id)
+        .execute().eq('survey_id', selectedSurvey.id)
         .order('last_saved_at', { ascending: false });
 
       if (error) throw error;
@@ -263,7 +263,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data, error } = await supabase
         .from('job_candidate_ai_analysis')
         .select('*')
-        .eq('survey_id', selectedSurvey.id);
+        .execute().eq('survey_id', selectedSurvey.id);
 
       if (error) throw error;
       return data || [];
@@ -472,7 +472,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .single();
 
       if (!profile) throw new Error('Profile not found');
@@ -756,7 +756,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .single();
 
       if (!profile) throw new Error('Profile not found');
@@ -977,13 +977,13 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data: jobResponse, error: responseError } = await supabase
         .from('job_responses')
         .select('*')
-        .eq('id', response.id)
+        .execute().eq('id', response.id)
         .single();
 
       const { data: jobSurvey, error: surveyError } = await supabase
         .from('job_surveys')
         .select('*')
-        .eq('id', response.survey_id)
+        .execute().eq('id', response.survey_id)
         .single();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
@@ -993,7 +993,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data: discResult } = await supabase
         .from('candidate_responses')
         .select('*')
-        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
         .maybeSingle();
@@ -1034,7 +1034,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .maybeSingle();
 
       if (!profile) {
@@ -1405,7 +1405,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                               const { data: checkData, error: checkError } = await supabase
                                 .from('job_application_drafts')
                                 .select('id')
-                                .eq('id', draft.id)
+                                .execute().eq('id', draft.id)
                                 .single();
 
                               if (checkError || !checkData) {
@@ -1655,7 +1655,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                       const { data: existing } = await supabase
                                         .from('job_interviews')
                                         .select('*')
-                                        .eq('job_response_id', response.id)
+                                        .execute().eq('job_response_id', response.id)
                                         .eq('interview_type', 'online')
                                         .maybeSingle();
 
@@ -1711,13 +1711,13 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                       const { data: jobResponse } = await supabase
                                         .from('job_responses')
                                         .select('*')
-                                        .eq('id', response.id)
+                                        .execute().eq('id', response.id)
                                         .single();
 
                                       const { data: jobSurvey } = await supabase
                                         .from('job_surveys')
                                         .select('*')
-                                        .eq('id', response.survey_id)
+                                        .execute().eq('id', response.survey_id)
                                         .single();
 
                                       if (!jobResponse || !jobSurvey) {
@@ -1733,7 +1733,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                       const { data: discResult } = await supabase
                                         .from('candidate_responses')
                                         .select('*')
-                                        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+                                        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
                                         .eq('is_completed', true)
                                         .order('created_at', { ascending: false })
                                         .maybeSingle();

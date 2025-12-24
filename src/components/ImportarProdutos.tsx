@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { toast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 
@@ -273,9 +273,22 @@ export function ImportarProdutos() {
             throw jsonError;
           }
           
-          const { data, error } = await supabase.functions.invoke('import-produtos', {
-            body: requestBody,
-          });
+          // 🚫 Supabase Functions removido - usar API direta
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_URL}/functions/${'import-produtos'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody,
+          ),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Erro na requisição' }));
+        throw new Error(error.error || 'Erro na requisição');
+      }
+      
+      const data = await response.json();
+      const error = null;
           
           console.log(`[ImportarProdutos] Edge Function respondeu para lote ${batchNum}`);
 

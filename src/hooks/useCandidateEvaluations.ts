@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface CandidateEvaluation {
@@ -30,12 +30,12 @@ export const useCandidateEvaluations = (surveyId?: string) => {
         .select(`
           *,
           evaluator:profiles!evaluator_id(display_name)
-        `)
+        .execute()`)
         .in('job_response_id', 
           (await supabase
             .from('job_responses')
             .select('id')
-            .eq('survey_id', surveyId)
+            .execute().eq('survey_id', surveyId)
           ).data?.map(r => r.id) || []
         )
         .order('updated_at', { ascending: false });

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 export interface CupomConfig {
   id?: string;
@@ -26,7 +26,7 @@ export function useCupomConfig() {
       const { data, error } = await supabase
         .from('cupom_config')
         .select('*')
-        .limit(1)
+        .execute().limit(1)
         .single();
 
       if (error) {

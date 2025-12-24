@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,7 +43,7 @@ export const DiscTestEvolution = () => {
       const { data, error } = await supabase
         .from('disc_responses')
         .select('id, completion_date, d_score, i_score, s_score, c_score, dominant_profile')
-        .eq('user_id', user.id)
+        .execute().eq('user_id', user.id)
         .eq('is_completed', true)
         .order('completion_date', { ascending: true });
 

@@ -3,6 +3,7 @@
 // NENHUM código deve usar Supabase mais - Use PostgreSQL via @/integrations/db/client
 
 import type { Database } from './types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const SUPABASE_URL = "";
 export const SUPABASE_PUBLISHABLE_KEY = "";

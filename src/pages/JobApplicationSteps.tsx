@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -283,7 +283,7 @@ export default function JobApplicationSteps() {
           const { data: backendDraft, error } = await supabase
             .from('job_application_drafts')
             .select('*')
-            .eq('survey_id', survey.id)
+            .execute().eq('survey_id', survey.id)
             .eq('email', parsed.email.trim().toLowerCase())
             .maybeSingle();
 
@@ -332,7 +332,7 @@ export default function JobApplicationSteps() {
       const { data, error } = await supabase
         .from("job_surveys")
         .select("*")
-        .eq("slug", slug)
+        .execute().eq("slug", slug)
         .eq("is_active", true)
         .single();
 

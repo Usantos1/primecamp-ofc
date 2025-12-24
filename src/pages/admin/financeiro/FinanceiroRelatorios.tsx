@@ -12,7 +12,7 @@ import { CashFlowChart } from '@/components/financeiro/CashFlowChart';
 import { DREComplete } from '@/components/financeiro/DREComplete';
 import { FinancialCharts } from '@/components/financeiro/FinancialCharts';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { useQuery } from '@tanstack/react-query';
 
 export function FinanceiroRelatorios() {
@@ -34,7 +34,7 @@ export function FinanceiroRelatorios() {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
-        .gte('created_at', start)
+       .execute() .gte('created_at', start)
         .lte('created_at', end)
         .eq('status', 'paid');
       if (error) throw error;

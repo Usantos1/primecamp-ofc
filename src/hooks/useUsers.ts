@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 
 export interface User {
   id: string;
@@ -31,7 +31,7 @@ export const useUsers = () => {
           phone, 
           avatar_url
         `)
-        .order('display_name');
+        .execute().order('display_name');
 
       if (error) {
         console.error('Error fetching users:', error);

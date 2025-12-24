@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2, Building2, Save, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Department {
   id: string;
@@ -39,7 +40,7 @@ export const DepartmentManager = () => {
       const { data, error } = await supabase
         .from('departments')
         .select('*')
-        .order('name');
+        .execute().order('name');
 
       if (error) {
         toast({
@@ -135,7 +136,7 @@ export const DepartmentManager = () => {
       const { data: usersInDept } = await supabase
         .from('profiles')
         .select('id')
-        .eq('department', name);
+        .execute().eq('department', name);
 
       if (usersInDept && usersInDept.length > 0) {
         toast({

@@ -12,7 +12,7 @@ import { ImprovedDiscTestForm } from '@/components/ImprovedDiscTestForm';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, User, Phone, Calendar, Mail } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 // Logo correto do Prime Camp
 const logoImage = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
 
@@ -128,7 +128,7 @@ const CandidateDisc = () => {
       const { data: jobResponse, error } = await supabase
         .from('job_responses')
         .select('*')
-        .eq('id', responseId)
+        .execute().eq('id', responseId)
         .single();
 
       if (error) {
@@ -235,13 +235,13 @@ const CandidateDisc = () => {
         const { data: jobResponse } = await supabase
           .from('job_responses')
           .select('*')
-          .eq('id', jobResponseId)
+          .execute().eq('id', jobResponseId)
           .single();
 
         const { data: jobSurvey } = await supabase
           .from('job_surveys')
           .select('*')
-          .eq('id', surveyId)
+          .execute().eq('id', surveyId)
           .single();
 
         if (jobResponse && jobSurvey) {
@@ -249,7 +249,7 @@ const CandidateDisc = () => {
           const { data: discResult } = await supabase
             .from('candidate_responses')
             .select('*')
-            .eq('id', candidateId)
+            .execute().eq('id', candidateId)
             .single();
 
           // Chamar análise com OpenAI
