@@ -283,11 +283,18 @@ export function useSales() {
         for (const item of items) {
           if (item.produto_id && item.produto_tipo === 'produto') {
             try {
-              const { error: stockError } = await // 🚫 Supabase RPC removido - TODO: implementar na API
-      // supabase.rpc('decrement_stock', {
-                produto_id: item.produto_id,
-                quantidade: item.quantidade
-              });
+              // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
+              // const { error: stockError } = await supabase.rpc('decrement_stock', {
+              //   produto_id: item.produto_id,
+              //   quantidade: item.quantidade
+              // });
+              
+              // Por enquanto, apenas logar que seria necessário decrementar estoque
+              console.log(`Estoque precisa ser decrementado: produto ${item.produto_id}, quantidade ${item.quantidade}`);
+              
+              // Simular sucesso para não quebrar o fluxo
+              const stockError = null;
+              
               if (stockError) {
                 console.error(`Erro ao baixar estoque do produto ${item.produto_id}:`, stockError);
               }
