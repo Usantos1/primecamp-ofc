@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,11 +35,9 @@ const ResetPassword = () => {
       return;
     }
 
-    // Set the session with the tokens from URL
-    supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken
-    });
+    // 🚫 SUPABASE REMOVIDO - Reset password desabilitado temporariamente
+    // TODO: Implementar reset password via API PostgreSQL
+    console.warn('Reset password via Supabase foi removido. Use a API PostgreSQL.');
   }, [searchParams, navigate, toast]);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -73,12 +72,17 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      // 🚫 SUPABASE REMOVIDO - Usar API PostgreSQL
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, access_token: searchParams.get('access_token') }),
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao redefinir senha');
       }
 
       toast({
