@@ -49,7 +49,7 @@ const CandidateDisc = () => {
       console.log('🔍 Buscando dados da candidatura:', protocol);
       
       // 🚫 SUPABASE REMOVIDO - Usar API PostgreSQL
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       
       const response = await fetch(
         `${API_URL}/functions/get-candidate-data?protocol=${encodeURIComponent(protocol)}`,

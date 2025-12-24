@@ -7,7 +7,7 @@
 
 import { from as postgresFrom } from '@/integrations/postgres/api-client';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
 
 // Log para debug
 console.log('[DB Client] ✅ Usando APENAS PostgreSQL (Supabase REMOVIDO)', {

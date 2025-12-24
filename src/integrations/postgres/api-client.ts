@@ -5,7 +5,7 @@
  * Não tenta conectar diretamente ao PostgreSQL do navegador (não é possível por segurança).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
 
 // Verificar se estamos em modo desenvolvimento ou produção
 const isDevelopment = import.meta.env.DEV;
@@ -13,7 +13,7 @@ const defaultPort = isDevelopment ? 3000 : (import.meta.env.VITE_API_PORT || 300
 const defaultHost = isDevelopment ? 'localhost' : (import.meta.env.VITE_API_HOST || 'localhost');
 const protocol = import.meta.env.VITE_API_PROTOCOL || 'http';
 
-const finalApiUrl = import.meta.env.VITE_API_URL || `${protocol}://${defaultHost}:${defaultPort}/api`;
+const finalApiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
 
 interface QueryOptions {
   select?: string | string[];
@@ -136,7 +136,7 @@ class PostgresAPIClient {
 
   async execute(): Promise<{ data: any[] | null; error: any | null; count?: number }> {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${apiUrl}/query/${this.tableName}`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -175,7 +175,7 @@ class PostgresAPIClient {
 
   async update(data: any): Promise<{ data: any | null; error: any | null }> {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${apiUrl}/update/${this.tableName}`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -203,7 +203,7 @@ class PostgresAPIClient {
 
   async insert(data: any): Promise<{ data: any | null; error: any | null }> {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${apiUrl}/insert/${this.tableName}`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -226,7 +226,7 @@ class PostgresAPIClient {
 
   async delete(): Promise<{ data: any | null; error: any | null }> {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${apiUrl}/delete/${this.tableName}`, {
         method: 'POST',
         headers: this.getAuthHeaders(),

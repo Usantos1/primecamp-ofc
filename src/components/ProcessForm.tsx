@@ -79,7 +79,7 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
     try {
       toast({ title: "Gerando processo...", description: "A IA está criando o processo. Aguarde..." });
       // 🚫 Supabase Functions removido - usar API direta
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${API_URL}/ai/generate-process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

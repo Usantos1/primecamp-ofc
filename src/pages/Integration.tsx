@@ -115,7 +115,7 @@ export default function Integration() {
       console.log('Testing WhatsApp with:', { number: testPhone, body: testMessage });
       
       // 🚫 Supabase Functions removido - usar API direta
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${API_URL}/whatsapp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
