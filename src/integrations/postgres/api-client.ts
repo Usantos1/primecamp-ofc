@@ -7,6 +7,14 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// Verificar se estamos em modo desenvolvimento ou produção
+const isDevelopment = import.meta.env.DEV;
+const defaultPort = isDevelopment ? 3000 : (import.meta.env.VITE_API_PORT || 3000);
+const defaultHost = isDevelopment ? 'localhost' : (import.meta.env.VITE_API_HOST || 'localhost');
+const protocol = import.meta.env.VITE_API_PROTOCOL || 'http';
+
+const finalApiUrl = import.meta.env.VITE_API_URL || `${protocol}://${defaultHost}:${defaultPort}/api`;
+
 interface QueryOptions {
   select?: string | string[];
   where?: Record<string, any>;
@@ -100,7 +108,8 @@ class PostgresAPIClient {
 
   async execute(): Promise<{ data: any[] | null; error: any | null }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/query/${this.tableName}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const response = await fetch(`${apiUrl}/query/${this.tableName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +144,8 @@ class PostgresAPIClient {
 
   async insert(data: any): Promise<{ data: any | null; error: any | null }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/insert/${this.tableName}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const response = await fetch(`${apiUrl}/insert/${this.tableName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +168,8 @@ class PostgresAPIClient {
 
   async update(data: any): Promise<{ data: any | null; error: any | null }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/update/${this.tableName}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const response = await fetch(`${apiUrl}/update/${this.tableName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +195,8 @@ class PostgresAPIClient {
 
   async delete(): Promise<{ data: any | null; error: any | null }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/delete/${this.tableName}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || `http://localhost:3000/api`;
+      const response = await fetch(`${apiUrl}/delete/${this.tableName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
