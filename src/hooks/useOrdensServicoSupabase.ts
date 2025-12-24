@@ -107,12 +107,21 @@ export function useOrdensServicoSupabase() {
   // Atualizar OS
   const updateOS = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<OrdemServico> }): Promise<OrdemServico> => {
+      // Primeiro definir o WHERE, depois chamar update
       const { data: updated, error } = await from('ordens_servico')
         .eq('id', id)
         .update(data);
 
       if (error) throw error;
-      return (updated?.data?.[0] || updated?.data || updated) as OrdemServico;
+      
+      // Buscar OS atualizada para retornar dados completos
+      const { data: osData, error: fetchError } = await from('ordens_servico')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      return (osData?.data || osData) as OrdemServico;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
