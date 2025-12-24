@@ -15,12 +15,12 @@ export function useWhatsApp() {
     try {
       console.log('🔥 getUserPhoneByName: Searching phone for:', displayName);
       
-      const { data, error } = await supabase
-        .from('profiles')
+      const { data, error } = await from('profiles')
         .select('phone, display_name, approved')
         .eq('display_name', displayName)
         .eq('approved', true)
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       console.log('🔥 getUserPhoneByName: Query result:', { data, error });
 
@@ -56,14 +56,27 @@ export function useWhatsApp() {
         }
       });
       
-      const { data: result, error } = await supabase.functions.invoke('ativa-crm-api', {
-        body: {
+      // 🚫 Supabase Functions removido - usar API direta
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${API_URL}/whatsapp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           action: 'send_message',
           data
-        }
+        }),
       });
+      
+      let result: any = null;
+      let error: any = null;
+      
+      if (!response.ok) {
+        error = await response.json().catch(() => ({ error: 'Erro ao enviar mensagem' }));
+      } else {
+        result = await response.json();
+      }
 
-      console.log('🔥 Edge function response:', { 
+      console.log('🔥 API response:', { 
         result, 
         error,
         resultType: typeof result,

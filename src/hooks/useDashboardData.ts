@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { currencyFormatters } from '@/utils/formatters';
 
@@ -76,20 +76,20 @@ export function useDashboardData() {
       const fimMes = endOfMonth(hoje);
 
       // Vendas do dia
-      const { data: vendasDia } = await supabase
-        .from('sales')
+      const { data: vendasDia } = await from('sales')
         .select('total, total_pago')
         .eq('status', 'paid')
         .gte('created_at', inicioDia.toISOString())
-        .lte('created_at', fimDia.toISOString());
+        .lte('created_at', fimDia.toISOString())
+        .execute();
 
       // Vendas do mês
-      const { data: vendasMes } = await supabase
-        .from('sales')
+      const { data: vendasMes } = await from('sales')
         .select('total, total_pago')
         .eq('status', 'paid')
         .gte('created_at', inicioMes.toISOString())
-        .lte('created_at', fimMes.toISOString());
+        .lte('created_at', fimMes.toISOString())
+        .execute();
 
       const faturamentoDia = vendasDia?.reduce((acc, v) => acc + (v.total_pago || v.total || 0), 0) || 0;
       const faturamentoMes = vendasMes?.reduce((acc, v) => acc + (v.total_pago || v.total || 0), 0) || 0;
@@ -98,13 +98,13 @@ export function useDashboardData() {
       const ticketMedio = vendasHoje > 0 ? faturamentoDia / vendasHoje : 0;
 
       // Total em caixa (sessão aberta)
-      const { data: caixaSession } = await supabase
-        .from('cash_register_sessions')
+      const { data: caixaSession } = await from('cash_register_sessions')
         .select('valor_inicial, total_entradas, total_saidas')
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .single()
+        .execute();
 
       const totalCaixa = caixaSession 
         ? (caixaSession.valor_inicial || 0) + (caixaSession.total_entradas || 0) - (caixaSession.total_saidas || 0)
@@ -125,9 +125,9 @@ export function useDashboardData() {
 
   const loadOSData = async () => {
     try {
-      const { data: osList } = await supabase
-        .from('ordens_servico')
-        .select('status');
+      const { data: osList } = await from('ordens_servico')
+        .select('status')
+        .execute();
 
       if (!osList) return;
 
@@ -170,34 +170,34 @@ export function useDashboardData() {
     try {
       // OS paradas (sem atualização há mais de 3 dias)
       const tresDiasAtras = subDays(new Date(), 3);
-      const { data: osParadas } = await supabase
-        .from('ordens_servico')
+      const { data: osParadas } = await from('ordens_servico')
         .select('id')
         .in('status', ['aberta', 'em_andamento', 'aguardando'])
-        .lt('updated_at', tresDiasAtras.toISOString());
+        .lt('updated_at', tresDiasAtras.toISOString())
+        .execute();
 
       // Estoque baixo (menos de 5 unidades)
-      const { data: produtosBaixoEstoque } = await supabase
-        .from('produtos')
+      const { data: produtosBaixoEstoque } = await from('produtos')
         .select('id')
-        .lt('estoque', 5)
-        .gt('estoque', 0);
+        .lt('quantidade', 5)
+        .gt('quantidade', 0)
+        .execute();
 
       // Caixa aberto
-      const { data: caixaAberto } = await supabase
-        .from('cash_register_sessions')
+      const { data: caixaAberto } = await from('cash_register_sessions')
         .select('id')
         .eq('status', 'open')
         .limit(1)
-        .single();
+        .single()
+        .execute();
 
       // OS sem atualização há mais de 7 dias
       const seteDiasAtras = subDays(new Date(), 7);
-      const { data: osSemAtualizacao } = await supabase
-        .from('ordens_servico')
+      const { data: osSemAtualizacao } = await from('ordens_servico')
         .select('id')
         .in('status', ['aberta', 'em_andamento', 'aguardando'])
-        .lt('updated_at', seteDiasAtras.toISOString());
+        .lt('updated_at', seteDiasAtras.toISOString())
+        .execute();
 
       setAlerts({
         osParadas: osParadas?.length || 0,
@@ -225,19 +225,19 @@ export function useDashboardData() {
         const fimDia = endOfDay(new Date(dateISO));
 
         // Vendas do dia
-        const { data: vendas } = await supabase
-          .from('sales')
+        const { data: vendas } = await from('sales')
           .select('id')
           .eq('status', 'paid')
           .gte('created_at', inicioDia.toISOString())
-          .lte('created_at', fimDia.toISOString());
+          .lte('created_at', fimDia.toISOString())
+          .execute();
 
         // OS criadas no dia
-        const { data: os } = await supabase
-          .from('ordens_servico')
+        const { data: os } = await from('ordens_servico')
           .select('id')
           .gte('created_at', inicioDia.toISOString())
-          .lte('created_at', fimDia.toISOString());
+          .lte('created_at', fimDia.toISOString())
+          .execute();
 
         return {
           date,
