@@ -34,19 +34,14 @@ export const useTasks = () => {
     try {
       setLoading(true);
       
-      // First update overdue tasks
-      await // 🚫 Supabase RPC removido - TODO: implementar na API
-      // supabase.rpc('update_overdue_tasks');
+      // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
+      // await supabase.rpc('update_overdue_tasks');
       
       // Then fetch tasks with related data
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          categories(name).execute(),
-          processes(name)
-        `)
-        .order('deadline', { ascending: true });
+      const { data, error } = await from('tasks')
+        .select('*')
+        .order('deadline', { ascending: true })
+        .execute();
         
       if (error) {
         console.error('Error fetching tasks:', error);
@@ -56,10 +51,10 @@ export const useTasks = () => {
 
       // Fetch user names separately
       const userIds = [...new Set(data?.map(task => task.responsible_user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
+      const { data: profiles } = await from('profiles')
         .select('user_id, display_name')
-       .execute() .in('user_id', userIds);
+        .in('user_id', userIds)
+        .execute();
 
       const formattedTasks: Task[] = (data || []).map(task => {
         const profile = profiles?.find(p => p.user_id === task.responsible_user_id);
@@ -109,10 +104,10 @@ export const useTasks = () => {
 
       console.log('Creating task with data:', formattedTaskData);
 
-      const { data, error } = await supabase
-        .from('tasks')
+      const { data, error } = await from('tasks')
         .insert([formattedTaskData])
-        .select();
+        .select('*')
+        .execute();
 
       if (error) {
         console.error('Error creating task:', error);
@@ -151,10 +146,10 @@ export const useTasks = () => {
 
   const updateTaskStatus = async (taskId: string, status: Task['status'], oldStatus?: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
+      const { error } = await from('tasks')
         .update({ status })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .execute();
 
       if (error) {
         console.error('Error updating task status:', error);
@@ -193,10 +188,10 @@ export const useTasks = () => {
 
   const deleteTask = async (taskId: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
+      const { error } = await from('tasks')
         .delete()
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .execute();
 
       if (error) {
         console.error('Error deleting task:', error);
@@ -237,8 +232,7 @@ export const useTasks = () => {
 
   const updateTask = async (taskId: string, taskData: Partial<Task>) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
+      const { error } = await from('tasks')
         .update({
           name: taskData.name,
           description: taskData.description,
@@ -248,7 +242,8 @@ export const useTasks = () => {
           status: taskData.status,
           updated_at: new Date().toISOString()
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .execute();
 
       if (error) {
         console.error('Error updating task:', error);
