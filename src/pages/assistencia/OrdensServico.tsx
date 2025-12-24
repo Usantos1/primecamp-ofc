@@ -42,7 +42,7 @@ import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
 import { PermissionGate } from '@/components/PermissionGate';
 import { ImportarOS } from '@/components/assistencia/ImportarOS';
 import { useToast } from '@/hooks/use-toast';
@@ -79,9 +79,9 @@ export default function OrdensServico() {
   const { data: todosItens = [] } = useQuery({
     queryKey: ['os_items_all'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('os_items')
-        .select('ordem_servico_id, valor_total');
+      const { data, error } = await from('os_items')
+        .select('ordem_servico_id, valor_total')
+        .execute();
       
       if (error) throw error;
       return (data || []) as Array<{ ordem_servico_id: string; valor_total: number }>;
