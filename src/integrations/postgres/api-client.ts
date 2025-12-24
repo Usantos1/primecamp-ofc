@@ -181,7 +181,10 @@ class PostgresAPIClient {
       }
 
       const result = await response.json();
-      return { data: result.data || result, error: null };
+      // O servidor retorna { data: result.rows, rows: result.rows, count: result.rowCount }
+      // Se for array com 1 item, retornar o item; se for array vazio, retornar null
+      const rows = result.data || result.rows || [];
+      return { data: rows.length > 0 ? rows[0] : null, error: null };
     } catch (error) {
       console.error('Erro ao atualizar:', error);
       return { data: null, error };
