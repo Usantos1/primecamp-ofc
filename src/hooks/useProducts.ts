@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { from } from '@/integrations/db/client';
+import { supabase } from '@/integrations/supabase/client'; // Mantido para auth.getUser()
 import { toast } from '@/hooks/use-toast';
 
 export type Produto = {
@@ -22,9 +23,10 @@ export function useProducts(limit = 50, search = '') {
   return useInfiniteQuery({
     queryKey: ['produtos', limit, search],
     queryFn: async ({ pageParam = 0 }) => {
-      let query = supabase
-        .from('produtos')
-        .select('*', { count: 'exact' })
+      const offset = pageParam * limit;
+      
+      let query = from('produtos')
+        .select('*')
         .order('atualizado_em', { ascending: false });
 
       // Apply filters
@@ -33,20 +35,19 @@ export function useProducts(limit = 50, search = '') {
       }
 
       // Apply pagination
-      const from = pageParam * limit;
-      const to = from + limit - 1;
-      query = query.range(from, to);
+      query = query.range(offset, offset + limit - 1);
 
-      const { data, error, count } = await query;
+      const { data, error } = await query.execute();
 
       if (error) {
         throw error;
       }
 
+      const rows = data || [];
       return {
-        produtos: data as Produto[],
-        total: count || 0,
-        nextPage: data && data.length === limit ? pageParam + 1 : undefined,
+        produtos: rows as Produto[],
+        total: rows.length, // Não temos count exato ainda, usar length
+        nextPage: rows.length === limit ? pageParam + 1 : undefined,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
@@ -62,14 +63,11 @@ export function useCreateProduct() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado');
       
-      const { data: result, error } = await supabase
-        .from('produtos')
+      const { data: result, error } = await from('produtos')
         .insert({ 
           ...data,
           criado_por: user.id 
-        })
-        .select()
-        .single();
+        });
 
       if (error) {
         throw error;
@@ -103,12 +101,9 @@ export function useUpdateProduct() {
         throw new Error('ID do produto ausente');
       }
       
-      const { data: result, error } = await supabase
-        .from('produtos')
-        .update(data)
+      const { data: result, error } = await from('produtos')
         .eq('id', id)
-        .select()
-        .single();
+        .update(data);
 
       if (error) {
         throw error;
@@ -138,10 +133,9 @@ export function useDeleteProduct() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('produtos')
-        .delete()
-        .eq('id', id);
+      const { error } = await from('produtos')
+        .eq('id', id)
+        .delete();
 
       if (error) {
         throw error;
@@ -178,8 +172,7 @@ export function useBulkUpsertProducts() {
       for (const product of products) {
         try {
           // Check if product exists (case-insensitive name)
-          const { data: existing, error: searchError } = await supabase
-            .from('produtos')
+          const { data: existingData, error: searchError } = await from('produtos')
             .select('id')
             .ilike('nome', product.nome)
             .single();
@@ -189,12 +182,13 @@ export function useBulkUpsertProducts() {
             continue;
           }
 
+          const existing = existingData?.data || existingData;
+
           if (existing) {
             // Update existing
-            const { error: updateError } = await supabase
-              .from('produtos')
-              .update(product)
-              .eq('id', existing.id);
+            const { error: updateError } = await from('produtos')
+              .eq('id', existing.id)
+              .update(product);
 
             if (updateError) {
               results.errors.push(`Erro ao atualizar "${product.nome}": ${updateError.message}`);
@@ -206,8 +200,7 @@ export function useBulkUpsertProducts() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Usuário não autenticado');
             
-            const { error: insertError } = await supabase
-              .from('produtos')
+            const { error: insertError } = await from('produtos')
               .insert({ 
                 ...product,
                 criado_por: user.id 
