@@ -577,8 +577,7 @@ export const useDiscTest = () => {
         console.log(`[DISC] Atualizando registro existente:`, existingResponse.id);
         
         // Atualizar o registro existente
-        const { error: updateError } = await supabase
-          .from('disc_responses')
+        const { error: updateError } = await from('disc_responses')
           .update({
             responses: finalResponses as any,
             d_score: calculatedResult.d_score,
@@ -589,7 +588,8 @@ export const useDiscTest = () => {
             completion_date: new Date().toISOString(),
             is_completed: true
           })
-          .eq('id', existingResponse.id);
+          .eq('id', existingResponse.id)
+          .execute();
 
         if (updateError) {
           console.error(`[DISC] Erro ao atualizar resultado:`, updateError);
