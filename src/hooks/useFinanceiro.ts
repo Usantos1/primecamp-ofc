@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { useToast } from './use-toast';
 import { useErrorHandler } from './useErrorHandler';
 import {
@@ -145,7 +146,7 @@ export function useBillsToPay(filters?: {
           status: 'pago',
           payment_date: new Date().toISOString().split('T')[0],
           payment_method,
-          paid_by: (await supabase.auth.getUser()).data.user?.id,
+          paid_by: (await authAPI.getUser()).data.user?.id,
         })
         .eq('id', id)
         .select()

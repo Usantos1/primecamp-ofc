@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { toast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 
@@ -209,8 +210,8 @@ export function ImportarProdutos() {
       console.log('[ImportarProdutos] Exemplo de produto mapeado:', produtosMapeadosFinal[0]);
 
       // Chamar Edge Function - processar em lotes de 500 para evitar payload muito grande
-      console.log('[ImportarProdutos] Obtendo sessão do Supabase...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('[ImportarProdutos] Verificando autenticação...');
+      const { data: { session }, error: sessionError } = await authAPI.getSession();
       console.log('[ImportarProdutos] Sessão obtida:', !!session, 'Erro:', sessionError);
       if (!session) {
         throw new Error('Usuário não autenticado');

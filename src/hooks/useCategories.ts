@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Category } from '@/types/process';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -47,7 +48,7 @@ export const useCategories = () => {
 
   const createCategory = async (categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
     try {
-      const user = await supabase.auth.getUser();
+      const user = await authAPI.getUser();
       if (!user.data.user) {
         toast.error('Usuário não autenticado');
         return null;

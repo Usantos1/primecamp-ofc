@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { Cargo, CARGOS_LABELS } from '@/types/assistencia';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -32,7 +33,7 @@ export function useCargos() {
         // 1) Buscar perfis (nome/email)
         // Usar query igual ao UserManagement que funciona
         console.log('[useCargos] 📡 Buscando profiles do Supabase...');
-        console.log('[useCargos] Usuário autenticado:', await supabase.auth.getUser().then(r => r.data.user?.id));
+        console.log('[useCargos] Usuário autenticado:', await authAPI.getUser().then(r => r.data.user?.id));
         
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')

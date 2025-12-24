@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Process, Department } from '@/types/process';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { toast } from 'sonner';
 import { useUserLogs } from '@/hooks/useUserLogs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,7 +60,7 @@ export const useProcesses = () => {
 
   const createProcess = async (processData: Omit<Process, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const user = await supabase.auth.getUser();
+      const user = await authAPI.getUser();
       if (!user.data.user) {
         toast.error('Usuário não autenticado');
         return null;

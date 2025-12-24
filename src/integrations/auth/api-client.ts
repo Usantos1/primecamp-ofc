@@ -147,6 +147,53 @@ class AuthAPIClient {
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  // Métodos compatíveis com Supabase Auth para facilitar migração
+  async getUser(): Promise<{ data: { user: User | null }; error: any | null }> {
+    try {
+      const currentUser = await this.getCurrentUser();
+      return {
+        data: { user: currentUser?.user || null },
+        error: null,
+      };
+    } catch (error: any) {
+      return {
+        data: { user: null },
+        error: { message: error.message || 'Erro ao buscar usuário' },
+      };
+    }
+  }
+
+  async getSession(): Promise<{ data: { session: { access_token: string } | null }; error: any | null }> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        return {
+          data: { session: null },
+          error: null,
+        };
+      }
+
+      // Verificar se token ainda é válido
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser) {
+        return {
+          data: { session: null },
+          error: null,
+        };
+      }
+
+      return {
+        data: { session: { access_token: token } },
+        error: null,
+      };
+    } catch (error: any) {
+      return {
+        data: { session: null },
+        error: { message: error.message || 'Erro ao buscar sessão' },
+      };
+    }
+  }
 }
 
 export const authAPI = new AuthAPIClient();

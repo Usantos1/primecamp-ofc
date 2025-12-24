@@ -16,6 +16,7 @@
  */
 
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface DriveUploadResult {
@@ -177,7 +178,7 @@ export async function uploadPhotoToDrive(
 ): Promise<DriveUploadResult> {
   try {
     // Verificar autenticação primeiro
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await authAPI.getUser();
     
     if (authError || !user) {
       console.error('[driveUpload] Erro de autenticação:', authError);
@@ -242,7 +243,7 @@ export async function uploadPhotoToDrive(
       console.log('[driveUpload] Tamanho do payload base64:', base64File.length, 'bytes');
       
       // Verificar se temos um token de autenticação
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await authAPI.getSession();
       if (!session) {
         return {
           success: false,

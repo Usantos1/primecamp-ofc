@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -47,7 +48,7 @@ export function useCreateQualidade() {
           {
             name: data.name,
             description: data.description || null,
-            created_by: (await supabase.auth.getUser()).data.user?.id || '',
+            created_by: (await authAPI.getUser()).data.user?.id || '',
           },
         ])
         .select()
