@@ -1,3 +1,6 @@
+// 🧪 PÁGINA DE TESTE - AUTENTICAÇÃO POSTGRESQL
+// Esta página usa APENAS a API PostgreSQL, SEM Supabase
+
 import React, { useState } from "react";
 import { authAPI } from "@/integrations/auth/api-client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogIn, UserPlus, CheckCircle, XCircle } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+
+// Garantir que este componente seja incluído no bundle
+console.log('🧪 TestAuth component loaded');
 
 const TestAuth = () => {
   const { toast } = useToast();

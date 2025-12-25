@@ -88,10 +88,12 @@ const App = () => (
                 <Sonner />
                 <BrowserRouter>
             <Routes>
+            {/* Rotas públicas de autenticação */}
             <Route path="/login" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/test-auth" element={<TestAuth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            {/* Rota de teste - DEVE estar antes do catch-all */}
+            <Route path="/test-auth" element={<TestAuth />} />
           <Route path="/candidato-disc" element={<CandidateDisc />} />
           <Route path="/disc-externo" element={<CandidateDisc />} />
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
