@@ -14,6 +14,18 @@ interface RichTextEditorProps {
 export const RichTextEditor = ({ value, onChange, placeholder, className }: RichTextEditorProps) => {
   const quillRef = useRef<ReactQuill>(null);
 
+  // Carregar CSS do Quill via CDN se não estiver carregado
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !document.getElementById('quill-snow-css')) {
+      const link = document.createElement('link');
+      link.id = 'quill-snow-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
+      link.crossOrigin = 'anonymous';
+      document.head.appendChild(link);
+    }
+  }, []);
+
   const imageHandler = useCallback(() => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
