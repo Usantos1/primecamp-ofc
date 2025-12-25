@@ -2,8 +2,9 @@
 // Este arquivo existe apenas para evitar erros de importação
 // NENHUM código deve usar Supabase mais - Use PostgreSQL via @/integrations/db/client
 
-import type { Database } from './types';
-import { useAuth } from '@/contexts/AuthContext';
+// NÃO IMPORTAR NADA DO SUPABASE - isso inclui código no build!
+// import type { Database } from './types'; // REMOVIDO
+// import { useAuth } from '@/contexts/AuthContext'; // REMOVIDO
 
 export const SUPABASE_URL = "";
 export const SUPABASE_PUBLISHABLE_KEY = "";
@@ -53,3 +54,6 @@ export const supabase = createMockClient();
 export const createSupabaseClientWithHeaders = () => {
   throw new Error('🚫 Supabase foi REMOVIDO. Use PostgreSQL via @/integrations/db/client');
 };
+
+// Tipo vazio para evitar erros de TypeScript (sem importar do Supabase)
+export type Database = any;
