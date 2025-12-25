@@ -17,25 +17,11 @@ echo "✅ Código atualizado"
 # 2. Verificar arquivos críticos
 echo ""
 echo "2. Verificando arquivos críticos..."
-if [ ! -f "src/pages/TestAuth.tsx" ]; then
-    echo "❌ ERRO: src/pages/TestAuth.tsx não existe!"
-    exit 1
-fi
-echo "✅ TestAuth.tsx existe"
-
 if ! grep -q 'path="/test-auth"' src/App.tsx; then
     echo "❌ ERRO: Rota /test-auth não encontrada no App.tsx!"
     exit 1
 fi
-echo "✅ Rota /test-auth encontrada no App.tsx"
-
-# Import não é mais necessário - componente está inline
-if grep -q "path=\"/test-auth\"" src/App.tsx; then
-    echo "✅ Rota /test-auth configurada (componente inline)"
-else
-    echo "❌ ERRO: Rota /test-auth não encontrada!"
-    exit 1
-fi
+echo "✅ Rota /test-auth encontrada no App.tsx (componente inline)"
 
 # Verificar ordem das rotas
 TEST_AUTH_LINE=$(grep -n 'path="/test-auth"' src/App.tsx | cut -d: -f1)
