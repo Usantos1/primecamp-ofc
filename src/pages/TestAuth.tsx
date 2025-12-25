@@ -1,7 +1,7 @@
 // 🧪 PÁGINA DE TESTE - AUTENTICAÇÃO POSTGRESQL
 // Esta página usa APENAS a API PostgreSQL, SEM Supabase
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { authAPI } from "@/integrations/auth/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ const API_URL = import.meta.env.VITE_API_URL ||
 
 // Garantir que este componente seja incluído no bundle
 console.log('🧪 TestAuth component loaded');
+console.log('🧪 TestAuth API_URL:', API_URL);
 
 const TestAuth = () => {
   const { toast } = useToast();
@@ -28,6 +29,13 @@ const TestAuth = () => {
   const [displayName, setDisplayName] = useState("");
   const [result, setResult] = useState<any>(null);
   const [testMode, setTestMode] = useState<'login' | 'signup'>('login');
+
+  // Log quando componente monta
+  useEffect(() => {
+    console.log('🧪 TestAuth component MOUNTED');
+    console.log('🧪 Current URL:', window.location.href);
+    console.log('🧪 Current pathname:', window.location.pathname);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
