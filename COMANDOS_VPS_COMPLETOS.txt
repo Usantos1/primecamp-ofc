@@ -1,0 +1,30 @@
+# 🚨 COMANDOS COMPLETOS PARA VPS
+
+cd /root/primecamp-ofc
+
+# 1. Fazer pull do código novo (inclui o script LIMPAR_TUDO_VPS.sh)
+git pull origin main
+
+# 2. Se der erro de conflito, fazer reset:
+# git reset --hard origin/main
+# git pull origin main
+
+# 3. Tornar script executável
+chmod +x LIMPAR_TUDO_VPS.sh
+
+# 4. Executar script
+./LIMPAR_TUDO_VPS.sh
+
+# OU executar manualmente (se preferir):
+# rm -f server/package-lock.json
+# git fetch origin
+# git reset --hard origin/main
+# git clean -fd
+# git pull origin main
+# rm -rf dist node_modules/.vite .vite node_modules/.cache .next build
+# npm run build
+# sudo rm -rf /var/www/html/assets /var/www/html/*.js /var/www/html/*.css /var/www/html/*.html
+# sudo cp -r dist/* /var/www/html/
+# sudo chown -R www-data:www-data /var/www/html/
+# sudo systemctl reload nginx
+
