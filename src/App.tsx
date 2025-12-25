@@ -94,6 +94,14 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* Rota de teste - DEVE estar antes do catch-all */}
             <Route path="/test-auth" element={<TestAuth />} />
+            {/* Rota de teste simples para debug */}
+            <Route path="/test-simple" element={
+              <div style={{ padding: '50px', textAlign: 'center' }}>
+                <h1>✅ ROTA FUNCIONANDO!</h1>
+                <p>Se você vê isso, o React Router está funcionando!</p>
+                <p>Teste: <a href="/test-auth">Ir para /test-auth</a></p>
+              </div>
+            } />
           <Route path="/candidato-disc" element={<CandidateDisc />} />
           <Route path="/disc-externo" element={<CandidateDisc />} />
           <Route path="/candidato-disc/resultado" element={<CandidateDiscResult />} />
