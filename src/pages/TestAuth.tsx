@@ -147,14 +147,29 @@ const TestAuth = () => {
     setLoading(true);
     try {
       console.log('🧪 [TEST] Testando saúde da API...');
-      const response = await fetch(`${API_URL}/health`);
+      // Testar endpoint de login (não precisa de token)
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@test.com', password: 'test' }),
+      });
+      
       const data = await response.json();
       
-      setResult({
-        success: response.ok,
-        data: data,
-        message: response.ok ? 'API está respondendo!' : 'API retornou erro'
-      });
+      // Se retornar erro de credenciais, a API está funcionando!
+      if (response.status === 401 && data.error) {
+        setResult({
+          success: true,
+          data: { message: 'API está respondendo! Endpoint de login funcionando.', error: data.error },
+          message: '✅ API está funcionando! (Erro 401 é esperado com credenciais inválidas)'
+        });
+      } else {
+        setResult({
+          success: response.ok,
+          data: data,
+          message: response.ok ? 'API está respondendo!' : 'API retornou erro'
+        });
+      }
     } catch (error: any) {
       setResult({
         success: false,

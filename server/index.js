@@ -150,6 +150,19 @@ app.get('/health', async (req, res) => {
 });
 
 // ============================================
+// ENDPOINT DE HEALTH CHECK
+// ============================================
+
+// Health check (não precisa de autenticação)
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'API PostgreSQL está funcionando',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ============================================
 // ENDPOINTS DE AUTENTICAÇÃO
 // ============================================
 
