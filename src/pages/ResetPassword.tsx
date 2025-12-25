@@ -20,9 +20,9 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Check if we have token in URL
+  // Check if we have token in URL (pode ser 'token' ou 'access_token')
   useEffect(() => {
-    const token = searchParams.get('token');
+    const token = searchParams.get('token') || searchParams.get('access_token');
     
     if (!token) {
       toast({
@@ -67,22 +67,15 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      const token = searchParams.get('token');
+      const token = searchParams.get('token') || searchParams.get('access_token');
       if (!token) {
-        throw new Error('Token de redefinição não encontrado');
+        throw new Error('Token de redefinição não encontrado na URL');
       }
 
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, token }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Erro ao redefinir senha');
-      }
+      console.log('[ResetPassword] Redefinindo senha via API PostgreSQL');
+      
+      // Usar authAPI para reset de senha
+      await authAPI.resetPassword(token, password);
 
       toast({
         title: "Senha atualizada!",
@@ -95,7 +88,7 @@ const ResetPassword = () => {
       }, 2000);
       
     } catch (error: any) {
-      console.error('Error updating password:', error);
+      console.error('[ResetPassword] Erro ao redefinir senha:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao redefinir senha",

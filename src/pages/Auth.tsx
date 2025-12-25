@@ -157,17 +157,10 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
-      const response = await fetch(`${API_URL}/auth/request-password-reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Erro ao solicitar reset de senha');
-      }
+      console.log('[Auth] Solicitando reset de senha via API PostgreSQL:', { email });
+      
+      // Usar authAPI para solicitar reset
+      await authAPI.requestPasswordReset(email);
 
       toast({
         title: "Email enviado",
@@ -175,6 +168,7 @@ const Auth = () => {
       });
       setEmail("");
     } catch (error: any) {
+      console.error('[Auth] Erro ao solicitar reset:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao enviar email de redefinição",

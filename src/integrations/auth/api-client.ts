@@ -221,6 +221,44 @@ class AuthAPIClient {
       };
     }
   }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    console.log('[authAPI] Solicitando reset de senha:', { apiUrl: API_URL, email });
+    
+    const response = await fetch(`${API_URL}/auth/request-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erro ao solicitar redefinição de senha' }));
+      console.error('[authAPI] Erro ao solicitar reset:', error);
+      throw new Error(error.error || 'Erro ao solicitar redefinição de senha');
+    }
+
+    const data = await response.json();
+    console.log('[authAPI] Reset solicitado com sucesso:', data);
+  }
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    console.log('[authAPI] Redefinindo senha:', { apiUrl: API_URL, hasToken: !!token });
+    
+    const response = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erro ao redefinir senha' }));
+      console.error('[authAPI] Erro ao redefinir senha:', error);
+      throw new Error(error.error || 'Erro ao redefinir senha');
+    }
+
+    const data = await response.json();
+    console.log('[authAPI] Senha redefinida com sucesso:', data);
+  }
 }
 
 export const authAPI = new AuthAPIClient();

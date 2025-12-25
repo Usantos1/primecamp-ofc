@@ -237,6 +237,8 @@ app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password, display_name, phone, department, role } = req.body;
 
+    console.log('[API] Tentativa de cadastro:', { email: email?.toLowerCase(), hasDisplayName: !!display_name });
+
     if (!email || !password) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
@@ -248,48 +250,58 @@ app.post('/api/auth/signup', async (req, res) => {
     // Verificar se email já existe
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [email.toLowerCase().trim()]
     );
 
     if (existingUser.rows.length > 0) {
+      console.log('[API] Email já cadastrado:', email.toLowerCase());
       return res.status(400).json({ error: 'Este email já está cadastrado' });
     }
 
     // Hash da senha
     const passwordHash = await bcrypt.hash(password, 10);
+    console.log('[API] Senha hash criada');
 
     // Criar usuário
     const userResult = await pool.query(
       `INSERT INTO users (email, password_hash, email_verified)
        VALUES ($1, $2, true)
        RETURNING *`,
-      [email.toLowerCase(), passwordHash]
+      [email.toLowerCase().trim(), passwordHash]
     );
 
     const newUser = userResult.rows[0];
+    console.log('[API] Usuário criado:', { id: newUser.id, email: newUser.email });
 
-    // Criar profile
-    let profile = null;
-    if (display_name || phone || department || role) {
-      const profileResult = await pool.query(
-        `INSERT INTO profiles (user_id, display_name, phone, department, role, approved, approved_at)
-         VALUES ($1, $2, $3, $4, $5, true, NOW())
-         RETURNING *`,
-        [newUser.id, display_name || email, phone || null, department || null, role || 'member']
-      );
-      profile = profileResult.rows[0];
-    }
+    // Criar profile SEMPRE (mesmo que vazio)
+    const profileResult = await pool.query(
+      `INSERT INTO profiles (user_id, display_name, phone, department, role, approved, approved_at)
+       VALUES ($1, $2, $3, $4, $5, true, NOW())
+       RETURNING *`,
+      [
+        newUser.id, 
+        display_name || email.split('@')[0] || email, // Usar nome do email se não fornecido
+        phone || null, 
+        department || null, 
+        role || 'member'
+      ]
+    );
+    
+    const profile = profileResult.rows[0];
+    console.log('[API] Profile criado:', { id: profile.id, display_name: profile.display_name, role: profile.role });
 
     // Gerar token JWT
     const token = jwt.sign(
       { 
         id: newUser.id, 
         email: newUser.email,
-        role: profile?.role || 'member'
+        role: profile.role || 'member'
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    console.log('[API] Cadastro bem-sucedido:', { userId: newUser.id, email: newUser.email, hasToken: !!token });
 
     res.status(201).json({
       token,
@@ -302,8 +314,8 @@ app.post('/api/auth/signup', async (req, res) => {
       profile
     });
   } catch (error) {
-    console.error('Erro no cadastro:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('[API] Erro no cadastro:', error);
+    res.status(500).json({ error: error.message || 'Erro interno do servidor' });
   }
 });
 
@@ -398,6 +410,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { password, token } = req.body;
 
+    console.log('[API] Tentativa de reset de senha:', { hasPassword: !!password, hasToken: !!token });
+
     if (!password || !token) {
       return res.status(400).json({ error: 'Senha e token são obrigatórios' });
     }
@@ -411,14 +425,18 @@ app.post('/api/auth/reset-password', async (req, res) => {
     try {
       decoded = jwt.verify(token, JWT_SECRET);
       if (decoded.type !== 'password_reset') {
+        console.log('[API] Token inválido - tipo incorreto:', decoded.type);
         return res.status(400).json({ error: 'Token inválido' });
       }
+      console.log('[API] Token válido:', { userId: decoded.id, email: decoded.email });
     } catch (error) {
+      console.error('[API] Erro ao verificar token:', error.message);
       return res.status(400).json({ error: 'Token inválido ou expirado' });
     }
 
     // Hash da nova senha
     const passwordHash = await bcrypt.hash(password, 10);
+    console.log('[API] Nova senha hash criada');
 
     // Atualizar senha
     const result = await pool.query(
@@ -427,13 +445,16 @@ app.post('/api/auth/reset-password', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      console.log('[API] Usuário não encontrado para reset:', decoded.id);
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
+    console.log('[API] Senha redefinida com sucesso:', { userId: result.rows[0].id, email: result.rows[0].email });
+
     res.json({ message: 'Senha redefinida com sucesso' });
   } catch (error) {
-    console.error('Erro ao redefinir senha:', error);
-    res.status(500).json({ error: 'Erro interno do servidor' });
+    console.error('[API] Erro ao redefinir senha:', error);
+    res.status(500).json({ error: error.message || 'Erro interno do servidor' });
   }
 });
 
