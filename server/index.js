@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -78,6 +80,39 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Configurar multer para upload de arquivos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Criar diretório uploads se não existir
+    const uploadDir = join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Usar nome original ou gerar nome único
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = file.originalname.split('.').pop();
+    cb(null, `${uniqueSuffix}.${ext}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB máximo
+  },
+  fileFilter: (req, file, cb) => {
+    // Aceitar apenas imagens
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas arquivos de imagem são permitidos'));
+    }
+  }
+});
+
 // Middleware para log de requisições (debug)
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`, {
@@ -126,10 +161,15 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/', limiter);
 
-// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/* e /api/health)
+// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health e /api/functions/*)
+// Os endpoints /api/functions/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
-  // Pular autenticação para rotas de auth e health check
-  if (req.path.startsWith('/api/auth/') || req.path === '/api/health' || req.path === '/health') {
+  // Pular autenticação para rotas de auth, health check e functions
+  if (req.path.startsWith('/api/auth/') || 
+      req.path === '/api/health' || 
+      req.path === '/health' ||
+      req.path.startsWith('/api/functions/') ||
+      req.path.startsWith('/api/storage/')) {
     return next();
   }
   // Aplicar autenticação para outras rotas /api/*
@@ -704,6 +744,478 @@ app.post('/api/rpc/:function', async (req, res) => {
   } catch (error) {
     console.error('Erro ao executar RPC:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// ENDPOINT DE STORAGE - UPLOAD DE ARQUIVOS
+// ============================================
+
+// POST /api/storage/upload
+app.post('/api/storage/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Arquivo não fornecido' });
+    }
+
+    const { bucket, path, cacheControl, upsert, contentType } = req.body;
+    
+    // Usar path fornecido ou nome do arquivo
+    const filePath = path || req.file.filename;
+    
+    // Construir URL pública
+    // STORAGE_BASE_URL é opcional - se não definido, usa localhost
+    // Em produção, configure STORAGE_BASE_URL no .env para sua URL pública
+    // Exemplo: STORAGE_BASE_URL=https://api.primecamp.cloud/uploads
+    const baseUrl = process.env.STORAGE_BASE_URL || `http://localhost:${PORT}/uploads`;
+    const publicUrl = `${baseUrl}/${req.file.filename}`;
+
+    console.log('[API] Upload realizado:', {
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      path: filePath,
+      size: req.file.size,
+      bucket
+    });
+
+    res.json({
+      url: publicUrl,
+      path: filePath
+    });
+  } catch (error) {
+    console.error('[API] Erro no upload:', error);
+    res.status(500).json({ error: error.message || 'Erro ao fazer upload' });
+  }
+});
+
+// Servir arquivos estáticos da pasta uploads
+app.use('/uploads', express.static(join(__dirname, 'uploads')));
+
+// ============================================
+// FUNCTIONS - ADMINISTRAÇÃO DE USUÁRIOS
+// ============================================
+
+// Middleware para verificar se usuário é admin
+const requireAdmin = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    
+    // Buscar role do usuário
+    const result = await pool.query(
+      'SELECT role FROM profiles WHERE user_id = $1',
+      [userId]
+    );
+    
+    if (result.rows.length === 0 || result.rows[0].role !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem executar esta ação.' });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[API] Erro ao verificar permissões:', error);
+    res.status(500).json({ error: 'Erro ao verificar permissões' });
+  }
+};
+
+// POST /api/functions/admin-get-user
+app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId é obrigatório' });
+    }
+
+    // Buscar usuário na tabela users
+    const userResult = await pool.query(
+      'SELECT id, email, email_verified, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Buscar profile
+    const profileResult = await pool.query(
+      'SELECT * FROM profiles WHERE user_id = $1',
+      [userId]
+    );
+
+    const profile = profileResult.rows[0] || null;
+
+    res.json({
+      data: {
+        user,
+        profile
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erro ao buscar usuário:', error);
+    res.status(500).json({ error: error.message || 'Erro ao buscar usuário' });
+  }
+});
+
+// POST /api/functions/admin-update-user
+app.post('/api/functions/admin-update-user', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, email, password } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId é obrigatório' });
+    }
+
+    // Verificar se usuário existe
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    // Atualizar email se fornecido
+    if (email !== undefined) {
+      // Verificar se email já existe
+      const emailCheck = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email.toLowerCase().trim(), userId]
+      );
+
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Este email já está em uso por outro usuário' });
+      }
+
+      updates.push(`email = $${paramIndex}`);
+      values.push(email.toLowerCase().trim());
+      paramIndex++;
+    }
+
+    // Atualizar senha se fornecida
+    if (password !== undefined && password.trim() !== '') {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      updates.push(`password_hash = $${paramIndex}`);
+      values.push(passwordHash);
+      paramIndex++;
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(userId);
+
+    const sql = `
+      UPDATE users
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING id, email, email_verified, created_at
+    `;
+
+    const result = await pool.query(sql, values);
+
+    console.log('[API] Usuário atualizado:', { userId, updatedFields: updates.length });
+
+    res.json({
+      data: {
+        success: true,
+        user: result.rows[0]
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erro ao atualizar usuário:', error);
+    res.status(500).json({ error: error.message || 'Erro ao atualizar usuário' });
+  }
+});
+
+// POST /api/functions/admin-delete-user
+app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId é obrigatório' });
+    }
+
+    // Verificar se usuário existe
+    const userResult = await pool.query(
+      'SELECT id, email FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Verificar se é o próprio usuário (não permitir auto-deleção)
+    if (req.user.id === userId) {
+      return res.status(400).json({ error: 'Você não pode deletar seu próprio usuário' });
+    }
+
+    // Deletar profile primeiro (devido a foreign key)
+    await pool.query('DELETE FROM profiles WHERE user_id = $1', [userId]);
+
+    // Deletar usuário
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    console.log('[API] Usuário deletado:', { userId, email: userResult.rows[0].email });
+
+    res.json({
+      data: {
+        success: true,
+        message: 'Usuário deletado com sucesso'
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erro ao deletar usuário:', error);
+    
+    // Verificar se é erro de foreign key
+    if (error.code === '23503') {
+      return res.status(400).json({ 
+        error: 'Não é possível deletar este usuário pois ele possui registros relacionados',
+        warning: true
+      });
+    }
+
+    res.status(500).json({ error: error.message || 'Erro ao deletar usuário' });
+  }
+});
+
+// ============================================
+// FUNCTIONS - DISC TEST
+// ============================================
+
+// POST /api/functions/disc-answer
+app.post('/api/functions/disc-answer', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId, questionId, selectedType, idempotencyKey } = req.body;
+
+    if (!sessionId || !questionId || !selectedType) {
+      return res.status(400).json({ error: 'sessionId, questionId e selectedType são obrigatórios' });
+    }
+
+    if (!['D', 'I', 'S', 'C'].includes(selectedType)) {
+      return res.status(400).json({ error: 'selectedType deve ser D, I, S ou C' });
+    }
+
+    // Buscar sessão de teste
+    const sessionResult = await pool.query(
+      'SELECT * FROM candidate_responses WHERE id = $1',
+      [sessionId]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Sessão de teste não encontrada' });
+    }
+
+    const session = sessionResult.rows[0];
+
+    // Verificar se já está completo
+    if (session.is_completed) {
+      return res.status(409).json({ error: 'Teste já foi finalizado' });
+    }
+
+    // Carregar respostas existentes
+    let responses = [];
+    if (session.responses) {
+      try {
+        responses = typeof session.responses === 'string' 
+          ? JSON.parse(session.responses) 
+          : session.responses;
+      } catch (e) {
+        responses = [];
+      }
+    }
+
+    // Remover resposta anterior para esta questão (evitar duplicatas)
+    responses = responses.filter((r: any) => r.questionId !== questionId);
+
+    // Adicionar nova resposta
+    responses.push({
+      questionId,
+      selectedType
+    });
+
+    // Atualizar no banco
+    await pool.query(
+      'UPDATE candidate_responses SET responses = $1, updated_at = NOW() WHERE id = $2',
+      [JSON.stringify(responses), sessionId]
+    );
+
+    console.log('[API] Resposta DISC salva:', { sessionId, questionId, selectedType });
+
+    res.json({
+      data: {
+        success: true,
+        sessionId,
+        questionId,
+        selectedType,
+        totalResponses: responses.length
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erro ao salvar resposta DISC:', error);
+    res.status(500).json({ error: error.message || 'Erro ao salvar resposta' });
+  }
+});
+
+// POST /api/functions/disc-finish
+app.post('/api/functions/disc-finish', authenticateToken, async (req, res) => {
+  try {
+    const { testSessionId } = req.body;
+
+    if (!testSessionId) {
+      return res.status(400).json({ error: 'testSessionId é obrigatório' });
+    }
+
+    // Buscar sessão de teste
+    const sessionResult = await pool.query(
+      'SELECT * FROM candidate_responses WHERE id = $1',
+      [testSessionId]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Sessão de teste não encontrada' });
+    }
+
+    const session = sessionResult.rows[0];
+
+    // Verificar se já está completo (idempotência)
+    if (session.is_completed) {
+      return res.status(409).json({ 
+        error: 'ALREADY_FINISHED',
+        message: 'Teste já foi finalizado',
+        resultId: session.id
+      });
+    }
+
+    // Carregar respostas
+    let responses = [];
+    if (session.responses) {
+      try {
+        responses = typeof session.responses === 'string' 
+          ? JSON.parse(session.responses) 
+          : session.responses;
+      } catch (e) {
+        responses = [];
+      }
+    }
+
+    // Calcular scores DISC
+    const scores = {
+      d: 0,
+      i: 0,
+      s: 0,
+      c: 0
+    };
+
+    responses.forEach((r: any) => {
+      if (r.selectedType === 'D') scores.d++;
+      else if (r.selectedType === 'I') scores.i++;
+      else if (r.selectedType === 'S') scores.s++;
+      else if (r.selectedType === 'C') scores.c++;
+    });
+
+    // Determinar perfil dominante
+    const maxScore = Math.max(scores.d, scores.i, scores.s, scores.c);
+    let dominantProfile = 'BALANCED';
+    if (maxScore === scores.d) dominantProfile = 'D';
+    else if (maxScore === scores.i) dominantProfile = 'I';
+    else if (maxScore === scores.s) dominantProfile = 'S';
+    else if (maxScore === scores.c) dominantProfile = 'C';
+
+    // Atualizar sessão como completa e salvar scores
+    await pool.query(
+      `UPDATE candidate_responses 
+       SET is_completed = true, 
+           d_score = $1, 
+           i_score = $2, 
+           s_score = $3, 
+           c_score = $4,
+           dominant_profile = $5,
+           completion_date = NOW(),
+           updated_at = NOW()
+       WHERE id = $6`,
+      [scores.d, scores.i, scores.s, scores.c, dominantProfile, testSessionId]
+    );
+
+    console.log('[API] Teste DISC finalizado:', { 
+      testSessionId, 
+      scores, 
+      dominantProfile 
+    });
+
+    res.json({
+      data: {
+        success: true,
+        resultId: testSessionId,
+        scores,
+        dominantProfile
+      }
+    });
+  } catch (error) {
+    console.error('[API] Erro ao finalizar teste DISC:', error);
+    res.status(500).json({ error: error.message || 'Erro ao finalizar teste' });
+  }
+});
+
+// POST /api/functions/disc-session-status
+app.post('/api/functions/disc-session-status', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId é obrigatório' });
+    }
+
+    // Buscar sessão de teste
+    const sessionResult = await pool.query(
+      'SELECT id, is_completed, d_score, i_score, s_score, c_score, dominant_profile FROM candidate_responses WHERE id = $1',
+      [sessionId]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Sessão de teste não encontrada' });
+    }
+
+    const session = sessionResult.rows[0];
+
+    if (session.is_completed) {
+      res.json({
+        data: {
+          status: 'FINISHED',
+          resultId: session.id,
+          scores: {
+            d: session.d_score || 0,
+            i: session.i_score || 0,
+            s: session.s_score || 0,
+            c: session.c_score || 0
+          },
+          dominantProfile: session.dominant_profile
+        }
+      });
+    } else {
+      res.json({
+        data: {
+          status: 'IN_PROGRESS'
+        }
+      });
+    }
+  } catch (error) {
+    console.error('[API] Erro ao verificar status da sessão DISC:', error);
+    res.status(500).json({ error: error.message || 'Erro ao verificar status' });
   }
 });
 

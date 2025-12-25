@@ -22,6 +22,11 @@ VITE_DB_PORT=5432
 VITE_DB_SSL=false
 VITE_API_ORIGIN=http://localhost:8080
 PORT=3000
+JWT_SECRET=your_jwt_secret_here_change_in_production
+
+# Opcional: URL base para arquivos de storage
+# Se não definido, usa http://localhost:3000/uploads
+STORAGE_BASE_URL=http://localhost:3000/uploads
 ```
 
 ## 🏃 Executar
