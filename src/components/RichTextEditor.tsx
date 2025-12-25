@@ -1,18 +1,8 @@
 import { useRef, useMemo, useCallback, useEffect } from 'react';
 import ReactQuill from 'react-quill';
 
-// Importar CSS do react-quill de forma dinâmica
-if (typeof window !== 'undefined') {
-  try {
-    require('react-quill/dist/quill.snow.css');
-  } catch (e) {
-    // Se falhar, tentar importar diretamente
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
-    document.head.appendChild(link);
-  }
-}
+// Importar CSS do react-quill via CDN (mais confiável no build)
+// O CSS será carregado dinamicamente quando o componente for montado
 
 interface RichTextEditorProps {
   value: string;
