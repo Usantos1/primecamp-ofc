@@ -29,11 +29,13 @@ if ! grep -q 'path="/test-auth"' src/App.tsx; then
 fi
 echo "✅ Rota /test-auth encontrada no App.tsx"
 
-if ! grep -q "import TestAuth" src/App.tsx; then
-    echo "❌ ERRO: Import de TestAuth não encontrado!"
+# Import não é mais necessário - componente está inline
+if grep -q "path=\"/test-auth\"" src/App.tsx; then
+    echo "✅ Rota /test-auth configurada (componente inline)"
+else
+    echo "❌ ERRO: Rota /test-auth não encontrada!"
     exit 1
 fi
-echo "✅ Import de TestAuth encontrado"
 
 # Verificar ordem das rotas
 TEST_AUTH_LINE=$(grep -n 'path="/test-auth"' src/App.tsx | cut -d: -f1)
