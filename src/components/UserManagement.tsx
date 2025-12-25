@@ -174,14 +174,14 @@ export const UserManagement = () => {
 
   const approveUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
         .update({
           approved: true,
           approved_at: new Date().toISOString(),
-          approved_by: (await supabase.auth.getUser()).data.user?.id
+          approved_by: (await authAPI.getUser()).data.user?.id
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .execute();
 
       if (error) throw error;
 
