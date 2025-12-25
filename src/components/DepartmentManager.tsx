@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,7 +71,7 @@ export const DepartmentManager = () => {
     }
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await authAPI.getUser();
       
       const { error } = await supabase
         .from('departments')

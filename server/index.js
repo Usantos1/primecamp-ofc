@@ -330,6 +330,96 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
   res.json({ message: 'Logout realizado com sucesso' });
 });
 
+// Request Password Reset (Solicitar reset de senha)
+app.post('/api/auth/request-password-reset', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email é obrigatório' });
+    }
+
+    // Buscar usuário
+    const result = await pool.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      // Por segurança, não revelar se o email existe ou não
+      return res.json({ message: 'Se o email existir, um link de redefinição será enviado' });
+    }
+
+    const user = result.rows[0];
+
+    // Gerar token de reset (válido por 1 hora)
+    const resetToken = jwt.sign(
+      { id: user.id, email: user.email, type: 'password_reset' },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // TODO: Enviar email com link de reset
+    // Por enquanto, apenas retornar o token (em produção, enviar por email)
+    const resetLink = `${process.env.FRONTEND_URL || 'https://primecamp.cloud'}/reset-password?token=${resetToken}`;
+    
+    console.log(`[PASSWORD RESET] Link para ${user.email}: ${resetLink}`);
+
+    res.json({ 
+      message: 'Se o email existir, um link de redefinição será enviado',
+      // Em desenvolvimento, retornar o link (remover em produção)
+      ...(process.env.NODE_ENV === 'development' && { resetLink })
+    });
+  } catch (error) {
+    console.error('Erro ao solicitar reset de senha:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Reset Password (Redefinir senha com token)
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { password, token } = req.body;
+
+    if (!password || !token) {
+      return res.status(400).json({ error: 'Senha e token são obrigatórios' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
+    }
+
+    // Verificar token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.type !== 'password_reset') {
+        return res.status(400).json({ error: 'Token inválido' });
+      }
+    } catch (error) {
+      return res.status(400).json({ error: 'Token inválido ou expirado' });
+    }
+
+    // Hash da nova senha
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Atualizar senha
+    const result = await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email',
+      [passwordHash, decoded.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    res.json({ message: 'Senha redefinida com sucesso' });
+  } catch (error) {
+    console.error('Erro ao redefinir senha:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 // ============================================
 // FIM DOS ENDPOINTS DE AUTENTICAÇÃO
 // ============================================

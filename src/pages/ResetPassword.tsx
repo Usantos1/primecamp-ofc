@@ -20,24 +20,19 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Check if we have access_token and refresh_token in URL
+  // Check if we have token in URL
   useEffect(() => {
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+    const token = searchParams.get('token');
     
-    if (!accessToken || !refreshToken) {
+    if (!token) {
       toast({
         title: "Link inválido",
         description: "Link de redefinição de senha inválido ou expirado",
         variant: "destructive"
       });
-      navigate('/login');
+      navigate('/auth');
       return;
     }
-
-    // 🚫 SUPABASE REMOVIDO - Reset password desabilitado temporariamente
-    // TODO: Implementar reset password via API PostgreSQL
-    console.warn('Reset password via Supabase foi removido. Use a API PostgreSQL.');
   }, [searchParams, navigate, toast]);
 
   const handlePasswordReset = async (e: React.FormEvent) => {
@@ -72,12 +67,16 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      // 🚫 SUPABASE REMOVIDO - Usar API PostgreSQL
+      const token = searchParams.get('token');
+      if (!token) {
+        throw new Error('Token de redefinição não encontrado');
+      }
+
       const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${API_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, access_token: searchParams.get('access_token') }),
+        body: JSON.stringify({ password, token }),
       });
 
       if (!response.ok) {
@@ -90,9 +89,9 @@ const ResetPassword = () => {
         description: "Sua senha foi redefinida com sucesso. Redirecionando...",
       });
 
-      // Wait a bit then redirect to login
+      // Wait a bit then redirect to auth
       setTimeout(() => {
-        navigate('/login');
+        navigate('/auth');
       }, 2000);
       
     } catch (error: any) {

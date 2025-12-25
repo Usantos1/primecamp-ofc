@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
+import { authAPI } from '@/integrations/auth/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -285,7 +286,7 @@ export const UserManagementNew = () => {
         .update({
           approved: !user.approved,
           approved_at: !user.approved ? new Date().toISOString() : null,
-          approved_by: !user.approved ? (await supabase.auth.getUser()).data.user?.id : null
+          approved_by: !user.approved ? (await authAPI.getUser()).data.user?.id : null
         })
         .eq('user_id', user.user_id);
 
@@ -380,34 +381,33 @@ export const UserManagementNew = () => {
     }
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Criar usuário via API PostgreSQL
+      const authResponse = await authAPI.signup({
         email: newUser.email,
         password: newUser.password,
-        options: {
-          data: {
-            display_name: newUser.display_name
-          }
-        }
+        display_name: newUser.display_name,
+        department: newUser.department,
+        role: newUser.role,
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
+      if (authResponse.user) {
+        const { error: profileError } = await from('profiles')
           .update({
             display_name: newUser.display_name,
             department: newUser.department,
             role: newUser.role,
             approved: true,
             approved_at: new Date().toISOString(),
-            approved_by: (await supabase.auth.getUser()).data.user?.id
+            approved_by: (await authAPI.getUser()).data.user?.id
           })
-          .eq('user_id', authData.user.id);
+          .eq('user_id', authResponse.user.id)
+          .execute();
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
         }
+      } else {
+        throw new Error('Erro ao criar usuário');
       }
 
       toast({

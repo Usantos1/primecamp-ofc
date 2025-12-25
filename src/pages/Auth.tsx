@@ -146,11 +146,21 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // 🚫 Supabase removido - reset de senha via API PostgreSQL
-      // TODO: Implementar endpoint de reset de senha na API
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const response = await fetch(`${API_URL}/auth/request-password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao solicitar reset de senha');
+      }
+
       toast({
-        title: "Funcionalidade em desenvolvimento",
-        description: "Reset de senha será implementado em breve. Entre em contato com o administrador.",
+        title: "Email enviado",
+        description: "Se o email existir, você receberá um link para redefinir sua senha.",
       });
       setEmail("");
     } catch (error: any) {
