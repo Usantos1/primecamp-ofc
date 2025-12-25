@@ -1,90 +1,94 @@
-# 🔧 Corrigir Erro: Porta 3000 já em uso
+# 🔧 Corrigir Erro EADDRINUSE - Porta 3000 em Uso
 
 ## ❌ PROBLEMA:
-
-```
-Error: listen EADDRINUSE: address already in use :::3000
-```
-
-A porta 3000 já está sendo usada por outro processo.
+A API não consegue iniciar porque a porta 3000 já está em uso por outro processo.
 
 ## ✅ SOLUÇÃO:
 
-### 1. Parar TODAS as instâncias da API
+### 1. Parar TODOS os processos PM2 relacionados
 
 ```bash
-pm2 stop primecamp-api
-pm2 delete primecamp-api
+pm2 stop all
+pm2 delete all
 ```
 
-### 2. Verificar se há processos usando a porta 3000
+### 2. Verificar e matar processos usando a porta 3000
 
 ```bash
-# Ver processos na porta 3000
+# Ver qual processo está usando a porta 3000
 lsof -i :3000
 # ou
 netstat -tulpn | grep :3000
-```
 
-### 3. Matar processos que estão usando a porta (se necessário)
+# Matar o processo (substitua PID pelo número do processo)
+kill -9 PID
 
-```bash
-# Se encontrar processos, matar:
-kill -9 <PID>
-# ou matar todos os processos Node na porta 3000:
+# Ou matar todos os processos Node.js na porta 3000
 fuser -k 3000/tcp
 ```
 
-### 4. Verificar se PM2 não tem processos órfãos
+### 3. Limpar processos Node.js órfãos
 
 ```bash
-pm2 kill
-pm2 list
+# Matar todos os processos node
+pkill -9 node
+
+# Verificar se ainda há processos
+ps aux | grep node
 ```
 
-### 5. Reiniciar API corretamente
+### 4. Reiniciar a API corretamente
 
 ```bash
 cd /root/primecamp-ofc/server
 
-# Verificar se dependências estão instaladas
-npm list jsonwebtoken bcrypt
+# Verificar se o código está atualizado
+git pull origin main
 
-# Se não estiverem, instalar:
+# Instalar dependências se necessário
 npm install
 
-# Iniciar API novamente
+# Iniciar com PM2
 pm2 start index.js --name primecamp-api
-pm2 save
+
+# Ver logs
+pm2 logs primecamp-api --lines 50
 ```
 
-### 6. Verificar se está funcionando
+### 5. Se ainda der erro, verificar se há outro serviço na porta 3000
 
 ```bash
+# Ver todos os processos na porta 3000
+ss -tulpn | grep :3000
+
+# Ver processos PM2
+pm2 list
+
+# Ver status detalhado
+pm2 status
+```
+
+## 🔍 Verificar se funcionou:
+
+```bash
+# Ver logs da API
 pm2 logs primecamp-api --lines 20
-curl http://localhost:3000/health
+
+# Ver status
+pm2 status
+
+# Testar se a API está respondendo
+curl http://localhost:3000/api/health
 ```
 
-Deve retornar: `{"status":"ok","database":"connected"}`
+## ⚠️ Se ainda não funcionar:
 
-## 📋 DEPOIS QUE A API ESTIVER FUNCIONANDO:
-
-### Continuar com o rebuild do frontend:
+Pode ser que o Nginx esteja redirecionando para a porta 3000. Verifique:
 
 ```bash
-cd /root/primecamp-ofc
-git pull origin main
-rm -rf dist
-npm run build
-sudo cp -r dist/* /var/www/html/
+# Ver configuração do Nginx
+cat /etc/nginx/sites-available/default | grep 3000
+
+# Ver se Nginx está rodando
+systemctl status nginx
 ```
-
-## ✅ CHECKLIST:
-
-- [ ] PM2 parou todas as instâncias
-- [ ] Porta 3000 está livre
-- [ ] Dependências instaladas (`npm install` no servidor)
-- [ ] API iniciada e funcionando (`/health` retorna OK)
-- [ ] Frontend rebuildado
-- [ ] Arquivos copiados para `/var/www/html/`
-
