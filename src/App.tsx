@@ -35,7 +35,7 @@ import Productivity from "./pages/Productivity";
 import ProcessAnalytics from "./pages/ProcessAnalytics";
 import ResetPassword from "./pages/ResetPassword";
 import DiscTest from "./pages/DiscTest";
-import TestAuth from "./pages/TestAuth";
+// TestAuth será definido inline abaixo
 import CandidateDisc from "./pages/CandidateDisc";
 import CandidateDiscResult from "./pages/CandidateDiscResult";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -93,13 +93,40 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             {/* Rota de teste - DEVE estar antes do catch-all */}
-            <Route path="/test-auth" element={<TestAuth />} />
-            {/* Rota de teste simples para debug */}
-            <Route path="/test-simple" element={
-              <div style={{ padding: '50px', textAlign: 'center' }}>
-                <h1>✅ ROTA FUNCIONANDO!</h1>
-                <p>Se você vê isso, o React Router está funcionando!</p>
-                <p>Teste: <a href="/test-auth">Ir para /test-auth</a></p>
+            <Route path="/test-auth" element={
+              <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'Arial' }}>
+                <h1 style={{ color: 'green', fontSize: '48px' }}>✅ FUNCIONANDO!</h1>
+                <h2>Página de Teste - Autenticação PostgreSQL</h2>
+                <p style={{ fontSize: '18px', marginTop: '20px' }}>
+                  Se você está vendo isso, a rota /test-auth está funcionando!
+                </p>
+                <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#f0f0f0', borderRadius: '10px' }}>
+                  <p><strong>API URL:</strong> {import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api'}</p>
+                  <button 
+                    onClick={async () => {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+                      try {
+                        const response = await fetch(`${apiUrl}/health`);
+                        const data = await response.json();
+                        alert('✅ API OK!\n\n' + JSON.stringify(data, null, 2));
+                      } catch (error: any) {
+                        alert('❌ ERRO na API:\n\n' + error.message);
+                      }
+                    }}
+                    style={{ 
+                      padding: '10px 20px', 
+                      fontSize: '16px', 
+                      backgroundColor: '#007bff', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                      marginTop: '10px'
+                    }}
+                  >
+                    Testar Conexão com API
+                  </button>
+                </div>
               </div>
             } />
           <Route path="/candidato-disc" element={<CandidateDisc />} />
