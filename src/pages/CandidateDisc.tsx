@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, User, Phone, Calendar, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 // Logo correto do Prime Camp
 const logoImage = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
 
@@ -123,10 +124,9 @@ const CandidateDisc = () => {
       setLoadingCandidateData(true);
       console.log('🔍 Buscando dados da candidatura pelo ID:', responseId);
       
-      const { data: jobResponse, error } = await supabase
-        .from('job_responses')
+      const { data: jobResponse, error } = await from('job_responses')
         .select('*')
-        .execute().eq('id', responseId)
+        .eq('id', responseId)
         .single();
 
       if (error) {
@@ -233,13 +233,13 @@ const CandidateDisc = () => {
         const { data: jobResponse } = await supabase
           .from('job_responses')
           .select('*')
-          .execute().eq('id', jobResponseId)
+          .eq('id', jobResponseId)
           .single();
 
         const { data: jobSurvey } = await supabase
           .from('job_surveys')
           .select('*')
-          .execute().eq('id', surveyId)
+          .eq('id', surveyId)
           .single();
 
         if (jobResponse && jobSurvey) {
@@ -247,36 +247,34 @@ const CandidateDisc = () => {
           const { data: discResult } = await supabase
             .from('candidate_responses')
             .select('*')
-            .execute().eq('id', candidateId)
+            .eq('id', candidateId)
             .single();
 
           // Chamar análise com OpenAI
-          const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
-            body: {
-              job_response_id: jobResponseId,
-              survey_id: surveyId,
-              candidate_data: {
-                name: jobResponse.name,
-                email: jobResponse.email,
-                age: jobResponse.age,
-                phone: jobResponse.phone,
-                responses: jobResponse.responses,
-                disc_profile: discResult ? {
-                  d_score: discResult.d_score || 0,
-                  i_score: discResult.i_score || 0,
-                  s_score: discResult.s_score || 0,
-                  c_score: discResult.c_score || 0,
-                  dominant_profile: discResult.dominant_profile || ''
-                } : undefined
-              },
-              job_data: {
-                title: jobSurvey.title,
-                position_title: jobSurvey.position_title,
-                description: jobSurvey.description,
-                requirements: jobSurvey.requirements,
-                work_modality: jobSurvey.work_modality,
-                contract_type: jobSurvey.contract_type
-              }
+          const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
+            job_response_id: jobResponseId,
+            survey_id: surveyId,
+            candidate_data: {
+              name: jobResponse.name,
+              email: jobResponse.email,
+              age: jobResponse.age,
+              phone: jobResponse.phone,
+              responses: jobResponse.responses,
+              disc_profile: discResult ? {
+                d_score: discResult.d_score || 0,
+                i_score: discResult.i_score || 0,
+                s_score: discResult.s_score || 0,
+                c_score: discResult.c_score || 0,
+                dominant_profile: discResult.dominant_profile || ''
+              } : undefined
+            },
+            job_data: {
+              title: jobSurvey.title,
+              position_title: jobSurvey.position_title,
+              description: jobSurvey.description,
+              requirements: jobSurvey.requirements,
+              work_modality: jobSurvey.work_modality,
+              contract_type: jobSurvey.contract_type
             }
           });
 

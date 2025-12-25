@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles } from 'lucide-react';
@@ -188,8 +189,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const { data: surveys = [], isLoading: loadingSurveys } = useQuery({
     queryKey: ['admin-job-surveys'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('job_surveys')
+      const { data, error } = await from('job_surveys')
         .select('*')
         .execute().order('created_at', { ascending: false });
 
@@ -224,8 +224,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     queryFn: async () => {
       if (!selectedSurvey?.id) return [];
       
-      const { data, error } = await supabase
-        .from('job_responses')
+      const { data, error } = await from('job_responses')
         .select('*')
         .execute().eq('survey_id', selectedSurvey.id)
         .order('created_at', { ascending: false });
@@ -242,8 +241,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     queryFn: async () => {
       if (!selectedSurvey?.id) return [];
       
-      const { data, error } = await supabase
-        .from('job_application_drafts')
+      const { data, error } = await from('job_application_drafts')
         .select('*')
         .execute().eq('survey_id', selectedSurvey.id)
         .order('last_saved_at', { ascending: false });
@@ -260,8 +258,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     queryFn: async () => {
       if (!selectedSurvey?.id) return [];
       
-      const { data, error } = await supabase
-        .from('job_candidate_ai_analysis')
+      const { data, error } = await from('job_candidate_ai_analysis')
         .select('*')
         .execute().eq('survey_id', selectedSurvey.id);
 
@@ -296,8 +293,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
         model: iaModel
       });
 
-      const { data, error } = await supabase.functions.invoke('generate-job-assets', {
-        body: {
+      const { data, error } = await apiClient.invokeFunction('generate-job-assets', {
           job: {
             title: formData.title,
             position_title: formData.position_title,
@@ -324,7 +320,6 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
           apiKey: iaApiKey.trim(),
           model: iaModel || 'gpt-4o-mini',
           locale: 'pt-BR'
-        }
       });
 
       if (error) {
@@ -469,16 +464,14 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     if (!user?.id) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: profile } = await from('profiles')
         .select('id')
         .execute().eq('user_id', user.id)
         .single();
 
       if (!profile) throw new Error('Profile not found');
 
-      const { error } = await supabase
-        .from('job_surveys')
+      const { error } = await from('job_surveys')
         .insert({
           title: formData.title,
           description: formData.description,
@@ -531,8 +524,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     if (!editingSurvey) return;
 
     try {
-      const { error } = await supabase
-        .from('job_surveys')
+      const { error } = await from('job_surveys')
         .update({
           title: formData.title,
           description: formData.description,
@@ -582,13 +574,11 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
   const handleDeleteSurvey = async (surveyId: string) => {
     try {
-      await supabase
-        .from('job_responses')
+      await from('job_responses')
         .delete()
         .eq('survey_id', surveyId);
 
-      const { error } = await supabase
-        .from('job_surveys')
+      const { error } = await from('job_surveys')
         .delete()
         .eq('id', surveyId);
 
@@ -611,8 +601,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
   const handleToggleActive = async (surveyId: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('job_surveys')
+      const { error } = await from('job_surveys')
         .update({ is_active: isActive })
         .eq('id', surveyId);
 
@@ -684,8 +673,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
     try {
       setGeneratingQuestions(true);
-      const { data, error } = await supabase.functions.invoke('generate-dynamic-questions', {
-        body: {
+      const { data, error } = await apiClient.invokeFunction('generate-dynamic-questions', {
           survey: {
             id: formData.id,
             title: formData.title,
@@ -701,7 +689,6 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
           provider: iaProvider,
           apiKey: iaApiKey.trim(),
           model: iaModel || 'gpt-4o-mini'
-        }
       });
 
       if (error) {
@@ -753,16 +740,14 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     if (!user?.id) return;
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: profile } = await from('profiles')
         .select('id')
         .execute().eq('user_id', user.id)
         .single();
 
       if (!profile) throw new Error('Profile not found');
 
-      const { error } = await supabase
-        .from('job_surveys')
+      const { error } = await from('job_surveys')
         .insert({
           title: `Cópia de ${survey.title}`,
           description: survey.description,
@@ -974,14 +959,12 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
         description: "Gerando análise e aprovando automaticamente.",
       });
 
-      const { data: jobResponse, error: responseError } = await supabase
-        .from('job_responses')
+      const { data: jobResponse, error: responseError } = await from('job_responses')
         .select('*')
         .execute().eq('id', response.id)
         .single();
 
-      const { data: jobSurvey, error: surveyError } = await supabase
-        .from('job_surveys')
+      const { data: jobSurvey, error: surveyError } = await from('job_surveys')
         .select('*')
         .execute().eq('id', response.survey_id)
         .single();
@@ -990,40 +973,37 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
         throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
       }
 
-      const { data: discResult } = await supabase
-        .from('candidate_responses')
+      const { data: discResult } = await from('candidate_responses')
         .select('*')
         .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
         .maybeSingle();
 
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
-        body: {
-          job_response_id: response.id,
-          survey_id: response.survey_id,
-          candidate_data: {
-            name: jobResponse.name,
-            email: jobResponse.email,
-            age: jobResponse.age,
-            phone: jobResponse.phone || jobResponse.whatsapp,
-            responses: jobResponse.responses,
-            disc_profile: discResult ? {
-              d_score: discResult.d_score || 0,
-              i_score: discResult.i_score || 0,
-              s_score: discResult.s_score || 0,
-              c_score: discResult.c_score || 0,
-              dominant_profile: discResult.dominant_profile || ''
-            } : undefined
-          },
-          job_data: {
-            title: jobSurvey.title,
-            position_title: jobSurvey.position_title,
-            description: jobSurvey.description,
-            requirements: jobSurvey.requirements,
-            work_modality: jobSurvey.work_modality,
-            contract_type: jobSurvey.contract_type
-          }
+      const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
+        job_response_id: response.id,
+        survey_id: response.survey_id,
+        candidate_data: {
+          name: jobResponse.name,
+          email: jobResponse.email,
+          age: jobResponse.age,
+          phone: jobResponse.phone || jobResponse.whatsapp,
+          responses: jobResponse.responses,
+          disc_profile: discResult ? {
+            d_score: discResult.d_score || 0,
+            i_score: discResult.i_score || 0,
+            s_score: discResult.s_score || 0,
+            c_score: discResult.c_score || 0,
+            dominant_profile: discResult.dominant_profile || ''
+          } : undefined
+        },
+        job_data: {
+          title: jobSurvey.title,
+          position_title: jobSurvey.position_title,
+          description: jobSurvey.description,
+          requirements: jobSurvey.requirements,
+          work_modality: jobSurvey.work_modality,
+          contract_type: jobSurvey.contract_type
         }
       });
 
@@ -1031,8 +1011,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
         throw analysisError;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: profile } = await from('profiles')
         .select('id')
         .execute().eq('user_id', user.id)
         .maybeSingle();
@@ -1739,8 +1718,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                         .maybeSingle();
 
                                       // Chamar análise com OpenAI
-                                      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
-                                        body: {
+                                      const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
                                           job_response_id: response.id,
                                           survey_id: response.survey_id,
                                           candidate_data: {

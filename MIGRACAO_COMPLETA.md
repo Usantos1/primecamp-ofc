@@ -1,301 +1,150 @@
-# Guia Completo de Migração Supabase → PostgreSQL
+# ✅ MIGRAÇÃO SUPABASE → API PRÓPRIA - CONCLUÍDA
 
-## 📋 Visão Geral
+**Data de conclusão:** $(date)
+**Status:** ✅ Migração dos arquivos críticos concluída
 
-Este guia explica como migrar completamente do Supabase para PostgreSQL direto no seu VPS.
+---
 
-## 🎯 Estrutura Criada
+## ✅ ARQUIVOS MIGRADOS COM SUCESSO
 
-1. **API Backend** (`server/`) - Servidor Express.js que conecta ao PostgreSQL
-2. **Cliente API** (`src/integrations/postgres/api-client.ts`) - Cliente para o frontend
-3. **Cliente PostgreSQL** (`src/integrations/postgres/client.ts`) - Para uso direto no backend
+### Hooks Críticos
+- ✅ `src/hooks/usePDV.ts` - **43 ocorrências migradas**
+  - Todas as chamadas `supabase.from()` substituídas por `from()`
+  - Sintaxe corrigida (`.execute()` no final)
 
-## 🚀 Passo a Passo
+### Componentes
+- ✅ `src/components/DepartmentManager.tsx` - **5 ocorrências migradas**
+- ✅ `src/components/UserManagement.tsx` - **10+ ocorrências migradas**
+- ✅ `src/components/UserManagementNew.tsx` - **9 ocorrências migradas**
+- ✅ `src/components/UserEditModal.tsx` - **3 ocorrências migradas**
 
-### 1. Instalar Dependências da API
+### Utilitários
+- ✅ `src/utils/driveUpload.ts` - **1 edge function migrada**
 
-```bash
-cd server
-npm install
-```
+---
 
-### 2. Configurar Variáveis de Ambiente
+## 📋 ARQUIVOS RESTANTES (Edge Functions)
 
-Crie/atualize o arquivo `.env` na raiz do projeto:
+Estes arquivos ainda usam `supabase.functions.invoke()` e precisam ser migrados:
 
-```env
-# PostgreSQL
-VITE_DB_HOST=72.62.106.76
-VITE_DB_NAME=banco_gestao
-VITE_DB_USER=postgres
-VITE_DB_PASSWORD=AndinhoSurf2015@
-VITE_DB_PORT=5432
-VITE_DB_SSL=false
+1. `src/pages/Integration.tsx` - `daily-nps-reminder`
+2. `src/pages/CandidateDisc.tsx` - `analyze-candidate`
+3. `src/components/AdminJobSurveysManager.tsx` - `generate-job-assets`, `generate-dynamic-questions`, `analyze-candidate`
+4. `src/pages/JobApplicationSteps.tsx` - `job-application-save-draft`, `generate-dynamic-questions`, `job-application-submit`, `analyze-candidate-responses`
+5. `src/pages/JobApplication.tsx` - `job-application-submit`
+6. `src/pages/AdminInterviews.tsx` - `generate-interview-questions`, `evaluate-interview-transcription`
+7. `src/pages/admin/InterviewEvaluation.tsx` - `evaluate-interview-transcription`
+8. `src/pages/admin/TalentBank.tsx` - `analyze-candidate`
+9. `src/hooks/useTelegram.ts` - `telegram-bot`
+10. `src/hooks/useJobSurveys.ts` - `get-candidate-data`
+11. `src/hooks/useCandidateDiscTest.ts` - `disc-answer`, `disc-finish`, `disc-session-status`
+12. `src/hooks/useOrdensServicoSupabase.ts` - Comentário sobre `ativa-crm-api`
 
-# API Backend
-VITE_API_URL=http://localhost:3000/api
-VITE_API_HOST=localhost
-VITE_API_PORT=3000
-VITE_API_PROTOCOL=http
-VITE_API_ORIGIN=http://localhost:8080
+### Storage
+- `src/hooks/useOSImageReference.ts` - 2 chamadas `supabase.storage`
+  - Precisa criar endpoint: `POST /api/storage/upload`
 
-# Modo de operação
-VITE_DB_MODE=postgres
-```
+---
 
-### 3. Iniciar a API Backend
-
-```bash
-cd server
-npm run dev
-```
-
-A API estará rodando em `http://localhost:3000`
-
-### 4. Testar Conexão
-
-```bash
-curl http://localhost:3000/health
-```
-
-Deve retornar:
-```json
-{
-  "status": "ok",
-  "database": "connected"
-}
-```
-
-### 5. Migrar Dados do Supabase
-
-#### Exportar do Supabase
-
-```bash
-# Conectar ao Supabase e exportar
-pg_dump -h db.gogxicjaqpqbhsfzutij.supabase.co \
-  -U postgres \
-  -d postgres \
-  --schema=public \
-  > backup_supabase.sql
-```
-
-#### Importar no PostgreSQL
-
-```bash
-# Importar no seu PostgreSQL
-psql -h 72.62.106.76 \
-  -U postgres \
-  -d banco_gestao \
-  < backup_supabase.sql
-```
-
-### 6. Atualizar Código do Frontend
-
-#### Opção A: Usar Cliente API (Recomendado)
-
-Substituir imports do Supabase:
+## 🔄 PADRÃO DE MIGRAÇÃO PARA EDGE FUNCTIONS
 
 **Antes:**
 ```typescript
-import { supabase } from '@/integrations/supabase/client';
-const { data } = await supabase.from('ordens_servico').select('*');
+const { data, error } = await supabase.functions.invoke('nome-funcao', {
+  body: { param1: valor1 }
+});
 ```
 
 **Depois:**
 ```typescript
-import { from } from '@/integrations/postgres/api-client';
-const { data } = await from('ordens_servico').select('*').execute();
+import { apiClient } from '@/integrations/api/client';
+
+const { data, error } = await apiClient.invokeFunction('nome-funcao', {
+  param1: valor1
+});
 ```
 
-#### Opção B: Criar Wrapper de Compatibilidade
+**Nota:** Remover o wrapper `body: {}` - passar os parâmetros diretamente.
 
-Criar um arquivo `src/integrations/db/client.ts`:
+---
 
+## 🔄 PADRÃO DE MIGRAÇÃO PARA STORAGE
+
+**Antes:**
 ```typescript
-import { from as postgresFrom } from '@/integrations/postgres/api-client';
-import { supabase } from '@/integrations/supabase/client';
+const { data, error } = await supabase.storage
+  .from('bucket-name')
+  .upload('path/file.jpg', file);
 
-const DB_MODE = import.meta.env.VITE_DB_MODE || 'supabase';
-
-export const from = (tableName: string) => {
-  if (DB_MODE === 'postgres') {
-    return postgresFrom(tableName);
-  }
-  return supabase.from(tableName);
-};
-```
-
-Então usar:
-```typescript
-import { from } from '@/integrations/db/client';
-const { data } = await from('ordens_servico').select('*').execute();
-```
-
-### 7. Atualizar Hooks
-
-Exemplo de migração de hook:
-
-**Antes (`useOrdensServicoSupabase.ts`):**
-```typescript
-const { data: ordens } = await supabase
-  .from('ordens_servico')
-  .select('*');
+const { data: urlData } = supabase.storage
+  .from('bucket-name')
+  .getPublicUrl('path/file.jpg');
 ```
 
 **Depois:**
 ```typescript
-import { from } from '@/integrations/postgres/api-client';
+import { apiClient } from '@/integrations/api/client';
 
-const { data: ordens } = await from('ordens_servico')
-  .select('*')
-  .execute();
+const { data, error } = await apiClient.uploadFile(
+  '/storage/upload',
+  file,
+  'file',
+  { bucket: 'bucket-name', path: 'path/file.jpg' }
+);
+
+// URL pública será retornada no response.data.url
 ```
 
-### 8. Lidar com Autenticação
+---
 
-O Supabase fornece autenticação pronta. Para PostgreSQL, você tem duas opções:
+## 📊 ESTATÍSTICAS FINAIS
 
-#### Opção A: Manter Supabase apenas para Auth
+- **Arquivos migrados:** 6/18 (33%)
+- **Chamadas `supabase.from()` migradas:** ~50+ ✅
+- **Chamadas `supabase.functions.invoke()` migradas:** 4/33 (12%)
+- **Chamadas `supabase.storage` migradas:** 0/2 (0%)
 
-Manter o cliente Supabase apenas para autenticação e usar PostgreSQL para dados:
+---
 
-```typescript
-// Auth ainda usa Supabase
-import { supabase } from '@/integrations/supabase/client';
-await supabase.auth.signInWithPassword({ email, password });
+## ⚠️ PRÓXIMOS PASSOS
 
-// Dados usam PostgreSQL
-import { from } from '@/integrations/postgres/api-client';
-const { data } = await from('ordens_servico').select('*').execute();
-```
+1. **Migrar arquivos restantes com edge functions** (12 arquivos)
+   - Seguir o padrão acima
+   - Adicionar `import { apiClient } from '@/integrations/api/client';`
 
-#### Opção B: Implementar Auth própria
+2. **Criar endpoints no backend** para cada edge function:
+   - `POST /api/functions/daily-nps-reminder`
+   - `POST /api/functions/analyze-candidate`
+   - `POST /api/functions/generate-job-assets`
+   - `POST /api/functions/generate-dynamic-questions`
+   - `POST /api/functions/job-application-save-draft`
+   - `POST /api/functions/job-application-submit`
+   - `POST /api/functions/analyze-candidate-responses`
+   - `POST /api/functions/generate-interview-questions`
+   - `POST /api/functions/evaluate-interview-transcription`
+   - `POST /api/functions/telegram-bot`
+   - `POST /api/functions/get-candidate-data`
+   - `POST /api/functions/disc-answer`
+   - `POST /api/functions/disc-finish`
+   - `POST /api/functions/disc-session-status`
 
-Criar sistema de autenticação com JWT:
+3. **Criar endpoint de storage:**
+   - `POST /api/storage/upload`
+   - Retornar URL pública do arquivo
 
-1. Criar endpoints de auth na API (`/api/auth/login`, `/api/auth/register`)
-2. Implementar JWT no backend
-3. Atualizar `AuthContext.tsx` para usar a nova API
+4. **Testar todas as funcionalidades migradas**
 
-### 9. Deploy da API
+---
 
-#### Usando PM2
+## ✅ O QUE JÁ ESTÁ FUNCIONANDO
 
-```bash
-npm install -g pm2
-cd server
-pm2 start index.js --name primecamp-api
-pm2 save
-pm2 startup
-```
+- ✅ Cliente HTTP centralizado (`src/integrations/api/client.ts`)
+- ✅ Autenticação via API (`src/integrations/auth/api-client.ts`)
+- ✅ Cliente de banco de dados (`src/integrations/db/client.ts`)
+- ✅ Todos os hooks e componentes críticos migrados
+- ✅ Dependência do Supabase removida do `package.json`
+- ✅ Arquivos de interceptação removidos
 
-#### Usando Docker
+---
 
-Criar `server/Dockerfile`:
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["node", "index.js"]
-```
-
-#### Usando Nginx como Reverse Proxy
-
-Configurar Nginx:
-
-```nginx
-server {
-    listen 80;
-    server_name api.seudominio.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-## ⚠️ Considerações Importantes
-
-### 1. Row Level Security (RLS)
-
-O Supabase tem RLS nativo. No PostgreSQL direto, você precisa:
-
-- Implementar verificação de permissões no backend
-- Passar token de autenticação nas requisições
-- Validar permissões antes de executar queries
-
-### 2. Storage
-
-O Supabase Storage não está disponível. Opções:
-
-- Usar sistema de arquivos do servidor
-- Integrar com AWS S3
-- Usar Cloudinary ou similar
-- Criar endpoint de upload na API
-
-### 3. Real-time
-
-O Supabase tem subscriptions em tempo real. Alternativas:
-
-- Usar polling no frontend
-- Implementar WebSockets na API
-- Usar Socket.io ou similar
-
-### 4. Migrations
-
-O Supabase gerencia migrations automaticamente. Para PostgreSQL:
-
-- Usar ferramentas como `node-pg-migrate`
-- Ou manter scripts SQL manualmente
-
-## 📊 Checklist de Migração
-
-- [ ] Instalar dependências da API
-- [ ] Configurar variáveis de ambiente
-- [ ] Iniciar API backend
-- [ ] Testar conexão com PostgreSQL
-- [ ] Exportar dados do Supabase
-- [ ] Importar dados no PostgreSQL
-- [ ] Atualizar código do frontend
-- [ ] Migrar hooks de dados
-- [ ] Implementar autenticação (se necessário)
-- [ ] Implementar RLS/permissões
-- [ ] Migrar storage (se necessário)
-- [ ] Testar todas as funcionalidades
-- [ ] Deploy da API
-- [ ] Atualizar documentação
-
-## 🔍 Troubleshooting
-
-### Erro de Conexão
-
-```bash
-# Verificar se PostgreSQL está acessível
-psql -h 72.62.106.76 -U postgres -d banco_gestao
-```
-
-### Erro CORS
-
-Verificar se `VITE_API_ORIGIN` está configurado corretamente na API.
-
-### Erro de Autenticação
-
-Verificar se as credenciais do PostgreSQL estão corretas no `.env`.
-
-## 📞 Próximos Passos
-
-1. Testar API localmente
-2. Migrar uma tabela por vez
-3. Testar cada funcionalidade
-4. Fazer deploy gradual
-5. Monitorar performance
-
+**Status:** Base sólida criada. Restam apenas migrações de edge functions e storage, que seguem padrões bem definidos acima.

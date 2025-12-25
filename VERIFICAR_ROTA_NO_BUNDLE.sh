@@ -85,3 +85,4 @@ echo "o problema é no Nginx ou no React Router."
 echo "Execute: sudo ./CORRIGIR_NGINX_SPA.sh"
 echo ""
 
+

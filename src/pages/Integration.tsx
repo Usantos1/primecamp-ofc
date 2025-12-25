@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { MessageSquare, Send, Settings, Webhook } from 'lucide-react';
 
 interface IntegrationSettings {
@@ -179,7 +180,7 @@ export default function Integration() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('daily-nps-reminder');
+      const { data, error } = await apiClient.invokeFunction('daily-nps-reminder');
 
       if (error) {
         console.error('Function error:', error);

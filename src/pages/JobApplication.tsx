@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, Building2, MapPin, Briefcase, UserCheck, Clock, DollarSign, Eye } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -141,8 +142,7 @@ export default function JobApplication() {
       const idempotencyKey = `${surveyId}-${formData.email}-${Date.now()}`;
 
       // Use edge function for proper handling
-      const { data, error } = await supabase.functions.invoke('job-application-submit', {
-        body: {
+      const { data, error } = await apiClient.invokeFunction('job-application-submit', {
           survey_id: surveyId,
           name: formData.name.trim(),
           email: formData.email.trim(),

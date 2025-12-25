@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
 import { authAPI } from '@/integrations/auth/api-client';
+import { apiClient } from '@/integrations/api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,10 +72,10 @@ export const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       // Buscar perfis
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: profilesData, error: profilesError } = await from('profiles')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (profilesError) {
         toast({
@@ -86,12 +87,9 @@ export const UserManagement = () => {
       }
 
       // Buscar posições dos usuários
-      const { data: positionsData, error: positionsError } = await supabase
-        .from('user_position_departments')
-        .select(`
-          *,
-          position:positions(*)
-        .execute()`);
+      const { data: positionsData, error: positionsError } = await from('user_position_departments')
+        .select('*, position:positions(*)')
+        .execute();
 
       if (positionsError) {
         console.error('Error fetching positions:', positionsError);
@@ -128,11 +126,11 @@ export const UserManagement = () => {
   const updateUserPositions = async (userId: string, positionIds: string[], departmentName: string, primaryPositionId?: string) => {
     try {
       // Remover todas as posições atuais do usuário neste departamento
-      const { error: deleteError } = await supabase
-        .from('user_position_departments')
+      const { error: deleteError } = await from('user_position_departments')
         .delete()
         .eq('user_id', userId)
-        .eq('department_name', departmentName);
+        .eq('department_name', departmentName)
+        .execute();
 
       if (deleteError) {
         throw deleteError;
@@ -147,9 +145,9 @@ export const UserManagement = () => {
           is_primary: primaryPositionId === positionId || (index === 0 && !primaryPositionId)
         }));
 
-        const { error: insertError } = await supabase
-          .from('user_position_departments')
-          .insert(positionsToInsert);
+        const { error: insertError } = await from('user_position_departments')
+          .insert(positionsToInsert)
+          .execute();
 
         if (insertError) {
           throw insertError;
@@ -202,14 +200,14 @@ export const UserManagement = () => {
 
   const rejectUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
         .update({
           approved: false,
           approved_at: null,
           approved_by: null
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .execute();
 
       if (error) throw error;
 
@@ -230,10 +228,10 @@ export const UserManagement = () => {
 
   const updateUserRole = async (userId: string, role: 'admin' | 'member') => {
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
         .update({ role })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .execute();
 
       if (error) throw error;
 
@@ -254,10 +252,10 @@ export const UserManagement = () => {
 
   const updateUserDepartment = async (userId: string, department: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
         .update({ department })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .execute();
 
       if (error) throw error;
 
@@ -289,8 +287,8 @@ export const UserManagement = () => {
         return;
       }
 
-      const { data: result, error: deleteError } = await supabase.functions.invoke('admin-delete-user', {
-        body: { userId }
+      const { data: result, error: deleteError } = await apiClient.invokeFunction('admin-delete-user', {
+        userId
       });
 
       if (deleteError) throw deleteError;
@@ -391,9 +389,9 @@ export const UserManagement = () => {
             is_primary: index === 0
           }));
 
-          const { error: positionsError } = await supabase
-            .from('user_position_departments')
-            .insert(positionsToInsert);
+          const { error: positionsError } = await from('user_position_departments')
+            .insert(positionsToInsert)
+            .execute();
 
           if (positionsError) {
             console.error('Error adding positions:', positionsError);
@@ -853,11 +851,11 @@ const UserPositionsManager = ({
 
     try {
       // Remover posições antigas deste departamento
-      const { error: deleteError } = await supabase
-        .from('user_position_departments')
+      const { error: deleteError } = await from('user_position_departments')
         .delete()
         .eq('user_id', user.user_id)
-        .eq('department_name', selectedDepartment);
+        .eq('department_name', selectedDepartment)
+        .execute();
 
       if (deleteError) throw deleteError;
 
@@ -870,9 +868,9 @@ const UserPositionsManager = ({
           is_primary: primaryPosition === positionId || (selectedPositions[0] === positionId && !primaryPosition)
         }));
 
-        const { error: insertError } = await supabase
-          .from('user_position_departments')
-          .insert(positionsToInsert);
+        const { error: insertError } = await from('user_position_departments')
+          .insert(positionsToInsert)
+          .execute();
 
         if (insertError) throw insertError;
       }

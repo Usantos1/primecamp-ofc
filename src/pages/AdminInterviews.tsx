@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -215,7 +216,7 @@ export const AdminInterviewsManager = () => {
         .execute().eq('job_response_id', interview.job_response_id)
         .single();
 
-      const { data, error } = await supabase.functions.invoke('generate-interview-questions', {
+      const { data, error } = await apiClient.invokeFunction('generate-interview-questions', {
         body: {
           job_response_id: interview.job_response_id,
           survey_id: interview.survey_id,
@@ -274,7 +275,7 @@ export const AdminInterviewsManager = () => {
         description: "A IA está analisando a entrevista.",
       });
 
-      const { data, error } = await supabase.functions.invoke('evaluate-interview-transcription', {
+      const { data, error } = await apiClient.invokeFunction('evaluate-interview-transcription', {
         body: {
           interview_id: selectedInterview.id,
           transcription: transcription.trim(),
@@ -325,7 +326,7 @@ export const AdminInterviewsManager = () => {
         description: "A IA está analisando novamente a entrevista.",
       });
 
-      const { data, error } = await supabase.functions.invoke('evaluate-interview-transcription', {
+      const { data, error } = await apiClient.invokeFunction('evaluate-interview-transcription', {
         body: {
           interview_id: interview.id,
           transcription: interview.transcription.trim(),

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Search, Eye, Brain, Download, Filter, Video, CheckCircle } from 'lucide-react';
@@ -179,8 +180,7 @@ export default function TalentBank() {
         .order('created_at', { ascending: false })
         .maybeSingle();
 
-      const { error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
-        body: {
+      const { error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
           job_response_id: candidate.id,
           survey_id: candidate.survey_id,
           candidate_data: {
@@ -268,8 +268,7 @@ export default function TalentBank() {
         .order('created_at', { ascending: false })
         .maybeSingle();
 
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-candidate', {
-        body: {
+      const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
           job_response_id: candidate.id,
           survey_id: candidate.survey_id,
           candidate_data: {

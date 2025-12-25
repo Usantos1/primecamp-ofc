@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
 import { authAPI } from '@/integrations/auth/api-client';
+import { apiClient } from '@/integrations/api/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -98,10 +99,10 @@ export const UserManagementNew = () => {
       setLoading(true);
 
       // Buscar perfis
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: profilesData, error: profilesError } = await from('profiles')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (profilesError) {
         toast({
@@ -113,15 +114,11 @@ export const UserManagementNew = () => {
       }
 
       // Buscar roles dos usuários
-      const { data: rolesData } = await supabase
-        .from('user_position_departments')
-        .select(`
-          user_id,
-          role_id,
-          role:roles(id, name, display_name)
-        .execute()`)
+      const { data: rolesData } = await from('user_position_departments')
+        .select('user_id, role_id, role:roles(id, name, display_name)')
         .eq('is_primary', true)
-        .not('role_id', 'is', null);
+        .not('role_id', 'is', null)
+        .execute();
 
       // Buscar emails dos usuários via edge function
       const usersWithRolesAndEmails: UserWithRole[] = await Promise.all(
@@ -131,8 +128,8 @@ export const UserManagementNew = () => {
           // Buscar email do usuário
           let authEmail = '';
           try {
-            const { data: userData, error: userError } = await supabase.functions.invoke('admin-get-user', {
-              body: { userId: profile.user_id }
+            const { data: userData, error: userError } = await apiClient.invokeFunction('admin-get-user', {
+              userId: profile.user_id
             });
             
             if (!userError && userData?.user?.email) {
@@ -183,7 +180,7 @@ export const UserManagementNew = () => {
       // Buscar email do usuário
       let userEmail = user.authEmail || '';
       if (!userEmail) {
-        const { data: userData } = await supabase.functions.invoke('admin-get-user', {
+        const { data: userData } = await apiClient.invokeFunction('admin-get-user', {
           body: { userId: user.user_id }
         });
         userEmail = userData?.user?.email || '';
@@ -217,8 +214,7 @@ export const UserManagementNew = () => {
       setLoading(true);
 
       // Atualizar perfil
-      const { error: profileError } = await supabase
-        .from('profiles')
+      const { error: profileError } = await from('profiles')
         .update({
           display_name: editFormData.display_name,
           phone: editFormData.phone,
@@ -242,11 +238,9 @@ export const UserManagementNew = () => {
           updateData.password = editFormData.password;
         }
 
-        const { error: authError } = await supabase.functions.invoke('admin-update-user', {
-          body: {
-            userId: selectedUser.user_id,
-            ...updateData
-          }
+        const { error: authError } = await apiClient.invokeFunction('admin-update-user', {
+          userId: selectedUser.user_id,
+          ...updateData
         });
 
         if (authError) {
@@ -281,8 +275,7 @@ export const UserManagementNew = () => {
 
   const handleBlockUser = async (user: UserWithRole) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
         .update({
           approved: !user.approved,
           approved_at: !user.approved ? new Date().toISOString() : null,
@@ -314,8 +307,8 @@ export const UserManagementNew = () => {
       setLoading(true);
 
       // Deletar via edge function (que deleta auth e profile)
-      const { error } = await supabase.functions.invoke('admin-delete-user', {
-        body: { userId: userToDelete.user_id }
+      const { error } = await apiClient.invokeFunction('admin-delete-user', {
+        userId: userToDelete.user_id
       });
 
       if (error) throw error;
@@ -342,8 +335,7 @@ export const UserManagementNew = () => {
 
   const approveUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
         .update({
           approved: true,
           approved_at: new Date().toISOString(),

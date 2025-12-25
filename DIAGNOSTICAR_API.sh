@@ -96,3 +96,4 @@ echo "4. Execute: pm2 start index.js --name primecamp-api"
 echo "5. Execute: pm2 logs primecamp-api --lines 50"
 echo ""
 
+

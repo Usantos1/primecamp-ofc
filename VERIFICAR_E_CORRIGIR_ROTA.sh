@@ -109,3 +109,4 @@ echo "3. Abra Console (F12) e verifique se há erros"
 echo "4. Se ainda não funcionar, verifique o Network tab"
 echo ""
 
+

@@ -38,10 +38,10 @@ export const DepartmentManager = () => {
 
   const fetchDepartments = async () => {
     try {
-      const { data, error } = await supabase
-        .from('departments')
+      const { data, error } = await from('departments')
         .select('*')
-        .execute().order('name');
+        .order('name', { ascending: true })
+        .execute();
 
       if (error) {
         toast({
@@ -73,13 +73,14 @@ export const DepartmentManager = () => {
     try {
       const { data: userData } = await authAPI.getUser();
       
-      const { error } = await supabase
-        .from('departments')
+      const { data: inserted, error } = await from('departments')
         .insert({
           name: newDept.name.trim(),
           description: newDept.description.trim() || null,
-          created_by: userData.user?.id
-        });
+          created_by: userData.data?.user?.id
+        })
+        .select('*')
+        .single();
 
       if (error) {
         toast({
@@ -105,10 +106,10 @@ export const DepartmentManager = () => {
 
   const updateDepartment = async (id: string, updates: Partial<Department>) => {
     try {
-      const { error } = await supabase
-        .from('departments')
+      const { error } = await from('departments')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
 
       if (error) {
         toast({
@@ -134,10 +135,10 @@ export const DepartmentManager = () => {
   const deleteDepartment = async (id: string, name: string) => {
     try {
       // Check if department is being used by any users
-      const { data: usersInDept } = await supabase
-        .from('profiles')
+      const { data: usersInDept } = await from('profiles')
         .select('id')
-        .execute().eq('department', name);
+        .eq('department', name)
+        .execute();
 
       if (usersInDept && usersInDept.length > 0) {
         toast({
@@ -148,10 +149,10 @@ export const DepartmentManager = () => {
         return;
       }
 
-      const { error } = await supabase
-        .from('departments')
+      const { error } = await from('departments')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
 
       if (error) {
         toast({

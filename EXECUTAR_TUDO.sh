@@ -21,3 +21,4 @@ echo ""
 echo "✅ TUDO CONCLUÍDO!"
 echo "Acesse: https://primecamp.cloud/test-auth"
 
+

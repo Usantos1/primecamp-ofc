@@ -175,3 +175,4 @@ echo "4. Clique em 'Testar Conexão com API'"
 echo "5. Deve aparecer: '✅ API está funcionando!'"
 echo ""
 
+

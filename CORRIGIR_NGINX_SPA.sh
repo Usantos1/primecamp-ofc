@@ -87,3 +87,4 @@ echo ""
 echo "Agora teste: https://primecamp.cloud/test-auth"
 echo ""
 
+

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { toast } from 'sonner';
 
 export interface JobSurvey {
@@ -212,8 +213,8 @@ export const useJobApplicationStatus = (protocol: string, email?: string) => {
       if (protocol) {
         // Tentar usar a edge function get-candidate-data que já existe
         try {
-          const { data: functionData, error: functionError } = await supabase.functions.invoke('get-candidate-data', {
-            body: { protocol }
+          const { data: functionData, error: functionError } = await apiClient.invokeFunction('get-candidate-data', {
+            protocol
           });
           
           if (!functionError && functionData?.success && functionData?.data) {

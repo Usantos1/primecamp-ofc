@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -209,9 +210,8 @@ export default function JobApplicationSteps() {
         const emailToSave = formData.email?.trim().toLowerCase() || 
                            `lead_${formData.phone?.replace(/\D/g, '') || formData.whatsapp?.replace(/\D/g, '') || Date.now()}@temp.primecamp`;
 
-        const { data, error } = await supabase.functions.invoke('job-application-save-draft', {
-          body: {
-            survey_id: survey.id,
+        const { data, error } = await apiClient.invokeFunction('job-application-save-draft', {
+          survey_id: survey.id,
             email: emailToSave,
             name: formData.name?.trim() || null,
             phone: formData.phone?.trim() || null,
@@ -280,8 +280,7 @@ export default function JobApplicationSteps() {
       // Se tem email no localStorage, tenta buscar do backend
       if (parsed?.email) {
         try {
-          const { data: backendDraft, error } = await supabase
-            .from('job_application_drafts')
+          const { data: backendDraft, error } = await from('job_application_drafts')
             .select('*')
             .execute().eq('survey_id', survey.id)
             .eq('email', parsed.email.trim().toLowerCase())
@@ -367,9 +366,8 @@ export default function JobApplicationSteps() {
   const fetchDynamicQuestions = async (baseSurvey: any) => {
     try {
       setLoadingDynamic(true);
-      const { data, error } = await supabase.functions.invoke('generate-dynamic-questions', {
-        body: {
-          survey: {
+      const { data, error } = await apiClient.invokeFunction('generate-dynamic-questions', {
+        survey: {
             id: baseSurvey.id,
             title: baseSurvey.title,
             position_title: baseSurvey.position_title,
@@ -518,9 +516,8 @@ export default function JobApplicationSteps() {
         responses: formData.responses || {},
       };
 
-      const response = await supabase.functions.invoke('job-application-submit', {
-        headers: { 'Idempotency-Key': idempotencyKey },
-        body: submissionData,
+      const response = await apiClient.post('/functions/job-application-submit', submissionData, {
+        'Idempotency-Key': idempotencyKey
       });
 
       const responseData = response.data;
@@ -545,9 +542,8 @@ export default function JobApplicationSteps() {
 
       // Rodar análise de IA das respostas
       try {
-        const aiResp = await supabase.functions.invoke('analyze-candidate-responses', {
-          body: {
-            job_response_id: jobResponseId,
+        const aiResp = await apiClient.invokeFunction('analyze-candidate-responses', {
+          job_response_id: jobResponseId,
             survey_id: survey.id,
             candidate: {
               ...candidateInfo,

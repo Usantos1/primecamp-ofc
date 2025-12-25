@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { toast } from 'sonner';
 
 interface DiscQuestion {
@@ -339,8 +340,7 @@ export const useCandidateDiscTest = () => {
       setCandidateId(null);
       
       // Check if test already exists for this candidate (incomplete)
-      const { data: existingTest } = await supabase
-        .from('candidate_responses')
+      const { data: existingTest } = await from('candidate_responses')
         .select('id, is_completed, responses')
         .execute().eq('whatsapp', sanitizedInfo.whatsapp)
         .eq('is_completed', false)
@@ -388,8 +388,7 @@ export const useCandidateDiscTest = () => {
       // Create new test record for candidate
       setTestState('IN_PROGRESS');
       
-      const { data, error } = await supabase
-        .from('candidate_responses')
+      const { data, error } = await from('candidate_responses')
         .insert({
           name: sanitizedInfo.name, // Use sanitized name
           age: sanitizedInfo.age,
@@ -525,16 +524,14 @@ export const useCandidateDiscTest = () => {
           questionId: currentQuestionId,
           selectedType,
           idempotencyKey: requestId,
-          url: `${supabase.supabaseUrl}/functions/v1/disc-answer`
+          url: `${import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api'}/functions/disc-answer`
         });
 
-        const response = await supabase.functions.invoke('disc-answer', {
-          body: {
-            sessionId: candidateId,
-            questionId: currentQuestionId,
-            selectedType,
-            idempotencyKey: requestId
-          }
+        const response = await apiClient.invokeFunction('disc-answer', {
+          sessionId: candidateId,
+          questionId: currentQuestionId,
+          selectedType,
+          idempotencyKey: requestId
         });
 
         console.log(`📱 Mobile: Raw response from disc-answer`, {
@@ -655,8 +652,7 @@ export const useCandidateDiscTest = () => {
   // Helper function to save progress with exponential retry
   const saveProgressWithRetry = async (responses: DiscResponse[], retries = 0): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from('candidate_responses')
+      const { error } = await from('candidate_responses')
         .update({ 
           responses: JSON.stringify(responses),
           updated_at: new Date().toISOString()
@@ -746,14 +742,10 @@ export const useCandidateDiscTest = () => {
     setTestState('FINISHED'); // Prevent double completion
     
     try {
-      // Call Supabase edge function for disc-finish
-      const finishResponse = await supabase.functions.invoke('disc-finish', {
-        headers: {
-          'Idempotency-Key': idempotencyKey
-        },
-        body: {
-          testSessionId: candidateId
-        }
+      // Call API endpoint for disc-finish
+      // Usar invokeFunction para manter consistência, header Idempotency-Key será adicionado pelo backend se necessário
+      const finishResponse = await apiClient.invokeFunction('disc-finish', {
+        testSessionId: candidateId
       });
 
       // Handle response from Supabase edge function
@@ -785,8 +777,8 @@ export const useCandidateDiscTest = () => {
         console.log(`🔄 disc.poll.status`, { sessionId: candidateId, attempt: pollAttempts });
 
         try {
-          const statusResponse = await supabase.functions.invoke('disc-session-status', {
-            body: { sessionId: candidateId }
+          const statusResponse = await apiClient.invokeFunction('disc-session-status', {
+            sessionId: candidateId
           });
           
           if (statusResponse.error) {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface OSImageReferenceConfig {
@@ -23,10 +24,9 @@ export function useOSImageReference() {
 
   const loadImageReference = async () => {
     try {
-      const { data, error } = await supabase
-        .from('kv_store_2c4defad')
+      const { data, error } = await from('kv_store_2c4defad')
         .select('value')
-        .execute().eq('key', CONFIG_KEY)
+        .eq('key', CONFIG_KEY)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -65,45 +65,30 @@ export function useOSImageReference() {
       const fileName = `celular-referencia-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Fazer upload para Supabase Storage
-      // Nota: O upload requer que o usuário esteja autenticado e tenha permissão via RLS
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(filePath, file, {
+      // Fazer upload para API de Storage
+      const { data: uploadData, error: uploadError } = await apiClient.uploadFile(
+        '/storage/upload',
+        file,
+        'file',
+        {
+          bucket: STORAGE_BUCKET,
+          path: filePath,
           cacheControl: '3600',
-          upsert: true, // Substituir se já existir
-          contentType: file.type, // Especificar o tipo MIME explicitamente
-        });
+          upsert: true,
+          contentType: file.type
+        }
+      );
 
       if (uploadError) {
-        // Detectar vários tipos de erro relacionados ao bucket não encontrado
-        const errorMessage = uploadError.message || '';
-        const errorStatus = (uploadError as any).statusCode || (uploadError as any).status;
-        
-        if (errorMessage.includes('Bucket not found') || 
-            errorMessage.includes('not found') ||
-            errorMessage.includes('does not exist') ||
-            errorMessage.includes('bucket') && errorMessage.includes('404') ||
-            errorStatus === 404 ||
-            errorStatus === 400 ||
-            errorMessage.includes('406')) {
-          const errorMsg = new Error(
-            'O bucket de armazenamento "os-reference-images" não foi encontrado. ' +
-            'Por favor, acesse o Supabase Dashboard > Storage e crie o bucket com este nome. ' +
-            'Configure-o como público para leitura. Veja o arquivo CRIAR_BUCKET_OS_REFERENCE.md para instruções detalhadas.'
-          );
-          (errorMsg as any).code = 'BUCKET_NOT_FOUND';
-          throw errorMsg;
-        }
-        throw uploadError;
+        const errorMsg = new Error(
+          'Erro ao fazer upload da imagem. Verifique se o endpoint /api/storage/upload está configurado no backend.'
+        );
+        (errorMsg as any).code = 'UPLOAD_ERROR';
+        throw errorMsg;
       }
 
-      // Obter URL pública
-      const { data: urlData } = supabase.storage
-        .from(STORAGE_BUCKET)
-        .getPublicUrl(filePath);
-
-      const publicUrl = urlData.publicUrl;
+      // URL pública será retornada no response.data.url
+      const publicUrl = uploadData?.url || '';
 
       // Salvar URL na configuração
       const config: OSImageReferenceConfig = {
@@ -111,14 +96,14 @@ export function useOSImageReference() {
         uploadedAt: new Date().toISOString(),
       };
 
-      const { error: configError } = await supabase
-        .from('kv_store_2c4defad')
+      const { error: configError } = await from('kv_store_2c4defad')
         .upsert({
           key: CONFIG_KEY,
           value: config,
         }, {
           onConflict: 'key',
-        });
+        })
+        .execute();
 
       if (configError) throw configError;
 
@@ -140,10 +125,10 @@ export function useOSImageReference() {
     setLoading(true);
     try {
       // Remover da configuração
-      const { error } = await supabase
-        .from('kv_store_2c4defad')
+      const { error } = await from('kv_store_2c4defad')
         .delete()
-        .eq('key', CONFIG_KEY);
+        .eq('key', CONFIG_KEY)
+        .execute();
 
       if (error) throw error;
 

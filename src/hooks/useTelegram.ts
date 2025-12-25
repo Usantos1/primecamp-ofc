@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { toast } from 'sonner';
 
 export interface TelegramPhotoResult {
@@ -44,8 +45,7 @@ export function useTelegram() {
         };
       }
 
-      const { data, error } = await supabase.functions.invoke('telegram-bot', {
-        body: {
+      const { data, error } = await apiClient.invokeFunction('telegram-bot', {
           file: base64File,
           fileName: file.name,
           osNumero: String(osNumero),
@@ -211,8 +211,7 @@ export function useTelegram() {
     try {
       console.log('[useTelegram] Deletando mensagem:', { chatId, messageId });
 
-      const { data, error } = await supabase.functions.invoke('telegram-bot', {
-        body: {
+      const { data, error } = await apiClient.invokeFunction('telegram-bot', {
           action: 'delete',
           chatId,
           messageId,

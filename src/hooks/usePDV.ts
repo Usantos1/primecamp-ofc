@@ -86,10 +86,9 @@ export function useSales() {
         total_pago: 0,
       };
 
-      const { data: newSale, error } = await supabase
-        .from('sales')
+      const { data: newSale, error } = await from('sales')
         .insert(saleData)
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;
@@ -125,11 +124,10 @@ export function useSales() {
         updateData.ordem_servico_id = updateData.ordem_servico_id && isValidUUID(updateData.ordem_servico_id) ? updateData.ordem_servico_id : null;
       }
       
-      const { data: updatedSale, error } = await supabase
-        .from('sales')
+      const { data: updatedSale, error } = await from('sales')
         .update(updateData)
         .eq('id', id)
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;
@@ -151,11 +149,10 @@ export function useSales() {
       // Buscar venda do banco se não encontrar no estado
       let sale = sales.find(s => s.id === id);
       if (!sale) {
-        const { data: saleData, error: saleError } = await supabase
-          .from('sales')
-          .select('*')
-          .execute().eq('id', id)
-          .single();
+        const { data: saleData, error: saleError } = await from('sales')
+        .select('*')
+        .eq('id', id)
+        .single();
         if (saleError || !saleData) throw new Error('Venda não encontrada');
         sale = saleData as Sale;
       }
@@ -166,21 +163,21 @@ export function useSales() {
       }
 
       // Calcular totais
-      const { data: items } = await supabase
-        .from('sale_items')
+      const { data: items } = await from('sale_items')
         .select('*')
-        .execute().eq('sale_id', id);
+        .eq('sale_id', id)
+        .execute();
 
       const subtotal = items?.reduce((sum, item) => sum + Number(item.valor_unitario) * Number(item.quantidade), 0) || 0;
       const desconto_total = items?.reduce((sum, item) => sum + Number(item.desconto || 0), 0) || 0;
       const total = subtotal - desconto_total;
 
       // Calcular total pago
-      const { data: payments } = await supabase
-        .from('payments')
+      const { data: payments } = await from('payments')
         .select('valor')
-        .execute().eq('sale_id', id)
-        .eq('status', 'confirmed');
+        .eq('sale_id', id)
+        .eq('status', 'confirmed')
+        .execute();
 
       const total_pago = payments?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
 
@@ -200,10 +197,9 @@ export function useSales() {
       // Buscar sessão de caixa atual (opcional - não falha se não houver)
       let cashSessionId = null;
       try {
-        let cashQuery: any = supabase
-          .from('cash_register_sessions')
+        let cashQuery: any = from('cash_register_sessions')
           .select('id')
-          .execute().eq('status', 'open')
+          .eq('status', 'open')
           .order('opened_at', { ascending: false })
           .limit(1);
 
@@ -240,11 +236,10 @@ export function useSales() {
       }
       
       // Tentar atualizar a venda
-      const result = await supabase
-        .from('sales')
+      const result = await from('sales')
         .update(updateData)
         .eq('id', id)
-        .select()
+        .select('*')
         .single();
       
       updatedSale = result.data;
@@ -254,11 +249,10 @@ export function useSales() {
       if (error && error.code === 'PGRST204' && cashSessionId) {
         console.warn('Coluna cash_register_session_id não existe, tentando sem vincular ao caixa...');
         const { cash_register_session_id, ...updateDataWithoutCash } = updateData;
-        const retryResult = await supabase
-          .from('sales')
+        const retryResult = await from('sales')
           .update(updateDataWithoutCash)
           .eq('id', id)
-          .select()
+          .select('*')
           .single();
         
         updatedSale = retryResult.data;
@@ -354,11 +348,10 @@ export function useSales() {
       // Buscar venda do banco se não encontrar no estado
       let sale = sales.find(s => s.id === id);
       if (!sale) {
-        const { data: saleData, error: saleError } = await supabase
-          .from('sales')
-          .select('*')
-          .execute().eq('id', id)
-          .single();
+        const { data: saleData, error: saleError } = await from('sales')
+        .select('*')
+        .eq('id', id)
+        .single();
         if (saleError || !saleData) throw new Error('Venda não encontrada');
         sale = saleData as Sale;
       }
@@ -431,11 +424,10 @@ export function useSales() {
       // Buscar venda do banco se não encontrar no estado
       let sale = sales.find(s => s.id === id);
       if (!sale) {
-        const { data: saleData, error: saleError } = await supabase
-          .from('sales')
-          .select('*')
-          .execute().eq('id', id)
-          .single();
+        const { data: saleData, error: saleError } = await from('sales')
+        .select('*')
+        .eq('id', id)
+        .single();
         if (saleError || !saleData) throw new Error('Venda não encontrada');
         sale = saleData as Sale;
       }
@@ -489,8 +481,7 @@ export function useSales() {
 
       console.log('Deletando pagamentos da venda:', id);
       // Deletar pagamentos
-      const { error: paymentsError } = await supabase
-        .from('payments')
+      const { error: paymentsError } = await from('payments')
         .delete()
         .eq('sale_id', id);
       
@@ -501,8 +492,7 @@ export function useSales() {
 
       console.log('Deletando a venda:', id);
       // Deletar a venda
-      const { error } = await supabase
-        .from('sales')
+      const { error } = await from('sales')
         .delete()
         .eq('id', id);
 
@@ -522,10 +512,10 @@ export function useSales() {
       // Forçar recarregamento do banco para garantir sincronização
       console.log('Forçando recarregamento do banco...');
       try {
-        const { data: updatedSales, error: loadError } = await supabase
-          .from('sales')
+        const { data: updatedSales, error: loadError } = await from('sales')
           .select('*')
-          .execute().order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .execute();
         
         if (!loadError && updatedSales) {
           console.log(`Banco recarregado: ${updatedSales.length} vendas encontradas`);
@@ -555,8 +545,7 @@ export function useSales() {
   // Buscar venda por ID
   const getSaleById = useCallback(async (id: string): Promise<Sale | null> => {
     try {
-      const { data, error } = await supabase
-        .from('sales')
+      const { data, error } = await from('sales')
         .select(`
           *,
           items:sale_items(*).execute(),
@@ -604,8 +593,7 @@ export function useSaleItems(saleId: string) {
     
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('sale_items')
+      const { data, error } = await from('sale_items')
         .select('*')
         .execute().eq('sale_id', idToUse)
         .order('created_at', { ascending: true });
@@ -650,8 +638,7 @@ export function useSaleItems(saleId: string) {
 
       const valor_total = (itemData.valor_unitario * itemData.quantidade) - (itemData.desconto || 0);
 
-      const { data: newItem, error } = await supabase
-        .from('sale_items')
+      const { data: newItem, error } = await from('sale_items')
         .insert({
           sale_id: idToUse,
           produto_id: itemData.produto_id && isValidUUID(itemData.produto_id) ? itemData.produto_id : null,
@@ -719,8 +706,7 @@ export function useSaleItems(saleId: string) {
         updateData.produto_tipo = normalizeProdutoTipo(updateData.produto_tipo);
       }
 
-      const { data: updatedItem, error } = await supabase
-        .from('sale_items')
+      const { data: updatedItem, error } = await from('sale_items')
         .update({
           ...updateData,
           valor_total,
@@ -744,8 +730,7 @@ export function useSaleItems(saleId: string) {
 
   const removeItem = useCallback(async (id: string): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from('sale_items')
+      const { error } = await from('sale_items')
         .delete()
         .eq('id', id);
 
@@ -774,19 +759,19 @@ export function useSaleItems(saleId: string) {
 // Função auxiliar para atualizar totais da venda
 async function updateSaleTotals(saleId: string) {
   try {
-    const { data: items } = await supabase
-      .from('sale_items')
+    const { data: items } = await from('sale_items')
       .select('*')
-      .execute().eq('sale_id', saleId);
+      .eq('sale_id', saleId)
+      .execute();
 
     const subtotal = items?.reduce((sum, item) => sum + Number(item.valor_unitario) * Number(item.quantidade), 0) || 0;
     const desconto_total = items?.reduce((sum, item) => sum + Number(item.desconto || 0), 0) || 0;
     const total = subtotal - desconto_total;
 
-    await supabase
-      .from('sales')
+    await from('sales')
       .update({ subtotal, desconto_total, total })
-      .eq('id', saleId);
+      .eq('id', saleId)
+      .execute();
   } catch (error) {
     console.error('Erro ao atualizar totais:', error);
   }
@@ -803,8 +788,7 @@ export function usePayments(saleId: string) {
     
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('payments')
+      const { data, error } = await from('payments')
         .select('*')
         .execute().eq('sale_id', saleId)
         .order('created_at', { ascending: true });
@@ -830,8 +814,7 @@ export function usePayments(saleId: string) {
         ? paymentData.valor / paymentData.parcelas
         : paymentData.valor;
 
-      const { data: newPayment, error } = await supabase
-        .from('payments')
+      const { data: newPayment, error } = await from('payments')
         .insert({
           sale_id: saleId,
           forma_pagamento: paymentData.forma_pagamento,
@@ -865,8 +848,7 @@ export function usePayments(saleId: string) {
     try {
       const { user } = useAuth();
       
-      const { data: updatedPayment, error } = await supabase
-        .from('payments')
+      const { data: updatedPayment, error } = await from('payments')
         .update({
           status: 'confirmed',
           confirmed_at: new Date().toISOString(),
@@ -882,8 +864,7 @@ export function usePayments(saleId: string) {
       await updateSalePaidTotal(saleId);
       
       // Atualizar status da venda baseado no total pago
-      const { data: saleData } = await supabase
-        .from('sales')
+      const { data: saleData } = await from('sales')
         .select('total, total_pago')
         .execute().eq('id', saleId)
         .single();
@@ -899,10 +880,10 @@ export function usePayments(saleId: string) {
           newStatus = 'partial';
         }
         
-        await supabase
-          .from('sales')
+        await from('sales')
           .update({ status: newStatus })
-          .eq('id', saleId);
+          .eq('id', saleId)
+          .execute();
       }
 
       setPayments(prev => prev.map(p => p.id === id ? updatedPayment : p));
@@ -917,8 +898,7 @@ export function usePayments(saleId: string) {
     try {
       const { user } = useAuth();
       
-      const { data: updatedPayment, error } = await supabase
-        .from('payments')
+      const { data: updatedPayment, error } = await from('payments')
         .update({
           status: 'canceled',
           canceled_at: new Date().toISOString(),
@@ -944,8 +924,7 @@ export function usePayments(saleId: string) {
 
   const removePayment = useCallback(async (id: string): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from('payments')
+      const { error } = await from('payments')
         .delete()
         .eq('id', id);
 
@@ -975,18 +954,18 @@ export function usePayments(saleId: string) {
 // Função auxiliar para atualizar total pago
 async function updateSalePaidTotal(saleId: string) {
   try {
-    const { data: payments } = await supabase
-      .from('payments')
+    const { data: payments } = await from('payments')
       .select('valor')
-      .execute().eq('sale_id', saleId)
-      .eq('status', 'confirmed');
+      .eq('sale_id', saleId)
+      .eq('status', 'confirmed')
+      .execute();
 
     const total_pago = payments?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
 
-    await supabase
-      .from('sales')
+    await from('sales')
       .update({ total_pago })
-      .eq('id', saleId);
+      .eq('id', saleId)
+      .execute();
   } catch (error) {
     console.error('Erro ao atualizar total pago:', error);
   }
@@ -1005,8 +984,7 @@ export function useCashRegister() {
   const loadCurrentSession = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('cash_register_sessions')
+      const { data, error } = await from('cash_register_sessions')
         .select('*')
         .execute().eq('status', 'open')
         .eq('operador_id', user?.id)
@@ -1033,8 +1011,7 @@ export function useCashRegister() {
   const openCash = useCallback(async (data: CashRegisterSessionFormData): Promise<CashRegisterSession> => {
     try {
       // Verificar se já existe sessão aberta
-      const { data: existing } = await supabase
-        .from('cash_register_sessions')
+      const { data: existing } = await from('cash_register_sessions')
         .select('id')
         .execute().eq('status', 'open')
         .eq('operador_id', data.operador_id)
@@ -1053,8 +1030,7 @@ export function useCashRegister() {
       // Buscar profile do usuário para pegar o nome
       const operadorNome = profile?.display_name || userData?.user_metadata?.name || userData?.email || 'Operador';
 
-      const { data: newSession, error } = await supabase
-        .from('cash_register_sessions')
+      const { data: newSession, error } = await from('cash_register_sessions')
         .insert({
           numero,
           operador_id: data.operador_id,
@@ -1089,8 +1065,7 @@ export function useCashRegister() {
       const { user } = useAuth();
       
       // Calcular totais por forma de pagamento
-      const { data: sales } = await supabase
-        .from('sales')
+      const { data: sales } = await from('sales')
         .select(`
           id,
           payments:payments!inner(forma_pagamento, valor)
@@ -1108,8 +1083,7 @@ export function useCashRegister() {
       const valorEsperado = currentSession?.valor_inicial || 0;
       const divergenciaCalculada = valorFinal - valorEsperado;
 
-      const { data: updatedSession, error } = await supabase
-        .from('cash_register_sessions')
+      const { data: updatedSession, error } = await from('cash_register_sessions')
         .update({
           status: 'closed',
           valor_final: valorFinal,
@@ -1160,8 +1134,7 @@ export function useCashMovements(sessionId: string) {
     
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from('cash_movements')
+      const { data, error } = await from('cash_movements')
         .select('*')
         .execute().eq('session_id', sessionId)
         .order('created_at', { ascending: false });
@@ -1186,8 +1159,7 @@ export function useCashMovements(sessionId: string) {
       // Buscar profile do usuário para pegar o nome
       const operadorNome = profile?.display_name || userData?.user_metadata?.name || userData?.email || 'Operador';
 
-      const { data: newMovement, error } = await supabase
-        .from('cash_movements')
+      const { data: newMovement, error } = await from('cash_movements')
         .insert({
           session_id: sessionId,
           tipo: movementData.tipo,
@@ -1262,10 +1234,9 @@ export function useCancelRequests() {
   const loadRequests = useCallback(async (status?: 'pending' | 'approved' | 'rejected') => {
     try {
       setIsLoading(true);
-      let query = (supabase as any)
-        .from('sale_cancel_requests')
+      let query = from('sale_cancel_requests')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (status) {
         query = query.eq('status', status);
@@ -1303,8 +1274,7 @@ export function useCancelRequests() {
       const { user: currentUser } = useAuth();
       if (!currentUser) throw new Error('Usuário não autenticado');
 
-      const { data: newRequest, error } = await (supabase as any)
-        .from('sale_cancel_requests')
+      const { data: newRequest, error } = await from('sale_cancel_requests')
         .insert({
           sale_id: saleId,
           solicitante_id: currentUser.id,
@@ -1313,7 +1283,7 @@ export function useCancelRequests() {
           motivo,
           status: 'pending',
         })
-        .select()
+        .select('*')
         .single();
 
       if (error) {
@@ -1343,8 +1313,7 @@ export function useCancelRequests() {
       if (!currentUser) throw new Error('Usuário não autenticado');
 
       // Atualizar solicitação
-      const { data: updatedRequest, error: updateError } = await (supabase as any)
-        .from('sale_cancel_requests')
+      const { data: updatedRequest, error: updateError } = await from('sale_cancel_requests')
         .update({
           status: 'approved',
           aprovado_por: currentUser.id,
@@ -1352,28 +1321,27 @@ export function useCancelRequests() {
           aprovado_em: new Date().toISOString(),
         })
         .eq('id', requestId)
-        .select()
+        .select('*')
         .single();
 
       if (updateError) throw updateError;
 
       // Cancelar a venda
-      const { data: sale } = await supabase
-        .from('sales')
+      const { data: sale } = await from('sales')
         .select('*')
-        .execute().eq('id', saleId)
+        .eq('id', saleId)
         .single();
 
       if (sale) {
-        await supabase
-          .from('sales')
+        await from('sales')
           .update({
             status: 'canceled',
             canceled_at: new Date().toISOString(),
             canceled_by: currentUser.id,
             cancel_reason: updatedRequest.motivo,
           })
-          .eq('id', saleId);
+          .eq('id', saleId)
+          .execute();
 
         // Log de auditoria
         await logAudit('approve', 'cancel_request', requestId, sale, { ...sale, status: 'canceled' }, 'Solicitação de cancelamento aprovada e venda cancelada');
@@ -1394,8 +1362,7 @@ export function useCancelRequests() {
       const { user: currentUser } = useAuth();
       if (!currentUser) throw new Error('Usuário não autenticado');
 
-      const { data: updatedRequest, error } = await (supabase as any)
-        .from('sale_cancel_requests')
+      const { data: updatedRequest, error } = await from('sale_cancel_requests')
         .update({
           status: 'rejected',
           aprovado_por: currentUser.id,
@@ -1404,7 +1371,7 @@ export function useCancelRequests() {
           motivo_rejeicao: motivoRejeicao,
         })
         .eq('id', requestId)
-        .select()
+        .select('*')
         .single();
 
       if (error) throw error;

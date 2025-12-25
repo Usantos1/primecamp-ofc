@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -176,8 +177,7 @@ export default function InterviewEvaluation() {
         description: "A IA está analisando as respostas e identificando o perfil do candidato.",
       });
 
-      const { data, error } = await supabase.functions.invoke('evaluate-interview-transcription', {
-        body: {
+      const { data, error } = await apiClient.invokeFunction('evaluate-interview-transcription', {
           interview_id: interview.id,
           transcription: fullTranscription.trim(),
           interview_type: interview.interview_type,

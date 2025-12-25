@@ -17,6 +17,7 @@
 
 import { from } from '@/integrations/db/client';
 import { authAPI } from '@/integrations/auth/api-client';
+import { apiClient } from '@/integrations/api/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface DriveUploadResult {
@@ -260,15 +261,13 @@ export async function uploadPhotoToDrive(
       
       let data, error;
       try {
-        const result = await supabase.functions.invoke('upload-to-drive', {
-          body: {
-            file: base64File,
-            fileName: fileName,
-            osNumero: String(osNumero), // Garantir que é string
-            tipo: tipo,
-            mimeType: fileToUpload.type || 'image/jpeg',
-            folderId: folderId || undefined,
-          },
+        const result = await apiClient.invokeFunction('upload-to-drive', {
+          file: base64File,
+          fileName: fileName,
+          osNumero: String(osNumero), // Garantir que é string
+          tipo: tipo,
+          mimeType: fileToUpload.type || 'image/jpeg',
+          folderId: folderId || undefined,
         });
         data = result.data;
         error = result.error;
@@ -296,7 +295,7 @@ export async function uploadPhotoToDrive(
         if (error.message?.includes('not found') || error.message?.includes('404')) {
           return {
             success: false,
-            error: 'Edge Function não encontrada. Execute: supabase functions deploy upload-to-drive',
+            error: 'Endpoint de upload não encontrado. Verifique se o endpoint /api/functions/upload-to-drive está configurado no backend',
           };
         }
         

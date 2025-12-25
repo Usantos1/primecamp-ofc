@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useUserLogs } from '@/hooks/useUserLogs';
@@ -57,8 +58,8 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
         try {
           console.log('Fetching user email for user_id:', user.user_id);
           
-          const { data, error } = await supabase.functions.invoke('admin-get-user', {
-            body: { userId: user.user_id }
+          const { data, error } = await apiClient.invokeFunction('admin-get-user', {
+            userId: user.user_id
           });
 
           if (error) {
@@ -118,8 +119,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     setLoading(true);
     try {
       // Update profile data
-      const { error: profileError } = await supabase
-        .from('profiles')
+      const { error: profileError } = await from('profiles')
         .update({
           display_name: formData.display_name,
           phone: formData.phone,
@@ -149,12 +149,10 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
             password: formData.password.trim() || undefined
           });
 
-          const { data: authData, error: authError } = await supabase.functions.invoke('admin-update-user', {
-            body: {
-              userId: user.user_id,
-              email: formData.email.trim() !== currentEmail ? formData.email.trim() : undefined,
-              password: formData.password.trim() || undefined
-            }
+          const { data: authData, error: authError } = await apiClient.invokeFunction('admin-update-user', {
+            userId: user.user_id,
+            email: formData.email.trim() !== currentEmail ? formData.email.trim() : undefined,
+            password: formData.password.trim() || undefined
           });
 
           if (authError) {
