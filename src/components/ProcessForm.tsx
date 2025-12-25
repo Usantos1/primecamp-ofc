@@ -48,11 +48,11 @@ export const ProcessForm = ({ process, onSave, onCancel }: ProcessFormProps) => 
   useEffect(() => {
     const loadAISettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('kv_store_2c4defad')
+        const { data, error } = await from('kv_store_2c4defad')
           .select('*')
-          .execute().eq('key', 'integration_settings')
-          .maybeSingle();
+          .eq('key', 'integration_settings')
+          .maybeSingle()
+          .execute();
 
         if (error) return;
         const value = (data as any)?.value;
