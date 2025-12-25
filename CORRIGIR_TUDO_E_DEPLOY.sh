@@ -58,20 +58,35 @@ else
 fi
 
 # Verificar se API está respondendo
+echo "   Aguardando API inicializar (10 segundos)..."
+sleep 10
+
 echo "   Testando API..."
-for i in {1..5}; do
+for i in {1..10}; do
     HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null)
     if [ "$HEALTH" = "200" ]; then
         echo "✅ API está respondendo (200 OK)"
+        curl -s http://localhost:3000/api/health | head -3
         break
     fi
-    if [ $i -eq 5 ]; then
-        echo "❌ ERRO: API não está respondendo após 5 tentativas!"
-        echo "   Verifique os logs: pm2 logs primecamp-api"
+    
+    # Mostrar logs se falhar
+    if [ $i -eq 3 ]; then
+        echo "   ⚠️  Primeiras tentativas falharam, verificando logs..."
+        pm2 logs primecamp-api --lines 10 --nostream | tail -5
+    fi
+    
+    if [ $i -eq 10 ]; then
+        echo "❌ ERRO: API não está respondendo após 10 tentativas!"
+        echo ""
+        echo "📋 ÚLTIMOS LOGS DA API:"
+        pm2 logs primecamp-api --lines 30 --nostream
+        echo ""
+        echo "🔍 Execute: ./DIAGNOSTICAR_API.sh para diagnóstico completo"
         exit 1
     fi
-    echo "   Tentativa $i/5 falhou, aguardando..."
-    sleep 2
+    echo "   Tentativa $i/10 falhou (código: ${HEALTH:-timeout}), aguardando..."
+    sleep 3
 done
 
 cd ..
