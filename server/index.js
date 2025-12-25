@@ -388,11 +388,11 @@ app.post('/api/auth/request-password-reset', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    // TODO: Enviar email com link de reset
-    // Por enquanto, apenas retornar o token (em produção, enviar por email)
-    const resetLink = `${process.env.FRONTEND_URL || 'https://primecamp.cloud'}/reset-password?token=${resetToken}`;
+    // TODO: Enviar email com link de reset usando nodemailer ou serviço de email
+    // Por enquanto, apenas retornar o token (em desenvolvimento)
+    const resetLink = `${process.env.FRONTEND_URL || 'https://primecamp.cloud'}/reset-password?access_token=${resetToken}`;
     
-    console.log(`[PASSWORD RESET] Link para ${user.email}: ${resetLink}`);
+    console.log(`[API] Link de reset gerado para ${user.email}: ${resetLink}`);
 
     res.json({ 
       message: 'Se o email existir, um link de redefinição será enviado',
