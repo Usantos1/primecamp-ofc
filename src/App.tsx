@@ -35,6 +35,7 @@ import Productivity from "./pages/Productivity";
 import ProcessAnalytics from "./pages/ProcessAnalytics";
 import ResetPassword from "./pages/ResetPassword";
 import DiscTest from "./pages/DiscTest";
+import TestAuth from "./pages/TestAuth";
 import CandidateDisc from "./pages/CandidateDisc";
 import CandidateDiscResult from "./pages/CandidateDiscResult";
 import AdminUsers from "./pages/admin/AdminUsers";
@@ -89,6 +90,7 @@ const App = () => (
             <Routes>
             <Route path="/login" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/test-auth" element={<TestAuth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/candidato-disc" element={<CandidateDisc />} />
           <Route path="/disc-externo" element={<CandidateDisc />} />
