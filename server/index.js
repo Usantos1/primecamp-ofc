@@ -126,10 +126,10 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/', limiter);
 
-// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*)
+// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/* e /api/health)
 app.use((req, res, next) => {
-  // Pular autenticação para rotas de auth
-  if (req.path.startsWith('/api/auth/')) {
+  // Pular autenticação para rotas de auth e health check
+  if (req.path.startsWith('/api/auth/') || req.path === '/api/health' || req.path === '/health') {
     return next();
   }
   // Aplicar autenticação para outras rotas /api/*
