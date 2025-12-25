@@ -10,7 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogIn, UserPlus, CheckCircle, XCircle } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+// Detectar se está em desenvolvimento local ou produção
+const API_URL = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000/api' 
+    : 'https://api.primecamp.cloud/api');
 
 // Garantir que este componente seja incluído no bundle
 console.log('🧪 TestAuth component loaded');
