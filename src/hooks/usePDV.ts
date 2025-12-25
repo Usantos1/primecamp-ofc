@@ -27,10 +27,9 @@ export function useSales() {
     try {
       setIsLoading(true);
       const isAdmin = profile?.role === 'admin';
-      let query: any = supabase
-        .from('sales')
+      let query: any = from('sales')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       // Non-admin: only own sales
       if (!isAdmin && user?.id) {
@@ -306,27 +305,27 @@ export function useSales() {
       }
 
       // Marcar estoque como baixado (o trigger também faz isso, mas garantimos)
-      await supabase
-        .from('sales')
+      await from('sales')
         .update({ stock_decremented: true })
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
 
       // Integrar ao financeiro (cria transações e contas a receber)
+      // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
       try {
-        await (supabase.rpc as any)('integrate_sale_to_financial', {
-          p_sale_id: id
-        });
+        console.log('Integração financeira precisa ser implementada na API para venda:', id);
+        // await fetch(`${API_URL}/rpc/integrate_sale_to_financial`, { ... });
       } catch (error) {
         console.error('Erro ao integrar venda ao financeiro:', error);
         // Não falhar a venda se a integração financeira falhar
       }
 
       // Faturar OS se houver vínculo
+      // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
       if (updatedSale.ordem_servico_id) {
         try {
-          await (supabase.rpc as any)('fatura_os_from_sale', {
-            p_sale_id: id
-          });
+          console.log('Faturamento de OS precisa ser implementado na API para venda:', id);
+          // await fetch(`${API_URL}/rpc/fatura_os_from_sale`, { ... });
         } catch (error) {
           console.error('Erro ao faturar OS:', error);
           // Não falhar a venda se o faturamento da OS falhar
@@ -364,8 +363,7 @@ export function useSales() {
         sale = saleData as Sale;
       }
 
-      const { data: updatedSale, error } = await supabase
-        .from('sales')
+      const { data: updatedSale, error } = await from('sales')
         .update({
           status: 'canceled',
           canceled_at: new Date().toISOString(),
@@ -374,16 +372,17 @@ export function useSales() {
         })
         .eq('id', id)
         .select()
-        .single();
+        .single()
+        .execute();
 
       if (error) throw error;
 
       // Reverter estoque se foi baixado
       if ((sale as any).stock_decremented) {
         try {
-          const { error: revertError } = await (supabase.rpc as any)('revert_stock_from_sale', {
-            p_sale_id: id
-          });
+          // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
+          console.log('Reversão de estoque precisa ser implementada na API para venda:', id);
+          const revertError = null; // await fetch(`${API_URL}/rpc/revert_stock_from_sale`, { ... });
           if (revertError) {
             console.error('Erro ao reverter estoque:', revertError);
             // Não falhar o cancelamento se a reversão de estoque falhar
@@ -399,9 +398,10 @@ export function useSales() {
       // Cancelar/remover transações financeiras e contas a receber
       // (As transações podem ser mantidas para auditoria, mas as contas a receber devem ser canceladas)
       try {
-        await (supabase.from as any)('accounts_receivable')
+        await from('accounts_receivable')
           .update({ status: 'cancelado' })
-          .eq('sale_id', id);
+          .eq('sale_id', id)
+          .execute();
       } catch (error) {
         console.error('Erro ao cancelar contas a receber:', error);
       }
@@ -448,9 +448,9 @@ export function useSales() {
       // Se for venda finalizada e tiver estoque baixado, reverter
       if (!sale.is_draft && (sale as any).stock_decremented) {
         try {
-          const { error: revertError } = await (supabase.rpc as any)('revert_stock_from_sale', {
-            p_sale_id: id
-          });
+          // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
+          console.log('Reversão de estoque precisa ser implementada na API para venda:', id);
+          const revertError = null; // await fetch(`${API_URL}/rpc/revert_stock_from_sale`, { ... });
           if (revertError) {
             console.error('Erro ao reverter estoque:', revertError);
             // Não falhar a exclusão se a reversão de estoque falhar, mas logar o erro
@@ -466,7 +466,7 @@ export function useSales() {
       // Se tiver contas a receber, cancelar
       if (!sale.is_draft) {
         try {
-          await (supabase.from as any)('accounts_receivable')
+          await from('accounts_receivable')
             .update({ status: 'cancelado' })
             .eq('sale_id', id);
         } catch (error) {
@@ -476,10 +476,10 @@ export function useSales() {
 
       console.log('Deletando itens da venda:', id);
       // Deletar itens primeiro (cascade)
-      const { error: itemsError } = await supabase
-        .from('sale_items')
+      const { error: itemsError } = await from('sale_items')
         .delete()
-        .eq('sale_id', id);
+        .eq('sale_id', id)
+        .execute();
       
       if (itemsError) {
         console.error('Erro ao deletar itens:', itemsError);
