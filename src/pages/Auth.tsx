@@ -30,6 +30,7 @@ const Auth = () => {
   const [selectedTheme, setSelectedTheme] = useState("light");
 
   useEffect(() => {
+    // Se já está autenticado, redirecionar
     if (!authLoading && user) {
       navigate("/");
     }
@@ -37,6 +38,7 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!email || !password) {
       toast({
         title: "Erro",
@@ -48,7 +50,12 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      await authAPI.login({ email, password });
+      console.log('[Auth] Tentando fazer login via API PostgreSQL:', { email });
+      
+      // 🚫 NÃO USAR SUPABASE - Usar apenas API PostgreSQL
+      const response = await authAPI.login({ email, password });
+      
+      console.log('[Auth] Login bem-sucedido:', { userId: response.user.id, email: response.user.email });
       
       toast({
         title: "Login realizado",
@@ -58,9 +65,10 @@ const Auth = () => {
       // Recarregar página para atualizar AuthContext
       window.location.href = "/";
     } catch (error: any) {
+      console.error('[Auth] Erro no login:', error);
       toast({
         title: "Erro no login",
-        description: error.message || "Email ou senha incorretos",
+        description: error.message || "Email ou senha incorretos. Verifique se o usuário existe na tabela 'users' do PostgreSQL.",
         variant: "destructive",
       });
     } finally {
@@ -99,6 +107,8 @@ const Auth = () => {
 
     setLoading(true);
     try {
+      console.log('[Auth] Tentando criar conta via API PostgreSQL:', { email });
+      
       await authAPI.signup({
         email,
         password,
@@ -121,6 +131,7 @@ const Auth = () => {
       // Recarregar página para atualizar AuthContext
       window.location.href = "/";
     } catch (error: any) {
+      console.error('[Auth] Erro no cadastro:', error);
       toast({
         title: "Erro no cadastro",
         description: error.message?.includes("já está cadastrado") || error.message?.includes("already registered")
@@ -187,7 +198,6 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            {/* ✅ Novo logo */}
             <img src={LOGO_URL} alt="Prime Camp Logo" className="h-16 w-auto" loading="lazy" decoding="async" />
           </div>
           <CardTitle className="text-2xl font-bold">Sistema de Processos</CardTitle>

@@ -53,6 +53,16 @@ class AuthAPIClient {
   }
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    console.log('[authAPI] Fazendo login via API PostgreSQL:', { 
+      apiUrl: API_URL,
+      email: credentials.email 
+    });
+    
+    // 🚫 GARANTIR que não está usando Supabase
+    if (API_URL.includes('supabase.co')) {
+      throw new Error('🚫 ERRO: API_URL ainda aponta para Supabase! Configure VITE_API_URL corretamente.');
+    }
+    
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -62,15 +72,32 @@ class AuthAPIClient {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: 'Erro ao fazer login' }));
+      console.error('[authAPI] Erro no login:', error);
       throw new Error(error.error || 'Erro ao fazer login');
     }
 
     const data = await response.json();
+    console.log('[authAPI] Login bem-sucedido:', { 
+      userId: data.user?.id, 
+      email: data.user?.email,
+      hasToken: !!data.token 
+    });
     
-    // Salvar token no localStorage
+    // Limpar QUALQUER token do Supabase que possa estar no localStorage
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('supabase') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+        console.log('[authAPI] Removido token Supabase:', key);
+      }
+    });
+    
+    // Salvar token no localStorage (PostgreSQL API)
     if (data.token) {
       localStorage.setItem('auth_token', data.token);
+      console.log('[authAPI] Token salvo como auth_token');
+    } else {
+      console.warn('[authAPI] AVISO: Login bem-sucedido mas sem token!');
     }
 
     return data;

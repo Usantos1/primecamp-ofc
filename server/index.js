@@ -153,40 +153,55 @@ app.get('/health', async (req, res) => {
 // ENDPOINTS DE AUTENTICAÇÃO
 // ============================================
 
-// Login
+// Login - APENAS PostgreSQL, SEM Supabase
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    console.log('[API] Tentativa de login:', { email: email?.toLowerCase() });
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    // Buscar usuário no banco
+    // 🚫 BUSCAR APENAS NA TABELA users DO POSTGRESQL
+    // NÃO usar Supabase Auth de forma alguma
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [email.toLowerCase().trim()]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Email ou senha incorretos' });
+      console.log('[API] Usuário não encontrado na tabela users:', email.toLowerCase());
+      return res.status(401).json({ error: 'Email ou senha incorretos. Verifique se o usuário existe na tabela "users" do PostgreSQL.' });
     }
 
     const user = result.rows[0];
+    console.log('[API] Usuário encontrado:', { id: user.id, email: user.email, hasPasswordHash: !!user.password_hash });
 
-    // Verificar senha
+    // Verificar se tem password_hash
+    if (!user.password_hash) {
+      console.error('[API] Usuário sem password_hash:', user.id);
+      return res.status(401).json({ error: 'Usuário sem senha configurada. Entre em contato com o administrador.' });
+    }
+
+    // Verificar senha usando bcrypt
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
+      console.log('[API] Senha incorreta para usuário:', email.toLowerCase());
       return res.status(401).json({ error: 'Email ou senha incorretos' });
     }
 
-    // Buscar profile do usuário
+    console.log('[API] Senha válida, buscando profile...');
+
+    // Buscar profile do usuário na tabela profiles do PostgreSQL
     const profileResult = await pool.query(
       'SELECT * FROM profiles WHERE user_id = $1',
       [user.id]
     );
 
     const profile = profileResult.rows[0] || null;
+    console.log('[API] Profile encontrado:', { hasProfile: !!profile, role: profile?.role });
 
     // Gerar token JWT
     const token = jwt.sign(
@@ -199,6 +214,8 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    console.log('[API] Login bem-sucedido:', { userId: user.id, email: user.email, hasToken: !!token });
+
     res.json({
       token,
       user: {
@@ -210,7 +227,7 @@ app.post('/api/auth/login', async (req, res) => {
       profile
     });
   } catch (error) {
-    console.error('Erro no login:', error);
+    console.error('[API] Erro no login:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
