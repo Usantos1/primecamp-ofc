@@ -468,7 +468,8 @@ export function useSales() {
         try {
           await from('accounts_receivable')
             .update({ status: 'cancelado' })
-            .eq('sale_id', id);
+            .eq('sale_id', id)
+            .execute();
         } catch (error) {
           console.error('Erro ao cancelar contas a receber:', error);
         }
