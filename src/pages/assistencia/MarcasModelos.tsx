@@ -11,64 +11,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Edit, Trash2, Smartphone, Tag, ChevronRight } from 'lucide-react';
 import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
-import { MARCAS_MODELOS_PADRAO } from '@/hooks/useAssistencia';
 import { Marca, Modelo } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LoadingButton } from '@/components/LoadingButton';
 
 export default function MarcasModelos() {
-  const { marcas, createMarca, updateMarca, deleteMarca } = useMarcasSupabase();
-  const { modelos, createModelo, updateModelo, deleteModelo } = useModelosSupabase();
+  const { marcas, createMarca, updateMarca, deleteMarca, isLoading: isLoadingMarcas } = useMarcasSupabase();
+  const { modelos, createModelo, updateModelo, deleteModelo, isLoading: isLoadingModelos } = useModelosSupabase();
   
-  // Popular marcas e modelos padrão se não existirem
+  // Log para debug
   useEffect(() => {
-    const popularMarcasModelos = async () => {
-      // Popular marcas se não existirem
-      if (marcas.length === 0) {
-        for (const mp of MARCAS_MODELOS_PADRAO) {
-          try {
-            await createMarca(mp.marca);
-          } catch (error: any) {
-            // Ignorar erros de duplicata (marca já existe)
-            if (error?.code !== '23505') {
-              console.log(`[MarcasModelos] Erro ao criar marca ${mp.marca}:`, error);
-            }
-          }
-        }
-      }
-      
-      // Popular modelos se não existirem (aguardar um pouco para garantir que as marcas foram criadas)
-      if (marcas.length > 0 && modelos.length === 0) {
-        // Aguardar um pouco para garantir que as marcas foram criadas
-        setTimeout(async () => {
-          // Buscar marcas atualizadas
-          const marcasAtualizadas = marcas;
-          
-          for (const mp of MARCAS_MODELOS_PADRAO) {
-            const marca = marcasAtualizadas.find(m => m.nome === mp.marca);
-            if (marca) {
-              for (const nomeModelo of mp.modelos) {
-                try {
-                  const modeloExistente = modelos.find(m => m.nome === nomeModelo && m.marca_id === marca.id);
-                  if (!modeloExistente) {
-                    await createModelo(marca.id, nomeModelo);
-                  }
-                } catch (error: any) {
-                  // Ignorar erros de duplicata (modelo já existe)
-                  if (error?.code !== '23505') {
-                    console.log(`[MarcasModelos] Erro ao criar modelo ${nomeModelo}:`, error);
-                  }
-                }
-              }
-            }
-          }
-        }, 2000);
-      }
-    };
-
-    popularMarcasModelos();
-  }, [marcas.length, modelos.length, createMarca, createModelo]); // Executar quando marcas ou modelos mudarem
+    console.log('[MarcasModelos] Marcas carregadas:', marcas.length);
+    console.log('[MarcasModelos] Modelos carregados:', modelos.length);
+  }, [marcas.length, modelos.length]);
   
   const [activeTab, setActiveTab] = useState('marcas');
   const [searchTerm, setSearchTerm] = useState('');

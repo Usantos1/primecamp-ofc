@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { Marca, Modelo } from '@/types/assistencia';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 // Mapear marca do Supabase para assistencia.Marca
 function mapSupabaseToMarca(supabaseMarca: any): Marca {
@@ -27,17 +28,19 @@ function mapSupabaseToModelo(supabaseModelo: any): Modelo {
 export function useMarcasSupabase() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Buscar marcas do Supabase
   const { data: marcasData, isLoading, error } = useQuery({
     queryKey: ['marcas-assistencia'],
     queryFn: async () => {
+      console.log('[useMarcasSupabase] Buscando marcas...');
       const { data, error } = await from('marcas')
         .select('*')
-        .neq('situacao', 'inativo')  // Mostra ativo e null
         .order('nome', { ascending: true })
         .execute();
 
+      console.log('[useMarcasSupabase] Resultado:', { data: data?.length, error });
       if (error) throw error;
       return ((data || []) as any[]).map(mapSupabaseToMarca);
     },
@@ -45,8 +48,9 @@ export function useMarcasSupabase() {
 
   const marcas = marcasData || [];
 
-  // Criar marca
-  const createMarca = async (nome: string, userId: string): Promise<Marca> => {
+  // Criar marca - obtém userId internamente
+  const createMarca = async (nome: string): Promise<Marca> => {
+    const userId = user?.id;
     if (!userId) throw new Error('Usuário não autenticado');
 
     const { data: novaMarca, error } = await from('marcas')
@@ -152,17 +156,19 @@ export function useMarcasSupabase() {
 export function useModelosSupabase() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Buscar modelos do Supabase
   const { data: modelosData, isLoading, error } = useQuery({
     queryKey: ['modelos-assistencia'],
     queryFn: async () => {
+      console.log('[useModelosSupabase] Buscando modelos...');
       const { data, error } = await from('modelos')
         .select('*')
-        .neq('situacao', 'inativo')  // Mostra ativo e null
         .order('nome', { ascending: true })
         .execute();
 
+      console.log('[useModelosSupabase] Resultado:', { data: data?.length, error });
       if (error) throw error;
       return ((data || []) as any[]).map(mapSupabaseToModelo);
     },
@@ -170,8 +176,9 @@ export function useModelosSupabase() {
 
   const modelos = modelosData || [];
 
-  // Criar modelo
-  const createModelo = async (marcaId: string, nome: string, userId: string): Promise<Modelo> => {
+  // Criar modelo - obtém userId internamente
+  const createModelo = async (marcaId: string, nome: string): Promise<Modelo> => {
+    const userId = user?.id;
     if (!userId) throw new Error('Usuário não autenticado');
 
     const { data: novoModelo, error } = await from('modelos')
