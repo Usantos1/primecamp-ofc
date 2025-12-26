@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (authData.profile) {
           setProfile(authData.profile as Profile);
-        } else {
+        } else if (authData.user?.id) {
           // Se não tem profile, tentar buscar
           await fetchProfile(authData.user.id);
         }
