@@ -36,15 +36,14 @@ export default function UserProfile() {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
+      const { error } = await from('profiles')
+        .eq('user_id', user.id)
         .update({
           display_name: formData.display_name,
           phone: formData.phone,
           department: formData.department,
           updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
+        });
 
       if (error) throw error;
 
