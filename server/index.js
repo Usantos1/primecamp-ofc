@@ -1382,7 +1382,7 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
 
         if (produtoExistente) {
           if (skipDuplicates) {
-            // Pular duplicado
+            // Pular duplicado - não conta como processado
             continue;
           } else if (updateExisting) {
             // Atualizar existente
@@ -1395,6 +1395,17 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
               [...values, produtoExistente.id]
             );
             atualizados++;
+          } else {
+            // Ambas opções desmarcadas: inserir como novo (cria duplicado)
+            const keys = Object.keys(dadosProduto).filter(k => dadosProduto[k] !== null);
+            const values = keys.map(k => dadosProduto[k]);
+            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+            
+            await pool.query(
+              `INSERT INTO produtos (${keys.join(', ')}, criado_em) VALUES (${placeholders}, NOW())`,
+              values
+            );
+            inseridos++;
           }
         } else {
           // Inserir novo
