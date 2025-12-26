@@ -19,14 +19,20 @@ interface ClientePlanilha {
   'Telefone 1'?: string;
   Telefone?: string;
   'Telefone 2'?: string;
+  WhatsApp?: string;
+  Whatsapp?: string;
+  Celular?: string;
   Logradouro?: string;
   Endereco?: string;
+  Endereço?: string;
   'Número'?: string | number;
   Numero?: string | number;
   Complemento?: string;
   Bairro?: string;
   CEP?: string;
   Cidade?: string;
+  Estado?: string;
+  UF?: string;
 }
 
 interface ImportarClientesProps {
@@ -121,12 +127,14 @@ export function ImportarClientes({ onClose, onSuccess }: ImportarClientesProps) 
         const cpfCnpj = cliente['CPF/CNPJ'] || cliente.CPF || cliente.CNPJ || '';
         const telefone1 = cliente['Telefone 1'] || cliente.Telefone || '';
         const telefone2 = cliente['Telefone 2'] || '';
-        const endereco = cliente.Logradouro || cliente.Endereco || '';
+        const whatsapp = cliente.WhatsApp || cliente.Whatsapp || cliente.Celular || '';
+        const endereco = cliente.Logradouro || cliente.Endereco || cliente.Endereço || '';
         const numero = cliente['Número'] || cliente.Numero || '';
         const complemento = cliente.Complemento || '';
         const bairro = cliente.Bairro || '';
         const cep = cliente.CEP || '';
         const cidade = cliente.Cidade || '';
+        const estado = cliente.Estado || cliente.UF || '';
         const codigoOriginal = cliente.ID || null;
 
         // Detectar tipo de pessoa pelo tamanho do CPF/CNPJ
@@ -134,7 +142,7 @@ export function ImportarClientes({ onClose, onSuccess }: ImportarClientesProps) 
         const tipoPessoa = cpfCnpjLimpo.length > 11 ? 'juridica' : 'fisica';
 
         if (index < 3) {
-          console.log(`[ImportarClientes] Cliente ${index}:`, { nome, cpfCnpj, telefone1, cidade });
+          console.log(`[ImportarClientes] Cliente ${index}:`, { nome, cpfCnpj, telefone1, whatsapp, cidade });
         }
 
         return {
@@ -143,12 +151,14 @@ export function ImportarClientes({ onClose, onSuccess }: ImportarClientesProps) 
           cpf_cnpj: cpfCnpj ? String(cpfCnpj).trim() : null,
           telefone: telefone1 ? String(telefone1).trim() : null,
           telefone2: telefone2 ? String(telefone2).trim() : null,
+          whatsapp: whatsapp ? String(whatsapp).trim() : null,
           endereco: endereco ? String(endereco).trim() : null,
           numero: numero ? String(numero).trim() : null,
           complemento: complemento ? String(complemento).trim() : null,
           bairro: bairro ? String(bairro).trim() : null,
           cep: cep ? String(cep).trim() : null,
           cidade: cidade ? String(cidade).trim() : null,
+          estado: estado ? String(estado).trim() : null,
           tipo_pessoa: tipoPessoa,
         };
       });
@@ -381,8 +391,9 @@ export function ImportarClientes({ onClose, onSuccess }: ImportarClientesProps) 
         <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
           <div className="font-medium mb-2">Formato da Planilha:</div>
           <ul className="list-disc list-inside space-y-1">
-            <li>Colunas esperadas: <strong>ID, Nome/Fantasia, CPF/CNPJ, Telefone 1, Telefone 2, Logradouro, Número, Complemento, Bairro, CEP, Cidade</strong></li>
-            <li>Coluna obrigatória: <strong>Nome/Fantasia</strong></li>
+            <li>Colunas esperadas: <strong>ID, Nome/Fantasia, CPF/CNPJ, Telefone 1, Telefone 2, WhatsApp, Logradouro, Número, Complemento, Bairro, CEP, Cidade, Estado</strong></li>
+            <li>Coluna obrigatória: <strong>Nome/Fantasia</strong> (ou Nome)</li>
+            <li>Colunas alternativas: Endereço (para Logradouro), Celular (para WhatsApp), UF (para Estado)</li>
             <li>O sistema detecta automaticamente se é Pessoa Física ou Jurídica pelo CPF/CNPJ</li>
           </ul>
         </div>

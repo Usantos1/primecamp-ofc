@@ -1468,15 +1468,17 @@ app.post('/api/functions/import-clientes', authenticateToken, async (req, res) =
           cpf_cnpj: cliente.cpf_cnpj ? String(cliente.cpf_cnpj).substring(0, 20) : null,
           telefone: cliente.telefone ? String(cliente.telefone).substring(0, 20) : null,
           telefone2: cliente.telefone2 ? String(cliente.telefone2).substring(0, 20) : null,
-          endereco: cliente.endereco ? String(cliente.endereco).substring(0, 255) : null,
+          whatsapp: cliente.whatsapp ? String(cliente.whatsapp).substring(0, 20) : null,
+          logradouro: cliente.endereco ? String(cliente.endereco).substring(0, 255) : null,
           numero: cliente.numero ? String(cliente.numero).substring(0, 20) : null,
           complemento: cliente.complemento ? String(cliente.complemento).substring(0, 100) : null,
           bairro: cliente.bairro ? String(cliente.bairro).substring(0, 100) : null,
           cep: cliente.cep ? String(cliente.cep).replace(/\D/g, '').substring(0, 10) : null,
           cidade: cliente.cidade ? String(cliente.cidade).substring(0, 100) : null,
+          estado: cliente.estado ? String(cliente.estado).substring(0, 2) : null,
           tipo_pessoa: cliente.tipo_pessoa || 'fisica',
           tipo_cliente: 'cliente',
-          status: 'ativo',
+          situacao: 'ativo',
         };
 
         // Verificar se cliente já existe (por CPF/CNPJ)

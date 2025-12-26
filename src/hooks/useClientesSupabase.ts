@@ -1,25 +1,45 @@
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cliente } from '@/types/assistencia';
 
-export function useClientesSupabase() {
+export function useClientesSupabase(pageSize: number = 50) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Buscar todos os clientes
+  // Buscar clientes com paginação
   const { data: clientes = [], isLoading } = useQuery({
-    queryKey: ['clientes'],
+    queryKey: ['clientes', page, pageSize],
     queryFn: async () => {
-      const { data, error } = await from('clientes')
+      const offsetVal = (page - 1) * pageSize;
+      const { data, error, count } = await from('clientes')
         .select('*')
-        .order('created_at', { ascending: false })
+        .eq('situacao', 'ativo')
+        .order('nome', { ascending: true })
+        .range(offsetVal, offsetVal + pageSize - 1)
         .execute();
       
       if (error) throw error;
+      if (count !== undefined) {
+        setTotalCount(count);
+      }
       return (data || []) as Cliente[];
     },
   });
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  
+  const goToPage = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  };
+
+  const nextPage = () => goToPage(page + 1);
+  const prevPage = () => goToPage(page - 1);
 
   // Criar cliente
   const createCliente = useMutation({
@@ -47,10 +67,7 @@ export function useClientesSupabase() {
         created_by: user?.id || null,
       };
 
-      const { data: inserted, error } = await from('clientes')
-        .insert(novoCliente)
-        .select('*')
-        .single();
+      const { data: inserted, error } = await from('clientes').insert(novoCliente);
 
       if (error) throw error;
       return (inserted?.data || inserted) as Cliente;
@@ -64,10 +81,8 @@ export function useClientesSupabase() {
   const updateCliente = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Cliente> }): Promise<Cliente> => {
       const { data: updated, error } = await from('clientes')
-        .update(data)
         .eq('id', id)
-        .select('*')
-        .single();
+        .update(data);
 
       if (error) throw error;
       return (updated?.data || updated) as Cliente;
@@ -77,13 +92,12 @@ export function useClientesSupabase() {
     },
   });
 
-  // Deletar cliente
+  // Deletar cliente (soft delete - marca como inativo)
   const deleteCliente = useMutation({
     mutationFn: async (id: string): Promise<void> => {
       const { error } = await from('clientes')
-        .update({ situacao: 'inativo' })
         .eq('id', id)
-        .execute();
+        .update({ situacao: 'inativo' });
 
       if (error) throw error;
     },
@@ -118,6 +132,14 @@ export function useClientesSupabase() {
     deleteCliente: deleteCliente.mutateAsync,
     getClienteById,
     searchClientes,
+    // Paginação
+    page,
+    totalPages,
+    totalCount,
+    goToPage,
+    nextPage,
+    prevPage,
+    pageSize,
   };
 }
 

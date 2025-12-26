@@ -176,3 +176,4 @@ echo "5. Deve aparecer: '✅ API está funcionando!'"
 echo ""
 
 
+

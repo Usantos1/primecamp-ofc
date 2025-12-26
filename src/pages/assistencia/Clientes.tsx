@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings, Upload
+  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings, Upload,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { ImportarClientes } from '@/components/ImportarClientes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
@@ -60,7 +61,19 @@ export default function Clientes() {
     ativo: true,
   });
   
-  const { clientes, createCliente, updateCliente, deleteCliente } = useClientes();
+  const { 
+    clientes, 
+    createCliente, 
+    updateCliente, 
+    deleteCliente,
+    page,
+    totalPages,
+    totalCount,
+    goToPage,
+    nextPage,
+    prevPage,
+    pageSize,
+  } = useClientes(50);
   const { toast } = useToast();
 
   // Buscar OSs do cliente
@@ -88,9 +101,9 @@ export default function Clientes() {
       const { data, error } = await from('sales')
         .select('*')
         .eq('cliente_id', editingCliente.id)
-        .execute()
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(50)
+        .execute();
       if (error) throw error;
       return data || [];
     },
@@ -210,8 +223,7 @@ export default function Clientes() {
       const { data, error } = await from('kv_store_2c4defad')
         .select('value')
         .eq('key', 'aniversario_config')
-        .single()
-        .execute();
+        .single();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Erro ao carregar configuração:', error);
@@ -236,8 +248,7 @@ export default function Clientes() {
         .insert({
           key: 'aniversario_config',
           value: aniversarioConfig,
-        })
-        .execute();
+        });
 
       if (configError) throw configError;
 
@@ -482,6 +493,56 @@ export default function Clientes() {
                     </Card>
                   ))}
                 </div>
+
+                {/* Paginação */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t-2 border-gray-200">
+                    <div className="text-sm text-muted-foreground">
+                      Mostrando {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} de {totalCount} clientes
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 border-2 border-gray-300"
+                        onClick={() => goToPage(1)}
+                        disabled={page === 1}
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 border-2 border-gray-300"
+                        onClick={prevPage}
+                        disabled={page === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="px-3 py-1 text-sm font-medium">
+                        {page} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 border-2 border-gray-300"
+                        onClick={nextPage}
+                        disabled={page === totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 border-2 border-gray-300"
+                        onClick={() => goToPage(totalPages)}
+                        disabled={page === totalPages}
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </CardContent>
