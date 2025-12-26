@@ -1357,23 +1357,13 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
           localizacao: produto.localizacao ? String(produto.localizacao).substring(0, 100) : null,
         };
 
-        // Verificar se produto já existe (por código_barras ou referência ou nome)
+        // Verificar se produto já existe (APENAS por código_barras - referência é localização, não identificador)
         let produtoExistente = null;
         
         if (produto.codigo_barras) {
           const checkResult = await pool.query(
             'SELECT id FROM produtos WHERE codigo_barras = $1 LIMIT 1',
             [produto.codigo_barras]
-          );
-          if (checkResult.rows.length > 0) {
-            produtoExistente = checkResult.rows[0];
-          }
-        }
-        
-        if (!produtoExistente && produto.referencia) {
-          const checkResult = await pool.query(
-            'SELECT id FROM produtos WHERE referencia = $1 LIMIT 1',
-            [produto.referencia]
           );
           if (checkResult.rows.length > 0) {
             produtoExistente = checkResult.rows[0];
