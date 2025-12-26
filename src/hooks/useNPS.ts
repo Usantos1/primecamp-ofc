@@ -51,7 +51,8 @@ export const useNPS = () => {
       const { data, error } = await supabase
         .from('nps_surveys')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) {
         console.error('Error fetching NPS surveys:', error);
@@ -106,7 +107,8 @@ export const useNPS = () => {
       const { data, error } = await supabase
         .from('nps_responses')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) {
         console.error('Error fetching NPS responses:', error);

@@ -595,8 +595,9 @@ export function useSaleItems(saleId: string) {
       setIsLoading(true);
       const { data, error } = await from('sale_items')
         .select('*')
-        .execute().eq('sale_id', idToUse)
-        .order('created_at', { ascending: true });
+        .eq('sale_id', idToUse)
+        .order('created_at', { ascending: true })
+        .execute();
 
       if (error) throw error;
       setItems(data || []);
@@ -790,8 +791,9 @@ export function usePayments(saleId: string) {
       setIsLoading(true);
       const { data, error } = await from('payments')
         .select('*')
-        .execute().eq('sale_id', saleId)
-        .order('created_at', { ascending: true });
+        .eq('sale_id', saleId)
+        .order('created_at', { ascending: true })
+        .execute();
 
       if (error) throw error;
       setPayments(data || []);
@@ -866,7 +868,9 @@ export function usePayments(saleId: string) {
       // Atualizar status da venda baseado no total pago
       const { data: saleData } = await from('sales')
         .select('total, total_pago')
-        .execute().eq('id', saleId)
+        .eq('id', saleId)
+        .single()
+        .execute();
         .single();
       
       if (saleData) {
@@ -986,7 +990,8 @@ export function useCashRegister() {
       setIsLoading(true);
       const { data, error } = await from('cash_register_sessions')
         .select('*')
-        .execute().eq('status', 'open')
+        .eq('status', 'open')
+        .execute();
         .eq('operador_id', user?.id)
         .order('opened_at', { ascending: false })
         .limit(1)
@@ -1013,8 +1018,10 @@ export function useCashRegister() {
       // Verificar se já existe sessão aberta
       const { data: existing } = await from('cash_register_sessions')
         .select('id')
-        .execute().eq('status', 'open')
+        .eq('status', 'open')
         .eq('operador_id', data.operador_id)
+        .maybeSingle()
+        .execute();
         .single();
 
       if (existing) {
@@ -1136,8 +1143,9 @@ export function useCashMovements(sessionId: string) {
       setIsLoading(true);
       const { data, error } = await from('cash_movements')
         .select('*')
-        .execute().eq('session_id', sessionId)
-        .order('created_at', { ascending: false });
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
       setMovements(data || []);

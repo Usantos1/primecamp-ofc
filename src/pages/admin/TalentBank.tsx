@@ -52,16 +52,15 @@ export default function TalentBank() {
     queryKey: ['talent-bank', selectedSurvey, competenceFilter],
     queryFn: async () => {
       // Primeiro, buscar todos os candidatos
-      let query = supabase
-        .from('job_responses')
+      let query = from('job_responses')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (selectedSurvey !== 'all') {
         query = query.eq('survey_id', selectedSurvey);
       }
 
-      const { data: responses, error: responsesError } = await query;
+      const { data: responses, error: responsesError } = await query.execute();
 
       if (responsesError) {
         console.error('Erro ao carregar candidatos do banco de talentos:', responsesError);
@@ -132,11 +131,11 @@ export default function TalentBank() {
 
   const handleOpenEvaluation = async (candidate: Candidate) => {
     setSelectedCandidate(candidate);
-    const { data: evaluation } = await supabase
-      .from('job_candidate_evaluations')
+    const { data: evaluation } = await from('job_candidate_evaluations')
       .select('*')
-      .execute().eq('job_response_id', candidate.id)
-      .maybeSingle();
+      .eq('job_response_id', candidate.id)
+      .maybeSingle()
+      .execute();
     setSelectedEvaluation(evaluation || null);
     setShowEvaluationModal(true);
   };
@@ -156,29 +155,29 @@ export default function TalentBank() {
         description: "A IA está gerando a análise completa.",
       });
 
-      const { data: jobResponse, error: responseError } = await supabase
-        .from('job_responses')
+      const { data: jobResponse, error: responseError } = await from('job_responses')
         .select('*')
-        .execute().eq('id', candidate.id)
-        .single();
+        .eq('id', candidate.id)
+        .single()
+        .execute();
 
-      const { data: jobSurvey, error: surveyError } = await supabase
-        .from('job_surveys')
+      const { data: jobSurvey, error: surveyError } = await from('job_surveys')
         .select('*')
-        .execute().eq('id', candidate.survey_id)
-        .single();
+        .eq('id', candidate.survey_id)
+        .single()
+        .execute();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
         throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
       }
 
-      const { data: discResult } = await supabase
-        .from('candidate_responses')
+      const { data: discResult } = await from('candidate_responses')
         .select('*')
-        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       const { error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
           job_response_id: candidate.id,
@@ -244,29 +243,29 @@ export default function TalentBank() {
         description: "A IA está analisando o candidato e aprovando automaticamente.",
       });
 
-      const { data: jobResponse, error: responseError } = await supabase
-        .from('job_responses')
+      const { data: jobResponse, error: responseError } = await from('job_responses')
         .select('*')
-        .execute().eq('id', candidate.id)
-        .single();
+        .eq('id', candidate.id)
+        .single()
+        .execute();
 
-      const { data: jobSurvey, error: surveyError } = await supabase
-        .from('job_surveys')
+      const { data: jobSurvey, error: surveyError } = await from('job_surveys')
         .select('*')
-        .execute().eq('id', candidate.survey_id)
-        .single();
+        .eq('id', candidate.survey_id)
+        .single()
+        .execute();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
         throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
       }
 
-      const { data: discResult } = await supabase
-        .from('candidate_responses')
+      const { data: discResult } = await from('candidate_responses')
         .select('*')
-        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
           job_response_id: candidate.id,
@@ -300,21 +299,21 @@ export default function TalentBank() {
         throw analysisError;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
+      const { data: profile } = await from('profiles')
         .select('id')
-        .execute().eq('user_id', user.id)
-        .maybeSingle();
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .execute();
 
       if (!profile) {
         throw new Error("Perfil do avaliador não encontrado.");
       }
 
-      const { data: existingEvaluation } = await supabase
-        .from('job_candidate_evaluations')
+      const { data: existingEvaluation } = await from('job_candidate_evaluations')
         .select('*')
-        .execute().eq('job_response_id', candidate.id)
-        .maybeSingle();
+        .eq('job_response_id', candidate.id)
+        .maybeSingle()
+        .execute();
 
       const evaluationData = {
         job_response_id: candidate.id,
@@ -369,12 +368,12 @@ export default function TalentBank() {
         .single();
 
       if (createError) {
-        const { data: existing } = await supabase
-          .from('job_interviews')
+        const { data: existing } = await from('job_interviews')
           .select('*')
-          .execute().eq('job_response_id', candidate.id)
+          .eq('job_response_id', candidate.id)
           .eq('interview_type', 'online')
-          .maybeSingle();
+          .maybeSingle()
+          .execute();
 
         if (existing) {
           window.location.href = `/admin/interviews?interview_id=${existing.id}`;
@@ -399,10 +398,10 @@ export default function TalentBank() {
   const { data: surveys = [] } = useQuery({
     queryKey: ['all-surveys'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('job_surveys')
+      const { data, error } = await from('job_surveys')
         .select('id, title, position_title')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
       return data || [];

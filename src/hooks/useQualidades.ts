@@ -25,10 +25,10 @@ export function useQualidades() {
   return useQuery({
     queryKey: ['qualidades'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('product_qualities')
+      const { data, error } = await from('product_qualities')
         .select('*')
-        .execute().order('name');
+        .order('name')
+        .execute();
 
       if (error) throw error;
       return data as Qualidade[];
@@ -42,8 +42,7 @@ export function useCreateQualidade() {
 
   return useMutation({
     mutationFn: async (data: CreateQualidadeData) => {
-      const { data: result, error } = await supabase
-        .from('product_qualities')
+      const { data: result, error } = await from('product_qualities')
         .insert([
           {
             name: data.name,
@@ -73,8 +72,7 @@ export function useUpdateQualidade() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateQualidadeData }) => {
-      const { data: result, error } = await supabase
-        .from('product_qualities')
+      const { data: result, error } = await from('product_qualities')
         .update(data)
         .eq('id', id)
         .select()
@@ -99,8 +97,7 @@ export function useDeleteQualidade() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('product_qualities')
+      const { error } = await from('product_qualities')
         .delete()
         .eq('id', id);
 

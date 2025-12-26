@@ -13,20 +13,39 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
+// Validar variáveis de ambiente obrigatórias
+const requiredEnvVars = {
+  DB_HOST: process.env.DB_HOST,
+  DB_NAME: process.env.DB_NAME,
+  DB_USER: process.env.DB_USER,
+  DB_PASSWORD: process.env.DB_PASSWORD,
+};
+
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
+  console.error('❌ ERRO: Variáveis de ambiente obrigatórias não encontradas:');
+  missingVars.forEach(key => console.error(`   - ${key}`));
+  console.error('\n💡 Configure essas variáveis no arquivo .env');
+  process.exit(1);
+}
+
 const pool = new Pool({
-  host: process.env.VITE_DB_HOST || '72.62.106.76',
-  database: process.env.VITE_DB_NAME || 'banco_gestao',
-  user: process.env.VITE_DB_USER || 'postgres',
-  password: process.env.VITE_DB_PASSWORD || 'AndinhoSurf2015@',
-  port: parseInt(process.env.VITE_DB_PORT || '5432'),
-  ssl: process.env.VITE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || '5432'),
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 async function testConnection() {
   console.log('🔍 Testando conexão com PostgreSQL...');
-  console.log(`📍 Host: ${process.env.VITE_DB_HOST || '72.62.106.76'}`);
-  console.log(`💾 Database: ${process.env.VITE_DB_NAME || 'banco_gestao'}`);
-  console.log(`👤 User: ${process.env.VITE_DB_USER || 'postgres'}`);
+  console.log(`📍 Host: ${process.env.DB_HOST}`);
+  console.log(`💾 Database: ${process.env.DB_NAME}`);
+  console.log(`👤 User: ${process.env.DB_USER}`);
   console.log('');
 
   try {

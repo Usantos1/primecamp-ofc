@@ -31,7 +31,8 @@ export const useUsers = () => {
           phone, 
           avatar_url
         `)
-        .execute().order('display_name');
+        .order('display_name')
+        .execute();
 
       if (error) {
         console.error('Error fetching users:', error);

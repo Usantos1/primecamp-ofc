@@ -162,25 +162,24 @@ export const useJobSurvey = (slugOrId: string) => {
     queryKey: ['job-survey', slugOrId],
     queryFn: async () => {
       // Tentar buscar por slug primeiro
-      let query = supabase
-        .from('job_surveys')
+      let result = await from('job_surveys')
         .select('*')
-        .execute().eq('slug', slugOrId)
+        .eq('slug', slugOrId)
         .eq('is_active', true)
-        .single();
+        .single()
+        .execute();
 
-      let { data, error } = await query;
+      let { data, error } = result;
 
       // Se não encontrar por slug, tentar por ID
       if (error && slugOrId.length === 36) {
-        query = supabase
-          .from('job_surveys')
+        result = await from('job_surveys')
           .select('*')
-          .execute().eq('id', slugOrId)
+          .eq('id', slugOrId)
           .eq('is_active', true)
-          .single();
+          .single()
+          .execute();
         
-        const result = await query;
         data = result.data;
         error = result.error;
       }
@@ -316,14 +315,16 @@ export const useJobSurveyStats = (surveyId?: string) => {
       if (!surveyId) return null;
 
       const [responsesResult, viewsResult] = await Promise.all([
-        supabase
-          .from('job_responses')
-          .select('id, created_at', { count: 'exact' })
-          .execute().eq('survey_id', surveyId),
-        supabase
-          .from('job_survey_views')
-          .select('id', { count: 'exact' })
-          .execute().eq('survey_id', surveyId)
+        from('job_responses')
+          .select('id, created_at')
+          .eq('survey_id', surveyId)
+          .execute()
+          .then(r => ({ ...r, count: r.data?.length || 0 })),
+        from('job_survey_views')
+          .select('id')
+          .eq('survey_id', surveyId)
+          .execute()
+          .then(r => ({ ...r, count: r.data?.length || 0 }))
           .catch(() => ({ data: null, count: 0, error: null })) // Tabela pode não existir
       ]);
 
@@ -334,11 +335,11 @@ export const useJobSurveyStats = (surveyId?: string) => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: recentApplications } = await supabase
-        .from('job_responses')
+      const { data: recentApplications } = await from('job_responses')
         .select('created_at')
-        .execute().eq('survey_id', surveyId)
-        .gte('created_at', thirtyDaysAgo.toISOString());
+        .eq('survey_id', surveyId)
+        .gte('created_at', thirtyDaysAgo.toISOString())
+        .execute();
 
       const applicationsByDay = (recentApplications || []).reduce((acc, app) => {
         const date = new Date(app.created_at).toISOString().split('T')[0];

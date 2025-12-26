@@ -25,7 +25,8 @@ export const useTags = () => {
       const { data, error } = await supabase
         .from('tags')
         .select('*')
-        .execute().order('name');
+        .order('name')
+        .execute();
 
       if (error) {
         console.error('Error fetching tags:', error);

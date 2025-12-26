@@ -37,7 +37,7 @@ export function useMarcasSupabase() {
     queryFn: async () => {
       const { data, error } = await from('marcas')
         .select('*')
-        .execute().eq('situacao', 'ativo')
+        .eq('situacao', 'ativo')
         .order('nome', { ascending: true })
         .execute();
 
@@ -168,7 +168,7 @@ export function useModelosSupabase() {
     queryFn: async () => {
       const { data, error } = await from('modelos')
         .select('*')
-        .execute().eq('situacao', 'ativo')
+        .eq('situacao', 'ativo')
         .order('nome', { ascending: true })
         .execute();
 

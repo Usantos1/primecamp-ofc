@@ -19,16 +19,37 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_here_change_in_production';
 
-// Configuração do PostgreSQL
+// Validar variáveis de ambiente obrigatórias
+const requiredEnvVars = {
+  DB_HOST: process.env.DB_HOST,
+  DB_NAME: process.env.DB_NAME,
+  DB_USER: process.env.DB_USER,
+  DB_PASSWORD: process.env.DB_PASSWORD,
+  JWT_SECRET: process.env.JWT_SECRET,
+};
+
+const missingVars = Object.entries(requiredEnvVars)
+  .filter(([_, value]) => !value)
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
+  console.error('❌ ERRO: Variáveis de ambiente obrigatórias não encontradas:');
+  missingVars.forEach(key => console.error(`   - ${key}`));
+  console.error('\n💡 Configure essas variáveis no arquivo .env');
+  process.exit(1);
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// Configuração do PostgreSQL - SEM fallbacks sensíveis
 const pool = new Pool({
-  host: process.env.VITE_DB_HOST || '72.62.106.76',
-  database: process.env.VITE_DB_NAME || 'banco_gestao',
-  user: process.env.VITE_DB_USER || 'postgres',
-  password: process.env.VITE_DB_PASSWORD || 'AndinhoSurf2015@',
-  port: parseInt(process.env.VITE_DB_PORT || '5432'),
-  ssl: process.env.VITE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || '5432'),
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
@@ -1222,7 +1243,7 @@ app.post('/api/functions/disc-session-status', authenticateToken, async (req, re
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`📊 Conectado ao PostgreSQL: ${process.env.VITE_DB_HOST || '72.62.106.76'}`);
-  console.log(`💾 Database: ${process.env.VITE_DB_NAME || 'banco_gestao'}`);
+  console.log(`📊 Conectado ao PostgreSQL: ${process.env.DB_HOST}`);
+  console.log(`💾 Database: ${process.env.DB_NAME}`);
 });
 

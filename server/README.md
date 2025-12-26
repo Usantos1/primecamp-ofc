@@ -14,20 +14,38 @@ npm install
 Crie um arquivo `.env` na raiz do projeto (não no diretório server) com:
 
 ```env
-VITE_DB_HOST=72.62.106.76
-VITE_DB_NAME=banco_gestao
-VITE_DB_USER=postgres
-VITE_DB_PASSWORD=AndinhoSurf2015@
-VITE_DB_PORT=5432
-VITE_DB_SSL=false
-VITE_API_ORIGIN=http://localhost:8080
-PORT=3000
+# PostgreSQL Database Configuration (OBRIGATÓRIO)
+DB_HOST=your_postgres_host
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+DB_PORT=5432
+DB_SSL=false
+
+# JWT Secret (OBRIGATÓRIO - use um valor forte e aleatório)
 JWT_SECRET=your_jwt_secret_here_change_in_production
 
-# Opcional: URL base para arquivos de storage
-# Se não definido, usa http://localhost:3000/uploads
+# Server Configuration
+PORT=3000
+
+# API Origin (URLs permitidas para CORS)
+VITE_API_ORIGIN=http://localhost:5173,http://localhost:8080,https://primecamp.cloud
+
+# Storage Configuration (opcional)
 STORAGE_BASE_URL=http://localhost:3000/uploads
+
+# Frontend URL (para links de reset de senha, etc)
+FRONTEND_URL=http://localhost:5173
+
+# Frontend API URL (exposta ao frontend)
+VITE_API_URL=http://localhost:3000/api
 ```
+
+**⚠️ IMPORTANTE:**
+- NUNCA commite o arquivo `.env` no Git
+- NUNCA use valores de exemplo em produção
+- O backend usa variáveis `DB_*` (não `VITE_DB_*`)
+- O frontend usa apenas `VITE_API_URL` (não conecta diretamente ao banco)
 
 ## 🏃 Executar
 

@@ -30,7 +30,8 @@ export const useCalendarEvents = () => {
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
-        .execute().order('start_time', { ascending: true });
+        .order('start_time', { ascending: true })
+        .execute();
 
       if (error) throw error;
 

@@ -80,10 +80,10 @@ export const AdminInterviewsManager = () => {
     queryKey: ['evaluated-candidates-for-interviews'],
     queryFn: async () => {
       // Buscar análises de IA
-      const { data: aiAnalyses, error: analysisError } = await supabase
-        .from('job_candidate_ai_analysis')
+      const { data: aiAnalyses, error: analysisError } = await from('job_candidate_ai_analysis')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (analysisError) {
         console.error('Error fetching AI analyses:', analysisError);
@@ -96,17 +96,17 @@ export const AdminInterviewsManager = () => {
 
       // Buscar dados relacionados separadamente
       const enrichedAnalyses = await Promise.all((aiAnalyses || []).map(async (analysis) => {
-        const { data: jobResponse } = await supabase
-          .from('job_responses')
+        const { data: jobResponse } = await from('job_responses')
           .select('*')
-          .execute().eq('id', analysis.job_response_id)
-          .single();
+          .eq('id', analysis.job_response_id)
+          .single()
+          .execute();
 
-        const { data: jobSurvey } = await supabase
-          .from('job_surveys')
+        const { data: jobSurvey } = await from('job_surveys')
           .select('*')
-          .execute().eq('id', analysis.survey_id)
-          .single();
+          .eq('id', analysis.survey_id)
+          .single()
+          .execute();
 
         return {
           ...analysis,
@@ -157,11 +157,11 @@ export const AdminInterviewsManager = () => {
   const { data: allJobResponses = [] } = useQuery({
     queryKey: ['all-job-responses-for-interviews'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('job_responses')
+      const { data, error } = await from('job_responses')
         .select('id, name, email, survey_id')
-        .execute().order('created_at', { ascending: false })
-        .limit(1000);
+        .order('created_at', { ascending: false })
+        .limit(1000)
+        .execute();
 
       if (error) {
         console.error('Error fetching job responses:', error);
@@ -210,11 +210,11 @@ export const AdminInterviewsManager = () => {
         description: "A IA está criando perguntas personalizadas para esta entrevista.",
       });
 
-      const { data: aiAnalysis } = await supabase
-        .from('job_candidate_ai_analysis')
+      const { data: aiAnalysis } = await from('job_candidate_ai_analysis')
         .select('*')
-        .execute().eq('job_response_id', interview.job_response_id)
-        .single();
+        .eq('job_response_id', interview.job_response_id)
+        .single()
+        .execute();
 
       const { data, error } = await apiClient.invokeFunction('generate-interview-questions', {
         body: {
@@ -533,12 +533,12 @@ export const AdminInterviewsManager = () => {
                                         if (error) {
                                           // Se já existe, buscar a existente
                                           if (error.code === '23505') { // Unique violation
-                                            const { data: existing } = await supabase
-                                              .from('job_interviews')
+                                            const { data: existing } = await from('job_interviews')
                                               .select('*')
-                                              .execute().eq('job_response_id', candidate.job_response_id)
+                                              .eq('job_response_id', candidate.job_response_id)
                                               .eq('interview_type', 'online')
-                                              .maybeSingle();
+                                              .maybeSingle()
+                                              .execute();
 
                                             if (existing) {
                                               toast({
@@ -615,12 +615,12 @@ export const AdminInterviewsManager = () => {
                                         if (error) {
                                           // Se já existe, buscar a existente
                                           if (error.code === '23505' || error.message?.includes('unique')) {
-                                            const { data: existing } = await supabase
-                                              .from('job_interviews')
+                                            const { data: existing } = await from('job_interviews')
                                               .select('*')
-                                              .execute().eq('job_response_id', candidate.job_response_id)
+                                              .eq('job_response_id', candidate.job_response_id)
                                               .eq('interview_type', 'presencial')
-                                              .maybeSingle();
+                                              .maybeSingle()
+                                              .execute();
 
                                             if (existing) {
                                               toast({
@@ -1216,11 +1216,11 @@ export const AdminInterviewsManager = () => {
 
                 try {
                   // Buscar job_response para pegar survey_id
-                  const { data: jobResponse } = await supabase
-                    .from('job_responses')
+                  const { data: jobResponse } = await from('job_responses')
                     .select('*')
-                    .execute().eq('id', selectedJobResponseId)
-                    .single();
+                    .eq('id', selectedJobResponseId)
+                    .single()
+                    .execute();
 
                   if (!jobResponse) {
                     throw new Error('Candidato não encontrado');

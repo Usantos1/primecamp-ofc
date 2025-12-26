@@ -164,6 +164,19 @@ class PostgresAPIClient {
     };
   }
 
+  async maybeSingle(): Promise<{ data: any | null; error: any | null }> {
+    this.options.limit = 1;
+    const result = await this.execute();
+    if (result.error) {
+      return result;
+    }
+    // maybeSingle retorna null se não encontrar, sem erro
+    return {
+      data: result.data && result.data.length > 0 ? result.data[0] : null,
+      error: null,
+    };
+  }
+
   async update(data: any): Promise<{ data: any | null; error: any | null }> {
     try {
       const response = await fetch(`${API_BASE_URL}/update/${this.tableName}`, {

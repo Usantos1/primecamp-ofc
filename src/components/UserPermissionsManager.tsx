@@ -76,34 +76,34 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       setLoading(true);
 
       // Carregar todas as permissões
-      const { data: permsData } = await supabase
-        .from('permissions')
+      const { data: permsData } = await from('permissions')
         .select('*')
-        .execute().order('category', { ascending: true })
+        .order('category', { ascending: true })
         .order('resource', { ascending: true })
-        .order('action', { ascending: true });
+        .order('action', { ascending: true })
+        .execute();
 
       if (permsData) {
         setPermissions(permsData as Permission[]);
       }
 
       // Carregar todos os roles
-      const { data: rolesData } = await supabase
-        .from('roles')
+      const { data: rolesData } = await from('roles')
         .select('*')
-        .execute().order('display_name', { ascending: true });
+        .order('display_name', { ascending: true })
+        .execute();
 
       if (rolesData) {
         setRoles(rolesData as Role[]);
       }
 
       // Carregar role atual do usuário
-      const { data: userRoleData } = await supabase
-        .from('user_position_departments')
+      const { data: userRoleData } = await from('user_position_departments')
         .select('role_id')
-        .execute().eq('user_id', userId)
+        .eq('user_id', userId)
         .eq('is_primary', true)
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       if (userRoleData?.role_id) {
         setSelectedRoleId(userRoleData.role_id);
@@ -112,14 +112,10 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       }
 
       // Carregar permissões customizadas do usuário
-      const { data: userPermsData } = await supabase
-        .from('user_permissions')
-        .select(`
-          permission_id,
-          granted,
-          permission:permissions(id, resource, action)
-        .execute()`)
-        .eq('user_id', userId);
+      const { data: userPermsData } = await from('user_permissions')
+        .select('permission_id, granted')
+        .eq('user_id', userId)
+        .execute();
 
       if (userPermsData) {
         const permMap = new Map<string, boolean>();
@@ -133,21 +129,12 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       }
 
       // Carregar histórico de alterações
-      const { data: historyData } = await supabase
-        .from('permission_changes_history')
-        .select(`
-          id,
-          change_type,
-          resource,
-          action,
-          role_name,
-          description,
-          created_at,
-          changed_by:profiles!permission_changes_history_changed_by_fkey(display_name)
-        .execute()`)
+      const { data: historyData } = await from('permission_changes_history')
+        .select('id, change_type, resource, action, role_name, description, created_at, changed_by')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(50)
+        .execute();
 
       if (historyData) {
         setPermissionHistory(historyData as PermissionHistory[]);
@@ -171,12 +158,12 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
     // Se selecionou um role, atualizar user_position_departments
     if (finalRoleId) {
       // Buscar registro primário primeiro
-      let { data: updData, error: selectError } = await supabase
-        .from('user_position_departments')
+      let { data: updData, error: selectError } = await from('user_position_departments')
         .select('id, position_id, department_name')
-        .execute().eq('user_id', userId)
+        .eq('user_id', userId)
         .eq('is_primary', true)
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       if (selectError) {
         console.error('Erro ao buscar user_position_departments:', selectError);
@@ -190,9 +177,10 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
 
       if (updData) {
         // Atualizar registro existente
-        const { error: updateError } = await supabase
-          .from('user_position_departments')
+        const { error: updateError } = await from('user_position_departments')
           .update({ role_id: finalRoleId })
+          .eq('id', updData.id)
+          .execute();
           .eq('id', updData.id);
 
         if (updateError) {
@@ -205,18 +193,18 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         }
       } else {
         // Se não houver primário, tentar promover um registro existente
-        const { data: anyRecord } = await supabase
-          .from('user_position_departments')
+        const { data: anyRecord } = await from('user_position_departments')
           .select('id')
-          .execute().eq('user_id', userId)
+          .eq('user_id', userId)
           .limit(1)
-          .maybeSingle();
+          .maybeSingle()
+          .execute();
 
         if (anyRecord?.id) {
-          const { error: promoteError } = await supabase
-            .from('user_position_departments')
+          const { error: promoteError } = await from('user_position_departments')
             .update({ is_primary: true, role_id: finalRoleId })
-            .eq('id', anyRecord.id);
+            .eq('id', anyRecord.id)
+            .execute();
 
           if (promoteError) {
             console.error('Erro ao promover registro existente:', promoteError);
@@ -229,13 +217,13 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           }
         } else {
           // Criar registro primário mínimo (evita conflito de chave)
-          const { error: insertError } = await supabase
-            .from('user_position_departments')
+          const { error: insertError } = await from('user_position_departments')
             .insert({
               user_id: userId,
               is_primary: true,
               role_id: finalRoleId,
-            });
+            })
+            .execute();
 
           if (insertError) {
             console.error('Erro ao criar registro de role:', insertError);
@@ -250,18 +238,18 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       }
     } else {
       // Remover role se selecionou "none"
-      const { data: updData } = await supabase
-        .from('user_position_departments')
+      const { data: updData } = await from('user_position_departments')
         .select('id')
-        .execute().eq('user_id', userId)
+        .eq('user_id', userId)
         .eq('is_primary', true)
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       if (updData) {
-        await supabase
-          .from('user_position_departments')
+        await from('user_position_departments')
           .update({ role_id: null })
-          .eq('id', updData.id);
+          .eq('id', updData.id)
+          .execute();
       }
     }
   };
@@ -284,8 +272,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
     if (!user?.id) return;
 
     try {
-      await supabase
-        .from('permission_changes_history')
+      await from('permission_changes_history')
         .insert({
           user_id: userId,
           changed_by: user.id,
@@ -307,8 +294,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       setSaving(true);
 
       // Buscar role anterior para histórico
-      const { data: oldRoleData } = await supabase
-        .from('user_position_departments')
+      const { data: oldRoleData } = await from('user_position_departments')
         .select('role_id, role:roles(display_name).execute()')
         .eq('user_id', userId)
         .eq('is_primary', true)
@@ -321,18 +307,18 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         const selectedRole = roles.find(r => r.id === selectedRoleId);
         
         // Buscar registro primário antes de salvar
-        const { data: currentUpdData } = await supabase
-          .from('user_position_departments')
+        const { data: currentUpdData } = await from('user_position_departments')
           .select('id')
-          .execute().eq('user_id', userId)
+          .eq('user_id', userId)
           .eq('is_primary', true)
-          .maybeSingle();
+          .maybeSingle()
+          .execute();
 
         if (currentUpdData?.id) {
-          const { error: updateError } = await supabase
-            .from('user_position_departments')
+          const { error: updateError } = await from('user_position_departments')
             .update({ role_id: selectedRoleId })
-            .eq('id', currentUpdData.id);
+            .eq('id', currentUpdData.id)
+            .execute();
 
           if (updateError) {
             console.error('Erro ao atualizar role:', updateError);
@@ -345,18 +331,18 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           }
         } else {
           // Promover registro existente ou criar mínimo
-          const { data: anyRecord } = await supabase
-            .from('user_position_departments')
+          const { data: anyRecord } = await from('user_position_departments')
             .select('id')
-            .execute().eq('user_id', userId)
+            .eq('user_id', userId)
             .limit(1)
-            .maybeSingle();
+            .maybeSingle()
+            .execute();
 
           if (anyRecord?.id) {
-            const { error: promoteError } = await supabase
-              .from('user_position_departments')
+            const { error: promoteError } = await from('user_position_departments')
               .update({ is_primary: true, role_id: selectedRoleId })
-              .eq('id', anyRecord.id);
+              .eq('id', anyRecord.id)
+              .execute();
 
             if (promoteError) {
               console.error('Erro ao promover registro existente:', promoteError);
@@ -368,13 +354,13 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
               return;
             }
           } else {
-            const { error: insertError } = await supabase
-              .from('user_position_departments')
+            const { error: insertError } = await from('user_position_departments')
               .insert({
                 user_id: userId,
                 is_primary: true,
                 role_id: selectedRoleId,
-              });
+              })
+              .execute();
 
             if (insertError) {
               console.error('Erro ao criar registro de role:', insertError);
@@ -403,18 +389,18 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         }
       } else if (oldRoleName) {
         // Remover role se não há seleção
-        const { data: updData } = await supabase
-          .from('user_position_departments')
+        const { data: updData } = await from('user_position_departments')
           .select('id')
-          .execute().eq('user_id', userId)
+          .eq('user_id', userId)
           .eq('is_primary', true)
-          .maybeSingle();
+          .maybeSingle()
+          .execute();
 
         if (updData) {
-          await supabase
-            .from('user_position_departments')
+          await from('user_position_departments')
             .update({ role_id: null })
-            .eq('id', updData.id);
+            .eq('id', updData.id)
+            .execute();
         }
 
         // Log de remoção de role
@@ -429,8 +415,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       }
 
       // Buscar permissões anteriores para histórico
-      const { data: oldPermsData } = await supabase
-        .from('user_permissions')
+      const { data: oldPermsData } = await from('user_permissions')
         .select(`
           permission_id,
           granted,
@@ -447,10 +432,10 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       });
 
       // Remover todas as permissões customizadas existentes
-      await supabase
-        .from('user_permissions')
+      await from('user_permissions')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .execute();
 
       // Inserir novas permissões customizadas
       if (customPermissions.size > 0) {
@@ -468,9 +453,9 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         }).filter(Boolean);
 
         if (permissionsToInsert.length > 0) {
-          await supabase
-            .from('user_permissions')
-            .insert(permissionsToInsert);
+          await from('user_permissions')
+            .insert(permissionsToInsert)
+            .execute();
         }
       }
 

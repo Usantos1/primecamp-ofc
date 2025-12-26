@@ -14,7 +14,7 @@ export function useOrdensServicoSupabase() {
     queryFn: async () => {
       const { data, error } = await from('ordens_servico')
         .select('*')
-        .execute().order('created_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .execute();
       
       if (error) throw error;
@@ -36,7 +36,7 @@ export function useOrdensServicoSupabase() {
         // Buscar próximo número apenas se não foi fornecido
         const { data: lastOS } = await from('ordens_servico')
           .select('numero')
-          .execute().order('numero', { ascending: false })
+          .order('numero', { ascending: false })
           .limit(1)
           .single();
         
@@ -117,7 +117,7 @@ export function useOrdensServicoSupabase() {
       // Buscar OS atualizada para retornar dados completos
       const { data: osData, error: fetchError } = await from('ordens_servico')
         .select('*')
-        .execute().eq('id', id)
+        .eq('id', id)
         .single();
       
       if (fetchError) throw fetchError;
@@ -153,7 +153,7 @@ export function useOrdensServicoSupabase() {
       // Buscar dados da OS antes de atualizar
       const { data: osData } = await from('ordens_servico')
         .select(['id', 'numero', 'status', 'cliente_id', 'cliente_nome', 'telefone_contato', 'valor_total'])
-        .execute().eq('id', id)
+        .eq('id', id)
         .single();
 
       const updates: any = { status };
@@ -180,7 +180,7 @@ export function useOrdensServicoSupabase() {
         try {
           const { data: clienteData } = await from('clientes')
             .select(['nome', 'telefone', 'whatsapp'])
-            .execute().eq('id', osData.cliente_id)
+            .eq('id', osData.cliente_id)
             .single();
 
           // TODO: Migrar chamada de função Supabase para API própria

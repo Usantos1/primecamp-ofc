@@ -26,8 +26,9 @@ export function useCupomConfig() {
       const { data, error } = await supabase
         .from('cupom_config')
         .select('*')
-        .execute().limit(1)
-        .single();
+        .limit(1)
+        .single()
+        .execute();
 
       if (error) {
         if (error.code === 'PGRST116') {

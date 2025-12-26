@@ -50,10 +50,9 @@ export function CashRegisterSessionsManager({ month }: Props) {
       const start = `${month}-01`;
       const end = `${month}-31`;
 
-      let q: any = supabase
-        .from('cash_register_sessions')
+      let q = from('cash_register_sessions')
         .select('*')
-       .execute() .gte('opened_at', start)
+        .gte('opened_at', start)
         .lte('opened_at', end)
         .order('opened_at', { ascending: false });
 
@@ -62,7 +61,7 @@ export function CashRegisterSessionsManager({ month }: Props) {
         q = q.eq('operador_id', user.id);
       }
 
-      const { data, error } = await q;
+      const { data, error } = await q.execute();
       if (error) {
         console.warn('Erro ao buscar sessões de caixa:', error);
         return [];

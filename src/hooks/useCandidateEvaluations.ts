@@ -25,20 +25,17 @@ export const useCandidateEvaluations = (surveyId?: string) => {
     queryFn: async () => {
       if (!surveyId) return [];
       
-      const { data, error } = await supabase
-        .from('job_candidate_evaluations')
-        .select(`
-          *,
-          evaluator:profiles!evaluator_id(display_name)
-        .execute()`)
-        .in('job_response_id', 
-          (await supabase
-            .from('job_responses')
-            .select('id')
-            .execute().eq('survey_id', surveyId)
-          ).data?.map(r => r.id) || []
-        )
-        .order('updated_at', { ascending: false });
+      const jobResponseIds = (await from('job_responses')
+        .select('id')
+        .eq('survey_id', surveyId)
+        .execute()
+      ).data?.map(r => r.id) || [];
+
+      const { data, error } = await from('job_candidate_evaluations')
+        .select('*')
+        .in('job_response_id', jobResponseIds)
+        .order('updated_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
       return data as CandidateEvaluation[];
@@ -49,16 +46,16 @@ export const useCandidateEvaluations = (surveyId?: string) => {
   const deleteCandidate = async (candidateId: string) => {
     try {
       // First delete any evaluations
-      await supabase
-        .from('job_candidate_evaluations')
+      await from('job_candidate_evaluations')
         .delete()
-        .eq('job_response_id', candidateId);
+        .eq('job_response_id', candidateId)
+        .execute();
 
       // Then delete the candidate response
-      const { error } = await supabase
-        .from('job_responses')
+      const { error } = await from('job_responses')
         .delete()
-        .eq('id', candidateId);
+        .eq('id', candidateId)
+        .execute();
 
       if (error) throw error;
 

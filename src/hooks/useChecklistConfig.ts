@@ -23,7 +23,8 @@ export function useChecklistConfig(tipo?: 'entrada' | 'saida') {
       let query = supabase
         .from('os_checklist_config')
         .select('*')
-        .execute().order('ordem', { ascending: true });
+        .order('ordem', { ascending: true })
+        .execute();
 
       if (tipo) {
         query = query.eq('tipo', tipo);

@@ -203,10 +203,9 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
     queryKey: ['cash-closings', filters],
     queryFn: async () => {
       try {
-        let query = (supabase as any)
-          .from('cash_closings')
+        let query = from('cash_closings')
           .select('*')
-          .execute().order('closing_date', { ascending: false });
+          .order('closing_date', { ascending: false });
 
         if (filters?.month) {
           const startDate = `${filters.month}-01`;

@@ -253,12 +253,12 @@ export const useDiscTest = () => {
         console.log('[DISC] Carregando último resultado completado do usuário:', user.id);
         
         // Buscar último teste completado
-        const { data: completedTests, error: completedError } = await supabase
-          .from('disc_responses')
+        const { data: completedTests, error: completedError } = await from('disc_responses')
           .select('*')
-          .execute().eq('user_id', user.id)
+          .eq('user_id', user.id)
           .eq('is_completed', true)
           .order('completion_date', { ascending: false })
+          .execute();
           .limit(1);
 
         if (completedError) {
@@ -350,11 +350,11 @@ export const useDiscTest = () => {
       setResult(null);
       
       // Buscar teste ativo
-      const { data: tests, error: testError } = await supabase
-        .from('disc_tests')
+      const { data: tests, error: testError } = await from('disc_tests')
         .select('*')
-        .execute().eq('is_active', true)
-        .limit(1);
+        .eq('is_active', true)
+        .limit(1)
+        .execute();
 
       if (testError) {
         console.error('[DISC] Erro ao buscar teste ativo:', testError);
@@ -375,12 +375,13 @@ export const useDiscTest = () => {
       console.log(`[DISC] Teste ativo encontrado:`, test.id);
       
       // Verificar se já existe resposta incompleta para evitar duplicatas
-      const { data: existingIncomplete } = await supabase
-        .from('disc_responses')
+      const { data: existingIncomplete } = await from('disc_responses')
         .select('id')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .eq('test_id', test.id)
         .eq('is_completed', false)
+        .maybeSingle()
+        .execute();
         .maybeSingle();
 
       let newResponse;

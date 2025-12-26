@@ -342,9 +342,11 @@ export const useCandidateDiscTest = () => {
       // Check if test already exists for this candidate (incomplete)
       const { data: existingTest } = await from('candidate_responses')
         .select('id, is_completed, responses')
-        .execute().eq('whatsapp', sanitizedInfo.whatsapp)
+        .eq('whatsapp', sanitizedInfo.whatsapp)
         .eq('is_completed', false)
         .order('created_at', { ascending: false })
+        .maybeSingle()
+        .execute();
         .maybeSingle();
 
       if (existingTest) {

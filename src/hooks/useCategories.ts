@@ -11,10 +11,10 @@ export const useCategories = () => {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('categories')
+      const { data, error } = await from('categories')
         .select('*')
-        .execute().order('name', { ascending: true });
+        .order('name', { ascending: true })
+        .execute();
 
       if (error) {
         console.error('Error fetching categories:', error);
@@ -95,8 +95,7 @@ export const useCategories = () => {
 
   const updateCategory = async (id: string, updates: Partial<Category>) => {
     try {
-      const { error } = await supabase
-        .from('categories')
+      const { error } = await from('categories')
         .update({
           ...(updates.name && { name: updates.name }),
           ...(updates.description !== undefined && { description: updates.description }),
@@ -127,8 +126,7 @@ export const useCategories = () => {
 
   const deleteCategory = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('categories')
+      const { error } = await from('categories')
         .delete()
         .eq('id', id);
 

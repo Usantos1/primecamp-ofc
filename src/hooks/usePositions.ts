@@ -26,7 +26,8 @@ export const usePositions = () => {
       const { data, error } = await supabase
         .from('positions')
         .select('*')
-        .execute().order('level', { ascending: false });
+        .order('level', { ascending: false })
+        .execute();
 
       if (error) {
         console.error('Error fetching positions:', error);

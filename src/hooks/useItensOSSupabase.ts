@@ -16,8 +16,9 @@ export function useItensOSSupabase(osId: string) {
       const { data, error } = await supabase
         .from('os_items')
         .select('*')
-        .execute().eq('ordem_servico_id', osId)
-        .order('created_at', { ascending: true });
+        .eq('ordem_servico_id', osId)
+        .order('created_at', { ascending: true })
+        .execute();
       
       if (error) throw error;
       return (data || []) as ItemOS[];

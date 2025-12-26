@@ -79,10 +79,10 @@ export function useCargos() {
           // Se for erro de RLS (42501), tentar sem order
           if (profilesError.code === '42501' || profilesError.message?.includes('permission') || profilesError.message?.includes('policy')) {
             console.warn('[useCargos] ⚠️ Erro de permissão RLS detectado, tentando query simplificada...');
-            const { data: profilesData2, error: profilesError2 } = await supabase
-              .from('profiles')
+            const { data: profilesData2, error: profilesError2 } = await from('profiles')
               .select('*')
-              .execute().limit(100);
+              .limit(100)
+              .execute();
             
             if (!profilesError2 && profilesData2 && profilesData2.length > 0) {
               console.log('[useCargos] ✅ Profiles carregados com query simplificada:', profilesData2.length);

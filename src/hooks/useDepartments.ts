@@ -19,7 +19,8 @@ export const useDepartments = () => {
       const { data, error } = await supabase
         .from('departments')
         .select('*')
-        .execute().order('name');
+        .order('name')
+        .execute();
 
       if (error) {
         console.error('Error fetching departments:', error);

@@ -191,7 +191,8 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     queryFn: async () => {
       const { data, error } = await from('job_surveys')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
       
@@ -226,8 +227,9 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       
       const { data, error } = await from('job_responses')
         .select('*')
-        .execute().eq('survey_id', selectedSurvey.id)
-        .order('created_at', { ascending: false });
+        .eq('survey_id', selectedSurvey.id)
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
       return data as JobResponse[];
@@ -243,8 +245,9 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       
       const { data, error } = await from('job_application_drafts')
         .select('*')
-        .execute().eq('survey_id', selectedSurvey.id)
-        .order('last_saved_at', { ascending: false });
+        .eq('survey_id', selectedSurvey.id)
+        .order('last_saved_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
       return data || [];
@@ -260,7 +263,8 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       
       const { data, error } = await from('job_candidate_ai_analysis')
         .select('*')
-        .execute().eq('survey_id', selectedSurvey.id);
+        .eq('survey_id', selectedSurvey.id)
+        .execute();
 
       if (error) throw error;
       return data || [];
@@ -466,7 +470,9 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     try {
       const { data: profile } = await from('profiles')
         .select('id')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
+        .single()
+        .execute();
         .single();
 
       if (!profile) throw new Error('Profile not found');
@@ -742,7 +748,9 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     try {
       const { data: profile } = await from('profiles')
         .select('id')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
+        .single()
+        .execute();
         .single();
 
       if (!profile) throw new Error('Profile not found');
@@ -961,13 +969,15 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
       const { data: jobResponse, error: responseError } = await from('job_responses')
         .select('*')
-        .execute().eq('id', response.id)
-        .single();
+        .eq('id', response.id)
+        .single()
+        .execute();
 
       const { data: jobSurvey, error: surveyError } = await from('job_surveys')
         .select('*')
-        .execute().eq('id', response.survey_id)
-        .single();
+        .eq('id', response.survey_id)
+        .single()
+        .execute();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
         throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
@@ -975,10 +985,11 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
       const { data: discResult } = await from('candidate_responses')
         .select('*')
-        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
         .eq('is_completed', true)
         .order('created_at', { ascending: false })
-        .maybeSingle();
+        .maybeSingle()
+        .execute();
 
       const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
         job_response_id: response.id,
@@ -1013,7 +1024,9 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
       const { data: profile } = await from('profiles')
         .select('id')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
+        .single()
+        .execute();
         .maybeSingle();
 
       if (!profile) {
@@ -1030,15 +1043,15 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       };
 
       if (existingEvaluation) {
-        const { error } = await supabase
-          .from('job_candidate_evaluations')
+        const { error } = await from('job_candidate_evaluations')
           .update(evaluationData)
-          .eq('id', existingEvaluation.id);
+          .eq('id', existingEvaluation.id)
+          .execute();
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('job_candidate_evaluations')
-          .insert(evaluationData);
+        const { error } = await from('job_candidate_evaluations')
+          .insert(evaluationData)
+          .execute();
         if (error) throw error;
       }
 
@@ -1329,8 +1342,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                           onClick={async () => {
                             try {
                               // Converter draft em resposta completa
-                              const { error: convertError } = await supabase
-                                .from('job_responses')
+                              const { error: convertError } = await from('job_responses')
                                 .insert({
                                   survey_id: draft.survey_id,
                                   name: draft.name || '',
@@ -1340,14 +1352,16 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                   age: draft.age,
                                   responses: draft.responses || {},
                                   created_at: new Date().toISOString()
-                                });
+                                })
+                                .execute();
 
                               if (convertError) throw convertError;
 
                               // Deletar o draft
-                              const { error: deleteError } = await supabase
-                                .from('job_application_drafts')
+                              const { error: deleteError } = await from('job_application_drafts')
                                 .delete()
+                                .eq('id', draft.id)
+                                .execute();
                                 .eq('id', draft.id);
 
                               if (deleteError) throw deleteError;
@@ -1381,11 +1395,11 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                               console.log('Tentando excluir draft:', draft.id, 'Survey:', selectedSurvey?.id);
                               
                               // Primeiro, verificar se o draft existe
-                              const { data: checkData, error: checkError } = await supabase
-                                .from('job_application_drafts')
+                              const { data: checkData, error: checkError } = await from('job_application_drafts')
                                 .select('id')
-                                .execute().eq('id', draft.id)
-                                .single();
+                                .eq('id', draft.id)
+                                .single()
+                                .execute();
 
                               if (checkError || !checkData) {
                                 console.error('Draft não encontrado:', checkError);
@@ -1398,11 +1412,10 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                               }
 
                               // Tentar excluir
-                              const { data, error } = await supabase
-                                .from('job_application_drafts')
+                              const { data, error } = await from('job_application_drafts')
                                 .delete()
                                 .eq('id', draft.id)
-                                .select();
+                                .execute();
 
                               if (error) {
                                 console.error('Erro ao excluir draft:', error);
@@ -1617,26 +1630,32 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                 onClick={async () => {
                                   try {
                                     // Criar entrevista online para este candidato
-                                    const { data: newInterview, error: createError } = await supabase
-                                      .from('job_interviews')
+                                    const insertResult = await from('job_interviews')
                                       .insert({
                                         job_response_id: response.id,
                                         survey_id: response.survey_id,
                                         interview_type: 'online',
                                         status: 'scheduled',
                                         questions: []
-                                      })
-                                      .select()
-                                      .single();
+                                      });
+                                    
+                                    const { data: newInterview, error: createError } = insertResult.data 
+                                      ? { data: insertResult.data, error: null }
+                                      : await from('job_interviews')
+                                          .select('*')
+                                          .eq('job_response_id', response.id)
+                                          .eq('interview_type', 'online')
+                                          .single()
+                                          .execute();
 
                                     if (createError) {
                                       // Se já existe, buscar a existente
-                                      const { data: existing } = await supabase
-                                        .from('job_interviews')
+                                      const { data: existing } = await from('job_interviews')
                                         .select('*')
-                                        .execute().eq('job_response_id', response.id)
+                                        .eq('job_response_id', response.id)
                                         .eq('interview_type', 'online')
-                                        .maybeSingle();
+                                        .maybeSingle()
+                                        .execute();
 
                                       if (existing) {
                                         // Navegar para página de entrevista
@@ -1687,17 +1706,17 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                       });
                                       
                                       // Buscar dados completos do candidato
-                                      const { data: jobResponse } = await supabase
-                                        .from('job_responses')
+                                      const { data: jobResponse } = await from('job_responses')
                                         .select('*')
-                                        .execute().eq('id', response.id)
-                                        .single();
+                                        .eq('id', response.id)
+                                        .single()
+                                        .execute();
 
-                                      const { data: jobSurvey } = await supabase
-                                        .from('job_surveys')
+                                      const { data: jobSurvey } = await from('job_surveys')
                                         .select('*')
-                                        .execute().eq('id', response.survey_id)
-                                        .single();
+                                        .eq('id', response.survey_id)
+                                        .single()
+                                        .execute();
 
                                       if (!jobResponse || !jobSurvey) {
                                         toast({
@@ -1709,13 +1728,13 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                       }
 
                                       // Buscar resultado do DISC se existir
-                                      const { data: discResult } = await supabase
-                                        .from('candidate_responses')
+                                      const { data: discResult } = await from('candidate_responses')
                                         .select('*')
-                                        .execute().eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+                                        .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
                                         .eq('is_completed', true)
                                         .order('created_at', { ascending: false })
-                                        .maybeSingle();
+                                        .maybeSingle()
+                                        .execute();
 
                                       // Chamar análise com OpenAI
                                       const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {

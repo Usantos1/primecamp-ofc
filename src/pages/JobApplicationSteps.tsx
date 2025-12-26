@@ -282,9 +282,10 @@ export default function JobApplicationSteps() {
         try {
           const { data: backendDraft, error } = await from('job_application_drafts')
             .select('*')
-            .execute().eq('survey_id', survey.id)
+            .eq('survey_id', survey.id)
             .eq('email', parsed.email.trim().toLowerCase())
-            .maybeSingle();
+            .maybeSingle()
+            .execute();
 
           if (error && error.code !== 'PGRST116') {
             console.error('Erro ao buscar draft:', error);
@@ -328,12 +329,12 @@ export default function JobApplicationSteps() {
 
   const fetchSurvey = async () => {
     try {
-      const { data, error } = await supabase
-        .from("job_surveys")
+      const { data, error } = await from("job_surveys")
         .select("*")
-        .execute().eq("slug", slug)
+        .eq("slug", slug)
         .eq("is_active", true)
-        .single();
+        .single()
+        .execute();
 
       if (error || !data) {
         navigate("/404");

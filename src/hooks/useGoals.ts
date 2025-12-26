@@ -35,23 +35,22 @@ export const useGoals = () => {
       setLoading(true);
       
       // Get user profile to check role and department
-      const { data: profileData } = await supabase
-        .from('profiles')
+      const { data: profileData } = await from('profiles')
         .select('role, department')
-        .execute().eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id)
+        .single()
+        .execute();
 
-      let query = supabase
-        .from('goals')
+      let query = from('goals')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       // Filter based on role, department, and participation
       if (profileData?.role !== 'admin') {
         query = query.or(`user_id.eq.${user.id},department.eq.${profileData?.department},participants.cs.{${user.id}}`);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.execute();
 
       if (error) {
         console.error('Error fetching goals:', error);
@@ -90,8 +89,7 @@ export const useGoals = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('goals')
+      const { data, error } = await from('goals')
         .insert({
           ...goalData,
           created_by: user.id
@@ -122,8 +120,7 @@ export const useGoals = () => {
 
   const updateGoal = async (goalId: string, updates: Partial<Goal>) => {
     try {
-      const { error } = await supabase
-        .from('goals')
+      const { error } = await from('goals')
         .update(updates)
         .eq('id', goalId);
 
@@ -149,8 +146,7 @@ export const useGoals = () => {
 
   const deleteGoal = async (goalId: string) => {
     try {
-      const { error } = await supabase
-        .from('goals')
+      const { error } = await from('goals')
         .delete()
         .eq('id', goalId);
 

@@ -76,12 +76,12 @@ export default function JobApplication() {
 
   const fetchSurvey = async () => {
     try {
-      const { data, error } = await supabase
-        .from('job_surveys')
+      const { data, error } = await from('job_surveys')
         .select('*')
-        .execute().eq('id', surveyId)
+        .eq('id', surveyId)
         .eq('is_active', true)
-        .single();
+        .single()
+        .execute();
 
       if (error) throw error;
       setSurvey(data);

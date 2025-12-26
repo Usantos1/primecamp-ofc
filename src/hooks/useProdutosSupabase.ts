@@ -196,7 +196,7 @@ export function useProdutosSupabase() {
       while (hasMore) {
         const { data, error } = await from('produtos')
           .select('*')
-          .execute().order('nome', { ascending: true })
+          .order('nome', { ascending: true })
           .range(offset, offset + pageSize - 1)
           .execute();
 
@@ -234,7 +234,8 @@ export function useProdutosSupabase() {
         criado_por: user.id,
       })
       .select('*')
-     .execute() .single();
+      .single()
+      .execute();
 
     if (error) {
       toast({

@@ -14,8 +14,9 @@ export function useLessons(moduleId?: string) {
       const { data, error } = await supabase
         .from('training_lessons')
         .select('*')
-        .execute().eq('module_id', moduleId)
-        .order('order_index', { ascending: true });
+        .eq('module_id', moduleId)
+        .order('order_index', { ascending: true })
+        .execute();
       
       if (error) throw error;
       return data;

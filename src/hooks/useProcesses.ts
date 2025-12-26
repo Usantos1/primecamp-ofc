@@ -13,10 +13,10 @@ export const useProcesses = () => {
 
   const fetchProcesses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('processes')
+      const { data, error } = await from('processes')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) {
         console.error('Error fetching processes:', error);
@@ -66,8 +66,7 @@ export const useProcesses = () => {
         return null;
       }
 
-      const { data, error } = await supabase
-        .from('processes')
+      const { data, error } = await from('processes')
         .insert({
           name: processData.name,
           objective: processData.objective,
@@ -143,8 +142,7 @@ export const useProcesses = () => {
 
   const updateProcess = async (id: string, updates: Partial<Process>) => {
     try {
-      const { error } = await supabase
-        .from('processes')
+      const { error } = await from('processes')
         .update({
           ...(updates.name && { name: updates.name }),
           ...(updates.objective && { objective: updates.objective }),
@@ -201,8 +199,7 @@ export const useProcesses = () => {
 
   const deleteProcess = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('processes')
+      const { error } = await from('processes')
         .delete()
         .eq('id', id);
 

@@ -17,9 +17,10 @@ export function useWhatsApp() {
       
       const { data, error } = await from('profiles')
         .select('phone, display_name, approved')
-        .execute().eq('display_name', displayName)
+        .eq('display_name', displayName)
         .eq('approved', true)
         .maybeSingle()
+        .execute();
         .execute();
 
       console.log('🔥 getUserPhoneByName: Query result:', { data, error });
