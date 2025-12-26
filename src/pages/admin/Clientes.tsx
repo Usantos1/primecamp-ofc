@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Phone, MessageCircle, User, Building, Users } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Phone, MessageCircle, User, Building, Users, Upload } from 'lucide-react';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
+import { ImportarClientes } from '@/components/ImportarClientes';
 import { Cliente, ClienteFormData, TipoPessoa, TipoCliente } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -27,6 +28,7 @@ export default function Clientes() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState<ClienteFormData>({
     tipo_pessoa: 'fisica',
@@ -195,7 +197,12 @@ export default function Clientes() {
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle className="text-lg">Lista de Cadastros</CardTitle>
-              <Button onClick={() => handleOpenDialog()} className="gap-2"><Plus className="h-4 w-4" />Novo Cadastro</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
+                  <Upload className="h-4 w-4" />Importar
+                </Button>
+                <Button onClick={() => handleOpenDialog()} className="gap-2"><Plus className="h-4 w-4" />Novo Cadastro</Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -393,6 +400,23 @@ export default function Clientes() {
       </Dialog>
 
       <ConfirmDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} title="Excluir Cadastro" description="Tem certeza que deseja excluir este cadastro?" onConfirm={handleDelete} variant="danger" />
+
+      {/* Dialog de importação */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Importar Clientes em Massa</DialogTitle>
+          </DialogHeader>
+          <ImportarClientes 
+            onClose={() => setImportDialogOpen(false)}
+            onSuccess={() => {
+              setImportDialogOpen(false);
+              // Recarregar lista de clientes
+              window.location.reload();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </ModernLayout>
   );
 }

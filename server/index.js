@@ -1434,6 +1434,128 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
   }
 });
 
+// POST /api/functions/import-clientes - Importar clientes em lote
+app.post('/api/functions/import-clientes', authenticateToken, async (req, res) => {
+  try {
+    const { clientes, opcoes } = req.body;
+    
+    if (!clientes || !Array.isArray(clientes)) {
+      return res.status(400).json({ error: 'Array de clientes é obrigatório' });
+    }
+
+    const skipDuplicates = opcoes?.skipDuplicates ?? true;
+    const updateExisting = opcoes?.updateExisting ?? false;
+
+    let inseridos = 0;
+    let atualizados = 0;
+    let erros = 0;
+    let invalidos = 0;
+    const errosDetalhes = [];
+
+    console.log(`[ImportClientes] Processando ${clientes.length} clientes...`);
+
+    for (const cliente of clientes) {
+      try {
+        // Validar cliente
+        if (!cliente.nome) {
+          invalidos++;
+          continue;
+        }
+
+        // Preparar dados
+        const dadosCliente = {
+          nome: String(cliente.nome).toUpperCase().substring(0, 255),
+          cpf_cnpj: cliente.cpf_cnpj ? String(cliente.cpf_cnpj).substring(0, 20) : null,
+          telefone: cliente.telefone ? String(cliente.telefone).substring(0, 20) : null,
+          telefone2: cliente.telefone2 ? String(cliente.telefone2).substring(0, 20) : null,
+          endereco: cliente.endereco ? String(cliente.endereco).substring(0, 255) : null,
+          numero: cliente.numero ? String(cliente.numero).substring(0, 20) : null,
+          complemento: cliente.complemento ? String(cliente.complemento).substring(0, 100) : null,
+          bairro: cliente.bairro ? String(cliente.bairro).substring(0, 100) : null,
+          cep: cliente.cep ? String(cliente.cep).replace(/\D/g, '').substring(0, 10) : null,
+          cidade: cliente.cidade ? String(cliente.cidade).substring(0, 100) : null,
+          tipo_pessoa: cliente.tipo_pessoa || 'fisica',
+          tipo_cliente: 'cliente',
+          status: 'ativo',
+        };
+
+        // Verificar se cliente já existe (por CPF/CNPJ)
+        let clienteExistente = null;
+        
+        if (cliente.cpf_cnpj) {
+          const cpfCnpjLimpo = String(cliente.cpf_cnpj).replace(/\D/g, '');
+          if (cpfCnpjLimpo.length > 0) {
+            const checkResult = await pool.query(
+              'SELECT id FROM clientes WHERE REPLACE(REPLACE(REPLACE(cpf_cnpj, \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = $1 LIMIT 1',
+              [cpfCnpjLimpo]
+            );
+            if (checkResult.rows.length > 0) {
+              clienteExistente = checkResult.rows[0];
+            }
+          }
+        }
+
+        if (clienteExistente) {
+          if (skipDuplicates) {
+            // Pular duplicado
+            continue;
+          } else if (updateExisting) {
+            // Atualizar existente
+            const keys = Object.keys(dadosCliente).filter(k => dadosCliente[k] !== null);
+            const values = keys.map(k => dadosCliente[k]);
+            const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+            
+            await pool.query(
+              `UPDATE clientes SET ${setClause}, updated_at = NOW() WHERE id = $${keys.length + 1}`,
+              [...values, clienteExistente.id]
+            );
+            atualizados++;
+          } else {
+            // Inserir como novo (cria duplicado)
+            const keys = Object.keys(dadosCliente).filter(k => dadosCliente[k] !== null);
+            const values = keys.map(k => dadosCliente[k]);
+            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+            
+            await pool.query(
+              `INSERT INTO clientes (${keys.join(', ')}, created_at) VALUES (${placeholders}, NOW())`,
+              values
+            );
+            inseridos++;
+          }
+        } else {
+          // Inserir novo
+          const keys = Object.keys(dadosCliente).filter(k => dadosCliente[k] !== null);
+          const values = keys.map(k => dadosCliente[k]);
+          const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+          
+          await pool.query(
+            `INSERT INTO clientes (${keys.join(', ')}, created_at) VALUES (${placeholders}, NOW())`,
+            values
+          );
+          inseridos++;
+        }
+      } catch (clienteError) {
+        console.error('[ImportClientes] Erro ao processar cliente:', clienteError.message);
+        erros++;
+        errosDetalhes.push(clienteError.message);
+      }
+    }
+
+    console.log(`[ImportClientes] Concluído: ${inseridos} inseridos, ${atualizados} atualizados, ${erros} erros, ${invalidos} inválidos`);
+
+    res.json({
+      inseridos,
+      atualizados,
+      erros,
+      invalidos,
+      errosDetalhes: errosDetalhes.length > 0 ? errosDetalhes.slice(0, 10) : undefined
+    });
+  } catch (error) {
+    console.error('[ImportClientes] Erro geral:', error);
+    res.status(500).json({ error: error.message || 'Erro ao importar clientes' });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
