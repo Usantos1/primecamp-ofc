@@ -546,13 +546,17 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // ============================================
 
 // Helper para construir WHERE clause
-function buildWhereClause(where, params = []) {
+// offset: número de parâmetros já usados (para começar a contar a partir desse número)
+function buildWhereClause(where, offsetOrParams = []) {
   if (!where || Object.keys(where).length === 0) {
-    return { clause: '', params };
+    return { clause: '', params: [] };
   }
 
   const conditions = [];
-  let paramIndex = params.length + 1;
+  const params = [];
+  // Se for array, usar o length; se for número, usar diretamente
+  const offset = Array.isArray(offsetOrParams) ? offsetOrParams.length : offsetOrParams;
+  let paramIndex = offset + 1;
 
   // Tratar OR primeiro
   if (where.__or) {
@@ -755,10 +759,12 @@ app.post('/api/update/:table', async (req, res) => {
       return res.status(400).json({ error: 'Update requires WHERE clause' });
     }
 
-    const { clause: whereClause, params: whereParams } = buildWhereClause(where);
     const keys = Object.keys(data);
     const values = Object.values(data);
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+    
+    // Passar o número de valores do SET como offset para buildWhereClause
+    const { clause: whereClause, params: whereParams } = buildWhereClause(where, values.length);
     const params = [...values, ...whereParams];
 
     const sql = `
@@ -768,7 +774,7 @@ app.post('/api/update/:table', async (req, res) => {
       RETURNING *
     `;
 
-    console.log(`[Update] ${tableName}:`, keys);
+    console.log(`[Update] ${tableName}:`, keys, 'WHERE:', where);
     const result = await pool.query(sql, params);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
