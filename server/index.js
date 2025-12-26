@@ -629,9 +629,14 @@ function buildWhereClause(where, params = []) {
       paramIndex++;
     } else if (field.endsWith('__in')) {
       const actualField = field.replace('__in', '');
-      const placeholders = value.map(() => `$${paramIndex++}`).join(', ');
-      conditions.push(`${actualField} IN (${placeholders})`);
-      params.push(...value);
+      // Se array vazio, adicionar condição que sempre retorna false
+      if (!Array.isArray(value) || value.length === 0) {
+        conditions.push('1=0'); // Sempre false - não retorna nenhum resultado
+      } else {
+        const placeholders = value.map(() => `$${paramIndex++}`).join(', ');
+        conditions.push(`${actualField} IN (${placeholders})`);
+        params.push(...value);
+      }
     } else {
       conditions.push(`${field} = $${paramIndex}`);
       params.push(value);
