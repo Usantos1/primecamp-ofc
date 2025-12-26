@@ -154,10 +154,7 @@ export default function JobApplication() {
           instagram: formData.instagram?.trim() || null,
           linkedin: formData.linkedin?.trim() || null,
           responses: formData.responses || {},
-        },
-        headers: {
-          'idempotency-key': idempotencyKey
-        }
+          idempotency_key: idempotencyKey
       });
 
       if (error) {
