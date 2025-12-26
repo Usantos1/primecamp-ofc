@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { Marca, Modelo } from '@/types/assistencia';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mapear marca do Supabase para assistencia.Marca
 function mapSupabaseToMarca(supabaseMarca: any): Marca {
