@@ -69,9 +69,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAuth = async () => {
     try {
-      const authData = await authAPI.getCurrentUser();
+      const response = await authAPI.getCurrentUser();
+      const authData = response?.data;
       
-      if (authData) {
+      if (authData?.user) {
         setUser(authData.user);
         const token = authAPI.getToken();
         if (token) {

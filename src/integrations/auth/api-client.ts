@@ -145,7 +145,7 @@ class AuthAPIClient {
       }
 
       const data = await response.json();
-      return { data: { user: data.user || data } };
+      return { data: { user: data.user, profile: data.profile } };
     } catch (error: any) {
       console.error('[Auth] Erro ao obter usuário:', error);
       return { data: { user: undefined } };
