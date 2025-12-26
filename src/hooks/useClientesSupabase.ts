@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +17,7 @@ export function useClientesSupabase(pageSize: number = 50) {
       const offsetVal = (page - 1) * pageSize;
       const { data, error, count } = await from('clientes')
         .select('*')
-        .eq('situacao', 'ativo')
+        .neq('situacao', 'inativo')  // Exclui apenas inativos, mostra ativos e null
         .order('nome', { ascending: true })
         .range(offsetVal, offsetVal + pageSize - 1)
         .execute();

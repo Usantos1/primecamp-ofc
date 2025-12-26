@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { from } from '@/integrations/db/client'; // Mantido para auth.getUser()
 import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -232,10 +231,7 @@ export function useProdutosSupabase() {
       .insert({
         ...produtoSupabase,
         criado_por: user.id,
-      })
-      .select('*')
-      .single()
-      .execute();
+      });
 
     if (error) {
       toast({
@@ -264,9 +260,8 @@ export function useProdutosSupabase() {
     delete produtoSupabase.tipo;
     
     const { error } = await from('produtos')
-      .update(produtoSupabase)
       .eq('id', id)
-      .execute();
+      .update(produtoSupabase);
 
     if (error) {
       console.error('[updateProduto] Erro:', error);
@@ -290,9 +285,8 @@ export function useProdutosSupabase() {
   const deleteProduto = useCallback(async (id: string) => {
     // Marcar como INATIVO usando o campo situacao
     const { error } = await from('produtos')
-      .update({ situacao: 'INATIVO' })
       .eq('id', id)
-      .execute();
+      .update({ situacao: 'INATIVO' });
 
     if (error) {
       toast({
