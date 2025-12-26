@@ -204,7 +204,6 @@ export default function TalentBank() {
             work_modality: jobSurvey.work_modality,
             contract_type: jobSurvey.contract_type
           }
-        }
       });
 
       if (analysisError) {
