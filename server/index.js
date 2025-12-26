@@ -176,7 +176,10 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // máximo de 10 tentativas de login por IP
+  max: 50, // máximo de 50 tentativas de login por IP
+  message: { error: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Aplicar rate limiting
