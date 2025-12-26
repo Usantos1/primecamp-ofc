@@ -673,11 +673,14 @@ app.post('/api/query/:table', async (req, res) => {
     const { table } = req.params;
     const { select, where, orderBy, limit, offset } = req.body;
 
+    // Usar schema public explicitamente
+    const tableName = table.includes('.') ? table : `public.${table}`;
+    
     const fields = Array.isArray(select) ? select.join(', ') : (select || '*');
     const { clause: whereClause, params } = buildWhereClause(where);
 
     // Query para buscar dados
-    let sql = `SELECT ${fields} FROM ${table}`;
+    let sql = `SELECT ${fields} FROM ${tableName}`;
     if (whereClause) sql += ` ${whereClause}`;
 
     if (orderBy) {
@@ -693,10 +696,12 @@ app.post('/api/query/:table', async (req, res) => {
       sql += ` OFFSET ${offset}`;
     }
 
+    console.log(`[Query] ${tableName}:`, sql, params);
     const result = await pool.query(sql, params);
+    console.log(`[Query] ${tableName} resultado:`, result.rows.length, 'registros');
     
     // Query para contar total (sem limit/offset)
-    let countSql = `SELECT COUNT(*) as total FROM ${table}`;
+    let countSql = `SELECT COUNT(*) as total FROM ${tableName}`;
     if (whereClause) countSql += ` ${whereClause}`;
     
     const countResult = await pool.query(countSql, params);
@@ -715,16 +720,20 @@ app.post('/api/insert/:table', async (req, res) => {
     const { table } = req.params;
     const data = req.body;
 
+    // Usar schema public explicitamente
+    const tableName = table.includes('.') ? table : `public.${table}`;
+
     const keys = Object.keys(data);
     const values = Object.values(data);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
     const sql = `
-      INSERT INTO ${table} (${keys.join(', ')})
+      INSERT INTO ${tableName} (${keys.join(', ')})
       VALUES (${placeholders})
       RETURNING *
     `;
 
+    console.log(`[Insert] ${tableName}:`, keys);
     const result = await pool.query(sql, values);
     res.json({ data: result.rows[0], rows: result.rows });
   } catch (error) {
@@ -739,6 +748,9 @@ app.post('/api/update/:table', async (req, res) => {
     const { table } = req.params;
     const { data, where } = req.body;
 
+    // Usar schema public explicitamente
+    const tableName = table.includes('.') ? table : `public.${table}`;
+
     if (!where || Object.keys(where).length === 0) {
       return res.status(400).json({ error: 'Update requires WHERE clause' });
     }
@@ -750,12 +762,13 @@ app.post('/api/update/:table', async (req, res) => {
     const params = [...values, ...whereParams];
 
     const sql = `
-      UPDATE ${table}
+      UPDATE ${tableName}
       SET ${setClause}
       ${whereClause}
       RETURNING *
     `;
 
+    console.log(`[Update] ${tableName}:`, keys);
     const result = await pool.query(sql, params);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
@@ -770,6 +783,9 @@ app.post('/api/delete/:table', async (req, res) => {
     const { table } = req.params;
     const { where } = req.body;
 
+    // Usar schema public explicitamente
+    const tableName = table.includes('.') ? table : `public.${table}`;
+
     if (!where || Object.keys(where).length === 0) {
       return res.status(400).json({ error: 'Delete requires WHERE clause' });
     }
@@ -777,11 +793,12 @@ app.post('/api/delete/:table', async (req, res) => {
     const { clause: whereClause, params } = buildWhereClause(where);
 
     const sql = `
-      DELETE FROM ${table}
+      DELETE FROM ${tableName}
       ${whereClause}
       RETURNING *
     `;
 
+    console.log(`[Delete] ${tableName}`);
     const result = await pool.query(sql, params);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
