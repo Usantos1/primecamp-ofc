@@ -53,9 +53,13 @@ const Auth = () => {
       console.log('[Auth] Tentando fazer login via API PostgreSQL:', { email });
       
       // 🚫 NÃO USAR SUPABASE - Usar apenas API PostgreSQL
-      const response = await authAPI.login({ email, password });
+      const response = await authAPI.login(email, password);
       
-      console.log('[Auth] Login bem-sucedido:', { userId: response.user.id, email: response.user.email });
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao fazer login');
+      }
+      
+      console.log('[Auth] Login bem-sucedido:', { userId: response.data?.user?.id, email: response.data?.user?.email });
       
       toast({
         title: "Login realizado",
@@ -68,7 +72,7 @@ const Auth = () => {
       console.error('[Auth] Erro no login:', error);
       toast({
         title: "Erro no login",
-        description: error.message || "Email ou senha incorretos. Verifique se o usuário existe na tabela 'users' do PostgreSQL.",
+        description: error.message || "Email ou senha incorretos.",
         variant: "destructive",
       });
     } finally {
