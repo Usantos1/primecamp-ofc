@@ -65,13 +65,13 @@ export function usePermissions() {
 
       // Se for admin, tem todas as permissões
       if (profile?.role === 'admin') {
-        const { data: allPermissions } = await supabase
-          .from('permissions')
-          .select('resource, action').execute();
+        const { data: allPermissions } = await from('permissions')
+          .select('resource, action')
+          .execute();
 
         if (allPermissions) {
           const permSet = new Set(
-            allPermissions.map(p => `${p.resource}.${p.action}`)
+            allPermissions.map((p: any) => `${p.resource}.${p.action}`)
           );
           setPermissions(permSet);
           setLoading(false);
@@ -80,32 +80,20 @@ export function usePermissions() {
       }
 
       // Buscar permissões customizadas do usuário
-      const { data: userPerms, error: userPermsError } = await supabase
-        .from('user_permissions')
-        .select(`
-          permission_id,
-          granted,
-          permission:permissions(resource, action)
-        .execute()`)
-        .eq('user_id', user.id);
+      const { data: userPerms, error: userPermsError } = await from('user_permissions')
+        .select('permission_id, granted')
+        .eq('user_id', user?.id)
+        .execute();
 
       if (userPermsError) {
         console.error('Erro ao buscar permissões customizadas:', userPermsError);
       }
 
       // Buscar permissões via role
-      const { data: rolePerms, error: rolePermsError } = await supabase
-        .from('user_position_departments')
-        .select(`
-          role_id,
-          role:roles(
-            role_permissions(
-              permission:permissions(resource, action)
-            .execute())
-          )
-        `)
-        .eq('user_id', user.id)
-        .not('role_id', 'is', null);
+      const { data: rolePerms, error: rolePermsError } = await from('user_position_departments')
+        .select('role_id')
+        .eq('user_id', user?.id)
+        .execute();
 
       if (rolePermsError) {
         console.error('Erro ao buscar permissões via role:', rolePermsError);
