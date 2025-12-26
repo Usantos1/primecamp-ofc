@@ -278,9 +278,11 @@ export function ImportarProdutos() {
       const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
       const response = await fetch(`${API_URL}/functions/${'import-produtos'}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody,
-          ),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(requestBody),
       });
       
       if (!response.ok) {
