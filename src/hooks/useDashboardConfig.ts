@@ -49,8 +49,7 @@ export function useDashboardConfig() {
       const { data, error } = await from('kv_store_2c4defad')
         .select('value')
         .eq('key', `dashboard_config_${user.id}`)
-        .single()
-        .execute();
+        .single();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -77,11 +76,10 @@ export function useDashboardConfig() {
 
     try {
       const { error } = await from('kv_store_2c4defad')
-        .insert({
+        .upsert({
           key: `dashboard_config_${user.id}`,
           value: newConfig,
-        })
-        .execute();
+        }, { onConflict: 'key' });
 
       if (error) throw error;
 

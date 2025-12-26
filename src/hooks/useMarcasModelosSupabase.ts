@@ -1,10 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { from } from '@/integrations/db/client'; // Mantido para auth.getUser()
 import { Marca, Modelo } from '@/types/assistencia';
 import { useToast } from '@/hooks/use-toast';
-import { useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 
 // Mapear marca do Supabase para assistencia.Marca
 function mapSupabaseToMarca(supabaseMarca: any): Marca {
@@ -49,18 +46,15 @@ export function useMarcasSupabase() {
   const marcas = marcasData || [];
 
   // Criar marca
-  const createMarca = useCallback(async (nome: string): Promise<Marca> => {
-    const { user } = useAuth();
-    if (!user) throw new Error('Usuário não autenticado');
+  const createMarca = async (nome: string, userId: string): Promise<Marca> => {
+    if (!userId) throw new Error('Usuário não autenticado');
 
     const { data: novaMarca, error } = await from('marcas')
       .insert({
         nome: nome.trim(),
         situacao: 'ativo',
-        created_by: user.id,
-      })
-      .select('*')
-     .execute() .single();
+        created_by: userId,
+      });
 
     if (error) {
       console.error('[createMarca] Erro:', error);
@@ -79,19 +73,17 @@ export function useMarcasSupabase() {
       description: 'Marca criada com sucesso!',
     });
 
-    return mapSupabaseToMarca(novaMarca?.data || novaMarca);
-  }, [queryClient, toast]);
+    return mapSupabaseToMarca(novaMarca);
+  };
 
   // Atualizar marca
-  const updateMarca = useCallback(async (id: string, data: Partial<Marca>): Promise<Marca | null> => {
+  const updateMarca = async (id: string, data: Partial<Marca>): Promise<Marca | null> => {
     const { error } = await from('marcas')
+      .eq('id', id)
       .update({
         nome: data.nome?.trim(),
         situacao: data.situacao,
-      })
-      .eq('id', id)
-      .select('*')
-     .execute() .single();
+      });
 
     if (error) {
       console.error('[updateMarca] Erro:', error);
@@ -112,14 +104,13 @@ export function useMarcasSupabase() {
     });
 
     return data as Marca;
-  }, [queryClient, toast]);
+  };
 
   // Deletar marca (soft delete)
-  const deleteMarca = useCallback(async (id: string): Promise<boolean> => {
+  const deleteMarca = async (id: string): Promise<boolean> => {
     const { error } = await from('marcas')
-      .update({ situacao: 'inativo' })
       .eq('id', id)
-      .execute();
+      .update({ situacao: 'inativo' });
 
     if (error) {
       console.error('[deleteMarca] Erro:', error);
@@ -140,12 +131,12 @@ export function useMarcasSupabase() {
     });
 
     return true;
-  }, [queryClient, toast]);
+  };
 
   // Buscar marca por ID
-  const getMarcaById = useCallback((id: string): Marca | undefined => {
+  const getMarcaById = (id: string): Marca | undefined => {
     return marcas.find(m => m.id === id);
-  }, [marcas]);
+  };
 
   return {
     marcas,
@@ -180,19 +171,16 @@ export function useModelosSupabase() {
   const modelos = modelosData || [];
 
   // Criar modelo
-  const createModelo = useCallback(async (marcaId: string, nome: string): Promise<Modelo> => {
-    const { user } = useAuth();
-    if (!user) throw new Error('Usuário não autenticado');
+  const createModelo = async (marcaId: string, nome: string, userId: string): Promise<Modelo> => {
+    if (!userId) throw new Error('Usuário não autenticado');
 
     const { data: novoModelo, error } = await from('modelos')
       .insert({
         marca_id: marcaId,
         nome: nome.trim(),
         situacao: 'ativo',
-        created_by: user.id,
-      })
-      .select('*')
-     .execute() .single();
+        created_by: userId,
+      });
 
     if (error) {
       console.error('[createModelo] Erro:', error);
@@ -211,20 +199,18 @@ export function useModelosSupabase() {
       description: 'Modelo criado com sucesso!',
     });
 
-    return mapSupabaseToModelo(novoModelo?.data || novoModelo);
-  }, [queryClient, toast]);
+    return mapSupabaseToModelo(novoModelo);
+  };
 
   // Atualizar modelo
-  const updateModelo = useCallback(async (id: string, data: Partial<Modelo>): Promise<Modelo | null> => {
+  const updateModelo = async (id: string, data: Partial<Modelo>): Promise<Modelo | null> => {
     const { error } = await from('modelos')
+      .eq('id', id)
       .update({
         marca_id: data.marca_id,
         nome: data.nome?.trim(),
         situacao: data.situacao,
-      })
-      .eq('id', id)
-      .select('*')
-     .execute() .single();
+      });
 
     if (error) {
       console.error('[updateModelo] Erro:', error);
@@ -244,14 +230,13 @@ export function useModelosSupabase() {
     });
 
     return data as Modelo;
-  }, [queryClient, toast]);
+  };
 
   // Deletar modelo (soft delete)
-  const deleteModelo = useCallback(async (id: string): Promise<boolean> => {
+  const deleteModelo = async (id: string): Promise<boolean> => {
     const { error } = await from('modelos')
-      .update({ situacao: 'inativo' })
       .eq('id', id)
-      .execute();
+      .update({ situacao: 'inativo' });
 
     if (error) {
       console.error('[deleteModelo] Erro:', error);
@@ -271,17 +256,17 @@ export function useModelosSupabase() {
     });
 
     return true;
-  }, [queryClient, toast]);
+  };
 
   // Buscar modelo por ID
-  const getModeloById = useCallback((id: string): Modelo | undefined => {
+  const getModeloById = (id: string): Modelo | undefined => {
     return modelos.find(m => m.id === id);
-  }, [modelos]);
+  };
 
   // Buscar modelos por marca
-  const getModelosByMarca = useCallback((marcaId: string): Modelo[] => {
+  const getModelosByMarca = (marcaId: string): Modelo[] => {
     return modelos.filter(m => m.marca_id === marcaId && m.situacao === 'ativo');
-  }, [modelos]);
+  };
 
   return {
     modelos,
