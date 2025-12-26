@@ -123,12 +123,12 @@ export default function NovaVenda() {
         return;
       }
 
-      // Buscar itens da OS do Supabase
-      const { data: itensOS, error: itensError } = await supabase
-        .from('os_items')
+      // Buscar itens da OS do banco
+      const { data: itensOS, error: itensError } = await from('os_items')
         .select('*')
-        .execute().eq('ordem_servico_id', osId)
-        .in('tipo', ['peca', 'produto']);
+        .eq('ordem_servico_id', osId)
+        .in('tipo', ['peca', 'produto'])
+        .execute();
 
       if (itensError) {
         console.error('Erro ao buscar itens da OS:', itensError);
@@ -352,10 +352,10 @@ export default function NovaVenda() {
       // Verificar quais OSs já foram faturadas (verificando se há venda vinculada)
       let osFaturadas = new Set<string>();
       try {
-        const { data: vendasComOS } = await supabase
-          .from('sales')
+        const { data: vendasComOS } = await from('sales')
           .select('ordem_servico_id')
-          .execute().not('ordem_servico_id', 'is', null);
+          .not('ordem_servico_id', 'is', null)
+          .execute();
         
         if (vendasComOS) {
           osFaturadas = new Set(vendasComOS.map((v: any) => v.ordem_servico_id));
@@ -458,10 +458,10 @@ export default function NovaVenda() {
       console.log('=== FATURAR OS - DETALHES DOS ITENS ===');
       
       // Primeiro, verificar se já existem itens na venda (para evitar duplicação)
-      const { data: existingItems } = await supabase
-        .from('sale_items')
+      const { data: existingItems } = await from('sale_items')
         .select('*')
-        .execute().eq('sale_id', novaVenda.id);
+        .eq('sale_id', novaVenda.id)
+        .execute();
       
       console.log(`Itens já existentes na venda: ${existingItems?.length || 0}`);
       

@@ -31,12 +31,12 @@ export function FinanceiroRelatorios() {
     queryFn: async () => {
       const start = `${month}-01`;
       const end = `${month}-31`;
-      const { data, error } = await supabase
-        .from('sales')
+      const { data, error } = await from('sales')
         .select('*')
-       .execute() .gte('created_at', start)
+        .gte('created_at', start)
         .lte('created_at', end)
-        .eq('status', 'paid');
+        .eq('status', 'paid')
+        .execute();
       if (error) throw error;
       return data || [];
     },

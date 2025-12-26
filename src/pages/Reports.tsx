@@ -84,42 +84,40 @@ export default function Reports() {
       const dateFilter = getDateFilter();
         
       // Fetch Tasks Data
-      let tasksQuery = supabase
-          .from('tasks')
-        .select('id, status, deadline, created_at, responsible_user_id, process_id').execute();
+      let tasksQuery = from('tasks')
+        .select('id, status, deadline, created_at, responsible_user_id, process_id');
       
       if (dateFilter) {
         tasksQuery = tasksQuery.gte('created_at', dateFilter);
       }
 
-      const { data: tasks } = await tasksQuery;
+      const { data: tasks } = await tasksQuery.execute();
 
       // Fetch Trainings Data
-      let trainingsQuery = supabase
-        .from('training_assignments')
-        .select('id, status, progress, completed_at, training_id, user_id, training:trainings(title, department).execute()');
+      let trainingsQuery = from('training_assignments')
+        .select('id, status, progress, completed_at, training_id, user_id');
       
       if (dateFilter) {
         trainingsQuery = trainingsQuery.gte('assigned_at', dateFilter);
       }
 
-      const { data: trainings } = await trainingsQuery;
+      const { data: trainings } = await trainingsQuery.execute();
 
       // Fetch DISC Data
-      const { data: discResults } = await supabase
-        .from('disc_responses')
+      const { data: discResults } = await from('disc_responses')
         .select('id, dominant, d, i, s, c, created_at, user_id')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       // Fetch Processes Data
-        const { data: processes } = await supabase
-          .from('processes')
-        .select('id, name, status, department, created_at').execute();
+      const { data: processes } = await from('processes')
+        .select('id, name, status, department, created_at')
+        .execute();
 
       // Fetch Users Data
-        const { data: profiles } = await supabase
-          .from('profiles')
-        .select('id, user_id, display_name, department, role, approved, created_at').execute();
+      const { data: profiles } = await from('profiles')
+        .select('id, user_id, display_name, department, role, approved, created_at')
+        .execute();
 
       // Process Tasks Data
       const tasksByStatus = tasks?.reduce((acc: any, task: any) => {

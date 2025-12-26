@@ -62,12 +62,12 @@ export default function Caixa() {
       let salesData: any[] | null = null;
       let salesError: any = null;
 
-      const direct = await supabase
-        .from('sales')
+      const direct = await from('sales')
         .select('*')
-        .execute().eq('cash_register_session_id', currentSession.id)
+        .eq('cash_register_session_id', currentSession.id)
         .eq('status', 'paid')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       salesData = direct.data || [];
       salesError = direct.error;
@@ -82,13 +82,13 @@ export default function Caixa() {
         const operadorId = (currentSession as any).operador_id || user?.id;
 
         if (openedAt && operadorId) {
-          const fallback = await supabase
-            .from('sales')
+          const fallback = await from('sales')
             .select('*')
-            .execute().eq('status', 'paid')
+            .eq('status', 'paid')
             .eq('vendedor_id', operadorId)
             .gte('finalized_at', openedAt)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .execute();
 
           // só sobrescreve se não der erro
           if (!fallback.error) {
@@ -102,11 +102,11 @@ export default function Caixa() {
       // Carregar pagamentos de todas as vendas
       if (salesData && salesData.length > 0) {
         const saleIds = salesData.map(s => s.id);
-        const { data: paymentsData, error: paymentsError } = await supabase
-          .from('payments')
+        const { data: paymentsData, error: paymentsError } = await from('payments')
           .select('*')
-         .execute() .in('sale_id', saleIds)
-          .eq('status', 'confirmed');
+          .in('sale_id', saleIds)
+          .eq('status', 'confirmed')
+          .execute();
         
         if (!paymentsError && paymentsData) {
           const paymentsBySale: Record<string, any[]> = {};

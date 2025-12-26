@@ -94,42 +94,41 @@ export function Dashboard() {
       
       console.log('Fetching NPS data from', fromDateStr, 'to', toDateStr);
       
-      const { data: npsResponses } = await supabase
-        .from('nps_responses')
+      const { data: npsResponses } = await from('nps_responses')
         .select('*')
-       .execute() .gte('date', fromDateStr)
+        .gte('date', fromDateStr)
         .lte('date', toDateStr)
-        .order('date', { ascending: true });
+        .order('date', { ascending: true })
+        .execute();
 
       console.log('NPS responses found:', npsResponses?.length || 0);
 
       // Fetch goals data - by department or all if admin
       const isAdmin = profile.role === 'admin';
-      let goalsQuery = from('goals').select('*').execute();
+      let goalsQuery = from('goals').select('*');
       
       if (!isAdmin && profile.department) {
         goalsQuery = goalsQuery.or(`user_id.eq.${user.id},department.eq.${profile.department}`);
       }
       
-      const { data: goals } = await goalsQuery;
+      const { data: goals } = await goalsQuery.execute();
 
       // Fetch tasks data - user's tasks or department tasks if admin
-      let tasksQuery = supabase
-        .from('tasks')
+      let tasksQuery = from('tasks')
         .select('*')
-       .execute() .gte('created_at', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+        .gte('created_at', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
         
       if (!isAdmin) {
         tasksQuery = tasksQuery.eq('responsible_user_id', user.id);
       }
       
-      const { data: tasks } = await tasksQuery;
+      const { data: tasks } = await tasksQuery.execute();
 
       // Fetch processes for active processes count
-      const { data: processes } = await supabase
-        .from('processes')
+      const { data: processes } = await from('processes')
         .select('*')
-        .execute().eq('status', 'active');
+        .eq('status', 'active')
+        .execute();
 
       // Generate complete date range for the period (skip Sundays)
       const generateDateRange = (period: NPSPeriod): string[] => {

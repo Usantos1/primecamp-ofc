@@ -87,11 +87,11 @@ export default function Relatorios() {
     if (filteredSales.length > 0) {
       const loadPayments = async () => {
         const saleIds = filteredSales.map(s => s.id);
-        const { data: paymentsData } = await supabase
-          .from('payments')
+        const { data: paymentsData } = await from('payments')
           .select('*')
-         .execute() .in('sale_id', saleIds)
-          .eq('status', 'confirmed');
+          .in('sale_id', saleIds)
+          .eq('status', 'confirmed')
+          .execute();
         
         if (paymentsData) {
           const paymentsBySale: Record<string, any[]> = {};
@@ -112,10 +112,10 @@ export default function Relatorios() {
   useEffect(() => {
     if (selectedSale && showSaleDetails) {
       const loadItems = async () => {
-        const { data: itemsData } = await supabase
-          .from('sale_items')
+        const { data: itemsData } = await from('sale_items')
           .select('*')
-          .execute().eq('sale_id', selectedSale.id);
+          .eq('sale_id', selectedSale.id)
+          .execute();
         
         if (itemsData) {
           setSelectedSale((prev: any) => ({ ...prev, items: itemsData }));

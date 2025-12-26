@@ -23,9 +23,9 @@ export default function ProcessAnalytics() {
     try {
       setLoading(true);
       
-      const { data: processes } = await supabase
-        .from('processes')
-        .select('*').execute();
+      const { data: processes } = await from('processes')
+        .select('*')
+        .execute();
 
       const statusCounts = (processes || []).reduce((acc, process) => {
         acc[process.status] = (acc[process.status] || 0) + 1;

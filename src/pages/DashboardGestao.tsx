@@ -46,28 +46,28 @@ const DashboardGestao = () => {
     const calculateStats = async () => {
       try {
         // Fetch processes count
-        const { count: processesCount } = await supabase
-          .from('processes')
-          .select('*', { count: 'exact', head: true }).execute();
+        const { data: allProcesses } = await from('processes')
+          .select('id, status')
+          .execute();
         
-        const { count: activeProcessesCount } = await supabase
-          .from('processes')
-          .select('*', { count: 'exact', head: true })
-          .execute().eq('status', 'active');
+        const { data: allProfiles } = await from('profiles')
+          .select('id')
+          .execute();
         
-        const { count: usersCount } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true }).execute();
-        
-        const { count: categoriesCount } = await supabase
-          .from('categories')
-          .select('*', { count: 'exact', head: true }).execute();
+        const { data: allCategories } = await from('categories')
+          .select('id')
+          .execute();
+
+        const processesCount = allProcesses?.length || 0;
+        const activeProcessesCount = allProcesses?.filter((p: any) => p.status === 'active').length || 0;
+        const usersCount = allProfiles?.length || 0;
+        const categoriesCount = allCategories?.length || 0;
 
         setStats({
-          totalProcesses: processesCount || 0,
-          activeProcesses: activeProcessesCount || 0,
-          totalUsers: usersCount || 0,
-          totalCategories: categoriesCount || 0,
+          totalProcesses: processesCount,
+          activeProcesses: activeProcessesCount,
+          totalUsers: usersCount,
+          totalCategories: categoriesCount,
           totalTasks: tasks.length,
           tasksInProgress: tasks.filter(t => t.status === 'in_progress').length,
           tasksCompleted: tasks.filter(t => t.status === 'completed').length,

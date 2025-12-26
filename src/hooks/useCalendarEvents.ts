@@ -27,8 +27,7 @@ export const useCalendarEvents = () => {
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('calendar_events')
+      const { data, error } = await from('calendar_events')
         .select('*')
         .order('start_time', { ascending: true })
         .execute();
@@ -60,14 +59,13 @@ export const useCalendarEvents = () => {
     try {
       if (!user) throw new Error('Usuário não autenticado');
 
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([{
+      const { data, error } = await from('calendar_events')
+        .insert({
           ...eventData,
           start_time: eventData.start_time.toISOString(),
           end_time: eventData.end_time.toISOString(),
           created_by: user.id,
-        }])
+        })
         .select()
         .single();
 
@@ -111,8 +109,7 @@ export const useCalendarEvents = () => {
         end_time: updates.end_time?.toISOString(),
       };
 
-      const { data, error } = await supabase
-        .from('calendar_events')
+      const { data, error } = await from('calendar_events')
         .update(updateData)
         .eq('id', id)
         .select()
@@ -156,10 +153,10 @@ export const useCalendarEvents = () => {
     try {
       const eventToDelete = events.find(e => e.id === id);
 
-      const { error } = await supabase
-        .from('calendar_events')
+      const { error } = await from('calendar_events')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
 
       if (error) throw error;
 
