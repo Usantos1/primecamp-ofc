@@ -676,6 +676,7 @@ app.post('/api/query/:table', async (req, res) => {
     const fields = Array.isArray(select) ? select.join(', ') : (select || '*');
     const { clause: whereClause, params } = buildWhereClause(where);
 
+    // Query para buscar dados
     let sql = `SELECT ${fields} FROM ${table}`;
     if (whereClause) sql += ` ${whereClause}`;
 
@@ -693,7 +694,15 @@ app.post('/api/query/:table', async (req, res) => {
     }
 
     const result = await pool.query(sql, params);
-    res.json({ rows: result.rows, count: result.rowCount });
+    
+    // Query para contar total (sem limit/offset)
+    let countSql = `SELECT COUNT(*) as total FROM ${table}`;
+    if (whereClause) countSql += ` ${whereClause}`;
+    
+    const countResult = await pool.query(countSql, params);
+    const totalCount = parseInt(countResult.rows[0]?.total || '0');
+
+    res.json({ rows: result.rows, count: totalCount });
   } catch (error) {
     console.error('Erro na query:', error);
     res.status(500).json({ error: error.message });
