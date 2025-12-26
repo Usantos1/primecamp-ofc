@@ -25,10 +25,12 @@ interface QueryOptions {
 class DatabaseClient {
   private tableName: string;
   private options: QueryOptions = {};
+  private pendingUpdate: any = null;
 
   constructor(tableName: string) {
     this.tableName = tableName;
     this.options = {};
+    this.pendingUpdate = null;
   }
 
   private getHeaders(): Record<string, string> {
@@ -50,6 +52,12 @@ class DatabaseClient {
   eq(field: string, value: any) {
     if (!this.options.where) this.options.where = {};
     this.options.where[field] = value;
+    
+    // Se há um update pendente, executar agora (suporte a .update().eq())
+    if (this.pendingUpdate !== null) {
+      return this._executeUpdate(this.pendingUpdate);
+    }
+    
     return this;
   }
 
@@ -200,7 +208,8 @@ class DatabaseClient {
     }
   }
 
-  async update(data: any): Promise<{ data: any | null; error: any | null }> {
+  // Método interno para executar update
+  private async _executeUpdate(data: any): Promise<{ data: any | null; error: any | null }> {
     try {
       const response = await fetch(`${API_URL}/update/${this.tableName}`, {
         method: 'POST',
@@ -220,6 +229,20 @@ class DatabaseClient {
       console.error(`[DB] Erro ao atualizar ${this.tableName}:`, error);
       return { data: null, error: { message: error.message } };
     }
+  }
+
+  // Suporta ambas as ordens: .eq().update() e .update().eq()
+  update(data: any): this & Promise<{ data: any | null; error: any | null }> {
+    // Se já tem where definido, executar imediatamente (.eq().update())
+    if (this.options.where && Object.keys(this.options.where).length > 0) {
+      const promise = this._executeUpdate(data);
+      // Retornar promise que também permite encadeamento
+      return Object.assign(promise, this) as any;
+    }
+    
+    // Caso contrário, armazenar para executar após .eq() (.update().eq())
+    this.pendingUpdate = data;
+    return this as any;
   }
 
   async upsert(data: any, options?: { onConflict?: string }): Promise<{ data: any | null; error: any | null }> {
