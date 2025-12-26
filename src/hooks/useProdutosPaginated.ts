@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { from } from '@/integrations/db/client';
+import { from as dbFrom } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Produto } from '@/types/assistencia';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -88,7 +88,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       // Construir query base usando wrapper PostgreSQL
       const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
       
-      let query = from('produtos')
+      let query = dbFrom('produtos')
         .select(selectFields)
         .order('nome', { ascending: true });
 
@@ -144,7 +144,6 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       
       return result;
     },
-    keepPreviousData: false, // Desabilitar para garantir dados atualizados
     staleTime: 0, // Sempre buscar dados frescos
     enabled: true, // Sempre habilitado
     refetchOnWindowFocus: false, // Não refetch ao focar janela
@@ -174,7 +173,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
         queryFn: async () => {
           const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
           
-          let query = from('produtos')
+          let query = dbFrom('produtos')
             .select(selectFields)
             .order('nome', { ascending: true });
 
@@ -262,7 +261,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   const { data: gruposData } = useQuery({
     queryKey: ['produtos-grupos'],
     queryFn: async () => {
-      const { data, error } = await from('produtos')
+      const { data, error } = await dbFrom('produtos')
         .select('grupo')
         .not('grupo', 'is', null)
         .execute();
@@ -322,8 +321,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       payload.sub_grupo = produto.sub_grupo;
     }
     
-    if (produto.qualidade !== undefined && produto.qualidade !== null && produto.qualidade !== '') {
-      payload.qualidade = produto.qualidade;
+    if ((produto as any).qualidade !== undefined && (produto as any).qualidade !== null && (produto as any).qualidade !== '') {
+      payload.qualidade = (produto as any).qualidade;
     }
 
     // Preço (BRL) - usar apenas colunas existentes
@@ -369,7 +368,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
-    const { data: novoProduto, error } = await from('produtos')
+    const { data: novoProduto, error } = await dbFrom('produtos')
       .insert({
         ...produtoSupabase,
         criado_por: user.id,
@@ -399,7 +398,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
-    const { error } = await from('produtos')
+    const { error } = await dbFrom('produtos')
       .eq('id', id)
       .update(produtoSupabase);
 
@@ -423,7 +422,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
   // Deletar produto (deletar fisicamente)
   const deleteProduto = useCallback(async (id: string) => {
-    const { error } = await from('produtos')
+    const { error } = await dbFrom('produtos')
       .eq('id', id)
       .delete();
 

@@ -30,26 +30,26 @@ export function useCargos() {
       console.log('[useCargos] 🔄 Iniciando carregamento de colaboradores...');
       
       try {
-        // 1) Buscar perfis (nome/email)
-        // Usar query igual ao UserManagement que funciona
-        console.log('[useCargos] 📡 Buscando profiles do Supabase...');
-        console.log('[useCargos] Usuário autenticado:', await authAPI.getUser().then(r => r.data.user?.id));
+        // 1) Buscar perfis (nome/email) via PostgreSQL API
+        console.log('[useCargos] 📡 Buscando profiles via PostgreSQL API...');
         
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
+        const { data: profilesData, error: profilesError } = await from('profiles')
           .select('*')
-          .execute().order('display_name', { ascending: true });
+          .order('display_name', { ascending: true })
+          .execute();
         
-        // Se der erro de RLS, tentar sem order
-        if (profilesError && profilesError.code === '42501') {
-          console.warn('[useCargos] ⚠️ Erro de permissão, tentando sem order...');
-          const { data: profilesData2, error: profilesError2 } = await supabase
-            .from('profiles')
-            .select('*').execute();
+        if (profilesError) {
+          console.error('[useCargos] ❌ ERRO ao carregar profiles:', profilesError);
           
-          if (!profilesError2 && profilesData2) {
-            console.log('[useCargos] ✅ Profiles carregados sem order:', profilesData2.length);
-            // Continuar com profilesData2
+          // Tentar query simplificada
+          console.warn('[useCargos] ⚠️ Tentando query simplificada...');
+          const { data: profilesData2, error: profilesError2 } = await from('profiles')
+            .select('*')
+            .limit(100)
+            .execute();
+          
+          if (!profilesError2 && profilesData2 && profilesData2.length > 0) {
+            console.log('[useCargos] ✅ Profiles carregados com query simplificada:', profilesData2.length);
             const todosColaboradores = profilesData2.map((profile: any) => ({
               id: profile.user_id || profile.id || profile.email || '',
               nome: profile.display_name || profile.email || 'Usuário',
@@ -64,43 +64,6 @@ export function useCargos() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(todosColaboradores));
             setIsLoading(false);
             return;
-          }
-        }
-
-        if (profilesError) {
-          console.error('[useCargos] ❌ ERRO ao carregar profiles:', profilesError);
-          console.error('[useCargos] Detalhes do erro:', {
-            message: profilesError.message,
-            code: profilesError.code,
-            details: profilesError.details,
-            hint: profilesError.hint
-          });
-          
-          // Se for erro de RLS (42501), tentar sem order
-          if (profilesError.code === '42501' || profilesError.message?.includes('permission') || profilesError.message?.includes('policy')) {
-            console.warn('[useCargos] ⚠️ Erro de permissão RLS detectado, tentando query simplificada...');
-            const { data: profilesData2, error: profilesError2 } = await from('profiles')
-              .select('*')
-              .limit(100)
-              .execute();
-            
-            if (!profilesError2 && profilesData2 && profilesData2.length > 0) {
-              console.log('[useCargos] ✅ Profiles carregados com query simplificada:', profilesData2.length);
-              const todosColaboradores = profilesData2.map((profile: any) => ({
-                id: profile.user_id || profile.id || profile.email || '',
-                nome: profile.display_name || profile.email || 'Usuário',
-                cargo: 'tecnico' as Cargo,
-                ativo: true,
-                email: profile.email || undefined,
-                created_at: profile.created_at || new Date().toISOString(),
-              })) as Colaborador[];
-              
-              console.log('[useCargos] ✅ Colaboradores criados:', todosColaboradores.length);
-              setColaboradores(todosColaboradores);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(todosColaboradores));
-              setIsLoading(false);
-              return;
-            }
           }
           
           // Tentar usar localStorage como fallback
@@ -124,24 +87,20 @@ export function useCargos() {
         }
 
         console.log('[useCargos] ✅ Profiles carregados:', profilesData?.length || 0);
-        console.log('[useCargos] Profiles:', profilesData);
 
         if (!profilesData || profilesData.length === 0) {
-          console.warn('[useCargos] ⚠️ Nenhum perfil encontrado no Supabase');
+          console.warn('[useCargos] ⚠️ Nenhum perfil encontrado');
           setColaboradores([]);
           setIsLoading(false);
           return;
         }
 
-        // 2) Buscar posições dos usuários (como no UserManagement)
+        // 2) Buscar posições dos usuários
         let positionsData: any[] = [];
         try {
-          const { data: posData, error: positionsError } = await supabase
-            .from('user_position_departments')
-            .select(`
-              *,
-              position:positions(*)
-            .execute()`);
+          const { data: posData, error: positionsError } = await from('user_position_departments')
+            .select('*')
+            .execute();
 
           if (positionsError) {
             console.warn('[useCargos] Erro ao carregar posições:', positionsError);
@@ -153,45 +112,20 @@ export function useCargos() {
         }
 
         // 3) Montar lista de colaboradores
-        // SIMPLIFICADO: Criar lista com TODOS os usuários como colaboradores
-        // Todos aparecem como 'tecnico' para que possam ser selecionados em ambos os campos
         const todosColaboradores: Colaborador[] = profilesData.map((profile: any) => {
           const userPositions = positionsData.filter(
             (up: any) => up.user_id === profile.user_id
           );
 
-          // Verificar se é técnico (por posição, departamento ou role)
-          const hasTecnicoPosition = userPositions.some(
-            (up: any) =>
-              up.position &&
-              typeof up.position.name === 'string' &&
-              up.position.name.toLowerCase().includes('técni')
-          );
-
-          const hasTecnicoDepartment = userPositions.some(
-            (up: any) =>
-              up.department_name &&
-              typeof up.department_name === 'string' &&
-              up.department_name.toLowerCase().includes('técni')
-          );
-
-          const isTecnicoByProfile = profile.department && 
-            typeof profile.department === 'string' &&
-            profile.department.toLowerCase().includes('técni');
-
           // Determinar cargo
-          // SIMPLIFICADO: Todos começam como 'tecnico' para aparecer na lista de técnicos
-          // O cargo pode ser ajustado, mas todos ainda aparecem como técnicos
           let cargo: Cargo = 'tecnico'; // Padrão: todos como técnico
           
-          // Ajustar cargo apenas para exibição, mas não afeta a lista de técnicos
           if (profile.role === 'admin') {
             cargo = 'vendedor';
           } else if (profile.department && profile.department.toLowerCase().includes('venda')) {
             cargo = 'vendedor';
           }
 
-          // Usar user_id como ID principal
           const colaboradorId = profile.user_id || profile.id || profile.email || '';
           
           return {
@@ -205,17 +139,14 @@ export function useCargos() {
         });
 
         console.log(`[useCargos] ✅ Total de profiles: ${profilesData.length}`);
-        console.log(`[useCargos] ✅ Total de posições: ${positionsData.length}`);
         console.log(`[useCargos] ✅ Total de colaboradores criados: ${todosColaboradores.length}`);
-        console.log(`[useCargos] ✅ Colaboradores:`, todosColaboradores.map(t => `${t.nome} (${t.cargo})`));
-        console.log(`[useCargos] ✅ Colaboradores completos:`, todosColaboradores);
 
         setColaboradores(todosColaboradores);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(todosColaboradores));
         
         console.log('[useCargos] ✅ Estado atualizado e salvo no localStorage');
-      } catch (supabaseError) {
-        console.error('[useCargos] Erro ao carregar colaboradores:', supabaseError);
+      } catch (error) {
+        console.error('[useCargos] Erro ao carregar colaboradores:', error);
         // Tentar usar localStorage como fallback
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
