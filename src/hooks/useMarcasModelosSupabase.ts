@@ -34,7 +34,7 @@ export function useMarcasSupabase() {
     queryFn: async () => {
       const { data, error } = await from('marcas')
         .select('*')
-        .eq('situacao', 'ativo')
+        .neq('situacao', 'inativo')  // Mostra ativo e null
         .order('nome', { ascending: true })
         .execute();
 
@@ -159,7 +159,7 @@ export function useModelosSupabase() {
     queryFn: async () => {
       const { data, error } = await from('modelos')
         .select('*')
-        .eq('situacao', 'ativo')
+        .neq('situacao', 'inativo')  // Mostra ativo e null
         .order('nome', { ascending: true })
         .execute();
 
@@ -265,7 +265,7 @@ export function useModelosSupabase() {
 
   // Buscar modelos por marca
   const getModelosByMarca = (marcaId: string): Modelo[] => {
-    return modelos.filter(m => m.marca_id === marcaId && m.situacao === 'ativo');
+    return modelos.filter(m => m.marca_id === marcaId && m.situacao !== 'inativo');
   };
 
   return {
