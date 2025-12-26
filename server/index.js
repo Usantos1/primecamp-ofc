@@ -171,15 +171,15 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Rate limiting
+// Rate limiting - aumentado para suportar o dashboard com muitas queries
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo de 100 requisições por IP
+  max: 5000, // máximo de 5000 requisições por IP (dashboard faz muitas queries)
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 50, // máximo de 50 tentativas de login por IP
+  max: 100, // máximo de 100 tentativas de login por IP
   message: { error: 'Muitas tentativas de login. Aguarde 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
