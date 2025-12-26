@@ -4,25 +4,22 @@ import { ThemeProvider } from "next-themes";
 import App from "./App.tsx";
 import "./index.css";
 
-// 🧹 LIMPEZA FINAL DE TOKENS SUPABASE ANTES DE INICIAR A APLICAÇÃO
+// Limpar tokens antigos/inválidos do localStorage
 if (typeof window !== 'undefined' && window.localStorage) {
   try {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('sb-') || key.includes('gogxicjaqpqbhsfzutij'))) {
+      if (key && (key.startsWith('sb-') || key.includes('gogxicjaq'))) {
         keysToRemove.push(key);
       }
     }
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
-      console.log('[main.tsx] 🧹 Removido token Supabase:', key);
+      console.log('[App] Removido token inválido:', key);
     });
-    if (keysToRemove.length > 0) {
-      console.log('[main.tsx] ✅ Limpeza final: removidos', keysToRemove.length, 'tokens do Supabase');
-    }
   } catch (e) {
-    console.warn('[main.tsx] Erro ao limpar tokens Supabase:', e);
+    // Ignorar erros de localStorage
   }
 }
 

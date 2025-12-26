@@ -1,269 +1,207 @@
 /**
- * Cliente de autenticação para API PostgreSQL
- * Substitui o Supabase Auth
+ * Cliente de Autenticação - API REST
+ * 
+ * Este arquivo gerencia toda a autenticação do sistema.
+ * Todas as operações passam pela API em api.primecamp.cloud
  */
 
-// Detectar se está em desenvolvimento local ou produção
-const API_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3000/api' 
-    : 'https://api.primecamp.cloud/api');
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
+// Validação de segurança
+if (API_URL.includes('.supabase.co')) {
+  throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
 }
 
-export interface SignupData {
-  email: string;
-  password: string;
-  display_name?: string;
-  phone?: string;
-  department?: string;
-  role?: 'admin' | 'member';
-}
+console.log('[Auth] ✅ Cliente de autenticação inicializado:', API_URL);
 
-export interface AuthResponse {
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    email_verified: boolean;
-    created_at: string;
-  };
-  profile: any;
-}
+// Limpar qualquer token antigo de outros sistemas
+const cleanOldTokens = () => {
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.includes('sb-') || key.includes('supabase'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => {
+    localStorage.removeItem(key);
+    console.log('[Auth] Removido token antigo:', key);
+  });
+};
 
-export interface User {
+// Executar limpeza ao carregar
+cleanOldTokens();
+
+interface User {
   id: string;
   email: string;
-  email_verified: boolean;
-  created_at: string;
+  role?: string;
+  profile?: any;
+}
+
+interface AuthResponse {
+  data?: {
+    user?: User;
+    token?: string;
+    session?: any;
+  };
+  error?: {
+    message: string;
+    code?: string;
+  };
 }
 
 class AuthAPIClient {
-  private getAuthHeaders(): Record<string, string> {
+  private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
-    // Obter token do localStorage
     const token = localStorage.getItem('auth_token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
     return headers;
   }
 
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    console.log('[authAPI] Fazendo login via API PostgreSQL:', { 
-      apiUrl: API_URL,
-      email: credentials.email 
-    });
-    
-    // 🚫 GARANTIR que não está usando Supabase
-    if (API_URL.includes('supabase.co')) {
-      throw new Error('🚫 ERRO: API_URL ainda aponta para Supabase! Configure VITE_API_URL corretamente.');
-    }
-    
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+  async login(email: string, password: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erro ao fazer login' }));
-      console.error('[authAPI] Erro no login:', error);
-      throw new Error(error.error || 'Erro ao fazer login');
-    }
+      const data = await response.json();
 
-    const data = await response.json();
-    console.log('[authAPI] Login bem-sucedido:', { 
-      userId: data.user?.id, 
-      email: data.user?.email,
-      hasToken: !!data.token 
-    });
-    
-    // Limpar QUALQUER token do Supabase que possa estar no localStorage
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('supabase') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-        console.log('[authAPI] Removido token Supabase:', key);
+      if (!response.ok) {
+        return { error: { message: data.error || data.message || 'Erro ao fazer login' } };
       }
-    });
-    
-    // Salvar token no localStorage (PostgreSQL API)
-    if (data.token) {
-      localStorage.setItem('auth_token', data.token);
-      console.log('[authAPI] Token salvo como auth_token');
-    } else {
-      console.warn('[authAPI] AVISO: Login bem-sucedido mas sem token!');
-    }
 
-    return data;
+      // Salvar token
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
+
+      return { data: { user: data.user, token: data.token } };
+    } catch (error: any) {
+      console.error('[Auth] Erro no login:', error);
+      return { error: { message: error.message || 'Erro de conexão' } };
+    }
   }
 
-  async signup(data: SignupData): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+  async signup(email: string, password: string, userData?: any): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, ...userData }),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao criar conta');
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: { message: data.error || data.message || 'Erro ao criar conta' } };
+      }
+
+      return { data: { user: data.user } };
+    } catch (error: any) {
+      console.error('[Auth] Erro no signup:', error);
+      return { error: { message: error.message || 'Erro de conexão' } };
     }
-
-    const result = await response.json();
-    
-    // Salvar token no localStorage
-    if (result.token) {
-      localStorage.setItem('auth_token', result.token);
-    }
-
-    return result;
   }
 
   async logout(): Promise<void> {
     try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-      });
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: this.getHeaders(),
+        }).catch(() => {});
+      }
     } finally {
-      // Sempre remover token do localStorage
       localStorage.removeItem('auth_token');
+      cleanOldTokens();
     }
   }
 
-  async getCurrentUser(): Promise<{ user: User; profile: any } | null> {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      return null;
-    }
-
+  async getCurrentUser(): Promise<AuthResponse> {
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        return { data: { user: undefined } };
+      }
+
       const response = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
-        // Token inválido ou expirado
-        localStorage.removeItem('auth_token');
-        return null;
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+        }
+        return { data: { user: undefined } };
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Erro ao buscar usuário atual:', error);
-      localStorage.removeItem('auth_token');
-      return null;
+      const data = await response.json();
+      return { data: { user: data.user || data } };
+    } catch (error: any) {
+      console.error('[Auth] Erro ao obter usuário:', error);
+      return { data: { user: undefined } };
     }
+  }
+
+  async resetPassword(email: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: { message: data.error || data.message || 'Erro ao resetar senha' } };
+      }
+
+      return { data: {} };
+    } catch (error: any) {
+      console.error('[Auth] Erro no reset de senha:', error);
+      return { error: { message: error.message || 'Erro de conexão' } };
+    }
+  }
+
+  async updatePassword(newPassword: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_URL}/auth/update-password`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: { message: data.error || data.message || 'Erro ao atualizar senha' } };
+      }
+
+      return { data: {} };
+    } catch (error: any) {
+      console.error('[Auth] Erro ao atualizar senha:', error);
+      return { error: { message: error.message || 'Erro de conexão' } };
+    }
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('auth_token');
   }
 
   getToken(): string | null {
     return localStorage.getItem('auth_token');
   }
-
-  isAuthenticated(): boolean {
-    return !!this.getToken();
-  }
-
-  // Métodos compatíveis com Supabase Auth para facilitar migração
-  async getUser(): Promise<{ data: { user: User | null }; error: any | null }> {
-    try {
-      const currentUser = await this.getCurrentUser();
-      return {
-        data: { user: currentUser?.user || null },
-        error: null,
-      };
-    } catch (error: any) {
-      return {
-        data: { user: null },
-        error: { message: error.message || 'Erro ao buscar usuário' },
-      };
-    }
-  }
-
-  async getSession(): Promise<{ data: { session: { access_token: string } | null }; error: any | null }> {
-    try {
-      const token = this.getToken();
-      if (!token) {
-        return {
-          data: { session: null },
-          error: null,
-        };
-      }
-
-      // Verificar se token ainda é válido
-      const currentUser = await this.getCurrentUser();
-      if (!currentUser) {
-        return {
-          data: { session: null },
-          error: null,
-        };
-      }
-
-      return {
-        data: { session: { access_token: token } },
-        error: null,
-      };
-    } catch (error: any) {
-      return {
-        data: { session: null },
-        error: { message: error.message || 'Erro ao buscar sessão' },
-      };
-    }
-  }
-
-  async requestPasswordReset(email: string): Promise<void> {
-    console.log('[authAPI] Solicitando reset de senha:', { apiUrl: API_URL, email });
-    
-    const response = await fetch(`${API_URL}/auth/request-password-reset`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erro ao solicitar redefinição de senha' }));
-      console.error('[authAPI] Erro ao solicitar reset:', error);
-      throw new Error(error.error || 'Erro ao solicitar redefinição de senha');
-    }
-
-    const data = await response.json();
-    console.log('[authAPI] Reset solicitado com sucesso:', data);
-  }
-
-  async resetPassword(token: string, password: string): Promise<void> {
-    console.log('[authAPI] Redefinindo senha:', { apiUrl: API_URL, hasToken: !!token });
-    
-    const response = await fetch(`${API_URL}/auth/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erro ao redefinir senha' }));
-      console.error('[authAPI] Erro ao redefinir senha:', error);
-      throw new Error(error.error || 'Erro ao redefinir senha');
-    }
-
-    const data = await response.json();
-    console.log('[authAPI] Senha redefinida com sucesso:', data);
-  }
 }
 
 export const authAPI = new AuthAPIClient();
-
+export default authAPI;

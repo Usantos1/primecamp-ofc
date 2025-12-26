@@ -19,8 +19,7 @@ export const useUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('profiles')
+      const { data, error } = await from('profiles')
         .select(`
           id, 
           user_id, 

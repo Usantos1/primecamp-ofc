@@ -24,22 +24,20 @@ export function useFinancialCategories() {
     queryKey: ['financial-categories'],
     queryFn: async () => {
       try {
-        const { data, error } = await (supabase as any)
-          .from('financial_categories')
+        const { data, error } = await from('financial_categories')
           .select('*')
-          .execute().order('name');
+          .order('name')
+          .execute();
 
         if (error) {
           console.warn('Erro ao buscar categorias financeiras:', error);
-          // Se a tabela não existe, retornar array vazio
           if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
-            console.warn('Tabela financial_categories não existe ainda. Aplique as migrations do banco de dados.');
+            console.warn('Tabela financial_categories não existe ainda.');
             return [];
           }
           throw error;
         }
         
-        // Filtrar apenas categorias ativas se o campo existir
         const activeCategories = (data || []).filter((cat: FinancialCategory) => 
           cat.is_active !== false
         );
@@ -70,24 +68,23 @@ export function useBillsToPay(filters?: {
     queryKey: ['bills-to-pay', filters],
     queryFn: async () => {
       try {
-        let query = (supabase as any)
-          .from('bills_to_pay')
-          .select('*, category:financial_categories(*).execute()')
+        let q = from('bills_to_pay')
+          .select('*')
           .order('due_date', { ascending: true });
 
         if (filters?.status) {
-          query = query.eq('status', filters.status);
+          q = q.eq('status', filters.status);
         }
         if (filters?.expense_type) {
-          query = query.eq('expense_type', filters.expense_type);
+          q = q.eq('expense_type', filters.expense_type);
         }
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
           const endDate = `${filters.month}-31`;
-          query = query.gte('due_date', startDate).lte('due_date', endDate);
+          q = q.gte('due_date', startDate).lte('due_date', endDate);
         }
 
-        const { data, error } = await query;
+        const { data, error } = await q.execute();
         if (error) {
           console.warn('Tabela bills_to_pay não existe ainda:', error.message);
           return [];
@@ -103,12 +100,7 @@ export function useBillsToPay(filters?: {
 
   const createBill = useMutation({
     mutationFn: async (data: BillToPayFormData) => {
-      const { data: result, error } = await (supabase as any)
-        .from('bills_to_pay')
-        .insert(data)
-        .select()
-        .single();
-
+      const { data: result, error } = await from('bills_to_pay').insert(data);
       if (error) throw error;
       return result as BillToPay;
     },
@@ -121,13 +113,9 @@ export function useBillsToPay(filters?: {
 
   const updateBill = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<BillToPay> }) => {
-      const { data: result, error } = await (supabase as any)
-        .from('bills_to_pay')
-        .update(data)
+      const { data: result, error } = await from('bills_to_pay')
         .eq('id', id)
-        .select()
-        .single();
-
+        .update(data);
       if (error) throw error;
       return result as BillToPay;
     },
@@ -140,18 +128,15 @@ export function useBillsToPay(filters?: {
 
   const payBill = useMutation({
     mutationFn: async ({ id, payment_method }: { id: string; payment_method: string }) => {
-      const { data: result, error } = await (supabase as any)
-        .from('bills_to_pay')
+      const userData = await authAPI.getCurrentUser();
+      const { data: result, error } = await from('bills_to_pay')
+        .eq('id', id)
         .update({
           status: 'pago',
           payment_date: new Date().toISOString().split('T')[0],
           payment_method,
-          paid_by: (await authAPI.getUser()).data.user?.id,
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
+          paid_by: userData.data?.user?.id,
+        });
       if (error) throw error;
       return result as BillToPay;
     },
@@ -164,11 +149,7 @@ export function useBillsToPay(filters?: {
 
   const deleteBill = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('bills_to_pay')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await from('bills_to_pay').eq('id', id).delete();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -203,20 +184,20 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
     queryKey: ['cash-closings', filters],
     queryFn: async () => {
       try {
-        let query = from('cash_closings')
+        let q = from('cash_closings')
           .select('*')
           .order('closing_date', { ascending: false });
 
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
           const endDate = `${filters.month}-31`;
-          query = query.gte('closing_date', startDate).lte('closing_date', endDate);
+          q = q.gte('closing_date', startDate).lte('closing_date', endDate);
         }
         if (filters?.seller_id) {
-          query = query.eq('seller_id', filters.seller_id);
+          q = q.eq('seller_id', filters.seller_id);
         }
 
-        const { data, error } = await query;
+        const { data, error } = await q.execute();
         if (error) {
           console.warn('Tabela cash_closings não existe ainda:', error.message);
           return [];
@@ -232,19 +213,14 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
 
   const createCashClosing = useMutation({
     mutationFn: async (data: CashClosingFormData) => {
-      const userData = await authAPI.getUser();
-      const { data: result, error } = await (supabase as any)
-        .from('cash_closings')
-        .insert({
-          ...data,
-          seller_id: userData.data.user?.id,
-          seller_name: profile?.name || userData.data.user?.email,
-          opening_amount: 150.00,
-          status: 'fechado',
-        })
-        .select()
-        .single();
-
+      const userData = await authAPI.getCurrentUser();
+      const { data: result, error } = await from('cash_closings').insert({
+        ...data,
+        seller_id: userData.data?.user?.id,
+        seller_name: profile?.name || userData.data?.user?.email,
+        opening_amount: 150.00,
+        status: 'fechado',
+      });
       if (error) throw error;
       return result as CashClosing;
     },
@@ -257,13 +233,9 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
 
   const updateCashClosing = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<CashClosing> }) => {
-      const { data: result, error } = await (supabase as any)
-        .from('cash_closings')
-        .update(data)
+      const { data: result, error } = await from('cash_closings')
         .eq('id', id)
-        .select()
-        .single();
-
+        .update(data);
       if (error) throw error;
       return result as CashClosing;
     },
@@ -276,18 +248,14 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
 
   const verifyCashClosing = useMutation({
     mutationFn: async (id: string) => {
-      const userData = await authAPI.getUser();
-      const { data: result, error } = await (supabase as any)
-        .from('cash_closings')
+      const userData = await authAPI.getCurrentUser();
+      const { data: result, error } = await from('cash_closings')
+        .eq('id', id)
         .update({
           status: 'conferido',
-          verified_by: userData.data.user?.id,
+          verified_by: userData.data?.user?.id,
           verified_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
+        });
       if (error) throw error;
       return result as CashClosing;
     },
@@ -321,21 +289,20 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
     queryKey: ['financial-transactions', filters],
     queryFn: async () => {
       try {
-        let query = (supabase as any)
-          .from('financial_transactions')
-          .select('*, category:financial_categories(*).execute()')
+        let q = from('financial_transactions')
+          .select('*')
           .order('transaction_date', { ascending: false });
 
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
           const endDate = `${filters.month}-31`;
-          query = query.gte('transaction_date', startDate).lte('transaction_date', endDate);
+          q = q.gte('transaction_date', startDate).lte('transaction_date', endDate);
         }
         if (filters?.type) {
-          query = query.eq('type', filters.type);
+          q = q.eq('type', filters.type);
         }
 
-        const { data, error } = await query;
+        const { data, error } = await q.execute();
         if (error) {
           console.warn('Tabela financial_transactions não existe ainda:', error.message);
           return [];
@@ -351,12 +318,7 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
 
   const createTransaction = useMutation({
     mutationFn: async (data: Omit<FinancialTransaction, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data: result, error } = await (supabase as any)
-        .from('financial_transactions')
-        .insert(data)
-        .select()
-        .single();
-
+      const { data: result, error } = await from('financial_transactions').insert(data);
       if (error) throw error;
       return result as FinancialTransaction;
     },
@@ -411,12 +373,12 @@ export function useBillsDueSoon(daysAhead: number = 7) {
         const futureDate = new Date(today);
         futureDate.setDate(today.getDate() + daysAhead);
 
-        const { data, error } = await (supabase as any)
-          .from('bills_to_pay')
-          .select('*, category:financial_categories(*).execute()')
+        const { data, error } = await from('bills_to_pay')
+          .select('*')
           .eq('status', 'pendente')
           .lte('due_date', futureDate.toISOString().split('T')[0])
-          .order('due_date', { ascending: true });
+          .order('due_date', { ascending: true })
+          .execute();
 
         if (error) {
           console.warn('Tabela bills_to_pay não existe ainda:', error.message);
@@ -432,4 +394,3 @@ export function useBillsDueSoon(daysAhead: number = 7) {
     retry: false,
   });
 }
-
