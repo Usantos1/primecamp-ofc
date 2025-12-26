@@ -1298,8 +1298,13 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
           continue;
         }
 
-        // Preparar dados
+        // Preparar dados - aceitar múltiplos nomes de campos para compatibilidade
+        const valorVenda = parseFloat(produto.valor_dinheiro_pix) || parseFloat(produto.vi_venda) || parseFloat(produto.valor_venda) || 0;
+        const valorParcelado = produto.valor_parcelado_6x ? parseFloat(produto.valor_parcelado_6x) : (valorVenda ? valorVenda * 1.2 : null);
+        const margemPercentual = produto.margem_percentual ? parseFloat(produto.margem_percentual) : (produto.margem ? parseFloat(produto.margem) : null);
+        
         const dadosProduto = {
+          codigo: produto.codigo ? parseInt(produto.codigo) : null,
           nome: (produto.descricao || produto.nome || '').toUpperCase().substring(0, 255),
           codigo_barras: produto.codigo_barras || null,
           referencia: produto.referencia || null,
@@ -1308,9 +1313,9 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
           grupo: produto.grupo || null,
           sub_grupo: produto.sub_grupo || null,
           qualidade: produto.qualidade || null,
-          valor_dinheiro_pix: parseFloat(produto.valor_venda) || 0,
-          valor_parcelado_6x: produto.valor_parcelado_6x ? parseFloat(produto.valor_parcelado_6x) : null,
-          margem_percentual: produto.margem_percentual ? parseFloat(produto.margem_percentual) : null,
+          valor_dinheiro_pix: valorVenda,
+          valor_parcelado_6x: valorParcelado,
+          margem_percentual: margemPercentual,
           quantidade: parseInt(produto.quantidade) || 0,
           estoque_minimo: parseInt(produto.estoque_minimo) || 0,
           localizacao: produto.localizacao || null,
