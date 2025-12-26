@@ -13,8 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings
+  Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings, Upload
 } from 'lucide-react';
+import { ImportarClientes } from '@/components/ImportarClientes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { buscarCEP } from '@/hooks/useAssistencia';
 import { Cliente, ClienteFormData } from '@/types/assistencia';
@@ -52,6 +53,7 @@ export default function Clientes() {
   const [formData, setFormData] = useState<ClienteFormData>(INITIAL_FORM);
   const [isLoading, setIsLoading] = useState(false);
   const [showAniversarioConfig, setShowAniversarioConfig] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [aniversarioConfig, setAniversarioConfig] = useState({
     mensagem: '🎉 *Feliz Aniversário!*\n\nOlá {nome}! 🎂\n\nHoje é um dia muito especial! Desejamos um feliz aniversário repleto de alegria, saúde e muitas realizações!\n\nQue este novo ano de vida seja cheio de momentos especiais e conquistas!\n\nParabéns! 🎈🎁',
     horario: '09:00',
@@ -317,6 +319,14 @@ export default function Clientes() {
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Novo Cliente</span>
                 <span className="sm:hidden">Novo</span>
+              </Button>
+              <Button 
+                onClick={() => setShowImportDialog(true)}
+                variant="outline"
+                className="gap-2 h-9 md:h-10 border-2 border-gray-300"
+              >
+                <Upload className="h-4 w-4" />
+                <span className="hidden sm:inline">Importar</span>
               </Button>
               <Button 
                 onClick={async () => {
@@ -908,6 +918,25 @@ export default function Clientes() {
                 Salvar Configuração
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Importação de Clientes */}
+        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-3 md:p-6">
+            <DialogHeader className="pb-2 md:pb-4">
+              <DialogTitle className="text-base md:text-lg flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Importar Clientes em Massa
+              </DialogTitle>
+            </DialogHeader>
+            <ImportarClientes 
+              onClose={() => setShowImportDialog(false)}
+              onSuccess={() => {
+                setShowImportDialog(false);
+                window.location.reload();
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>
