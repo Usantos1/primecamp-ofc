@@ -83,7 +83,7 @@ export function useModules(trainingId?: string) {
   const reorderModules = useMutation({
     mutationFn: async (modules: { id: string; order_index: number }[]) => {
       const updates = modules.map(m => 
-        from('training_modules').update({ order_index: m.order_index }).eq('id', m.id)
+        from('training_modules').eq('id', m.id).update({ order_index: m.order_index })
       );
       
       await Promise.all(updates);

@@ -120,14 +120,14 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
     try {
       // Update profile data
       const { error: profileError } = await from('profiles')
+        .eq('user_id', user.user_id)
         .update({
           display_name: formData.display_name,
           phone: formData.phone,
           department: formData.department,
           role: formData.role,
           approved: formData.approved
-        })
-        .eq('user_id', user.user_id);
+        });
 
       if (profileError) {
         console.error('Profile update error:', profileError);

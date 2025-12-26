@@ -80,7 +80,7 @@ export function useLessons(moduleId?: string) {
   const reorderLessons = useMutation({
     mutationFn: async (lessons: { id: string; order_index: number }[]) => {
       const updates = lessons.map(l => 
-        from('training_lessons').update({ order_index: l.order_index }).eq('id', l.id)
+        from('training_lessons').eq('id', l.id).update({ order_index: l.order_index })
       );
       
       await Promise.all(updates);
