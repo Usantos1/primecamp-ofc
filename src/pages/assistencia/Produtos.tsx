@@ -361,8 +361,8 @@ export default function Produtos() {
 
   return (
     <ModernLayout title="Pesquisa de Produtos" subtitle="Gerenciar produtos e serviços">
-      {/* Container principal - ocupa todo espaço disponível */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      {/* Container principal - ocupa toda altura disponível */}
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Barra de filtros e ações - fixa no topo */}
         <div className="bg-background border-b-2 border-gray-300 shadow-sm shrink-0 rounded-t-lg">
           <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 px-3 py-2">
@@ -480,9 +480,9 @@ export default function Produtos() {
         </div>
 
         {/* Área da tabela - apenas o corpo rola */}
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <Card className="flex-1 flex flex-col overflow-hidden border-2 border-gray-300 min-h-0">
-            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <Card className="flex-1 flex flex-col overflow-hidden border-2 border-gray-300">
+            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
             {hookResult.error ? (
               <div className="p-12 text-center">
                 <EmptyState

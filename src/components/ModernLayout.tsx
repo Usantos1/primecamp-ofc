@@ -137,9 +137,9 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
             </div>
           </header>
 
-          {/* Main Content */}
-          <main className="flex-1 overflow-hidden flex flex-col min-h-0">
-            <div className="flex-1 p-2 md:p-4 pt-4 md:pt-6 max-w-full min-h-0 flex flex-col overflow-hidden">
+          {/* Main Content - altura calculada: viewport - header (64px) */}
+          <main className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
+            <div className="h-full p-2 md:p-4 pt-4 md:pt-6 max-w-full flex flex-col overflow-hidden">
               {children}
             </div>
           </main>
