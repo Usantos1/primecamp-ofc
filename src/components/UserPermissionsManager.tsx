@@ -102,8 +102,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         .select('role_id')
         .eq('user_id', userId)
         .eq('is_primary', true)
-        .maybeSingle()
-        .execute();
+        .maybeSingle();
 
       if (userRoleData?.role_id) {
         setSelectedRoleId(userRoleData.role_id);
@@ -162,8 +161,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         .select('id, position_id, department_name')
         .eq('user_id', userId)
         .eq('is_primary', true)
-        .maybeSingle()
-        .execute();
+        .maybeSingle();
 
       if (selectError) {
         console.error('Erro ao buscar user_position_departments:', selectError);
@@ -240,8 +238,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         .select('id')
         .eq('user_id', userId)
         .eq('is_primary', true)
-        .maybeSingle()
-        .execute();
+        .maybeSingle();
 
       if (updData) {
         await from('user_position_departments')
@@ -293,7 +290,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
 
       // Buscar role anterior para histórico
       const { data: oldRoleData } = await from('user_position_departments')
-        .select('role_id, role:roles(display_name).execute()')
+        .select('role_id')
         .eq('user_id', userId)
         .eq('is_primary', true)
         .maybeSingle();
