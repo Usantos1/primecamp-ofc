@@ -1269,6 +1269,128 @@ app.post('/api/functions/disc-session-status', authenticateToken, async (req, re
   }
 });
 
+// POST /api/functions/import-produtos - Importar produtos em lote
+app.post('/api/functions/import-produtos', authenticateToken, async (req, res) => {
+  try {
+    const { produtos, opcoes } = req.body;
+    
+    if (!produtos || !Array.isArray(produtos)) {
+      return res.status(400).json({ error: 'Array de produtos é obrigatório' });
+    }
+
+    const skipDuplicates = opcoes?.skipDuplicates ?? true;
+    const updateExisting = opcoes?.updateExisting ?? false;
+
+    let inseridos = 0;
+    let atualizados = 0;
+    let erros = 0;
+    let invalidos = 0;
+    const errosDetalhes = [];
+
+    console.log(`[ImportProdutos] Processando ${produtos.length} produtos...`);
+
+    for (const produto of produtos) {
+      try {
+        // Validar produto
+        if (!produto.descricao && !produto.nome) {
+          invalidos++;
+          continue;
+        }
+
+        // Preparar dados
+        const dadosProduto = {
+          nome: (produto.descricao || produto.nome || '').toUpperCase().substring(0, 255),
+          codigo_barras: produto.codigo_barras || null,
+          referencia: produto.referencia || null,
+          marca: produto.marca || null,
+          modelo: produto.modelo || null,
+          grupo: produto.grupo || null,
+          sub_grupo: produto.sub_grupo || null,
+          qualidade: produto.qualidade || null,
+          valor_dinheiro_pix: parseFloat(produto.valor_venda) || 0,
+          valor_parcelado_6x: produto.valor_parcelado_6x ? parseFloat(produto.valor_parcelado_6x) : null,
+          margem_percentual: produto.margem_percentual ? parseFloat(produto.margem_percentual) : null,
+          quantidade: parseInt(produto.quantidade) || 0,
+          estoque_minimo: parseInt(produto.estoque_minimo) || 0,
+          localizacao: produto.localizacao || null,
+        };
+
+        // Verificar se produto já existe (por código_barras ou referência ou nome)
+        let produtoExistente = null;
+        
+        if (produto.codigo_barras) {
+          const checkResult = await pool.query(
+            'SELECT id FROM produtos WHERE codigo_barras = $1 LIMIT 1',
+            [produto.codigo_barras]
+          );
+          if (checkResult.rows.length > 0) {
+            produtoExistente = checkResult.rows[0];
+          }
+        }
+        
+        if (!produtoExistente && produto.referencia) {
+          const checkResult = await pool.query(
+            'SELECT id FROM produtos WHERE referencia = $1 LIMIT 1',
+            [produto.referencia]
+          );
+          if (checkResult.rows.length > 0) {
+            produtoExistente = checkResult.rows[0];
+          }
+        }
+
+        if (produtoExistente) {
+          if (skipDuplicates) {
+            // Pular duplicado
+            continue;
+          } else if (updateExisting) {
+            // Atualizar existente
+            const keys = Object.keys(dadosProduto).filter(k => dadosProduto[k] !== null);
+            const values = keys.map(k => dadosProduto[k]);
+            const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+            
+            await pool.query(
+              `UPDATE produtos SET ${setClause}, atualizado_em = NOW() WHERE id = $${keys.length + 1}`,
+              [...values, produtoExistente.id]
+            );
+            atualizados++;
+          }
+        } else {
+          // Inserir novo
+          const keys = Object.keys(dadosProduto).filter(k => dadosProduto[k] !== null);
+          const values = keys.map(k => dadosProduto[k]);
+          const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+          
+          await pool.query(
+            `INSERT INTO produtos (${keys.join(', ')}, criado_em) VALUES (${placeholders}, NOW())`,
+            values
+          );
+          inseridos++;
+        }
+      } catch (produtoError) {
+        console.error('[ImportProdutos] Erro ao processar produto:', produtoError.message);
+        erros++;
+        errosDetalhes.push(produtoError.message);
+      }
+    }
+
+    console.log(`[ImportProdutos] Concluído: ${inseridos} inseridos, ${atualizados} atualizados, ${erros} erros, ${invalidos} inválidos`);
+
+    res.json({
+      success: true,
+      resultado: {
+        inseridos,
+        atualizados,
+        erros,
+        invalidos,
+        erros_detalhes: errosDetalhes.length > 0 ? errosDetalhes.slice(0, 10) : undefined
+      }
+    });
+  } catch (error) {
+    console.error('[ImportProdutos] Erro geral:', error);
+    res.status(500).json({ error: error.message || 'Erro ao importar produtos' });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);

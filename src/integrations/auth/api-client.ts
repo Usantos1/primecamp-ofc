@@ -201,6 +201,22 @@ class AuthAPIClient {
   getToken(): string | null {
     return localStorage.getItem('auth_token');
   }
+
+  // Método de compatibilidade para código legado que usa getSession()
+  async getSession(): Promise<{ data: { session: { access_token: string } | null }; error: any }> {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      return { 
+        data: { 
+          session: { 
+            access_token: token 
+          } 
+        }, 
+        error: null 
+      };
+    }
+    return { data: { session: null }, error: null };
+  }
 }
 
 export const authAPI = new AuthAPIClient();
