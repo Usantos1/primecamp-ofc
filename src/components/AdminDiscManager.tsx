@@ -66,11 +66,13 @@ export const AdminDiscManager = () => {
       if (error) throw error;
       
       // Get user names separately
-      const userIds = [...new Set(data.map(item => item.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-       .execute() .in('user_id', userIds);
+      const userIds = [...new Set((data || []).map(item => item.user_id).filter(Boolean))];
+      const { data: profiles } = userIds.length > 0 
+        ? await from('profiles')
+            .select('user_id, display_name')
+            .in('user_id', userIds)
+            .execute()
+        : { data: [] };
         
       return data.map(item => ({
         id: item.id,

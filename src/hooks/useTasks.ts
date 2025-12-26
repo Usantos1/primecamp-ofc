@@ -50,11 +50,13 @@ export const useTasks = () => {
       }
 
       // Fetch user names separately
-      const userIds = [...new Set(data?.map(task => task.responsible_user_id))];
-      const { data: profiles } = await from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds)
-        .execute();
+      const userIds = [...new Set((data || []).map(task => task.responsible_user_id).filter(Boolean))];
+      const { data: profiles } = userIds.length > 0 
+        ? await from('profiles')
+            .select('user_id, display_name')
+            .in('user_id', userIds)
+            .execute()
+        : { data: [] };
 
       // Buscar categorias e processos separadamente se necessário
       const categoryIds = [...new Set((data || []).map(t => t.category_id).filter(Boolean))];
