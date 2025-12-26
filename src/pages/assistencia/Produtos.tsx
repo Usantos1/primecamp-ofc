@@ -361,10 +361,10 @@ export default function Produtos() {
 
   return (
     <ModernLayout title="Pesquisa de Produtos" subtitle="Gerenciar produtos e serviços">
-      {/* Container principal com altura calculada - compensa padding do ModernLayout */}
-      <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
-        {/* Barra de filtros e ações - fixa no topo do container */}
-        <div className="sticky top-0 z-30 bg-background border-b-2 border-gray-300 shadow-sm shrink-0">
+      {/* Container principal - flexível sem altura forçada */}
+      <div className="flex flex-col min-h-0">
+        {/* Barra de filtros e ações */}
+        <div className="bg-background border-b-2 border-gray-300 shadow-sm shrink-0 rounded-t-lg">
           <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 px-3 py-2">
             {/* Filtros - linha superior no mobile */}
             <div className="flex items-center gap-2 flex-wrap">

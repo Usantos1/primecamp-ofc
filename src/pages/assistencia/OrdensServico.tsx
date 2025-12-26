@@ -231,9 +231,9 @@ export default function OrdensServico() {
 
   return (
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
-      <div className="flex flex-col h-[calc(100vh-4rem-1rem)] md:h-[calc(100vh-5rem-1rem)] -mx-4 -mt-4 -mb-4">
-        {/* Cards de estatísticas - shrink-0 para não encolher */}
-        <div className="flex flex-wrap justify-center gap-2 md:gap-3 shrink-0 px-4 md:px-4 pt-3 md:pt-4 pb-2 md:pb-3">
+      <div className="flex flex-col min-h-0 space-y-4">
+        {/* Cards de estatísticas */}
+        <div className="flex flex-wrap justify-center gap-2 md:gap-3 shrink-0">
           <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent w-[calc(50%-0.25rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(11.11%-0.67rem)] min-w-[140px] max-w-[200px]" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-2 pb-2 md:pt-3 md:pb-3 px-2 md:px-6">
               <div className="flex items-center justify-center md:flex-col md:items-center md:justify-center">

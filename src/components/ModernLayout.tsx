@@ -139,7 +139,7 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
           {/* Main Content */}
           <main className="flex-1 overflow-auto">
-            <div className="p-2 md:p-4 max-w-full h-full">
+            <div className="p-2 md:p-4 pt-4 md:pt-6 max-w-full">
               {children}
             </div>
           </main>
