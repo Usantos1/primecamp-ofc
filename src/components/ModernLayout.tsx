@@ -138,8 +138,8 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto">
-            <div className="p-2 md:p-4 pt-4 md:pt-6 max-w-full">
+          <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+            <div className="flex-1 p-2 md:p-4 pt-4 md:pt-6 max-w-full min-h-0 flex flex-col overflow-hidden">
               {children}
             </div>
           </main>
