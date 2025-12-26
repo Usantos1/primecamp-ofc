@@ -1,14 +1,14 @@
 import { useState, useMemo, memo } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/EmptyState';
 import { ImportarProdutos } from '@/components/ImportarProdutos';
 import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized';
@@ -19,19 +19,22 @@ import { useNavigate } from 'react-router-dom';
 import { currencyFormatters } from '@/utils/formatters';
 import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
 import { Produto } from '@/types/assistencia';
+import * as XLSX from 'xlsx';
 
 import {
   Barcode,
   ChevronLeft,
   ChevronRight,
-  DoorOpen,
+  Download,
   Edit,
   FileSpreadsheet,
   Package,
   Plus,
+  Search,
   Warehouse,
   X,
   XCircle,
+  Zap,
 } from 'lucide-react';
 
 // Componente de linha da tabela otimizado com React.memo
@@ -79,109 +82,92 @@ const ProdutoTableRow = memo(({
     }
   }, [produto.quantidade, produto.estoque_minimo]);
 
-  // Zebra striping: linhas alternadas com mais contraste
+  // Zebra striping
   const zebraClass = index % 2 === 0 ? 'bg-background' : 'bg-muted/30';
   
   return (
-    <TableRow
-      className={`${isSelected ? 'bg-muted' : `${zebraClass} cursor-pointer hover:bg-muted/60`} border-b border-gray-200 transition-colors`}
+    <tr
+      className={`${isSelected ? 'bg-blue-50 dark:bg-blue-950/20' : `${zebraClass} cursor-pointer hover:bg-muted/60`} border-b border-gray-100 transition-colors`}
       onClick={onSelect}
     >
-      {/* Código - alinhado à direita */}
-      <TableCell className="font-mono text-sm py-3.5 px-3 text-right border-r border-gray-200 w-[90px] hidden md:table-cell">
+      <td className="font-mono text-sm py-3.5 px-3 text-right border-r border-gray-100 w-[90px] hidden md:table-cell">
         {produto.codigo || '-'}
-      </TableCell>
-      
-      {/* Referência - alinhado à esquerda */}
-      <TableCell className="font-mono text-sm py-3.5 px-3 text-left text-muted-foreground border-r border-gray-200 w-[120px] hidden lg:table-cell">
+      </td>
+      <td className="font-mono text-sm py-3.5 px-3 text-left text-muted-foreground border-r border-gray-100 w-[120px] hidden lg:table-cell">
         {produto.referencia || '-'}
-      </TableCell>
-      
-      {/* Código de Barras - alinhado à esquerda */}
-      <TableCell className="font-mono text-xs py-3.5 px-3 text-left text-muted-foreground border-r border-gray-200 w-[160px] hidden lg:table-cell">
+      </td>
+      <td className="font-mono text-xs py-3.5 px-3 text-left text-muted-foreground border-r border-gray-100 w-[160px] hidden lg:table-cell">
         {produto.codigo_barras || '-'}
-      </TableCell>
-      
-      {/* Descrição - alinhado à esquerda, truncate com tooltip */}
-      <TableCell className="font-medium py-3.5 px-3 text-left border-r border-gray-200">
+      </td>
+      <td className="font-medium py-3.5 px-3 text-left border-r border-gray-100">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="truncate uppercase">
-                {descricaoCompleta}
-              </div>
+              <div className="truncate uppercase">{descricaoCompleta}</div>
             </TooltipTrigger>
             {descricaoCompleta.length > 30 && (
-              <TooltipContent>
-                <p className="max-w-xs">{descricaoCompleta}</p>
-              </TooltipContent>
+              <TooltipContent><p className="max-w-xs">{descricaoCompleta}</p></TooltipContent>
             )}
           </Tooltip>
         </TooltipProvider>
-        {/* Mobile: mostrar referência e código de barras aqui */}
-        <div className="text-xs text-muted-foreground md:hidden mt-1">
-          {infoSecundaria || '-'}
-        </div>
-      </TableCell>
-
-      {/* Localização - alinhado à esquerda */}
-      <TableCell className="text-sm py-3.5 px-3 text-left text-muted-foreground border-r border-gray-200 w-[140px] hidden lg:table-cell">
+        <div className="text-xs text-muted-foreground md:hidden mt-1">{infoSecundaria || '-'}</div>
+      </td>
+      <td className="text-sm py-3.5 px-3 text-left text-muted-foreground border-r border-gray-100 w-[140px] hidden lg:table-cell">
         {produto.localizacao || '-'}
-      </TableCell>
-      
-      {/* Estoque - alinhado à direita com badge */}
-      <TableCell className="text-sm py-3.5 px-3 text-right border-r border-gray-200 w-[90px]">
+      </td>
+      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-100 w-[90px]">
         <div className="flex items-center justify-end gap-1.5">
           <span className="font-mono font-semibold">{produto.quantidade || 0}</span>
           <Badge variant="outline" className={`${estoqueStatus.className} text-xs px-1.5 py-0 border font-medium`}>
             {estoqueStatus.label}
           </Badge>
         </div>
-      </TableCell>
-      
-      {/* Unidade - centralizado */}
-      <TableCell className="text-sm py-3.5 px-3 text-center text-muted-foreground border-r border-gray-200 w-[70px] hidden md:table-cell">
+      </td>
+      <td className="text-sm py-3.5 px-3 text-center text-muted-foreground border-r border-gray-100 w-[70px] hidden md:table-cell">
         UN
-      </TableCell>
-      
-      {/* Valor de Venda - alinhado à direita */}
-      <TableCell className="text-sm py-3.5 px-3 text-right font-semibold border-r border-gray-200 w-[110px]">
+      </td>
+      <td className="text-sm py-3.5 px-3 text-right font-semibold border-r border-gray-100 w-[110px]">
         {valorVenda}
-      </TableCell>
-      
-      {/* Ações - centralizado */}
-      <TableCell className="py-3.5 px-3 text-center w-[80px]">
+      </td>
+      <td className="py-3.5 px-3 text-center w-[80px]">
         <Button
           size="sm"
           variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="h-7 w-7 p-0"
         >
           <Edit className="h-3.5 w-3.5" />
         </Button>
-      </TableCell>
-    </TableRow>
+      </td>
+    </tr>
   );
 });
 ProdutoTableRow.displayName = 'ProdutoTableRow';
+
+// Colunas disponíveis para exportação
+const EXPORT_COLUMNS = [
+  { id: 'codigo', label: 'Código', checked: true },
+  { id: 'referencia', label: 'Referência', checked: true },
+  { id: 'codigo_barras', label: 'Código de Barras', checked: true },
+  { id: 'descricao', label: 'Descrição', checked: true },
+  { id: 'localizacao', label: 'Localização', checked: true },
+  { id: 'quantidade', label: 'Estoque', checked: true },
+  { id: 'unidade', label: 'Unidade', checked: true },
+  { id: 'preco_venda', label: 'Valor de Venda', checked: true },
+];
 
 export default function Produtos() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Hook paginado com filtros server-side
+  // Hook paginado
   const hookResult = useProdutosPaginated();
   
-  // Extrair valores com fallbacks seguros
   const produtos = hookResult?.produtos || [];
   const grupos = hookResult?.grupos || [];
   const isLoading = hookResult?.isLoading || false;
   const isFetching = hookResult?.isFetching || false;
   const page = hookResult?.page || 1;
-  const goToPage = hookResult?.setPage || (() => {});
   const totalCount = hookResult?.totalCount || 0;
   const totalPages = hookResult?.totalPages || 1;
   const goToNextPage = hookResult?.goToNextPage || (() => {});
@@ -193,21 +179,179 @@ export default function Produtos() {
   const createProduto = hookResult?.createProduto || (async () => {});
   const updateProduto = hookResult?.updateProduto || (async () => {});
   const deleteProduto = hookResult?.deleteProduto || (async () => {});
-  const error = hookResult?.error;
 
   const { marcas, modelos } = useMarcasModelosSupabase();
-
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
-
   const [showEtiquetaModal, setShowEtiquetaModal] = useState(false);
   const [quantidadeEtiquetas, setQuantidadeEtiquetas] = useState(1);
-
   const [showEstoqueModal, setShowEstoqueModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
+  // ═══════════════════════════════════════════════════════════════
+  // EXPORTAÇÃO
+  // ═══════════════════════════════════════════════════════════════
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportColumns, setExportColumns] = useState(EXPORT_COLUMNS.map(c => ({ ...c })));
+  const [exportEstoque, setExportEstoque] = useState<'todos' | 'zerado' | 'baixo' | 'acima'>('todos');
+  const [exportEstoqueMinimo, setExportEstoqueMinimo] = useState(5);
+  const [exportMarca, setExportMarca] = useState<string>('all');
+  const [exportLocalizacao, setExportLocalizacao] = useState<string>('');
+  const [exportValorMin, setExportValorMin] = useState<string>('');
+  const [exportValorMax, setExportValorMax] = useState<string>('');
+  const [exportUsarBuscaAtual, setExportUsarBuscaAtual] = useState(true);
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Localizações únicas dos produtos
+  const localizacoesUnicas = useMemo(() => {
+    const locs = new Set<string>();
+    produtos.forEach(p => p.localizacao && locs.add(p.localizacao));
+    return Array.from(locs).sort();
+  }, [produtos]);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      // Filtrar produtos para exportação
+      let dadosParaExportar = [...produtos];
+
+      // Aplicar filtros
+      if (exportEstoque === 'zerado') {
+        dadosParaExportar = dadosParaExportar.filter(p => (p.quantidade || 0) === 0);
+      } else if (exportEstoque === 'baixo') {
+        dadosParaExportar = dadosParaExportar.filter(p => {
+          const qtd = p.quantidade || 0;
+          const min = p.estoque_minimo || exportEstoqueMinimo;
+          return qtd > 0 && qtd <= min;
+        });
+      } else if (exportEstoque === 'acima') {
+        dadosParaExportar = dadosParaExportar.filter(p => (p.quantidade || 0) > exportEstoqueMinimo);
+      }
+
+      if (exportMarca && exportMarca !== 'all') {
+        dadosParaExportar = dadosParaExportar.filter(p => p.marca_id === exportMarca || p.marca === exportMarca);
+      }
+
+      if (exportLocalizacao) {
+        dadosParaExportar = dadosParaExportar.filter(p => 
+          p.localizacao?.toLowerCase().includes(exportLocalizacao.toLowerCase())
+        );
+      }
+
+      if (exportValorMin) {
+        const min = parseFloat(exportValorMin);
+        dadosParaExportar = dadosParaExportar.filter(p => (p.preco_venda || 0) >= min);
+      }
+
+      if (exportValorMax) {
+        const max = parseFloat(exportValorMax);
+        dadosParaExportar = dadosParaExportar.filter(p => (p.preco_venda || 0) <= max);
+      }
+
+      // Filtrar busca atual se selecionado
+      if (exportUsarBuscaAtual && searchTerm) {
+        const termo = searchTerm.toLowerCase();
+        dadosParaExportar = dadosParaExportar.filter(p =>
+          (p.descricao?.toLowerCase().includes(termo)) ||
+          (p.nome?.toLowerCase().includes(termo)) ||
+          (p.codigo?.toString().includes(termo)) ||
+          (p.referencia?.toLowerCase().includes(termo)) ||
+          (p.codigo_barras?.includes(termo))
+        );
+      }
+
+      // Preparar dados com colunas selecionadas
+      const colunasAtivas = exportColumns.filter(c => c.checked);
+      
+      const dadosFormatados = dadosParaExportar.map(p => {
+        const row: Record<string, any> = {};
+        colunasAtivas.forEach(col => {
+          switch (col.id) {
+            case 'codigo': row['Código'] = p.codigo || ''; break;
+            case 'referencia': row['Referência'] = p.referencia || ''; break;
+            case 'codigo_barras': row['Código de Barras'] = p.codigo_barras || ''; break;
+            case 'descricao': row['Descrição'] = p.descricao || p.nome || ''; break;
+            case 'localizacao': row['Localização'] = p.localizacao || ''; break;
+            case 'quantidade': row['Estoque'] = p.quantidade || 0; break;
+            case 'unidade': row['Unidade'] = 'UN'; break;
+            case 'preco_venda': row['Valor de Venda'] = p.preco_venda || 0; break;
+          }
+        });
+        return row;
+      });
+
+      // Gerar arquivo
+      const ws = XLSX.utils.json_to_sheet(dadosFormatados);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+
+      // Ajustar largura das colunas
+      const colWidths = colunasAtivas.map(col => ({ wch: col.label.length + 5 }));
+      ws['!cols'] = colWidths;
+
+      const filename = `produtos_${new Date().toISOString().split('T')[0]}`;
+      
+      if (exportFormat === 'xlsx') {
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+      } else {
+        XLSX.writeFile(wb, `${filename}.csv`, { bookType: 'csv' });
+      }
+
+      toast({
+        title: 'Exportação concluída!',
+        description: `${dadosFormatados.length} produtos exportados com sucesso.`,
+      });
+
+      setShowExportModal(false);
+    } catch (error: any) {
+      console.error('Erro na exportação:', error);
+      toast({
+        title: 'Erro na exportação',
+        description: error?.message || 'Ocorreu um erro ao exportar.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Presets rápidos
+  const applyPreset = (preset: 'zerado' | 'baixo' | 'completo') => {
+    if (preset === 'zerado') {
+      setExportEstoque('zerado');
+      setExportMarca('all');
+      setExportLocalizacao('');
+      setExportValorMin('');
+      setExportValorMax('');
+    } else if (preset === 'baixo') {
+      setExportEstoque('baixo');
+      setExportEstoqueMinimo(5);
+      setExportMarca('all');
+      setExportLocalizacao('');
+      setExportValorMin('');
+      setExportValorMax('');
+    } else {
+      setExportEstoque('todos');
+      setExportMarca('all');
+      setExportLocalizacao('');
+      setExportValorMin('');
+      setExportValorMax('');
+      setExportColumns(EXPORT_COLUMNS.map(c => ({ ...c, checked: true })));
+    }
+  };
+
+  const toggleExportColumn = (id: string) => {
+    setExportColumns(prev => prev.map(c => 
+      c.id === id ? { ...c, checked: !c.checked } : c
+    ));
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // HANDLERS
+  // ═══════════════════════════════════════════════════════════════
   const handleClearFilters = () => {
     setSearchTerm('');
     setGrupo('');
@@ -227,7 +371,6 @@ export default function Produtos() {
 
   const handleInativar = async () => {
     if (!selectedProduto) return;
-
     try {
       await deleteProduto(selectedProduto.id);
       toast({ title: 'Produto inativado!' });
@@ -243,11 +386,8 @@ export default function Produtos() {
 
   const gerarCodigoBarras = (produto: Produto): string => {
     if (produto.codigo_barras) return produto.codigo_barras;
-
-    // tenta gerar EAN13 a partir do "codigo"
     if (produto.codigo) {
       const d12 = produto.codigo.toString().padStart(12, '0');
-
       let soma = 0;
       for (let i = 0; i < 12; i++) {
         const n = parseInt(d12[i]!, 10);
@@ -256,8 +396,6 @@ export default function Produtos() {
       const dv = (10 - (soma % 10)) % 10;
       return d12 + String(dv);
     }
-
-    // fallback: usa o id
     const base = produto.id.replace(/-/g, '').substring(0, 12).padStart(12, '0');
     let soma = 0;
     for (let i = 0; i < 12; i++) {
@@ -270,30 +408,15 @@ export default function Produtos() {
 
   const handleGerarEtiqueta = async () => {
     if (!selectedProduto) {
-      toast({
-        title: 'Produto não selecionado',
-        description: 'Selecione um produto para gerar a etiqueta.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Produto não selecionado', variant: 'destructive' });
       return;
     }
-
     try {
       const codigoBarras = gerarCodigoBarras(selectedProduto);
-
-      // se não tinha, salva no produto
       if (!selectedProduto.codigo_barras) {
-        await updateProduto(selectedProduto.id, {
-          ...selectedProduto,
-          codigo_barras: codigoBarras,
-        });
-
-        toast({
-          title: 'Código de barras gerado',
-          description: `Código ${codigoBarras} salvo no produto.`,
-        });
+        await updateProduto(selectedProduto.id, { ...selectedProduto, codigo_barras: codigoBarras });
+        toast({ title: 'Código de barras gerado', description: `Código ${codigoBarras} salvo.` });
       }
-
       const etiquetaData: EtiquetaData = {
         descricao: selectedProduto.descricao,
         descricao_abreviada: selectedProduto.descricao_abreviada,
@@ -301,12 +424,8 @@ export default function Produtos() {
         codigo_barras: codigoBarras,
         codigo: selectedProduto.codigo,
         referencia: selectedProduto.referencia,
-        empresa: {
-          nome: 'PRIMECAMP',
-          logo: 'https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png',
-        },
+        empresa: { nome: 'PRIMECAMP', logo: 'https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png' },
       };
-
       if (quantidadeEtiquetas > 1) {
         const itens = Array.from({ length: quantidadeEtiquetas }, () => etiquetaData);
         const doc = await generateEtiquetasA4(itens, 7, 5);
@@ -317,27 +436,16 @@ export default function Produtos() {
         doc.autoPrint();
         window.open(doc.output('bloburl'), '_blank');
       }
-
-      toast({
-        title: 'Etiqueta gerada',
-        description: `Abrindo impressão para ${quantidadeEtiquetas} etiqueta(s)...`,
-      });
-
+      toast({ title: 'Etiqueta gerada', description: `Abrindo impressão para ${quantidadeEtiquetas} etiqueta(s)...` });
       setShowEtiquetaModal(false);
       setQuantidadeEtiquetas(1);
     } catch (error: any) {
       console.error(error);
-      toast({
-        title: 'Erro ao gerar etiqueta',
-        description: error?.message || 'Ocorreu um erro ao gerar a etiqueta.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao gerar etiqueta', description: error?.message, variant: 'destructive' });
     }
   };
 
-  // payload do ProductFormOptimized já vem como Partial<Produto>
   const handleSave = async (produtoData: Partial<Produto>) => {
-
     try {
       if (editingProduto) {
         await updateProduto(editingProduto.id, produtoData);
@@ -346,28 +454,36 @@ export default function Produtos() {
         await createProduto(produtoData);
         toast({ title: 'Produto criado com sucesso!' });
       }
-
       setEditingProduto(null);
       setShowForm(false);
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error?.message || 'Erro ao salvar produto',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: error?.message || 'Erro ao salvar', variant: 'destructive' });
       throw error;
     }
   };
 
   return (
     <ModernLayout title="Pesquisa de Produtos" subtitle="Gerenciar produtos e serviços">
-      {/* Container principal - ocupa toda altura disponível */}
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Barra de filtros e ações - fixa no topo */}
-        <div className="bg-background border-b-2 border-gray-300 shadow-sm shrink-0 rounded-t-lg">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 px-3 py-2">
-            {/* Filtros - linha superior no mobile */}
-            <div className="flex items-center gap-2 flex-wrap">
+        
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* BARRA DE FILTROS - Layout melhorado */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <div className="bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-xl mb-3 border border-gray-200/50">
+          <div className="flex flex-col gap-3 p-4">
+            
+            {/* Linha 1: Busca principal */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por código, descrição, referência ou código de barras..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-10 pl-10 text-base border-gray-200 focus:border-blue-400 focus:ring-blue-400/20"
+                />
+              </div>
+              
               <Select 
                 value={grupo && grupo.trim() !== '' ? grupo : 'all'} 
                 onValueChange={(value) => {
@@ -375,60 +491,57 @@ export default function Produtos() {
                   hookResult.setPage(1);
                 }}
               >
-                <SelectTrigger className="h-9 w-[140px] md:w-[140px] shrink-0 text-xs border-2 border-gray-300">
+                <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200">
                   <SelectValue placeholder="Grupo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">TODOS</SelectItem>
+                  <SelectItem value="all">Todos os grupos</SelectItem>
                   {grupos.map((g) => (
-                    <SelectItem key={g.id || g.nome} value={g.nome}>
-                      {g.nome}
-                    </SelectItem>
+                    <SelectItem key={g.id || g.nome} value={g.nome}>{g.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Input
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-9 flex-1 md:w-[180px] md:flex-none text-base md:text-xs border-2 border-gray-300"
-              />
-
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="sm"
-                onClick={handleClearFilters} 
-                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+                onClick={handleClearFilters}
+                disabled={!searchTerm && !grupo}
+                className="h-10 px-3 text-muted-foreground hover:text-foreground"
               >
-                <XCircle className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline text-xs">Limpar</span>
+                <XCircle className="h-4 w-4 mr-1.5" />
+                Limpar
               </Button>
             </div>
 
-            {/* Ações - linha inferior no mobile */}
-            <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-wrap md:flex-nowrap">
-              <div className="w-px h-5 bg-gray-300 mx-0.5 shrink-0 hidden md:block"></div>
-
-              <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300">
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Importar</span>
+            {/* Linha 2: Ações */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button onClick={handleNew} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <Plus className="h-4 w-4" />
+                <span>Novo</span>
               </Button>
 
-              <Button onClick={handleNew} size="sm" className="gap-1 h-9 shrink-0 px-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md">
-                <Plus className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Novo</span>
+              <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
+                <FileSpreadsheet className="h-4 w-4" />
+                <span className="hidden sm:inline">Importar</span>
               </Button>
+
+              <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
+
+              <div className="w-px h-6 bg-gray-200 mx-1 hidden md:block" />
 
               <Button
                 onClick={() => selectedProduto && handleEdit(selectedProduto)}
                 size="sm"
                 variant="outline"
                 disabled={!selectedProduto}
-                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+                className="h-9 gap-1.5 border-gray-200"
               >
-                <Edit className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Abrir</span>
+                <Edit className="h-4 w-4" />
+                <span className="hidden sm:inline">Editar</span>
               </Button>
 
               <Button
@@ -436,10 +549,10 @@ export default function Produtos() {
                 size="sm"
                 variant="outline"
                 disabled={!selectedProduto}
-                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+                className="h-9 gap-1.5 border-gray-200"
               >
-                <X className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Inativar</span>
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline">Inativar</span>
               </Button>
 
               <Button
@@ -447,10 +560,10 @@ export default function Produtos() {
                 variant="outline"
                 disabled={!selectedProduto}
                 onClick={() => setShowEtiquetaModal(true)}
-                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+                className="h-9 gap-1.5 border-gray-200"
               >
-                <Barcode className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Etiqueta</span>
+                <Barcode className="h-4 w-4" />
+                <span className="hidden lg:inline">Etiqueta</span>
               </Button>
 
               <Button
@@ -458,94 +571,75 @@ export default function Produtos() {
                 variant="outline"
                 disabled={!selectedProduto}
                 onClick={() => setShowEstoqueModal(true)}
-                className="gap-1 h-9 shrink-0 px-2 border-2 border-gray-300"
+                className="h-9 gap-1.5 border-gray-200"
               >
-                <Warehouse className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Estoque</span>
-              </Button>
-
-              <div className="flex-1 min-w-0 hidden md:block"></div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(-1)}
-                className="gap-1 h-9 shrink-0 px-2 text-destructive border-2 border-red-300"
-              >
-                <DoorOpen className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline text-xs">Sair</span>
+                <Warehouse className="h-4 w-4" />
+                <span className="hidden lg:inline">Estoque</span>
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Área da tabela - apenas o corpo rola */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* ÁREA DA TABELA */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <Card className="flex-1 flex flex-col overflow-hidden border-2 border-gray-300">
+          <Card className="flex-1 flex flex-col overflow-hidden border-gray-200 shadow-sm">
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-            {hookResult.error ? (
-              <div className="p-12 text-center">
-                <EmptyState
-                  icon={<Package className="h-12 w-12" />}
-                  title="Erro ao carregar produtos"
-                  description={hookResult.error instanceof Error ? hookResult.error.message : 'Ocorreu um erro ao buscar os produtos. Tente recarregar a página.'}
-                  action={{ label: 'Recarregar', onClick: () => window.location.reload() }}
-                />
-              </div>
-            ) : isLoading ? (
-              <div className="p-10 text-center text-muted-foreground">
-                <div className="space-y-3">
-                  <div className="h-4 bg-muted rounded animate-pulse w-3/4 mx-auto"></div>
-                  <div className="h-4 bg-muted rounded animate-pulse w-1/2 mx-auto"></div>
-                  <div className="h-4 bg-muted rounded animate-pulse w-2/3 mx-auto"></div>
+              {hookResult.error ? (
+                <div className="p-12 text-center">
+                  <EmptyState
+                    icon={<Package className="h-12 w-12" />}
+                    title="Erro ao carregar produtos"
+                    description={hookResult.error instanceof Error ? hookResult.error.message : 'Ocorreu um erro.'}
+                    action={{ label: 'Recarregar', onClick: () => window.location.reload() }}
+                  />
                 </div>
-              </div>
-            ) : produtos.length === 0 ? (
-              <div className="p-12 text-center">
-                <EmptyState
-                  icon={<Package className="h-12 w-12" />}
-                  title="Nenhum produto encontrado"
-                  description={searchTerm ? 'Tente buscar por outro termo' : 'Cadastre seu primeiro produto ou serviço'}
-                  action={!searchTerm ? { label: 'Novo Produto', onClick: handleNew } : undefined}
-                />
-              </div>
-            ) : (
-              <>
-                {/* Desktop: Tabela */}
-                <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
-                  {/* Container da tabela com scroll apenas vertical */}
-                  <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-                    <table className="w-full caption-bottom text-sm border-collapse table-fixed">
-                      {/* Cabeçalho fixo */}
-                      <thead className="sticky top-0 z-20 bg-muted/50 backdrop-blur-sm">
-                        <tr className="border-b-2 border-gray-300">
-                          <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Código</th>
-                          <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[120px] hidden lg:table-cell">Referência</th>
-                          <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[160px] hidden lg:table-cell">Código de Barras</th>
-                          <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 min-w-[200px]">Descrição</th>
-                          <th className="h-11 px-3 text-left align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[140px] hidden lg:table-cell">Localização</th>
-                          <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[90px]">Estoque</th>
-                          <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[70px]">Unidade</th>
-                          <th className="h-11 px-3 text-right align-middle font-semibold text-foreground bg-muted/60 border-r border-gray-200 w-[110px]">Valor de Venda</th>
-                          <th className="h-11 px-3 text-center align-middle font-semibold text-foreground bg-muted/60 w-[80px]">Ações</th>
-                        </tr>
-                      </thead>
-                      {/* Corpo da tabela */}
-                      <tbody>
+              ) : isLoading ? (
+                <div className="p-10 text-center text-muted-foreground">
+                  <div className="space-y-3">
+                    <div className="h-4 bg-muted rounded animate-pulse w-3/4 mx-auto" />
+                    <div className="h-4 bg-muted rounded animate-pulse w-1/2 mx-auto" />
+                    <div className="h-4 bg-muted rounded animate-pulse w-2/3 mx-auto" />
+                  </div>
+                </div>
+              ) : produtos.length === 0 ? (
+                <div className="p-12 text-center">
+                  <EmptyState
+                    icon={<Package className="h-12 w-12" />}
+                    title="Nenhum produto encontrado"
+                    description={searchTerm ? 'Tente buscar por outro termo' : 'Cadastre seu primeiro produto'}
+                    action={!searchTerm ? { label: 'Novo Produto', onClick: handleNew } : undefined}
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                      <table className="w-full caption-bottom text-sm border-collapse table-fixed">
+                        <thead className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm">
+                          <tr className="border-b border-gray-200">
+                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground border-r border-gray-100 w-[90px]">Código</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 w-[120px] hidden lg:table-cell">Referência</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 w-[160px] hidden lg:table-cell">Código de Barras</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 min-w-[200px]">Descrição</th>
+                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 w-[140px] hidden lg:table-cell">Localização</th>
+                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground border-r border-gray-100 w-[90px]">Estoque</th>
+                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground border-r border-gray-100 w-[70px]">Unidade</th>
+                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground border-r border-gray-100 w-[110px]">Valor</th>
+                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground w-[80px]">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {isFetching && !isLoading && produtos.length > 0 ? (
                             produtos.map((produto, index) => (
-                              <tr key={`skeleton-${produto.id}`} className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
+                              <tr key={`skeleton-${produto.id}`} className={`border-b border-gray-100 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
                                 <td colSpan={9} className="py-3.5 px-3">
-                                  <div className="h-9 bg-muted rounded animate-pulse"></div>
+                                  <div className="h-9 bg-muted rounded animate-pulse" />
                                 </td>
                               </tr>
                             ))
-                          ) : produtos.length === 0 ? (
-                            <tr className="border-b border-gray-200">
-                              <td colSpan={9} className="py-8 px-3 text-center text-muted-foreground">
-                                Nenhum produto encontrado
-                              </td>
-                            </tr>
                           ) : (
                             produtos.map((produto, index) => (
                               <ProdutoTableRow
@@ -559,170 +653,332 @@ export default function Produtos() {
                             ))
                           )}
                         </tbody>
-                    </table>
-                  </div>
-
-                  {/* Controles de Paginação Desktop - fixo no final, compacto */}
-                  <div className="shrink-0 border-t-2 border-gray-300 bg-background px-3 py-2 flex flex-col sm:flex-row items-center justify-between gap-2">
-                    <div className="text-xs text-muted-foreground text-center sm:text-left">
-                      Mostrando {produtos.length > 0 && totalCount > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0} a {totalCount > 0 ? Math.min(page * (hookResult?.pageSize || 50), totalCount) : 0} de {totalCount} produtos
+                      </table>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={goToPreviousPage}
-                        disabled={page === 1 || isFetching}
-                        className="h-7 text-xs border-2 border-gray-300"
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Anterior</span>
-                      </Button>
-                      <div className="text-xs font-medium px-2">
-                        Página {page} de {totalPages || 1}
+
+                    {/* Paginação Desktop */}
+                    <div className="shrink-0 border-t border-gray-200 bg-gray-50/50 px-4 py-3 flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Mostrando <span className="font-medium">{produtos.length > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0}</span> a{' '}
+                        <span className="font-medium">{Math.min(page * (hookResult?.pageSize || 50), totalCount)}</span> de{' '}
+                        <span className="font-medium">{totalCount}</span> produtos
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={goToNextPage}
-                        disabled={!totalPages || page >= totalPages || isFetching}
-                        className="h-7 text-xs border-2 border-gray-300"
-                      >
-                        <span className="hidden sm:inline">Próxima</span>
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToPreviousPage}
+                          disabled={page === 1 || isFetching}
+                          className="h-8 border-gray-200"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Anterior
+                        </Button>
+                        <span className="text-sm font-medium px-3">
+                          {page} / {totalPages || 1}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={goToNextPage}
+                          disabled={!totalPages || page >= totalPages || isFetching}
+                          className="h-8 border-gray-200"
+                        >
+                          Próxima
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Mobile: Cards */}
-                <div className="md:hidden flex-1 overflow-y-auto min-h-0 space-y-3 p-2">
-                  {isFetching && !isLoading && produtos.length > 0 ? (
-                    produtos.map((produto) => (
-                      <Card key={`skeleton-${produto.id}`} className="border-2 border-gray-300">
-                        <CardContent className="p-3">
-                          <div className="h-20 bg-muted rounded animate-pulse"></div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : produtos.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                      Nenhum produto encontrado
-                    </div>
-                  ) : (
-                    produtos.map((produto, index) => {
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden flex-1 overflow-y-auto min-h-0 space-y-3 p-3">
+                    {produtos.map((produto, index) => {
                       const valorVenda = currencyFormatters.brl(produto.preco_venda || produto.valor_venda || 0);
                       const descricaoCompleta = produto.nome || produto.descricao || '';
-                      const infoSecundaria = [
-                        produto.referencia && `Ref: ${produto.referencia}`,
-                        produto.codigo_barras && `EAN: ${produto.codigo_barras}`,
-                        produto.codigo && `Código: ${produto.codigo}`
-                      ].filter(Boolean).join(' • ');
-                      
                       const quantidade = produto.quantidade || 0;
                       const estoqueMinimo = produto.estoque_minimo || 0;
                       let estoqueStatus;
                       if (quantidade === 0) {
-                        estoqueStatus = { status: 'zerado', label: 'Zerado', className: 'bg-red-100 text-red-700 border-red-300' };
+                        estoqueStatus = { label: 'Zerado', className: 'bg-red-100 text-red-700' };
                       } else if (quantidade <= estoqueMinimo && estoqueMinimo > 0) {
-                        estoqueStatus = { status: 'baixo', label: 'Baixo', className: 'bg-orange-100 text-orange-700 border-orange-300' };
+                        estoqueStatus = { label: 'Baixo', className: 'bg-orange-100 text-orange-700' };
                       } else {
-                        estoqueStatus = { status: 'ok', label: 'OK', className: 'bg-green-100 text-green-700 border-green-300' };
+                        estoqueStatus = { label: 'OK', className: 'bg-green-100 text-green-700' };
                       }
 
                       return (
                         <Card 
                           key={produto.id}
-                          className={`border-2 ${selectedProduto?.id === produto.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-300'} cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]`}
+                          className={`${selectedProduto?.id === produto.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200'} cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]`}
                           onClick={() => setSelectedProduto(produto)}
                         >
-                          <CardContent className="p-3 space-y-2">
-                            {/* Header: Descrição */}
-                            <div className="border-b-2 border-gray-200 pb-2">
+                          <CardContent className="p-4 space-y-3">
+                            <div className="border-b border-gray-100 pb-2">
                               <h3 className="font-semibold text-sm uppercase truncate">{descricaoCompleta}</h3>
-                              {infoSecundaria && (
-                                <p className="text-xs text-muted-foreground mt-1">{infoSecundaria}</p>
-                              )}
+                              {produto.referencia && <p className="text-xs text-muted-foreground mt-1">Ref: {produto.referencia}</p>}
                             </div>
-
-                            {/* Info: Estoque e Valor */}
                             <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <p className="text-[10px] text-muted-foreground">Estoque</p>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-mono font-semibold text-base">{quantidade}</span>
-                                  <Badge variant="outline" className={`${estoqueStatus.className} text-[10px] px-1.5 py-0 border-2 font-medium`}>
-                                    {estoqueStatus.label}
-                                  </Badge>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Estoque</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-semibold">{quantidade}</span>
+                                  <Badge variant="outline" className={`${estoqueStatus.className} text-xs px-1.5`}>{estoqueStatus.label}</Badge>
                                 </div>
                               </div>
-                              <div className="space-y-1">
-                                <p className="text-[10px] text-muted-foreground">Valor de Venda</p>
-                                <p className="font-semibold text-base text-green-600">{valorVenda}</p>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Valor</p>
+                                <p className="font-semibold text-green-600 mt-0.5">{valorVenda}</p>
                               </div>
                             </div>
-
-                            {/* Footer: Botão de ação */}
-                            <div className="flex justify-end pt-2 border-t-2 border-gray-200">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(produto);
-                                }}
-                                className="h-8 px-3 text-xs border-2 border-gray-300"
-                              >
-                                <Edit className="h-3.5 w-3.5 mr-1" />
-                                Editar
+                            <div className="flex justify-end pt-2 border-t border-gray-100">
+                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleEdit(produto); }} className="h-8 text-xs">
+                                <Edit className="h-3.5 w-3.5 mr-1" /> Editar
                               </Button>
                             </div>
                           </CardContent>
                         </Card>
                       );
-                    })
-                  )}
-                </div>
-
-              </>
-            )}
+                    })}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
-          {/* Mobile: Paginação - fora do Card */}
-          <div className="md:hidden shrink-0 border-t-2 border-gray-300 bg-background mt-2 px-3 py-3 flex flex-col items-center justify-between gap-2 rounded-lg">
-            <div className="text-xs text-muted-foreground text-center">
-              Mostrando {produtos.length > 0 && totalCount > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0} a {totalCount > 0 ? Math.min(page * (hookResult?.pageSize || 50), totalCount) : 0} de {totalCount} produtos
+          {/* Mobile: Paginação */}
+          <div className="md:hidden shrink-0 bg-gray-50/50 mt-3 px-4 py-3 flex items-center justify-between rounded-xl border border-gray-200">
+            <div className="text-xs text-muted-foreground">
+              {produtos.length > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0} - {Math.min(page * (hookResult?.pageSize || 50), totalCount)} de {totalCount}
             </div>
-            <div className="flex items-center gap-2 w-full justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToPreviousPage}
-                disabled={page === 1 || isFetching}
-                className="h-8 text-xs border-2 border-gray-300 flex-1 max-w-[120px]"
-              >
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={goToPreviousPage} disabled={page === 1 || isFetching} className="h-8 w-8 p-0">
                 <ChevronLeft className="h-4 w-4" />
-                <span>Anterior</span>
               </Button>
-              <div className="text-xs font-semibold px-3 py-1 bg-gray-100 rounded border-2 border-gray-300">
-                {page} / {totalPages || 1}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNextPage}
-                disabled={!totalPages || page >= totalPages || isFetching}
-                className="h-8 text-xs border-2 border-gray-300 flex-1 max-w-[120px]"
-              >
-                <span>Próxima</span>
+              <span className="text-xs font-medium">{page}/{totalPages || 1}</span>
+              <Button variant="outline" size="sm" onClick={goToNextPage} disabled={!totalPages || page >= totalPages || isFetching} className="h-8 w-8 p-0">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Modal único de cadastro/edição */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* MODAL DE EXPORTAÇÃO */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Exportar Produtos
+              </DialogTitle>
+              <DialogDescription>
+                Configure os filtros e selecione as colunas para exportação
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Presets rápidos */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Presets Rápidos</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => applyPreset('zerado')} className="gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-red-500" />
+                    Estoque Zerado
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => applyPreset('baixo')} className="gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-orange-500" />
+                    Estoque Baixo
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => applyPreset('completo')} className="gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-blue-500" />
+                    Catálogo Completo
+                  </Button>
+                </div>
+              </div>
+
+              {/* Filtro de Estoque */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Filtro de Estoque</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <Button
+                    variant={exportEstoque === 'todos' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExportEstoque('todos')}
+                    className="justify-start"
+                  >
+                    Todos
+                  </Button>
+                  <Button
+                    variant={exportEstoque === 'zerado' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExportEstoque('zerado')}
+                    className="justify-start"
+                  >
+                    Zerado
+                  </Button>
+                  <Button
+                    variant={exportEstoque === 'baixo' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExportEstoque('baixo')}
+                    className="justify-start"
+                  >
+                    Baixo (≤{exportEstoqueMinimo})
+                  </Button>
+                  <Button
+                    variant={exportEstoque === 'acima' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExportEstoque('acima')}
+                    className="justify-start"
+                  >
+                    Acima de
+                  </Button>
+                </div>
+                {(exportEstoque === 'baixo' || exportEstoque === 'acima') && (
+                  <Input
+                    type="number"
+                    min="0"
+                    value={exportEstoqueMinimo}
+                    onChange={(e) => setExportEstoqueMinimo(parseInt(e.target.value) || 0)}
+                    placeholder="Quantidade"
+                    className="w-32 mt-2"
+                  />
+                )}
+              </div>
+
+              {/* Filtros adicionais */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Marca</Label>
+                  <Select value={exportMarca} onValueChange={setExportMarca}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas as marcas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as marcas</SelectItem>
+                      {marcas.map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Localização</Label>
+                  <Input
+                    value={exportLocalizacao}
+                    onChange={(e) => setExportLocalizacao(e.target.value)}
+                    placeholder="Filtrar por localização..."
+                    list="localizacoes"
+                  />
+                  <datalist id="localizacoes">
+                    {localizacoesUnicas.map(loc => (
+                      <option key={loc} value={loc} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Valor Mínimo (R$)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={exportValorMin}
+                    onChange={(e) => setExportValorMin(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Valor Máximo (R$)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={exportValorMax}
+                    onChange={(e) => setExportValorMax(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+
+              {/* Considerar busca atual */}
+              {searchTerm && (
+                <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <Checkbox
+                    id="usarBusca"
+                    checked={exportUsarBuscaAtual}
+                    onCheckedChange={(checked) => setExportUsarBuscaAtual(checked as boolean)}
+                  />
+                  <label htmlFor="usarBusca" className="text-sm cursor-pointer">
+                    Considerar busca atual: <span className="font-medium">"{searchTerm}"</span>
+                  </label>
+                </div>
+              )}
+
+              {/* Colunas para exportar */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Colunas para Exportar</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {exportColumns.map((col) => (
+                    <div key={col.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={col.id}
+                        checked={col.checked}
+                        onCheckedChange={() => toggleExportColumn(col.id)}
+                      />
+                      <label htmlFor={col.id} className="text-sm cursor-pointer">{col.label}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Formato */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Formato do Arquivo</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={exportFormat === 'xlsx' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExportFormat('xlsx')}
+                  >
+                    Excel (.xlsx)
+                  </Button>
+                  <Button
+                    variant={exportFormat === 'csv' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExportFormat('csv')}
+                  >
+                    CSV (.csv)
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowExportModal(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleExport} disabled={isExporting || !exportColumns.some(c => c.checked)}>
+                {isExporting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Exportando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de cadastro/edição */}
         <ProductFormOptimized
           open={showForm}
           onOpenChange={setShowForm}
@@ -739,7 +995,6 @@ export default function Produtos() {
             <DialogHeader>
               <DialogTitle>Gerar Etiqueta</DialogTitle>
             </DialogHeader>
-
             <div className="space-y-4 py-4">
               {selectedProduto && (
                 <div className="space-y-2">
@@ -749,7 +1004,6 @@ export default function Produtos() {
                   </div>
                 </div>
               )}
-
               <div className="space-y-2">
                 <Label>Quantidade de Etiquetas</Label>
                 <Input
@@ -758,20 +1012,14 @@ export default function Produtos() {
                   max="100"
                   value={quantidadeEtiquetas}
                   onChange={(e) => setQuantidadeEtiquetas(Math.max(1, parseInt(e.target.value || '1', 10)))}
-                  className="text-base md:text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  {quantidadeEtiquetas > 1
-                    ? `${quantidadeEtiquetas} etiquetas serão geradas em uma página A4`
-                    : '1 etiqueta será gerada (50mm x 30mm)'}
+                  {quantidadeEtiquetas > 1 ? `${quantidadeEtiquetas} etiquetas em uma página A4` : '1 etiqueta (50mm x 30mm)'}
                 </p>
               </div>
             </div>
-
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEtiquetaModal(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setShowEtiquetaModal(false)}>Cancelar</Button>
               <Button onClick={handleGerarEtiqueta}>
                 <Barcode className="h-4 w-4 mr-2" />
                 Gerar Etiqueta
@@ -780,27 +1028,21 @@ export default function Produtos() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de Estoque (visualização) */}
+        {/* Modal de Estoque */}
         <Dialog open={showEstoqueModal} onOpenChange={setShowEstoqueModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Informações de Estoque</DialogTitle>
             </DialogHeader>
-
             {selectedProduto ? (
               <div className="space-y-6 py-4">
                 <div className="border-b pb-4">
                   <h3 className="font-semibold text-lg mb-2">{selectedProduto.descricao}</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-                    <div>
-                      <span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}
-                    </div>
-                    <div>
-                      <span className="font-medium">Referência:</span> {selectedProduto.referencia || '-'}
-                    </div>
+                    <div><span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}</div>
+                    <div><span className="font-medium">Referência:</span> {selectedProduto.referencia || '-'}</div>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Estoque Atual</p>
@@ -821,11 +1063,8 @@ export default function Produtos() {
             ) : (
               <div className="py-6 text-muted-foreground">Selecione um produto.</div>
             )}
-
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEstoqueModal(false)}>
-                Fechar
-              </Button>
+              <Button variant="outline" onClick={() => setShowEstoqueModal(false)}>Fechar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
