@@ -75,6 +75,8 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     // Lista de origens permitidas
+    // Usar API_ORIGIN ao invés de VITE_API_ORIGIN (não é credencial, mas mantém consistência)
+    const apiOrigin = process.env.API_ORIGIN || process.env.VITE_API_ORIGIN;
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:8080',
@@ -82,7 +84,7 @@ app.use(cors({
       'http://127.0.0.1:5173',
       'http://127.0.0.1:8080',
       'http://127.0.0.1:3000',
-      process.env.VITE_API_ORIGIN,
+      apiOrigin,
       'https://primecamp.cloud',
     ].filter(Boolean);
     

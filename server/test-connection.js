@@ -97,8 +97,8 @@ async function testConnection() {
     console.log('');
     console.log('🚀 Próximos passos:');
     console.log('   1. Inicie a API: npm run dev');
-    console.log('   2. Teste a API: curl http://localhost:3000/health');
-    console.log('   3. Configure VITE_DB_MODE=postgres no .env do frontend');
+    console.log('   2. Teste a API: curl http://localhost:3000/api/health');
+    console.log('   3. Configure VITE_API_URL no .env do frontend');
 
   } catch (error) {
     console.error('❌ Erro ao conectar:', error.message);
