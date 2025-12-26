@@ -57,11 +57,11 @@ export const AdminDiscManager = () => {
   const { data: userResults = [], isLoading: loadingUsers } = useQuery({
     queryKey: ['admin-disc-users'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('disc_responses')
+      const { data, error } = await from('disc_responses')
         .select('*')
-        .execute().eq('is_completed', true)
-        .order('completion_date', { ascending: false });
+        .eq('is_completed', true)
+        .order('completion_date', { ascending: false })
+        .execute();
 
       if (error) throw error;
       
@@ -74,7 +74,7 @@ export const AdminDiscManager = () => {
             .execute()
         : { data: [] };
         
-      return data.map(item => ({
+      return (data || []).map(item => ({
         id: item.id,
         user_id: item.user_id,
         display_name: profiles?.find(p => p.user_id === item.user_id)?.display_name || 'Usuário desconhecido',
@@ -93,13 +93,13 @@ export const AdminDiscManager = () => {
   const { data: candidateResults = [], isLoading: loadingCandidates } = useQuery({
     queryKey: ['admin-disc-candidates'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('candidate_responses')
+      const { data, error } = await from('candidate_responses')
         .select('*')
-        .execute().order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
-      return data.map(item => ({
+      return (data || []).map(item => ({
         ...item,
         // Mark partial responses
         isPartial: !item.is_completed,
@@ -215,11 +215,9 @@ export const AdminDiscManager = () => {
       
       console.log('Registro encontrado:', existingRecord);
       
-      const { error, data } = await supabase
-        .from('disc_responses')
-        .delete()
+      const { error, data } = await from('disc_responses')
         .eq('id', resultId)
-        .select();
+        .delete();
 
       console.log('Resultado da exclusão:', { error, data });
 
@@ -248,11 +246,9 @@ export const AdminDiscManager = () => {
       
       console.log('Registro encontrado:', existingRecord);
       
-      const { error, data } = await supabase
-        .from('candidate_responses')
-        .delete()
+      const { error, data } = await from('candidate_responses')
         .eq('id', resultId)
-        .select();
+        .delete();
 
       console.log('Resultado da exclusão:', { error, data });
 
@@ -271,13 +267,13 @@ export const AdminDiscManager = () => {
 
   const deletePartialCandidates = async () => {
     try {
-      const { error, count } = await supabase
-        .from('candidate_responses')
-        .delete({ count: 'exact' })
-        .eq('is_completed', false);
+      const { error, data } = await from('candidate_responses')
+        .eq('is_completed', false)
+        .delete();
 
       if (error) throw error;
-      toast.success(`Removidos ${count || 0} registros parciais/erro.`);
+      const count = Array.isArray(data) ? data.length : 0;
+      toast.success(`Removidos ${count} registros parciais/erro.`);
       queryClient.invalidateQueries({ queryKey: ['admin-disc-candidates'] });
     } catch (error: any) {
       console.error('Erro ao excluir parciais:', error);
