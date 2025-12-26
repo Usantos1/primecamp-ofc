@@ -179,8 +179,6 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         // Atualizar registro existente
         const { error: updateError } = await from('user_position_departments')
           .update({ role_id: finalRoleId })
-          .eq('id', updData.id)
-          .execute();
           .eq('id', updData.id);
 
         if (updateError) {

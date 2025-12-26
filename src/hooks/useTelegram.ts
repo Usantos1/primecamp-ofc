@@ -46,13 +46,12 @@ export function useTelegram() {
       }
 
       const { data, error } = await apiClient.invokeFunction('telegram-bot', {
-          file: base64File,
-          fileName: file.name,
-          osNumero: String(osNumero),
-          tipo: tipo,
-          chatId: chatId,
-          caption: caption || `OS-${osNumero} - ${tipo === 'entrada' ? 'Entrada' : tipo === 'saida' ? 'Saída' : 'Processo'}`,
-        },
+        file: base64File,
+        fileName: file.name,
+        osNumero: String(osNumero),
+        tipo: tipo,
+        chatId: chatId,
+        caption: caption || `OS-${osNumero} - ${tipo === 'entrada' ? 'Entrada' : tipo === 'saida' ? 'Saída' : 'Processo'}`,
       });
 
       if (error) {
@@ -212,10 +211,9 @@ export function useTelegram() {
       console.log('[useTelegram] Deletando mensagem:', { chatId, messageId });
 
       const { data, error } = await apiClient.invokeFunction('telegram-bot', {
-          action: 'delete',
-          chatId,
-          messageId,
-        },
+        action: 'delete',
+        chatId,
+        messageId,
       });
 
       if (error) {

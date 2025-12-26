@@ -345,8 +345,6 @@ export const useCandidateDiscTest = () => {
         .eq('whatsapp', sanitizedInfo.whatsapp)
         .eq('is_completed', false)
         .order('created_at', { ascending: false })
-        .maybeSingle()
-        .execute();
         .maybeSingle();
 
       if (existingTest) {

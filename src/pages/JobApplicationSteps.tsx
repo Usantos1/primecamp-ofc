@@ -212,19 +212,18 @@ export default function JobApplicationSteps() {
 
         const { data, error } = await apiClient.invokeFunction('job-application-save-draft', {
           survey_id: survey.id,
-            email: emailToSave,
-            name: formData.name?.trim() || null,
-            phone: formData.phone?.trim() || null,
-            age: formData.age ? parseInt(formData.age) : null,
-            cep: formData.cep?.trim() || null,
-            address: formData.address?.trim() || null,
-            whatsapp: formData.whatsapp?.trim() || null,
-            instagram: formData.instagram?.trim() || null,
-            linkedin: formData.linkedin?.trim() || null,
-            responses: formData.responses || {},
-            current_step: currentStep,
-            form_data: formData
-          }
+          email: emailToSave,
+          name: formData.name?.trim() || null,
+          phone: formData.phone?.trim() || null,
+          age: formData.age ? parseInt(formData.age) : null,
+          cep: formData.cep?.trim() || null,
+          address: formData.address?.trim() || null,
+          whatsapp: formData.whatsapp?.trim() || null,
+          instagram: formData.instagram?.trim() || null,
+          linkedin: formData.linkedin?.trim() || null,
+          responses: formData.responses || {},
+          current_step: currentStep,
+          form_data: formData
         });
 
         if (error) throw error;
@@ -369,18 +368,17 @@ export default function JobApplicationSteps() {
       setLoadingDynamic(true);
       const { data, error } = await apiClient.invokeFunction('generate-dynamic-questions', {
         survey: {
-            id: baseSurvey.id,
-            title: baseSurvey.title,
-            position_title: baseSurvey.position_title,
-            description: baseSurvey.description,
-            department: baseSurvey.department,
-            requirements: baseSurvey.requirements,
-            work_modality: baseSurvey.work_modality,
-            contract_type: baseSurvey.contract_type,
-            seniority: (baseSurvey as any).seniority,
-          },
-          base_questions: baseSurvey.questions || [],
-        }
+          id: baseSurvey.id,
+          title: baseSurvey.title,
+          position_title: baseSurvey.position_title,
+          description: baseSurvey.description,
+          department: baseSurvey.department,
+          requirements: baseSurvey.requirements,
+          work_modality: baseSurvey.work_modality,
+          contract_type: baseSurvey.contract_type,
+          seniority: (baseSurvey as any).seniority,
+        },
+        base_questions: baseSurvey.questions || [],
       });
 
       if (error) {
@@ -545,22 +543,21 @@ export default function JobApplicationSteps() {
       try {
         const aiResp = await apiClient.invokeFunction('analyze-candidate-responses', {
           job_response_id: jobResponseId,
-            survey_id: survey.id,
-            candidate: {
-              ...candidateInfo,
-              responses: formData.responses || {},
-              disc_final: null,
-            },
-            job: {
-              title: survey.title,
-              position_title: survey.position_title,
-              description: survey.description,
-              department: survey.department,
-              requirements: survey.requirements,
-              work_modality: survey.work_modality,
-              contract_type: survey.contract_type,
-              seniority: (survey as any).seniority,
-            }
+          survey_id: survey.id,
+          candidate: {
+            ...candidateInfo,
+            responses: formData.responses || {},
+            disc_final: null,
+          },
+          job: {
+            title: survey.title,
+            position_title: survey.position_title,
+            description: survey.description,
+            department: survey.department,
+            requirements: survey.requirements,
+            work_modality: survey.work_modality,
+            contract_type: survey.contract_type,
+            seniority: (survey as any).seniority,
           }
         });
 

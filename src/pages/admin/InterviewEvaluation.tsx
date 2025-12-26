@@ -67,18 +67,29 @@ export default function InterviewEvaluation() {
   const { data: interview, isLoading } = useQuery({
     queryKey: ['interview', interview_id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('job_interviews')
-        .select(`
-          *,
-          job_response:job_responses(id, name, email, phone).execute(),
-          job_survey:job_surveys(id, title, position_title)
-        `)
+      const { data, error } = await from('job_interviews')
+        .select('*')
         .eq('id', interview_id)
         .single();
 
       if (error) throw error;
-      return data as Interview;
+      
+      // Buscar dados relacionados separadamente
+      const { data: jobResponse } = await from('job_responses')
+        .select('id, name, email, phone')
+        .eq('id', data.job_response_id)
+        .single();
+      
+      const { data: jobSurvey } = await from('job_surveys')
+        .select('id, title, position_title')
+        .eq('id', data.survey_id)
+        .single();
+      
+      return {
+        ...data,
+        job_response: jobResponse,
+        job_survey: jobSurvey
+      } as Interview;
     },
     enabled: !!interview_id,
   });
@@ -126,8 +137,7 @@ export default function InterviewEvaluation() {
         })
         .join('\n\n') + (transcription ? `\n\nTranscrição Completa:\n${transcription}` : '');
 
-      const { error } = await supabase
-        .from('job_interviews')
+      const { error } = await from('job_interviews')
         .update({
           transcription: fullTranscription,
           status: 'in_progress',
@@ -184,14 +194,12 @@ export default function InterviewEvaluation() {
           job_response_id: interview.job_response_id,
           survey_id: interview.survey_id,
           include_profile_analysis: true // Flag para análise de perfil
-        }
       });
 
       if (error) throw error;
 
       // Salvar transcrição completa
-      await supabase
-        .from('job_interviews')
+      await from('job_interviews')
         .update({
           transcription: fullTranscription.trim(),
           status: 'completed',

@@ -267,30 +267,29 @@ export default function TalentBank() {
         .execute();
 
       const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
-          job_response_id: candidate.id,
-          survey_id: candidate.survey_id,
-          candidate_data: {
-            name: jobResponse.name,
-            email: jobResponse.email,
-            age: jobResponse.age,
-            phone: jobResponse.phone || jobResponse.whatsapp,
-            responses: jobResponse.responses,
-            disc_profile: discResult ? {
-              d_score: discResult.d_score || 0,
-              i_score: discResult.i_score || 0,
-              s_score: discResult.s_score || 0,
-              c_score: discResult.c_score || 0,
-              dominant_profile: discResult.dominant_profile || ''
-            } : undefined
-          },
-          job_data: {
-            title: jobSurvey.title,
-            position_title: jobSurvey.position_title,
-            description: jobSurvey.description,
-            requirements: jobSurvey.requirements,
-            work_modality: jobSurvey.work_modality,
-            contract_type: jobSurvey.contract_type
-          }
+        job_response_id: candidate.id,
+        survey_id: candidate.survey_id,
+        candidate_data: {
+          name: jobResponse.name,
+          email: jobResponse.email,
+          age: jobResponse.age,
+          phone: jobResponse.phone || jobResponse.whatsapp,
+          responses: jobResponse.responses,
+          disc_profile: discResult ? {
+            d_score: discResult.d_score || 0,
+            i_score: discResult.i_score || 0,
+            s_score: discResult.s_score || 0,
+            c_score: discResult.c_score || 0,
+            dominant_profile: discResult.dominant_profile || ''
+          } : undefined
+        },
+        job_data: {
+          title: jobSurvey.title,
+          position_title: jobSurvey.position_title,
+          description: jobSurvey.description,
+          requirements: jobSurvey.requirements,
+          work_modality: jobSurvey.work_modality,
+          contract_type: jobSurvey.contract_type
         }
       });
 

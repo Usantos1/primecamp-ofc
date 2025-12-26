@@ -258,8 +258,8 @@ export const useDiscTest = () => {
           .eq('user_id', user.id)
           .eq('is_completed', true)
           .order('completion_date', { ascending: false })
+          .limit(1)
           .execute();
-          .limit(1);
 
         if (completedError) {
           console.error('[DISC] Erro ao carregar resultados completados:', completedError);
@@ -380,8 +380,6 @@ export const useDiscTest = () => {
         .eq('user_id', user.id)
         .eq('test_id', test.id)
         .eq('is_completed', false)
-        .maybeSingle()
-        .execute();
         .maybeSingle();
 
       let newResponse;

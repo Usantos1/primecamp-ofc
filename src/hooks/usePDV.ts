@@ -869,8 +869,6 @@ export function usePayments(saleId: string) {
       const { data: saleData } = await from('sales')
         .select('total, total_pago')
         .eq('id', saleId)
-        .single()
-        .execute();
         .single();
       
       if (saleData) {
@@ -991,7 +989,6 @@ export function useCashRegister() {
       const { data, error } = await from('cash_register_sessions')
         .select('*')
         .eq('status', 'open')
-        .execute();
         .eq('operador_id', user?.id)
         .order('opened_at', { ascending: false })
         .limit(1)
@@ -1020,9 +1017,7 @@ export function useCashRegister() {
         .select('id')
         .eq('status', 'open')
         .eq('operador_id', data.operador_id)
-        .maybeSingle()
-        .execute();
-        .single();
+        .maybeSingle();
 
       if (existing) {
         throw new Error('Já existe uma sessão de caixa aberta');
