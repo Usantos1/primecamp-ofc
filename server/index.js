@@ -1303,8 +1303,17 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
         const valorParcelado = produto.valor_parcelado_6x ? parseFloat(produto.valor_parcelado_6x) : (valorVenda ? valorVenda * 1.2 : null);
         const margemPercentual = produto.margem_percentual ? parseFloat(produto.margem_percentual) : (produto.margem ? parseFloat(produto.margem) : null);
         
+        // Código: se for número pequeno (< 2 bilhões), usar como INT, senão ignorar
+        let codigoVal = null;
+        if (produto.codigo !== null && produto.codigo !== undefined) {
+          const codigoNum = parseInt(produto.codigo);
+          if (!isNaN(codigoNum) && codigoNum > 0 && codigoNum < 2000000000) {
+            codigoVal = codigoNum;
+          }
+        }
+        
         const dadosProduto = {
-          codigo: produto.codigo ? parseInt(produto.codigo) : null,
+          codigo: codigoVal,
           nome: (produto.descricao || produto.nome || '').toUpperCase().substring(0, 255),
           codigo_barras: produto.codigo_barras || null,
           referencia: produto.referencia || null,
