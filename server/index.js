@@ -582,9 +582,20 @@ function buildWhereClause(where, params = []) {
   // Tratar NOT
   for (const [field, value] of Object.entries(where)) {
     if (field.includes('__not__')) {
-      const [actualField, , operator] = field.split('__not__');
+      // Split por '__not__' e pegar o que vem depois
+      const parts = field.split('__not__');
+      const actualField = parts[0];
+      const operatorPart = parts[1] || '';
+      
+      // Remover underscore inicial se existir (para casos como __not___is -> _is)
+      const operator = operatorPart.startsWith('_') ? operatorPart.substring(1) : operatorPart;
+      
       if (operator === 'is' && value === null) {
         conditions.push(`${actualField} IS NOT NULL`);
+      } else if (operator === 'eq') {
+        conditions.push(`${actualField} != $${paramIndex}`);
+        params.push(value);
+        paramIndex++;
       }
       continue;
     }
@@ -642,6 +653,11 @@ function buildWhereClause(where, params = []) {
       params.push(value);
       paramIndex++;
     }
+  }
+
+  // Se não há condições, retornar clause vazio
+  if (conditions.length === 0) {
+    return { clause: '', params };
   }
 
   return {
