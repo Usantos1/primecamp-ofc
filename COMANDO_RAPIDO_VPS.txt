@@ -1,0 +1,18 @@
+# COMANDO RÁPIDO PARA VPS
+
+cd /root/primecamp-ofc && nano .env
+
+# No nano, adicione estas linhas:
+DB_HOST=72.62.106.76
+DB_NAME=banco_gestao
+DB_USER=postgres
+DB_PASSWORD=AndinhoSurf2015@
+DB_PORT=5432
+DB_SSL=false
+JWT_SECRET=seu_jwt_secret_aqui
+
+# Salvar: Ctrl+O, Enter, Ctrl+X
+
+# Depois execute:
+cd server && node test-connection.js && cd .. && pm2 restart primecamp-api
+

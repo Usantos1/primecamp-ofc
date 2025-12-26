@@ -54,41 +54,72 @@ fbq('track', 'PageView');
     <!-- 🚫🚫🚫 INTERCEPTAR SUPABASE ANTES DE QUALQUER CÓDIGO 🚫🚫🚫 -->
     <script>
       (function() {
-        // Interceptar fetch
+        // 🧹 LIMPAR TODOS OS TOKENS DO SUPABASE IMEDIATAMENTE
+        try {
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.includes('supabase') || key.includes('sb-') || key.includes('gogxicjaqpqbhsfzutij'))) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+            console.log('🧹 Removido token Supabase:', key);
+          });
+          if (keysToRemove.length > 0) {
+            console.log('✅ Limpeza automática: removidos', keysToRemove.length, 'tokens do Supabase');
+          }
+        } catch (e) {
+          console.warn('Erro ao limpar tokens Supabase:', e);
+        }
+        
+        // Interceptar fetch ANTES de qualquer código
         const originalFetch = window.fetch;
         window.fetch = function(...args) {
-          const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-          if (url && url.includes('supabase.co')) {
-            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via fetch (inline):', url);
-            return Promise.reject(new Error('Supabase foi completamente desabilitado. Use PostgreSQL API.'));
+          const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || args[0]?.href || '');
+          if (url && (url.includes('supabase.co') || url.includes('gogxicjaqpqbhsfzutij'))) {
+            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via fetch:', url);
+            return Promise.reject(new Error('🚫 Supabase foi completamente desabilitado. Use PostgreSQL API em api.primecamp.cloud'));
           }
           return originalFetch.apply(this, args);
         };
         
-        // Interceptar XMLHttpRequest
+        // Interceptar XMLHttpRequest ANTES de qualquer código
         const originalXHROpen = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function(method, url, ...rest) {
           const urlString = typeof url === 'string' ? url : url.toString();
           this._url = urlString;
-          if (urlString.includes('supabase.co')) {
-            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via XMLHttpRequest (inline):', urlString);
-            throw new Error('Supabase foi completamente desabilitado. Use PostgreSQL API.');
+          if (urlString && (urlString.includes('supabase.co') || urlString.includes('gogxicjaqpqbhsfzutij'))) {
+            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via XMLHttpRequest:', urlString);
+            throw new Error('🚫 Supabase foi completamente desabilitado. Use PostgreSQL API em api.primecamp.cloud');
           }
           return originalXHROpen.apply(this, [method, url, ...rest]);
         };
         
-        // Interceptar WebSocket
+        // Interceptar XMLHttpRequest.send também
+        const originalXHRSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.send = function(...args) {
+          if (this._url && (this._url.includes('supabase.co') || this._url.includes('gogxicjaqpqbhsfzutij'))) {
+            console.error('🚫🚫🚫 REQUISIÇÃO SUPABASE BLOQUEADA via XMLHttpRequest.send:', this._url);
+            throw new Error('🚫 Supabase foi completamente desabilitado. Use PostgreSQL API em api.primecamp.cloud');
+          }
+          return originalXHRSend.apply(this, args);
+        };
+        
+        // Interceptar WebSocket ANTES de qualquer código
         const originalWebSocket = window.WebSocket;
         window.WebSocket = function(url, protocols) {
           const urlString = typeof url === 'string' ? url : url.toString();
-          if (urlString.includes('supabase.co')) {
-            console.error('🚫🚫🚫 WEBSOCKET SUPABASE BLOQUEADO (inline):', urlString);
-            throw new Error('Supabase WebSocket foi completamente desabilitado. Use PostgreSQL API.');
+          if (urlString && (urlString.includes('supabase.co') || urlString.includes('gogxicjaqpqbhsfzutij'))) {
+            console.error('🚫🚫🚫 WEBSOCKET SUPABASE BLOQUEADO:', urlString);
+            throw new Error('🚫 Supabase WebSocket foi completamente desabilitado. Use PostgreSQL API em api.primecamp.cloud');
           }
           return new originalWebSocket(url, protocols);
         };
         
-        console.log('🚫 Interceptação Supabase COMPLETA ATIVADA (fetch, XMLHttpRequest, WebSocket)');
+        console.log('✅ Interceptação Supabase COMPLETA ATIVADA (fetch, XMLHttpRequest, WebSocket)');
+        console.log('✅ Limpeza automática de tokens Supabase executada');
       })();
     </script>
   </head>
