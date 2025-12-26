@@ -55,10 +55,9 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
   // Buscar configurações do cupom
   let config: CupomConfig | null = null;
   try {
-    const { data: configData } = await supabase
-      .from('cupom_config')
+    const { data: configData } = await from('cupom_config')
       .select('*')
-      .execute().limit(1)
+      .limit(1)
       .single();
     config = configData as CupomConfig | null;
   } catch (error) {

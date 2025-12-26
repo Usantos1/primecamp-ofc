@@ -175,7 +175,7 @@ export function useBulkUpsertProducts() {
           // Check if product exists (case-insensitive name)
           const { data: existingData, error: searchError } = await from('produtos')
             .select('id')
-            .execute().ilike('nome', product.nome)
+            .ilike('nome', product.nome)
             .single();
 
           if (searchError && searchError.code !== 'PGRST116') {

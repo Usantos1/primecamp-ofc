@@ -49,10 +49,9 @@ const ProcessEdit = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('processes')
+      const { data, error } = await from('processes')
         .select('*')
-        .execute().eq('id', processId)
+        .eq('id', processId)
         .single();
 
       if (error) {

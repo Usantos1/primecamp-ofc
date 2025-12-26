@@ -50,10 +50,9 @@ export function GamificationPanel() {
     queryFn: async () => {
       if (!user) return null;
       
-      const { data, error } = await supabase
-        .from('user_streaks')
+      const { data, error } = await from('user_streaks')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;

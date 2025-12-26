@@ -206,10 +206,9 @@ export const AdminDiscManager = () => {
       console.log('Tentando excluir resultado do usuário com ID:', resultId);
       
       // Debug: verificar se o registro existe
-      const { data: existingRecord } = await supabase
-        .from('disc_responses')
+      const { data: existingRecord } = await from('disc_responses')
         .select('*')
-        .execute().eq('id', resultId)
+        .eq('id', resultId)
         .single();
       
       console.log('Registro encontrado:', existingRecord);
@@ -240,10 +239,9 @@ export const AdminDiscManager = () => {
       console.log('Tentando excluir resultado do candidato com ID:', resultId);
       
       // Debug: verificar se o registro existe
-      const { data: existingRecord } = await supabase
-        .from('candidate_responses')
+      const { data: existingRecord } = await from('candidate_responses')
         .select('*')
-        .execute().eq('id', resultId)
+        .eq('id', resultId)
         .single();
       
       console.log('Registro encontrado:', existingRecord);

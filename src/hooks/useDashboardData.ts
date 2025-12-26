@@ -103,8 +103,7 @@ export function useDashboardData() {
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
-        .execute();
+        .single();
 
       const totalCaixa = caixaSession 
         ? (caixaSession.valor_inicial || 0) + (caixaSession.total_entradas || 0) - (caixaSession.total_saidas || 0)
@@ -188,8 +187,7 @@ export function useDashboardData() {
         .select('id')
         .eq('status', 'open')
         .limit(1)
-        .single()
-        .execute();
+        .single();
 
       // OS sem atualização há mais de 7 dias
       const seteDiasAtras = subDays(new Date(), 7);

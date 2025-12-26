@@ -150,10 +150,9 @@ export const useTimeClock = () => {
       const now = new Date().toISOString();
 
       // Check if already clocked in today within the same minute
-      const existingRecord = await supabase
-        .from('time_clock')
+      const existingRecord = await from('time_clock')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .eq('date', today)
         .single();
 
