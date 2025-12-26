@@ -20,6 +20,9 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy para funcionar corretamente atrás do Nginx
+app.set('trust proxy', 1);
+
 // Validar variáveis de ambiente obrigatórias
 const requiredEnvVars = {
   DB_HOST: process.env.DB_HOST,
