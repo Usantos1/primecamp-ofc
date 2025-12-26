@@ -1299,9 +1299,20 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
         }
 
         // Preparar dados - aceitar múltiplos nomes de campos para compatibilidade
-        const valorVenda = parseFloat(produto.valor_dinheiro_pix) || parseFloat(produto.vi_venda) || parseFloat(produto.valor_venda) || 0;
-        const valorParcelado = produto.valor_parcelado_6x ? parseFloat(produto.valor_parcelado_6x) : (valorVenda ? valorVenda * 1.2 : null);
-        const margemPercentual = produto.margem_percentual ? parseFloat(produto.margem_percentual) : (produto.margem ? parseFloat(produto.margem) : null);
+        // Função para limitar valores numéricos
+        const limitNum = (val, min, max) => {
+          if (val === null || val === undefined || isNaN(val)) return null;
+          return Math.min(Math.max(val, min), max);
+        };
+        
+        let valorVenda = parseFloat(produto.valor_dinheiro_pix) || parseFloat(produto.vi_venda) || parseFloat(produto.valor_venda) || 0;
+        valorVenda = limitNum(valorVenda, 0, 9999999999.99) || 0; // Max ~10 bilhões
+        
+        let valorParcelado = produto.valor_parcelado_6x ? parseFloat(produto.valor_parcelado_6x) : (valorVenda ? valorVenda * 1.2 : null);
+        valorParcelado = limitNum(valorParcelado, 0, 9999999999.99);
+        
+        let margemPercentual = produto.margem_percentual ? parseFloat(produto.margem_percentual) : (produto.margem ? parseFloat(produto.margem) : null);
+        margemPercentual = limitNum(margemPercentual, 0, 999.99); // DECIMAL(5,2) max é 999.99
         
         // Código: se for número pequeno (< 2 bilhões), usar como INT, senão ignorar
         let codigoVal = null;
@@ -1312,22 +1323,29 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
           }
         }
         
+        // Quantidade e estoque - limitar para evitar overflow
+        let quantidade = parseInt(produto.quantidade) || 0;
+        quantidade = Math.min(Math.max(quantidade, 0), 2000000000);
+        
+        let estoqueMinimo = parseInt(produto.estoque_minimo) || 0;
+        estoqueMinimo = Math.min(Math.max(estoqueMinimo, 0), 2000000000);
+        
         const dadosProduto = {
           codigo: codigoVal,
           nome: (produto.descricao || produto.nome || '').toUpperCase().substring(0, 255),
-          codigo_barras: produto.codigo_barras || null,
-          referencia: produto.referencia || null,
-          marca: produto.marca || null,
-          modelo: produto.modelo || null,
-          grupo: produto.grupo || null,
-          sub_grupo: produto.sub_grupo || null,
-          qualidade: produto.qualidade || null,
+          codigo_barras: produto.codigo_barras ? String(produto.codigo_barras).substring(0, 50) : null,
+          referencia: produto.referencia ? String(produto.referencia).substring(0, 100) : null,
+          marca: produto.marca ? String(produto.marca).substring(0, 100) : null,
+          modelo: produto.modelo ? String(produto.modelo).substring(0, 100) : null,
+          grupo: produto.grupo ? String(produto.grupo).substring(0, 100) : null,
+          sub_grupo: produto.sub_grupo ? String(produto.sub_grupo).substring(0, 100) : null,
+          qualidade: produto.qualidade ? String(produto.qualidade).substring(0, 50) : null,
           valor_dinheiro_pix: valorVenda,
           valor_parcelado_6x: valorParcelado,
           margem_percentual: margemPercentual,
-          quantidade: parseInt(produto.quantidade) || 0,
-          estoque_minimo: parseInt(produto.estoque_minimo) || 0,
-          localizacao: produto.localizacao || null,
+          quantidade: quantidade,
+          estoque_minimo: estoqueMinimo,
+          localizacao: produto.localizacao ? String(produto.localizacao).substring(0, 100) : null,
         };
 
         // Verificar se produto já existe (por código_barras ou referência ou nome)
