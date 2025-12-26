@@ -1063,7 +1063,7 @@ app.post('/api/functions/disc-answer', authenticateToken, async (req, res) => {
     }
 
     // Remover resposta anterior para esta questão (evitar duplicatas)
-    responses = responses.filter((r: any) => r.questionId !== questionId);
+    responses = responses.filter((r) => r.questionId !== questionId);
 
     // Adicionar nova resposta
     responses.push({
@@ -1144,7 +1144,7 @@ app.post('/api/functions/disc-finish', authenticateToken, async (req, res) => {
       c: 0
     };
 
-    responses.forEach((r: any) => {
+    responses.forEach((r) => {
       if (r.selectedType === 'D') scores.d++;
       else if (r.selectedType === 'I') scores.i++;
       else if (r.selectedType === 'S') scores.s++;
