@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Plus, Search, Edit, Phone, Calendar, X, FileText, Trash2,
-  CheckCircle2, RotateCcw, Package, ChevronLeft, ChevronRight, XCircle
+  CheckCircle2, RotateCcw, Package, ChevronLeft, ChevronRight, XCircle, Download, Zap
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -234,6 +236,31 @@ export default function OrdensServico() {
   const [osToReabrir, setOsToReabrir] = useState<{ id: string; motivo: string } | null>(null);
   const [page, setPage] = useState(1);
   
+  // Estados de exportação
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string>('all');
+  const [exportPeriodo, setExportPeriodo] = useState<string>('all');
+  const [exportDataInicio, setExportDataInicio] = useState<string>('');
+  const [exportDataFim, setExportDataFim] = useState<string>('');
+  const [exportUsarFiltrosAtuais, setExportUsarFiltrosAtuais] = useState(true);
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportColumns, setExportColumns] = useState([
+    { id: 'numero', label: 'Nº OS', checked: true },
+    { id: 'situacao', label: 'Situação', checked: true },
+    { id: 'status', label: 'Status', checked: true },
+    { id: 'cliente', label: 'Cliente', checked: true },
+    { id: 'telefone', label: 'Telefone', checked: true },
+    { id: 'aparelho', label: 'Aparelho', checked: true },
+    { id: 'problema', label: 'Problema', checked: true },
+    { id: 'data_entrada', label: 'Data Entrada', checked: true },
+    { id: 'previsao', label: 'Previsão', checked: true },
+    { id: 'valor', label: 'Valor', checked: true },
+    { id: 'valor_pago', label: 'Valor Pago', checked: false },
+    { id: 'imei', label: 'IMEI', checked: false },
+    { id: 'observacoes', label: 'Observações', checked: false },
+  ]);
+  
   // Hooks de dados
   const { ordens, isLoading, getEstatisticas, deleteOS: deleteOSMutation, updateOS, updateStatus } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
@@ -346,6 +373,143 @@ export default function OrdensServico() {
     } catch { toast({ title: 'Erro', description: 'Não foi possível marcar.', variant: 'destructive' }); }
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // EXPORTAÇÃO
+  // ═══════════════════════════════════════════════════════════════
+  const toggleExportColumn = (id: string) => {
+    setExportColumns(prev => prev.map(c => c.id === id ? { ...c, checked: !c.checked } : c));
+  };
+
+  const applyExportPreset = (preset: 'abertas' | 'finalizadas' | 'atrasadas' | 'hoje' | 'mes' | 'completo') => {
+    const hojeDate = new Date().toISOString().split('T')[0];
+    const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    
+    switch (preset) {
+      case 'abertas':
+        setExportStatus('aberta');
+        setExportPeriodo('all');
+        setExportDataInicio('');
+        setExportDataFim('');
+        break;
+      case 'finalizadas':
+        setExportStatus('finalizada');
+        setExportPeriodo('all');
+        break;
+      case 'atrasadas':
+        setExportStatus('all');
+        setExportPeriodo('all');
+        // Filtrar atrasadas será feito na exportação
+        break;
+      case 'hoje':
+        setExportStatus('all');
+        setExportPeriodo('all');
+        setExportDataInicio(hojeDate);
+        setExportDataFim(hojeDate);
+        break;
+      case 'mes':
+        setExportStatus('all');
+        setExportPeriodo('all');
+        setExportDataInicio(inicioMes);
+        setExportDataFim(hojeDate);
+        break;
+      case 'completo':
+        setExportStatus('all');
+        setExportPeriodo('all');
+        setExportDataInicio('');
+        setExportDataFim('');
+        setExportColumns(prev => prev.map(c => ({ ...c, checked: true })));
+        break;
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      let dadosParaExportar = exportUsarFiltrosAtuais ? [...filteredOrdens] : [...ordens];
+
+      // Aplicar filtros de exportação se não usar filtros atuais
+      if (!exportUsarFiltrosAtuais) {
+        if (exportStatus !== 'all') {
+          dadosParaExportar = dadosParaExportar.filter(os => os.status === exportStatus);
+        }
+
+        if (exportDataInicio) {
+          dadosParaExportar = dadosParaExportar.filter(os => {
+            if (!os.data_entrada) return false;
+            return os.data_entrada.split('T')[0] >= exportDataInicio;
+          });
+        }
+
+        if (exportDataFim) {
+          dadosParaExportar = dadosParaExportar.filter(os => {
+            if (!os.data_entrada) return false;
+            return os.data_entrada.split('T')[0] <= exportDataFim;
+          });
+        }
+      }
+
+      // Preparar dados com colunas selecionadas
+      const colunasAtivas = exportColumns.filter(c => c.checked);
+      
+      const dadosFormatados = dadosParaExportar.map(os => {
+        const cliente = getClienteById(os.cliente_id);
+        const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
+        const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
+        const valorTotalItens = totaisPorOS[os.id] || 0;
+        const valorTotal = valorTotalItens > 0 ? valorTotalItens : Number(os.valor_total || 0);
+        
+        const row: Record<string, any> = {};
+        colunasAtivas.forEach(col => {
+          switch (col.id) {
+            case 'numero': row['Nº OS'] = os.numero; break;
+            case 'situacao': row['Situação'] = os.situacao === 'fechada' ? 'Fechada' : os.situacao === 'cancelada' ? 'Cancelada' : 'Aberta'; break;
+            case 'status': row['Status'] = STATUS_OS_LABELS[os.status as StatusOS] || os.status; break;
+            case 'cliente': row['Cliente'] = cliente?.nome || os.cliente_nome || ''; break;
+            case 'telefone': row['Telefone'] = os.telefone_contato || cliente?.telefone || ''; break;
+            case 'aparelho': row['Aparelho'] = `${modelo?.nome || os.modelo_nome || ''} - ${marca?.nome || os.marca_nome || ''}`; break;
+            case 'problema': row['Problema'] = os.descricao_problema || ''; break;
+            case 'data_entrada': row['Data Entrada'] = os.data_entrada ? dateFormatters.short(os.data_entrada) : ''; break;
+            case 'previsao': row['Previsão'] = os.previsao_entrega ? dateFormatters.short(os.previsao_entrega) : ''; break;
+            case 'valor': row['Valor'] = valorTotal; break;
+            case 'valor_pago': row['Valor Pago'] = Number(os.valor_pago || 0); break;
+            case 'imei': row['IMEI'] = os.imei || ''; break;
+            case 'observacoes': row['Observações'] = os.observacoes_internas || ''; break;
+          }
+        });
+        return row;
+      });
+
+      // Gerar arquivo
+      const ws = XLSX.utils.json_to_sheet(dadosFormatados);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ordens de Serviço');
+
+      const filename = `os_${new Date().toISOString().split('T')[0]}`;
+      
+      if (exportFormat === 'xlsx') {
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+      } else {
+        XLSX.writeFile(wb, `${filename}.csv`, { bookType: 'csv' });
+      }
+
+      toast({
+        title: 'Exportação concluída!',
+        description: `${dadosFormatados.length} OS exportadas com sucesso.`,
+      });
+
+      setShowExportModal(false);
+    } catch (error: any) {
+      console.error('Erro na exportação:', error);
+      toast({
+        title: 'Erro na exportação',
+        description: error?.message || 'Ocorreu um erro ao exportar.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || periodoFilter !== 'all';
 
   // Cards de estatísticas config
@@ -449,6 +613,10 @@ export default function OrdensServico() {
               <div className="flex-1" />
 
               {/* Ações */}
+              <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
               <PermissionGate permission="os.create">
                 <Button onClick={() => setShowImportarOS(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
                   <FileText className="h-4 w-4" />
@@ -641,6 +809,167 @@ export default function OrdensServico() {
 
       {/* Modais */}
       <ImportarOS open={showImportarOS} onOpenChange={setShowImportarOS} onSuccess={() => window.location.reload()} />
+      
+      {/* Modal de Exportação */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Exportar Ordens de Serviço
+            </DialogTitle>
+            <DialogDescription>
+              Configure os filtros e colunas para exportar. Total atual: {filteredOrdens.length} OS.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {/* Presets rápidos */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-500" />
+                Presets Rápidos
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('abertas')} className="text-xs">
+                  OS Abertas
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('finalizadas')} className="text-xs">
+                  Finalizadas
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('hoje')} className="text-xs">
+                  Hoje
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('mes')} className="text-xs">
+                  Este Mês
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('completo')} className="text-xs text-blue-600 border-blue-200 hover:bg-blue-50">
+                  Relatório Completo
+                </Button>
+              </div>
+            </div>
+
+            {/* Usar filtros atuais */}
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <Checkbox
+                id="usar-filtros"
+                checked={exportUsarFiltrosAtuais}
+                onCheckedChange={(checked) => setExportUsarFiltrosAtuais(checked === true)}
+              />
+              <label htmlFor="usar-filtros" className="text-sm cursor-pointer">
+                <span className="font-medium">Usar filtros aplicados na tela</span>
+                {hasActiveFilters && (
+                  <span className="text-blue-600 text-xs ml-2">
+                    ({filteredOrdens.length} OS filtradas)
+                  </span>
+                )}
+              </label>
+            </div>
+
+            {!exportUsarFiltrosAtuais && (
+              <>
+                {/* Filtros de período */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data Início</Label>
+                    <Input
+                      type="date"
+                      value={exportDataInicio}
+                      onChange={(e) => setExportDataInicio(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data Fim</Label>
+                    <Input
+                      type="date"
+                      value={exportDataFim}
+                      onChange={(e) => setExportDataFim(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro de status */}
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={exportStatus} onValueChange={setExportStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os Status</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="em_analise">Em Análise</SelectItem>
+                      <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
+                      <SelectItem value="aprovada">Aprovada</SelectItem>
+                      <SelectItem value="em_manutencao">Em Manutenção</SelectItem>
+                      <SelectItem value="aguardando_peca">Aguardando Peça</SelectItem>
+                      <SelectItem value="finalizada">Finalizada</SelectItem>
+                      <SelectItem value="entregue">Entregue</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {/* Colunas para exportar */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Colunas para Exportar</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-gray-50 rounded-lg border">
+                {exportColumns.map((col) => (
+                  <div key={col.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`col-${col.id}`}
+                      checked={col.checked}
+                      onCheckedChange={() => toggleExportColumn(col.id)}
+                    />
+                    <label htmlFor={`col-${col.id}`} className="text-sm cursor-pointer">
+                      {col.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Formato */}
+            <div className="space-y-2">
+              <Label>Formato do Arquivo</Label>
+              <Select value={exportFormat} onValueChange={(v: 'xlsx' | 'csv') => setExportFormat(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
+                  <SelectItem value="csv">CSV (.csv)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowExportModal(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleExport} 
+              disabled={isExporting || exportColumns.filter(c => c.checked).length === 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isExporting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Exportando...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar {exportUsarFiltrosAtuais ? filteredOrdens.length : 'OS'}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <AlertDialog open={osToDelete !== null} onOpenChange={(open) => !open && setOsToDelete(null)}>
         <AlertDialogContent>
