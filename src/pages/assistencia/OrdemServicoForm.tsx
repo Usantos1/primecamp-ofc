@@ -1752,124 +1752,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
     <div className={cn("w-full h-full flex flex-col overflow-hidden", isModal ? "" : "")}>
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-          {/* Header com tabs - compacto */}
-          <div className="flex-shrink-0 mb-2 px-2">
-            {/* Mobile: grid compacto */}
-            <div className="md:hidden">
-              <TabsList className="w-full grid grid-cols-3 bg-white h-auto p-1 gap-1 rounded-lg border border-gray-200 shadow-sm">
-                <TabsTrigger 
-                  value="dados" 
-                  className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
-                >
-                  <FileText className="h-3 w-3" />
-                  <span>Dados</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="checklist" 
-                  className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
-                >
-                  <Check className="h-3 w-3" />
-                  <span>Check</span>
-                </TabsTrigger>
-                {isEditing && (
-                  <>
-                    <TabsTrigger 
-                      value="resolucao" 
-                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
-                    >
-                      <AlertTriangle className="h-3 w-3" />
-                      <span>Resol</span>
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="tecnico" 
-                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
-                    >
-                      <Settings className="h-3 w-3" />
-                      <span>Téc</span>
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="itens" 
-                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
-                    >
-                      <Package className="h-3 w-3" />
-                      <span>Itens</span>
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="fotos" 
-                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
-                    >
-                      <Image className="h-3 w-3" />
-                      <span>Fotos</span>
-                    </TabsTrigger>
-                  </>
-                )}
-              </TabsList>
-            </div>
-            {/* Desktop: linha única compacta */}
-            <div className="hidden md:block">
-              <TabsList className="inline-flex bg-white h-auto p-1 gap-0 rounded-lg border border-gray-200 shadow-sm">
-                <TabsTrigger 
-                  value="dados" 
-                  className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  <span>Dados</span>
-                </TabsTrigger>
-                <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
-                <TabsTrigger 
-                  value="checklist" 
-                  className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  <span>Checklist</span>
-                </TabsTrigger>
-                {isEditing && (
-                  <>
-                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
-                    <TabsTrigger 
-                      value="resolucao" 
-                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                    >
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                      <span>Resolução</span>
-                    </TabsTrigger>
-                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
-                    <TabsTrigger 
-                      value="tecnico" 
-                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                    >
-                      <Settings className="h-3.5 w-3.5" />
-                      <span>Info. Técnicas</span>
-                    </TabsTrigger>
-                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
-                    <TabsTrigger 
-                      value="itens" 
-                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                    >
-                      <Package className="h-3.5 w-3.5" />
-                      <span>Peças ({itens.length})</span>
-                    </TabsTrigger>
-                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
-                    <TabsTrigger 
-                      value="financeiro" 
-                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                    >
-                      <DollarSign className="h-3.5 w-3.5" />
-                      <span>Financeiro</span>
-                    </TabsTrigger>
-                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
-                    <TabsTrigger 
-                      value="fotos" 
-                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                    >
-                      <Image className="h-3.5 w-3.5" />
-                      <span>Fotos</span>
-                    </TabsTrigger>
-                  </>
-                )}
-              </TabsList>
-            </div>
-          </div>
+          {/* Tabs movidas para o rodapé */}
 
           {/* Resumo Fixo da OS - Compacto */}
           {isEditing && currentOS && (
@@ -4322,32 +4205,83 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           </DialogContent>
         </Dialog>
 
-        {/* Rodapé com ações */}
-        <div className="p-3 flex-shrink-0 mt-auto">
+        {/* Rodapé com tabs e ações */}
+        <div className="p-2 flex-shrink-0 mt-auto">
           <Card className="border border-gray-200 shadow-sm rounded-xl bg-white">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                  {!isModal && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/os')}
-                      className="gap-2 text-muted-foreground hover:text-foreground"
+            <CardContent className="p-2 sm:p-3">
+              <div className="flex items-center justify-between gap-2">
+                {/* Tabs no rodapé */}
+                <div className="flex-1 overflow-x-auto">
+                  <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-0.5 rounded-lg">
+                    <TabsTrigger 
+                      value="dados" 
+                      className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                     >
-                      <ArrowLeft className="h-4 w-4" />
-                      Voltar
-                    </Button>
-                  )}
+                      <FileText className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Dados</span>
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="checklist" 
+                      className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Check</span>
+                    </TabsTrigger>
+                    {isEditing && (
+                      <>
+                        <TabsTrigger 
+                          value="resolucao" 
+                          className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Resolução</span>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="tecnico" 
+                          className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Técnico</span>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="itens" 
+                          className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Peças ({itens.length})</span>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="financeiro" 
+                          className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        >
+                          <DollarSign className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Financeiro</span>
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="fotos" 
+                          className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        >
+                          <Image className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Fotos</span>
+                        </TabsTrigger>
+                      </>
+                    )}
+                  </TabsList>
+                </div>
+
+                {/* Separador */}
+                <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block" />
+
+                {/* Status e Ações */}
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {isEditing && currentOS && (
                     <>
-                      <span className="text-sm font-medium text-gray-600">Status OS:</span>
                       <Select value={currentOS.status} onValueChange={handleChangeStatus}>
-                        <SelectTrigger className={cn('w-[160px] h-9 text-white border-0 rounded-lg', (() => {
+                        <SelectTrigger className={cn('w-[130px] h-8 text-white border-0 rounded-lg text-xs', (() => {
                           const config = getConfigByStatus(currentOS.status);
                           return config?.cor || STATUS_OS_COLORS[currentOS.status as StatusOS] || 'bg-gray-500';
                         })())}>
-                          <SelectValue placeholder="Alterar Status">
+                          <SelectValue placeholder="Status">
                             {(() => {
                               const config = getConfigByStatus(currentOS.status);
                               return config?.label || STATUS_OS_LABELS[currentOS.status as StatusOS] || currentOS.status;
@@ -4370,43 +4304,34 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             ))}
                         </SelectContent>
                       </Select>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
-                  {isEditing && currentOS && (
-                    <>
+                      
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleWhatsApp()}
                         disabled={whatsappLoading}
-                        className="rounded-lg"
+                        className="rounded-lg h-8 px-2"
                       >
-                        <Send className="h-4 w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">
-                          {whatsappLoading ? 'Enviando...' : 'Enviar no WhatsApp'}
-                        </span>
+                        <Send className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handlePrint('termica')} className="rounded-lg">
-                        <Printer className="h-4 w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">Térmica</span>
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handlePrint('a4')} className="rounded-lg">
-                        <Printer className="h-4 w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">A4</span>
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handlePrint('pdf')} className="rounded-lg">
-                        <Download className="h-4 w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">Salvar PDF</span>
-                      </Button>
+                      
+                      <Select onValueChange={(v) => handlePrint(v as 'termica' | 'a4' | 'pdf')}>
+                        <SelectTrigger className="w-[100px] h-8 rounded-lg text-xs">
+                          <Printer className="h-4 w-4 mr-1" />
+                          <span>Imprimir</span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="termica">Térmica</SelectItem>
+                          <SelectItem value="a4">A4</SelectItem>
+                          <SelectItem value="pdf">Salvar PDF</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </>
                   )}
-                  <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700">
-                    <Save className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">{isEditing ? 'Atualizar' : 'Salvar'}</span>
-                    <span className="sm:hidden">{isEditing ? 'Atualizar' : 'Salvar'}</span>
+                  
+                  <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg h-8 bg-emerald-600 hover:bg-emerald-700">
+                    <Save className="h-4 w-4 mr-1" />
+                    <span>{isEditing ? 'Atualizar' : 'Salvar'}</span>
                   </LoadingButton>
                 </div>
               </div>

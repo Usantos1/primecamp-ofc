@@ -29,29 +29,29 @@ export function OSSummaryHeader({
   const statusColor = status ? STATUS_OS_COLORS[status as keyof typeof STATUS_OS_COLORS] || 'bg-gray-500' : 'bg-gray-500';
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-3">
+      <div className="flex items-center justify-center gap-8 flex-wrap">
         {/* OS # e Status */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {numeroOS && (
-            <Badge variant="outline" className="text-xs font-bold px-2 py-0.5 bg-gray-50 border-gray-300 text-gray-700">
+            <Badge variant="outline" className="text-sm font-bold px-3 py-1 bg-gray-50 border-gray-300 text-gray-700">
               OS #{numeroOS}
             </Badge>
           )}
-          <Badge className={cn('text-[10px] font-semibold px-2 py-0.5 text-white', statusColor)}>
+          <Badge className={cn('text-xs font-semibold px-3 py-1 text-white', statusColor)}>
             {statusLabel}
           </Badge>
         </div>
 
         {/* Separador */}
-        <div className="h-5 w-px bg-gray-200 hidden sm:block" />
+        <div className="h-6 w-px bg-gray-200" />
 
         {/* Cliente */}
-        <div className="flex items-center gap-1.5">
-          <User className="h-3.5 w-3.5 text-blue-500" />
-          <span className="text-[11px] text-gray-500">Cliente:</span>
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-blue-500" />
+          <span className="text-xs text-gray-500">Cliente:</span>
           <span className={cn(
-            "text-xs font-semibold",
+            "text-sm font-semibold",
             clienteNome ? "text-gray-800" : "text-gray-400 italic"
           )}>
             {clienteNome || 'Não selecionado'}
@@ -59,14 +59,14 @@ export function OSSummaryHeader({
         </div>
 
         {/* Separador */}
-        <div className="h-5 w-px bg-gray-200 hidden sm:block" />
+        <div className="h-6 w-px bg-gray-200" />
 
         {/* Modelo */}
-        <div className="flex items-center gap-1.5">
-          <Smartphone className="h-3.5 w-3.5 text-purple-500" />
-          <span className="text-[11px] text-gray-500">Modelo:</span>
+        <div className="flex items-center gap-2">
+          <Smartphone className="h-4 w-4 text-purple-500" />
+          <span className="text-xs text-gray-500">Modelo:</span>
           <span className={cn(
-            "text-xs font-semibold",
+            "text-sm font-semibold",
             modeloNome ? "text-gray-800" : "text-gray-400 italic"
           )}>
             {modeloNome || 'N/A'}
@@ -74,35 +74,35 @@ export function OSSummaryHeader({
         </div>
 
         {/* Separador */}
-        <div className="h-5 w-px bg-gray-200 hidden sm:block" />
+        <div className="h-6 w-px bg-gray-200" />
 
         {/* Total */}
-        <div className="flex items-center gap-1.5">
-          <DollarSign className="h-3.5 w-3.5 text-green-500" />
-          <span className="text-[11px] text-gray-500">Total:</span>
-          <span className="text-xs font-bold text-green-600">
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-green-500" />
+          <span className="text-xs text-gray-500">Total:</span>
+          <span className="text-sm font-bold text-green-600">
             {currencyFormatters.brl(valorTotal)}
           </span>
         </div>
 
         {/* Pago */}
-        <div className="flex items-center gap-1.5">
-          <Wallet className="h-3.5 w-3.5 text-blue-500" />
-          <span className="text-[11px] text-gray-500">Pago:</span>
-          <span className="text-xs font-bold text-blue-600">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-blue-500" />
+          <span className="text-xs text-gray-500">Pago:</span>
+          <span className="text-sm font-bold text-blue-600">
             {currencyFormatters.brl(valorPago)}
           </span>
         </div>
 
         {/* Separador */}
-        <div className="h-5 w-px bg-gray-200 hidden sm:block" />
+        <div className="h-6 w-px bg-gray-200" />
 
         {/* Previsão */}
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-amber-500" />
-          <span className="text-[11px] text-gray-500">Prev:</span>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-amber-500" />
+          <span className="text-xs text-gray-500">Prev:</span>
           <span className={cn(
-            "text-xs font-semibold",
+            "text-sm font-semibold",
             previsaoEntrega ? "text-gray-800" : "text-gray-400"
           )}>
             {previsaoEntrega ? dateFormatters.short(previsaoEntrega) : 'N/A'}
@@ -110,11 +110,11 @@ export function OSSummaryHeader({
         </div>
 
         {/* Técnico */}
-        <div className="flex items-center gap-1.5">
-          <UserCircle className="h-3.5 w-3.5 text-indigo-500" />
-          <span className="text-[11px] text-gray-500">Téc:</span>
+        <div className="flex items-center gap-2">
+          <UserCircle className="h-4 w-4 text-indigo-500" />
+          <span className="text-xs text-gray-500">Téc:</span>
           <span className={cn(
-            "text-xs font-semibold",
+            "text-sm font-semibold",
             tecnicoNome ? "text-gray-800" : "text-gray-400"
           )}>
             {tecnicoNome || 'N/A'}
