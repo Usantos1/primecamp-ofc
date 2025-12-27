@@ -71,27 +71,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { marcas, modelos, getModelosByMarca } = useMarcasModelosSupabase();
   const { produtos, searchProdutos, updateProduto, isLoading: isLoadingProdutos } = useProdutosSupabase();
   
-  // Debug: verificar produtos carregados
-  useEffect(() => {
-    if (!isLoadingProdutos) {
-      console.log('[OrdemServicoForm] Produtos carregados:', {
-        total: produtos.length,
-        comEstoque: produtos.filter(p => (p.quantidade || 0) > 0).length,
-        semEstoque: produtos.filter(p => (p.quantidade || 0) === 0).length,
-        amostra: produtos.slice(0, 5).map(p => ({ nome: p.nome, quantidade: p.quantidade, tipo: p.tipo }))
-      });
-    }
-  }, [produtos, isLoadingProdutos]);
   const { configuracoes, getConfigByStatus } = useConfiguracaoStatus();
   const { tecnicos, colaboradores, getColaboradorById, isLoading: isLoadingCargos } = useCargos();
-  
-  // Debug: verificar se técnicos e colaboradores estão sendo carregados
-  useEffect(() => {
-    if (!isLoadingCargos) {
-      console.log('[OrdemServicoForm] Técnicos carregados:', tecnicos.length, tecnicos.map(t => t.nome));
-      console.log('[OrdemServicoForm] Colaboradores carregados:', colaboradores.length, colaboradores.map(c => c.nome));
-    }
-  }, [tecnicos, colaboradores, isLoadingCargos]);
   const { sendMessage, loading: whatsappLoading } = useWhatsApp();
   const { sendMultiplePhotos: sendTelegramPhotos, deleteMessage: deleteTelegramMessage, loading: telegramLoading } = useTelegram();
   const { imageUrl: osImageReferenceUrl } = useOSImageReference();
@@ -398,43 +379,19 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Buscar produtos - SEMPRE filtrar apenas produtos com estoque disponível
   useEffect(() => {
     if (produtoSearch.length >= 2) {
-      console.log('[OrdemServicoForm] Buscando produtos:', {
-        termo: produtoSearch,
-        totalProdutos: produtos.length,
-        tipoSelecionado: itemForm.tipo
-      });
-      
       const results = searchProdutos(produtoSearch);
-      console.log('[OrdemServicoForm] Resultados da busca (antes do filtro de estoque):', results.length, results.map(p => ({
-        nome: p.nome,
-        quantidade: p.quantidade,
-        tipo: p.tipo
-      })));
       
-      // SEMPRE filtrar apenas produtos com estoque > 0
-      // Usar o campo 'quantidade' que é o campo correto no banco
-      let produtosFiltrados = results.filter(prod => {
-        const estoque = prod.quantidade || 0;
-        const temEstoque = estoque > 0;
-        if (!temEstoque) {
-          console.log(`[OrdemServicoForm] Produto ${prod.nome} descartado: estoque=${estoque}`);
-        }
-        return temEstoque;
-      });
-      
-      console.log('[OrdemServicoForm] Produtos com estoque > 0:', produtosFiltrados.length);
+      // Filtrar produtos com estoque > 0
+      let produtosFiltrados = results.filter(prod => (prod.quantidade || 0) > 0);
       
       // Se o tipo for "peca", também filtrar por tipo
       if (itemForm.tipo === 'peca') {
-        const antes = produtosFiltrados.length;
         produtosFiltrados = produtosFiltrados.filter(prod => {
           const isPeca = prod.tipo === 'peca' || prod.tipo === 'produto' || prod.tipo === 'PECA' || prod.tipo === 'PRODUTO';
           return isPeca;
         });
-        console.log(`[OrdemServicoForm] Após filtrar por tipo peça: ${antes} → ${produtosFiltrados.length}`);
       }
       
-      console.log('[OrdemServicoForm] Produtos finais para exibir:', produtosFiltrados.length);
       setProdutoResults(produtosFiltrados.slice(0, 10));
     } else {
       setProdutoResults([]);
@@ -2409,16 +2366,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <Textarea
                       id="problema-constatado"
                       value={formData.problema_constatado || ''}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        console.log('[OrdemServicoForm] Problema constatado onChange - valor:', value);
-                        setFormData(prev => {
-                          console.log('[OrdemServicoForm] Estado anterior:', prev.problema_constatado);
-                          const updated = { ...prev, problema_constatado: value };
-                          console.log('[OrdemServicoForm] Estado atualizado:', updated.problema_constatado);
-                          return updated;
-                        });
-                      }}
+                      onChange={(e) => setFormData(prev => ({ ...prev, problema_constatado: e.target.value }))}
                       placeholder="Descreva o problema constatado após análise técnica..."
                       rows={12}
                       className="min-h-[220px]"
@@ -2433,51 +2381,29 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <Label>Técnico Responsável</Label>
                       <Select
                         value={formData.tecnico_id || ''}
-                        onValueChange={(v) => {
-                          console.log('[OrdemServicoForm] Técnico selecionado:', v);
-                          setFormData(prev => {
-                            const updated = { ...prev, tecnico_id: v };
-                            console.log('[OrdemServicoForm] Estado atualizado técnico:', updated.tecnico_id);
-                            return updated;
-                          });
-                        }}
+                        onValueChange={(v) => setFormData(prev => ({ ...prev, tecnico_id: v }))}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o técnico" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(() => {
-                            console.log('[OrdemServicoForm] Renderizando Select de técnicos:', {
-                              isLoadingCargos,
-                              tecnicosLength: tecnicos.length,
-                              colaboradoresLength: colaboradores.length,
-                              tecnicos: tecnicos.map(t => t.nome),
-                              colaboradores: colaboradores.map(c => c.nome)
-                            });
-                            
-                            if (isLoadingCargos) {
-                              return <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando técnicos...</div>;
-                            }
-                            
-                            if (tecnicos.length > 0) {
-                              return tecnicos.map(tecnico => (
-                                <SelectItem key={tecnico.id} value={tecnico.id}>
-                                  {tecnico.nome}
-                                </SelectItem>
-                              ));
-                            }
-                            
-                            if (colaboradores.length > 0) {
-                              // Se não há técnicos específicos, mostrar todos os colaboradores
-                              return colaboradores.map(colab => (
-                                <SelectItem key={colab.id} value={colab.id}>
-                                  {colab.nome}
-                                </SelectItem>
-                              ));
-                            }
-                            
-                            return <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum técnico cadastrado</div>;
-                          })()}
+                          {isLoadingCargos ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando técnicos...</div>
+                          ) : tecnicos.length > 0 ? (
+                            tecnicos.map(tecnico => (
+                              <SelectItem key={tecnico.id} value={tecnico.id}>
+                                {tecnico.nome}
+                              </SelectItem>
+                            ))
+                          ) : colaboradores.length > 0 ? (
+                            colaboradores.map(colab => (
+                              <SelectItem key={colab.id} value={colab.id}>
+                                {colab.nome}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum técnico cadastrado</div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -2487,16 +2413,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <Textarea
                         id="servico-executado"
                         value={formData.servico_executado || ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          console.log('[OrdemServicoForm] Serviço executado onChange - valor:', value);
-                          setFormData(prev => {
-                            console.log('[OrdemServicoForm] Estado anterior servico:', prev.servico_executado);
-                            const updated = { ...prev, servico_executado: value };
-                            console.log('[OrdemServicoForm] Estado atualizado servico:', updated.servico_executado);
-                            return updated;
-                          });
-                        }}
+                        onChange={(e) => setFormData(prev => ({ ...prev, servico_executado: e.target.value }))}
                         placeholder="Descreva o serviço executado (ex.: troca de tela, troca de bateria, conector, limpeza, atualização, etc.)"
                         rows={4}
                       />
@@ -3978,14 +3895,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-0.5 rounded-lg">
                       <TabsTrigger 
                         value="dados" 
-                        className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                       >
                         <FileText className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Dados</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="checklist" 
-                        className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                       >
                         <Check className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Check</span>
@@ -3994,35 +3911,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <>
                           <TabsTrigger 
                             value="resolucao" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                           >
                             <AlertTriangle className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Resolução</span>
                           </TabsTrigger>
                           <TabsTrigger 
                             value="tecnico" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                           >
                             <Settings className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Técnico</span>
                           </TabsTrigger>
                           <TabsTrigger 
                             value="itens" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                           >
                             <Package className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Peças ({itens.length})</span>
                           </TabsTrigger>
                           <TabsTrigger 
                             value="financeiro" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                           >
                             <DollarSign className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Financeiro</span>
                           </TabsTrigger>
                           <TabsTrigger 
                             value="fotos" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                           >
                             <Image className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Fotos</span>
@@ -4039,6 +3956,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {isEditing && currentOS && (
                       <>
+                        <span className="text-xs font-medium text-gray-500 hidden sm:inline">Status:</span>
                         <Select value={currentOS.status} onValueChange={handleChangeStatus}>
                           <SelectTrigger className={cn('w-[130px] h-8 text-white border-0 rounded-lg text-xs', (() => {
                             const config = getConfigByStatus(currentOS.status);
@@ -4073,9 +3991,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           size="sm" 
                           onClick={() => handleWhatsApp()}
                           disabled={whatsappLoading}
-                          className="rounded-lg h-8 px-2"
+                          className="rounded-lg h-8 px-3 gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300"
                         >
-                          <Send className="h-4 w-4" />
+                          <Phone className="h-4 w-4" />
+                          <span className="hidden sm:inline text-xs">WhatsApp</span>
                         </Button>
                         
                         <Select onValueChange={(v) => handlePrint(v as 'termica' | 'a4' | 'pdf')}>
@@ -4092,7 +4011,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </>
                     )}
                     
-                    <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg h-8 bg-emerald-600 hover:bg-emerald-700">
+                    <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg h-8 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90">
                       <Save className="h-4 w-4 mr-1" />
                       <span>{isEditing ? 'Atualizar' : 'Salvar'}</span>
                     </LoadingButton>
@@ -4296,27 +4215,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(() => {
-                        console.log('[OrdemServicoForm] Renderizando Select de colaboradores:', {
-                          isLoadingCargos,
-                          colaboradoresLength: colaboradores.length,
-                          colaboradores: colaboradores.map(c => `${c.nome} (${c.cargo})`)
-                        });
-                        
-                        if (isLoadingCargos) {
-                          return <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando colaboradores...</div>;
-                        }
-                        
-                        if (colaboradores.length > 0) {
-                          return colaboradores.map(colab => (
-                            <SelectItem key={colab.id} value={colab.id}>
-                              {colab.nome} ({CARGOS_LABELS[colab.cargo]})
-                            </SelectItem>
-                          ));
-                        }
-                        
-                        return <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum colaborador cadastrado</div>;
-                      })()}
+                      {isLoadingCargos ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando colaboradores...</div>
+                      ) : colaboradores.length > 0 ? (
+                        colaboradores.map(colab => (
+                          <SelectItem key={colab.id} value={colab.id}>
+                            {colab.nome} ({CARGOS_LABELS[colab.cargo]})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum colaborador cadastrado</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
