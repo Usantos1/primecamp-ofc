@@ -9,10 +9,31 @@ export type PaymentStatus = 'pending' | 'confirmed' | 'canceled' | 'refunded';
 export type PaymentMethod = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'link_pagamento' | 'carteira_digital' | 'fiado';
 export type CashSessionStatus = 'open' | 'closed';
 export type CashMovementType = 'sangria' | 'suprimento';
-export type DocumentType = 'cupom_nao_fiscal' | 'comprovante_pagamento' | 'termo_garantia' | 'nota_fiscal';
+export type DocumentType = 'cupom_nao_fiscal' | 'comprovante_pagamento' | 'termo_garantia' | 'nota_fiscal' | 'orcamento';
 export type DocumentFormat = 'termica_80mm' | 'a4' | 'pdf';
 export type WarrantyStatus = 'ativa' | 'vencida' | 'cancelada';
 export type CancelRequestStatus = 'pending' | 'approved' | 'rejected';
+
+// ==================== ORÇAMENTO ====================
+export type QuoteStatus = 'pendente' | 'enviado' | 'aprovado' | 'convertido' | 'expirado' | 'cancelado';
+
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  pendente: 'Pendente',
+  enviado: 'Enviado',
+  aprovado: 'Aprovado',
+  convertido: 'Convertido em Venda',
+  expirado: 'Expirado',
+  cancelado: 'Cancelado',
+};
+
+export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
+  pendente: 'bg-gray-100 text-gray-800',
+  enviado: 'bg-blue-100 text-blue-800',
+  aprovado: 'bg-green-100 text-green-800',
+  convertido: 'bg-purple-100 text-purple-800',
+  expirado: 'bg-orange-100 text-orange-800',
+  cancelado: 'bg-red-100 text-red-800',
+};
 
 // ==================== LABELS ====================
 
@@ -480,4 +501,75 @@ export const CANCEL_REQUEST_STATUS_LABELS: Record<CancelRequestStatus, string> =
   approved: 'Aprovado',
   rejected: 'Rejeitado',
 };
+
+// ==================== QUOTE (ORÇAMENTO) ====================
+
+export interface Quote {
+  id: string;
+  numero: number;
+  status: QuoteStatus;
+  
+  // Cliente
+  cliente_id?: string | null;
+  cliente_nome?: string | null;
+  cliente_cpf_cnpj?: string | null;
+  cliente_telefone?: string | null;
+  
+  // Valores
+  subtotal: number;
+  desconto_total: number;
+  total: number;
+  
+  // Vendedor
+  vendedor_id?: string | null;
+  vendedor_nome?: string | null;
+  
+  // Observações
+  observacoes?: string | null;
+  
+  // Validade
+  validade_dias?: number | null;
+  data_validade?: string | null;
+  
+  // Conversão
+  sale_id?: string | null;
+  converted_at?: string | null;
+  
+  // Envio
+  enviado_whatsapp?: boolean;
+  whatsapp_enviado_em?: string | null;
+  
+  // Timestamps
+  created_at: string;
+  updated_at?: string | null;
+  
+  // Relacionamentos
+  items?: QuoteItem[];
+}
+
+export interface QuoteItem {
+  id: string;
+  quote_id: string;
+  produto_id?: string | null;
+  produto_nome: string;
+  produto_codigo?: string | null;
+  produto_codigo_barras?: string | null;
+  produto_tipo?: 'produto' | 'servico' | null;
+  quantidade: number;
+  valor_unitario: number;
+  desconto: number;
+  valor_total: number;
+  observacao?: string | null;
+  created_at: string;
+}
+
+export interface QuoteFormData {
+  cliente_id?: string;
+  cliente_nome?: string;
+  cliente_cpf_cnpj?: string;
+  cliente_telefone?: string;
+  vendedor_id?: string;
+  observacoes?: string;
+  validade_dias?: number;
+}
 

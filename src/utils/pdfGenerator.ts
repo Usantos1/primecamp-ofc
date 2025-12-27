@@ -811,6 +811,385 @@ export async function generateTermoGarantiaPDF(data: GarantiaData): Promise<jsPD
   return doc;
 }
 
+// ==================== ORÇAMENTO ====================
+
+export interface OrcamentoData {
+  numero: number;
+  data: string;
+  hora: string;
+  validade?: string;
+  empresa?: {
+    nome?: string;
+    cnpj?: string;
+    endereco?: string;
+    telefone?: string;
+    whatsapp?: string;
+    logo_url?: string;
+  };
+  cliente?: {
+    nome?: string;
+    cpf_cnpj?: string;
+    telefone?: string;
+    email?: string;
+  };
+  itens: Array<{
+    codigo?: string;
+    nome: string;
+    quantidade: number;
+    valor_unitario: number;
+    desconto: number;
+    valor_total: number;
+  }>;
+  subtotal: number;
+  desconto_total: number;
+  total: number;
+  vendedor?: string;
+  observacoes?: string;
+  condicoes_pagamento?: string;
+}
+
+export async function generateOrcamentoPDF(data: OrcamentoData): Promise<jsPDF> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  let y = margin;
+
+  // Cores
+  const primaryColor: [number, number, number] = [37, 99, 235]; // Azul
+  const secondaryColor: [number, number, number] = [100, 116, 139]; // Cinza
+  const accentColor: [number, number, number] = [16, 185, 129]; // Verde
+
+  // ===== CABEÇALHO =====
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, pageWidth, 35, 'F');
+
+  // Título
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ORÇAMENTO', margin, 18);
+
+  // Número do orçamento
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nº ${data.numero}`, margin, 28);
+
+  // Data e validade (lado direito)
+  doc.setFontSize(10);
+  doc.text(`Data: ${data.data}`, pageWidth - margin - 50, 18, { align: 'left' });
+  if (data.validade) {
+    doc.text(`Válido até: ${data.validade}`, pageWidth - margin - 50, 25, { align: 'left' });
+  }
+
+  y = 45;
+
+  // ===== DADOS DA EMPRESA =====
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.empresa?.nome || 'PRIME CAMP ASSISTÊNCIA TÉCNICA', margin, y);
+  
+  y += 6;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...secondaryColor);
+  
+  if (data.empresa?.cnpj) {
+    doc.text(`CNPJ: ${data.empresa.cnpj}`, margin, y);
+    y += 4;
+  }
+  if (data.empresa?.endereco) {
+    doc.text(data.empresa.endereco, margin, y);
+    y += 4;
+  }
+  if (data.empresa?.telefone || data.empresa?.whatsapp) {
+    const contato = [data.empresa?.telefone, data.empresa?.whatsapp].filter(Boolean).join(' | ');
+    doc.text(contato, margin, y);
+    y += 4;
+  }
+
+  y += 8;
+
+  // ===== DADOS DO CLIENTE =====
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, pageWidth - (margin * 2), 25, 3, 3, 'F');
+  
+  y += 6;
+  doc.setTextColor(...primaryColor);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', margin + 5, y);
+  
+  y += 5;
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text(data.cliente?.nome || 'Cliente não identificado', margin + 5, y);
+  
+  y += 5;
+  doc.setFontSize(9);
+  doc.setTextColor(...secondaryColor);
+  const clienteInfo = [
+    data.cliente?.cpf_cnpj,
+    data.cliente?.telefone,
+    data.cliente?.email
+  ].filter(Boolean).join(' • ');
+  if (clienteInfo) {
+    doc.text(clienteInfo, margin + 5, y);
+  }
+
+  y += 15;
+
+  // ===== TABELA DE ITENS =====
+  doc.setFillColor(...primaryColor);
+  doc.rect(margin, y, pageWidth - (margin * 2), 8, 'F');
+  
+  // Cabeçalho da tabela
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ITEM', margin + 3, y + 5.5);
+  doc.text('QTD', margin + 85, y + 5.5);
+  doc.text('UNIT.', margin + 105, y + 5.5);
+  doc.text('DESC.', margin + 130, y + 5.5);
+  doc.text('TOTAL', margin + 155, y + 5.5);
+
+  y += 10;
+
+  // Itens
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  
+  data.itens.forEach((item, index) => {
+    // Verificar se precisa de nova página
+    if (y > pageHeight - 60) {
+      doc.addPage();
+      y = margin;
+    }
+
+    const bgColor = index % 2 === 0 ? [255, 255, 255] : [249, 250, 251];
+    doc.setFillColor(...bgColor as [number, number, number]);
+    doc.rect(margin, y - 3, pageWidth - (margin * 2), 8, 'F');
+
+    doc.setFontSize(9);
+    
+    // Nome do produto (com truncate se necessário)
+    const nomeMax = 75;
+    let nome = item.nome;
+    if (doc.getTextWidth(nome) > nomeMax) {
+      while (doc.getTextWidth(nome + '...') > nomeMax && nome.length > 0) {
+        nome = nome.slice(0, -1);
+      }
+      nome += '...';
+    }
+    doc.text(nome, margin + 3, y + 2);
+    
+    // Quantidade
+    doc.text(item.quantidade.toString(), margin + 85, y + 2);
+    
+    // Valor unitário
+    doc.text(formatCurrency(item.valor_unitario), margin + 105, y + 2);
+    
+    // Desconto
+    if (item.desconto > 0) {
+      doc.setTextColor(220, 38, 38);
+      doc.text(`-${formatCurrency(item.desconto)}`, margin + 130, y + 2);
+      doc.setTextColor(0, 0, 0);
+    } else {
+      doc.text('-', margin + 130, y + 2);
+    }
+    
+    // Total
+    doc.setFont('helvetica', 'bold');
+    doc.text(formatCurrency(item.valor_total), margin + 155, y + 2);
+    doc.setFont('helvetica', 'normal');
+
+    y += 8;
+  });
+
+  // Linha divisória
+  y += 2;
+  doc.setDrawColor(...secondaryColor);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  y += 8;
+
+  // ===== TOTAIS =====
+  const totaisX = pageWidth - margin - 60;
+  
+  doc.setFontSize(10);
+  doc.setTextColor(...secondaryColor);
+  doc.text('Subtotal:', totaisX, y);
+  doc.setTextColor(0, 0, 0);
+  doc.text(formatCurrency(data.subtotal), totaisX + 35, y);
+  
+  if (data.desconto_total > 0) {
+    y += 6;
+    doc.setTextColor(...secondaryColor);
+    doc.text('Desconto:', totaisX, y);
+    doc.setTextColor(220, 38, 38);
+    doc.text(`-${formatCurrency(data.desconto_total)}`, totaisX + 35, y);
+  }
+
+  y += 10;
+  doc.setFillColor(...accentColor);
+  doc.roundedRect(totaisX - 5, y - 5, 70, 12, 2, 2, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TOTAL:', totaisX, y + 3);
+  doc.text(formatCurrency(data.total), totaisX + 35, y + 3);
+
+  y += 20;
+
+  // ===== OBSERVAÇÕES =====
+  if (data.observacoes) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Observações:', margin, y);
+    
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...secondaryColor);
+    
+    const obsLines = doc.splitTextToSize(data.observacoes, pageWidth - (margin * 2));
+    doc.text(obsLines, margin, y);
+    y += obsLines.length * 4 + 5;
+  }
+
+  // ===== CONDIÇÕES DE PAGAMENTO =====
+  if (data.condicoes_pagamento) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Condições de Pagamento:', margin, y);
+    
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...secondaryColor);
+    doc.text(data.condicoes_pagamento, margin, y);
+    y += 10;
+  }
+
+  // ===== RODAPÉ =====
+  const footerY = pageHeight - 20;
+  
+  doc.setDrawColor(...secondaryColor);
+  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+  
+  doc.setFontSize(8);
+  doc.setTextColor(...secondaryColor);
+  doc.text('Este documento é apenas um orçamento e não possui valor fiscal.', margin, footerY);
+  doc.text(`Vendedor: ${data.vendedor || 'Não informado'}`, margin, footerY + 4);
+  doc.text(`Gerado em ${data.data} às ${data.hora}`, pageWidth - margin, footerY, { align: 'right' });
+
+  return doc;
+}
+
+export function generateOrcamentoHTML(data: OrcamentoData): string {
+  const itensHTML = data.itens.map((item, i) => `
+    <tr style="background: ${i % 2 === 0 ? '#fff' : '#f9fafb'};">
+      <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.nome}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantidade}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCurrency(item.valor_unitario)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right; color: ${item.desconto > 0 ? '#dc2626' : '#6b7280'};">
+        ${item.desconto > 0 ? `-${formatCurrency(item.desconto)}` : '-'}
+      </td>
+      <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600;">${formatCurrency(item.valor_total)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Orçamento #${data.numero}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5; }
+        .header { background: #2563eb; color: white; padding: 20px; }
+        .header h1 { font-size: 28px; margin-bottom: 5px; }
+        .content { padding: 20px; }
+        .empresa { margin-bottom: 20px; }
+        .empresa h2 { font-size: 18px; color: #1f2937; margin-bottom: 5px; }
+        .empresa p { font-size: 12px; color: #6b7280; }
+        .cliente { background: #f8fafc; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .cliente-titulo { font-size: 12px; color: #2563eb; font-weight: 600; margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #2563eb; color: white; padding: 10px; font-size: 11px; text-align: left; }
+        .totais { text-align: right; margin-bottom: 20px; }
+        .totais-linha { margin: 5px 0; font-size: 14px; }
+        .total-final { background: #10b981; color: white; padding: 10px 15px; border-radius: 6px; display: inline-block; font-size: 16px; font-weight: bold; }
+        .obs { font-size: 12px; color: #6b7280; margin-bottom: 15px; }
+        .footer { border-top: 1px solid #e5e7eb; padding-top: 15px; font-size: 10px; color: #9ca3af; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>ORÇAMENTO</h1>
+        <p>Nº ${data.numero} • ${data.data}${data.validade ? ` • Válido até ${data.validade}` : ''}</p>
+      </div>
+      <div class="content">
+        <div class="empresa">
+          <h2>${data.empresa?.nome || 'PRIME CAMP ASSISTÊNCIA TÉCNICA'}</h2>
+          ${data.empresa?.cnpj ? `<p>CNPJ: ${data.empresa.cnpj}</p>` : ''}
+          ${data.empresa?.endereco ? `<p>${data.empresa.endereco}</p>` : ''}
+          ${data.empresa?.telefone ? `<p>Tel: ${data.empresa.telefone}</p>` : ''}
+        </div>
+        
+        <div class="cliente">
+          <div class="cliente-titulo">CLIENTE</div>
+          <div style="font-size: 14px; font-weight: 600;">${data.cliente?.nome || 'Cliente não identificado'}</div>
+          <div style="font-size: 12px; color: #6b7280;">
+            ${[data.cliente?.cpf_cnpj, data.cliente?.telefone, data.cliente?.email].filter(Boolean).join(' • ')}
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th style="text-align: center;">Qtd</th>
+              <th style="text-align: right;">Unit.</th>
+              <th style="text-align: right;">Desc.</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itensHTML}
+          </tbody>
+        </table>
+        
+        <div class="totais">
+          <div class="totais-linha">Subtotal: ${formatCurrency(data.subtotal)}</div>
+          ${data.desconto_total > 0 ? `<div class="totais-linha" style="color: #dc2626;">Desconto: -${formatCurrency(data.desconto_total)}</div>` : ''}
+          <div class="total-final">TOTAL: ${formatCurrency(data.total)}</div>
+        </div>
+        
+        ${data.observacoes ? `<div class="obs"><strong>Observações:</strong> ${data.observacoes}</div>` : ''}
+        ${data.condicoes_pagamento ? `<div class="obs"><strong>Condições:</strong> ${data.condicoes_pagamento}</div>` : ''}
+        
+        <div class="footer">
+          <p>Este documento é apenas um orçamento e não possui valor fiscal.</p>
+          <p>Vendedor: ${data.vendedor || 'Não informado'} • Gerado em ${data.data} às ${data.hora}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 // ==================== FUNÇÕES AUXILIARES ====================
 
 function formatCurrency(value: number): string {

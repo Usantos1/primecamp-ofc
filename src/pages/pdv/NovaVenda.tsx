@@ -8,15 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Search, Plus, Minus, Trash2, ShoppingCart, User, X,
-  Save, CreditCard, DollarSign, QrCode, Printer, Send, Download, FileText, Wrench
+  Save, CreditCard, DollarSign, QrCode, Printer, Send, Download, FileText, Wrench,
+  FileCheck, ArrowRight, MessageCircle, Share2, CheckCircle2
 } from 'lucide-react';
-import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
+import { generateCupomTermica, generateCupomPDF, printTermica, generateOrcamentoPDF, generateOrcamentoHTML, OrcamentoData } from '@/utils/pdfGenerator';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useSaleItems, usePayments, useCashRegister } from '@/hooks/usePDV';
+import { useQuotes } from '@/hooks/useQuotes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useItensOS } from '@/hooks/useAssistencia';
@@ -24,7 +26,7 @@ import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
-import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS } from '@/types/pdv';
+import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS, Quote } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -41,6 +43,7 @@ export default function NovaVenda() {
   const { items, addItem, updateItem, removeItem, isLoading: itemsLoading } = useSaleItems(id || '');
   const { payments, addPayment, confirmPayment, isLoading: paymentsLoading } = usePayments(id || '');
   const { currentSession: cashSession } = useCashRegister();
+  const { createQuote, convertToSale, markAsSentWhatsApp } = useQuotes();
   
   const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
   const { data: cupomConfig } = useCupomConfig();
@@ -97,6 +100,11 @@ export default function NovaVenda() {
   const [osList, setOsList] = useState<any[]>([]);
   const [isLoadingOS, setIsLoadingOS] = useState(false);
   const [osSearch, setOsSearch] = useState('');
+
+  // Estados para orçamento
+  const [showOrcamentoModal, setShowOrcamentoModal] = useState(false);
+  const [orcamentoGerado, setOrcamentoGerado] = useState<Quote | null>(null);
+  const [isGeneratingOrcamento, setIsGeneratingOrcamento] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -1398,6 +1406,173 @@ export default function NovaVenda() {
 
   const saldoRestante = totals.total - totalPago;
 
+  // ===== FUNÇÕES DE ORÇAMENTO =====
+  
+  // Gerar orçamento (não afeta estoque, não movimenta caixa)
+  const handleGerarOrcamento = async () => {
+    if (cart.length === 0) {
+      toast({ title: 'Adicione pelo menos um item ao carrinho', variant: 'destructive' });
+      return;
+    }
+
+    setIsGeneratingOrcamento(true);
+    try {
+      const novoOrcamento = await createQuote({
+        cliente_id: selectedCliente?.id,
+        cliente_nome: selectedCliente?.nome,
+        cliente_cpf_cnpj: selectedCliente?.cpf_cnpj,
+        cliente_telefone: selectedCliente?.telefone || selectedCliente?.whatsapp,
+        observacoes,
+        validade_dias: 7,
+      }, cart);
+
+      setOrcamentoGerado(novoOrcamento);
+      setShowOrcamentoModal(true);
+      
+      toast({ 
+        title: 'Orçamento gerado com sucesso!', 
+        description: `Orçamento #${novoOrcamento.numero} criado.`,
+      });
+    } catch (error: any) {
+      console.error('Erro ao gerar orçamento:', error);
+      toast({ 
+        title: 'Erro ao gerar orçamento', 
+        description: error.message || 'Não foi possível gerar o orçamento.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsGeneratingOrcamento(false);
+    }
+  };
+
+  // Imprimir orçamento como PDF
+  const handlePrintOrcamento = async () => {
+    if (!orcamentoGerado) return;
+
+    try {
+      const orcamentoData: OrcamentoData = {
+        numero: orcamentoGerado.numero,
+        data: new Date(orcamentoGerado.created_at).toLocaleDateString('pt-BR'),
+        hora: new Date(orcamentoGerado.created_at).toLocaleTimeString('pt-BR'),
+        validade: orcamentoGerado.data_validade 
+          ? new Date(orcamentoGerado.data_validade).toLocaleDateString('pt-BR')
+          : undefined,
+        empresa: {
+          nome: 'PRIME CAMP ASSISTÊNCIA TÉCNICA',
+          cnpj: '31.833.574/0001-74',
+        },
+        cliente: orcamentoGerado.cliente_nome ? {
+          nome: orcamentoGerado.cliente_nome,
+          cpf_cnpj: orcamentoGerado.cliente_cpf_cnpj || undefined,
+          telefone: orcamentoGerado.cliente_telefone || undefined,
+        } : undefined,
+        itens: cart.map(item => ({
+          nome: item.produto_nome,
+          quantidade: item.quantidade,
+          valor_unitario: item.valor_unitario,
+          desconto: item.desconto || 0,
+          valor_total: (item.valor_unitario * item.quantidade) - (item.desconto || 0),
+        })),
+        subtotal: totals.subtotal,
+        desconto_total: totals.descontoItens + totals.descontoTotal,
+        total: totals.total,
+        vendedor: profile?.display_name || user?.email || undefined,
+        observacoes: observacoes || undefined,
+        condicoes_pagamento: 'Pagamento à vista ou parcelado. Consulte condições.',
+      };
+
+      const pdf = await generateOrcamentoPDF(orcamentoData);
+      pdf.save(`orcamento-${orcamentoGerado.numero}.pdf`);
+      
+      toast({ title: 'PDF gerado com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao gerar PDF do orçamento:', error);
+      toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
+    }
+  };
+
+  // Enviar orçamento por WhatsApp
+  const handleEnviarOrcamentoWhatsApp = async () => {
+    if (!orcamentoGerado) return;
+
+    const telefone = selectedCliente?.telefone || selectedCliente?.whatsapp;
+    if (!telefone) {
+      toast({ 
+        title: 'Cliente sem telefone', 
+        description: 'O cliente não possui telefone cadastrado.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    try {
+      // Marcar como enviado
+      await markAsSentWhatsApp(orcamentoGerado.id);
+
+      // Formatar mensagem do orçamento
+      const itensTexto = cart.map(item => 
+        `• ${item.produto_nome} (${item.quantidade}x) - ${currencyFormatters.brl((item.valor_unitario * item.quantidade) - (item.desconto || 0))}`
+      ).join('\n');
+
+      const mensagem = `Oi ${selectedCliente?.nome?.split(' ')[0] || ''} 👋
+
+Conforme combinamos, segue o orçamento do seu atendimento na *PrimeCamp*:
+
+📋 *Orçamento #${orcamentoGerado.numero}*
+📅 Válido até: ${orcamentoGerado.data_validade ? new Date(orcamentoGerado.data_validade).toLocaleDateString('pt-BR') : '7 dias'}
+
+${itensTexto}
+
+💰 *Total: ${currencyFormatters.brl(totals.total)}*
+
+Qualquer dúvida é só me chamar por aqui 😊
+
+_PrimeCamp Assistência Técnica_`;
+
+      openWhatsApp(telefone, mensagem);
+      
+      toast({ title: 'WhatsApp aberto!', description: 'Envie a mensagem para o cliente.' });
+    } catch (error) {
+      console.error('Erro ao enviar orçamento por WhatsApp:', error);
+      toast({ title: 'Erro ao enviar', variant: 'destructive' });
+    }
+  };
+
+  // Converter orçamento em venda
+  const handleConverterOrcamentoEmVenda = async () => {
+    if (!orcamentoGerado) return;
+
+    try {
+      const saleId = await convertToSale(orcamentoGerado.id);
+      
+      toast({ 
+        title: 'Orçamento convertido!', 
+        description: 'Redirecionando para a venda...',
+      });
+
+      setShowOrcamentoModal(false);
+      navigate(`/pdv/venda/${saleId}/editar`);
+    } catch (error: any) {
+      console.error('Erro ao converter orçamento:', error);
+      toast({ 
+        title: 'Erro ao converter', 
+        description: error.message || 'Não foi possível converter o orçamento.',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  // Fechar modal e limpar PDV após orçamento
+  const handleFecharOrcamentoModal = (limpar: boolean = false) => {
+    setShowOrcamentoModal(false);
+    setOrcamentoGerado(null);
+    
+    if (limpar) {
+      limparPDV();
+      toast({ title: 'PDV limpo. Pronto para novo atendimento!' });
+    }
+  };
+
   return (
     <ModernLayout 
       title={isEditing ? `Venda #${sale?.numero || ''}` : 'Nova Venda'}
@@ -1468,27 +1643,44 @@ export default function NovaVenda() {
             )}
             {(!isEditing || sale?.is_draft) && (
               <>
+                {/* BOTÃO PRINCIPAL: GERAR ORÇAMENTO */}
+                <Button
+                  size="sm"
+                  className="h-9 md:h-10 text-xs md:text-sm flex-1 md:flex-initial bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md"
+                  onClick={handleGerarOrcamento}
+                  disabled={cart.length === 0 || isGeneratingOrcamento || isSaving}
+                >
+                  <FileCheck className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+                  <span className="hidden md:inline">{isGeneratingOrcamento ? 'Gerando...' : 'Gerar Orçamento'}</span>
+                  <span className="md:hidden">{isGeneratingOrcamento ? 'Gerando...' : 'Orçamento'}</span>
+                </Button>
+
+                {/* Salvar Rascunho */}
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 md:h-10 text-xs md:text-sm flex-1 md:flex-initial"
+                  className="h-9 md:h-10 text-xs md:text-sm"
                   onClick={handleSaveDraft}
                   disabled={isSaving || isDeleting}
                 >
                   <Save className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
                   <span className="hidden md:inline">{isSaving ? 'Salvando...' : 'Salvar Rascunho'}</span>
-                  <span className="md:hidden">{isSaving ? 'Salvando...' : 'Salvar'}</span>
+                  <span className="md:hidden">{isSaving ? '...' : 'Salvar'}</span>
                 </Button>
+
+                {/* Finalizar Venda - Agora secundário */}
                 <Button
+                  variant="outline"
                   size="sm"
-                  className="h-9 md:h-10 text-xs md:text-sm flex-1 md:flex-initial"
+                  className="h-9 md:h-10 text-xs md:text-sm border-blue-300 text-blue-700 hover:bg-blue-50"
                   onClick={handleFinalize}
                   disabled={cart.length === 0 || isSaving || isDeleting}
                 >
                   <ShoppingCart className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
                   <span className="hidden md:inline">{isSaving ? 'Finalizando...' : 'Finalizar Venda'}</span>
-                  <span className="md:hidden">{isSaving ? 'Finalizando...' : 'Finalizar'}</span>
+                  <span className="md:hidden">{isSaving ? '...' : 'Venda'}</span>
                 </Button>
+
                 {isEditing && (sale?.is_draft || isAdmin) && (
                   <Button
                     variant="destructive"
@@ -1509,14 +1701,17 @@ export default function NovaVenda() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
           {/* Coluna esquerda - Busca e Cliente */}
           <div className="lg:col-span-2 space-y-3 md:space-y-4">
-            {/* Busca de produtos */}
-            <Card>
-              <CardHeader className="p-3 md:p-6">
-                <CardTitle className="text-sm md:text-base">Buscar Produto (F2)</CardTitle>
+            {/* Busca de produtos - DESTAQUE PRINCIPAL */}
+            <Card className="border-2 border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 shadow-sm">
+              <CardHeader className="p-3 md:p-4 pb-0">
+                <CardTitle className="text-sm md:text-base flex items-center gap-2 text-emerald-800">
+                  <Search className="h-4 w-4" />
+                  Buscar Produto (F2)
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 md:p-6 pt-0">
+              <CardContent className="p-3 md:p-4 pt-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-4 md:w-4 text-muted-foreground" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500" />
                   <Input
                     ref={searchInputRef}
                     placeholder="Digite o nome, código ou código de barras do produto..."
@@ -1527,7 +1722,7 @@ export default function NovaVenda() {
                         handleAddProduct(productResults[0]);
                       }
                     }}
-                    className="pl-9 h-10 md:h-10 text-sm md:text-base"
+                    className="pl-12 h-12 md:h-14 text-base md:text-lg border-2 border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl shadow-sm"
                   />
                   {showProductSearch && productResults.length > 0 && (
                     <div className="absolute z-50 w-full bg-background border rounded shadow-lg max-h-64 overflow-auto mt-1">
@@ -1633,17 +1828,32 @@ export default function NovaVenda() {
               </CardContent>
             </Card>
 
-            {/* Carrinho */}
-            <Card>
-              <CardHeader className="p-3 md:p-6">
-                <CardTitle className="text-sm md:text-base">Carrinho ({cart.length})</CardTitle>
+            {/* Carrinho - com destaque visual */}
+            <Card className={cn(
+              "border-2 transition-all",
+              cart.length === 0 
+                ? "border-dashed border-gray-300 bg-gray-50/50" 
+                : "border-blue-200 bg-white shadow-sm"
+            )}>
+              <CardHeader className="p-3 md:p-4 pb-2">
+                <CardTitle className="text-sm md:text-base flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <ShoppingCart className={cn("h-4 w-4", cart.length > 0 ? "text-blue-600" : "text-gray-400")} />
+                    Carrinho
+                  </span>
+                  {cart.length > 0 && (
+                    <Badge className="bg-blue-600 text-white">{cart.length} {cart.length === 1 ? 'item' : 'itens'}</Badge>
+                  )}
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 md:p-6 pt-0">
+              <CardContent className="p-3 md:p-4 pt-0">
                 {cart.length === 0 ? (
-                  <div className="text-center py-6 md:py-8 text-muted-foreground">
-                    <ShoppingCart className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm md:text-base">Nenhum item no carrinho</p>
-                    <p className="text-xs md:text-sm">Use F2 para buscar produtos</p>
+                  <div className="text-center py-8 md:py-12">
+                    <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                      <ShoppingCart className="h-8 w-8 md:h-10 md:w-10 text-gray-400" />
+                    </div>
+                    <p className="text-base md:text-lg font-medium text-gray-500">Carrinho vazio</p>
+                    <p className="text-sm text-gray-400 mt-1">Pressione <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono">F2</kbd> para buscar produtos</p>
                   </div>
                 ) : (
                   <div className="space-y-2 md:space-y-3">
@@ -1760,21 +1970,31 @@ export default function NovaVenda() {
 
           {/* Coluna direita - Resumo */}
           <div className="space-y-3 md:space-y-4">
-            <Card className="sticky top-4 md:static">
-              <CardHeader className="p-3 md:p-6">
-                <CardTitle className="text-sm md:text-base">Resumo</CardTitle>
+            <Card className={cn(
+              "sticky top-4 md:static border-2 transition-all",
+              totals.total > 0 
+                ? "border-emerald-200 shadow-lg bg-gradient-to-b from-white to-emerald-50/30" 
+                : "border-gray-200"
+            )}>
+              <CardHeader className="p-3 md:p-4 pb-2">
+                <CardTitle className="text-sm md:text-base flex items-center gap-2">
+                  <DollarSign className={cn("h-4 w-4", totals.total > 0 ? "text-emerald-600" : "text-gray-400")} />
+                  Resumo
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 md:p-6 pt-0 space-y-2 md:space-y-3">
+              <CardContent className="p-3 md:p-4 pt-0 space-y-2 md:space-y-3">
                 <div className="flex justify-between text-xs md:text-sm">
-                  <span>Subtotal:</span>
+                  <span className="text-gray-600">Subtotal:</span>
                   <span className="font-medium">{currencyFormatters.brl(totals.subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-xs md:text-sm">
-                  <span>Desconto Itens:</span>
-                  <span className="text-red-600 font-medium">-{currencyFormatters.brl(totals.descontoItens)}</span>
-                </div>
+                {totals.descontoItens > 0 && (
+                  <div className="flex justify-between text-xs md:text-sm">
+                    <span className="text-gray-600">Desconto Itens:</span>
+                    <span className="text-red-600 font-medium">-{currencyFormatters.brl(totals.descontoItens)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-xs md:text-sm gap-2">
-                  <span>Desconto Total:</span>
+                  <span className="text-gray-600">Desconto Extra:</span>
                   <Input
                     type="number"
                     value={descontoTotal}
@@ -1783,9 +2003,20 @@ export default function NovaVenda() {
                     step="0.01"
                   />
                 </div>
-                <div className="border-t pt-2 flex justify-between font-bold text-base md:text-lg">
-                  <span>Total:</span>
-                  <span>{currencyFormatters.brl(totals.total)}</span>
+                
+                {/* TOTAL - GRANDE DESTAQUE */}
+                <div className={cn(
+                  "rounded-xl p-3 md:p-4 mt-2",
+                  totals.total > 0 
+                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md" 
+                    : "bg-gray-100 text-gray-500"
+                )}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm md:text-base font-medium">Total:</span>
+                    <span className="text-2xl md:text-3xl font-bold">
+                      {currencyFormatters.brl(totals.total)}
+                    </span>
+                  </div>
                 </div>
                 {isEditing && (
                   <>
@@ -2082,6 +2313,116 @@ export default function NovaVenda() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFaturarOSModal(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Sucesso do Orçamento */}
+      <Dialog open={showOrcamentoModal} onOpenChange={(open) => !open && handleFecharOrcamentoModal(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Orçamento Gerado!</DialogTitle>
+                <DialogDescription>
+                  Orçamento #{orcamentoGerado?.numero} criado com sucesso
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Resumo do orçamento */}
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Cliente:</span>
+                <span className="font-medium">{orcamentoGerado?.cliente_nome || 'Não identificado'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Itens:</span>
+                <span className="font-medium">{cart.length}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Validade:</span>
+                <span className="font-medium">
+                  {orcamentoGerado?.data_validade 
+                    ? new Date(orcamentoGerado.data_validade).toLocaleDateString('pt-BR')
+                    : '7 dias'
+                  }
+                </span>
+              </div>
+              <div className="border-t pt-2 flex justify-between">
+                <span className="font-semibold">Total:</span>
+                <span className="font-bold text-lg text-emerald-600">
+                  {currencyFormatters.brl(orcamentoGerado?.total || totals.total)}
+                </span>
+              </div>
+            </div>
+
+            {/* Ações */}
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 font-medium">O que deseja fazer?</p>
+              
+              {/* Imprimir/PDF */}
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 h-12"
+                onClick={handlePrintOrcamento}
+              >
+                <Printer className="h-5 w-5 text-gray-500" />
+                <div className="text-left">
+                  <div className="font-medium">Salvar PDF</div>
+                  <div className="text-xs text-gray-500">Baixar orçamento em PDF</div>
+                </div>
+              </Button>
+
+              {/* WhatsApp */}
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 h-12 border-green-200 hover:bg-green-50"
+                onClick={handleEnviarOrcamentoWhatsApp}
+                disabled={!selectedCliente?.telefone && !selectedCliente?.whatsapp}
+              >
+                <MessageCircle className="h-5 w-5 text-green-600" />
+                <div className="text-left">
+                  <div className="font-medium text-green-700">Enviar por WhatsApp</div>
+                  <div className="text-xs text-gray-500">
+                    {selectedCliente?.telefone || selectedCliente?.whatsapp || 'Cliente sem telefone'}
+                  </div>
+                </div>
+              </Button>
+
+              {/* Converter em Venda */}
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 h-12 border-blue-200 hover:bg-blue-50"
+                onClick={handleConverterOrcamentoEmVenda}
+              >
+                <ArrowRight className="h-5 w-5 text-blue-600" />
+                <div className="text-left">
+                  <div className="font-medium text-blue-700">Converter em Venda</div>
+                  <div className="text-xs text-gray-500">Abrir como venda para finalizar</div>
+                </div>
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => handleFecharOrcamentoModal(true)}
+              className="text-gray-500"
+            >
+              Novo Atendimento
+            </Button>
+            <Button 
+              onClick={() => handleFecharOrcamentoModal(false)}
+            >
               Fechar
             </Button>
           </DialogFooter>
