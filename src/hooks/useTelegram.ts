@@ -16,6 +16,30 @@ export interface TelegramPhotoResult {
 export function useTelegram() {
   const [loading, setLoading] = useState(false);
 
+  const prepareImageForUpload = async (file: File): Promise<File> => {
+    // Evitar payloads enormes (base64 infla ~33%) e reduzir chance de bloqueio por proxy (1MB/2MB).
+    // Só tenta converter/comprimir se for imagem.
+    if (!file.type.startsWith('image/')) return file;
+
+    // Se já está pequeno, não mexe.
+    if (file.size <= 650 * 1024) return file;
+
+    // Tenta comprimir/redimensionar para JPEG (mantém compatível com Telegram e reduz muito tamanho).
+    try {
+      const compressed = await compressImageToJpeg(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.72,
+      });
+
+      // Se por algum motivo não reduziu, mantém original.
+      if (!compressed || compressed.size >= file.size) return file;
+      return compressed;
+    } catch {
+      return file;
+    }
+  };
+
   const sendPhoto = async (
     file: File,
     osNumero: number | string,
@@ -26,28 +50,34 @@ export function useTelegram() {
     setLoading(true);
     
     try {
+      const fileToSend = await prepareImageForUpload(file);
+
       console.log('[useTelegram] Enviando foto:', {
         fileName: file.name,
         osNumero,
         tipo,
         chatId,
         fileSize: file.size,
+        preparedFileSize: fileToSend.size,
+        preparedFileType: fileToSend.type,
       });
 
       // Converter arquivo para base64
-      const base64File = await fileToBase64(file);
+      const base64File = await fileToBase64(fileToSend);
 
-      // Verificar tamanho (limite do Telegram é 10MB, mas vamos usar 5MB para segurança)
-      if (base64File.length > 5 * 1024 * 1024) {
+      // Verificar tamanho (limite do Telegram é 10MB, mas aqui o gargalo costuma ser proxy/API).
+      // Como base64 é string, usamos uma estimativa simples de bytes.
+      const estimatedBytes = Math.ceil((base64File.length * 3) / 4);
+      if (estimatedBytes > 4.5 * 1024 * 1024) {
         return {
           success: false,
-          error: 'Arquivo muito grande. Tamanho máximo: 5MB. Tente comprimir a imagem.',
+          error: 'Imagem muito grande para upload. Tente enviar uma imagem menor (ou reduza a resolução).',
         };
       }
 
       const { data, error } = await apiClient.invokeFunction('telegram-bot', {
         file: base64File,
-        fileName: file.name,
+        fileName: fileToSend.name,
         osNumero: String(osNumero),
         tipo: tipo,
         chatId: chatId,
@@ -55,29 +85,35 @@ export function useTelegram() {
       });
 
       if (error) {
-        console.error('[useTelegram] Erro ao chamar Edge Function:', error);
-        console.error('[useTelegram] Detalhes do erro:', {
-          message: error.message,
-          name: error.name,
-          status: (error as any).status,
-        });
+        console.error('[useTelegram] Erro ao chamar API:', error);
         
         // Verificar se é erro de token não configurado
-        if (error.message?.includes('TELEGRAM_BOT_TOKEN não configurado')) {
+        if (String(error).includes('TELEGRAM_BOT_TOKEN não configurado')) {
           return {
             success: false,
-            error: 'Token do Telegram não configurado. Configure o TELEGRAM_BOT_TOKEN no Supabase Dashboard > Edge Functions > Secrets',
+            error: 'Token do Telegram não configurado no backend. Configure TELEGRAM_BOT_TOKEN no .env do servidor e reinicie.',
           };
         }
-        
-        throw error;
+
+        // Erro de rede/CORS/proxy (geralmente aparece como "Failed to fetch")
+        if (String(error).includes('Failed to fetch')) {
+          return {
+            success: false,
+            error: 'Falha de rede ao enviar foto. Se for produção, pode ser limite de upload do servidor/proxy. Tente uma imagem menor.',
+          };
+        }
+
+        return {
+          success: false,
+          error: typeof error === 'string' ? error : 'Erro ao enviar foto para API',
+        };
       }
 
       if (!data) {
-        console.error('[useTelegram] Nenhuma resposta da Edge Function');
+        console.error('[useTelegram] Nenhuma resposta da API');
         return {
           success: false,
-          error: 'Nenhuma resposta da Edge Function. Verifique os logs no Supabase Dashboard.',
+          error: 'Nenhuma resposta da API. Verifique os logs do servidor.',
         };
       }
 
@@ -91,13 +127,13 @@ export function useTelegram() {
           await savePhotoLog({
             ordem_servico_id: String(osNumero),
             ordem_servico_numero: Number(osNumero),
-            file_name: file.name,
+          file_name: fileToSend.name,
             tipo: tipo,
             telegram_chat_id: chatId,
             status: 'erro',
             error_message: errorMsg,
-            file_size: file.size,
-            mime_type: file.type,
+          file_size: fileToSend.size,
+          mime_type: fileToSend.type,
           });
         } catch (logError) {
           console.error('[useTelegram] Erro ao salvar log de erro:', logError);
@@ -116,15 +152,15 @@ export function useTelegram() {
         await savePhotoLog({
           ordem_servico_id: String(osNumero), // Usando número como ID temporário
           ordem_servico_numero: Number(osNumero),
-          file_name: file.name,
+          file_name: fileToSend.name,
           file_url: data.fileUrl || data.thumbnailUrl || data.postLink, // Usar thumbnailUrl ou postLink como fallback
           file_id: data.fileId,
           message_id: data.messageId,
           tipo: tipo,
           telegram_chat_id: chatId,
           status: 'enviado',
-          file_size: file.size,
-          mime_type: file.type,
+          file_size: fileToSend.size,
+          mime_type: fileToSend.type,
         });
       } catch (logError) {
         console.error('[useTelegram] Erro ao salvar log no banco:', logError);
@@ -143,11 +179,11 @@ export function useTelegram() {
       };
     } catch (error: any) {
       console.error('[useTelegram] Erro ao enviar foto:', error);
-      toast.error(error.message || 'Erro ao enviar foto para Telegram');
+      toast.error(error?.message || 'Erro ao enviar foto para Telegram');
       
       return {
         success: false,
-        error: error.message || 'Erro ao enviar foto',
+        error: error?.message || 'Erro ao enviar foto',
       };
     } finally {
       setLoading(false);
@@ -258,6 +294,40 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+async function compressImageToJpeg(
+  file: File,
+  opts: { maxWidth: number; maxHeight: number; quality: number }
+): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(
+    1,
+    opts.maxWidth / bitmap.width,
+    opts.maxHeight / bitmap.height
+  );
+
+  const targetW = Math.max(1, Math.round(bitmap.width * scale));
+  const targetH = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas não suportado');
+  ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('Falha ao gerar blob'))),
+      'image/jpeg',
+      opts.quality
+    );
+  });
+
+  const nameBase = file.name.replace(/\.[^/.]+$/, '');
+  return new File([blob], `${nameBase}.jpg`, { type: 'image/jpeg' });
 }
 
 // Interface para salvar log de foto no banco
