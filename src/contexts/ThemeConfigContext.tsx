@@ -53,18 +53,23 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   // Aplicar configurações de tema no CSS
   const applyThemeConfig = (themeConfig: ThemeConfig) => {
     const root = document.documentElement;
+    
+    // Cor principal (usada como fallback)
     root.style.setProperty('--primary', themeConfig.colors.primary);
     root.style.setProperty('--primary-foreground', themeConfig.colors.primaryForeground);
     root.style.setProperty('--secondary', themeConfig.colors.secondary);
     root.style.setProperty('--accent', themeConfig.colors.accent);
     
-    // Aplicar cores específicas se definidas
-    if (themeConfig.colors.sidebar) {
-      root.style.setProperty('--sidebar-primary', themeConfig.colors.sidebar);
-    }
-    if (themeConfig.colors.button) {
-      root.style.setProperty('--button-primary', themeConfig.colors.button);
-    }
+    // Cor do Sidebar (navegação)
+    const sidebarColor = themeConfig.colors.sidebar || themeConfig.colors.primary;
+    root.style.setProperty('--sidebar-primary', sidebarColor);
+    root.style.setProperty('--sidebar-primary-foreground', '0 0% 100%');
+    
+    // Cor dos Botões - aplica em --primary para que todos os botões usem
+    const buttonColor = themeConfig.colors.button || themeConfig.colors.primary;
+    root.style.setProperty('--button-primary', buttonColor);
+    // Atualizar --primary para que os botões default usem a cor configurada
+    root.style.setProperty('--primary', buttonColor);
   };
 
   // Aplicar configurações ao carregar
