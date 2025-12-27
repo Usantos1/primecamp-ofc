@@ -21,9 +21,9 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     grupo: supabaseProduto.grupo || undefined,
     sub_grupo: supabaseProduto.sub_grupo || undefined,
     
-    // Preço (BRL) - Busca em múltiplos campos possíveis
-    valor_compra: Number(supabaseProduto.valor_compra || supabaseProduto.vi_compra || supabaseProduto.vi_custo || supabaseProduto.preco_custo || 0),
-    valor_venda: Number(supabaseProduto.valor_venda || supabaseProduto.preco_venda || supabaseProduto.valor_dinheiro_pix || 0),
+    // Preço (BRL) - Busca em múltiplos campos, prioriza valor > 0
+    valor_compra: Number(supabaseProduto.valor_compra > 0 ? supabaseProduto.valor_compra : (supabaseProduto.vi_compra > 0 ? supabaseProduto.vi_compra : (supabaseProduto.vi_custo || 0))),
+    valor_venda: Number(supabaseProduto.valor_venda > 0 ? supabaseProduto.valor_venda : (supabaseProduto.valor_dinheiro_pix || 0)),
     valor_parcelado_6x: supabaseProduto.valor_parcelado_6x ? Number(supabaseProduto.valor_parcelado_6x) : undefined,
     margem_percentual: supabaseProduto.margem_percentual ? Number(supabaseProduto.margem_percentual) : undefined,
     permitir_desconto_percentual: supabaseProduto.permitir_desconto_percentual ? Number(supabaseProduto.permitir_desconto_percentual) : undefined,
@@ -47,8 +47,8 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     descricao: supabaseProduto.nome || '',
     descricao_abreviada: supabaseProduto.nome_abreviado || undefined,
     categoria: supabaseProduto.grupo || undefined,
-    preco_custo: Number(supabaseProduto.valor_compra || supabaseProduto.vi_compra || supabaseProduto.vi_custo || supabaseProduto.preco_custo || 0),
-    preco_venda: Number(supabaseProduto.valor_venda || supabaseProduto.preco_venda || supabaseProduto.valor_dinheiro_pix || 0),
+    preco_custo: Number(supabaseProduto.valor_compra > 0 ? supabaseProduto.valor_compra : (supabaseProduto.vi_compra > 0 ? supabaseProduto.vi_compra : (supabaseProduto.vi_custo || 0))),
+    preco_venda: Number(supabaseProduto.valor_venda > 0 ? supabaseProduto.valor_venda : (supabaseProduto.valor_dinheiro_pix || 0)),
     margem_lucro: supabaseProduto.margem_percentual ? Number(supabaseProduto.margem_percentual) : undefined,
     estoque_atual: Number(supabaseProduto.quantidade || 0),
     modelo_compativel: supabaseProduto.modelo || undefined,
