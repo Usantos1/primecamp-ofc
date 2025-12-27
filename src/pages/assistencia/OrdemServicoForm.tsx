@@ -1835,7 +1835,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Resumo Fixo da OS - Apenas uma vez no topo */}
           {isEditing && currentOS && (
-            <div className="flex-shrink-0 mb-3 space-y-2">
+            <div className="flex-shrink-0 mb-2">
               <OSSummaryHeader
                 numeroOS={currentOS.numero}
                 clienteNome={selectedCliente?.nome || getClienteById(currentOS.cliente_id)?.nome}
@@ -1850,20 +1850,20 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Tab Dados - com scroll interno */}
-          <TabsContent value="dados" className="flex-1 overflow-auto scrollbar-thin p-2 md:p-3">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-3">
+          <TabsContent value="dados" className="flex-1 overflow-auto scrollbar-thin p-1 md:p-2">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-2">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="border-2 border-gray-300">
-                <CardHeader className="pb-2 pt-3 border-b-2 border-gray-300">
-                  <CardTitle className="text-sm md:text-base font-semibold">Dados da OS</CardTitle>
+              <Card className="border border-gray-200">
+                <CardHeader className="py-2 px-3 border-b border-gray-200">
+                  <CardTitle className="text-xs font-semibold">Dados da OS</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-3">
+                <CardContent className="space-y-2 p-3">
                   {/* Cliente */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
-                    <div className="space-y-1.5 md:space-y-2 md:col-span-2">
-                      <Label className="text-xs md:text-sm font-medium">Cliente</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-[10px] text-muted-foreground">Cliente</Label>
                       <div className="relative">
-                        <Search className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input
                           placeholder="Buscar cliente..."
                           value={selectedCliente ? selectedCliente.nome : clienteSearch}
@@ -1876,7 +1876,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setShowClienteSearch(true);
                           }}
                           onFocus={() => setShowClienteSearch(true)}
-                          className="pl-8 md:pl-10 h-9 md:h-10 text-base md:text-sm"
+                          className="pl-8 h-8 text-xs"
                         />
                         {selectedCliente && (
                           <Button 
@@ -1910,22 +1910,22 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </div>
                       )}
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Telefone *</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Telefone *</Label>
                       <Input
                         value={formData.telefone_contato || selectedCliente?.telefone || selectedCliente?.whatsapp || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, telefone_contato: e.target.value }))}
                         placeholder="(99) 99999-9999"
-                        className="h-9 md:h-10 text-xs md:text-sm"
+                        className="h-8 text-xs"
                         required
                       />
                     </div>
                   </div>
                   
                   {/* Aparelho - Linha 1 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Marca *</Label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Marca *</Label>
                       <Select 
                         value={formData.marca_id || ''} 
                         onValueChange={(v) => {
@@ -1936,7 +1936,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }));
                         }}
                       >
-                        <SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm">
+                        <SelectTrigger className="w-full h-8 text-xs">
                           <SelectValue placeholder="Marca">
                             {formData.marca_id && marcas.length > 0 
                               ? (marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome || '')
@@ -1954,8 +1954,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Modelo *</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Modelo *</Label>
                       <Select 
                         value={formData.modelo_id || ''} 
                         onValueChange={(v) => {
@@ -1963,7 +1963,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }}
                         disabled={!formData.marca_id}
                       >
-                        <SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm" disabled={!formData.marca_id}>
+                        <SelectTrigger className="w-full h-8 text-xs" disabled={!formData.marca_id}>
                           <SelectValue placeholder="Modelo">
                             {formData.modelo_id && modelosFiltrados.length > 0
                               ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
@@ -1983,17 +1983,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">IMEI</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">IMEI</Label>
                       <Input
                         value={formData.imei}
                         onChange={(e) => setFormData(prev => ({ ...prev, imei: e.target.value }))}
                         placeholder="IMEI"
-                        className="h-9 md:h-10 text-xs md:text-sm"
+                        className="h-8 text-xs"
                       />
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Nº Série</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Nº Série</Label>
                       <Input
                         value={formData.numero_serie}
                         onChange={(e) => setFormData(prev => ({ ...prev, numero_serie: e.target.value }))}
@@ -2004,48 +2004,48 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Aparelho - Linha 2 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Cor</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Cor</Label>
                       <Input
                         value={formData.cor}
                         onChange={(e) => setFormData(prev => ({ ...prev, cor: e.target.value }))}
                         placeholder="Cor"
-                        className="h-9 md:h-10 text-xs md:text-sm"
+                        className="h-8 text-xs"
                       />
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Operadora</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Operadora</Label>
                       <Input
                         value={formData.operadora}
                         onChange={(e) => setFormData(prev => ({ ...prev, operadora: e.target.value }))}
                         placeholder="Operadora"
-                        className="h-9 md:h-10 text-xs md:text-sm"
+                        className="h-8 text-xs"
                       />
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Previsão Entrega</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Previsão Entrega</Label>
                       <Input
                         type="date"
                         value={formData.previsao_entrega}
                         onChange={(e) => setFormData(prev => ({ ...prev, previsao_entrega: e.target.value }))}
-                        className="h-9 md:h-10 text-xs md:text-sm"
+                        className="h-8 text-xs"
                       />
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Hora</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Hora</Label>
                       <Input
                         type="time"
                         value={formData.hora_previsao || '18:00'}
                         onChange={(e) => setFormData(prev => ({ ...prev, hora_previsao: e.target.value }))}
-                        className="h-9 md:h-10 text-xs md:text-sm"
+                        className="h-8 text-xs"
                       />
                     </div>
                   </div>
 
                   {/* Deixou Aparelho */}
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm font-medium">Deixou aparelho</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Deixou aparelho</Label>
                     <Select 
                       value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
                       onValueChange={(v) => {
@@ -2056,7 +2056,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-9 md:h-10 text-xs md:text-sm">
+                      <SelectTrigger className="w-full h-8 text-xs">
                         <SelectValue placeholder="Selecione">
                           {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'HORÁRIO AGENDADO' : 'NÃO'}
                         </SelectValue>
@@ -2070,35 +2070,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Descrição e Condições */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 md:gap-3">
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Descrição do Problema *</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Descrição do Problema *</Label>
                       <Textarea
                         value={formData.descricao_problema}
                         onChange={(e) => setFormData(prev => ({ ...prev, descricao_problema: e.target.value }))}
                         placeholder="Descreva o problema..."
-                        rows={3}
-                        className="resize-none text-xs md:text-sm"
+                        rows={2}
+                        className="resize-none text-xs min-h-[60px]"
                       />
                     </div>
-                    <div className="space-y-1.5 md:space-y-2">
-                      <Label className="text-xs md:text-sm font-medium">Condições do Equipamento</Label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Condições do Equipamento</Label>
                       <Textarea
                         value={formData.condicoes_equipamento}
                         onChange={(e) => setFormData(prev => ({ ...prev, condicoes_equipamento: e.target.value }))}
                         placeholder="Estado físico..."
-                        rows={3}
-                        className="resize-none text-xs md:text-sm"
+                        rows={2}
+                        className="resize-none text-xs min-h-[60px]"
                       />
                     </div>
                   </div>
 
                   {/* Orçamento Pré Autorizado */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Orçamento pré autorizado</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-1.5 md:space-y-2">
-                        <Label className="text-[10px] md:text-xs text-muted-foreground">Cartão Débito/Crédito até 6x</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Orçamento pré autorizado</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-0.5">
+                        <Label className="text-[9px] text-muted-foreground/80">Cartão até 6x</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -2111,11 +2111,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setFormData(prev => ({ ...prev, orcamento_parcelado: numValue }));
                           }}
                           placeholder="0,00"
-                          className="h-9 md:h-10 text-xs md:text-sm"
+                          className="h-8 text-xs"
                         />
                       </div>
-                      <div className="space-y-1.5 md:space-y-2">
-                        <Label className="text-[10px] md:text-xs text-muted-foreground">Dinheiro ou PIX</Label>
+                      <div className="space-y-0.5">
+                        <Label className="text-[9px] text-muted-foreground/80">Dinheiro ou PIX</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -2128,7 +2128,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setFormData(prev => ({ ...prev, orcamento_desconto: numValue }));
                           }}
                           placeholder="0,00"
-                          className="h-9 md:h-10 text-xs md:text-sm"
+                          className="h-8 text-xs"
                         />
                       </div>
                     </div>
@@ -2137,17 +2137,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha e Áreas com Defeito */}
-              <Card className="border-2 border-gray-300">
-                <CardHeader className="pb-2 pt-3 border-b-2 border-gray-300">
-                  <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <Card className="border border-gray-200">
+                <CardHeader className="py-2 px-3 border-b border-gray-200">
+                  <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
                     <span>Senha e Áreas com Defeito</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-3 space-y-4 px-3">
+                <CardContent className="p-2 space-y-2">
                   {/* Seção Senha */}
-                  <div className="space-y-2 md:space-y-3 flex-shrink-0">
-                    <Label className="text-xs md:text-sm font-medium truncate">Possui senha</Label>
+                  <div className="space-y-1 flex-shrink-0">
+                    <Label className="text-[10px] text-muted-foreground">Possui senha</Label>
                     <Select 
                       value={formData.possui_senha_tipo || 'nao'} 
                       onValueChange={(v) => {
@@ -2158,7 +2158,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-10 text-sm">
+                      <SelectTrigger className="w-full h-8 text-xs">
                         <SelectValue className="truncate">
                           {formData.possui_senha_tipo === 'sim' && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && 'SIM - DESLIZAR (DESENHO)'}
@@ -2178,44 +2178,39 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                     {/* Senha - Campo de texto quando SIM */}
                     {formData.possui_senha_tipo === 'sim' && (
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          value={formData.senha_aparelho}
-                          onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
-                          placeholder="Digite a senha"
-                          className="h-10 text-sm"
-                        />
-                      </div>
+                      <Input
+                        type="text"
+                        value={formData.senha_aparelho}
+                        onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
+                        placeholder="Digite a senha"
+                        className="h-8 text-xs"
+                      />
                     )}
 
                     {/* Senha - PatternLock quando DESLIZAR */}
                     {formData.possui_senha_tipo === 'deslizar' && (
-                      <div className="space-y-2 py-2">
-                        <div className="flex justify-center items-center">
+                      <div className="space-y-1">
+                        <div className="flex justify-center">
                           <PatternLock
                             value={formData.padrao_desbloqueio}
                             onChange={(pattern) => setFormData(prev => ({ ...prev, padrao_desbloqueio: pattern }))}
-                            className="max-w-[200px]"
+                            className="max-w-[160px]"
                           />
                         </div>
                         <Input
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                           placeholder="Senha adicional"
-                          className="h-10 text-sm"
+                          className="h-8 text-xs"
                         />
                       </div>
                     )}
                   </div>
 
-                  {/* Divisor */}
-                  <div className="border-t flex-shrink-0"></div>
-
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
                   <div>
-                    <Label className="text-sm font-medium mb-2 block">Referência Visual do Aparelho</Label>
-                    <div className="h-[280px] flex items-center justify-center bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-2">
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Referência Visual do Aparelho</Label>
+                    <div className="h-[200px] flex items-center justify-center bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-1">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
@@ -2223,9 +2218,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         readOnly={false}
                       />
                     </div>
-                    <div className="flex flex-wrap items-center justify-center gap-1 mt-2 text-center">
-                      <p className="text-xs text-muted-foreground">
-                        Clique para marcar defeitos • {formData.areas_defeito?.length || 0} ponto(s)
+                    <div className="flex items-center justify-center mt-1">
+                      <p className="text-[10px] text-muted-foreground">
+                        Clique para marcar defeitos ({formData.areas_defeito?.length || 0})
                       </p>
                       {formData.areas_defeito && formData.areas_defeito.length > 0 && (
                         <button
