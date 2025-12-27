@@ -159,7 +159,7 @@ export function AppSidebar() {
         )}
         {items.map((item) => (
           <SidebarMenuItem key={item.path}>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton asChild tooltip={item.label}>
               <NavLink to={item.path} end={item.exact !== false}>
                 <div className={getItemClasses(item.path, item.exact)}>
                   <item.icon className={cn(
