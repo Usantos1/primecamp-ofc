@@ -850,18 +850,28 @@ export default function NovaVenda() {
         }
       }
       
+      // F6 - Importar OS (apenas se carrinho vazio e não editando)
+      if (e.key === 'F6' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isEditing && cart.length === 0) {
+          handleOpenFaturarOSModal();
+        }
+      }
+      
       // ESC - Fechar modais
       if (e.key === 'Escape') {
         setShowProductSearch(false);
         setShowClienteSearch(false);
         setShowCheckout(false);
+        setShowFaturarOSModal(false);
       }
     };
 
     // Adicionar listener com capture para garantir que seja capturado antes de outros handlers
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [cart, handleFinalize, isSaving]);
+  }, [cart, handleFinalize, isSaving, isEditing, handleOpenFaturarOSModal]);
 
   // Adicionar produto ao carrinho (com validação de estoque)
   const handleAddProduct = (produto: any) => {
@@ -1689,64 +1699,38 @@ _PrimeCamp Assistência Técnica_`;
       subtitle={isEditing ? 'Editar venda' : 'Criar nova venda'}
     >
       <div className="space-y-3 md:space-y-4">
-        {/* Header minimalista - apenas info contextual */}
+        {/* Header minimalista */}
         {isEditing && (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant={sale?.is_draft ? "secondary" : "default"} className="text-xs">
-                {sale?.is_draft ? '📝 Rascunho' : '✅ Finalizada'}
+            <div className="flex items-center gap-3">
+              <Badge 
+                variant={sale?.is_draft ? "secondary" : "default"} 
+                className={cn(
+                  "text-sm font-medium px-3 py-1",
+                  !sale?.is_draft && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                )}
+              >
+                {sale?.is_draft ? '📝 Rascunho' : '✅ Venda Finalizada'}
               </Badge>
               {sale?.numero && (
-                <span className="text-sm text-muted-foreground">Venda #{sale.numero}</span>
+                <span className="text-base font-semibold text-gray-700 dark:text-gray-300">#{sale.numero}</span>
               )}
             </div>
-            {/* Ações de venda finalizada ficam aqui (impressão, etc) */}
-            {sale && !sale.is_draft && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={handlePrintCupom}
-                >
-                  <Printer className="h-4 w-4 mr-1" />
-                  Imprimir
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={handleSavePDF}
-                >
-                  <Download className="h-4 w-4 mr-1" />
-                  PDF
-                </Button>
-                {selectedCliente?.whatsapp && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={handleSendWhatsApp}
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    WhatsApp
-                  </Button>
-                )}
-              </div>
-            )}
+            {/* Ações movidas para o card Resumo */}
+            <span></span>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 min-h-[calc(100vh-200px)]">
           {/* Coluna esquerda - Busca, Cliente e Carrinho */}
           <div className="lg:col-span-2 flex flex-col gap-3">
-            {/* Busca de produtos */}
-            <Card className="border">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Search className="h-4 w-4 text-gray-400" />
-                  <span className="text-xs text-gray-500 font-medium">Buscar Produto</span>
-                  <kbd className="ml-auto px-1.5 py-0.5 text-[10px] bg-gray-100 dark:bg-gray-800 rounded text-gray-500">F2</kbd>
+            {/* Busca de produtos - Card mais forte */}
+            <Card className="border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50/50 to-white dark:from-emerald-900/20 dark:to-gray-900">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Search className="h-5 w-5 text-emerald-600" />
+                  <span className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Buscar Produto</span>
+                  <kbd className="ml-auto px-2 py-1 text-[10px] bg-emerald-100 dark:bg-emerald-900 rounded text-emerald-700 dark:text-emerald-300 font-mono border border-emerald-200 dark:border-emerald-800">F2</kbd>
                 </div>
                 <div className="relative">
                   <Input
@@ -1759,30 +1743,51 @@ _PrimeCamp Assistência Técnica_`;
                         handleAddProduct(productResults[0]);
                       }
                     }}
-                    className="h-10 text-sm"
+                    className="h-12 text-base font-medium border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                   {showProductSearch && productResults.length > 0 && (
-                    <div className="absolute z-50 w-full bg-background border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
-                      {productResults.map(produto => (
-                        <div
-                          key={produto.id}
-                          className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-0"
-                          onClick={() => handleAddProduct(produto)}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-sm truncate">{produto.descricao || ''}</p>
-                              <p className="text-xs text-gray-400 truncate">
-                                {produto.codigo && `Cód: ${produto.codigo}`}
-                                {produto.codigo_barras && ` • ${produto.codigo_barras}`}
-                              </p>
+                    <div className="absolute z-50 w-full bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-72 overflow-auto mt-2">
+                      {productResults.map(produto => {
+                        const estoque = Number(produto.quantidade || 0);
+                        const semEstoque = estoque <= 0 && normalizeProdutoTipo(produto.tipo) === 'produto';
+                        return (
+                          <div
+                            key={produto.id}
+                            className={cn(
+                              "p-3 cursor-pointer border-b last:border-0 transition-colors",
+                              semEstoque 
+                                ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30" 
+                                : "hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                            )}
+                            onClick={() => handleAddProduct(produto)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-base truncate">{produto.descricao || ''}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-xs text-gray-500">
+                                    {produto.codigo && `Cód: ${produto.codigo}`}
+                                    {produto.codigo_barras && ` • ${produto.codigo_barras}`}
+                                  </span>
+                                  {normalizeProdutoTipo(produto.tipo) === 'produto' && (
+                                    <span className={cn(
+                                      "text-xs px-1.5 py-0.5 rounded",
+                                      semEstoque 
+                                        ? "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400" 
+                                        : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400"
+                                    )}>
+                                      Est: {estoque}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="text-lg font-bold text-emerald-600 ml-3 tabular-nums">
+                                {currencyFormatters.brl(produto.preco_venda || 0)}
+                              </span>
                             </div>
-                            <span className="text-sm font-semibold text-emerald-600 ml-2">
-                              {currencyFormatters.brl(produto.preco_venda || 0)}
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2047,169 +2052,218 @@ _PrimeCamp Assistência Técnica_`;
                 </div>
                 
                 {/* Valores */}
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal</span>
-                    <span className="font-medium">{currencyFormatters.brl(totals.subtotal)}</span>
-                  </div>
-                  {totals.descontoItens > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Desc. Itens</span>
-                      <span className="text-red-500">-{currencyFormatters.brl(totals.descontoItens)}</span>
+                {/* ESTADO PÓS-VENDA: Quando finalizada */}
+                {isEditing && sale && !sale.is_draft ? (
+                  <div className="space-y-4">
+                    {/* Confirmação de venda */}
+                    <div className="text-center py-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
+                      <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">Venda Finalizada</p>
+                      <p className="text-3xl font-black text-gray-900 dark:text-white mt-1 tabular-nums">
+                        {currencyFormatters.brl(totals.total)}
+                      </p>
                     </div>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Desconto</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-400 text-xs">R$</span>
-                      <Input
-                        type="number"
-                        value={descontoTotal}
-                        onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
-                        className="h-7 w-20 text-sm text-right"
-                        step="0.01"
+                    
+                    {/* Info pagamento */}
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Pago</span>
+                        <span className="font-semibold text-emerald-600">{currencyFormatters.brl(totalPago)}</span>
+                      </div>
+                      {saldoRestante > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Restante</span>
+                          <span className="font-semibold text-orange-500">{currencyFormatters.brl(saldoRestante)}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Ações pós-venda */}
+                    <div className="space-y-2">
+                      <Button
+                        className="w-full h-10 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => {
+                          limparPDV();
+                          navigate('/pdv');
+                        }}
+                      >
+                        Nova Venda
+                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          onClick={handlePrintCupom}
+                        >
+                          Reimprimir
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          onClick={() => navigate('/pdv/vendas')}
+                        >
+                          Ver Vendas
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* ESTADO NORMAL: Em edição/criação */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal</span>
+                        <span className="text-base font-semibold tabular-nums">{currencyFormatters.brl(totals.subtotal)}</span>
+                      </div>
+                      {totals.descontoItens > 0 && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Desc. Itens</span>
+                          <span className="text-base font-semibold text-red-500 tabular-nums">-{currencyFormatters.brl(totals.descontoItens)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Desconto</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-400">R$</span>
+                          <Input
+                            type="number"
+                            value={descontoTotal}
+                            onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
+                            className="h-8 w-24 text-sm text-right font-medium"
+                            step="0.01"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* TOTAL - DESTAQUE MÁXIMO */}
+                    <div className={cn(
+                      "mt-4 p-4 rounded-xl",
+                      totals.total > 0 
+                        ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg" 
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-500"
+                    )}>
+                      <div className="flex justify-between items-center">
+                        <span className="text-base font-semibold">TOTAL</span>
+                        <span className="text-3xl font-black tabular-nums tracking-tight">
+                          {currencyFormatters.brl(totals.total)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* AÇÕES PRINCIPAIS */}
+                    <div className="mt-5 space-y-3">
+                      {/* FINALIZAR VENDA - BOTÃO DOMINANTE */}
+                      <Button
+                        className="w-full h-12 text-base font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md hover:shadow-lg transition-all"
+                        onClick={handleFinalize}
+                        disabled={cart.length === 0 || isSaving || isDeleting}
+                      >
+                        <DollarSign className="h-5 w-5 mr-2" />
+                        {isSaving ? 'Finalizando...' : 'Finalizar Venda'}
+                        <kbd className="ml-3 px-1.5 py-0.5 text-[10px] bg-emerald-700/50 rounded">F4</kbd>
+                      </Button>
+
+                      {/* GERAR ORÇAMENTO - Secundário */}
+                      <Button
+                        variant="outline"
+                        className="w-full h-9 text-sm text-gray-600 border-gray-300 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-800"
+                        onClick={handleGerarOrcamento}
+                        disabled={cart.length === 0 || isGeneratingOrcamento || isSaving}
+                      >
+                        <FileCheck className="h-4 w-4 mr-2" />
+                        {isGeneratingOrcamento ? 'Gerando...' : 'Gerar Orçamento'}
+                      </Button>
+
+                      {/* Excluir rascunho */}
+                      {isEditing && (sale?.is_draft || isAdmin) && (
+                        <button
+                          className="w-full text-xs text-gray-400 hover:text-red-500 py-1.5 transition-colors"
+                          onClick={handleDelete}
+                          disabled={isSaving || isDeleting}
+                        >
+                          {isDeleting ? 'Excluindo...' : 'Excluir rascunho'}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Observações */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <Textarea
+                        value={observacoes}
+                        onChange={(e) => setObservacoes(e.target.value)}
+                        placeholder="Observações da venda..."
+                        rows={2}
+                        className="resize-none text-sm bg-gray-50 dark:bg-gray-800/50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
                       />
                     </div>
-                  </div>
-                </div>
-                
-                {/* TOTAL */}
-                <div className={cn(
-                  "mt-3 p-3 rounded-lg",
-                  totals.total > 0 
-                    ? "bg-emerald-500 text-white" 
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-400"
-                )}>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total</span>
-                    <span className="text-2xl font-bold tabular-nums">
-                      {currencyFormatters.brl(totals.total)}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Info pagamento (edição) */}
-                {isEditing && (
-                  <div className="mt-2 pt-2 border-t text-xs space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Pago</span>
-                      <span className="text-emerald-600 font-medium">{currencyFormatters.brl(totalPago)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Restante</span>
-                      <span className={cn("font-semibold", saldoRestante > 0 ? "text-orange-500" : "text-emerald-600")}>
-                        {currencyFormatters.brl(saldoRestante)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Ações */}
-                {(!isEditing || sale?.is_draft) && (
-                  <div className="mt-4 pt-3 border-t space-y-2">
-                    {/* 1. FINALIZAR VENDA - AÇÃO PRINCIPAL */}
-                    <Button
-                      className="w-full h-9 text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
-                      onClick={handleFinalize}
-                      disabled={cart.length === 0 || isSaving || isDeleting}
-                    >
-                      <DollarSign className="h-4 w-4 mr-1.5" />
-                      {isSaving ? 'Finalizando...' : 'Finalizar Venda'}
-                    </Button>
-
-                    {/* 2. GERAR ORÇAMENTO - Secundário */}
-                    <Button
-                      variant="outline"
-                      className="w-full h-8 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700"
-                      onClick={handleGerarOrcamento}
-                      disabled={cart.length === 0 || isGeneratingOrcamento || isSaving}
-                    >
-                      <FileCheck className="h-3.5 w-3.5 mr-1.5" />
-                      {isGeneratingOrcamento ? 'Gerando...' : 'Gerar Orçamento'}
-                    </Button>
-
-                    {/* Excluir (se rascunho) */}
-                    {isEditing && (sale?.is_draft || isAdmin) && (
+                    {/* Links secundários */}
+                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs">
+                      {!isEditing && !sale?.ordem_servico_id && cart.length === 0 ? (
+                        <button
+                          className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-600 transition-colors"
+                          onClick={handleOpenFaturarOSModal}
+                        >
+                          <Wrench className="h-3.5 w-3.5" />
+                          Importar OS
+                          <kbd className="px-1 py-0.5 text-[9px] bg-gray-100 dark:bg-gray-800 rounded">F6</kbd>
+                        </button>
+                      ) : (
+                        <span></span>
+                      )}
                       <button
-                        className="w-full text-xs text-gray-400 hover:text-red-500 py-1"
-                        onClick={handleDelete}
-                        disabled={isSaving || isDeleting}
+                        className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-600 transition-colors"
+                        onClick={() => navigate('/pdv/vendas')}
                       >
-                        {isDeleting ? 'Excluindo...' : 'Excluir rascunho'}
+                        <BarChart3 className="h-3.5 w-3.5" />
+                        {isAdmin ? 'Vendas' : 'Minhas vendas'}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  </>
                 )}
-
-                {/* Observações */}
-                <div className="mt-3 pt-3 border-t">
-                  <Textarea
-                    value={observacoes}
-                    onChange={(e) => setObservacoes(e.target.value)}
-                    placeholder="Observações da venda..."
-                    rows={2}
-                    className="resize-none text-xs bg-gray-50 dark:bg-gray-800/50 border-0 focus-visible:ring-1 focus-visible:ring-gray-300"
-                  />
-                </div>
-
-                {/* Links */}
-                <div className="mt-auto pt-3 border-t flex items-center justify-between text-xs text-gray-400">
-                  {!isEditing && !sale?.ordem_servico_id && cart.length === 0 ? (
-                    <button
-                      className="flex items-center gap-1 hover:text-gray-600"
-                      onClick={handleOpenFaturarOSModal}
-                    >
-                      <Wrench className="h-3 w-3" />
-                      Importar OS
-                    </button>
-                  ) : (
-                    <span></span>
-                  )}
-                  <button
-                    className="flex items-center gap-1 hover:text-gray-600"
-                    onClick={() => navigate('/pdv/vendas')}
-                  >
-                    <BarChart3 className="h-3 w-3" />
-                    {isAdmin ? 'Vendas' : 'Minhas vendas'}
-                  </button>
-                </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Widget inferior - Atalhos de teclado */}
-        <div className="mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+        {/* Widget inferior - Atalhos e Status */}
+        <div className="mt-4 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-6 text-xs text-gray-500">
-              <span className="font-medium text-gray-600 dark:text-gray-400">Atalhos:</span>
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Atalhos:</span>
               <span className="flex items-center gap-1.5">
-                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border rounded text-[10px] font-mono shadow-sm">F2</kbd>
-                <span>Buscar produto</span>
+                <kbd className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono shadow-sm">F2</kbd>
+                <span>Buscar</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border rounded text-[10px] font-mono shadow-sm">F4</kbd>
-                <span>Finalizar venda</span>
+                <kbd className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 rounded text-xs font-mono text-emerald-700 dark:text-emerald-300 shadow-sm">F4</kbd>
+                <span className="font-medium">Finalizar</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border rounded text-[10px] font-mono shadow-sm">ESC</kbd>
-                <span>Fechar modais</span>
+                <kbd className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono shadow-sm">F6</kbd>
+                <span>Importar OS</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono shadow-sm">ESC</kbd>
+                <span>Fechar</span>
               </span>
             </div>
-            {/* Info do caixa */}
-            <div className="flex items-center gap-4 text-xs">
-              {cashSession && cashSession.status === 'open' && (
-                <span className="flex items-center gap-1.5 text-emerald-600">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                  Caixa aberto
+            {/* Status do caixa */}
+            <div className="flex items-center gap-4 text-sm">
+              {cashSession && cashSession.status === 'open' ? (
+                <span className="flex items-center gap-2 text-emerald-600 font-medium">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  Caixa Aberto
                 </span>
-              )}
-              {!cashSession || cashSession.status !== 'open' && (
-                <span className="flex items-center gap-1.5 text-orange-500">
-                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                  Caixa fechado
+              ) : (
+                <span className="flex items-center gap-2 text-orange-500 font-medium">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  Caixa Fechado
                 </span>
-              )}
+              )
             </div>
           </div>
         </div>
