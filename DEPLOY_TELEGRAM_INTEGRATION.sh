@@ -18,10 +18,18 @@ fi
 
 echo ""
 echo "2️⃣ Aplicando script SQL para criar tabelas do Telegram..."
-psql -U postgres -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql
 
-if [ $? -ne 0 ]; then
-    echo "⚠️ Aviso: Alguns erros podem ter ocorrido no SQL (tabelas já existentes são normais)"
+# Tentar diferentes métodos de autenticação PostgreSQL
+if sudo -u postgres psql -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql 2>/dev/null; then
+    echo "✅ SQL executado com sucesso usando sudo -u postgres"
+elif psql -U postgres -h localhost -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql 2>/dev/null; then
+    echo "✅ SQL executado com sucesso usando psql -U postgres -h localhost"
+elif psql -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql 2>/dev/null; then
+    echo "✅ SQL executado com sucesso usando psql direto"
+else
+    echo "⚠️ Erro ao executar SQL. Tentando método alternativo..."
+    echo "   Execute manualmente: sudo -u postgres psql -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql"
+    echo "   Ou: psql -U postgres -h localhost -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql"
 fi
 
 echo ""
