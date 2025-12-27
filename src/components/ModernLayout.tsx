@@ -13,6 +13,7 @@ import { useProcesses } from "@/hooks/useProcesses"
 import { useTasks } from "@/hooks/useTasks"
 import { useNavigate } from "react-router-dom"
 import { PermissionGate } from "./PermissionGate"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface ModernLayoutProps {
   children: React.ReactNode
@@ -28,10 +29,20 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [notificationCount, setNotificationCount] = useState(3)
+  const [currentTime, setCurrentTime] = useState(new Date())
   const { processes } = useProcesses()
   const { tasks } = useTasks()
+  const { profile } = useAuth()
   const navigate = useNavigate()
   const searchRef = useRef<HTMLDivElement>(null)
+
+  // Atualizar relógio a cada minuto
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Atualiza a cada 60 segundos
+    return () => clearInterval(timer)
+  }, [])
 
   const handleSearch = (value: string) => {
     setSearchTerm(value)
@@ -105,8 +116,21 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
                 <AppBar />
               </div>
 
-              {/* Lado direito: Ícones (Tema, Configurações, Notificações) */}
-              <div className="flex items-center gap-2">
+              {/* Lado direito: Relógio, Ícones e Nome */}
+              <div className="flex items-center gap-3">
+                {/* Relógio discreto */}
+                <div className="hidden lg:flex items-center text-sm text-muted-foreground font-mono">
+                  <span>{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  {profile?.display_name && (
+                    <>
+                      <span className="mx-2 text-gray-300 dark:text-gray-600">|</span>
+                      <span className="font-sans font-medium text-foreground">{profile.display_name.split(' ')[0]}</span>
+                    </>
+                  )}
+                </div>
+
+                <div className="h-4 w-px bg-border hidden lg:block" />
+
                 <ThemeToggle variant="button" size="sm" />
                 <Button 
                   variant="ghost" 

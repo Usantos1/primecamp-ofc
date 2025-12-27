@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   ShoppingCart,
@@ -23,6 +23,9 @@ import {
   FileText,
   LogOut,
   Plug,
+  ChevronUp,
+  KeyRound,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -40,6 +43,13 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 const logoImage = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
@@ -47,6 +57,7 @@ const logoImage = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-se
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, profile, isAdmin, signOut } = useAuth();
   const { hasPermission } = usePermissions();
 
@@ -235,58 +246,95 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className={cn("border-t-2 border-gray-200 dark:border-gray-700 mt-auto bg-white dark:bg-gray-900", collapsed ? "p-2" : "p-3")}>
+      <SidebarFooter className={cn("border-t-2 border-gray-200 dark:border-gray-700 mt-auto bg-white/50 dark:bg-gray-900/50", collapsed ? "p-2" : "p-3")}>
         {!collapsed ? (
-          <div className="space-y-2">
-            <NavLink
-              to="/perfil"
-              className="flex items-center gap-2 hover:bg-sidebar-accent rounded-lg p-2 transition-colors"
-            >
-              <Avatar className="h-8 w-8 border-2 border-gray-200 dark:border-gray-600">
-                <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
-                  {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-sidebar-foreground truncate">
-                  {profile?.display_name || user?.email}
-                </p>
-                <p className="text-[10px] text-muted-foreground truncate">{isAdmin ? "Admin" : "Usuário"}</p>
-              </div>
-            </NavLink>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={signOut} 
-              className="w-full h-8 text-xs border-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400"
-            >
-              <LogOut className="h-3.5 w-3.5 mr-2" />
-              Sair
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left group">
+                {/* Status indicator + Avatar */}
+                <div className="relative">
+                  <Avatar className="h-10 w-10 border-2 border-emerald-400 dark:border-emerald-500 shadow-sm">
+                    <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                      {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Status online */}
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full" />
+                </div>
+                
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                    {profile?.display_name || user?.email?.split('@')[0]}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {isAdmin ? "Administrador" : profile?.department || "Atendimento"}
+                  </p>
+                </div>
+                
+                {/* Chevron */}
+                <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" className="w-56">
+              <DropdownMenuItem onClick={() => navigate('/perfil')}>
+                <UserCog className="h-4 w-4 mr-2" />
+                Meu Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/perfil?tab=security')}>
+                <KeyRound className="h-4 w-4 mr-2" />
+                Trocar Senha
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/perfil?tab=preferences')}>
+                <Settings className="h-4 w-4 mr-2" />
+                Preferências
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={signOut}
+                className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair do Sistema
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
-          <div className="flex flex-col items-center gap-2">
-            <NavLink
-              to="/perfil"
-              className="w-10 h-10 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors mx-auto"
-              title="Perfil"
-            >
-              <Avatar className="h-8 w-8 border-2 border-gray-200 dark:border-gray-600">
-                <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
-                  {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-            </NavLink>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={signOut}
-              className="w-10 h-10 p-0 flex items-center justify-center mx-auto border-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-300 dark:hover:border-red-700"
-              title="Sair"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-10 h-10 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors mx-auto relative">
+                <Avatar className="h-8 w-8 border-2 border-emerald-400 dark:border-emerald-500">
+                  <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                    {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                {/* Status online */}
+                <span className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" side="top" className="w-56">
+              <div className="px-2 py-1.5 text-sm font-medium">
+                {profile?.display_name || user?.email?.split('@')[0]}
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/perfil')}>
+                <UserCog className="h-4 w-4 mr-2" />
+                Meu Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/perfil?tab=security')}>
+                <KeyRound className="h-4 w-4 mr-2" />
+                Trocar Senha
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={signOut}
+                className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </SidebarFooter>
     </Sidebar>
