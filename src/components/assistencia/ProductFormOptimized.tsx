@@ -105,62 +105,81 @@ async function buscarProximoCodigo(): Promise<number> {
 }
 
 /**
- * Busca movimentações de estoque relacionadas ao produto (OS)
+ * Busca movimentações de estoque relacionadas ao produto (OS e Vendas)
  */
 async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMovimentacao[]> {
   try {
-    // Primeiro, buscar os_items relacionados ao produto
-    const { data: itens, error: itensError } = await from('os_items')
+    const movimentacoes: EstoqueMovimentacao[] = [];
+
+    // 1. Buscar os_items relacionados ao produto (Ordens de Serviço)
+    const { data: osItens } = await from('os_items')
       .select('id, quantidade, tipo, descricao, created_at, ordem_servico_id')
       .eq('produto_id', produtoId)
       .eq('tipo', 'peca')
       .order('created_at', { ascending: false })
       .execute();
 
-    if (itensError) {
-      console.error('Erro ao buscar itens OS:', itensError);
-      throw itensError;
+    if (osItens && osItens.length > 0) {
+      // Buscar números das OSs relacionadas
+      const osIds = [...new Set(osItens.map((item: any) => item.ordem_servico_id).filter(Boolean))];
+      
+      let osMap = new Map();
+      if (osIds.length > 0) {
+        const { data: ordens } = await from('ordens_servico')
+          .select('id, numero')
+          .in('id', osIds)
+          .execute();
+        osMap = new Map((ordens || []).map((os: any) => [os.id, os.numero]));
+      }
+
+      osItens.forEach((item: any) => {
+        movimentacoes.push({
+          id: item.id,
+          data: item.created_at,
+          numero_os: osMap.get(item.ordem_servico_id) || 0,
+          quantidade: Number(item.quantidade || 0),
+          tipo: 'OS',
+          descricao: item.descricao || 'Baixa via OS',
+        });
+      });
     }
 
-    if (!itens || itens.length === 0) {
-      return [];
-    }
-
-    // Buscar números das OSs relacionadas
-    const osIds = [...new Set(itens.map((item: any) => item.ordem_servico_id).filter(Boolean))];
-    
-    if (osIds.length === 0) {
-      return itens.map((item: any) => ({
-        id: item.id,
-        data: item.created_at,
-        numero_os: 0,
-        quantidade: Number(item.quantidade || 0),
-        tipo: item.tipo,
-        descricao: item.descricao,
-      }));
-    }
-
-    const { data: ordens, error: ordensError } = await from('ordens_servico')
-      .select('id, numero')
-      .in('id', osIds)
+    // 2. Buscar sale_items relacionados ao produto (Vendas)
+    const { data: saleItens } = await from('sale_items')
+      .select('id, quantidade, produto_nome, created_at, sale_id')
+      .eq('produto_id', produtoId)
+      .order('created_at', { ascending: false })
       .execute();
 
-    if (ordensError) {
-      console.error('Erro ao buscar ordens de serviço:', ordensError);
-      // Continuar mesmo sem os números das OSs
+    if (saleItens && saleItens.length > 0) {
+      // Buscar números das vendas relacionadas
+      const saleIds = [...new Set(saleItens.map((item: any) => item.sale_id).filter(Boolean))];
+      
+      let salesMap = new Map();
+      if (saleIds.length > 0) {
+        const { data: sales } = await from('sales')
+          .select('id, numero')
+          .in('id', saleIds)
+          .execute();
+        salesMap = new Map((sales || []).map((s: any) => [s.id, s.numero]));
+      }
+
+      saleItens.forEach((item: any) => {
+        movimentacoes.push({
+          id: `sale-${item.id}`,
+          data: item.created_at,
+          numero_os: salesMap.get(item.sale_id) || 0,
+          quantidade: Number(item.quantidade || 0),
+          tipo: 'Venda',
+          descricao: `Venda #${salesMap.get(item.sale_id) || '?'}`,
+        });
+      });
     }
 
-    // Mapear números das OSs
-    const osMap = new Map((ordens || []).map((os: any) => [os.id, os.numero]));
+    // Ordenar por data decrescente
+    movimentacoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
-    return itens.map((item: any) => ({
-      id: item.id,
-      data: item.created_at,
-      numero_os: osMap.get(item.ordem_servico_id) || 0,
-      quantidade: Number(item.quantidade || 0),
-      tipo: item.tipo,
-      descricao: item.descricao,
-    }));
+    return movimentacoes;
   } catch (error) {
     console.error('Erro ao buscar movimentações:', error);
     return [];

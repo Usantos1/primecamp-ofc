@@ -126,7 +126,7 @@ export function AppBar() {
               className={cn(
                 "h-7 px-2 gap-1.5 whitespace-nowrap text-xs shrink-0",
                 isActive 
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" 
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm" 
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
               onClick={() => navigate(item.path)}

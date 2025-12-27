@@ -76,7 +76,7 @@ export function AppSidebar() {
       "flex items-center transition-all duration-200 rounded-lg",
       collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2.5 gap-3",
       active
-        ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold shadow-md"
+        ? "bg-emerald-600 text-white font-semibold shadow-md hover:bg-emerald-700"
         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     );
   };

@@ -39,7 +39,7 @@ export function useSales() {
       // Load more history to avoid empty screens
       query = query.limit(isAdmin ? 2000 : 500);
 
-      const { data, error } = await query;
+      const { data, error } = await query.execute();
 
       if (error) throw error;
       setSales(data || []);

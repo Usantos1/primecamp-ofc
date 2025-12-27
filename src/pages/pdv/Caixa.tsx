@@ -54,6 +54,23 @@ export default function Caixa() {
     }
   }, [currentSession?.id, refreshMovements]);
 
+  // Carregar itens da venda quando seleciona
+  useEffect(() => {
+    const loadSaleItems = async () => {
+      if (selectedSale && showSaleDetails && !selectedSale.items) {
+        const { data: itemsData } = await from('sale_items')
+          .select('*')
+          .eq('sale_id', selectedSale.id)
+          .execute();
+        
+        if (itemsData) {
+          setSelectedSale((prev: any) => prev ? { ...prev, items: itemsData } : null);
+        }
+      }
+    };
+    loadSaleItems();
+  }, [selectedSale?.id, showSaleDetails]);
+
   const loadSales = async () => {
     if (!currentSession?.id) return;
     try {
