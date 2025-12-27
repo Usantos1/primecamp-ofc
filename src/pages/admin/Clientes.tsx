@@ -169,9 +169,9 @@ export default function Clientes() {
 
   return (
     <ModernLayout title="Clientes" subtitle="Cadastro de clientes e fornecedores">
-      <div className="space-y-6">
-        {/* Cards de estatísticas */}
-        <div className="grid grid-cols-3 gap-4">
+      <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Cards de estatísticas - fixo no topo */}
+        <div className="flex-shrink-0 grid grid-cols-3 gap-4">
           <Card className="border-l-4 border-l-primary cursor-pointer" onClick={() => setTipoFilter('all')}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1"><Users className="h-4 w-4" />Total</div>
@@ -192,9 +192,9 @@ export default function Clientes() {
           </Card>
         </div>
 
-        {/* Lista */}
-        <Card>
-          <CardHeader>
+        {/* Lista - flex-1 para ocupar espaço restante */}
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <CardHeader className="flex-shrink-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle className="text-lg">Lista de Cadastros</CardTitle>
               <div className="flex gap-2">
@@ -205,8 +205,9 @@ export default function Clientes() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-3">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 space-y-4">
+            {/* Filtros - fixo */}
+            <div className="flex-shrink-0 flex flex-col md:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar por nome, CPF/CNPJ, telefone ou email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -221,10 +222,11 @@ export default function Clientes() {
               </Select>
             </div>
 
+            {/* Tabela com scroll interno */}
             {filteredClientes.length === 0 ? (
               <EmptyState variant="no-data" title="Nenhum cadastro encontrado" description="Cadastre clientes e fornecedores para começar." action={{ label: 'Novo Cadastro', onClick: () => handleOpenDialog() }} />
             ) : (
-              <div className="border rounded-lg overflow-x-auto">
+              <div className="flex-1 overflow-auto border rounded-lg scrollbar-thin">
                 <Table>
                   <TableHeader>
                     <TableRow>

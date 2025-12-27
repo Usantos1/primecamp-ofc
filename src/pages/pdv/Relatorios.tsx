@@ -148,9 +148,9 @@ export default function Relatorios() {
 
   return (
     <ModernLayout title="Relatórios" subtitle="Relatórios de vendas e caixa">
-      <div className="space-y-4 md:space-y-6 px-2 md:px-6 w-full max-w-none">
-        {/* Filtros */}
-        <Card className="border-2 border-gray-300 shadow-sm rounded-xl bg-white/80 dark:bg-slate-900/50">
+      <div className="flex flex-col h-full overflow-hidden gap-4 px-2 md:px-0">
+        {/* Filtros - fixo no topo */}
+        <Card className="flex-shrink-0 border-2 border-gray-300 shadow-sm rounded-xl bg-white/80 dark:bg-slate-900/50">
           <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
             <CardTitle className="text-base md:text-lg">Filtros</CardTitle>
           </CardHeader>
@@ -242,8 +242,8 @@ export default function Relatorios() {
           </CardContent>
         </Card>
 
-        {/* Estatísticas */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 px-1 md:px-0">
+        {/* Estatísticas - fixo */}
+        <div className="flex-shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-blue-50 to-blue-100/70 dark:from-blue-950/40 dark:to-blue-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
               <CardTitle className="text-[10px] md:text-sm font-medium">Total de Vendas</CardTitle>
@@ -285,6 +285,8 @@ export default function Relatorios() {
           </Card>
         </div>
 
+        {/* Conteúdo com scroll */}
+        <div className="flex-1 overflow-auto scrollbar-thin space-y-4">
         {/* Vendas por Vendedor */}
         <Card className="border-2 border-gray-300 rounded-xl shadow-sm">
           <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
@@ -498,6 +500,7 @@ export default function Relatorios() {
             )}
           </CardContent>
         </Card>
+        </div> {/* Fim do conteúdo com scroll */}
       </div>
     </ModernLayout>
   );

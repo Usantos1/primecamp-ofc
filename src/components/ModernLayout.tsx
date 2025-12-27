@@ -89,10 +89,10 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="h-screen flex w-full bg-background overflow-hidden">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out">
           {/* Mobile Header */}
           <header className="h-16 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 md:hidden flex items-center px-4">
             <SidebarTrigger className="h-8 w-8" />
@@ -162,8 +162,8 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
           </header>
 
           {/* Main Content - altura calculada: viewport - header (64px) */}
-          <main className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
-            <div className="h-full p-2 md:p-4 pt-4 md:pt-6 max-w-full flex flex-col overflow-hidden">
+          <main className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden p-2 md:p-4 pt-4 md:pt-6">
               {children}
             </div>
           </main>

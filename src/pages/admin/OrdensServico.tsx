@@ -102,9 +102,9 @@ export default function OrdensServico() {
 
   return (
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
-      <div className="space-y-6">
-        {/* Cards de estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Cards de estatísticas - fixo no topo */}
+        <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md" onClick={() => setStatusFilter('all')}>
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 text-blue-600 text-sm mb-1">
@@ -162,8 +162,8 @@ export default function OrdensServico() {
           )}
         </div>
 
-        {/* Filtros rápidos por prazo */}
-        <div className="flex flex-wrap gap-2">
+        {/* Filtros rápidos por prazo - fixo */}
+        <div className="flex-shrink-0 flex flex-wrap gap-2">
           <Button 
             variant={statusFilter === 'all' && !dataInicio ? 'default' : 'outline'} 
             size="sm"
@@ -201,9 +201,9 @@ export default function OrdensServico() {
           )}
         </div>
 
-        {/* Barra de ações e filtros */}
-        <Card>
-          <CardHeader>
+        {/* Barra de ações e filtros - flex-1 para ocupar espaço restante */}
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <CardHeader className="flex-shrink-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <CardTitle className="text-lg">Lista de Ordens de Serviço</CardTitle>
               <Button onClick={() => setIsFormOpen(true)} className="gap-2">
@@ -212,9 +212,9 @@ export default function OrdensServico() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Filtros */}
-            <div className="flex flex-col md:flex-row gap-3">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 space-y-4">
+            {/* Filtros - fixo */}
+            <div className="flex-shrink-0 flex flex-col md:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -241,7 +241,7 @@ export default function OrdensServico() {
             </div>
 
             {showFilters && (
-              <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg">
+              <div className="flex-shrink-0 flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg">
                 <div className="space-y-1">
                   <label className="text-sm">Data Início</label>
                   <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="w-auto" />
@@ -256,7 +256,7 @@ export default function OrdensServico() {
               </div>
             )}
 
-            {/* Tabela de OS */}
+            {/* Tabela de OS com scroll interno */}
             {filteredOrdens.length === 0 ? (
               <EmptyState
                 variant="no-data"
@@ -265,7 +265,7 @@ export default function OrdensServico() {
                 action={{ label: 'Nova OS', onClick: () => setIsFormOpen(true) }}
               />
             ) : (
-              <div className="border rounded-lg overflow-x-auto">
+              <div className="flex-1 overflow-auto border rounded-lg scrollbar-thin">
                 <Table>
                   <TableHeader>
                     <TableRow>
