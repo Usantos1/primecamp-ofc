@@ -94,7 +94,7 @@ export function useSales() {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('create', 'sale', newSale.id, null, newSale, 'Venda criada');
+      await logAudit('create', 'sale', newSale.id, null, newSale, 'Venda criada', user);
 
       setSales(prev => [newSale, ...prev]);
       return newSale;
@@ -133,7 +133,7 @@ export function useSales() {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('update', 'sale', id, oldSale, updatedSale, 'Venda atualizada');
+      await logAudit('update', 'sale', id, oldSale, updatedSale, 'Venda atualizada', user);
 
       setSales(prev => prev.map(s => s.id === id ? updatedSale : s));
       return updatedSale;
@@ -269,7 +269,7 @@ export function useSales() {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('update', 'sale', id, sale, updatedSale, 'Venda finalizada');
+      await logAudit('update', 'sale', id, sale, updatedSale, 'Venda finalizada', user);
 
       // Baixar estoque (o trigger também faz isso, mas garantimos aqui também)
       if (items) {
@@ -400,7 +400,7 @@ export function useSales() {
       }
 
       // Log de auditoria
-      await logAudit('cancel', 'sale', id, sale, updatedSale, `Venda cancelada: ${reason || 'Sem motivo'}`);
+      await logAudit('cancel', 'sale', id, sale, updatedSale, `Venda cancelada: ${reason || 'Sem motivo'}`, user);
 
       // Atualizar estado - adicionar se não existir, atualizar se existir
       setSales(prev => {
@@ -529,7 +529,7 @@ export function useSales() {
 
       // Log de auditoria (não bloquear se falhar)
       try {
-        await logAudit('delete', 'sale', id, sale, null, 'Venda excluída');
+        await logAudit('delete', 'sale', id, sale, null, 'Venda excluída', user);
       } catch (auditError) {
         console.error('Erro ao registrar log de auditoria:', auditError);
         // Não falhar a exclusão se o log falhar
@@ -781,6 +781,8 @@ async function updateSaleTotals(saleId: string) {
 // ==================== HOOK: PAGAMENTOS ====================
 
 export function usePayments(saleId: string) {
+  const auth = useAuth();
+  const user = auth?.user || null;
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -810,8 +812,6 @@ export function usePayments(saleId: string) {
 
   const addPayment = useCallback(async (paymentData: PaymentFormData): Promise<Payment> => {
     try {
-      const { user } = useAuth();
-      
       const valor_parcela = paymentData.parcelas && paymentData.parcelas > 1
         ? paymentData.valor / paymentData.parcelas
         : paymentData.valor;
@@ -848,8 +848,6 @@ export function usePayments(saleId: string) {
 
   const confirmPayment = useCallback(async (id: string): Promise<Payment> => {
     try {
-      const { user } = useAuth();
-      
       const { data: updatedPayment, error } = await from('payments')
         .update({
           status: 'confirmed',
@@ -898,8 +896,6 @@ export function usePayments(saleId: string) {
 
   const cancelPayment = useCallback(async (id: string, reason?: string): Promise<Payment> => {
     try {
-      const { user } = useAuth();
-      
       const { data: updatedPayment, error } = await from('payments')
         .update({
           status: 'canceled',
@@ -1027,10 +1023,8 @@ export function useCashRegister() {
       // 🚫 Supabase RPC removido - usar timestamp como número temporário
       const numero = Date.now();
 
-      const { user: userData } = useAuth();
-
       // Buscar profile do usuário para pegar o nome
-      const operadorNome = profile?.display_name || userData?.user_metadata?.name || userData?.email || 'Operador';
+      const operadorNome = profile?.display_name || user?.user_metadata?.name || user?.email || 'Operador';
 
       const { data: newSession, error } = await from('cash_register_sessions')
         .insert({
@@ -1046,7 +1040,7 @@ export function useCashRegister() {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('create', 'cash_session', newSession.id, null, newSession, 'Caixa aberto');
+      await logAudit('create', 'cash_session', newSession.id, null, newSession, 'Caixa aberto', user);
 
       setCurrentSession(newSession);
       return newSession;
@@ -1064,8 +1058,6 @@ export function useCashRegister() {
     justificativa?: string
   ): Promise<CashRegisterSession> => {
     try {
-      const { user } = useAuth();
-      
       // Calcular totais por forma de pagamento
       const { data: sales } = await from('sales')
         .select(`
@@ -1104,7 +1096,7 @@ export function useCashRegister() {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('update', 'cash_session', sessionId, currentSession, updatedSession, 'Caixa fechado');
+      await logAudit('update', 'cash_session', sessionId, currentSession, updatedSession, 'Caixa fechado', user);
 
       setCurrentSession(null);
       return updatedSession;
@@ -1157,10 +1149,8 @@ export function useCashMovements(sessionId: string) {
 
   const addMovement = useCallback(async (movementData: CashMovementFormData): Promise<CashMovement> => {
     try {
-      const { user: userData } = useAuth();
-
       // Buscar profile do usuário para pegar o nome
-      const operadorNome = profile?.display_name || userData?.user_metadata?.name || userData?.email || 'Operador';
+      const operadorNome = profile?.display_name || auth?.user?.user_metadata?.name || auth?.user?.email || 'Operador';
 
       const { data: newMovement, error } = await from('cash_movements')
         .insert({
@@ -1168,7 +1158,7 @@ export function useCashMovements(sessionId: string) {
           tipo: movementData.tipo,
           valor: movementData.valor,
           motivo: movementData.motivo || null,
-          operador_id: userData?.id || '',
+          operador_id: auth?.user?.id || '',
           operador_nome: operadorNome,
         })
         .select()
@@ -1177,7 +1167,7 @@ export function useCashMovements(sessionId: string) {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('create', 'cash_movement', newMovement.id, null, newMovement, `${movementData.tipo === 'sangria' ? 'Sangria' : 'Suprimento'} de R$ ${movementData.valor}`);
+      await logAudit('create', 'cash_movement', newMovement.id, null, newMovement, `${movementData.tipo === 'sangria' ? 'Sangria' : 'Suprimento'} de R$ ${movementData.valor}`, auth?.user);
 
       setMovements(prev => [newMovement, ...prev]);
       return newMovement;
@@ -1185,7 +1175,7 @@ export function useCashMovements(sessionId: string) {
       console.error('Erro ao adicionar movimento:', error);
       throw error;
     }
-  }, [sessionId, profile]);
+  }, [sessionId, profile, auth]);
 
   return {
     movements,
@@ -1203,10 +1193,10 @@ async function logAudit(
   entidadeId: string | null,
   dadosAnteriores: any,
   dadosNovos: any,
-  descricao?: string
+  descricao?: string,
+  user?: any
 ) {
   try {
-    const { user } = useAuth();
     if (!user) return;
 
     await from('audit_logs').insert({
@@ -1230,7 +1220,8 @@ async function logAudit(
 // ==================== HOOK: SOLICITAÇÕES DE CANCELAMENTO ====================
 
 export function useCancelRequests() {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user || null;
   const [requests, setRequests] = useState<CancelRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -1274,15 +1265,14 @@ export function useCancelRequests() {
     motivo: string
   ): Promise<CancelRequest> => {
     try {
-      const { user: currentUser } = useAuth();
-      if (!currentUser) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error('Usuário não autenticado');
 
       const { data: newRequest, error } = await from('sale_cancel_requests')
         .insert({
           sale_id: saleId,
-          solicitante_id: currentUser.id,
-          solicitante_nome: currentUser.user_metadata?.name || currentUser.email || 'Usuário',
-          solicitante_email: currentUser.email,
+          solicitante_id: user.id,
+          solicitante_nome: user.user_metadata?.name || user.email || 'Usuário',
+          solicitante_email: user.email,
           motivo,
           status: 'pending',
         })
@@ -1297,7 +1287,7 @@ export function useCancelRequests() {
       }
 
       // Log de auditoria
-      await logAudit('create', 'cancel_request', newRequest.id, null, newRequest, 'Solicitação de cancelamento criada');
+      await logAudit('create', 'cancel_request', newRequest.id, null, newRequest, 'Solicitação de cancelamento criada', user);
 
       setRequests(prev => [newRequest as CancelRequest, ...prev]);
       return newRequest as CancelRequest;
@@ -1312,15 +1302,14 @@ export function useCancelRequests() {
     saleId: string
   ): Promise<void> => {
     try {
-      const { user: currentUser } = useAuth();
-      if (!currentUser) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error('Usuário não autenticado');
 
       // Atualizar solicitação
       const { data: updatedRequest, error: updateError } = await from('sale_cancel_requests')
         .update({
           status: 'approved',
-          aprovado_por: currentUser.id,
-          aprovado_por_nome: currentUser.user_metadata?.name || currentUser.email || 'Admin',
+          aprovado_por: user.id,
+          aprovado_por_nome: user.user_metadata?.name || user.email || 'Admin',
           aprovado_em: new Date().toISOString(),
         })
         .eq('id', requestId)
@@ -1340,14 +1329,14 @@ export function useCancelRequests() {
           .update({
             status: 'canceled',
             canceled_at: new Date().toISOString(),
-            canceled_by: currentUser.id,
+            canceled_by: user.id,
             cancel_reason: updatedRequest.motivo,
           })
           .eq('id', saleId)
           .execute();
 
         // Log de auditoria
-        await logAudit('approve', 'cancel_request', requestId, sale, { ...sale, status: 'canceled' }, 'Solicitação de cancelamento aprovada e venda cancelada');
+        await logAudit('approve', 'cancel_request', requestId, sale, { ...sale, status: 'canceled' }, 'Solicitação de cancelamento aprovada e venda cancelada', user);
       }
 
       setRequests(prev => prev.map(r => r.id === requestId ? (updatedRequest as CancelRequest) : r));
@@ -1362,14 +1351,13 @@ export function useCancelRequests() {
     motivoRejeicao: string
   ): Promise<void> => {
     try {
-      const { user: currentUser } = useAuth();
-      if (!currentUser) throw new Error('Usuário não autenticado');
+      if (!user) throw new Error('Usuário não autenticado');
 
       const { data: updatedRequest, error } = await from('sale_cancel_requests')
         .update({
           status: 'rejected',
-          aprovado_por: currentUser.id,
-          aprovado_por_nome: currentUser.user_metadata?.name || currentUser.email || 'Admin',
+          aprovado_por: user.id,
+          aprovado_por_nome: user.user_metadata?.name || user.email || 'Admin',
           aprovado_em: new Date().toISOString(),
           motivo_rejeicao: motivoRejeicao,
         })
@@ -1380,7 +1368,7 @@ export function useCancelRequests() {
       if (error) throw error;
 
       // Log de auditoria
-      await logAudit('reject', 'cancel_request', requestId, null, updatedRequest, `Solicitação de cancelamento rejeitada: ${motivoRejeicao}`);
+      await logAudit('reject', 'cancel_request', requestId, null, updatedRequest, `Solicitação de cancelamento rejeitada: ${motivoRejeicao}`, user);
 
       setRequests(prev => prev.map(r => r.id === requestId ? (updatedRequest as CancelRequest) : r));
     } catch (error) {
