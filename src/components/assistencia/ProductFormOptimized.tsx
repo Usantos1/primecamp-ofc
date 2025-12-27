@@ -110,12 +110,12 @@ async function buscarProximoCodigo(): Promise<number> {
 async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMovimentacao[]> {
   try {
     // Primeiro, buscar os_items relacionados ao produto
-    const { data: itens, error: itensError } = await supabase
-      .from('os_items')
+    const { data: itens, error: itensError } = await from('os_items')
       .select('id, quantidade, tipo, descricao, created_at, ordem_servico_id')
-      .execute().eq('produto_id', produtoId)
+      .eq('produto_id', produtoId)
       .eq('tipo', 'peca')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .execute();
 
     if (itensError) {
       console.error('Erro ao buscar itens OS:', itensError);
@@ -140,10 +140,10 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
       }));
     }
 
-    const { data: ordens, error: ordensError } = await supabase
-      .from('ordens_servico')
+    const { data: ordens, error: ordensError } = await from('ordens_servico')
       .select('id, numero')
-     .execute() .in('id', osIds);
+      .in('id', osIds)
+      .execute();
 
     if (ordensError) {
       console.error('Erro ao buscar ordens de serviço:', ordensError);
