@@ -849,68 +849,124 @@ export default function OrdensServico() {
               </div>
             </div>
 
-            {/* Usar filtros atuais */}
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <Checkbox
-                id="usar-filtros"
-                checked={exportUsarFiltrosAtuais}
-                onCheckedChange={(checked) => setExportUsarFiltrosAtuais(checked === true)}
-              />
-              <label htmlFor="usar-filtros" className="text-sm cursor-pointer">
-                <span className="font-medium">Usar filtros aplicados na tela</span>
-                {hasActiveFilters && (
+            {/* Atalhos de meses */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                Selecionar Período
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const meses = [];
+                  const hoje = new Date();
+                  for (let i = 0; i < 6; i++) {
+                    const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+                    const nomeMes = data.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+                    const ano = data.getFullYear();
+                    meses.push({ 
+                      label: `${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}/${ano.toString().slice(-2)}`, 
+                      inicio: new Date(data.getFullYear(), data.getMonth(), 1).toISOString().split('T')[0],
+                      fim: new Date(data.getFullYear(), data.getMonth() + 1, 0).toISOString().split('T')[0]
+                    });
+                  }
+                  return meses.map((mes, idx) => (
+                    <Button 
+                      key={idx} 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setExportDataInicio(mes.inicio);
+                        setExportDataFim(mes.fim);
+                        setExportUsarFiltrosAtuais(false);
+                      }}
+                      className={cn(
+                        "text-xs",
+                        exportDataInicio === mes.inicio && exportDataFim === mes.fim && "bg-blue-100 border-blue-300"
+                      )}
+                    >
+                      {mes.label}
+                    </Button>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Filtros de período personalizado */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data Início</Label>
+                <Input
+                  type="date"
+                  value={exportDataInicio}
+                  onChange={(e) => {
+                    setExportDataInicio(e.target.value);
+                    if (e.target.value) setExportUsarFiltrosAtuais(false);
+                  }}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data Fim</Label>
+                <Input
+                  type="date"
+                  value={exportDataFim}
+                  onChange={(e) => {
+                    setExportDataFim(e.target.value);
+                    if (e.target.value) setExportUsarFiltrosAtuais(false);
+                  }}
+                  className="h-10"
+                />
+              </div>
+            </div>
+
+            {/* Usar filtros atuais da tela */}
+            {hasActiveFilters && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <Checkbox
+                  id="usar-filtros"
+                  checked={exportUsarFiltrosAtuais}
+                  onCheckedChange={(checked) => {
+                    setExportUsarFiltrosAtuais(checked === true);
+                    if (checked) {
+                      setExportDataInicio('');
+                      setExportDataFim('');
+                      setExportStatus('all');
+                    }
+                  }}
+                />
+                <label htmlFor="usar-filtros" className="text-sm cursor-pointer">
+                  <span className="font-medium">Usar filtros aplicados na tela</span>
                   <span className="text-blue-600 text-xs ml-2">
                     ({filteredOrdens.length} OS filtradas)
                   </span>
-                )}
-              </label>
-            </div>
-
-            {!exportUsarFiltrosAtuais && (
-              <>
-                {/* Filtros de período */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Data Início</Label>
-                    <Input
-                      type="date"
-                      value={exportDataInicio}
-                      onChange={(e) => setExportDataInicio(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Data Fim</Label>
-                    <Input
-                      type="date"
-                      value={exportDataFim}
-                      onChange={(e) => setExportDataFim(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Filtro de status */}
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={exportStatus} onValueChange={setExportStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos os status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="em_analise">Em Análise</SelectItem>
-                      <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
-                      <SelectItem value="aprovada">Aprovada</SelectItem>
-                      <SelectItem value="em_manutencao">Em Manutenção</SelectItem>
-                      <SelectItem value="aguardando_peca">Aguardando Peça</SelectItem>
-                      <SelectItem value="finalizada">Finalizada</SelectItem>
-                      <SelectItem value="entregue">Entregue</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
+                </label>
+              </div>
             )}
+
+            {/* Filtro de status */}
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={exportStatus} onValueChange={(v) => {
+                setExportStatus(v);
+                if (v !== 'all') setExportUsarFiltrosAtuais(false);
+              }}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Status</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="em_analise">Em Análise</SelectItem>
+                  <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
+                  <SelectItem value="aprovada">Aprovada</SelectItem>
+                  <SelectItem value="em_manutencao">Em Manutenção</SelectItem>
+                  <SelectItem value="aguardando_peca">Aguardando Peça</SelectItem>
+                  <SelectItem value="finalizada">Finalizada</SelectItem>
+                  <SelectItem value="entregue">Entregue</SelectItem>
+                  <SelectItem value="cancelada">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Colunas para exportar */}
             <div className="space-y-2">
