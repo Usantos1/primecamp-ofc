@@ -1691,6 +1691,15 @@ app.post('/api/functions/import-clientes', authenticateToken, async (req, res) =
     const skipDuplicates = opcoes?.skipDuplicates ?? true;
     const updateExisting = opcoes?.updateExisting ?? false;
 
+    // Verificar quais colunas existem na tabela clientes
+    const colunasResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'clientes'
+    `);
+    const colunasExistentes = new Set(colunasResult.rows.map(r => r.column_name));
+    console.log('[ImportClientes] Colunas existentes:', Array.from(colunasExistentes));
+
     let inseridos = 0;
     let atualizados = 0;
     let erros = 0;
@@ -1707,24 +1716,34 @@ app.post('/api/functions/import-clientes', authenticateToken, async (req, res) =
           continue;
         }
 
-        // Preparar dados
-        const dadosCliente = {
+        // Preparar dados - usar nomes de colunas que existem na tabela
+        const dadosPossiveis = {
           nome: String(cliente.nome).toUpperCase().substring(0, 255),
           cpf_cnpj: cliente.cpf_cnpj ? String(cliente.cpf_cnpj).substring(0, 20) : null,
-          telefone: cliente.telefone ? String(cliente.telefone).substring(0, 20) : null,
-          telefone2: cliente.telefone2 ? String(cliente.telefone2).substring(0, 20) : null,
-          whatsapp: cliente.whatsapp ? String(cliente.whatsapp).substring(0, 20) : null,
+          telefone: cliente.telefone ? String(cliente.telefone).substring(0, 50) : null,
+          telefone2: cliente.telefone2 ? String(cliente.telefone2).substring(0, 50) : null,
+          whatsapp: cliente.whatsapp ? String(cliente.whatsapp).substring(0, 50) : null,
+          endereco: cliente.endereco ? String(cliente.endereco).substring(0, 255) : null,
           logradouro: cliente.endereco ? String(cliente.endereco).substring(0, 255) : null,
           numero: cliente.numero ? String(cliente.numero).substring(0, 20) : null,
           complemento: cliente.complemento ? String(cliente.complemento).substring(0, 100) : null,
           bairro: cliente.bairro ? String(cliente.bairro).substring(0, 100) : null,
           cep: cliente.cep ? String(cliente.cep).replace(/\D/g, '').substring(0, 10) : null,
           cidade: cliente.cidade ? String(cliente.cidade).substring(0, 100) : null,
-          estado: cliente.estado ? String(cliente.estado).substring(0, 2) : null,
+          estado: cliente.estado ? String(cliente.estado).substring(0, 50) : null,
           tipo_pessoa: cliente.tipo_pessoa || 'fisica',
           tipo_cliente: 'cliente',
           situacao: 'ativo',
+          codigo_original: cliente.codigo_original ? String(cliente.codigo_original) : null,
         };
+        
+        // Filtrar apenas colunas que existem na tabela
+        const dadosCliente = {};
+        for (const [key, value] of Object.entries(dadosPossiveis)) {
+          if (colunasExistentes.has(key)) {
+            dadosCliente[key] = value;
+          }
+        }
 
         // Verificar se cliente já existe (por CPF/CNPJ)
         let clienteExistente = null;
