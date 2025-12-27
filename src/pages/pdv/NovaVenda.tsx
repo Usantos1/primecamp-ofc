@@ -1702,16 +1702,16 @@ _PrimeCamp Assistência Técnica_`;
           {/* Coluna esquerda - Busca e Cliente */}
           <div className="lg:col-span-2 space-y-3 md:space-y-4">
             {/* Busca de produtos - DESTAQUE PRINCIPAL */}
-            <Card className="border-2 border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 shadow-sm">
+            <Card className="border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/50 dark:to-teal-950/50 shadow-sm">
               <CardHeader className="p-3 md:p-4 pb-0">
-                <CardTitle className="text-sm md:text-base flex items-center gap-2 text-emerald-800">
+                <CardTitle className="text-sm md:text-base flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
                   <Search className="h-4 w-4" />
                   Buscar Produto (F2)
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 md:p-4 pt-2">
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 dark:text-emerald-400" />
                   <Input
                     ref={searchInputRef}
                     placeholder="Digite o nome, código ou código de barras do produto..."
@@ -1722,7 +1722,7 @@ _PrimeCamp Assistência Técnica_`;
                         handleAddProduct(productResults[0]);
                       }
                     }}
-                    className="pl-12 h-12 md:h-14 text-base md:text-lg border-2 border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl shadow-sm"
+                    className="pl-12 h-12 md:h-14 text-base md:text-lg border-2 border-emerald-300 dark:border-emerald-700 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl shadow-sm dark:bg-gray-900"
                   />
                   {showProductSearch && productResults.length > 0 && (
                     <div className="absolute z-50 w-full bg-background border rounded shadow-lg max-h-64 overflow-auto mt-1">
@@ -1832,8 +1832,8 @@ _PrimeCamp Assistência Técnica_`;
             <Card className={cn(
               "border-2 transition-all",
               cart.length === 0 
-                ? "border-dashed border-gray-300 bg-gray-50/50" 
-                : "border-blue-200 bg-white shadow-sm"
+                ? "border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50" 
+                : "border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-sm"
             )}>
               <CardHeader className="p-3 md:p-4 pb-2">
                 <CardTitle className="text-sm md:text-base flex items-center justify-between">
@@ -1849,11 +1849,11 @@ _PrimeCamp Assistência Técnica_`;
               <CardContent className="p-3 md:p-4 pt-0">
                 {cart.length === 0 ? (
                   <div className="text-center py-8 md:py-12">
-                    <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
-                      <ShoppingCart className="h-8 w-8 md:h-10 md:w-10 text-gray-400" />
+                    <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <ShoppingCart className="h-8 w-8 md:h-10 md:w-10 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <p className="text-base md:text-lg font-medium text-gray-500">Carrinho vazio</p>
-                    <p className="text-sm text-gray-400 mt-1">Pressione <kbd className="px-2 py-1 bg-gray-200 rounded text-xs font-mono">F2</kbd> para buscar produtos</p>
+                    <p className="text-base md:text-lg font-medium text-gray-500 dark:text-gray-400">Carrinho vazio</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Pressione <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">F2</kbd> para buscar produtos</p>
                   </div>
                 ) : (
                   <div className="space-y-2 md:space-y-3">
@@ -1973,8 +1973,8 @@ _PrimeCamp Assistência Técnica_`;
             <Card className={cn(
               "sticky top-4 md:static border-2 transition-all",
               totals.total > 0 
-                ? "border-emerald-200 shadow-lg bg-gradient-to-b from-white to-emerald-50/30" 
-                : "border-gray-200"
+                ? "border-emerald-200 dark:border-emerald-800 shadow-lg bg-gradient-to-b from-white to-emerald-50/30 dark:from-gray-900 dark:to-emerald-950/30" 
+                : "border-gray-200 dark:border-gray-700"
             )}>
               <CardHeader className="p-3 md:p-4 pb-2">
                 <CardTitle className="text-sm md:text-base flex items-center gap-2">
@@ -1984,17 +1984,17 @@ _PrimeCamp Assistência Técnica_`;
               </CardHeader>
               <CardContent className="p-3 md:p-4 pt-0 space-y-2 md:space-y-3">
                 <div className="flex justify-between text-xs md:text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
                   <span className="font-medium">{currencyFormatters.brl(totals.subtotal)}</span>
                 </div>
                 {totals.descontoItens > 0 && (
                   <div className="flex justify-between text-xs md:text-sm">
-                    <span className="text-gray-600">Desconto Itens:</span>
-                    <span className="text-red-600 font-medium">-{currencyFormatters.brl(totals.descontoItens)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Desconto Itens:</span>
+                    <span className="text-red-600 dark:text-red-400 font-medium">-{currencyFormatters.brl(totals.descontoItens)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-xs md:text-sm gap-2">
-                  <span className="text-gray-600">Desconto Extra:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Desconto Extra:</span>
                   <Input
                     type="number"
                     value={descontoTotal}
@@ -2009,7 +2009,7 @@ _PrimeCamp Assistência Técnica_`;
                   "rounded-xl p-3 md:p-4 mt-2",
                   totals.total > 0 
                     ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md" 
-                    : "bg-gray-100 text-gray-500"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                 )}>
                   <div className="flex justify-between items-center">
                     <span className="text-sm md:text-base font-medium">Total:</span>
@@ -2324,8 +2324,8 @@ _PrimeCamp Assistência Técnica_`;
         <DialogContent className="max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+              <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <DialogTitle className="text-xl">Orçamento Gerado!</DialogTitle>
@@ -2338,17 +2338,17 @@ _PrimeCamp Assistência Técnica_`;
 
           <div className="space-y-4 py-4">
             {/* Resumo do orçamento */}
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Cliente:</span>
+                <span className="text-gray-600 dark:text-gray-400">Cliente:</span>
                 <span className="font-medium">{orcamentoGerado?.cliente_nome || 'Não identificado'}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Itens:</span>
+                <span className="text-gray-600 dark:text-gray-400">Itens:</span>
                 <span className="font-medium">{cart.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Validade:</span>
+                <span className="text-gray-600 dark:text-gray-400">Validade:</span>
                 <span className="font-medium">
                   {orcamentoGerado?.data_validade 
                     ? new Date(orcamentoGerado.data_validade).toLocaleDateString('pt-BR')
@@ -2356,9 +2356,9 @@ _PrimeCamp Assistência Técnica_`;
                   }
                 </span>
               </div>
-              <div className="border-t pt-2 flex justify-between">
+              <div className="border-t dark:border-gray-700 pt-2 flex justify-between">
                 <span className="font-semibold">Total:</span>
-                <span className="font-bold text-lg text-emerald-600">
+                <span className="font-bold text-lg text-emerald-600 dark:text-emerald-400">
                   {currencyFormatters.brl(orcamentoGerado?.total || totals.total)}
                 </span>
               </div>
@@ -2366,7 +2366,7 @@ _PrimeCamp Assistência Técnica_`;
 
             {/* Ações */}
             <div className="space-y-2">
-              <p className="text-sm text-gray-600 font-medium">O que deseja fazer?</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">O que deseja fazer?</p>
               
               {/* Imprimir/PDF */}
               <Button
@@ -2374,24 +2374,24 @@ _PrimeCamp Assistência Técnica_`;
                 className="w-full justify-start gap-3 h-12"
                 onClick={handlePrintOrcamento}
               >
-                <Printer className="h-5 w-5 text-gray-500" />
+                <Printer className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 <div className="text-left">
                   <div className="font-medium">Salvar PDF</div>
-                  <div className="text-xs text-gray-500">Baixar orçamento em PDF</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Baixar orçamento em PDF</div>
                 </div>
               </Button>
 
               {/* WhatsApp */}
               <Button
                 variant="outline"
-                className="w-full justify-start gap-3 h-12 border-green-200 hover:bg-green-50"
+                className="w-full justify-start gap-3 h-12 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950"
                 onClick={handleEnviarOrcamentoWhatsApp}
                 disabled={!selectedCliente?.telefone && !selectedCliente?.whatsapp}
               >
-                <MessageCircle className="h-5 w-5 text-green-600" />
+                <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div className="text-left">
-                  <div className="font-medium text-green-700">Enviar por WhatsApp</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="font-medium text-green-700 dark:text-green-400">Enviar por WhatsApp</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedCliente?.telefone || selectedCliente?.whatsapp || 'Cliente sem telefone'}
                   </div>
                 </div>
@@ -2400,13 +2400,13 @@ _PrimeCamp Assistência Técnica_`;
               {/* Converter em Venda */}
               <Button
                 variant="outline"
-                className="w-full justify-start gap-3 h-12 border-blue-200 hover:bg-blue-50"
+                className="w-full justify-start gap-3 h-12 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950"
                 onClick={handleConverterOrcamentoEmVenda}
               >
-                <ArrowRight className="h-5 w-5 text-blue-600" />
+                <ArrowRight className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <div className="text-left">
-                  <div className="font-medium text-blue-700">Converter em Venda</div>
-                  <div className="text-xs text-gray-500">Abrir como venda para finalizar</div>
+                  <div className="font-medium text-blue-700 dark:text-blue-400">Converter em Venda</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Abrir como venda para finalizar</div>
                 </div>
               </Button>
             </div>
