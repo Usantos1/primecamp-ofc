@@ -25,6 +25,75 @@ interface QueryOptions {
   offset?: number;
 }
 
+// Builder para INSERT com encadeamento .select().single()
+class InsertBuilder {
+  private tableName: string;
+  private data: any;
+  private getHeaders: () => Record<string, string>;
+  private selectFields: string | string[] = '*';
+  private returnSingle: boolean = false;
+
+  constructor(tableName: string, data: any, getHeaders: () => Record<string, string>) {
+    this.tableName = tableName;
+    this.data = data;
+    this.getHeaders = getHeaders;
+  }
+
+  select(fields: string | string[] = '*'): this {
+    this.selectFields = fields;
+    return this;
+  }
+
+  single(): Promise<{ data: any | null; error: any | null }> {
+    this.returnSingle = true;
+    return this.execute();
+  }
+
+  async execute(): Promise<{ data: any | null; error: any | null }> {
+    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+      ? import.meta.env.VITE_API_URL 
+      : 'https://api.primecamp.cloud/api';
+
+    try {
+      const response = await fetch(`${API_URL}/insert/${this.tableName}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(this.data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Erro ao inserir' }));
+        return { data: null, error };
+      }
+
+      const result = await response.json();
+      const rows = result.rows || result.data || [];
+      
+      if (this.returnSingle) {
+        return { data: Array.isArray(rows) ? rows[0] : rows, error: null };
+      }
+      return { data: rows, error: null };
+    } catch (error: any) {
+      console.error(`[DB] Erro ao inserir em ${this.tableName}:`, error);
+      return { data: null, error: { message: error.message } };
+    }
+  }
+
+  // Permite usar como Promise diretamente
+  then<TResult1 = { data: any | null; error: any | null }, TResult2 = never>(
+    onfulfilled?: ((value: { data: any | null; error: any | null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null
+  ): Promise<{ data: any | null; error: any | null } | TResult> {
+    return this.execute().catch(onrejected);
+  }
+}
+
 class DatabaseClient {
   private tableName: string;
   private options: QueryOptions = {};
@@ -190,25 +259,8 @@ class DatabaseClient {
     return { data: result.data?.[0] || null, error: null };
   }
 
-  async insert(data: any): Promise<{ data: any | null; error: any | null }> {
-    try {
-      const response = await fetch(`${API_URL}/insert/${this.tableName}`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erro ao inserir' }));
-        return { data: null, error };
-      }
-
-      const result = await response.json();
-      return { data: result.data || result.rows?.[0] || result, error: null };
-    } catch (error: any) {
-      console.error(`[DB] Erro ao inserir em ${this.tableName}:`, error);
-      return { data: null, error: { message: error.message } };
-    }
+  insert(data: any): InsertBuilder {
+    return new InsertBuilder(this.tableName, data, this.getHeaders.bind(this));
   }
 
   // Método interno para executar update
