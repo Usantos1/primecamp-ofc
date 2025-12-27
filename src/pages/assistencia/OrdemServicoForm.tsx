@@ -1702,11 +1702,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full", isModal ? "h-full overflow-hidden" : "")}>
+    <div className={cn("w-full h-full flex flex-col overflow-hidden", isModal ? "" : "")}>
         {/* Tabs principais */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          {/* Header com tabs */}
-          <div className="border-b-2 border-gray-300 mb-2">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
+          {/* Header com tabs - fixo */}
+          <div className="flex-shrink-0 border-b-2 border-gray-300 mb-2">
             {/* Mobile: 2 linhas */}
             <div className="md:hidden">
               <TabsList className="w-full grid grid-cols-2 bg-gradient-to-br from-gray-50 to-gray-100 h-auto p-1 gap-1 rounded-lg border-2 border-gray-200">
@@ -1836,7 +1836,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Resumo Fixo da OS - Apenas uma vez no topo */}
           {isEditing && currentOS && (
-            <div className="mb-4 space-y-3">
+            <div className="flex-shrink-0 mb-3 space-y-2">
               <OSSummaryHeader
                 numeroOS={currentOS.numero}
                 clienteNome={selectedCliente?.nome || getClienteById(currentOS.cliente_id)?.nome}
@@ -1865,8 +1865,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </div>
           )}
 
-          {/* Tab Dados */}
-          <TabsContent value="dados" className="p-2 md:p-3">
+          {/* Tab Dados - com scroll interno */}
+          <TabsContent value="dados" className="flex-1 overflow-auto scrollbar-thin p-2 md:p-3">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-3">
               {/* Widget 1: Dados do Cliente e Aparelho */}
               <Card className="border-2 border-gray-300">
@@ -2264,7 +2264,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           </TabsContent>
 
           {/* Tab Checklist */}
-          <TabsContent value="checklist" className="space-y-2 mt-2 p-2">
+          <TabsContent value="checklist" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
             <Tabs defaultValue="entrada" className="w-full">
               <TabsList className="w-full justify-start mb-4">
                 <TabsTrigger value="entrada">Checklist de Entrada</TabsTrigger>
@@ -2483,7 +2483,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Resolução do Problema */}
           {isEditing && (
-            <TabsContent value="resolucao" className="space-y-2 mt-2">
+            <TabsContent value="resolucao" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
               <Card className="border-2 border-gray-300 m-2">
                 <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
                   <CardTitle className="text-sm md:text-base font-semibold">Resolução do Problema</CardTitle>
@@ -2597,7 +2597,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Informações Técnicas */}
           {isEditing && (
-            <TabsContent value="tecnico" className="space-y-2 mt-2 p-2">
+            <TabsContent value="tecnico" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
               <Card className="border-2">
                 <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
                   <CardTitle className="text-sm md:text-base font-semibold">Informações Técnicas Internas</CardTitle>
@@ -2617,7 +2617,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Fotos */}
           {isEditing && (
-            <TabsContent value="fotos" className="space-y-4 p-2">
+            <TabsContent value="fotos" className="flex-1 overflow-auto scrollbar-thin space-y-4 p-2">
               <Card className="border-2 border-gray-300 shadow-lg">
                 <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b-2 border-gray-300">
                   <CardTitle className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -3787,7 +3787,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Itens (Peças/Serviços) */}
           {isEditing && (
-            <TabsContent value="itens" className="space-y-2 mt-2 p-2">
+            <TabsContent value="itens" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
               <Card className="border-2">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0">
                   <div className="flex items-center justify-between">
@@ -3900,7 +3900,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Financeiro */}
           {isEditing && (
-            <TabsContent value="financeiro" className="space-y-2 mt-2 p-2">
+            <TabsContent value="financeiro" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
 
               {/* Saldo Pendente em Destaque */}
               {total - totalPago > 0 && (
