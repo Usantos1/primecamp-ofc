@@ -416,7 +416,8 @@ export default function CadastrosBase() {
 
   return (
     <ModernLayout title="Cadastros Base" subtitle="Configurações e cadastros fundamentais">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="flex-1 overflow-auto scrollbar-thin">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {cadastrosSections.map((section) => {
           const Icon = section.icon;
           return (
@@ -437,6 +438,7 @@ export default function CadastrosBase() {
             </Card>
           );
         })}
+        </div>
       </div>
     </ModernLayout>
   );

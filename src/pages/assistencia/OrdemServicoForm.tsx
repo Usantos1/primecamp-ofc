@@ -46,7 +46,6 @@ import { cn } from '@/lib/utils';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { OSSummaryHeader } from '@/components/assistencia/OSSummaryHeader';
-import { OSProgressIndicator } from '@/components/assistencia/OSProgressIndicator';
 import { generateOSTermica } from '@/utils/osTermicaGenerator';
 import { generateOSPDF } from '@/utils/osPDFGenerator';
 import { printTermica } from '@/utils/pdfGenerator';
@@ -1847,21 +1846,6 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 previsaoEntrega={currentOS.previsao_entrega}
                 tecnicoNome={currentOS.tecnico_id ? getColaboradorById(currentOS.tecnico_id)?.nome || currentOS.tecnico_nome : undefined}
               />
-              {/* Indicador de Progresso */}
-              <Card className="border-2 border-gray-300">
-                <CardContent className="pt-3 md:pt-4 px-3 md:px-6">
-                  <OSProgressIndicator
-                    etapas={[
-                      { id: 'dados', label: 'Dados', concluida: !!currentOS.cliente_id && !!currentOS.descricao_problema },
-                      { id: 'checklist', label: 'Checklist', concluida: (currentOS.checklist_entrada?.length || 0) > 0 },
-                      { id: 'resolucao', label: 'Resolução', concluida: !!currentOS.problema_constatado },
-                      { id: 'itens', label: 'Peças/Serviços', concluida: itens.length > 0 },
-                      { id: 'financeiro', label: 'Financeiro', concluida: totalPago >= total },
-                      { id: 'entrega', label: 'Entrega', concluida: currentOS.status === 'entregue' || currentOS.status === 'finalizada' },
-                    ]}
-                  />
-                </CardContent>
-              </Card>
             </div>
           )}
 

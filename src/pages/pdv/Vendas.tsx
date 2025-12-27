@@ -527,9 +527,9 @@ export default function Vendas() {
 
   return (
     <ModernLayout title="Vendas" subtitle="Gerenciamento de vendas do PDV">
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
-        {/* Estatísticas */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 px-4 md:px-0">
+      <div className="flex flex-col h-full overflow-hidden gap-3">
+        {/* Estatísticas - fixo */}
+        <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
               <CardTitle className="text-[10px] md:text-sm font-medium">Vendas Hoje</CardTitle>
@@ -585,25 +585,26 @@ export default function Vendas() {
           </Card>
         </div>
 
-        {/* Card principal */}
-        <Card className="border-2 border-gray-300">
-          <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4">
-              <CardTitle className="text-base md:text-lg">Lista de Vendas</CardTitle>
+        {/* Card principal - flex-1 com scroll interno */}
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
+          <CardHeader className="flex-shrink-0 pb-2 pt-3 px-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+              <CardTitle className="text-sm font-semibold">Lista de Vendas</CardTitle>
               <PermissionGate permission="vendas.create">
                 <Button 
                   onClick={() => navigate('/pdv/venda/nova')} 
-                  className="gap-2 h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+                  size="sm"
+                  className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Plus className="h-4 w-4" />
-                  <span className="text-xs md:text-sm">Nova Venda</span>
+                  <span className="text-xs">Nova Venda</span>
                 </Button>
               </PermissionGate>
             </div>
           </CardHeader>
-          <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">
-            {/* Filtros */}
-            <div className="flex flex-col md:flex-row gap-2 md:gap-3">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-3 space-y-3">
+            {/* Filtros - fixo */}
+            <div className="flex-shrink-0 flex flex-col md:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -639,7 +640,7 @@ export default function Vendas() {
               </Select>
             </div>
 
-            {/* Tabela de vendas */}
+            {/* Tabela de vendas - scroll interno */}
             {filteredSales.length === 0 ? (
               <EmptyState
                 variant="no-data"
@@ -649,8 +650,9 @@ export default function Vendas() {
               />
             ) : (
               <>
-                {/* Desktop: Tabela */}
-                <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                {/* Desktop: Tabela com scroll */}
+                <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
+                  <div className="flex-1 overflow-auto scrollbar-thin border border-gray-200 rounded-lg">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
@@ -847,10 +849,11 @@ export default function Vendas() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </div>
 
-                {/* Mobile: Cards */}
-                <div className="md:hidden space-y-3">
+                {/* Mobile: Cards com scroll */}
+                <div className="md:hidden flex-1 overflow-auto scrollbar-thin space-y-3">
                   {filteredSales.map((sale) => (
                     <Card 
                       key={sale.id}
