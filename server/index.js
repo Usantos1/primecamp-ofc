@@ -10,6 +10,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -945,6 +946,84 @@ app.post('/api/rpc/:function', async (req, res) => {
     res.json({ data: result.rows, rows: result.rows });
   } catch (error) {
     console.error('Erro ao executar RPC:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// ENDPOINT WHATSAPP - ENVIO DE MENSAGENS VIA ATIVA CRM
+// ============================================
+
+// POST /api/whatsapp/send
+app.post('/api/whatsapp/send', async (req, res) => {
+  try {
+    const { action, data } = req.body;
+
+    if (!data || !data.number || !data.body) {
+      return res.status(400).json({ error: 'number e body são obrigatórios' });
+    }
+
+    // Buscar token do Ativa CRM do banco de dados
+    const tokenResult = await pool.query(`
+      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
+    `);
+
+    let ativaCrmToken = null;
+    if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
+      const settings = tokenResult.rows[0].value;
+      ativaCrmToken = settings.ativaCrmToken;
+    }
+
+    if (!ativaCrmToken) {
+      return res.status(400).json({ 
+        error: 'Token do Ativa CRM não configurado',
+        warning: 'Configure o token em Integrações'
+      });
+    }
+
+    // Formatar número (remover caracteres especiais)
+    const formattedNumber = data.number.replace(/\D/g, '');
+
+    // Enviar mensagem via API do Ativa CRM
+    const ativaCrmResponse = await fetch('https://api.ativacrm.com.br/v1/whatsapp/send-text', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ativaCrmToken}`,
+      },
+      body: JSON.stringify({
+        number: formattedNumber,
+        text: data.body,
+      }),
+    });
+
+    const ativaCrmData = await ativaCrmResponse.json().catch(() => ({}));
+
+    console.log('[WhatsApp] Resposta Ativa CRM:', ativaCrmResponse.status, ativaCrmData);
+
+    if (!ativaCrmResponse.ok) {
+      // Verificar se é erro de WhatsApp não configurado
+      if (ativaCrmData.code === 'ERR_NO_DEF_WAPP_FOUND' || ativaCrmData.error?.includes('WhatsApp')) {
+        return res.json({
+          success: false,
+          warning: 'ERR_NO_DEF_WAPP_FOUND',
+          message: 'Nenhum WhatsApp padrão configurado no Ativa CRM',
+        });
+      }
+      
+      return res.status(ativaCrmResponse.status).json({
+        success: false,
+        error: ativaCrmData.message || ativaCrmData.error || 'Erro ao enviar mensagem',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Mensagem enviada com sucesso',
+      data: ativaCrmData,
+    });
+  } catch (error) {
+    console.error('[WhatsApp] Erro:', error);
     res.status(500).json({ error: error.message });
   }
 });
