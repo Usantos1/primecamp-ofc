@@ -1752,51 +1752,115 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
     <div className={cn("w-full h-full flex flex-col overflow-hidden", isModal ? "" : "")}>
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-          {/* Header com tabs - fixo */}
-          <div className="flex-shrink-0 mb-3 px-2">
-            {/* Mobile: 2 linhas */}
+          {/* Header com tabs - compacto */}
+          <div className="flex-shrink-0 mb-2 px-2">
+            {/* Mobile: grid compacto */}
             <div className="md:hidden">
-              <TabsList className="w-full grid grid-cols-2 bg-white h-auto p-1.5 gap-1.5 rounded-xl border border-gray-200 shadow-sm">
+              <TabsList className="w-full grid grid-cols-3 bg-white h-auto p-1 gap-1 rounded-lg border border-gray-200 shadow-sm">
                 <TabsTrigger 
                   value="dados" 
-                  className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
+                  className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
                 >
-                  <FileText className="h-3.5 w-3.5" />
+                  <FileText className="h-3 w-3" />
                   <span>Dados</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="checklist" 
-                  className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
+                  className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-3 w-3" />
                   <span>Check</span>
                 </TabsTrigger>
                 {isEditing && (
                   <>
                     <TabsTrigger 
                       value="resolucao" 
-                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
+                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
                     >
-                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <AlertTriangle className="h-3 w-3" />
                       <span>Resol</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="tecnico" 
-                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
+                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
                     >
-                      <Settings className="h-3.5 w-3.5" />
-                      <span>Técnico</span>
+                      <Settings className="h-3 w-3" />
+                      <span>Téc</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="itens" 
-                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
+                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
                     >
-                      <Package className="h-3.5 w-3.5" />
-                      <span>Itens ({itens.length})</span>
+                      <Package className="h-3 w-3" />
+                      <span>Itens</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="fotos" 
-                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
+                      className="gap-1 px-1.5 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-[10px] hover:bg-gray-100 transition-all"
+                    >
+                      <Image className="h-3 w-3" />
+                      <span>Fotos</span>
+                    </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+            </div>
+            {/* Desktop: linha única compacta */}
+            <div className="hidden md:block">
+              <TabsList className="inline-flex bg-white h-auto p-1 gap-0 rounded-lg border border-gray-200 shadow-sm">
+                <TabsTrigger 
+                  value="dados" 
+                  className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Dados</span>
+                </TabsTrigger>
+                <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
+                <TabsTrigger 
+                  value="checklist" 
+                  className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Checklist</span>
+                </TabsTrigger>
+                {isEditing && (
+                  <>
+                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
+                    <TabsTrigger 
+                      value="resolucao" 
+                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <span>Resolução</span>
+                    </TabsTrigger>
+                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
+                    <TabsTrigger 
+                      value="tecnico" 
+                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      <span>Info. Técnicas</span>
+                    </TabsTrigger>
+                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
+                    <TabsTrigger 
+                      value="itens" 
+                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      <span>Peças ({itens.length})</span>
+                    </TabsTrigger>
+                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
+                    <TabsTrigger 
+                      value="financeiro" 
+                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" />
+                      <span>Financeiro</span>
+                    </TabsTrigger>
+                    <div className="h-4 w-px bg-gray-200 mx-0.5 self-center" />
+                    <TabsTrigger 
+                      value="fotos" 
+                      className="gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
                     >
                       <Image className="h-3.5 w-3.5" />
                       <span>Fotos</span>
@@ -1805,92 +1869,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 )}
               </TabsList>
             </div>
-            {/* Desktop: linha única */}
-            <div className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <TabsList className="w-max min-w-full justify-start bg-white h-auto p-1.5 gap-0 rounded-xl border border-gray-200 shadow-sm">
-                <TabsTrigger 
-                  value="dados" 
-                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span>Dados da OS</span>
-                </TabsTrigger>
-                
-                {/* Separador */}
-                <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
-                
-                <TabsTrigger 
-                  value="checklist" 
-                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                >
-                  <Check className="h-4 w-4" />
-                  <span>Checklist</span>
-                </TabsTrigger>
-                {isEditing && (
-                  <>
-                    {/* Separador */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
-                    
-                    <TabsTrigger 
-                      value="resolucao" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                    >
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>Resolução</span>
-                    </TabsTrigger>
-                    
-                    {/* Separador */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
-                    
-                    <TabsTrigger 
-                      value="tecnico" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Info. Técnicas</span>
-                    </TabsTrigger>
-                    
-                    {/* Separador */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
-                    
-                    <TabsTrigger 
-                      value="itens" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                    >
-                      <Package className="h-4 w-4" />
-                      <span>Peças/Serviços ({itens.length})</span>
-                    </TabsTrigger>
-                    
-                    {/* Separador */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
-                    
-                    <TabsTrigger 
-                      value="financeiro" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      <span>Financeiro</span>
-                    </TabsTrigger>
-                    
-                    {/* Separador */}
-                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
-                    
-                    <TabsTrigger 
-                      value="fotos" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
-                    >
-                      <Image className="h-4 w-4" />
-                      <span>Fotos</span>
-                    </TabsTrigger>
-                  </>
-                )}
-              </TabsList>
-            </div>
           </div>
 
-          {/* Resumo Fixo da OS - Apenas uma vez no topo */}
+          {/* Resumo Fixo da OS - Compacto */}
           {isEditing && currentOS && (
-            <div className="flex-shrink-0 mb-2">
+            <div className="flex-shrink-0 mb-2 px-2">
               <OSSummaryHeader
                 numeroOS={currentOS.numero}
                 clienteNome={selectedCliente?.nome || getClienteById(currentOS.cliente_id)?.nome}
