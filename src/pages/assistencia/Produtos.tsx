@@ -68,73 +68,82 @@ const ProdutoTableRow = memo(({
     return parts.join(' • ');
   }, [produto.referencia, produto.codigo_barras]);
 
-  // Calcular status do estoque
+  // Calcular status do estoque - CORES MAIS FORTES PARA OPERAÇÃO
   const estoqueStatus = useMemo(() => {
     const quantidade = produto.quantidade || 0;
     const estoqueMinimo = produto.estoque_minimo || 0;
     
     if (quantidade === 0) {
-      return { status: 'zerado', label: 'Zerado', className: 'bg-red-100 text-red-700 border-red-300' };
+      return { status: 'zerado', label: 'Zerado', className: 'bg-red-500 text-white border-red-600 shadow-sm' };
     } else if (quantidade <= estoqueMinimo && estoqueMinimo > 0) {
-      return { status: 'baixo', label: 'Baixo', className: 'bg-orange-100 text-orange-700 border-orange-300' };
+      return { status: 'baixo', label: 'Baixo', className: 'bg-amber-500 text-white border-amber-600 shadow-sm' };
     } else {
-      return { status: 'ok', label: 'OK', className: 'bg-green-100 text-green-700 border-green-300' };
+      return { status: 'ok', label: 'OK', className: 'bg-emerald-500 text-white border-emerald-600 shadow-sm' };
     }
   }, [produto.quantidade, produto.estoque_minimo]);
 
-  // Zebra striping
-  const zebraClass = index % 2 === 0 ? 'bg-background' : 'bg-muted/30';
+  // Zebra striping - MAIS VISÍVEL
+  const zebraClass = index % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50/80 dark:bg-gray-900/50';
   
   return (
     <tr
-      className={`${isSelected ? 'bg-blue-50 dark:bg-blue-950/20' : `${zebraClass} cursor-pointer hover:bg-muted/60`} border-b border-gray-100 transition-colors`}
+      className={`${isSelected ? 'bg-blue-100 dark:bg-blue-950/40 ring-1 ring-blue-400' : `${zebraClass} cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30`} border-b border-gray-200 dark:border-gray-700 transition-all duration-150`}
       onClick={onSelect}
     >
-      <td className="font-mono text-sm py-3.5 px-3 text-right border-r border-gray-100 w-[90px] hidden md:table-cell">
+      {/* Código */}
+      <td className="font-mono text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[90px] hidden md:table-cell text-gray-700 dark:text-gray-300">
         {produto.codigo || '-'}
       </td>
-      <td className="font-mono text-sm py-3.5 px-3 text-left text-muted-foreground border-r border-gray-100 w-[120px] hidden lg:table-cell">
+      {/* Referência */}
+      <td className="font-mono text-sm py-3.5 px-3 text-left text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 w-[120px] hidden lg:table-cell">
         {produto.referencia || '-'}
       </td>
-      <td className="font-mono text-xs py-3.5 px-3 text-left text-muted-foreground border-r border-gray-100 w-[160px] hidden lg:table-cell">
+      {/* Código de Barras */}
+      <td className="font-mono text-xs py-3.5 px-3 text-left text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 w-[160px] hidden lg:table-cell">
         {produto.codigo_barras || '-'}
       </td>
-      <td className="font-medium py-3.5 px-3 text-left border-r border-gray-100">
+      {/* Descrição - DESTAQUE PRINCIPAL */}
+      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="truncate uppercase">{descricaoCompleta}</div>
+              <div className="truncate uppercase font-medium text-gray-900 dark:text-gray-100">{descricaoCompleta}</div>
             </TooltipTrigger>
             {descricaoCompleta.length > 30 && (
               <TooltipContent><p className="max-w-xs">{descricaoCompleta}</p></TooltipContent>
             )}
           </Tooltip>
         </TooltipProvider>
-        <div className="text-xs text-muted-foreground md:hidden mt-1">{infoSecundaria || '-'}</div>
+        <div className="text-xs text-gray-500 md:hidden mt-1">{infoSecundaria || '-'}</div>
       </td>
-      <td className="text-sm py-3.5 px-3 text-left text-muted-foreground border-r border-gray-100 w-[140px] hidden lg:table-cell">
+      {/* Localização */}
+      <td className="text-sm py-3.5 px-3 text-left text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 w-[140px] hidden lg:table-cell">
         {produto.localizacao || '-'}
       </td>
-      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-100 w-[90px]">
-        <div className="flex items-center justify-end gap-1.5">
-          <span className="font-mono font-semibold">{produto.quantidade || 0}</span>
-          <Badge variant="outline" className={`${estoqueStatus.className} text-xs px-1.5 py-0 border font-medium`}>
+      {/* Estoque - BADGE DESTACADO */}
+      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[100px]">
+        <div className="flex items-center justify-end gap-2">
+          <span className="font-mono font-bold text-gray-800 dark:text-gray-200">{produto.quantidade || 0}</span>
+          <Badge className={`${estoqueStatus.className} text-[10px] px-2 py-0.5 font-semibold`}>
             {estoqueStatus.label}
           </Badge>
         </div>
       </td>
-      <td className="text-sm py-3.5 px-3 text-center text-muted-foreground border-r border-gray-100 w-[70px] hidden md:table-cell">
+      {/* Unidade */}
+      <td className="text-sm py-3.5 px-3 text-center text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 w-[70px] hidden md:table-cell">
         UN
       </td>
-      <td className="text-sm py-3.5 px-3 text-right font-semibold border-r border-gray-100 w-[110px]">
-        {valorVenda}
+      {/* Valor de Venda - DESTAQUE FINANCEIRO */}
+      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[110px]">
+        <span className="font-semibold text-emerald-700 dark:text-emerald-400">{valorVenda}</span>
       </td>
+      {/* Ações */}
       <td className="py-3.5 px-3 text-center w-[80px]">
         <Button
           size="sm"
           variant="ghost"
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="h-7 w-7 p-0"
+          className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
         >
           <Edit className="h-3.5 w-3.5" />
         </Button>
@@ -618,17 +627,17 @@ export default function Produtos() {
                   <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
                     <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
                       <table className="w-full caption-bottom text-sm border-collapse table-fixed">
-                        <thead className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm">
-                          <tr className="border-b border-gray-200">
-                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground border-r border-gray-100 w-[90px]">Código</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 w-[120px] hidden lg:table-cell">Referência</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 w-[160px] hidden lg:table-cell">Código de Barras</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 min-w-[200px]">Descrição</th>
-                            <th className="h-11 px-3 text-left align-middle font-semibold text-foreground border-r border-gray-100 w-[140px] hidden lg:table-cell">Localização</th>
-                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground border-r border-gray-100 w-[90px]">Estoque</th>
-                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground border-r border-gray-100 w-[70px]">Unidade</th>
-                            <th className="h-11 px-3 text-right align-middle font-semibold text-foreground border-r border-gray-100 w-[110px]">Valor</th>
-                            <th className="h-11 px-3 text-center align-middle font-semibold text-foreground w-[80px]">Ações</th>
+                        <thead className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 shadow-sm">
+                          <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[90px] text-xs uppercase tracking-wide">Código</th>
+                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[120px] hidden lg:table-cell text-xs uppercase tracking-wide">Referência</th>
+                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[160px] hidden lg:table-cell text-xs uppercase tracking-wide">Cód. Barras</th>
+                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 min-w-[200px] text-xs uppercase tracking-wide">Descrição</th>
+                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[140px] hidden lg:table-cell text-xs uppercase tracking-wide">Localização</th>
+                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[100px] text-xs uppercase tracking-wide">Estoque</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[70px] hidden md:table-cell text-xs uppercase tracking-wide">Unid.</th>
+                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[110px] text-xs uppercase tracking-wide">Valor</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 w-[80px] text-xs uppercase tracking-wide">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -700,38 +709,38 @@ export default function Produtos() {
                       const estoqueMinimo = produto.estoque_minimo || 0;
                       let estoqueStatus;
                       if (quantidade === 0) {
-                        estoqueStatus = { label: 'Zerado', className: 'bg-red-100 text-red-700' };
+                        estoqueStatus = { label: 'Zerado', className: 'bg-red-500 text-white shadow-sm' };
                       } else if (quantidade <= estoqueMinimo && estoqueMinimo > 0) {
-                        estoqueStatus = { label: 'Baixo', className: 'bg-orange-100 text-orange-700' };
+                        estoqueStatus = { label: 'Baixo', className: 'bg-amber-500 text-white shadow-sm' };
                       } else {
-                        estoqueStatus = { label: 'OK', className: 'bg-green-100 text-green-700' };
+                        estoqueStatus = { label: 'OK', className: 'bg-emerald-500 text-white shadow-sm' };
                       }
 
                       return (
                         <Card 
                           key={produto.id}
-                          className={`${selectedProduto?.id === produto.id ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200'} cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]`}
+                          className={`${selectedProduto?.id === produto.id ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-400' : 'border-gray-300'} cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98] shadow-sm`}
                           onClick={() => setSelectedProduto(produto)}
                         >
                           <CardContent className="p-4 space-y-3">
-                            <div className="border-b border-gray-100 pb-2">
-                              <h3 className="font-semibold text-sm uppercase truncate">{descricaoCompleta}</h3>
-                              {produto.referencia && <p className="text-xs text-muted-foreground mt-1">Ref: {produto.referencia}</p>}
+                            <div className="border-b border-gray-200 pb-2">
+                              <h3 className="font-semibold text-sm uppercase truncate text-gray-900">{descricaoCompleta}</h3>
+                              {produto.referencia && <p className="text-xs text-gray-500 mt-1">Ref: {produto.referencia}</p>}
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <p className="text-xs text-muted-foreground">Estoque</p>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="font-semibold">{quantidade}</span>
-                                  <Badge variant="outline" className={`${estoqueStatus.className} text-xs px-1.5`}>{estoqueStatus.label}</Badge>
+                                <p className="text-xs text-gray-500 font-medium">Estoque</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="font-bold text-lg text-gray-800">{quantidade}</span>
+                                  <Badge className={`${estoqueStatus.className} text-xs px-2`}>{estoqueStatus.label}</Badge>
                                 </div>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground">Valor</p>
-                                <p className="font-semibold text-green-600 mt-0.5">{valorVenda}</p>
+                                <p className="text-xs text-gray-500 font-medium">Valor</p>
+                                <p className="font-bold text-lg text-emerald-600 mt-1">{valorVenda}</p>
                               </div>
                             </div>
-                            <div className="flex justify-end pt-2 border-t border-gray-100">
+                            <div className="flex justify-end pt-2 border-t border-gray-200">
                               <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleEdit(produto); }} className="h-8 text-xs">
                                 <Edit className="h-3.5 w-3.5 mr-1" /> Editar
                               </Button>
