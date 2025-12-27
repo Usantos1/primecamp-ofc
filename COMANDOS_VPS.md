@@ -47,7 +47,7 @@ pm2 logs primecamp --lines 50
 pm2 logs primecamp --lines 100
 
 # Verificar se o endpoint está respondendo
-curl -X POST http://localhost:3000/api/upsert/kv_store_2c4defad \
+curl -X POST https://api.primecamp.cloud/api/upsert/kv_store_2c4defad \
   -H "Content-Type: application/json" \
   -d '{"data": {"key": "test", "value": {"test": true}}, "onConflict": "key"}'
 ```
