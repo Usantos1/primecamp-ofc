@@ -279,8 +279,7 @@ interface PhotoLogData {
 // Função para salvar log de foto no banco de dados
 async function savePhotoLog(data: PhotoLogData): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('os_telegram_photos')
+    const { error } = await from('os_telegram_photos')
       .insert({
         ordem_servico_id: data.ordem_servico_id,
         ordem_servico_numero: data.ordem_servico_numero,
@@ -294,7 +293,8 @@ async function savePhotoLog(data: PhotoLogData): Promise<void> {
         error_message: data.error_message || null,
         file_size: data.file_size || null,
         mime_type: data.mime_type || null,
-      });
+      })
+      .execute();
 
     if (error) {
       console.error('[useTelegram] Erro ao salvar log:', error);

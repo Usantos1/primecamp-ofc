@@ -96,16 +96,15 @@ export function useOSImageReference() {
         uploadedAt: new Date().toISOString(),
       };
 
-      const { error: configError } = await from('kv_store_2c4defad')
+      const result = await from('kv_store_2c4defad')
         .upsert({
           key: CONFIG_KEY,
           value: config,
         }, {
           onConflict: 'key',
-        })
-        .execute();
+        });
 
-      if (configError) throw configError;
+      if (result.error) throw result.error;
 
       setImageUrl(publicUrl);
       return publicUrl;

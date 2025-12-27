@@ -11,7 +11,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
-import { MessageSquare, Send, Settings, Webhook } from 'lucide-react';
+import { MessageSquare, Send, Settings, Webhook, Paperclip } from 'lucide-react';
+import { useTelegramConfig } from '@/hooks/useTelegramConfig';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface IntegrationSettings {
   ativaCrmToken: string;
@@ -39,6 +41,71 @@ export default function Integration() {
   const [loading, setLoading] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('Teste de integração WhatsApp');
+  
+  // Configurações do Telegram
+  const {
+    chatIdEntrada,
+    chatIdProcesso,
+    chatIdSaida,
+    updateChatIdEntrada,
+    updateChatIdProcesso,
+    updateChatIdSaida,
+    isUpdating: isUpdatingTelegramConfig,
+  } = useTelegramConfig();
+  
+  const [telegramChatIdEntrada, setTelegramChatIdEntrada] = useState('');
+  const [telegramChatIdProcesso, setTelegramChatIdProcesso] = useState('');
+  const [telegramChatIdSaida, setTelegramChatIdSaida] = useState('');
+  
+  // Carregar chat IDs do banco quando disponíveis
+  useEffect(() => {
+    if (chatIdEntrada) setTelegramChatIdEntrada(chatIdEntrada);
+    if (chatIdProcesso) setTelegramChatIdProcesso(chatIdProcesso);
+    if (chatIdSaida) setTelegramChatIdSaida(chatIdSaida);
+  }, [chatIdEntrada, chatIdProcesso, chatIdSaida]);
+  
+  // Salvar Chat IDs no banco automaticamente quando mudarem (com debounce de 2 segundos)
+  useEffect(() => {
+    if (telegramChatIdEntrada && telegramChatIdEntrada.trim() && telegramChatIdEntrada !== chatIdEntrada) {
+      const timeoutId = setTimeout(async () => {
+        try {
+          await updateChatIdEntrada(telegramChatIdEntrada.trim());
+          toast.success('Chat ID de Entrada salvo!');
+        } catch (error) {
+          console.error('Erro ao salvar Chat ID Entrada:', error);
+        }
+      }, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [telegramChatIdEntrada, chatIdEntrada, updateChatIdEntrada]);
+
+  useEffect(() => {
+    if (telegramChatIdProcesso && telegramChatIdProcesso.trim() && telegramChatIdProcesso !== chatIdProcesso) {
+      const timeoutId = setTimeout(async () => {
+        try {
+          await updateChatIdProcesso(telegramChatIdProcesso.trim());
+          toast.success('Chat ID de Processo salvo!');
+        } catch (error) {
+          console.error('Erro ao salvar Chat ID Processo:', error);
+        }
+      }, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [telegramChatIdProcesso, chatIdProcesso, updateChatIdProcesso]);
+
+  useEffect(() => {
+    if (telegramChatIdSaida && telegramChatIdSaida.trim() && telegramChatIdSaida !== chatIdSaida) {
+      const timeoutId = setTimeout(async () => {
+        try {
+          await updateChatIdSaida(telegramChatIdSaida.trim());
+          toast.success('Chat ID de Saída salvo!');
+        } catch (error) {
+          console.error('Erro ao salvar Chat ID Saída:', error);
+        }
+      }, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [telegramChatIdSaida, chatIdSaida, updateChatIdSaida]);
 
   useEffect(() => {
     loadSettings();
@@ -47,16 +114,16 @@ export default function Integration() {
   const loadSettings = async () => {
     try {
       const { data, error } = await from('kv_store_2c4defad')
-        .select('*')
+        .select('value')
         .eq('key', 'integration_settings')
-        .single()
-        .execute();
+        .maybeSingle();
 
-      if (data && !error) {
+      if (!error && data?.value) {
         setSettings(data.value as any);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+      // Não mostrar erro ao usuário se não existir configuração ainda
     }
   };
 
@@ -68,38 +135,23 @@ export default function Integration() {
 
     setLoading(true);
     try {
-      // Verificar se já existe
-      const { data: existing } = await from('kv_store_2c4defad')
-        .select('id')
-        .eq('key', 'integration_settings')
-        .single()
-        .execute();
+      // Usar upsert para inserir ou atualizar automaticamente
+      const result = await from('kv_store_2c4defad')
+        .upsert({
+          key: 'integration_settings',
+          value: settings as any
+        }, {
+          onConflict: 'key'
+        });
 
-      let error;
-      if (existing?.data) {
-        // Atualizar existente
-        const { error: updateError } = await from('kv_store_2c4defad')
-          .update({ value: settings as any })
-          .eq('key', 'integration_settings')
-          .execute();
-        error = updateError;
-      } else {
-        // Inserir novo
-        const { error: insertError } = await from('kv_store_2c4defad')
-          .insert({
-            key: 'integration_settings',
-            value: settings as any
-          })
-          .execute();
-        error = insertError;
-      }
-
-      if (error) throw error;
+      if (result.error) throw result.error;
 
       toast.success('Configurações salvas com sucesso!');
-    } catch (error) {
+      loadSettings(); // Recarregar após salvar
+    } catch (error: any) {
       console.error('Error saving settings:', error);
-      toast.error('Erro ao salvar configurações');
+      const errorMsg = error?.error?.message || error?.message || 'Erro ao salvar configurações';
+      toast.error(`Erro ao salvar: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -251,7 +303,8 @@ export default function Integration() {
       title="Integrações" 
       subtitle="Configure integrações com APIs externas"
     >
-      <div className="grid gap-6">
+      <div className="h-full overflow-y-auto overflow-x-hidden -mx-2 md:-mx-4 px-2 md:px-4">
+        <div className="grid gap-4 md:gap-6 pb-6 max-w-full">
         {/* WhatsApp / Ativa CRM Integration */}
         <Card>
           <CardHeader>
@@ -479,6 +532,91 @@ export default function Integration() {
           </Card>
         )}
 
+        {/* Telegram Integration */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5 text-blue-600" />
+              <div>
+                <CardTitle>Integração Telegram</CardTitle>
+                <CardDescription>
+                  Configure os Chat IDs dos canais/grupos do Telegram para envio de fotos das Ordens de Serviço
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-xs text-blue-700">
+                💡 <strong>Como obter o Chat ID:</strong> Use o comando <code className="bg-white px-1 rounded">/getchatid</code> no Telegram 
+                dentro do canal ou grupo desejado. Os Chat IDs serão salvos automaticamente após 2 segundos.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Chat ID Entrada */}
+              <div className="space-y-2">
+                <Label htmlFor="telegram-chat-entrada">Chat ID - Fotos de Entrada</Label>
+                <Input
+                  id="telegram-chat-entrada"
+                  type="text"
+                  placeholder="Ex: -1002120498327"
+                  value={telegramChatIdEntrada}
+                  onChange={(e) => setTelegramChatIdEntrada(e.target.value)}
+                  disabled={isUpdatingTelegramConfig}
+                />
+                {telegramChatIdEntrada && (
+                  <p className="text-xs text-green-600">
+                    ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdEntrada}</code>
+                  </p>
+                )}
+              </div>
+
+              {/* Chat ID Processo */}
+              <div className="space-y-2">
+                <Label htmlFor="telegram-chat-processo">Chat ID - Fotos de Processo</Label>
+                <Input
+                  id="telegram-chat-processo"
+                  type="text"
+                  placeholder="Ex: -1001234567890"
+                  value={telegramChatIdProcesso}
+                  onChange={(e) => setTelegramChatIdProcesso(e.target.value)}
+                  disabled={isUpdatingTelegramConfig}
+                />
+                {telegramChatIdProcesso && (
+                  <p className="text-xs text-green-600">
+                    ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdProcesso}</code>
+                  </p>
+                )}
+              </div>
+
+              {/* Chat ID Saída */}
+              <div className="space-y-2">
+                <Label htmlFor="telegram-chat-saida">Chat ID - Fotos de Saída</Label>
+                <Input
+                  id="telegram-chat-saida"
+                  type="text"
+                  placeholder="Ex: -4925747509"
+                  value={telegramChatIdSaida}
+                  onChange={(e) => setTelegramChatIdSaida(e.target.value)}
+                  disabled={isUpdatingTelegramConfig}
+                />
+                {telegramChatIdSaida && (
+                  <p className="text-xs text-green-600">
+                    ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdSaida}</code>
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {isUpdatingTelegramConfig && (
+              <p className="text-xs text-muted-foreground">
+                💾 Salvando configurações...
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Webhook Configuration */}
         <Card>
           <CardHeader>
@@ -506,6 +644,7 @@ export default function Integration() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </ModernLayout>
   );

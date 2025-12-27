@@ -51,16 +51,55 @@ CREATE TABLE IF NOT EXISTS user_permissions (
 CREATE TABLE IF NOT EXISTS roles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) UNIQUE NOT NULL,
+  display_name VARCHAR(100) NOT NULL,
   description TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  is_system BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-INSERT INTO roles (name, description) VALUES
-  ('admin', 'Administrador do sistema'),
-  ('manager', 'Gerente'),
-  ('employee', 'Funcionário'),
-  ('sales', 'Vendedor')
-ON CONFLICT (name) DO NOTHING;
+-- Adicionar colunas se não existirem (para tabelas já criadas)
+DO $$
+BEGIN
+  -- Adicionar display_name se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'roles' AND column_name = 'display_name'
+  ) THEN
+    ALTER TABLE roles ADD COLUMN display_name VARCHAR(100);
+    -- Atualizar valores existentes
+    UPDATE roles SET display_name = INITCAP(name) WHERE display_name IS NULL;
+    -- Tornar NOT NULL após atualizar
+    ALTER TABLE roles ALTER COLUMN display_name SET NOT NULL;
+  END IF;
+
+  -- Adicionar is_system se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'roles' AND column_name = 'is_system'
+  ) THEN
+    ALTER TABLE roles ADD COLUMN is_system BOOLEAN DEFAULT false;
+  END IF;
+
+  -- Adicionar updated_at se não existir
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'roles' AND column_name = 'updated_at'
+  ) THEN
+    ALTER TABLE roles ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+  END IF;
+END $$;
+
+INSERT INTO roles (name, display_name, description, is_system) VALUES
+  ('admin', 'Administrador', 'Administrador do sistema', true),
+  ('manager', 'Gerente', 'Gerente', true),
+  ('employee', 'Funcionário', 'Funcionário', true),
+  ('sales', 'Vendedor', 'Vendedor', true)
+ON CONFLICT (name) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  is_system = EXCLUDED.is_system,
+  updated_at = NOW();
 
 -- ========== TABELA: role_permissions ==========
 CREATE TABLE IF NOT EXISTS role_permissions (
@@ -154,43 +193,68 @@ CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos(codigo);
 CREATE INDEX IF NOT EXISTS idx_produtos_codigo_barras ON produtos(codigo_barras);
 
 -- ========== TABELA: cash_register_sessions ==========
-CREATE TABLE IF NOT EXISTS cash_register_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  opened_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  closed_at TIMESTAMP WITH TIME ZONE,
-  opening_balance DECIMAL(15, 2) DEFAULT 0,
-  closing_balance DECIMAL(15, 2),
-  expected_balance DECIMAL(15, 2),
-  difference DECIMAL(15, 2),
-  status VARCHAR(20) DEFAULT 'open',
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- NOTA: Esta tabela já existe com estrutura completa em APPLY_PDV_MIGRATION.sql
+-- A tabela real tem: operador_id (não user_id)
+-- Não vamos recriar aqui para evitar conflitos. Apenas garantimos que os índices existam.
 
-CREATE INDEX IF NOT EXISTS idx_cash_sessions_user ON cash_register_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_cash_sessions_status ON cash_register_sessions(status);
+-- Criar índices apenas se as colunas existirem
+DO $$
+BEGIN
+  -- Índice para operador_id (se existir)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'cash_register_sessions' AND column_name = 'operador_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_cash_sessions_operador_id ON cash_register_sessions(operador_id);
+  END IF;
+  
+  -- Índice para user_id (se existir - para compatibilidade)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'cash_register_sessions' AND column_name = 'user_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_cash_sessions_user ON cash_register_sessions(user_id);
+  END IF;
+  
+  -- Índice para status (sempre existe)
+  CREATE INDEX IF NOT EXISTS idx_cash_sessions_status ON cash_register_sessions(status);
+END $$;
 
 -- ========== TABELA: sales ==========
-CREATE TABLE IF NOT EXISTS sales (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cliente_id UUID REFERENCES clientes(id),
-  user_id UUID NOT NULL REFERENCES users(id),
-  cash_session_id UUID REFERENCES cash_register_sessions(id),
-  total DECIMAL(15, 2) DEFAULT 0,
-  desconto DECIMAL(15, 2) DEFAULT 0,
-  total_final DECIMAL(15, 2) DEFAULT 0,
-  payment_method VARCHAR(50),
-  status VARCHAR(20) DEFAULT 'completed',
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- NOTA: Esta tabela já existe com estrutura completa em APPLY_PDV_MIGRATION.sql
+-- A tabela real tem: vendedor_id (não user_id)
+-- Não vamos recriar aqui para evitar conflitos. Apenas garantimos que os índices existam.
 
-CREATE INDEX IF NOT EXISTS idx_sales_cliente ON sales(cliente_id);
-CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id);
-CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
+-- Criar índices apenas se as colunas existirem
+DO $$
+BEGIN
+  -- Índice para cliente_id (se existir)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sales' AND column_name = 'cliente_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_sales_cliente ON sales(cliente_id);
+  END IF;
+  
+  -- Índice para vendedor_id (se existir)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sales' AND column_name = 'vendedor_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_sales_vendedor_id ON sales(vendedor_id);
+  END IF;
+  
+  -- Índice para user_id (se existir - para compatibilidade)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sales' AND column_name = 'user_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_sales_user ON sales(user_id);
+  END IF;
+  
+  -- Índice para created_at (sempre existe)
+  CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
+END $$;
 
 -- ========== TABELA: sale_items ==========
 CREATE TABLE IF NOT EXISTS sale_items (
@@ -205,51 +269,44 @@ CREATE TABLE IF NOT EXISTS sale_items (
 );
 
 -- ========== TABELA: ordens_servico ==========
-CREATE TABLE IF NOT EXISTS ordens_servico (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  numero VARCHAR(50),
-  cliente_id UUID REFERENCES clientes(id),
-  user_id UUID REFERENCES users(id),
-  tecnico_id UUID REFERENCES users(id),
-  equipamento VARCHAR(255),
-  marca VARCHAR(100),
-  modelo VARCHAR(100),
-  numero_serie VARCHAR(100),
-  defeito_relatado TEXT,
-  diagnostico TEXT,
-  solucao TEXT,
-  status VARCHAR(50) DEFAULT 'aberta',
-  prioridade VARCHAR(20) DEFAULT 'normal',
-  valor_orcamento DECIMAL(15, 2),
-  valor_final DECIMAL(15, 2),
-  data_entrada TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  data_previsao TIMESTAMP WITH TIME ZONE,
-  data_conclusao TIMESTAMP WITH TIME ZONE,
-  observacoes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- NOTA: Esta tabela já existe com estrutura completa em APLICAR_MIGRATIONS_FINANCEIRO_OS.sql
+-- Não vamos recriar aqui para evitar conflitos. Apenas garantimos que os índices existam.
+-- A tabela real tem: vendedor_id, atendente_id, tecnico_id, created_by (não user_id)
 
 CREATE INDEX IF NOT EXISTS idx_os_numero ON ordens_servico(numero);
 CREATE INDEX IF NOT EXISTS idx_os_cliente ON ordens_servico(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_os_status ON ordens_servico(status);
 
 -- ========== TABELA: user_activity_logs ==========
-CREATE TABLE IF NOT EXISTS user_activity_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  action VARCHAR(100) NOT NULL,
-  resource VARCHAR(100),
-  resource_id UUID,
-  details JSONB,
-  ip_address VARCHAR(50),
-  user_agent TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- NOTA: Esta tabela já existe. Não vamos recriar para evitar conflitos.
+-- A estrutura pode variar: algumas versões têm 'action' e 'resource', outras têm 'activity_type' e 'description'
+-- Apenas garantimos que os índices existam nas colunas corretas.
 
-CREATE INDEX IF NOT EXISTS idx_activity_user ON user_activity_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_activity_action ON user_activity_logs(action);
-CREATE INDEX IF NOT EXISTS idx_activity_created ON user_activity_logs(created_at);
+-- Criar índices apenas se as colunas existirem
+DO $$
+BEGIN
+  -- Índice para user_id (sempre existe)
+  CREATE INDEX IF NOT EXISTS idx_activity_user ON user_activity_logs(user_id);
+  
+  -- Índice para action (se existir)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_activity_logs' AND column_name = 'action'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_activity_action ON user_activity_logs(action);
+  END IF;
+  
+  -- Índice para activity_type (se existir)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'user_activity_logs' AND column_name = 'activity_type'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_activity_type ON user_activity_logs(activity_type);
+  END IF;
+  
+  -- Índice para created_at (sempre existe)
+  CREATE INDEX IF NOT EXISTS idx_activity_created ON user_activity_logs(created_at);
+END $$;
 
 -- ========== TABELA: marcas ==========
 CREATE TABLE IF NOT EXISTS marcas (
@@ -271,24 +328,30 @@ CREATE TABLE IF NOT EXISTS modelos (
 );
 
 -- ========== TABELA: financial_categories ==========
-CREATE TABLE IF NOT EXISTS financial_categories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(255) NOT NULL,
-  type VARCHAR(20) NOT NULL, -- 'income' ou 'expense'
-  color VARCHAR(20),
-  icon VARCHAR(50),
-  parent_id UUID REFERENCES financial_categories(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- NOTA: Esta tabela já existe com estrutura completa em APLICAR_TODAS_MIGRATIONS_FINANCEIRO.sql
+-- A tabela real usa enum transaction_type com valores 'entrada' e 'saida' (não 'income' e 'expense')
+-- Não vamos recriar aqui para evitar conflitos. Apenas inserimos categorias padrão se não existirem.
 
-INSERT INTO financial_categories (name, type, color) VALUES
-  ('Vendas', 'income', '#22c55e'),
-  ('Serviços', 'income', '#3b82f6'),
-  ('Outros', 'income', '#8b5cf6'),
-  ('Fornecedores', 'expense', '#ef4444'),
-  ('Despesas Fixas', 'expense', '#f97316'),
-  ('Despesas Variáveis', 'expense', '#eab308')
-ON CONFLICT DO NOTHING;
+-- Verificar se o enum existe e criar se necessário
+DO $$ BEGIN
+  CREATE TYPE transaction_type AS ENUM ('entrada', 'saida');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
+-- Inserir categorias padrão apenas se não existirem (usando valores corretos do enum)
+INSERT INTO financial_categories (name, type, color, icon)
+SELECT * FROM (VALUES
+  ('Vendas à Vista', 'entrada'::transaction_type, '#22c55e', 'dollar-sign'),
+  ('Serviços', 'entrada'::transaction_type, '#3b82f6', 'wrench'),
+  ('Outras Receitas', 'entrada'::transaction_type, '#8b5cf6', 'trending-up'),
+  ('Fornecedores', 'saida'::transaction_type, '#ef4444', 'truck'),
+  ('Despesas Fixas', 'saida'::transaction_type, '#f97316', 'calendar'),
+  ('Despesas Variáveis', 'saida'::transaction_type, '#eab308', 'shopping-cart')
+) AS v(name, type, color, icon)
+WHERE NOT EXISTS (
+  SELECT 1 FROM financial_categories WHERE financial_categories.name = v.name
+);
 
 -- ========== TABELA: bills_to_pay ==========
 CREATE TABLE IF NOT EXISTS bills_to_pay (
@@ -319,6 +382,79 @@ CREATE TABLE IF NOT EXISTS cash_transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ========== TABELA: os_telegram_photos ==========
+-- Tabela para armazenar logs de fotos enviadas para o Telegram
+CREATE TABLE IF NOT EXISTS os_telegram_photos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ordem_servico_id UUID REFERENCES ordens_servico(id) ON DELETE CASCADE,
+  ordem_servico_numero INTEGER NOT NULL,
+  file_name VARCHAR(500) NOT NULL,
+  file_url TEXT,
+  file_id VARCHAR(255), -- File ID do Telegram para reutilização
+  message_id INTEGER, -- ID da mensagem no Telegram
+  tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('entrada', 'saida', 'processo')),
+  telegram_chat_id VARCHAR(100) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'processando' CHECK (status IN ('enviado', 'erro', 'processando')),
+  error_message TEXT,
+  file_size BIGINT,
+  mime_type VARCHAR(100),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_os_telegram_photos_os_id ON os_telegram_photos(ordem_servico_id);
+CREATE INDEX IF NOT EXISTS idx_os_telegram_photos_os_numero ON os_telegram_photos(ordem_servico_numero);
+CREATE INDEX IF NOT EXISTS idx_os_telegram_photos_tipo ON os_telegram_photos(tipo);
+CREATE INDEX IF NOT EXISTS idx_os_telegram_photos_status ON os_telegram_photos(status);
+CREATE INDEX IF NOT EXISTS idx_os_telegram_photos_chat_id ON os_telegram_photos(telegram_chat_id);
+CREATE INDEX IF NOT EXISTS idx_os_telegram_photos_message_id ON os_telegram_photos(message_id);
+
+-- ========== TABELA: telegram_config ==========
+-- Tabela para armazenar configurações globais do Telegram (chat IDs padrão)
+CREATE TABLE IF NOT EXISTS telegram_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key VARCHAR(100) UNIQUE NOT NULL,
+  value TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_telegram_config_key ON telegram_config(key);
+
+-- Inserir configurações padrão de chat IDs
+INSERT INTO telegram_config (key, value, description) VALUES
+  ('chat_id_entrada', '', 'Chat ID padrão do Telegram para fotos de entrada'),
+  ('chat_id_processo', '', 'Chat ID padrão do Telegram para fotos de processo'),
+  ('chat_id_saida', '', 'Chat ID padrão do Telegram para fotos de saída')
+ON CONFLICT (key) DO NOTHING;
+
+-- ========== TABELA: telegram_messages ==========
+-- Tabela para armazenar histórico de mensagens enviadas ao Telegram
+CREATE TABLE IF NOT EXISTS telegram_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chat_id VARCHAR(100) NOT NULL,
+  message_id INTEGER NOT NULL,
+  ordem_servico_id UUID REFERENCES ordens_servico(id) ON DELETE SET NULL,
+  ordem_servico_numero INTEGER,
+  tipo VARCHAR(20) CHECK (tipo IN ('entrada', 'saida', 'processo', 'notificacao', 'outro')),
+  content_type VARCHAR(50) DEFAULT 'photo', -- photo, document, text, etc
+  file_id VARCHAR(255),
+  caption TEXT,
+  status VARCHAR(20) DEFAULT 'sent' CHECK (status IN ('sent', 'deleted', 'failed')),
+  error_message TEXT,
+  sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  deleted_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_telegram_messages_chat_id ON telegram_messages(chat_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_messages_message_id ON telegram_messages(message_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_messages_os_id ON telegram_messages(ordem_servico_id);
+CREATE INDEX IF NOT EXISTS idx_telegram_messages_os_numero ON telegram_messages(ordem_servico_numero);
+CREATE INDEX IF NOT EXISTS idx_telegram_messages_status ON telegram_messages(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_messages_unique ON telegram_messages(chat_id, message_id);
+
 -- ========== TRIGGERS para updated_at ==========
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -333,7 +469,7 @@ DO $$
 DECLARE
   t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['user_position_departments', 'kv_store_2c4defad', 'tasks', 'clientes', 'produtos', 'cash_register_sessions', 'sales', 'ordens_servico', 'bills_to_pay']
+  FOREACH t IN ARRAY ARRAY['user_position_departments', 'kv_store_2c4defad', 'tasks', 'clientes', 'produtos', 'cash_register_sessions', 'sales', 'ordens_servico', 'bills_to_pay', 'os_telegram_photos', 'telegram_config']
   LOOP
     EXECUTE format('
       DROP TRIGGER IF EXISTS trigger_update_%I ON %I;

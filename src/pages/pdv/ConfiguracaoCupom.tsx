@@ -62,10 +62,9 @@ export default function ConfiguracaoCupom() {
       const { data: kvData, error: kvError } = await from('kv_store_2c4defad')
         .select('value')
         .eq('key', 'cupom_config')
-        .single()
-        .execute();
+        .maybeSingle();
 
-      if (!kvError && kvData) {
+      if (!kvError && kvData?.value) {
         setConfig({ ...config, ...kvData.value });
         return;
       }
@@ -74,8 +73,7 @@ export default function ConfiguracaoCupom() {
       const { data, error } = await from('cupom_config')
         .select('*')
         .limit(1)
-        .single()
-        .execute();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -156,33 +154,16 @@ export default function ConfiguracaoCupom() {
 
     setLoading(true);
     try {
-      // Verificar se já existe
-      const { data: existing } = await from('kv_store_2c4defad')
-        .select('id')
-        .eq('key', 'cupom_config')
-        .single()
-        .execute();
+      // Usar upsert para inserir ou atualizar automaticamente
+      const result = await from('kv_store_2c4defad')
+        .upsert({
+          key: 'cupom_config',
+          value: config,
+        }, {
+          onConflict: 'key'
+        });
 
-      let kvError;
-      if (existing?.data) {
-        // Atualizar existente
-        const { error: updateError } = await from('kv_store_2c4defad')
-          .update({ value: config })
-          .eq('key', 'cupom_config')
-          .execute();
-        kvError = updateError;
-      } else {
-        // Inserir novo
-        const { error: insertError } = await from('kv_store_2c4defad')
-          .insert({
-            key: 'cupom_config',
-            value: config,
-          })
-          .execute();
-        kvError = insertError;
-      }
-
-      if (kvError) throw kvError;
+      if (result.error) throw result.error;
 
       // Também salvar em cupom_config para compatibilidade (se a tabela existir)
       try {

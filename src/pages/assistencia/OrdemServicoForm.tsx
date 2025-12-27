@@ -44,6 +44,7 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { OSSummaryHeader } from '@/components/assistencia/OSSummaryHeader';
 import { OSProgressIndicator } from '@/components/assistencia/OSProgressIndicator';
 import { generateOSTermica } from '@/utils/osTermicaGenerator';
@@ -96,53 +97,41 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { sendMultiplePhotos: sendTelegramPhotos, deleteMessage: deleteTelegramMessage, loading: telegramLoading } = useTelegram();
   const { imageUrl: osImageReferenceUrl } = useOSImageReference();
   const { itemsEntrada: checklistEntradaConfig, itemsSaida: checklistSaidaConfig } = useChecklistConfig();
+  
+  // Configurações do Telegram do banco de dados
+  const {
+    chatIdEntrada: telegramChatIdEntradaFromDB,
+    chatIdProcesso: telegramChatIdProcessoFromDB,
+    chatIdSaida: telegramChatIdSaidaFromDB,
+    updateChatIdEntrada,
+    updateChatIdProcesso,
+    updateChatIdSaida,
+    isUpdating: isUpdatingTelegramConfig,
+  } = useTelegramConfig();
 
-  // Estados para Chat IDs do Telegram - carrega automaticamente do localStorage
-  const [telegramChatIdEntrada, setTelegramChatIdEntrada] = useState<string>(() => {
-    const saved = localStorage.getItem('telegram_chat_id_entrada');
-    return saved || '';
-  });
+  // Estados locais para Chat IDs do Telegram (carregados do banco ou da OS específica)
+  const [telegramChatIdEntrada, setTelegramChatIdEntrada] = useState<string>('');
+  const [telegramChatIdProcesso, setTelegramChatIdProcesso] = useState<string>('');
+  const [telegramChatIdSaida, setTelegramChatIdSaida] = useState<string>('');
 
-  const [telegramChatIdProcesso, setTelegramChatIdProcesso] = useState<string>(() => {
-    const saved = localStorage.getItem('telegram_chat_id_processo');
-    return saved || '';
-  });
-
-  const [telegramChatIdSaida, setTelegramChatIdSaida] = useState<string>(() => {
-    const saved = localStorage.getItem('telegram_chat_id_saida');
-    return saved || '';
-  });
-
-  // Salvar Chat IDs automaticamente quando mudarem (com debounce de 2 segundos)
+  // Carregar chat IDs do banco quando disponíveis (valores padrão globais)
   useEffect(() => {
-    if (telegramChatIdEntrada && telegramChatIdEntrada.trim()) {
-      const timeoutId = setTimeout(() => {
-        localStorage.setItem('telegram_chat_id_entrada', telegramChatIdEntrada.trim());
-        console.log('[OrdemServicoForm] Chat ID Entrada salvo automaticamente:', telegramChatIdEntrada.trim());
-      }, 2000);
-      return () => clearTimeout(timeoutId);
+    if (telegramChatIdEntradaFromDB) {
+      setTelegramChatIdEntrada(telegramChatIdEntradaFromDB);
     }
-  }, [telegramChatIdEntrada]);
+  }, [telegramChatIdEntradaFromDB]);
 
   useEffect(() => {
-    if (telegramChatIdProcesso && telegramChatIdProcesso.trim()) {
-      const timeoutId = setTimeout(() => {
-        localStorage.setItem('telegram_chat_id_processo', telegramChatIdProcesso.trim());
-        console.log('[OrdemServicoForm] Chat ID Processo salvo automaticamente:', telegramChatIdProcesso.trim());
-      }, 2000);
-      return () => clearTimeout(timeoutId);
+    if (telegramChatIdProcessoFromDB) {
+      setTelegramChatIdProcesso(telegramChatIdProcessoFromDB);
     }
-  }, [telegramChatIdProcesso]);
+  }, [telegramChatIdProcessoFromDB]);
 
   useEffect(() => {
-    if (telegramChatIdSaida && telegramChatIdSaida.trim()) {
-      const timeoutId = setTimeout(() => {
-        localStorage.setItem('telegram_chat_id_saida', telegramChatIdSaida.trim());
-        console.log('[OrdemServicoForm] Chat ID Saída salvo automaticamente:', telegramChatIdSaida.trim());
-      }, 2000);
-      return () => clearTimeout(timeoutId);
+    if (telegramChatIdSaidaFromDB) {
+      setTelegramChatIdSaida(telegramChatIdSaidaFromDB);
     }
-  }, [telegramChatIdSaida]);
+  }, [telegramChatIdSaidaFromDB]);
 
   // Estados do formulário
   const [formData, setFormData] = useState<OrdemServicoFormData>({
@@ -2640,85 +2629,6 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
-                  {/* Configuração dos Chat IDs do Telegram - Colapsável */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full justify-between text-sm"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Settings className="h-4 w-4" />
-                          Configuração dos Chat IDs do Telegram
-                        </span>
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-3 mt-2">
-                      <div className="bg-muted/50 p-3 rounded-lg space-y-3">
-                        <p className="text-xs text-muted-foreground">
-                          Configure o Chat ID de cada canal/grupo onde as fotos serão enviadas. Use o comando <code className="bg-background px-1 rounded">/getchatid</code> no Telegram para obter o ID.
-                        </p>
-                        
-                        {/* Chat ID Entrada */}
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">Chat ID - Fotos de Entrada</Label>
-                          <Input
-                            type="text"
-                            placeholder="Ex: -1002120498327"
-                            value={telegramChatIdEntrada}
-                            onChange={(e) => setTelegramChatIdEntrada(e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                          {telegramChatIdEntrada && (
-                            <p className="text-xs text-green-600">
-                              ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdEntrada}</code>
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Chat ID Processo */}
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">Chat ID - Fotos de Processo</Label>
-                          <Input
-                            type="text"
-                            placeholder="Ex: -1001234567890"
-                            value={telegramChatIdProcesso}
-                            onChange={(e) => setTelegramChatIdProcesso(e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                          {telegramChatIdProcesso && (
-                            <p className="text-xs text-green-600">
-                              ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdProcesso}</code>
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Chat ID Saída */}
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">Chat ID - Fotos de Saída</Label>
-                          <Input
-                            type="text"
-                            placeholder="Ex: -4925747509"
-                            value={telegramChatIdSaida}
-                            onChange={(e) => setTelegramChatIdSaida(e.target.value)}
-                            className="h-8 text-xs"
-                          />
-                          {telegramChatIdSaida && (
-                            <p className="text-xs text-green-600">
-                              ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdSaida}</code>
-                            </p>
-                          )}
-                        </div>
-
-                        <p className="text-xs text-muted-foreground">
-                          💡 Os Chat IDs serão salvos automaticamente após 2 segundos.
-                        </p>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-
                   {/* Botões de upload por tipo */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-2 p-3 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100/50">

@@ -783,6 +783,90 @@ app.post('/api/update/:table', async (req, res) => {
   }
 });
 
+// Upsert endpoint (INSERT ... ON CONFLICT UPDATE)
+app.post('/api/upsert/:table', async (req, res) => {
+  try {
+    const { table } = req.params;
+    const { data, onConflict } = req.body;
+
+    if (!data) {
+      return res.status(400).json({ error: 'Data is required' });
+    }
+
+    // Usar schema public explicitamente
+    const tableName = table.includes('.') ? table : `public.${table}`;
+
+    const keys = Object.keys(data);
+    const values = Object.values(data);
+    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+    // Determinar coluna de conflito (padrão: 'key' para kv_store, 'id' para outras)
+    const conflictColumn = onConflict || (table === 'kv_store_2c4defad' ? 'key' : 'id');
+    
+    // Verificar se a coluna de conflito existe na tabela
+    let actualConflictColumn = conflictColumn;
+    try {
+      const checkColumn = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = $1 
+        AND column_name = $2
+      `, [table, conflictColumn]);
+      
+      if (checkColumn.rows.length === 0 && conflictColumn === 'id') {
+        // Se 'id' não existe, tentar 'key' ou primeira coluna única
+        const uniqueCheck = await pool.query(`
+          SELECT column_name 
+          FROM information_schema.table_constraints tc
+          JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name)
+          WHERE tc.table_schema = 'public' 
+          AND tc.table_name = $1 
+          AND tc.constraint_type = 'UNIQUE'
+          LIMIT 1
+        `, [table]);
+        
+        if (uniqueCheck.rows.length > 0) {
+          actualConflictColumn = uniqueCheck.rows[0].column_name;
+        } else if (table === 'kv_store_2c4defad') {
+          actualConflictColumn = 'key';
+        }
+      }
+    } catch (checkError) {
+      console.warn(`[Upsert] Erro ao verificar coluna de conflito, usando padrão: ${checkError.message}`);
+    }
+    
+    // Construir cláusula SET para UPDATE em caso de conflito
+    const keysToUpdate = keys.filter(key => key !== actualConflictColumn && key !== 'created_at');
+    const updateClause = keysToUpdate
+      .map((key) => {
+        const valueIndex = keys.indexOf(key) + 1;
+        return `${key} = $${valueIndex}`;
+      })
+      .join(', ');
+
+    // Se não há colunas para atualizar além da de conflito, usar apenas updated_at
+    const finalUpdateClause = updateClause 
+      ? `${updateClause}, updated_at = NOW()`
+      : 'updated_at = NOW()';
+
+    const sql = `
+      INSERT INTO ${tableName} (${keys.join(', ')})
+      VALUES (${placeholders})
+      ON CONFLICT (${actualConflictColumn}) 
+      DO UPDATE SET ${finalUpdateClause}
+      RETURNING *
+    `;
+
+    console.log(`[Upsert] ${tableName} on conflict: ${actualConflictColumn}`);
+    const result = await pool.query(sql, values);
+    res.json({ data: result.rows[0], rows: result.rows });
+  } catch (error) {
+    console.error('Erro ao upsert:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete endpoint
 app.post('/api/delete/:table', async (req, res) => {
   try {
