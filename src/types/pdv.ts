@@ -414,10 +414,22 @@ export interface CartItem {
   produto_tipo?: 'produto' | 'servico';
   quantidade: number;
   valor_unitario: number;
-  desconto: number;
+  desconto: number; // Valor calculado do desconto em R$
+  desconto_percentual?: number; // Percentual de desconto aplicado
   observacao?: string;
   garantia_dias?: number;
 }
+
+// ==================== LIMITES DE DESCONTO POR PERFIL ====================
+export const LIMITES_DESCONTO_PERFIL: Record<string, number> = {
+  admin: 100,       // Admin pode dar até 100% de desconto
+  gerente: 30,      // Gerente até 30%
+  supervisor: 15,   // Supervisor até 15%
+  vendedor: 5,      // Vendedor padrão até 5%
+  atendente: 5,     // Atendente até 5%
+  member: 5,        // Member padrão até 5%
+  default: 5,       // Padrão 5%
+};
 
 // ==================== SALE SUMMARY (RESUMO DE VENDA) ====================
 

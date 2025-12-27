@@ -26,7 +26,7 @@ import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
-import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS, Quote } from '@/types/pdv';
+import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS, Quote, LIMITES_DESCONTO_PERFIL } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -36,7 +36,13 @@ export default function NovaVenda() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, profile } = useAuth();
+  
+  // Calcular limite máximo de desconto baseado no perfil
+  const limiteDescontoMaximo = useMemo(() => {
+    const role = profile?.role || 'member';
+    return LIMITES_DESCONTO_PERFIL[role] || LIMITES_DESCONTO_PERFIL.default;
+  }, [profile?.role]);
   const isEditing = Boolean(id);
 
   const { createSale, updateSale, finalizeSale, deleteSale, getSaleById } = useSales();
@@ -287,10 +293,14 @@ export default function NovaVenda() {
           const desconto = Number(item.desconto || 0);
           const total = (valorUnitario * quantidade) - desconto;
           
+          // Calcular percentual de desconto baseado no valor salvo
+          const valorBruto = valorUnitario * quantidade;
+          const descontoPercentual = valorBruto > 0 ? (desconto / valorBruto) * 100 : 0;
+          
           console.log(`Item: ${item.produto_nome} (ID: ${item.id})`);
           console.log(`  Quantidade: ${quantidade}`);
           console.log(`  Valor Unitário: ${currencyFormatters.brl(valorUnitario)}`);
-          console.log(`  Desconto: ${currencyFormatters.brl(desconto)}`);
+          console.log(`  Desconto: ${currencyFormatters.brl(desconto)} (${descontoPercentual.toFixed(1)}%)`);
           console.log(`  Total: ${currencyFormatters.brl(total)}`);
           
           return {
@@ -302,6 +312,7 @@ export default function NovaVenda() {
             quantidade: quantidade,
             valor_unitario: valorUnitario,
             desconto: desconto,
+            desconto_percentual: Number(descontoPercentual.toFixed(1)),
             observacao: item.observacao || undefined,
             garantia_dias: item.garantia_dias || undefined,
           };
@@ -855,6 +866,7 @@ export default function NovaVenda() {
         quantidade: 1,
         valor_unitario: produto.preco_venda || 0,
         desconto: 0,
+        desconto_percentual: 0,
       }]);
     }
 
@@ -863,13 +875,21 @@ export default function NovaVenda() {
     searchInputRef.current?.focus();
   };
 
-  // Atualizar quantidade
+  // Atualizar quantidade (recalcula desconto baseado no percentual)
   const handleUpdateQuantity = (index: number, delta: number) => {
-    setCart(cart.map((item, i) =>
-      i === index
-        ? { ...item, quantidade: Math.max(0.001, item.quantidade + delta) }
-        : item
-    ));
+    setCart(cart.map((item, i) => {
+      if (i !== index) return item;
+      
+      const novaQuantidade = Math.max(0.001, item.quantidade + delta);
+      const valorBruto = item.valor_unitario * novaQuantidade;
+      const descontoCalculado = (valorBruto * (item.desconto_percentual || 0)) / 100;
+      
+      return { 
+        ...item, 
+        quantidade: novaQuantidade,
+        desconto: descontoCalculado
+      };
+    }));
   };
 
   // Remover item
@@ -877,13 +897,23 @@ export default function NovaVenda() {
     setCart(cart.filter((_, i) => i !== index));
   };
 
-  // Atualizar desconto do item
-  const handleUpdateItemDiscount = (index: number, desconto: number) => {
-    setCart(cart.map((item, i) =>
-      i === index
-        ? { ...item, desconto: Math.max(0, Math.min(desconto, item.valor_unitario * item.quantidade)) }
-        : item
-    ));
+  // Atualizar desconto do item (em percentual)
+  const handleUpdateItemDiscount = (index: number, percentual: number) => {
+    // Limitar ao percentual máximo permitido pelo perfil
+    const percentualLimitado = Math.max(0, Math.min(percentual, limiteDescontoMaximo));
+    
+    setCart(cart.map((item, i) => {
+      if (i !== index) return item;
+      
+      const valorBruto = item.valor_unitario * item.quantidade;
+      const descontoCalculado = (valorBruto * percentualLimitado) / 100;
+      
+      return { 
+        ...item, 
+        desconto: descontoCalculado,
+        desconto_percentual: percentualLimitado
+      };
+    }));
   };
 
   // Selecionar cliente
@@ -1891,9 +1921,11 @@ _PrimeCamp Assistência Técnica_`;
                                 type="number"
                                 value={item.quantidade}
                                 onChange={(e) => {
-                                  const qtd = parseFloat(e.target.value) || 0;
+                                  const qtd = Math.max(0.001, parseFloat(e.target.value) || 0);
+                                  const valorBruto = item.valor_unitario * qtd;
+                                  const descontoCalculado = (valorBruto * (item.desconto_percentual || 0)) / 100;
                                   setCart(cart.map((it, i) =>
-                                    i === index ? { ...it, quantidade: Math.max(0.001, qtd) } : it
+                                    i === index ? { ...it, quantidade: qtd, desconto: descontoCalculado } : it
                                   ));
                                 }}
                                 className="w-14 md:w-16 h-8 md:h-7 text-center text-xs md:text-sm"
@@ -1917,8 +1949,10 @@ _PrimeCamp Assistência Técnica_`;
                               value={item.valor_unitario}
                               onChange={(e) => {
                                 const valor = parseFloat(e.target.value) || 0;
+                                const valorBruto = valor * item.quantidade;
+                                const descontoCalculado = (valorBruto * (item.desconto_percentual || 0)) / 100;
                                 setCart(cart.map((it, i) =>
-                                  i === index ? { ...it, valor_unitario: valor } : it
+                                  i === index ? { ...it, valor_unitario: valor, desconto: descontoCalculado } : it
                                 ));
                               }}
                               className="h-8 md:h-7 text-xs md:text-sm"
@@ -1926,17 +1960,27 @@ _PrimeCamp Assistência Técnica_`;
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Desconto</Label>
-                            <Input
-                              type="number"
-                              value={item.desconto || 0}
-                              onChange={(e) => {
-                                const desconto = parseFloat(e.target.value) || 0;
-                                handleUpdateItemDiscount(index, desconto);
-                              }}
-                              className="h-8 md:h-7 text-xs md:text-sm"
-                              step="0.01"
-                            />
+                            <Label className="text-xs">Desc. % (máx {limiteDescontoMaximo}%)</Label>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                value={item.desconto_percentual || 0}
+                                onChange={(e) => {
+                                  const percentual = parseFloat(e.target.value) || 0;
+                                  handleUpdateItemDiscount(index, percentual);
+                                }}
+                                className="h-8 md:h-7 text-xs md:text-sm w-16"
+                                step="0.5"
+                                min="0"
+                                max={limiteDescontoMaximo}
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                            {(item.desconto || 0) > 0 && (
+                              <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                                -{currencyFormatters.brl(item.desconto || 0)}
+                              </p>
+                            )}
                           </div>
                           <div className="text-right">
                             <Label className="text-xs">Total</Label>
