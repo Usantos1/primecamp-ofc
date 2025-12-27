@@ -687,9 +687,28 @@ app.post('/api/query/:table', async (req, res) => {
     let sql = `SELECT ${fields} FROM ${tableName}`;
     if (whereClause) sql += ` ${whereClause}`;
 
-    if (orderBy) {
-      const direction = orderBy.ascending === false ? 'DESC' : 'ASC';
-      sql += ` ORDER BY ${orderBy.field} ${direction}`;
+    // Validar coluna de ordenação para evitar erro "column ... does not exist"
+    if (orderBy && orderBy.field) {
+      let columnExists = true;
+      try {
+        const colCheck = await pool.query(
+          `SELECT 1 FROM information_schema.columns 
+           WHERE table_schema = 'public' 
+             AND table_name = $1 
+             AND column_name = $2`,
+          [table.includes('.') ? table.split('.')[1] : table, orderBy.field]
+        );
+        columnExists = colCheck.rows.length > 0;
+      } catch (e) {
+        console.warn(`[Query] Falha ao checar coluna ${orderBy.field} em ${tableName}:`, e.message);
+      }
+
+      if (columnExists) {
+        const direction = orderBy.ascending === false ? 'DESC' : 'ASC';
+        sql += ` ORDER BY ${orderBy.field} ${direction}`;
+      } else {
+        console.warn(`[Query] Coluna de ordenação '${orderBy.field}' não existe em ${tableName}, ignorando ORDER BY.`);
+      }
     }
 
     if (limit) {
