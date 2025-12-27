@@ -40,10 +40,10 @@ export const TeamPermissionsManager = () => {
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('team_permissions')
+      const { data, error } = await from('team_permissions')
         .select('*')
-        .execute().order('department_name');
+        .order('department_name')
+        .execute();
 
       if (error) {
         toast({ title: "Erro", description: "Erro ao carregar permissões", variant: "destructive" });

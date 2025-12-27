@@ -6,46 +6,57 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useQuizzes(trainingId?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: quizzes, isLoading } = useQuery({
     queryKey: ['training-quizzes', trainingId],
     queryFn: async () => {
       if (!trainingId) return [];
       
-      const { data, error } = await supabase
-        .from('training_quizzes')
-        .select(`
-          *,
-          quiz_questions (
-            *,
-            quiz_question_options (*)
-          .execute())
-        `)
+      // Buscar quizzes
+      const { data: quizzesData, error: quizzesError } = await from('training_quizzes')
+        .select('*')
         .eq('training_id', trainingId)
-        .order('order_index', { ascending: true });
+        .order('order_index', { ascending: true })
+        .execute();
       
-      if (error) throw error;
+      if (quizzesError) throw quizzesError;
       
-      // Sort questions and options
-      return data.map(quiz => ({
-        ...quiz,
-        quiz_questions: (quiz.quiz_questions || []).sort((a: any, b: any) => 
-          a.order_index - b.order_index
-        ).map((q: any) => ({
-          ...q,
-          quiz_question_options: (q.quiz_question_options || []).sort((a: any, b: any) => 
-            a.order_index - b.order_index
-          )
-        }))
+      // Para cada quiz, buscar questões e opções
+      const quizzesWithQuestions = await Promise.all((quizzesData || []).map(async (quiz: any) => {
+        const { data: questions } = await from('quiz_questions')
+          .select('*')
+          .eq('quiz_id', quiz.id)
+          .order('order_index', { ascending: true })
+          .execute();
+        
+        const questionsWithOptions = await Promise.all((questions || []).map(async (question: any) => {
+          const { data: options } = await from('quiz_question_options')
+            .select('*')
+            .eq('question_id', question.id)
+            .order('order_index', { ascending: true })
+            .execute();
+          
+          return {
+            ...question,
+            quiz_question_options: options || []
+          };
+        }));
+        
+        return {
+          ...quiz,
+          quiz_questions: questionsWithOptions
+        };
       }));
+      
+      return quizzesWithQuestions;
     },
     enabled: !!trainingId
   });
 
   const createQuiz = useMutation({
     mutationFn: async (quiz: any) => {
-      const { data, error } = await supabase
-        .from('training_quizzes')
+      const { data, error } = await from('training_quizzes')
         .insert(quiz)
         .select()
         .single();
@@ -64,10 +75,10 @@ export function useQuizzes(trainingId?: string) {
 
   const updateQuiz = useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
-      const { error } = await supabase
-        .from('training_quizzes')
+      const { error } = await from('training_quizzes')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
       
       if (error) throw error;
     },
@@ -79,8 +90,7 @@ export function useQuizzes(trainingId?: string) {
 
   const deleteQuiz = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('training_quizzes')
+      const { error } = await from('training_quizzes')
         .delete()
         .eq('id', id);
       
@@ -95,8 +105,7 @@ export function useQuizzes(trainingId?: string) {
   const createQuestion = useMutation({
     mutationFn: async ({ quizId, question, options }: any) => {
       // Create question
-      const { data: questionData, error: questionError } = await supabase
-        .from('quiz_questions')
+      const { data: questionData, error: questionError } = await from('quiz_questions')
         .insert({
           quiz_id: quizId,
           question_text: question.question_text,
@@ -111,18 +120,15 @@ export function useQuizzes(trainingId?: string) {
 
       // Create options if provided
       if (options && options.length > 0) {
-        const { error: optionsError } = await supabase
-          .from('quiz_question_options')
-          .insert(
-            options.map((opt: any, idx: number) => ({
+        for (const [idx, opt] of options.entries()) {
+          await from('quiz_question_options')
+            .insert({
               question_id: questionData.id,
               option_text: opt.option_text,
               is_correct: opt.is_correct || false,
               order_index: idx
-            }))
-          );
-        
-        if (optionsError) throw optionsError;
+            });
+        }
       }
 
       return questionData;
@@ -135,40 +141,36 @@ export function useQuizzes(trainingId?: string) {
 
   const updateQuestion = useMutation({
     mutationFn: async ({ id, question, options }: any) => {
-      const { error: questionError } = await supabase
-        .from('quiz_questions')
+      const { error: questionError } = await from('quiz_questions')
         .update({
           question_text: question.question_text,
           question_type: question.question_type,
           points: question.points,
           order_index: question.order_index
         })
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
       
       if (questionError) throw questionError;
 
       // Update options
       if (options) {
         // Delete existing options
-        await supabase
-          .from('quiz_question_options')
+        await from('quiz_question_options')
           .delete()
           .eq('question_id', id);
 
         // Insert new options
         if (options.length > 0) {
-          const { error: optionsError } = await supabase
-            .from('quiz_question_options')
-            .insert(
-              options.map((opt: any, idx: number) => ({
+          for (const [idx, opt] of options.entries()) {
+            await from('quiz_question_options')
+              .insert({
                 question_id: id,
                 option_text: opt.option_text,
                 is_correct: opt.is_correct || false,
                 order_index: idx
-              }))
-            );
-          
-          if (optionsError) throw optionsError;
+              });
+          }
         }
       }
     },
@@ -180,8 +182,7 @@ export function useQuizzes(trainingId?: string) {
 
   const deleteQuestion = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('quiz_questions')
+      const { error } = await from('quiz_questions')
         .delete()
         .eq('id', id);
       
@@ -195,61 +196,65 @@ export function useQuizzes(trainingId?: string) {
 
   // Get user attempts for a quiz
   const { data: userAttempts } = useQuery({
-    queryKey: ['quiz-attempts', trainingId],
+    queryKey: ['quiz-attempts', trainingId, user?.id],
     queryFn: async () => {
-      if (!trainingId) return [];
-      
-      const { user } = useAuth();
-      if (!user) return [];
+      if (!trainingId || !user) return [];
 
-      const { data: quizzesData } = await supabase
-        .from('training_quizzes')
+      const { data: quizzesData } = await from('training_quizzes')
         .select('id')
-        .execute().eq('training_id', trainingId);
+        .eq('training_id', trainingId)
+        .execute();
 
       if (!quizzesData || quizzesData.length === 0) return [];
 
-      const quizIds = quizzesData.map(q => q.id);
+      const quizIds = quizzesData.map((q: any) => q.id);
 
-      const { data, error } = await supabase
-        .from('quiz_attempts')
+      const { data, error } = await from('quiz_attempts')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .in('quiz_id', quizIds)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .execute();
       
       if (error) throw error;
       return data || [];
     },
-    enabled: !!trainingId
+    enabled: !!trainingId && !!user
   });
 
   const submitQuizAttempt = useMutation({
     mutationFn: async ({ quizId, answers, timeSpent }: any) => {
-      const { user } = useAuth();
       if (!user) throw new Error('User not authenticated');
 
-      // Get quiz and questions
-      const { data: quizData, error: quizError } = await supabase
-        .from('training_quizzes')
-        .select(`
-          *,
-          quiz_questions (
-            *,
-            quiz_question_options (*)
-          .execute())
-        `)
+      // Get quiz
+      const { data: quizData, error: quizError } = await from('training_quizzes')
+        .select('*')
         .eq('id', quizId)
         .single();
 
       if (quizError) throw quizError;
+
+      // Get questions
+      const { data: questions } = await from('quiz_questions')
+        .select('*')
+        .eq('quiz_id', quizId)
+        .execute();
+
+      // Get options for each question
+      const questionsWithOptions = await Promise.all((questions || []).map(async (q: any) => {
+        const { data: options } = await from('quiz_question_options')
+          .select('*')
+          .eq('question_id', q.id)
+          .execute();
+        return { ...q, quiz_question_options: options || [] };
+      }));
 
       // Calculate score
       let totalPoints = 0;
       let earnedPoints = 0;
       const attemptAnswers: any[] = [];
 
-      for (const question of quizData.quiz_questions || []) {
+      for (const question of questionsWithOptions) {
         totalPoints += question.points || 1.0;
         const userAnswer = answers[question.id];
         let isCorrect = false;
@@ -259,11 +264,6 @@ export function useQuizzes(trainingId?: string) {
           const correctOption = question.quiz_question_options?.find((opt: any) => opt.is_correct);
           isCorrect = userAnswer?.selected_option_id === correctOption?.id;
           pointsEarned = isCorrect ? (question.points || 1.0) : 0;
-        } else if (question.question_type === 'short_answer') {
-          // For short answer, we'll need manual grading or simple text comparison
-          // For now, we'll mark as needing review
-          isCorrect = false;
-          pointsEarned = 0;
         }
 
         if (isCorrect) earnedPoints += pointsEarned;
@@ -281,8 +281,7 @@ export function useQuizzes(trainingId?: string) {
       const passed = score >= (quizData.passing_score || 70);
 
       // Create attempt
-      const { data: attemptData, error: attemptError } = await supabase
-        .from('quiz_attempts')
+      const { data: attemptData, error: attemptError } = await from('quiz_attempts')
         .insert({
           quiz_id: quizId,
           user_id: user.id,
@@ -297,16 +296,13 @@ export function useQuizzes(trainingId?: string) {
       if (attemptError) throw attemptError;
 
       // Create attempt answers
-      const { error: answersError } = await supabase
-        .from('quiz_attempt_answers')
-        .insert(
-          attemptAnswers.map((ans: any) => ({
+      for (const ans of attemptAnswers) {
+        await from('quiz_attempt_answers')
+          .insert({
             attempt_id: attemptData.id,
             ...ans
-          }))
-        );
-
-      if (answersError) throw answersError;
+          });
+      }
 
       return { attempt: attemptData, score, passed };
     },
@@ -328,4 +324,3 @@ export function useQuizzes(trainingId?: string) {
     submitQuizAttempt
   };
 }
-

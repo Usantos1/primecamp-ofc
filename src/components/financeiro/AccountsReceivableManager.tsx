@@ -63,10 +63,9 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['accounts-receivable', month, statusFilter],
     queryFn: async () => {
-      let query = supabase
-        .from('accounts_receivable')
+      let query = from('accounts_receivable')
         .select('*')
-        .execute().order('data_vencimento', { ascending: true });
+        .order('data_vencimento', { ascending: true });
 
       if (month) {
         const startDate = `${month}-01`;

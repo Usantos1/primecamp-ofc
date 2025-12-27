@@ -518,11 +518,11 @@ export const useDiscTest = () => {
       let finalTestId = testId;
       if (!finalTestId) {
         console.log('[DISC] testId ausente, buscando teste ativo como fallback...');
-        const { data: tests, error: testError } = await supabase
-          .from('disc_tests')
+        const { data: tests, error: testError } = await from('disc_tests')
           .select('*')
-          .execute().eq('is_active', true)
-          .limit(1);
+          .eq('is_active', true)
+          .limit(1)
+          .execute();
           
         if (testError || !tests || tests.length === 0) {
           throw new Error('Nenhum teste ativo encontrado');
@@ -538,8 +538,7 @@ export const useDiscTest = () => {
         .eq('user_id', user.id)
         .eq('test_id', finalTestId)
         .eq('is_completed', false)
-        .maybeSingle()
-        .execute();
+        .maybeSingle();
 
       if (fetchError) {
         console.error(`[DISC] Erro ao buscar resposta existente:`, fetchError);

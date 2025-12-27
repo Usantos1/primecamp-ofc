@@ -67,13 +67,6 @@ export default function CadastrosBase() {
       color: 'text-purple-600',
     },
     {
-      title: 'Clientes',
-      description: 'Cadastro de clientes e fornecedores',
-      icon: UserCircle,
-      path: '/pdv/clientes',
-      color: 'text-purple-600',
-    },
-    {
       title: 'Nova OS',
       description: 'Criar nova Ordem de Serviço',
       icon: Wrench,

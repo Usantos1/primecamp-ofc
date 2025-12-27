@@ -58,11 +58,11 @@ export const TimeClockWidget = () => {
 
       try {
         const today = new Date().toISOString().split('T')[0];
-        const { data, error } = await supabase
-          .from('time_clock')
+        const { data, error } = await from('time_clock')
           .select('*')
-          .execute().eq('date', today)
-          .order('created_at', { ascending: false });
+          .eq('date', today)
+          .order('created_at', { ascending: false })
+          .execute();
 
         if (error) {
           console.error('Erro ao buscar registros do dia:', error);

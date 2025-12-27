@@ -56,10 +56,9 @@ export const AdminTimeClockManager = () => {
   const fetchRecords = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('time_clock')
+      let query = from('time_clock')
         .select('*')
-        .execute().order('date', { ascending: false });
+        .order('date', { ascending: false });
 
       // Apply date filter
       if (dateFilter.start) {
@@ -69,7 +68,7 @@ export const AdminTimeClockManager = () => {
         query = query.lte('date', dateFilter.end);
       }
 
-      const { data, error } = await query.limit(500);
+      const { data, error } = await query.limit(500).execute();
 
       if (error) {
         console.error('Error fetching time records:', error);

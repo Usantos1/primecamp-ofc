@@ -11,8 +11,7 @@ export function useLessons(moduleId?: string) {
     queryFn: async () => {
       if (!moduleId) return [];
       
-      const { data, error } = await supabase
-        .from('training_lessons')
+      const { data, error } = await from('training_lessons')
         .select('*')
         .eq('module_id', moduleId)
         .order('order_index', { ascending: true })
@@ -26,8 +25,7 @@ export function useLessons(moduleId?: string) {
 
   const createLesson = useMutation({
     mutationFn: async (lesson: any) => {
-      const { data, error } = await supabase
-        .from('training_lessons')
+      const { data, error } = await from('training_lessons')
         .insert(lesson)
         .select()
         .single();
@@ -47,10 +45,10 @@ export function useLessons(moduleId?: string) {
 
   const updateLesson = useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
-      const { error } = await supabase
-        .from('training_lessons')
+      const { error } = await from('training_lessons')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
       
       if (error) throw error;
     },
@@ -63,8 +61,7 @@ export function useLessons(moduleId?: string) {
 
   const deleteLesson = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('training_lessons')
+      const { error } = await from('training_lessons')
         .delete()
         .eq('id', id);
       
@@ -80,7 +77,7 @@ export function useLessons(moduleId?: string) {
   const reorderLessons = useMutation({
     mutationFn: async (lessons: { id: string; order_index: number }[]) => {
       const updates = lessons.map(l => 
-        from('training_lessons').eq('id', l.id).update({ order_index: l.order_index })
+        from('training_lessons').update({ order_index: l.order_index }).eq('id', l.id).execute()
       );
       
       await Promise.all(updates);

@@ -6,109 +6,112 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useTrainings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: trainings, isLoading } = useQuery({
     queryKey: ['trainings'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trainings')
-        .select(`
-          *,
-          training_modules (
-            id,
-            title,
-            description,
-            order_index,
-            training_lessons (
-              id,
-              title,
-              description,
-              video_url,
-              duration_minutes,
-              order_index
-            )
-          .execute())
-        `)
-        .order('created_at', { ascending: false });
+      // Buscar treinamentos
+      const { data: trainingsData, error: trainingsError } = await from('trainings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .execute();
       
-      if (error) throw error;
+      if (trainingsError) throw trainingsError;
       
-      // Sort modules and lessons
-      return data?.map(training => ({
-        ...training,
-        training_modules: training.training_modules
-          ?.sort((a: any, b: any) => a.order_index - b.order_index)
-          .map((module: any) => ({
+      // Para cada treinamento, buscar módulos e lições
+      const trainingsWithModules = await Promise.all((trainingsData || []).map(async (training: any) => {
+        const { data: modules } = await from('training_modules')
+          .select('*')
+          .eq('training_id', training.id)
+          .order('order_index', { ascending: true })
+          .execute();
+        
+        const modulesWithLessons = await Promise.all((modules || []).map(async (module: any) => {
+          const { data: lessons } = await from('training_lessons')
+            .select('*')
+            .eq('module_id', module.id)
+            .order('order_index', { ascending: true })
+            .execute();
+          
+          return {
             ...module,
-            training_lessons: module.training_lessons
-              ?.sort((a: any, b: any) => a.order_index - b.order_index) || []
-          })) || []
+            training_lessons: lessons || []
+          };
+        }));
+        
+        return {
+          ...training,
+          training_modules: modulesWithLessons
+        };
       }));
+      
+      return trainingsWithModules;
     }
   });
 
   const { data: myAssignments } = useQuery({
-    queryKey: ['my-training-assignments'],
+    queryKey: ['my-training-assignments', user?.id],
     queryFn: async () => {
-      const { user } = useAuth();
       if (!user) return [];
 
-      const { data, error } = await supabase
-        .from('training_assignments')
-        .select(`
-          *,
-          training:trainings(
-            *,
-            training_modules (
-              id,
-              title,
-              description,
-              order_index,
-              training_lessons (
-                id,
-                title,
-                description,
-                video_url,
-                duration_minutes,
-                order_index
-              )
-            .execute())
-          )
-        `)
+      // Buscar assignments do usuário
+      const { data: assignments, error: assignmentsError } = await from('training_assignments')
+        .select('*')
         .eq('user_id', user.id)
-        .order('assigned_at', { ascending: false });
+        .order('assigned_at', { ascending: false })
+        .execute();
       
-      if (error) throw error;
+      if (assignmentsError) throw assignmentsError;
       
-      // Sort modules and lessons, and get progress
-      const assignmentsWithProgress = await Promise.all(data.map(async (assignment) => {
-        const training = assignment.training;
-        
-        // Get lesson progress for this training
-        const { data: progressData } = await supabase
-          .from('lesson_progress')
+      // Para cada assignment, buscar o treinamento completo e progresso
+      const assignmentsWithProgress = await Promise.all((assignments || []).map(async (assignment: any) => {
+        // Buscar treinamento
+        const { data: trainingData } = await from('trainings')
           .select('*')
-          .execute().eq('user_id', user.id)
-          .eq('training_id', training.id);
+          .eq('id', assignment.training_id)
+          .single();
         
-        const modules = training.training_modules
-          ?.sort((a: any, b: any) => a.order_index - b.order_index)
-          .map((module: any) => ({
+        if (!trainingData) return null;
+        
+        // Buscar módulos
+        const { data: modules } = await from('training_modules')
+          .select('*')
+          .eq('training_id', trainingData.id)
+          .order('order_index', { ascending: true })
+          .execute();
+        
+        // Buscar lições para cada módulo
+        const modulesWithLessons = await Promise.all((modules || []).map(async (module: any) => {
+          const { data: lessons } = await from('training_lessons')
+            .select('*')
+            .eq('module_id', module.id)
+            .order('order_index', { ascending: true })
+            .execute();
+          
+          return {
             ...module,
-            training_lessons: module.training_lessons
-              ?.sort((a: any, b: any) => a.order_index - b.order_index) || []
-          })) || [];
+            training_lessons: lessons || []
+          };
+        }));
         
-        // Calculate progress
-        const totalLessons = modules.reduce((sum, m) => sum + (m.training_lessons?.length || 0), 0);
-        const completedLessons = progressData?.filter(p => p.completed).length || 0;
+        // Buscar progresso
+        const { data: progressData } = await from('lesson_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('training_id', trainingData.id)
+          .execute();
+        
+        // Calcular progresso
+        const totalLessons = modulesWithLessons.reduce((sum, m) => sum + (m.training_lessons?.length || 0), 0);
+        const completedLessons = progressData?.filter((p: any) => p.completed).length || 0;
         const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
         
         return {
           ...assignment,
           training: {
-            ...training,
-            training_modules: modules
+            ...trainingData,
+            training_modules: modulesWithLessons
           },
           totalLessons,
           completedLessons,
@@ -116,16 +119,14 @@ export function useTrainings() {
         };
       }));
       
-      return assignmentsWithProgress;
-    }
+      return assignmentsWithProgress.filter(Boolean);
+    },
+    enabled: !!user
   });
 
   const createTraining = useMutation({
     mutationFn: async (training: any) => {
-      const { user } = useAuth();
-      
-      const { data, error } = await supabase
-        .from('trainings')
+      const { data, error } = await from('trainings')
         .insert({ ...training, created_by: user?.id })
         .select()
         .single();
@@ -144,10 +145,10 @@ export function useTrainings() {
 
   const updateTraining = useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
-      const { error } = await supabase
-        .from('trainings')
+      const { error } = await from('trainings')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
       
       if (error) throw error;
     },
@@ -159,8 +160,7 @@ export function useTrainings() {
 
   const deleteTraining = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('trainings')
+      const { error } = await from('trainings')
         .delete()
         .eq('id', id);
       
@@ -184,11 +184,9 @@ export function useTrainings() {
       status: 'in_progress' | 'completed';
       lastWatchedSeconds: number;
     }) => {
-      const { user } = useAuth();
       if (!user) throw new Error('Not authenticated');
       
-      const { error } = await supabase
-        .from('training_assignments')
+      const { error } = await from('training_assignments')
         .update({ 
           progress, 
           status,
@@ -196,7 +194,8 @@ export function useTrainings() {
           completed_at: status === 'completed' ? new Date().toISOString() : null
         })
         .eq('training_id', trainingId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .execute();
       
       if (error) throw error;
     },
@@ -216,22 +215,19 @@ export function useTrainings() {
       userIds: string[];
       dueDate?: string;
     }) => {
-      const { user } = useAuth();
       if (!user) throw new Error('Not authenticated');
       
-      const assignments = userIds.map(userId => ({
-        training_id: trainingId,
-        user_id: userId,
-        assigned_by: user.id,
-        due_date: dueDate,
-        status: 'assigned' as const
-      }));
-      
-      const { error } = await supabase
-        .from('training_assignments')
-        .upsert(assignments, { onConflict: 'training_id,user_id' });
-      
-      if (error) throw error;
+      // Inserir um por um para evitar conflitos
+      for (const userId of userIds) {
+        await from('training_assignments')
+          .upsert({
+            training_id: trainingId,
+            user_id: userId,
+            assigned_by: user.id,
+            due_date: dueDate,
+            status: 'assigned'
+          }, { onConflict: 'training_id,user_id' });
+      }
     },
     onSuccess: () => {
       toast({ title: 'Treinamento atribuído com sucesso' });

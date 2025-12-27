@@ -11,29 +11,37 @@ export function useModules(trainingId?: string) {
     queryFn: async () => {
       if (!trainingId) return [];
       
-      const { data, error } = await supabase
-        .from('training_modules')
-        .select('*, training_lessons(*).execute()')
+      // Buscar módulos
+      const { data: modulesData, error: modulesError } = await from('training_modules')
+        .select('*')
         .eq('training_id', trainingId)
-        .order('order_index', { ascending: true });
+        .order('order_index', { ascending: true })
+        .execute();
       
-      if (error) throw error;
+      if (modulesError) throw modulesError;
       
-      // Sort lessons within each module
-      return data.map(module => ({
-        ...module,
-        training_lessons: module.training_lessons?.sort((a: any, b: any) => 
-          a.order_index - b.order_index
-        ) || []
+      // Buscar lições para cada módulo
+      const modulesWithLessons = await Promise.all((modulesData || []).map(async (module: any) => {
+        const { data: lessons } = await from('training_lessons')
+          .select('*')
+          .eq('module_id', module.id)
+          .order('order_index', { ascending: true })
+          .execute();
+        
+        return {
+          ...module,
+          training_lessons: lessons || []
+        };
       }));
+      
+      return modulesWithLessons;
     },
     enabled: !!trainingId
   });
 
   const createModule = useMutation({
     mutationFn: async (module: any) => {
-      const { data, error } = await supabase
-        .from('training_modules')
+      const { data, error } = await from('training_modules')
         .insert(module)
         .select()
         .single();
@@ -52,10 +60,10 @@ export function useModules(trainingId?: string) {
 
   const updateModule = useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
-      const { error } = await supabase
-        .from('training_modules')
+      const { error } = await from('training_modules')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .execute();
       
       if (error) throw error;
     },
@@ -67,8 +75,7 @@ export function useModules(trainingId?: string) {
 
   const deleteModule = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('training_modules')
+      const { error } = await from('training_modules')
         .delete()
         .eq('id', id);
       
@@ -83,7 +90,7 @@ export function useModules(trainingId?: string) {
   const reorderModules = useMutation({
     mutationFn: async (modules: { id: string; order_index: number }[]) => {
       const updates = modules.map(m => 
-        from('training_modules').eq('id', m.id).update({ order_index: m.order_index })
+        from('training_modules').update({ order_index: m.order_index }).eq('id', m.id).execute()
       );
       
       await Promise.all(updates);

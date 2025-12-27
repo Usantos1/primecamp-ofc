@@ -544,17 +544,32 @@ export function useSales() {
   // Buscar venda por ID
   const getSaleById = useCallback(async (id: string): Promise<Sale | null> => {
     try {
-      const { data, error } = await from('sales')
-        .select(`
-          *,
-          items:sale_items(*).execute(),
-          payments:payments(*)
-        `)
+      // Buscar venda
+      const { data: saleData, error: saleError } = await from('sales')
+        .select('*')
         .eq('id', id)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (saleError) throw saleError;
+      if (!saleData) return null;
+
+      // Buscar items da venda
+      const { data: itemsData } = await from('sale_items')
+        .select('*')
+        .eq('sale_id', id)
+        .execute();
+
+      // Buscar pagamentos
+      const { data: paymentsData } = await from('payments')
+        .select('*')
+        .eq('sale_id', id)
+        .execute();
+
+      return {
+        ...saleData,
+        items: itemsData || [],
+        payments: paymentsData || []
+      };
     } catch (error) {
       console.error('Erro ao buscar venda:', error);
       return null;

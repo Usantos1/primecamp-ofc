@@ -28,7 +28,7 @@ export function useProducts(limit = 50, search = '') {
       
       let query = from('produtos')
         .select('*')
-        .execute().order('atualizado_em', { ascending: false });
+        .order('atualizado_em', { ascending: false });
 
       // Apply filters
       if (search) {

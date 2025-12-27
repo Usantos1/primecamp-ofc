@@ -121,8 +121,7 @@ const Index = () => {
       icon: UserCircle,
       color: 'bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-400',
       items: [
-        { label: 'Lista de Clientes', path: '/pdv/clientes', icon: List, permission: 'clientes.view' },
-        { label: 'Buscar Cliente', path: '/pdv/clientes', icon: Search, permission: 'clientes.view' },
+        { label: 'Gerenciar Clientes', path: '/pdv/clientes', icon: List, permission: 'clientes.view' },
       ].filter(item => !item.permission || (permissionsLoading ? false : hasPermission(item.permission))),
     },
   ].filter(section => section.items.length > 0);

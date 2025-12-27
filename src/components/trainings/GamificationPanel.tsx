@@ -13,12 +13,12 @@ export function GamificationPanel() {
     queryFn: async () => {
       if (!user) return { total: 0, recent: [] };
       
-      const { data, error } = await supabase
-        .from('user_points')
+      const { data, error } = await from('user_points')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(10)
+        .execute();
       
       if (error) throw error;
       
@@ -33,11 +33,11 @@ export function GamificationPanel() {
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
-        .from('user_badges')
+      const { data, error } = await from('user_badges')
         .select('*')
-        .execute().eq('user_id', user.id)
-        .order('earned_at', { ascending: false });
+        .eq('user_id', user.id)
+        .order('earned_at', { ascending: false })
+        .execute();
       
       if (error) throw error;
       return data || [];

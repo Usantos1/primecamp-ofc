@@ -50,10 +50,9 @@ const CandidateDiscResult = () => {
       }
       
       // First try to get completed result by session ID
-      const { data: completedData, error: completedError } = await supabase
-        .from('candidate_responses')
+      const { data: completedData, error: completedError } = await from('candidate_responses')
         .select('*')
-        .execute().eq('test_id', sessionId)
+        .eq('test_id', sessionId)
         .eq('is_completed', true)
         .maybeSingle();
 
@@ -71,10 +70,9 @@ const CandidateDiscResult = () => {
       }
 
       // If no completed result, check if test session exists at all
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('candidate_responses')
+      const { data: sessionData, error: sessionError } = await from('candidate_responses')
         .select('*')
-        .execute().eq('test_id', sessionId)
+        .eq('test_id', sessionId)
         .maybeSingle();
 
       if (sessionError) {
@@ -87,12 +85,12 @@ const CandidateDiscResult = () => {
         console.log('🔍 Session not found or empty, searching for completed session...');
         
         // Try to find any completed session (most recent one)
-        const { data: completedSessions, error: searchError } = await supabase
-          .from('candidate_responses')
+        const { data: completedSessions, error: searchError } = await from('candidate_responses')
           .select('*')
-          .execute().eq('is_completed', true)
+          .eq('is_completed', true)
           .order('completion_date', { ascending: false })
-          .limit(1);
+          .limit(1)
+          .execute();
 
         if (completedSessions && completedSessions.length > 0 && !searchError) {
           // Force immediate redirect to the completed session

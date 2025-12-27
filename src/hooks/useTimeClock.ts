@@ -36,12 +36,12 @@ export const useTimeClock = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('time_clock')
+      const { data, error } = await from('time_clock')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .order('date', { ascending: false })
-        .limit(30);
+        .limit(30)
+        .execute();
 
       if (error) {
         console.error('Error fetching time records:', error);

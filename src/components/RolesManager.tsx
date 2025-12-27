@@ -59,29 +59,27 @@ export function RolesManager() {
       setLoading(true);
 
       // Carregar roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('roles')
+      const { data: rolesData, error: rolesError } = await from('roles')
         .select('*')
-        .execute().order('display_name', { ascending: true });
+        .order('display_name', { ascending: true })
+        .execute();
 
       if (rolesError) throw rolesError;
       setRoles(rolesData || []);
 
       // Carregar permissões
-      const { data: permsData, error: permsError } = await supabase
-        .from('permissions')
+      const { data: permsData, error: permsError } = await from('permissions')
         .select('*')
-        .execute().order('category', { ascending: true })
-        .order('resource', { ascending: true })
-        .order('action', { ascending: true });
+        .order('category', { ascending: true })
+        .execute();
 
       if (permsError) throw permsError;
       setPermissions(permsData || []);
 
       // Carregar contagem de permissões por role
-      const { data: rolePermsData } = await supabase
-        .from('role_permissions')
-        .select('role_id').execute();
+      const { data: rolePermsData } = await from('role_permissions')
+        .select('role_id')
+        .execute();
 
       if (rolePermsData) {
         const countMap = new Map<string, number>();
@@ -109,10 +107,10 @@ export function RolesManager() {
 
   const loadRolePermissions = async (roleId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('role_permissions')
+      const { data, error } = await from('role_permissions')
         .select('permission_id')
-        .execute().eq('role_id', roleId);
+        .eq('role_id', roleId)
+        .execute();
 
       if (error) throw error;
 
