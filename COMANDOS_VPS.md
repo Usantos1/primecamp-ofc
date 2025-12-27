@@ -1,12 +1,31 @@
 # Comandos para executar na VPS
 
-## Opção 1: Script Automático (Recomendado)
+## ⚠️ IMPORTANTE: Se você está tendo erros no frontend (ex: "single().execute is not a function")
+
+**Use o script de deploy completo que faz rebuild do frontend:**
+
+```bash
+cd /root/primecamp-ofc
+git pull origin main
+bash DEPLOY_COMPLETO.sh
+```
+
+Este script:
+- Faz pull do código
+- Instala dependências
+- Faz rebuild completo do frontend (`npm run build`)
+- Reinicia o servidor
+- Testa o endpoint
+
+## Opção 1: Script Automático (Apenas Backend)
 
 ```bash
 cd /root/primecamp-ofc
 git pull origin main
 bash DEPLOY_TELEGRAM_INTEGRATION.sh
 ```
+
+**Nota:** Este script NÃO faz rebuild do frontend. Use apenas se já tiver feito o build anteriormente.
 
 ## Opção 2: Comandos Manuais
 
@@ -24,24 +43,33 @@ psql -U postgres -d banco_gestao -f CRIAR_TABELAS_FALTANDO.sql
 
 **Nota:** Alguns erros são normais se as tabelas já existirem (NOTICE: relation already exists).
 
-### 3. Reiniciar servidor Node.js
+### 3. Fazer rebuild do frontend (IMPORTANTE!)
+```bash
+# Instalar dependências (se necessário)
+npm install
+
+# Fazer build do frontend
+npm run build
+```
+
+### 4. Reiniciar servidor Node.js
 ```bash
 # Se estiver usando PM2:
-pm2 restart primecamp
+pm2 restart primecamp-api
 
 # Ou se não souber o nome:
 pm2 restart all
 
 # Ou reiniciar manualmente:
-pm2 stop primecamp
-pm2 start primecamp
+pm2 stop primecamp-api
+pm2 start primecamp-api
 
 # Verificar status:
 pm2 status
-pm2 logs primecamp --lines 50
+pm2 logs primecamp-api --lines 50
 ```
 
-### 4. Verificar se está funcionando
+### 5. Verificar se está funcionando
 ```bash
 # Ver logs do servidor
 pm2 logs primecamp --lines 100
@@ -54,9 +82,10 @@ curl -X POST https://api.primecamp.cloud/api/upsert/kv_store_2c4defad \
 
 ## Verificação Final
 
-1. Acesse a página de Integrações: `https://seu-dominio.com/integracoes`
-2. Configure os Chat IDs do Telegram
-3. Verifique se está salvando sem erros no console do navegador
+1. **Limpe o cache do navegador** (Ctrl+Shift+R ou Cmd+Shift+R)
+2. Acesse a página de Integrações: `https://primecamp.cloud/integracoes`
+3. Configure os Chat IDs do Telegram
+4. Verifique se está salvando sem erros no console do navegador (F12)
 
 ## Troubleshooting
 
