@@ -270,25 +270,37 @@ export function useSales() {
       // Log de auditoria
       await logAudit('update', 'sale', id, sale, updatedSale, 'Venda finalizada', user);
 
-      // Baixar estoque (o trigger também faz isso, mas garantimos aqui também)
+      // Baixar estoque dos produtos vendidos
       if (items) {
         for (const item of items) {
           if (item.produto_id && item.produto_tipo === 'produto') {
             try {
-              // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
-              // const { error: stockError } = await supabase.rpc('decrement_stock', {
-              //   produto_id: item.produto_id,
-              //   quantidade: item.quantidade
-              // });
+              // Buscar quantidade atual do produto
+              const { data: produto, error: produtoError } = await from('produtos')
+                .select('id, quantidade')
+                .eq('id', item.produto_id)
+                .single();
               
-              // Por enquanto, apenas logar que seria necessário decrementar estoque
-              console.log(`Estoque precisa ser decrementado: produto ${item.produto_id}, quantidade ${item.quantidade}`);
+              if (produtoError || !produto) {
+                console.error(`Erro ao buscar produto ${item.produto_id}:`, produtoError);
+                continue;
+              }
               
-              // Simular sucesso para não quebrar o fluxo
-              const stockError = null;
+              // Calcular nova quantidade
+              const quantidadeAtual = Number(produto.quantidade || 0);
+              const quantidadeVendida = Number(item.quantidade || 0);
+              const novaQuantidade = Math.max(0, quantidadeAtual - quantidadeVendida);
+              
+              // Atualizar estoque do produto
+              const { error: stockError } = await from('produtos')
+                .update({ quantidade: novaQuantidade })
+                .eq('id', item.produto_id)
+                .execute();
               
               if (stockError) {
                 console.error(`Erro ao baixar estoque do produto ${item.produto_id}:`, stockError);
+              } else {
+                console.log(`✅ Estoque baixado: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (-${quantidadeVendida})`);
               }
             } catch (error) {
               console.error(`Erro ao baixar estoque do produto ${item.produto_id}:`, error);
@@ -372,15 +384,45 @@ export function useSales() {
       // Reverter estoque se foi baixado
       if ((sale as any).stock_decremented) {
         try {
-          // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
-          console.log('Reversão de estoque precisa ser implementada na API para venda:', id);
-          const revertError = null; // await fetch(`${API_URL}/rpc/revert_stock_from_sale`, { ... });
-          if (revertError) {
-            console.error('Erro ao reverter estoque:', revertError);
-            // Não falhar o cancelamento se a reversão de estoque falhar
-          } else {
-            console.log('Estoque revertido com sucesso para a venda cancelada:', id);
+          // Buscar itens da venda para reverter o estoque
+          const { data: saleItems } = await from('sale_items')
+            .select('*')
+            .eq('sale_id', id)
+            .execute();
+          
+          if (saleItems) {
+            for (const item of saleItems) {
+              if (item.produto_id && item.produto_tipo === 'produto') {
+                // Buscar quantidade atual do produto
+                const { data: produto } = await from('produtos')
+                  .select('id, quantidade')
+                  .eq('id', item.produto_id)
+                  .single();
+                
+                if (produto) {
+                  const quantidadeAtual = Number(produto.quantidade || 0);
+                  const quantidadeVendida = Number(item.quantidade || 0);
+                  const novaQuantidade = quantidadeAtual + quantidadeVendida;
+                  
+                  // Devolver ao estoque
+                  await from('produtos')
+                    .update({ quantidade: novaQuantidade })
+                    .eq('id', item.produto_id)
+                    .execute();
+                  
+                  console.log(`✅ Estoque revertido: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (+${quantidadeVendida})`);
+                }
+              }
+            }
           }
+          
+          // Marcar que o estoque foi revertido
+          await from('sales')
+            .update({ stock_decremented: false })
+            .eq('id', id)
+            .execute();
+          
+          console.log('Estoque revertido com sucesso para a venda cancelada:', id);
         } catch (error) {
           console.error('Erro ao reverter estoque:', error);
           // Não falhar o cancelamento se a reversão de estoque falhar
@@ -439,15 +481,38 @@ export function useSales() {
       // Se for venda finalizada e tiver estoque baixado, reverter
       if (!sale.is_draft && (sale as any).stock_decremented) {
         try {
-          // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
-          console.log('Reversão de estoque precisa ser implementada na API para venda:', id);
-          const revertError = null; // await fetch(`${API_URL}/rpc/revert_stock_from_sale`, { ... });
-          if (revertError) {
-            console.error('Erro ao reverter estoque:', revertError);
-            // Não falhar a exclusão se a reversão de estoque falhar, mas logar o erro
-          } else {
-            console.log('Estoque revertido com sucesso para a venda excluída:', id);
+          // Buscar itens da venda para reverter o estoque
+          const { data: saleItems } = await from('sale_items')
+            .select('*')
+            .eq('sale_id', id)
+            .execute();
+          
+          if (saleItems) {
+            for (const item of saleItems) {
+              if (item.produto_id && item.produto_tipo === 'produto') {
+                // Buscar quantidade atual do produto
+                const { data: produto } = await from('produtos')
+                  .select('id, quantidade')
+                  .eq('id', item.produto_id)
+                  .single();
+                
+                if (produto) {
+                  const quantidadeAtual = Number(produto.quantidade || 0);
+                  const quantidadeVendida = Number(item.quantidade || 0);
+                  const novaQuantidade = quantidadeAtual + quantidadeVendida;
+                  
+                  // Devolver ao estoque
+                  await from('produtos')
+                    .update({ quantidade: novaQuantidade })
+                    .eq('id', item.produto_id)
+                    .execute();
+                  
+                  console.log(`✅ Estoque revertido: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (+${quantidadeVendida})`);
+                }
+              }
+            }
           }
+          console.log('Estoque revertido com sucesso para a venda excluída:', id);
         } catch (error) {
           console.error('Erro ao reverter estoque:', error);
           // Não falhar a exclusão se a reversão de estoque falhar
