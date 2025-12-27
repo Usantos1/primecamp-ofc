@@ -14,48 +14,22 @@ interface QuickNavItem {
   badge?: number;
 }
 
+// Navegação rápida do PDV (atalhos globais)
+const PDV_NAV_ITEMS: QuickNavItem[] = [
+  { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+  { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
+  { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
+  { label: 'Produtos', icon: Package, path: '/produtos' },
+  { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
+];
+
 // Configuração de navegação rápida por rota
 const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
-  '/pdv': [
-    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
-    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
-    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
-    { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
-    { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
-    { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
-  ],
-  '/pdv/venda': [
-    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
-    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
-    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
-    { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
-    { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
-    { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
-  ],
-  '/os': [
-    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
-    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
-    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
-    { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
-    { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
-    { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
-  ],
-  '/pdv/clientes': [
-    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
-    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
-    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
-    { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
-    { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
-    { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
-  ],
-  '/pdv/produtos': [
-    { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
-    { label: 'Nova Venda', icon: Plus, path: '/pdv/venda/nova' },
-    { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
-    { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
-    { label: 'Produtos', icon: Package, path: '/pdv/produtos' },
-    { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
-  ],
+  '/pdv': PDV_NAV_ITEMS,
+  '/pdv/venda': PDV_NAV_ITEMS,
+  '/os': PDV_NAV_ITEMS,
+  '/pdv/clientes': PDV_NAV_ITEMS,
+  '/produtos': PDV_NAV_ITEMS,
   '/admin/financeiro': [
     { label: 'Dashboard', icon: Home, path: '/' },
     { label: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
