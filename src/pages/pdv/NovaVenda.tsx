@@ -31,6 +31,7 @@ import { currencyFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
+import { useWhatsApp } from '@/hooks/useWhatsApp';
 
 export default function NovaVenda() {
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ export default function NovaVenda() {
   const { payments, addPayment, confirmPayment, isLoading: paymentsLoading } = usePayments(id || '');
   const { currentSession: cashSession } = useCashRegister();
   const { createQuote, convertToSale, markAsSentWhatsApp } = useQuotes();
+  const { sendMessage: sendWhatsAppMessage, loading: sendingWhatsApp } = useWhatsApp();
   
   const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
   const { data: cupomConfig } = useCupomConfig();
@@ -1521,7 +1523,7 @@ export default function NovaVenda() {
     }
   };
 
-  // Enviar orçamento por WhatsApp
+  // Enviar orçamento por WhatsApp via API Ativa CRM
   const handleEnviarOrcamentoWhatsApp = async () => {
     if (!orcamentoGerado) return;
 
@@ -1536,8 +1538,11 @@ export default function NovaVenda() {
     }
 
     try {
-      // Marcar como enviado
-      await markAsSentWhatsApp(orcamentoGerado.id);
+      // Formatar telefone (remover caracteres não numéricos e adicionar 55 se não tiver)
+      let numeroFormatado = telefone.replace(/\D/g, '');
+      if (!numeroFormatado.startsWith('55')) {
+        numeroFormatado = '55' + numeroFormatado;
+      }
 
       // Formatar mensagem do orçamento
       const itensTexto = cart.map(item => 
@@ -1559,12 +1564,26 @@ Qualquer dúvida é só me chamar por aqui 😊
 
 _PrimeCamp Assistência Técnica_`;
 
-      openWhatsApp(telefone, mensagem);
+      // Enviar via API Ativa CRM
+      await sendWhatsAppMessage({
+        number: numeroFormatado,
+        body: mensagem,
+      });
       
-      toast({ title: 'WhatsApp aberto!', description: 'Envie a mensagem para o cliente.' });
-    } catch (error) {
+      // Marcar como enviado no banco
+      await markAsSentWhatsApp(orcamentoGerado.id);
+      
+      toast({ 
+        title: 'Orçamento enviado!', 
+        description: `Mensagem enviada para ${telefone} via WhatsApp.` 
+      });
+    } catch (error: any) {
       console.error('Erro ao enviar orçamento por WhatsApp:', error);
-      toast({ title: 'Erro ao enviar', variant: 'destructive' });
+      toast({ 
+        title: 'Erro ao enviar', 
+        description: error.message || 'Não foi possível enviar via WhatsApp.',
+        variant: 'destructive' 
+      });
     }
   };
 
@@ -2425,16 +2444,22 @@ _PrimeCamp Assistência Técnica_`;
                 </div>
               </Button>
 
-              {/* WhatsApp */}
+              {/* WhatsApp via Ativa CRM */}
               <Button
                 variant="outline"
                 className="w-full justify-start gap-3 h-12 border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-950"
                 onClick={handleEnviarOrcamentoWhatsApp}
-                disabled={!selectedCliente?.telefone && !selectedCliente?.whatsapp}
+                disabled={sendingWhatsApp || (!selectedCliente?.telefone && !selectedCliente?.whatsapp)}
               >
-                <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                {sendingWhatsApp ? (
+                  <div className="animate-spin h-5 w-5 border-2 border-green-600 border-t-transparent rounded-full" />
+                ) : (
+                  <MessageCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                )}
                 <div className="text-left">
-                  <div className="font-medium text-green-700 dark:text-green-400">Enviar por WhatsApp</div>
+                  <div className="font-medium text-green-700 dark:text-green-400">
+                    {sendingWhatsApp ? 'Enviando...' : 'Enviar por WhatsApp'}
+                  </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedCliente?.telefone || selectedCliente?.whatsapp || 'Cliente sem telefone'}
                   </div>
