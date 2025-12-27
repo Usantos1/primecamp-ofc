@@ -94,15 +94,93 @@ class InsertBuilder {
   }
 }
 
+// Builder para UPDATE com encadeamento .eq().select().single()
+class UpdateBuilder {
+  private tableName: string;
+  private data: any;
+  private getHeaders: () => Record<string, string>;
+  private where: Record<string, any> = {};
+  private selectFields: string | string[] = '*';
+  private returnSingle: boolean = false;
+
+  constructor(tableName: string, data: any, getHeaders: () => Record<string, string>) {
+    this.tableName = tableName;
+    this.data = data;
+    this.getHeaders = getHeaders;
+  }
+
+  eq(field: string, value: any): this {
+    this.where[field] = value;
+    return this;
+  }
+
+  neq(field: string, value: any): this {
+    this.where[`${field}__neq`] = value;
+    return this;
+  }
+
+  select(fields: string | string[] = '*'): this {
+    this.selectFields = fields;
+    return this;
+  }
+
+  single(): Promise<{ data: any | null; error: any | null }> {
+    this.returnSingle = true;
+    return this.execute();
+  }
+
+  async execute(): Promise<{ data: any | null; error: any | null }> {
+    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+      ? import.meta.env.VITE_API_URL 
+      : 'https://api.primecamp.cloud/api';
+
+    try {
+      const response = await fetch(`${API_URL}/update/${this.tableName}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ data: this.data, where: this.where }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Erro ao atualizar' }));
+        return { data: null, error };
+      }
+
+      const result = await response.json();
+      const rows = result.rows || result.data || [];
+      
+      if (this.returnSingle) {
+        return { data: Array.isArray(rows) ? rows[0] : rows, error: null };
+      }
+      return { data: rows, error: null };
+    } catch (error: any) {
+      console.error(`[DB] Erro ao atualizar ${this.tableName}:`, error);
+      return { data: null, error: { message: error.message } };
+    }
+  }
+
+  // Permite usar como Promise diretamente
+  then<TResult1 = { data: any | null; error: any | null }, TResult2 = never>(
+    onfulfilled?: ((value: { data: any | null; error: any | null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null
+  ): Promise<{ data: any | null; error: any | null } | TResult> {
+    return this.execute().catch(onrejected);
+  }
+}
+
 class DatabaseClient {
   private tableName: string;
   private options: QueryOptions = {};
-  private pendingUpdate: any = null;
 
   constructor(tableName: string) {
     this.tableName = tableName;
     this.options = {};
-    this.pendingUpdate = null;
   }
 
   private getHeaders(): Record<string, string> {
@@ -124,12 +202,6 @@ class DatabaseClient {
   eq(field: string, value: any) {
     if (!this.options.where) this.options.where = {};
     this.options.where[field] = value;
-    
-    // Se há um update pendente, executar agora (suporte a .update().eq())
-    if (this.pendingUpdate !== null) {
-      return this._executeUpdate(this.pendingUpdate);
-    }
-    
     return this;
   }
 
@@ -263,41 +335,18 @@ class DatabaseClient {
     return new InsertBuilder(this.tableName, data, this.getHeaders.bind(this));
   }
 
-  // Método interno para executar update
-  private async _executeUpdate(data: any): Promise<{ data: any | null; error: any | null }> {
-    try {
-      const response = await fetch(`${API_URL}/update/${this.tableName}`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ data, where: this.options.where }),
+  // Método update retorna UpdateBuilder para suportar encadeamento
+  update(data: any): UpdateBuilder {
+    const builder = new UpdateBuilder(this.tableName, data, this.getHeaders.bind(this));
+    // Se já tem where definido (chamou .eq() antes), passar para o builder
+    if (this.options.where) {
+      Object.entries(this.options.where).forEach(([key, value]) => {
+        if (!key.includes('__')) {
+          builder.eq(key, value);
+        }
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erro ao atualizar' }));
-        return { data: null, error };
-      }
-
-      const result = await response.json();
-      const rows = result.data || result.rows || [];
-      return { data: rows[0] || null, error: null };
-    } catch (error: any) {
-      console.error(`[DB] Erro ao atualizar ${this.tableName}:`, error);
-      return { data: null, error: { message: error.message } };
     }
-  }
-
-  // Suporta ambas as ordens: .eq().update() e .update().eq()
-  update(data: any): this & Promise<{ data: any | null; error: any | null }> {
-    // Se já tem where definido, executar imediatamente (.eq().update())
-    if (this.options.where && Object.keys(this.options.where).length > 0) {
-      const promise = this._executeUpdate(data);
-      // Retornar promise que também permite encadeamento
-      return Object.assign(promise, this) as any;
-    }
-    
-    // Caso contrário, armazenar para executar após .eq() (.update().eq())
-    this.pendingUpdate = data;
-    return this as any;
+    return builder;
   }
 
   async upsert(data: any, options?: { onConflict?: string }): Promise<{ data: any | null; error: any | null }> {
