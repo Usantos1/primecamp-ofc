@@ -855,6 +855,18 @@ app.post('/api/upsert/:table', async (req, res) => {
       console.warn(`[Upsert] Erro ao verificar coluna de conflito, usando padrão: ${checkError.message}`);
     }
     
+    // Verificar se a coluna updated_at existe na tabela
+    let hasUpdatedAt = false;
+    try {
+      const checkUpdatedAt = await pool.query(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = $1 AND column_name = 'updated_at'
+      `, [table]);
+      hasUpdatedAt = checkUpdatedAt.rows.length > 0;
+    } catch (e) {
+      console.warn(`[Upsert] Erro ao verificar coluna updated_at: ${e.message}`);
+    }
+
     // Construir cláusula SET para UPDATE em caso de conflito
     const keysToUpdate = keys.filter(key => key !== actualConflictColumn && key !== 'created_at');
     const updateClause = keysToUpdate
@@ -864,10 +876,14 @@ app.post('/api/upsert/:table', async (req, res) => {
       })
       .join(', ');
 
-    // Se não há colunas para atualizar além da de conflito, usar apenas updated_at
-    const finalUpdateClause = updateClause 
-      ? `${updateClause}, updated_at = NOW()`
-      : 'updated_at = NOW()';
+    // Se não há colunas para atualizar além da de conflito, usar apenas updated_at (se existir)
+    let finalUpdateClause;
+    if (updateClause) {
+      finalUpdateClause = hasUpdatedAt ? `${updateClause}, updated_at = NOW()` : updateClause;
+    } else {
+      // Se não há nada para atualizar, fazer um update "dummy" ou usar updated_at se existir
+      finalUpdateClause = hasUpdatedAt ? 'updated_at = NOW()' : `${actualConflictColumn} = EXCLUDED.${actualConflictColumn}`;
+    }
 
     const sql = `
       INSERT INTO ${tableName} (${keys.join(', ')})
