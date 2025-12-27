@@ -1963,85 +1963,69 @@ _PrimeCamp Assistência Técnica_`;
             </Card>
           </div>
 
-          {/* Coluna direita - Resumo + Ações */}
-          <div className="space-y-3 md:space-y-4">
+          {/* Coluna direita - Resumo + Ações (compacto) */}
+          <div className="space-y-2">
             <Card className={cn(
-              "sticky top-4 border-2 transition-all",
+              "sticky top-4 border transition-all",
               totals.total > 0 
-                ? "border-emerald-200 dark:border-emerald-800 shadow-lg bg-gradient-to-b from-white to-emerald-50/30 dark:from-gray-900 dark:to-emerald-950/30" 
+                ? "border-emerald-200 dark:border-emerald-800 shadow-sm" 
                 : "border-gray-200 dark:border-gray-700"
             )}>
-              <CardHeader className="p-3 md:p-4 pb-2">
-                <CardTitle className="text-sm md:text-base flex items-center gap-2">
-                  <DollarSign className={cn("h-4 w-4", totals.total > 0 ? "text-emerald-600" : "text-gray-400")} />
-                  Resumo
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 md:p-4 pt-0 space-y-3">
-                {/* Valores */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs md:text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                    <span className="font-medium">{currencyFormatters.brl(totals.subtotal)}</span>
-                  </div>
-                  {totals.descontoItens > 0 && (
-                    <div className="flex justify-between text-xs md:text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Desconto Itens:</span>
-                      <span className="text-red-600 dark:text-red-400 font-medium">-{currencyFormatters.brl(totals.descontoItens)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center text-xs md:text-sm gap-2">
-                    <span className="text-gray-600 dark:text-gray-400">Desconto Extra:</span>
-                    <Input
-                      type="number"
-                      value={descontoTotal}
-                      onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
-                      className="h-7 w-20 md:w-24 text-xs"
-                      step="0.01"
-                    />
-                  </div>
+              <CardContent className="p-3 space-y-2">
+                {/* Valores - Compactos */}
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span className="flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    Resumo
+                  </span>
+                  <span>{currencyFormatters.brl(totals.subtotal)}</span>
                 </div>
                 
-                {/* TOTAL - GRANDE DESTAQUE */}
+                {/* Desconto Extra - Inline */}
+                <div className="flex items-center justify-between text-xs gap-2">
+                  <span className="text-gray-500 dark:text-gray-400">Desconto Extra:</span>
+                  <Input
+                    type="number"
+                    value={descontoTotal}
+                    onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
+                    className="h-6 w-16 text-xs text-right"
+                    step="0.01"
+                  />
+                </div>
+                
+                {/* TOTAL - O único destaque forte */}
                 <div className={cn(
-                  "rounded-xl p-3 md:p-4",
+                  "rounded-lg p-2.5",
                   totals.total > 0 
-                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md" 
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                    ? "bg-emerald-500 text-white" 
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                 )}>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm md:text-base font-medium">Total:</span>
-                    <span className="text-2xl md:text-3xl font-bold">
+                    <span className="text-xs font-medium">Total:</span>
+                    <span className="text-xl font-bold">
                       {currencyFormatters.brl(totals.total)}
                     </span>
                   </div>
                 </div>
 
-                {/* Informações de pagamento (apenas em edição) */}
+                {/* Info pagamento (apenas em edição) */}
                 {isEditing && (
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Total Pago:</span>
-                      <span className="text-green-600 font-medium">{currencyFormatters.brl(totalPago)}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold">
-                      <span>Saldo Restante:</span>
-                      <span className={saldoRestante > 0 ? "text-orange-600" : "text-green-600"}>
-                        {currencyFormatters.brl(saldoRestante)}
-                      </span>
-                    </div>
+                  <div className="flex justify-between text-xs pt-1 border-t">
+                    <span className="text-gray-500">Pago: <span className="text-emerald-600 font-medium">{currencyFormatters.brl(totalPago)}</span></span>
+                    <span className={cn("font-medium", saldoRestante > 0 ? "text-orange-600" : "text-emerald-600")}>
+                      Restante: {currencyFormatters.brl(saldoRestante)}
+                    </span>
                   </div>
                 )}
 
                 {/* ═══════════════════════════════════════════════════════════════════
-                    AÇÕES PRINCIPAIS - Hierarquia visual clara
-                    Regra UX: Ação principal sempre perto do valor final
+                    AÇÕES - Hierarquia clara: Verde > Neutro > Link
                 ═══════════════════════════════════════════════════════════════════ */}
                 {(!isEditing || sale?.is_draft) && (
-                  <div className="space-y-2 pt-2 border-t">
-                    {/* 1. GERAR ORÇAMENTO - Ação Principal */}
+                  <div className="space-y-1.5 pt-2 border-t">
+                    {/* 1. GERAR ORÇAMENTO - Ação Principal (verde = dinheiro) */}
                     <Button
-                      className="w-full h-11 text-sm font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md transition-all hover:shadow-lg"
+                      className="w-full h-10 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
                       onClick={handleGerarOrcamento}
                       disabled={cart.length === 0 || isGeneratingOrcamento || isSaving}
                     >
@@ -2049,10 +2033,10 @@ _PrimeCamp Assistência Técnica_`;
                       {isGeneratingOrcamento ? 'Gerando...' : 'Gerar Orçamento'}
                     </Button>
 
-                    {/* 2. FINALIZAR VENDA - Ação Secundária */}
+                    {/* 2. FINALIZAR VENDA - Secundário (neutro, não compete) */}
                     <Button
                       variant="outline"
-                      className="w-full h-10 text-sm border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+                      className="w-full h-9 text-sm text-gray-700 border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800"
                       onClick={handleFinalize}
                       disabled={cart.length === 0 || isSaving || isDeleting}
                     >
@@ -2060,59 +2044,54 @@ _PrimeCamp Assistência Técnica_`;
                       {isSaving ? 'Finalizando...' : 'Finalizar Venda'}
                     </Button>
 
-                    {/* 3. FATURAR OS - Condicional (só aparece se fizer sentido) */}
-                    {!isEditing && (
-                      <Button
-                        variant="ghost"
-                        className="w-full h-9 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
-                        onClick={handleOpenFaturarOSModal}
-                      >
-                        <Wrench className="h-3.5 w-3.5 mr-2" />
-                        Faturar Ordem de Serviço
-                      </Button>
-                    )}
-
                     {/* Excluir rascunho (se aplicável) */}
                     {isEditing && (sale?.is_draft || isAdmin) && (
-                      <Button
-                        variant="ghost"
-                        className="w-full h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                      <button
+                        className="w-full text-xs text-red-500 hover:text-red-600 py-1 transition-colors"
                         onClick={handleDelete}
                         disabled={isSaving || isDeleting}
                       >
-                        <Trash2 className="h-3.5 w-3.5 mr-2" />
-                        {isDeleting ? 'Excluindo...' : 'Excluir Rascunho'}
-                      </Button>
+                        {isDeleting ? 'Excluindo...' : '🗑 Excluir rascunho'}
+                      </button>
                     )}
                   </div>
                 )}
 
-                {/* Link para vendas do caixa */}
-                <div className="pt-2 border-t">
-                  <Button
-                    variant="link"
-                    className="w-full h-8 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 p-0"
+                {/* Links contextuais */}
+                <div className="flex flex-col gap-0.5 pt-1.5 border-t text-xs">
+                  {/* Faturar OS - SÓ aparece se não tiver OS vinculada e não estiver editando */}
+                  {!isEditing && !sale?.ordem_servico_id && cart.length === 0 && (
+                    <button
+                      className="flex items-center justify-center gap-1.5 text-gray-400 hover:text-gray-600 py-1 transition-colors"
+                      onClick={handleOpenFaturarOSModal}
+                    >
+                      <Wrench className="h-3 w-3" />
+                      Importar de Ordem de Serviço
+                    </button>
+                  )}
+                  
+                  {/* Vendas do caixa */}
+                  <button
+                    className="flex items-center justify-center gap-1.5 text-gray-400 hover:text-gray-600 py-1 transition-colors"
                     onClick={() => navigate('/pdv/vendas')}
                   >
-                    <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-                    {isAdmin ? 'Ver todas as vendas' : 'Ver minhas vendas'}
-                  </Button>
+                    <BarChart3 className="h-3 w-3" />
+                    {isAdmin ? 'Vendas do caixa' : 'Minhas vendas de hoje'}
+                  </button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Observações - Compacto */}
-            <Card className="border">
-              <CardContent className="p-3">
-                <Textarea
-                  value={observacoes}
-                  onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Observações da venda (opcional)..."
-                  rows={2}
-                  className="resize-none text-sm border-0 p-0 focus-visible:ring-0 bg-transparent"
-                />
-              </CardContent>
-            </Card>
+            {/* Observações - Ultra compacto */}
+            <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <Textarea
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                placeholder="Observações (opcional)..."
+                rows={1}
+                className="resize-none text-xs border-0 p-0 focus-visible:ring-0 bg-transparent min-h-[24px]"
+              />
+            </div>
           </div>
         </div>
       </div>
