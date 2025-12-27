@@ -1702,9 +1702,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full max-w-full flex flex-col overflow-hidden", isModal ? "h-full" : "min-h-[calc(100dvh-8rem)]")}>
+    <div className={cn("w-full", isModal ? "h-full overflow-hidden" : "")}>
         {/* Tabs principais */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           {/* Header com tabs */}
           <div className="border-b-2 border-gray-300 mb-2">
             {/* Mobile: 2 linhas */}
@@ -1866,14 +1866,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Tab Dados */}
-          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2 md:p-2 overflow-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,380px)] gap-2 md:gap-3 flex-1 min-h-0 items-stretch w-full">
+          <TabsContent value="dados" className="p-2 md:p-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-3">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0">
-                <CardHeader className="pb-2 pt-2 md:pt-3 flex-shrink-0 border-b-2 border-gray-300">
+              <Card className="border-2 border-gray-300">
+                <CardHeader className="pb-2 pt-3 border-b-2 border-gray-300">
                   <CardTitle className="text-sm md:text-base font-semibold">Dados da OS</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 md:space-y-3 pt-2 md:pt-3 flex-1 overflow-y-auto">
+                <CardContent className="space-y-3 pt-3">
                   {/* Cliente */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
                     <div className="space-y-1.5 md:space-y-2 md:col-span-2">
@@ -2153,14 +2153,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha e Áreas com Defeito */}
-              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0">
-                <CardHeader className="pb-2 pt-2 md:pt-3 flex-shrink-0 border-b-2 border-gray-300">
-                  <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2 truncate">
-                    <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                    <span className="truncate">Senha e Áreas com Defeito</span>
+              <Card className="border-2 border-gray-300">
+                <CardHeader className="pb-2 pt-3 border-b-2 border-gray-300">
+                  <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span>Senha e Áreas com Defeito</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-2 md:pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3 md:space-y-4 px-2">
+                <CardContent className="pt-3 space-y-4 px-3">
                   {/* Seção Senha */}
                   <div className="space-y-2 md:space-y-3 flex-shrink-0">
                     <Label className="text-xs md:text-sm font-medium truncate">Possui senha</Label>
@@ -2229,9 +2229,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="border-t flex-shrink-0"></div>
 
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
-                  <div className="flex-1 flex flex-col min-h-0 min-w-0">
-                    <Label className="text-sm font-medium mb-2 flex-shrink-0 truncate">Referência Visual do Aparelho</Label>
-                    <div className="flex-1 flex items-center justify-center min-h-[200px] max-h-[400px] overflow-hidden bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-2">
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Referência Visual do Aparelho</Label>
+                    <div className="h-[280px] flex items-center justify-center bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-2">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
@@ -2264,8 +2264,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           </TabsContent>
 
           {/* Tab Checklist */}
-          <TabsContent value="checklist" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
-            <Tabs defaultValue="entrada" className="flex-1 flex flex-col min-h-0">
+          <TabsContent value="checklist" className="space-y-2 mt-2 p-2">
+            <Tabs defaultValue="entrada" className="w-full">
               <TabsList className="w-full justify-start mb-4">
                 <TabsTrigger value="entrada">Checklist de Entrada</TabsTrigger>
                 {isEditing && currentOS && (
@@ -2274,11 +2274,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </TabsList>
 
               {/* Checklist de Entrada */}
-              <TabsContent value="entrada" className="flex-1 flex flex-col min-h-0 space-y-2">
+              <TabsContent value="entrada" className="space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
                   {/* Problemas Encontrados - Entrada */}
-                  <Card className="flex flex-col h-full m-2">
-                    <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                  <Card className="border-2">
+                    <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
@@ -2311,8 +2311,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </Card>
 
                   {/* Funcional OK - Entrada */}
-                  <Card className="flex flex-col h-full m-2">
-                    <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                  <Card className="border-2">
+                    <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
@@ -2382,11 +2382,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
               {/* Checklist de Saída */}
               {isEditing && currentOS && (
-                <TabsContent value="saida" className="flex-1 flex flex-col min-h-0 space-y-2">
+                <TabsContent value="saida" className="space-y-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
                     {/* Problemas Encontrados - Saída */}
-                    <Card className="flex flex-col h-full m-2">
-                      <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                    <Card className="border-2">
+                      <CardHeader className="pb-2 pt-3">
                         <div className="flex items-center justify-between">
                           <div>
                             <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
@@ -2418,8 +2418,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </Card>
 
                     {/* Funcional OK - Saída */}
-                    <Card className="flex flex-col h-full m-2">
-                      <CardHeader className="pb-2 pt-3 flex-shrink-0">
+                    <Card className="border-2">
+                      <CardHeader className="pb-2 pt-3">
                         <div className="flex items-center justify-between">
                           <div>
                             <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
@@ -2597,8 +2597,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Informações Técnicas */}
           {isEditing && (
-            <TabsContent value="tecnico" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
-              <Card className="border-2 m-2 flex flex-col h-full">
+            <TabsContent value="tecnico" className="space-y-2 mt-2 p-2">
+              <Card className="border-2">
                 <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
                   <CardTitle className="text-sm md:text-base font-semibold">Informações Técnicas Internas</CardTitle>
                   <CardDescription className="text-[10px] md:text-xs">Anotações internas que não aparecem para o cliente</CardDescription>
@@ -2617,7 +2617,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Fotos */}
           {isEditing && (
-            <TabsContent value="fotos" className="flex-1 flex flex-col min-h-0 space-y-4">
+            <TabsContent value="fotos" className="space-y-4 p-2">
               <Card className="border-2 border-gray-300 shadow-lg">
                 <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b-2 border-gray-300">
                   <CardTitle className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -3787,8 +3787,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Itens (Peças/Serviços) */}
           {isEditing && (
-            <TabsContent value="itens" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
-              <Card className="m-2 flex flex-col h-full">
+            <TabsContent value="itens" className="space-y-2 mt-2 p-2">
+              <Card className="border-2">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Peças e Serviços</CardTitle>
@@ -3900,7 +3900,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Financeiro */}
           {isEditing && (
-            <TabsContent value="financeiro" className="flex-1 flex flex-col min-h-0 space-y-2 mt-2">
+            <TabsContent value="financeiro" className="space-y-2 mt-2 p-2">
 
               {/* Saldo Pendente em Destaque */}
               {total - totalPago > 0 && (
