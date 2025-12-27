@@ -2263,7 +2263,7 @@ _PrimeCamp Assistência Técnica_`;
                   <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
                   Caixa Fechado
                 </span>
-              )
+              )}
             </div>
           </div>
         </div>
