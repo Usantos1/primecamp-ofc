@@ -1794,7 +1794,7 @@ _PrimeCamp Assistência Técnica_`;
                   )}
                 </CardContent>
               </Card>
-            )
+            )}
 
             {/* Carrinho */}
             <Card className="border flex-1 flex flex-col min-h-[200px]">
