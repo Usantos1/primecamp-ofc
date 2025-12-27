@@ -1861,6 +1861,136 @@ app.get('/api/clientes/search', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// TELEGRAM BOT FUNCTIONS
+// ============================================
+
+// POST /api/functions/telegram-bot - Enviar foto para Telegram
+app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
+  try {
+    const { action, file, fileName, osNumero, tipo, chatId, caption, messageId } = req.body;
+
+    // Ação de deletar mensagem
+    if (action === 'delete') {
+      if (!chatId || !messageId) {
+        return res.status(400).json({ error: 'chatId e messageId são obrigatórios para deletar' });
+      }
+
+      const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+      if (!TELEGRAM_BOT_TOKEN) {
+        return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN não configurado' });
+      }
+
+      const deleteUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`;
+      const deleteResponse = await fetch(deleteUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+        }),
+      });
+
+      const deleteResult = await deleteResponse.json();
+      
+      if (!deleteResult.ok) {
+        return res.status(400).json({ 
+          success: false, 
+          error: deleteResult.description || 'Erro ao deletar mensagem' 
+        });
+      }
+
+      return res.json({ success: true });
+    }
+
+    // Ação padrão: enviar foto
+    if (!file || !osNumero || !tipo || !chatId) {
+      return res.status(400).json({ error: 'file, osNumero, tipo e chatId são obrigatórios' });
+    }
+
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    if (!TELEGRAM_BOT_TOKEN) {
+      return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN não configurado. Configure no arquivo .env' });
+    }
+
+    console.log(`[Telegram] Enviando foto para OS-${osNumero}, tipo: ${tipo}, chat: ${chatId}`);
+
+    // Decodificar base64 para buffer
+    const imageBuffer = Buffer.from(file, 'base64');
+    
+    // Criar FormData para envio multipart
+    const FormData = (await import('form-data')).default;
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    formData.append('photo', imageBuffer, {
+      filename: fileName || `os-${osNumero}-${tipo}.jpg`,
+      contentType: 'image/jpeg',
+    });
+    formData.append('caption', caption || `📱 OS-${osNumero}\n📁 Tipo: ${tipo === 'entrada' ? 'Entrada' : tipo === 'saida' ? 'Saída' : 'Processo'}\n📅 ${new Date().toLocaleString('pt-BR')}`);
+
+    const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+    
+    const telegramResponse = await fetch(telegramUrl, {
+      method: 'POST',
+      body: formData,
+      headers: formData.getHeaders(),
+    });
+
+    const telegramResult = await telegramResponse.json();
+
+    if (!telegramResult.ok) {
+      console.error('[Telegram] Erro na API:', telegramResult);
+      return res.status(400).json({ 
+        success: false, 
+        error: telegramResult.description || 'Erro ao enviar foto para Telegram' 
+      });
+    }
+
+    const photo = telegramResult.result.photo;
+    const largestPhoto = photo[photo.length - 1]; // Pegar a maior resolução
+    const smallestPhoto = photo[0]; // Pegar a menor resolução (thumbnail)
+
+    // Obter URL do arquivo
+    let fileUrl = null;
+    let thumbnailUrl = null;
+    
+    try {
+      // URL do arquivo grande
+      const fileResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${largestPhoto.file_id}`);
+      const fileData = await fileResponse.json();
+      if (fileData.ok) {
+        fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
+      }
+      
+      // URL do thumbnail
+      const thumbResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${smallestPhoto.file_id}`);
+      const thumbData = await thumbResponse.json();
+      if (thumbData.ok) {
+        thumbnailUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${thumbData.result.file_path}`;
+      }
+    } catch (urlError) {
+      console.warn('[Telegram] Não foi possível obter URLs das fotos:', urlError.message);
+    }
+
+    console.log(`[Telegram] Foto enviada com sucesso. MessageId: ${telegramResult.result.message_id}`);
+
+    res.json({
+      success: true,
+      messageId: telegramResult.result.message_id,
+      fileId: largestPhoto.file_id,
+      fileUrl,
+      thumbnailUrl,
+    });
+
+  } catch (error) {
+    console.error('[Telegram] Erro:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Erro interno ao processar requisição do Telegram' 
+    });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);

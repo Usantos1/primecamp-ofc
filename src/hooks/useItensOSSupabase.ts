@@ -13,8 +13,7 @@ export function useItensOSSupabase(osId: string) {
     queryFn: async () => {
       if (!osId || osId === 'temp') return [];
       
-      const { data, error } = await supabase
-        .from('os_items')
+      const { data, error } = await from('os_items')
         .select('*')
         .eq('ordem_servico_id', osId)
         .order('created_at', { ascending: true })
@@ -52,8 +51,7 @@ export function useItensOSSupabase(osId: string) {
         created_by: user?.id || null,
       };
 
-      const { data: inserted, error } = await supabase
-        .from('os_items')
+      const { data: inserted, error } = await from('os_items')
         .insert(novoItem)
         .select()
         .single();
@@ -63,17 +61,16 @@ export function useItensOSSupabase(osId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os_items_all'] }); // Invalidar query da lista
+      queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
     },
   });
 
   // Atualizar item
   const updateItem = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ItemOS> }): Promise<ItemOS> => {
-      const { data: updated, error } = await supabase
-        .from('os_items')
-        .update(data)
+      const { data: updated, error } = await from('os_items')
         .eq('id', id)
+        .update(data)
         .select()
         .single();
 
@@ -82,23 +79,22 @@ export function useItensOSSupabase(osId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os_items_all'] }); // Invalidar query da lista
+      queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
     },
   });
 
   // Remover item
   const removeItem = useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await supabase
-        .from('os_items')
-        .delete()
-        .eq('id', id);
+      const { error } = await from('os_items')
+        .eq('id', id)
+        .delete();
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
-      queryClient.invalidateQueries({ queryKey: ['os_items_all'] }); // Invalidar query da lista
+      queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
     },
   });
 
@@ -111,4 +107,3 @@ export function useItensOSSupabase(osId: string) {
     removeItem: removeItem.mutateAsync,
   };
 }
-

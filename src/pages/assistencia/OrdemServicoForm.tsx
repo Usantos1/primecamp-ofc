@@ -2353,59 +2353,29 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </Tabs>
           </TabsContent>
           
-          {/* Tab Resolução do Problema */}
+          {/* Tab Resolução e Info. Técnicas (mesclado) */}
           {isEditing && (
-            <TabsContent value="resolucao" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
-              <Card className="border-2 border-gray-300 m-2">
-                <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
+            <TabsContent value="resolucao" className="flex-1 overflow-auto scrollbar-thin space-y-3 mt-2 p-2">
+              {/* Card Resolução do Problema */}
+              <Card className="border border-gray-200/80 shadow-sm rounded-xl">
+                <CardHeader className="pb-2 pt-3 border-b border-gray-200">
                   <CardTitle className="text-sm md:text-base font-semibold">Resolução do Problema</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-3 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="problema-constatado" className="text-sm font-medium">Problema Constatado</Label>
-                    <Textarea
-                      id="problema-constatado"
-                      value={formData.problema_constatado || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, problema_constatado: e.target.value }))}
-                      placeholder="Descreva o problema constatado após análise técnica..."
-                      rows={12}
-                      className="min-h-[220px]"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Caracteres: {(formData.problema_constatado || '').length}
-                    </p>
-                  </div>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Técnico Responsável</Label>
-                      <Select
-                        value={formData.tecnico_id || ''}
-                        onValueChange={(v) => setFormData(prev => ({ ...prev, tecnico_id: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o técnico" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {isLoadingCargos ? (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando técnicos...</div>
-                          ) : tecnicos.length > 0 ? (
-                            tecnicos.map(tecnico => (
-                              <SelectItem key={tecnico.id} value={tecnico.id}>
-                                {tecnico.nome}
-                              </SelectItem>
-                            ))
-                          ) : colaboradores.length > 0 ? (
-                            colaboradores.map(colab => (
-                              <SelectItem key={colab.id} value={colab.id}>
-                                {colab.nome}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum técnico cadastrado</div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="problema-constatado" className="text-sm font-medium">Problema Constatado</Label>
+                      <Textarea
+                        id="problema-constatado"
+                        value={formData.problema_constatado || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, problema_constatado: e.target.value }))}
+                        placeholder="Descreva o problema constatado após análise técnica..."
+                        rows={6}
+                        className="min-h-[120px]"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Caracteres: {(formData.problema_constatado || '').length}
+                      </p>
                     </div>
                     
                     <div className="space-y-2">
@@ -2415,32 +2385,61 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         value={formData.servico_executado || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, servico_executado: e.target.value }))}
                         placeholder="Descreva o serviço executado (ex.: troca de tela, troca de bateria, conector, limpeza, atualização, etc.)"
-                        rows={4}
+                        rows={6}
+                        className="min-h-[120px]"
                       />
                       <p className="text-xs text-muted-foreground">
                         Campo livre para digitar exatamente o serviço realizado. Caracteres: {(formData.servico_executado || '').length}
                       </p>
                     </div>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Técnico Responsável</Label>
+                    <Select
+                      value={formData.tecnico_id || ''}
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, tecnico_id: v }))}
+                    >
+                      <SelectTrigger className="max-w-sm">
+                        <SelectValue placeholder="Selecione o técnico" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingCargos ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando técnicos...</div>
+                        ) : tecnicos.length > 0 ? (
+                          tecnicos.map(tecnico => (
+                            <SelectItem key={tecnico.id} value={tecnico.id}>
+                              {tecnico.nome}
+                            </SelectItem>
+                          ))
+                        ) : colaboradores.length > 0 ? (
+                          colaboradores.map(colab => (
+                            <SelectItem key={colab.id} value={colab.id}>
+                              {colab.nome}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum técnico cadastrado</div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          )}
-          
-          {/* Tab Informações Técnicas */}
-          {isEditing && (
-            <TabsContent value="tecnico" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
-              <Card className="border-2">
-                <CardHeader className="pb-2 pt-2 md:pt-3 border-b-2 border-gray-300 flex-shrink-0">
+
+              {/* Card Informações Técnicas Internas */}
+              <Card className="border border-gray-200/80 shadow-sm rounded-xl">
+                <CardHeader className="pb-2 pt-3 border-b border-gray-200">
                   <CardTitle className="text-sm md:text-base font-semibold">Informações Técnicas Internas</CardTitle>
-                  <CardDescription className="text-[10px] md:text-xs">Anotações internas que não aparecem para o cliente</CardDescription>
+                  <CardDescription className="text-xs">Anotações internas que não aparecem para o cliente</CardDescription>
                 </CardHeader>
-                <CardContent className="pt-3 flex-1 flex flex-col min-h-0">
+                <CardContent className="pt-3">
                   <Textarea
                     value={formData.observacoes_internas || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, observacoes_internas: e.target.value }))}
                     placeholder="Ex: faltando parafuso, câmera não funciona, placa oxidada, peças removidas..."
-                    className="resize-none w-full flex-1 min-h-[200px]"
+                    className="resize-none w-full min-h-[120px]"
+                    rows={5}
                   />
                 </CardContent>
               </Card>
@@ -3892,7 +3891,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 <div className="flex items-center justify-between gap-2">
                   {/* Tabs no rodapé */}
                   <div className="flex-1 overflow-x-auto">
-                    <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-0.5 rounded-lg">
+                    <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-1 rounded-lg">
                       <TabsTrigger 
                         value="dados" 
                         className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
@@ -3900,6 +3899,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <FileText className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Dados</span>
                       </TabsTrigger>
+                      
+                      {/* Separador */}
+                      <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                      
                       <TabsTrigger 
                         value="checklist" 
                         className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
@@ -3907,8 +3910,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <Check className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Check</span>
                       </TabsTrigger>
+                      
                       {isEditing && (
                         <>
+                          {/* Separador */}
+                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          
                           <TabsTrigger 
                             value="resolucao" 
                             className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
@@ -3916,13 +3923,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <AlertTriangle className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Resolução</span>
                           </TabsTrigger>
-                          <TabsTrigger 
-                            value="tecnico" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
-                          >
-                            <Settings className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Técnico</span>
-                          </TabsTrigger>
+                          
+                          {/* Separador */}
+                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          
                           <TabsTrigger 
                             value="itens" 
                             className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
@@ -3930,6 +3934,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <Package className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Peças ({itens.length})</span>
                           </TabsTrigger>
+                          
+                          {/* Separador */}
+                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          
                           <TabsTrigger 
                             value="financeiro" 
                             className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
@@ -3937,6 +3945,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <DollarSign className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Financeiro</span>
                           </TabsTrigger>
+                          
+                          {/* Separador */}
+                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          
                           <TabsTrigger 
                             value="fotos" 
                             className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
