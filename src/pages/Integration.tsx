@@ -635,7 +635,7 @@ export default function Integration() {
               <Label>URL do Webhook (somente leitura)</Label>
               <Input
                 readOnly
-                value={`${window.location.origin}/api/webhook`}
+                value={`https://primecamp.cloud/api/webhook`}
                 className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">
