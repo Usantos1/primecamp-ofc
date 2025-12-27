@@ -841,6 +841,19 @@ export default function NovaVenda() {
         }
       }
       
+      // F3 - Buscar cliente
+      if (e.key === 'F3' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!selectedCliente) {
+          setClienteExpanded(true);
+          setTimeout(() => {
+            const clienteInput = document.getElementById('cliente-search-input');
+            if (clienteInput) clienteInput.focus();
+          }, 100);
+        }
+      }
+      
       // F4 - Finalizar venda
       if (e.key === 'F4' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
         e.preventDefault();
@@ -871,7 +884,7 @@ export default function NovaVenda() {
     // Adicionar listener com capture para garantir que seja capturado antes de outros handlers
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [cart, handleFinalize, isSaving, isEditing, handleOpenFaturarOSModal]);
+  }, [cart, handleFinalize, isSaving, isEditing, handleOpenFaturarOSModal, selectedCliente]);
 
   // Adicionar produto ao carrinho (com validação de estoque)
   const handleAddProduct = (produto: any) => {
@@ -1794,72 +1807,96 @@ _PrimeCamp Assistência Técnica_`;
               </CardContent>
             </Card>
 
-            {/* Cliente - Compacto */}
-            <div 
-              className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              onClick={() => !selectedCliente && setClienteExpanded(!clienteExpanded)}
-            >
-              <User className="h-3.5 w-3.5 text-gray-400" />
-              {selectedCliente ? (
-                <>
-                  <span className="text-sm font-medium truncate flex-1">{selectedCliente.nome}</span>
-                  <span className="text-xs text-gray-400 hidden sm:inline">{selectedCliente.cpf_cnpj}</span>
-                  <button
-                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedCliente(null);
-                      setClienteSearch('');
-                    }}
-                  >
-                    <X className="h-3.5 w-3.5 text-gray-400" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="text-xs text-gray-400 flex-1">Cliente (opcional)</span>
-                  <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 transition-transform", clienteExpanded && "rotate-180")} />
-                </>
-              )}
-            </div>
-            
-            {/* Busca Cliente expandida */}
-            {clienteExpanded && !selectedCliente && (
-              <Card className="border">
-                <CardContent className="p-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                    <Input
-                      placeholder="Buscar cliente..."
-                      value={clienteSearch}
-                      onChange={(e) => setClienteSearch(e.target.value)}
-                      onFocus={() => setShowClienteSearch(true)}
-                      className="pl-8 h-8 text-sm"
-                      autoFocus
-                    />
-                  </div>
-                  {showClienteSearch && clienteResults.length > 0 && (
-                    <div className="mt-1 border rounded max-h-32 overflow-auto">
-                      {clienteResults.map(cliente => (
-                        <div
-                          key={cliente.id}
-                          className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                          onClick={() => {
-                            handleSelectCliente(cliente);
-                            setClienteExpanded(false);
-                          }}
-                        >
-                          <p className="font-medium text-xs">{cliente.nome}</p>
-                          <p className="text-[10px] text-gray-400 truncate">
-                            {cliente.cpf_cnpj} • {cliente.telefone || cliente.whatsapp}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+            {/* Cliente - Card mais visível */}
+            <Card className={cn(
+              "border-2 transition-all cursor-pointer",
+              selectedCliente 
+                ? "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/20" 
+                : clienteExpanded
+                  ? "border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30"
+                  : "border-gray-200 hover:border-blue-300 dark:border-gray-700 dark:hover:border-blue-700"
+            )}>
+              <CardContent className="p-3">
+                <div 
+                  className="flex items-center gap-3"
+                  onClick={() => !selectedCliente && setClienteExpanded(!clienteExpanded)}
+                >
+                  <User className={cn(
+                    "h-5 w-5",
+                    selectedCliente ? "text-blue-600" : "text-gray-400"
+                  )} />
+                  {selectedCliente ? (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{selectedCliente.nome}</p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {selectedCliente.cpf_cnpj} {selectedCliente.telefone && `• ${selectedCliente.telefone}`}
+                        </p>
+                      </div>
+                      <button
+                        className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-full transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCliente(null);
+                          setClienteSearch('');
+                        }}
+                      >
+                        <X className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">Selecionar Cliente</span>
+                      <kbd className="px-2 py-1 text-[10px] bg-gray-100 dark:bg-gray-800 rounded text-gray-500 font-mono border">F3</kbd>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 text-gray-400 transition-transform",
+                        clienteExpanded && "rotate-180"
+                      )} />
+                    </>
                   )}
-                </CardContent>
-              </Card>
-            )}
+                </div>
+                
+                {/* Busca Cliente expandida */}
+                {clienteExpanded && !selectedCliente && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="cliente-search-input"
+                        placeholder="Buscar por nome, CPF ou telefone..."
+                        value={clienteSearch}
+                        onChange={(e) => setClienteSearch(e.target.value)}
+                        onFocus={() => setShowClienteSearch(true)}
+                        className="pl-10 h-10 text-sm border-2 border-gray-200 focus:border-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                    {showClienteSearch && clienteResults.length > 0 && (
+                      <div className="mt-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg max-h-40 overflow-auto">
+                        {clienteResults.map(cliente => (
+                          <div
+                            key={cliente.id}
+                            className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer border-b last:border-0 transition-colors"
+                            onClick={() => {
+                              handleSelectCliente(cliente);
+                              setClienteExpanded(false);
+                            }}
+                          >
+                            <p className="font-semibold text-sm">{cliente.nome}</p>
+                            <p className="text-xs text-gray-500">
+                              {cliente.cpf_cnpj} • {cliente.telefone || cliente.whatsapp}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {clienteSearch && clienteResults.length === 0 && (
+                      <p className="mt-2 text-xs text-gray-500 text-center py-2">Nenhum cliente encontrado</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Carrinho */}
             <Card className="border flex-1 flex flex-col min-h-[200px]">
@@ -2232,11 +2269,15 @@ _PrimeCamp Assistência Técnica_`;
         {/* Widget inferior - Atalhos e Status */}
         <div className="mt-4 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 flex-wrap">
               <span className="font-semibold text-gray-700 dark:text-gray-300">Atalhos:</span>
               <span className="flex items-center gap-1.5">
                 <kbd className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono shadow-sm">F2</kbd>
-                <span>Buscar</span>
+                <span>Produto</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-2 py-1 bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded text-xs font-mono text-blue-700 dark:text-blue-300 shadow-sm">F3</kbd>
+                <span>Cliente</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <kbd className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 rounded text-xs font-mono text-emerald-700 dark:text-emerald-300 shadow-sm">F4</kbd>

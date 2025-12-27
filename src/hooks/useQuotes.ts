@@ -93,7 +93,7 @@ export function useQuotes() {
         data_validade: dataValidade.toISOString(),
       };
 
-      const { data: newQuote, error } = await from('quotes').insert(quoteData);
+      const { data: newQuote, error } = await from('quotes').insert(quoteData).select().single();
 
       if (error) throw error;
       if (!newQuote || !newQuote.id) throw new Error('Falha ao criar orçamento - ID não retornado');
