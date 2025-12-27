@@ -36,7 +36,8 @@ if pm2 list | grep -q "primecamp-api"; then
     
     echo ""
     echo "6️⃣ Testando endpoint /api/upsert..."
-    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/upsert/kv_store_2c4defad \
+    API_URL="https://api.primecamp.cloud/api"
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${API_URL}/upsert/kv_store_2c4defad \
       -H "Content-Type: application/json" \
       -d '{"data": {"key": "test_deploy", "value": {"test": true}}, "onConflict": "key"}' 2>/dev/null)
     
@@ -45,6 +46,7 @@ if pm2 list | grep -q "primecamp-api"; then
     else
         echo "   ⚠️ Endpoint retornou HTTP $RESPONSE"
         echo "   Verifique os logs: pm2 logs primecamp-api"
+        echo "   Teste manualmente: curl -X POST ${API_URL}/upsert/kv_store_2c4defad -H 'Content-Type: application/json' -d '{\"data\": {\"key\": \"test\", \"value\": {}}, \"onConflict\": \"key\"}'"
     fi
 else
     echo "   ⚠️ Servidor não encontrado no PM2"
