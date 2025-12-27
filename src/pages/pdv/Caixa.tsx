@@ -247,7 +247,7 @@ export default function Caixa() {
   });
   
   const valorEsperado = currentSession 
-    ? Number(currentSession.valor_inicial) + totalEntradas - totalSaidas + totalVendas
+    ? Number(currentSession.valor_inicial) + totalEntradas - totalSaidas
     : 0;
 
   if (isLoading) {
