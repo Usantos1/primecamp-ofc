@@ -232,7 +232,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     if (isEditing && id && !osLoaded) {
       // Tentar carregar múltiplas vezes se não encontrar (para casos de criação recente)
       let tentativas = 0;
-      const carregarOS = () => {
+      const carregarOS = async () => {
         const os = getOSById(id);
         if (os) {
           console.log('[OrdemServicoForm] Carregando OS pela primeira vez:', os.id);
@@ -270,7 +270,38 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           orcamento_autorizado: os.orcamento_autorizado || false,
         });
         
-        const cliente = getClienteById(os.cliente_id);
+        // Primeiro tenta buscar cliente localmente
+        let cliente = getClienteById(os.cliente_id);
+        
+        // Se não encontrou localmente e tem cliente_id, buscar via API
+        if (!cliente && os.cliente_id) {
+          console.log('[OrdemServicoForm] Cliente não encontrado localmente, buscando via API...');
+          try {
+            const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+              ? import.meta.env.VITE_API_URL 
+              : 'https://api.primecamp.cloud/api';
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_URL}/query/clientes`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({ where: { id: os.cliente_id } }),
+            });
+            if (response.ok) {
+              const result = await response.json();
+              const clienteData = result.rows?.[0] || result.data?.[0];
+              if (clienteData) {
+                cliente = clienteData;
+                console.log('[OrdemServicoForm] Cliente encontrado via API:', cliente.nome);
+              }
+            }
+          } catch (error) {
+            console.error('[OrdemServicoForm] Erro ao buscar cliente via API:', error);
+          }
+        }
+        
         if (cliente) {
           setSelectedCliente(cliente);
         }
@@ -1722,21 +1753,20 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
           {/* Header com tabs - fixo */}
-          <div className="flex-shrink-0 border-b-2 border-gray-300 mb-2">
+          <div className="flex-shrink-0 mb-3 px-2">
             {/* Mobile: 2 linhas */}
             <div className="md:hidden">
-              <TabsList className="w-full grid grid-cols-2 bg-gradient-to-br from-gray-50 to-gray-100 h-auto p-1 gap-1 rounded-lg border-2 border-gray-200">
-                {/* Linha 1 */}
+              <TabsList className="w-full grid grid-cols-2 bg-white h-auto p-1.5 gap-1.5 rounded-xl border border-gray-200 shadow-sm">
                 <TabsTrigger 
                   value="dados" 
-                  className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                  className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                 >
                   <FileText className="h-3.5 w-3.5" />
                   <span>Dados</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="checklist" 
-                  className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                  className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                 >
                   <Check className="h-3.5 w-3.5" />
                   <span>Check</span>
@@ -1745,28 +1775,28 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <>
                     <TabsTrigger 
                       value="resolucao" 
-                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <AlertTriangle className="h-3.5 w-3.5" />
                       <span>Resol</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="tecnico" 
-                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <Settings className="h-3.5 w-3.5" />
                       <span>Técnico</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="itens" 
-                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <Package className="h-3.5 w-3.5" />
                       <span>Itens ({itens.length})</span>
                     </TabsTrigger>
                     <TabsTrigger 
                       value="fotos" 
-                      className="gap-1.5 px-2 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-pink-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-pink-600 data-[state=active]:text-white font-semibold text-[11px] hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-md"
+                      className="gap-1.5 px-2 py-2 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <Image className="h-3.5 w-3.5" />
                       <span>Fotos</span>
@@ -1777,69 +1807,77 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </div>
             {/* Desktop: linha única */}
             <div className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <TabsList className="w-max min-w-full justify-start bg-gradient-to-r from-gray-50 to-gray-100/50 h-auto p-1 gap-1 rounded-lg border-2 border-gray-200">
-                {/* GRUPO: ENTRADA */}
+              <TabsList className="w-max min-w-full justify-start bg-white h-auto p-1.5 gap-0 rounded-xl border border-gray-200 shadow-sm">
                 <TabsTrigger 
                   value="dados" 
-                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                 >
                   <FileText className="h-4 w-4" />
                   <span>Dados da OS</span>
                 </TabsTrigger>
+                
+                {/* Separador */}
+                <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
+                
                 <TabsTrigger 
                   value="checklist" 
-                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                  className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                 >
                   <Check className="h-4 w-4" />
                   <span>Checklist</span>
                 </TabsTrigger>
                 {isEditing && (
                   <>
-                    {/* Separador visual */}
-                    <div className="h-8 w-px bg-gray-300 mx-1" />
+                    {/* Separador */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
                     
-                    {/* GRUPO: EXECUÇÃO */}
                     <TabsTrigger 
                       value="resolucao" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-orange-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <AlertTriangle className="h-4 w-4" />
                       <span>Resolução</span>
                     </TabsTrigger>
+                    
+                    {/* Separador */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
+                    
                     <TabsTrigger 
                       value="tecnico" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <Settings className="h-4 w-4" />
                       <span>Info. Técnicas</span>
                     </TabsTrigger>
                     
-                    {/* Separador visual */}
-                    <div className="h-8 w-px bg-gray-300 mx-1" />
+                    {/* Separador */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
                     
-                    {/* GRUPO: VENDA */}
                     <TabsTrigger 
                       value="itens" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <Package className="h-4 w-4" />
                       <span>Peças/Serviços ({itens.length})</span>
                     </TabsTrigger>
+                    
+                    {/* Separador */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
+                    
                     <TabsTrigger 
                       value="financeiro" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <DollarSign className="h-4 w-4" />
                       <span>Financeiro</span>
                     </TabsTrigger>
                     
-                    {/* Separador visual */}
-                    <div className="h-8 w-px bg-gray-300 mx-1" />
+                    {/* Separador */}
+                    <div className="h-6 w-px bg-gray-200 mx-1 self-center" />
                     
-                    {/* GRUPO: ENTREGA */}
                     <TabsTrigger 
                       value="fotos" 
-                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-md border-2 border-transparent data-[state=active]:border-pink-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-pink-600 data-[state=active]:text-white font-semibold text-sm hover:bg-gray-200 transition-all duration-200 data-[state=active]:shadow-lg"
+                      className="whitespace-nowrap gap-2 px-4 py-2.5 rounded-lg data-[state=active]:bg-emerald-600 data-[state=active]:text-white font-medium text-sm hover:bg-gray-100 transition-all duration-200 data-[state=active]:shadow-sm"
                     >
                       <Image className="h-4 w-4" />
                       <span>Fotos</span>
@@ -4302,91 +4340,95 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         </Dialog>
 
         {/* Rodapé com ações */}
-        <div className="border-t-2 border-gray-300 bg-background p-3 sm:p-4 flex-shrink-0 mt-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-              {!isModal && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/os')}
-                  className="gap-2 text-muted-foreground hover:text-foreground"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-              )}
-              {isEditing && currentOS && (
-                <>
-                  <span className="text-sm font-medium">Status OS: </span>
-                  <Select value={currentOS.status} onValueChange={handleChangeStatus}>
-                    <SelectTrigger className={cn('w-[180px] h-9 text-white border-0', (() => {
-                      const config = getConfigByStatus(currentOS.status);
-                      return config?.cor || STATUS_OS_COLORS[currentOS.status as StatusOS] || 'bg-gray-500';
-                    })())}>
-                      <SelectValue placeholder="Alterar Status">
-                        {(() => {
+        <div className="p-3 flex-shrink-0 mt-auto">
+          <Card className="border border-gray-200 shadow-sm rounded-xl bg-white">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                  {!isModal && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/os')}
+                      className="gap-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Voltar
+                    </Button>
+                  )}
+                  {isEditing && currentOS && (
+                    <>
+                      <span className="text-sm font-medium text-gray-600">Status OS:</span>
+                      <Select value={currentOS.status} onValueChange={handleChangeStatus}>
+                        <SelectTrigger className={cn('w-[160px] h-9 text-white border-0 rounded-lg', (() => {
                           const config = getConfigByStatus(currentOS.status);
-                          return config?.label || STATUS_OS_LABELS[currentOS.status as StatusOS] || currentOS.status;
-                        })()}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {configuracoes
-                        .filter(c => c.ativo)
-                        .sort((a, b) => a.ordem - b.ordem)
-                        .map((config) => (
-                          <SelectItem key={config.status} value={config.status}>
-                            {config.label}
-                          </SelectItem>
-                        ))}
-                      {/* Incluir status padrão que não estão nas configurações */}
-                      {Object.entries(STATUS_OS_LABELS)
-                        .filter(([value]) => !configuracoes.some(c => c.status === value))
-                        .map(([value, label]) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-            </div>
+                          return config?.cor || STATUS_OS_COLORS[currentOS.status as StatusOS] || 'bg-gray-500';
+                        })())}>
+                          <SelectValue placeholder="Alterar Status">
+                            {(() => {
+                              const config = getConfigByStatus(currentOS.status);
+                              return config?.label || STATUS_OS_LABELS[currentOS.status as StatusOS] || currentOS.status;
+                            })()}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {configuracoes
+                            .filter(c => c.ativo)
+                            .sort((a, b) => a.ordem - b.ordem)
+                            .map((config) => (
+                              <SelectItem key={config.status} value={config.status}>
+                                {config.label}
+                              </SelectItem>
+                            ))}
+                          {Object.entries(STATUS_OS_LABELS)
+                            .filter(([value]) => !configuracoes.some(c => c.status === value))
+                            .map(([value, label]) => (
+                              <SelectItem key={value} value={value}>{label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
+                </div>
 
-            <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
-              {isEditing && currentOS && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleWhatsApp()}
-                    disabled={whatsappLoading}
-                  >
-                    <Send className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">
-                      {whatsappLoading ? 'Enviando...' : 'Enviar no WhatsApp'}
-                    </span>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handlePrint('termica')}>
-                    <Printer className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Térmica</span>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handlePrint('a4')}>
-                    <Printer className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">A4</span>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handlePrint('pdf')}>
-                    <Download className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Salvar PDF</span>
-                  </Button>
-                </>
-              )}
-              <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm">
-                <Save className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">{isEditing ? 'Atualizar' : 'Salvar'}</span>
-                <span className="sm:hidden">{isEditing ? 'Atualizar' : 'Salvar'}</span>
-              </LoadingButton>
-            </div>
-          </div>
+                <div className="flex items-center justify-center sm:justify-end gap-2 flex-wrap">
+                  {isEditing && currentOS && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleWhatsApp()}
+                        disabled={whatsappLoading}
+                        className="rounded-lg"
+                      >
+                        <Send className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">
+                          {whatsappLoading ? 'Enviando...' : 'Enviar no WhatsApp'}
+                        </span>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handlePrint('termica')} className="rounded-lg">
+                        <Printer className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Térmica</span>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handlePrint('a4')} className="rounded-lg">
+                        <Printer className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">A4</span>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handlePrint('pdf')} className="rounded-lg">
+                        <Download className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Salvar PDF</span>
+                      </Button>
+                    </>
+                  )}
+                  <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700">
+                    <Save className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">{isEditing ? 'Atualizar' : 'Salvar'}</span>
+                    <span className="sm:hidden">{isEditing ? 'Atualizar' : 'Salvar'}</span>
+                  </LoadingButton>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
         {/* Toast centralizado de sucesso */}
