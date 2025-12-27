@@ -23,23 +23,43 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "4️⃣ Verificando se o servidor está rodando..."
+echo "4️⃣ Verificando se dist/index.html foi criado..."
+if [ ! -f "dist/index.html" ]; then
+    echo "❌ Erro: dist/index.html não foi criado!"
+    exit 1
+fi
+echo "   ✅ dist/index.html existe"
+
+echo ""
+echo "5️⃣ Copiando frontend para servidor web..."
+sudo rm -rf /var/www/html/*
+sudo cp -r dist/* /var/www/html/
+sudo chown -R www-data:www-data /var/www/html/
+echo "   ✅ Arquivos copiados para /var/www/html/"
+
+echo ""
+echo "6️⃣ Recarregando Nginx..."
+sudo systemctl reload nginx
+echo "   ✅ Nginx recarregado"
+
+echo ""
+echo "7️⃣ Verificando se o servidor está rodando..."
 if pm2 list | grep -q "primecamp-api"; then
     echo "   ✅ Servidor encontrado"
     echo ""
-    echo "5️⃣ Reiniciando servidor..."
+    echo "8️⃣ Reiniciando servidor..."
     pm2 restart primecamp-api
     
     echo ""
-    echo "6️⃣ Aguardando 3 segundos para servidor inicializar..."
+    echo "9️⃣ Aguardando 3 segundos para servidor inicializar..."
     sleep 3
     
     echo ""
-    echo "7️⃣ Verificando status do servidor..."
+    echo "🔟 Verificando status do servidor..."
     pm2 status
     
     echo ""
-    echo "8️⃣ Testando endpoint /api/upsert..."
+    echo "1️⃣1️⃣ Testando endpoint /api/upsert..."
     API_URL="https://api.primecamp.cloud/api"
     RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${API_URL}/upsert/kv_store_2c4defad \
       -H "Content-Type: application/json" \
