@@ -93,12 +93,10 @@ export function useQuotes() {
         data_validade: dataValidade.toISOString(),
       };
 
-      const { data: newQuote, error } = await from('quotes')
-        .insert(quoteData)
-        .select('*')
-        .single();
+      const { data: newQuote, error } = await from('quotes').insert(quoteData);
 
       if (error) throw error;
+      if (!newQuote || !newQuote.id) throw new Error('Falha ao criar orçamento - ID não retornado');
 
       // Adicionar itens do orçamento
       for (const item of items) {
@@ -116,9 +114,7 @@ export function useQuotes() {
           observacao: item.observacao || null,
         };
 
-        await from('quote_items')
-          .insert(itemData)
-          .execute();
+        await from('quote_items').insert(itemData);
       }
 
       setQuotes(prev => [newQuote, ...prev]);
@@ -133,44 +129,45 @@ export function useQuotes() {
   const updateQuoteStatus = useCallback(async (id: string, status: QuoteStatus): Promise<Quote> => {
     try {
       const { data: updatedQuote, error } = await from('quotes')
-        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select('*')
-        .single();
+        .update({ status, updated_at: new Date().toISOString() });
 
       if (error) throw error;
 
-      setQuotes(prev => prev.map(q => q.id === id ? updatedQuote : q));
-      return updatedQuote;
+      const updatedData = { ...quotes.find(q => q.id === id), status, updated_at: new Date().toISOString() } as Quote;
+      setQuotes(prev => prev.map(q => q.id === id ? updatedData : q));
+      return updatedData;
     } catch (error) {
       console.error('Erro ao atualizar status do orçamento:', error);
       throw error;
     }
-  }, []);
+  }, [quotes]);
 
   // Marcar como enviado por WhatsApp
   const markAsSentWhatsApp = useCallback(async (id: string): Promise<Quote> => {
     try {
-      const { data: updatedQuote, error } = await from('quotes')
-        .update({ 
-          status: 'enviado' as QuoteStatus,
-          enviado_whatsapp: true, 
-          whatsapp_enviado_em: new Date().toISOString(),
-          updated_at: new Date().toISOString() 
-        })
+      const updateData = { 
+        status: 'enviado' as QuoteStatus,
+        enviado_whatsapp: true, 
+        whatsapp_enviado_em: new Date().toISOString(),
+        updated_at: new Date().toISOString() 
+      };
+      
+      const { error } = await from('quotes')
         .eq('id', id)
-        .select('*')
-        .single();
+        .update(updateData);
 
       if (error) throw error;
 
+      const existingQuote = quotes.find(q => q.id === id);
+      const updatedQuote = { ...existingQuote, ...updateData } as Quote;
       setQuotes(prev => prev.map(q => q.id === id ? updatedQuote : q));
       return updatedQuote;
     } catch (error) {
       console.error('Erro ao marcar orçamento como enviado:', error);
       throw error;
     }
-  }, []);
+  }, [quotes]);
 
   // Converter orçamento em venda
   const convertToSale = useCallback(async (quoteId: string): Promise<string> => {
@@ -208,12 +205,10 @@ export function useQuotes() {
         total_pago: 0,
       };
 
-      const { data: newSale, error: saleError } = await from('sales')
-        .insert(saleData)
-        .select('*')
-        .single();
+      const { data: newSale, error: saleError } = await from('sales').insert(saleData);
 
       if (saleError) throw saleError;
+      if (!newSale || !newSale.id) throw new Error('Falha ao criar venda - ID não retornado');
 
       // Copiar itens para a venda
       for (const item of (items || [])) {
@@ -231,21 +226,18 @@ export function useQuotes() {
           observacao: item.observacao,
         };
 
-        await from('sale_items')
-          .insert(saleItemData)
-          .execute();
+        await from('sale_items').insert(saleItemData);
       }
 
       // Atualizar orçamento como convertido
       await from('quotes')
+        .eq('id', quoteId)
         .update({ 
           status: 'convertido' as QuoteStatus,
           sale_id: newSale.id,
           converted_at: new Date().toISOString(),
           updated_at: new Date().toISOString() 
-        })
-        .eq('id', quoteId)
-        .execute();
+        });
 
       // Atualizar estado local
       setQuotes(prev => prev.map(q => 
