@@ -1677,23 +1677,21 @@ _PrimeCamp Assistência Técnica_`;
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
-          {/* Coluna esquerda - Busca e Cliente */}
-          <div className="lg:col-span-2 space-y-3 md:space-y-4">
-            {/* Busca de produtos - DESTAQUE PRINCIPAL */}
-            <Card className="border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/50 dark:to-teal-950/50 shadow-sm">
-              <CardHeader className="p-3 md:p-4 pb-0">
-                <CardTitle className="text-sm md:text-base flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-                  <Search className="h-4 w-4" />
-                  Buscar Produto (F2)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 md:p-4 pt-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 min-h-[calc(100vh-200px)]">
+          {/* Coluna esquerda - Busca, Cliente e Carrinho */}
+          <div className="lg:col-span-2 flex flex-col gap-3">
+            {/* Busca de produtos */}
+            <Card className="border">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="h-4 w-4 text-gray-400" />
+                  <span className="text-xs text-gray-500 font-medium">Buscar Produto</span>
+                  <kbd className="ml-auto px-1.5 py-0.5 text-[10px] bg-gray-100 dark:bg-gray-800 rounded text-gray-500">F2</kbd>
+                </div>
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 dark:text-emerald-400" />
                   <Input
                     ref={searchInputRef}
-                    placeholder="Digite o nome, código ou código de barras do produto..."
+                    placeholder="Nome, código ou código de barras..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -1701,25 +1699,27 @@ _PrimeCamp Assistência Técnica_`;
                         handleAddProduct(productResults[0]);
                       }
                     }}
-                    className="pl-12 h-12 md:h-14 text-base md:text-lg border-2 border-emerald-300 dark:border-emerald-700 focus:border-emerald-500 focus:ring-emerald-500 rounded-xl shadow-sm dark:bg-gray-900"
+                    className="h-10 text-sm"
                   />
                   {showProductSearch && productResults.length > 0 && (
-                    <div className="absolute z-50 w-full bg-background border rounded shadow-lg max-h-64 overflow-auto mt-1">
+                    <div className="absolute z-50 w-full bg-background border rounded-lg shadow-lg max-h-60 overflow-auto mt-1">
                       {productResults.map(produto => (
                         <div
                           key={produto.id}
-                          className="p-2 md:p-3 hover:bg-muted cursor-pointer border-b last:border-0 active:bg-muted"
+                          className="p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-0"
                           onClick={() => handleAddProduct(produto)}
                         >
-                          <p className="font-medium text-sm md:text-base">{produto.descricao || ''}</p>
-                          <div className="flex items-center justify-between mt-1 gap-2">
-                            <p className="text-xs text-muted-foreground truncate">
-                              {produto.codigo && `Cód: ${produto.codigo}`}
-                              {produto.codigo_barras && ` • Barras: ${produto.codigo_barras}`}
-                            </p>
-                            <p className="text-xs md:text-sm font-semibold flex-shrink-0">
+                          <div className="flex justify-between items-start">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate">{produto.descricao || ''}</p>
+                              <p className="text-xs text-gray-400 truncate">
+                                {produto.codigo && `Cód: ${produto.codigo}`}
+                                {produto.codigo_barras && ` • ${produto.codigo_barras}`}
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold text-emerald-600 ml-2">
                               {currencyFormatters.brl(produto.preco_venda || 0)}
-                            </p>
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -1729,112 +1729,94 @@ _PrimeCamp Assistência Técnica_`;
               </CardContent>
             </Card>
 
-            {/* Cliente - Compacto e Colapsável */}
-            <Card className="border transition-all">
-              {/* Header clicável para expandir/colapsar */}
-              <div 
-                className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                onClick={() => !selectedCliente && setClienteExpanded(!clienteExpanded)}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  {selectedCliente ? (
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="font-medium text-sm truncate">{selectedCliente.nome}</span>
-                      <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                        {selectedCliente.cpf_cnpj}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">Cliente (opcional)</span>
-                  )}
-                </div>
-                {selectedCliente ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 flex-shrink-0"
+            {/* Cliente - Compacto */}
+            <div 
+              className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={() => !selectedCliente && setClienteExpanded(!clienteExpanded)}
+            >
+              <User className="h-3.5 w-3.5 text-gray-400" />
+              {selectedCliente ? (
+                <>
+                  <span className="text-sm font-medium truncate flex-1">{selectedCliente.nome}</span>
+                  <span className="text-xs text-gray-400 hidden sm:inline">{selectedCliente.cpf_cnpj}</span>
+                  <button
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedCliente(null);
                       setClienteSearch('');
                     }}
                   >
-                    <X className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <ChevronDown className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform",
-                    clienteExpanded && "rotate-180"
-                  )} />
-                )}
-              </div>
-              
-              {/* Conteúdo expandido */}
-              {clienteExpanded && !selectedCliente && (
-                <CardContent className="p-3 pt-0 border-t">
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
-                        value={clienteSearch}
-                        onChange={(e) => setClienteSearch(e.target.value)}
-                        onFocus={() => setShowClienteSearch(true)}
-                        className="pl-9 h-9 text-sm"
-                        autoFocus
-                      />
-                    </div>
-                    {showClienteSearch && clienteResults.length > 0 && (
-                      <div className="bg-background border rounded shadow-lg max-h-40 overflow-auto">
-                        {clienteResults.map(cliente => (
-                          <div
-                            key={cliente.id}
-                            className="p-2 hover:bg-muted cursor-pointer text-sm"
-                            onClick={() => {
-                              handleSelectCliente(cliente);
-                              setClienteExpanded(false);
-                            }}
-                          >
-                            <p className="font-medium text-xs">{cliente.nome}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {cliente.cpf_cnpj} • {cliente.telefone || cliente.whatsapp}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
+                    <X className="h-3.5 w-3.5 text-gray-400" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs text-gray-400 flex-1">Cliente (opcional)</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 text-gray-400 transition-transform", clienteExpanded && "rotate-180")} />
+                </>
               )}
-            </Card>
+            </div>
+            
+            {/* Busca Cliente expandida */}
+            {clienteExpanded && !selectedCliente && (
+              <Card className="border">
+                <CardContent className="p-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                    <Input
+                      placeholder="Buscar cliente..."
+                      value={clienteSearch}
+                      onChange={(e) => setClienteSearch(e.target.value)}
+                      onFocus={() => setShowClienteSearch(true)}
+                      className="pl-8 h-8 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  {showClienteSearch && clienteResults.length > 0 && (
+                    <div className="mt-1 border rounded max-h-32 overflow-auto">
+                      {clienteResults.map(cliente => (
+                        <div
+                          key={cliente.id}
+                          className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                          onClick={() => {
+                            handleSelectCliente(cliente);
+                            setClienteExpanded(false);
+                          }}
+                        >
+                          <p className="font-medium text-xs">{cliente.nome}</p>
+                          <p className="text-[10px] text-gray-400 truncate">
+                            {cliente.cpf_cnpj} • {cliente.telefone || cliente.whatsapp}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
 
-            {/* Carrinho - com destaque visual */}
-            <Card className={cn(
-              "border-2 transition-all",
-              cart.length === 0 
-                ? "border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50" 
-                : "border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 shadow-sm"
-            )}>
-              <CardHeader className="p-3 md:p-4 pb-2">
-                <CardTitle className="text-sm md:text-base flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <ShoppingCart className={cn("h-4 w-4", cart.length > 0 ? "text-blue-600" : "text-gray-400")} />
+            {/* Carrinho */}
+            <Card className="border flex-1 flex flex-col min-h-[200px]">
+              <CardHeader className="p-3 pb-2 border-b">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <ShoppingCart className="h-4 w-4" />
                     Carrinho
                   </span>
                   {cart.length > 0 && (
-                    <Badge className="bg-blue-600 text-white">{cart.length} {cart.length === 1 ? 'item' : 'itens'}</Badge>
+                    <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                      {cart.length} {cart.length === 1 ? 'item' : 'itens'}
+                    </span>
                   )}
-                </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="p-3 md:p-4 pt-0">
+              <CardContent className="p-3 flex-1 overflow-auto">
                 {cart.length === 0 ? (
-                  <div className="text-center py-8 md:py-12">
-                    <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      <ShoppingCart className="h-8 w-8 md:h-10 md:w-10 text-gray-400 dark:text-gray-500" />
-                    </div>
-                    <p className="text-base md:text-lg font-medium text-gray-500 dark:text-gray-400">Carrinho vazio</p>
-                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Pressione <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">F2</kbd> para buscar produtos</p>
+                  <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                    <ShoppingCart className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-400">Carrinho vazio</p>
+                    <p className="text-xs text-gray-300 mt-1">Use <kbd className="px-1 bg-gray-100 rounded text-[10px]">F2</kbd> para buscar</p>
                   </div>
                 ) : (
                   <div className="space-y-2 md:space-y-3">
@@ -1963,135 +1945,144 @@ _PrimeCamp Assistência Técnica_`;
             </Card>
           </div>
 
-          {/* Coluna direita - Resumo + Ações (compacto) */}
-          <div className="space-y-2">
-            <Card className={cn(
-              "sticky top-4 border transition-all",
-              totals.total > 0 
-                ? "border-emerald-200 dark:border-emerald-800 shadow-sm" 
-                : "border-gray-200 dark:border-gray-700"
-            )}>
-              <CardContent className="p-3 space-y-2">
-                {/* Valores - Compactos */}
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span className="flex items-center gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5" />
-                    Resumo
-                  </span>
-                  <span>{currencyFormatters.brl(totals.subtotal)}</span>
+          {/* Coluna direita - Resumo + Ações */}
+          <div className="flex flex-col h-full">
+            <Card className="border border-gray-200 dark:border-gray-700 flex-1">
+              <CardContent className="p-4 flex flex-col h-full">
+                {/* Header Resumo */}
+                <div className="flex items-center justify-between mb-3 pb-2 border-b">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Resumo</span>
                 </div>
                 
-                {/* Desconto Extra - Inline */}
-                <div className="flex items-center justify-between text-xs gap-2">
-                  <span className="text-gray-500 dark:text-gray-400">Desconto Extra:</span>
-                  <Input
-                    type="number"
-                    value={descontoTotal}
-                    onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
-                    className="h-6 w-16 text-xs text-right"
-                    step="0.01"
-                  />
+                {/* Valores */}
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Subtotal</span>
+                    <span className="font-medium">{currencyFormatters.brl(totals.subtotal)}</span>
+                  </div>
+                  {totals.descontoItens > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Desc. Itens</span>
+                      <span className="text-red-500">-{currencyFormatters.brl(totals.descontoItens)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Desconto</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-400 text-xs">R$</span>
+                      <Input
+                        type="number"
+                        value={descontoTotal}
+                        onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
+                        className="h-7 w-20 text-sm text-right"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
                 </div>
                 
-                {/* TOTAL - O único destaque forte */}
+                {/* TOTAL */}
                 <div className={cn(
-                  "rounded-lg p-2.5",
+                  "mt-3 p-3 rounded-lg",
                   totals.total > 0 
                     ? "bg-emerald-500 text-white" 
                     : "bg-gray-100 dark:bg-gray-800 text-gray-400"
                 )}>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium">Total:</span>
-                    <span className="text-xl font-bold">
+                    <span className="text-sm font-medium">Total</span>
+                    <span className="text-2xl font-bold tabular-nums">
                       {currencyFormatters.brl(totals.total)}
                     </span>
                   </div>
                 </div>
 
-                {/* Info pagamento (apenas em edição) */}
+                {/* Info pagamento (edição) */}
                 {isEditing && (
-                  <div className="flex justify-between text-xs pt-1 border-t">
-                    <span className="text-gray-500">Pago: <span className="text-emerald-600 font-medium">{currencyFormatters.brl(totalPago)}</span></span>
-                    <span className={cn("font-medium", saldoRestante > 0 ? "text-orange-600" : "text-emerald-600")}>
-                      Restante: {currencyFormatters.brl(saldoRestante)}
-                    </span>
+                  <div className="mt-2 pt-2 border-t text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Pago</span>
+                      <span className="text-emerald-600 font-medium">{currencyFormatters.brl(totalPago)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Restante</span>
+                      <span className={cn("font-semibold", saldoRestante > 0 ? "text-orange-500" : "text-emerald-600")}>
+                        {currencyFormatters.brl(saldoRestante)}
+                      </span>
+                    </div>
                   </div>
                 )}
 
-                {/* ═══════════════════════════════════════════════════════════════════
-                    AÇÕES - Hierarquia clara: Verde > Neutro > Link
-                ═══════════════════════════════════════════════════════════════════ */}
+                {/* Ações */}
                 {(!isEditing || sale?.is_draft) && (
-                  <div className="space-y-1.5 pt-2 border-t">
-                    {/* 1. GERAR ORÇAMENTO - Ação Principal (verde = dinheiro) */}
+                  <div className="mt-4 pt-3 border-t space-y-2">
+                    {/* 1. FINALIZAR VENDA - AÇÃO PRINCIPAL */}
                     <Button
-                      className="w-full h-10 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
-                      onClick={handleGerarOrcamento}
-                      disabled={cart.length === 0 || isGeneratingOrcamento || isSaving}
-                    >
-                      <FileCheck className="h-4 w-4 mr-2" />
-                      {isGeneratingOrcamento ? 'Gerando...' : 'Gerar Orçamento'}
-                    </Button>
-
-                    {/* 2. FINALIZAR VENDA - Secundário (neutro, não compete) */}
-                    <Button
-                      variant="outline"
-                      className="w-full h-9 text-sm text-gray-700 border-gray-200 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800"
+                      className="w-full h-9 text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
                       onClick={handleFinalize}
                       disabled={cart.length === 0 || isSaving || isDeleting}
                     >
-                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      <DollarSign className="h-4 w-4 mr-1.5" />
                       {isSaving ? 'Finalizando...' : 'Finalizar Venda'}
                     </Button>
 
-                    {/* Excluir rascunho (se aplicável) */}
+                    {/* 2. GERAR ORÇAMENTO - Secundário */}
+                    <Button
+                      variant="outline"
+                      className="w-full h-8 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700"
+                      onClick={handleGerarOrcamento}
+                      disabled={cart.length === 0 || isGeneratingOrcamento || isSaving}
+                    >
+                      <FileCheck className="h-3.5 w-3.5 mr-1.5" />
+                      {isGeneratingOrcamento ? 'Gerando...' : 'Gerar Orçamento'}
+                    </Button>
+
+                    {/* Excluir (se rascunho) */}
                     {isEditing && (sale?.is_draft || isAdmin) && (
                       <button
-                        className="w-full text-xs text-red-500 hover:text-red-600 py-1 transition-colors"
+                        className="w-full text-xs text-gray-400 hover:text-red-500 py-1"
                         onClick={handleDelete}
                         disabled={isSaving || isDeleting}
                       >
-                        {isDeleting ? 'Excluindo...' : '🗑 Excluir rascunho'}
+                        {isDeleting ? 'Excluindo...' : 'Excluir rascunho'}
                       </button>
                     )}
                   </div>
                 )}
 
-                {/* Links contextuais */}
-                <div className="flex flex-col gap-0.5 pt-1.5 border-t text-xs">
-                  {/* Faturar OS - SÓ aparece se não tiver OS vinculada e não estiver editando */}
-                  {!isEditing && !sale?.ordem_servico_id && cart.length === 0 && (
+                {/* Observações */}
+                <div className="mt-3 pt-3 border-t">
+                  <Textarea
+                    value={observacoes}
+                    onChange={(e) => setObservacoes(e.target.value)}
+                    placeholder="Observações da venda..."
+                    rows={2}
+                    className="resize-none text-xs bg-gray-50 dark:bg-gray-800/50 border-0 focus-visible:ring-1 focus-visible:ring-gray-300"
+                  />
+                </div>
+
+                {/* Links */}
+                <div className="mt-auto pt-3 border-t flex items-center justify-between text-xs text-gray-400">
+                  {!isEditing && !sale?.ordem_servico_id && cart.length === 0 ? (
                     <button
-                      className="flex items-center justify-center gap-1.5 text-gray-400 hover:text-gray-600 py-1 transition-colors"
+                      className="flex items-center gap-1 hover:text-gray-600"
                       onClick={handleOpenFaturarOSModal}
                     >
                       <Wrench className="h-3 w-3" />
-                      Importar de Ordem de Serviço
+                      Importar OS
                     </button>
+                  ) : (
+                    <span></span>
                   )}
-                  
-                  {/* Vendas do caixa */}
                   <button
-                    className="flex items-center justify-center gap-1.5 text-gray-400 hover:text-gray-600 py-1 transition-colors"
+                    className="flex items-center gap-1 hover:text-gray-600"
                     onClick={() => navigate('/pdv/vendas')}
                   >
                     <BarChart3 className="h-3 w-3" />
-                    {isAdmin ? 'Vendas do caixa' : 'Minhas vendas de hoje'}
+                    {isAdmin ? 'Vendas' : 'Minhas vendas'}
                   </button>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Observações - Ultra compacto */}
-            <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-              <Textarea
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                placeholder="Observações (opcional)..."
-                rows={1}
-                className="resize-none text-xs border-0 p-0 focus-visible:ring-0 bg-transparent min-h-[24px]"
-              />
-            </div>
           </div>
         </div>
       </div>
