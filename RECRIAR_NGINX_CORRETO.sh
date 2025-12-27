@@ -21,11 +21,11 @@ fi
 echo ""
 echo "2️⃣ Criando configuração atualizada..."
 
-NGINX_CONFIG="/etc/nginx/sites-available/primecamp.cloud"
+NGINX_CONFIG="/etc/nginx/sites-available/primecamp.cloud.conf"
 
 # Se existe configuração anterior, fazer backup
-if [ -f "$NGINX_CONFIG.conf" ]; then
-    sudo cp "$NGINX_CONFIG.conf" "${NGINX_CONFIG.conf}.backup.$(date +%Y%m%d_%H%M%S)"
+if [ -f "$NGINX_CONFIG" ]; then
+    sudo cp "$NGINX_CONFIG" "${NGINX_CONFIG}.backup.$(date +%Y%m%d_%H%M%S)"
 fi
 
 # Ler configuração existente para pegar SSL se existir
@@ -165,7 +165,7 @@ echo ""
 echo "3️⃣ Removendo link antigo e criando novo..."
 sudo rm -f /etc/nginx/sites-enabled/primecamp.cloud
 sudo rm -f /etc/nginx/sites-enabled/primecamp.cloud.conf
-sudo ln -sf /etc/nginx/sites-available/primecamp.cloud /etc/nginx/sites-enabled/primecamp.cloud
+sudo ln -sf /etc/nginx/sites-available/primecamp.cloud.conf /etc/nginx/sites-enabled/primecamp.cloud.conf
 echo "   ✅ Link criado"
 
 echo ""
