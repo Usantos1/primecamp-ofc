@@ -77,14 +77,14 @@ export default function CadastrosBase() {
       title: 'Nova OS',
       description: 'Criar nova Ordem de Serviço',
       icon: Wrench,
-      path: '/pdv/os/nova',
+      path: '/os/nova',
       color: 'text-orange-600',
     },
     {
       title: 'Lista de OS',
       description: 'Consultar ordens de serviço',
       icon: ClipboardList,
-      path: '/pdv/os',
+      path: '/os',
       color: 'text-amber-600',
     },
     {

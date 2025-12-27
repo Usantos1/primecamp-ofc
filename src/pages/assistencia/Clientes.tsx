@@ -783,7 +783,7 @@ export default function Clientes() {
                             className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all"
                             onClick={() => {
                               setShowForm(false);
-                              navigate(`/pdv/os/${os.id}`);
+                              navigate(`/os/${os.id}`);
                             }}
                           >
                             <CardContent className="p-3">

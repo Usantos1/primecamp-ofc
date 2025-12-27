@@ -65,7 +65,7 @@ const Index = () => {
       title: 'Nova OS',
       description: 'Criar ordem de serviço',
       icon: Wrench,
-      path: '/pdv/os/nova',
+      path: '/os/nova',
       permission: 'os.create',
     },
     {
@@ -102,8 +102,8 @@ const Index = () => {
       icon: Wrench,
       color: 'bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-400',
       items: [
-        { label: 'Nova OS', path: '/pdv/os/nova', icon: Plus, permission: 'os.create' },
-        { label: 'Lista de OS', path: '/pdv/os', icon: List, permission: 'os.view' },
+        { label: 'Nova OS', path: '/os/nova', icon: Plus, permission: 'os.create' },
+        { label: 'Lista de OS', path: '/os', icon: List, permission: 'os.view' },
         { label: 'Config. Status', path: '/pdv/configuracao-status', icon: Settings, permission: 'os.config' },
       ].filter(item => !item.permission || (permissionsLoading ? false : hasPermission(item.permission))),
     },

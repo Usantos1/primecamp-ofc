@@ -19,7 +19,7 @@ export function AlertCards({ alerts }: AlertCardsProps) {
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
       borderColor: 'border-yellow-300',
-      path: '/pdv/os?filter=paradas',
+      path: '/os?filter=paradas',
       description: 'Sem atualização há mais de 3 dias',
     },
     {
@@ -49,7 +49,7 @@ export function AlertCards({ alerts }: AlertCardsProps) {
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       borderColor: 'border-red-300',
-      path: '/pdv/os?filter=sem_atualizacao',
+      path: '/os?filter=sem_atualizacao',
       description: 'Sem atualização há mais de 7 dias',
     },
   ].filter(item => {

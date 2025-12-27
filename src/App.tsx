@@ -192,13 +192,17 @@ const App = () => (
               />
               <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission="vendas.manage"><ConfiguracaoCupom /></PermissionRoute>} />
               <Route path="/cupom/:id" element={<CupomView />} />
-              <Route path="/pdv/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
-              <Route path="/pdv/os/nova" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
-              <Route path="/pdv/os/nova/:tab" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
-              <Route path="/pdv/os/:id" element={<PermissionRoute permission="os.view"><OrdemServicoForm /></PermissionRoute>} />
-              <Route path="/pdv/os/:id/:tab" element={<PermissionRoute permission="os.view"><OrdemServicoForm /></PermissionRoute>} />
-              <Route path="/pdv/os/:id/editar" element={<PermissionRoute permission="os.edit"><OrdemServicoForm /></PermissionRoute>} />
-              <Route path="/pdv/os/:id/editar/:tab" element={<PermissionRoute permission="os.edit"><OrdemServicoForm /></PermissionRoute>} />
+              {/* Rotas de OS - simplificadas para /os */}
+              <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
+              <Route path="/os/nova" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/os/nova/:tab" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/os/:id" element={<PermissionRoute permission="os.view"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/os/:id/:tab" element={<PermissionRoute permission="os.view"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/os/:id/editar" element={<PermissionRoute permission="os.edit"><OrdemServicoForm /></PermissionRoute>} />
+              <Route path="/os/:id/editar/:tab" element={<PermissionRoute permission="os.edit"><OrdemServicoForm /></PermissionRoute>} />
+              {/* Redirect antigo /pdv/os para /os */}
+              <Route path="/pdv/os" element={<Navigate to="/os" replace />} />
+              <Route path="/pdv/os/*" element={<Navigate to="/os" replace />} />
               <Route path="/pdv/clientes" element={<PermissionRoute permission="clientes.view"><AssistenciaClientes /></PermissionRoute>} />
               <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />
               <Route path="/pdv/configuracao-status" element={<PermissionRoute permission="os.config.status"><AssistenciaConfiguracaoStatus /></PermissionRoute>} />

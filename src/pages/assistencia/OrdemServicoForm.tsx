@@ -204,9 +204,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
     // Se for página, navega pela URL
     if (isEditing && id) {
-      navigate(`/pdv/os/${id}/${tab}`);
+      navigate(`/os/${id}/${tab}`);
     } else {
-      navigate(`/pdv/os/nova/${tab}`);
+      navigate(`/os/nova/${tab}`);
     }
   };
 
@@ -784,7 +784,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           // Se estiver no modal, fecha e deixa o usuário abrir novamente se quiser
           onClose();
         } else {
-          navigate(`/pdv/os/${novaOS.id}`);
+          navigate(`/os/${novaOS.id}`);
         }
       }
     } catch (error: any) {
@@ -4388,7 +4388,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate('/pdv/os')}
+                  onClick={() => navigate('/os')}
                   className="gap-2 text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="h-4 w-4" />

@@ -95,7 +95,7 @@ export default function PDV() {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 px-4 md:px-0">
           <Card 
             className="border-2 border-gray-300 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all active:scale-95 md:active:scale-100 bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/10 dark:to-blue-900/5 md:bg-transparent md:dark:bg-transparent" 
-            onClick={() => navigate('/pdv/os/nova')}
+            onClick={() => navigate('/os/nova')}
           >
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6 px-3 md:px-6">
               <CardTitle className="text-xs md:text-base flex items-center gap-2">
@@ -146,7 +146,7 @@ export default function PDV() {
 
           <Card 
             className="border-2 border-gray-300 cursor-pointer hover:shadow-md hover:border-green-400 transition-all active:scale-95 md:active:scale-100 bg-gradient-to-br from-green-50/50 to-green-100/30 dark:from-green-950/10 dark:to-green-900/5 md:bg-transparent md:dark:bg-transparent" 
-            onClick={() => navigate('/pdv/os')}
+            onClick={() => navigate('/os')}
           >
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6 px-3 md:px-6">
               <CardTitle className="text-xs md:text-base flex items-center gap-2">
