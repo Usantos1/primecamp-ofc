@@ -1702,7 +1702,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full flex flex-col overflow-x-hidden", isModal ? "h-full overflow-hidden" : "min-h-[calc(100dvh-8rem)]")}>
+    <div className={cn("w-full max-w-full flex flex-col overflow-hidden", isModal ? "h-full" : "min-h-[calc(100dvh-8rem)]")}>
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Header com tabs */}
@@ -1866,10 +1866,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Tab Dados */}
-          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2 md:p-2 overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] gap-2 md:gap-3 flex-1 min-h-0 items-stretch w-full max-w-full">
+          <TabsContent value="dados" className="flex-1 flex flex-col min-h-0 p-2 md:p-2 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,380px)] gap-2 md:gap-3 flex-1 min-h-0 items-stretch w-full">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0 w-full max-w-full">
+              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0">
                 <CardHeader className="pb-2 pt-2 md:pt-3 flex-shrink-0 border-b-2 border-gray-300">
                   <CardTitle className="text-sm md:text-base font-semibold">Dados da OS</CardTitle>
                 </CardHeader>
@@ -2153,16 +2153,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha e Áreas com Defeito */}
-              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0 w-full max-w-full">
+              <Card className="flex flex-col h-full overflow-hidden border-2 border-gray-300 min-w-0">
                 <CardHeader className="pb-2 pt-2 md:pt-3 flex-shrink-0 border-b-2 border-gray-300">
                   <CardTitle className="text-sm md:text-base font-semibold flex items-center gap-2 truncate">
                     <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="truncate">Senha e Áreas com Defeito</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-2 md:pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3 md:space-y-4 px-2 box-border">
+                <CardContent className="pt-2 md:pt-3 flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden space-y-3 md:space-y-4 px-2">
                   {/* Seção Senha */}
-                  <div className="space-y-2 md:space-y-3 flex-shrink-0 w-full min-w-0">
+                  <div className="space-y-2 md:space-y-3 flex-shrink-0">
                     <Label className="text-xs md:text-sm font-medium truncate">Possui senha</Label>
                     <Select 
                       value={formData.possui_senha_tipo || 'nao'} 
@@ -2174,7 +2174,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-10 text-sm min-w-0">
+                      <SelectTrigger className="w-full h-10 text-sm">
                         <SelectValue className="truncate">
                           {formData.possui_senha_tipo === 'sim' && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && 'SIM - DESLIZAR (DESENHO)'}
@@ -2194,32 +2194,32 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                     {/* Senha - Campo de texto quando SIM */}
                     {formData.possui_senha_tipo === 'sim' && (
-                      <div className="space-y-2 w-full min-w-0">
+                      <div className="space-y-2">
                         <Input
                           type="text"
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                           placeholder="Digite a senha"
-                          className="h-10 text-sm w-full min-w-0"
+                          className="h-10 text-sm"
                         />
                       </div>
                     )}
 
                     {/* Senha - PatternLock quando DESLIZAR */}
                     {formData.possui_senha_tipo === 'deslizar' && (
-                      <div className="space-y-2 flex-shrink-0 w-full min-w-0 py-4 md:py-2">
-                        <div className="flex justify-center items-center w-full">
+                      <div className="space-y-2 py-2">
+                        <div className="flex justify-center items-center">
                           <PatternLock
                             value={formData.padrao_desbloqueio}
                             onChange={(pattern) => setFormData(prev => ({ ...prev, padrao_desbloqueio: pattern }))}
-                            className="flex-shrink-0"
+                            className="max-w-[200px]"
                           />
                         </div>
                         <Input
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                           placeholder="Senha adicional"
-                          className="h-10 text-sm w-full min-w-0"
+                          className="h-10 text-sm"
                         />
                       </div>
                     )}
@@ -2229,9 +2229,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="border-t flex-shrink-0"></div>
 
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
-                  <div className="flex-1 flex flex-col min-h-0 w-full min-w-0">
+                  <div className="flex-1 flex flex-col min-h-0 min-w-0">
                     <Label className="text-sm font-medium mb-2 flex-shrink-0 truncate">Referência Visual do Aparelho</Label>
-                    <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden w-full max-w-full bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-2">
+                    <div className="flex-1 flex items-center justify-center min-h-[200px] max-h-[400px] overflow-hidden bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-2">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
@@ -2239,9 +2239,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         readOnly={false}
                       />
                     </div>
-                    <div className="flex items-center justify-center gap-1.5 mt-2">
-                      <p className="text-xs text-muted-foreground text-center">
-                        Clique na imagem para marcar defeitos • {formData.areas_defeito?.length || 0} ponto{formData.areas_defeito?.length !== 1 ? 's' : ''} marcado{formData.areas_defeito?.length !== 1 ? 's' : ''}
+                    <div className="flex flex-wrap items-center justify-center gap-1 mt-2 text-center">
+                      <p className="text-xs text-muted-foreground">
+                        Clique para marcar defeitos • {formData.areas_defeito?.length || 0} ponto(s)
                       </p>
                       {formData.areas_defeito && formData.areas_defeito.length > 0 && (
                         <button
