@@ -595,14 +595,14 @@ export default function Reports() {
       title="Relatórios & Analytics"
       subtitle="Análises completas e métricas do sistema"
     >
-      <div className="space-y-6">
-        {/* Filtros e Ações */}
-        <Card className="border-2 border-gray-200 rounded-xl shadow-sm">
-          <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="flex items-center gap-3">
+      <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Filtros e Ações - fixo no topo */}
+        <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg p-3">
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+            <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={(value: any) => setDateRange(value)}>
-                <SelectTrigger className="w-[200px] h-11 border-2 border-gray-200">
-                  <Calendar className="h-4 w-4 mr-2" />
+                <SelectTrigger className="w-[180px] h-9 text-sm">
+                  <Calendar className="h-3.5 w-3.5 mr-2" />
                   <SelectValue placeholder="Período" />
                 </SelectTrigger>
                 <SelectContent>
@@ -612,72 +612,44 @@ export default function Reports() {
                   <SelectItem value="all">Todo o período</SelectItem>
                 </SelectContent>
               </Select>
-              <Badge className="text-[11px]" variant="outline">
-                Atualizado em {new Date().toLocaleDateString('pt-BR')}
+              <Badge className="text-[10px]" variant="outline">
+                {new Date().toLocaleDateString('pt-BR')}
               </Badge>
             </div>
-            <Button onClick={exportToPDF} variant="outline" className="h-11">
-              <Download className="h-4 w-4 mr-2" />
+            <Button onClick={exportToPDF} variant="outline" size="sm" className="h-9">
+              <Download className="h-3.5 w-3.5 mr-2" />
               Exportar PDF
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {/* Cards de Resumo - fixo */}
+        <div className="flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            {
-              title: 'Tarefas',
-              value: overviewStats.tasks.total,
-              subtitle: `${overviewStats.tasks.completionRate}% concluídas`,
-              icon: CheckSquare,
-              color: 'from-blue-50 to-blue-100'
-            },
-            {
-              title: 'Academy',
-              value: overviewStats.trainings.total,
-              subtitle: `${overviewStats.trainings.averageProgress}% progresso médio`,
-              icon: GraduationCap,
-              color: 'from-green-50 to-green-100'
-            },
-            {
-              title: 'Usuários',
-              value: overviewStats.users.active,
-              subtitle: `${overviewStats.users.activeRate}% ativos`,
-              icon: Users,
-              color: 'from-purple-50 to-purple-100'
-            },
-            {
-              title: 'Processos',
-              value: overviewStats.processes.active,
-              subtitle: `${overviewStats.processes.activeRate}% ativos`,
-              icon: Target,
-              color: 'from-orange-50 to-orange-100'
-            },
+            { title: 'Tarefas', value: overviewStats.tasks.total, subtitle: `${overviewStats.tasks.completionRate}% concluídas`, icon: CheckSquare, color: 'from-blue-50 to-blue-100' },
+            { title: 'Academy', value: overviewStats.trainings.total, subtitle: `${overviewStats.trainings.averageProgress}% progresso`, icon: GraduationCap, color: 'from-green-50 to-green-100' },
+            { title: 'Usuários', value: overviewStats.users.active, subtitle: `${overviewStats.users.activeRate}% ativos`, icon: Users, color: 'from-purple-50 to-purple-100' },
+            { title: 'Processos', value: overviewStats.processes.active, subtitle: `${overviewStats.processes.activeRate}% ativos`, icon: Target, color: 'from-orange-50 to-orange-100' },
           ].map((card) => {
             const Icon = card.icon;
             return (
-              <Card key={card.title} className={`bg-gradient-to-br ${card.color} border-2 border-gray-200 rounded-xl shadow-sm`}>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
-                      <p className="text-2xl font-bold text-gray-900">{card.value}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{card.subtitle}</p>
-                    </div>
-                    <div className="h-10 w-10 rounded-lg bg-white/80 flex items-center justify-center shadow-inner">
-                      <Icon className="h-5 w-5 text-gray-700" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={card.title} className={`bg-gradient-to-br ${card.color} border border-gray-200 rounded-lg p-3 flex items-center gap-3`}>
+                <div className="h-9 w-9 rounded-lg bg-white/80 flex items-center justify-center shadow-inner">
+                  <Icon className="h-4 w-4 text-gray-700" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{card.title}</p>
+                  <p className="text-lg font-bold text-gray-900">{card.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{card.subtitle}</p>
+                </div>
+              </div>
             );
           })}
         </div>
 
-        {/* Tabs de Relatórios */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 rounded-xl bg-muted/50 p-1">
+        {/* Tabs de Relatórios - flex-1 com scroll */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <TabsList className="flex-shrink-0 grid w-full grid-cols-5 rounded-lg bg-muted/50 p-1 text-xs">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="tasks">Tarefas</TabsTrigger>
             <TabsTrigger value="trainings">Academy</TabsTrigger>
@@ -686,7 +658,7 @@ export default function Reports() {
           </TabsList>
 
           {/* Visão Geral */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="flex-1 overflow-auto scrollbar-thin space-y-4 mt-3">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Tarefas por Status */}
               <Card className="border-2 border-gray-200 rounded-xl shadow-sm">
@@ -823,7 +795,7 @@ export default function Reports() {
           </TabsContent>
 
           {/* Relatório de Tarefas */}
-          <TabsContent value="tasks" className="space-y-6">
+          <TabsContent value="tasks" className="flex-1 overflow-auto scrollbar-thin space-y-4 mt-3">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -902,7 +874,7 @@ export default function Reports() {
           </TabsContent>
 
           {/* Relatório da Academy */}
-          <TabsContent value="trainings" className="space-y-6">
+          <TabsContent value="trainings" className="flex-1 overflow-auto scrollbar-thin space-y-4 mt-3">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -991,7 +963,7 @@ export default function Reports() {
           </TabsContent>
 
           {/* Relatório DISC */}
-          <TabsContent value="disc" className="space-y-6">
+          <TabsContent value="disc" className="flex-1 overflow-auto scrollbar-thin space-y-4 mt-3">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1037,7 +1009,7 @@ export default function Reports() {
           </TabsContent>
 
           {/* Relatório de Processos */}
-          <TabsContent value="processes" className="space-y-6">
+          <TabsContent value="processes" className="flex-1 overflow-auto scrollbar-thin space-y-4 mt-3">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>

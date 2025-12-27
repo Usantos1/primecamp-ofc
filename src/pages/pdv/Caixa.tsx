@@ -279,162 +279,111 @@ export default function Caixa() {
 
   return (
     <ModernLayout title="Caixa" subtitle="Abertura, fechamento e movimentos de caixa">
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
-        {/* Status do Caixa */}
-        <Card className="border-2 border-gray-300">
-          <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base md:text-lg">Status do Caixa</CardTitle>
-              {currentSession ? (
-                <Badge className="bg-green-100 text-green-800 text-xs md:text-sm">
-                  <Unlock className="h-3 w-3 mr-1" />
-                  Aberto
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs md:text-sm">
-                  <Lock className="h-3 w-3 mr-1" />
-                  Fechado
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="p-3 md:p-6">
-            {currentSession ? (
-              <div className="space-y-3 md:space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
-                  <div className="p-3 md:p-4 bg-muted rounded-lg border-2 border-gray-300">
-                    <div className="flex items-center gap-2 mb-1 md:mb-2">
-                      <DollarSign className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
-                      <Label className="text-xs md:text-sm text-muted-foreground">Valor Inicial</Label>
-                    </div>
-                    <p className="text-xl md:text-2xl font-bold">{currencyFormatters.brl(currentSession.valor_inicial)}</p>
-                  </div>
-                  
-                  <div className="p-3 md:p-4 bg-muted rounded-lg border-2 border-gray-300">
-                    <div className="flex items-center gap-2 mb-1 md:mb-2">
-                      <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" />
-                      <Label className="text-xs md:text-sm text-muted-foreground">Total Entradas</Label>
-                    </div>
-                    <p className="text-xl md:text-2xl font-bold text-green-600">
-                      {currencyFormatters.brl(totalEntradas)}
-                    </p>
-                  </div>
-                  
-                  <div className="p-3 md:p-4 bg-muted rounded-lg border-2 border-gray-300">
-                    <div className="flex items-center gap-2 mb-1 md:mb-2">
-                      <TrendingDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" />
-                      <Label className="text-xs md:text-sm text-muted-foreground">Total Saídas</Label>
-                    </div>
-                    <p className="text-xl md:text-2xl font-bold text-red-600">
-                      {currencyFormatters.brl(totalSaidas)}
-                    </p>
-                  </div>
+      <div className="flex flex-col h-full overflow-hidden gap-3">
+        {/* Status do Caixa - Compacto e Fixo */}
+        <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg shadow-sm p-3">
+          {currentSession ? (
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Status Badge */}
+              <Badge className="bg-green-100 text-green-800 text-xs">
+                <Unlock className="h-3 w-3 mr-1" />
+                Caixa Aberto
+              </Badge>
+              
+              {/* Valores principais em linha */}
+              <div className="flex items-center gap-4 flex-wrap flex-1">
+                <div className="flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Inicial:</span>
+                  <span className="text-sm font-semibold">{currencyFormatters.brl(currentSession.valor_inicial)}</span>
                 </div>
-
-                {/* Cards de Formas de Pagamento */}
-                {Object.keys(pagamentosPorForma).length > 0 && (
-                  <div>
-                    <Label className="text-xs md:text-sm font-semibold mb-2 md:mb-3 block">Totais por Forma de Pagamento:</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-                      {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
-                        <Card key={forma} className="p-2 md:p-3 border-2 border-gray-300">
-                          <CardContent className="p-0">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1 capitalize">
-                                {forma === 'dinheiro' ? 'Dinheiro' : 
-                                 forma === 'pix' ? 'PIX' :
-                                 forma === 'debito' ? 'Débito' :
-                                 forma === 'credito' ? 'Crédito' :
-                                 forma === 'link_pagamento' ? 'Link' :
-                                 forma === 'carteira_digital' ? 'Carteira' : forma}
-                              </span>
-                              <span className="text-base md:text-lg font-bold text-primary">
-                                {currencyFormatters.brl(valor)}
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-3 md:p-4 bg-primary/10 rounded-lg border-2 border-primary">
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-0">
-                    <div>
-                      <Label className="text-xs md:text-sm text-muted-foreground">Valor Esperado</Label>
-                      <p className="text-2xl md:text-3xl font-bold text-primary">
-                        {currencyFormatters.brl(valorEsperado)}
-                      </p>
-                    </div>
-                    <Button 
-                      onClick={() => setShowCloseDialog(true)} 
-                      variant="destructive"
-                      className="w-full md:w-auto h-9 md:h-10"
-                    >
-                      <Lock className="h-4 w-4 mr-2" />
-                      Fechar Caixa
-                    </Button>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-xs text-muted-foreground">Entradas:</span>
+                  <span className="text-sm font-semibold text-green-600">{currencyFormatters.brl(totalEntradas)}</span>
                 </div>
-
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-1 md:gap-2 text-xs md:text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <User className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    <span>Operador: {currentSession.operador_nome}</span>
-                  </div>
-                  <span className="hidden md:inline">•</span>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    <span>{dateFormatters.short(currentSession.opened_at)}</span>
-                  </div>
-                  <span className="hidden md:inline">•</span>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    <span>{new Date(currentSession.opened_at).toLocaleTimeString('pt-BR')}</span>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <TrendingDown className="h-3.5 w-3.5 text-red-600" />
+                  <span className="text-xs text-muted-foreground">Saídas:</span>
+                  <span className="text-sm font-semibold text-red-600">{currencyFormatters.brl(totalSaidas)}</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded">
+                  <span className="text-xs text-muted-foreground">Esperado:</span>
+                  <span className="text-sm font-bold text-primary">{currencyFormatters.brl(valorEsperado)}</span>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-6 md:py-8">
-                <Lock className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-3 md:mb-4 text-muted-foreground opacity-50" />
-                <p className="text-base md:text-lg font-medium mb-1 md:mb-2">Caixa Fechado</p>
-                <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
-                  Abra o caixa para começar a operar
-                </p>
+              
+              {/* Formas de Pagamento em linha compacta */}
+              {Object.keys(pagamentosPorForma).length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
+                    <Badge key={forma} variant="outline" className="text-xs">
+                      {forma === 'dinheiro' ? '💵' : forma === 'pix' ? '📱' : forma === 'debito' ? '💳' : forma === 'credito' ? '💳' : '📄'}
+                      {' '}{currencyFormatters.brl(valor)}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              
+              {/* Ações */}
+              <div className="flex items-center gap-2 ml-auto">
                 <Button 
-                  onClick={() => setShowOpenDialog(true)}
-                  className="h-9 md:h-10"
+                  onClick={() => setShowCloseDialog(true)} 
+                  variant="destructive"
+                  size="sm"
+                  className="h-8"
                 >
-                  <Unlock className="h-4 w-4 mr-2" />
-                  Abrir Caixa
+                  <Lock className="h-3.5 w-3.5 mr-1" />
+                  Fechar Caixa
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              
+              {/* Info do operador */}
+              <div className="w-full flex items-center gap-3 text-xs text-muted-foreground mt-1 pt-2 border-t">
+                <span className="flex items-center gap-1"><User className="h-3 w-3" />{currentSession.operador_nome}</span>
+                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dateFormatters.short(currentSession.opened_at)}</span>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(currentSession.opened_at).toLocaleTimeString('pt-BR')}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="text-xs">
+                  <Lock className="h-3 w-3 mr-1" />
+                  Caixa Fechado
+                </Badge>
+                <span className="text-sm text-muted-foreground">Abra o caixa para começar a operar</span>
+              </div>
+              <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-8">
+                <Unlock className="h-3.5 w-3.5 mr-1" />
+                Abrir Caixa
+              </Button>
+            </div>
+          )}
+        </div>
 
-        {/* Vendas */}
+        {/* Vendas - Flex-1 com scroll interno */}
         {currentSession && (
-          <Card className="border-2 border-gray-300">
-            <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+          <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
+            <CardHeader className="flex-shrink-0 pb-2 pt-3 px-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base md:text-lg">Vendas</CardTitle>
-                <Badge variant="outline" className="text-xs md:text-sm">{sales.length} venda(s)</Badge>
+                <CardTitle className="text-sm font-semibold">Vendas do Caixa</CardTitle>
+                <Badge variant="outline" className="text-xs">{sales.length} venda(s)</Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-3 md:p-6">
+            <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-0">
               {loadingSales ? (
                 <div className="text-center py-4 text-muted-foreground text-sm">Carregando vendas...</div>
               ) : sales.length === 0 ? (
-                <div className="text-center py-6 md:py-8 text-muted-foreground">
-                  <FileText className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs md:text-sm">Nenhuma venda registrada nesta sessão</p>
+                <div className="text-center py-6 text-muted-foreground">
+                  <FileText className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Nenhuma venda registrada nesta sessão</p>
                 </div>
               ) : (
                 <>
-                  {/* Desktop: Tabela */}
-                  <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
+                  {/* Desktop: Tabela com scroll */}
+                  <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
+                    <div className="flex-1 overflow-auto scrollbar-thin border-t border-gray-200">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-2 border-gray-300">
@@ -491,18 +440,20 @@ export default function Caixa() {
                         })}
                       </TableBody>
                     </Table>
-                    <div className="p-4 bg-muted/50 border-t-2 border-gray-300">
+                    </div>
+                    {/* Rodapé fixo - Total */}
+                    <div className="flex-shrink-0 p-3 bg-muted/50 border-t border-gray-200">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium">Total de Vendas:</span>
-                        <span className="text-xl font-bold text-primary">
+                        <span className="font-medium text-sm">Total de Vendas:</span>
+                        <span className="text-lg font-bold text-primary">
                           {currencyFormatters.brl(totalVendas)}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Mobile: Cards */}
-                  <div className="md:hidden space-y-3">
+                  {/* Mobile: Cards com scroll */}
+                  <div className="md:hidden flex-1 overflow-auto scrollbar-thin p-3 space-y-3">
                     {sales.map((sale) => {
                       const salePaymentsList = salePayments[sale.id] || [];
                       return (

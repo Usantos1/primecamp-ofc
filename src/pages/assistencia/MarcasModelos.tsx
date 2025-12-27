@@ -177,74 +177,70 @@ export default function MarcasModelos() {
 
   return (
     <ModernLayout title="Marcas e Modelos" subtitle="Gerencie marcas e modelos de celulares">
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
-        {/* Cards de resumo */}
-        <div className="grid grid-cols-2 gap-3 md:gap-4">
-          <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50 md:bg-transparent">
-            <CardContent className="p-3 md:pt-4">
-              <div className="flex items-center gap-2 text-blue-700 md:text-muted-foreground text-[10px] md:text-sm mb-1">
-                <Tag className="h-3 w-3 md:h-4 md:w-4" />
-                Total de Marcas
-              </div>
-              <p className="text-base md:text-2xl font-bold text-blue-700 md:text-foreground">{marcas.length}</p>
-            </CardContent>
-          </Card>
-          <Card className="border-2 border-gray-300 border-l-4 border-l-purple-500 shadow-sm bg-purple-50/50 md:bg-transparent">
-            <CardContent className="p-3 md:pt-4">
-              <div className="flex items-center gap-2 text-purple-700 md:text-muted-foreground text-[10px] md:text-sm mb-1">
-                <Smartphone className="h-3 w-3 md:h-4 md:w-4" />
-                Total de Modelos
-              </div>
-              <p className="text-base md:text-2xl font-bold text-purple-700 md:text-foreground">{modelos.length}</p>
-            </CardContent>
-          </Card>
+      <div className="flex flex-col h-full overflow-hidden gap-3">
+        {/* Cards de resumo - fixo no topo */}
+        <div className="flex-shrink-0 grid grid-cols-2 gap-3">
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center gap-3">
+            <div className="bg-blue-500 text-white rounded-full p-2">
+              <Tag className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs text-blue-600 dark:text-blue-400">Marcas</p>
+              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{marcas.length}</p>
+            </div>
+          </div>
+          <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 flex items-center gap-3">
+            <div className="bg-purple-500 text-white rounded-full p-2">
+              <Smartphone className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs text-purple-600 dark:text-purple-400">Modelos</p>
+              <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{modelos.length}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Card principal com tabs */}
-        <Card className="border-2 border-gray-300 dark:border-gray-700 shadow-sm">
-          <CardContent className="p-3 md:pt-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6 pb-3 md:pb-0 border-b-2 md:border-b-0 border-gray-200 dark:border-gray-700">
-                <TabsList className="grid grid-cols-2 w-full md:w-auto border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 h-auto">
-                  <TabsTrigger 
-                    value="marcas" 
-                    className="flex items-center justify-center gap-2 text-xs md:text-sm py-2.5 md:py-3 px-2 md:px-4 border-r-2 border-gray-300 dark:border-gray-600 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white"
-                  >
-                    <Tag className="h-3 w-3 md:h-4 md:w-4" />
+        {/* Card principal com tabs - flex-1 */}
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-3">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full overflow-hidden">
+              {/* Header das tabs - fixo */}
+              <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3 pb-3 border-b border-gray-200">
+                <TabsList className="grid grid-cols-2 w-full md:w-auto">
+                  <TabsTrigger value="marcas" className="flex items-center gap-2 text-xs">
+                    <Tag className="h-3.5 w-3.5" />
                     Marcas
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="modelos" 
-                    className="flex items-center justify-center gap-2 text-xs md:text-sm py-2.5 md:py-3 px-2 md:px-4 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white"
-                  >
-                    <Smartphone className="h-3 w-3 md:h-4 md:w-4" />
+                  <TabsTrigger value="modelos" className="flex items-center gap-2 text-xs">
+                    <Smartphone className="h-3.5 w-3.5" />
                     Modelos
                   </TabsTrigger>
                 </TabsList>
                 
                 <div className="flex gap-2">
-                  <div className="relative flex-1 min-w-[150px] md:min-w-[200px]">
+                  <div className="relative flex-1 min-w-[150px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 h-9 md:h-10 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                      className="pl-9 h-9 text-sm"
                     />
                   </div>
                   <Button 
                     onClick={() => activeTab === 'marcas' ? handleOpenMarcaDialog() : handleOpenModeloDialog()}
-                    className="h-9 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-md"
+                    size="sm"
+                    className="h-9"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 mr-1" />
                     <span className="hidden md:inline">{activeTab === 'marcas' ? 'Nova Marca' : 'Novo Modelo'}</span>
-                    <span className="md:hidden">{activeTab === 'marcas' ? 'Nova' : 'Novo'}</span>
+                    <span className="md:hidden">Novo</span>
                   </Button>
                 </div>
               </div>
 
-              {/* Tab: Marcas */}
-              <TabsContent value="marcas" className="mt-0">
+              {/* Tab: Marcas com scroll */}
+              <TabsContent value="marcas" className="flex-1 overflow-hidden mt-0">
                 {filteredMarcas.length === 0 ? (
                   <EmptyState
                     variant="no-data"
@@ -253,7 +249,7 @@ export default function MarcasModelos() {
                     action={{ label: 'Nova Marca', onClick: () => handleOpenMarcaDialog() }}
                   />
                 ) : (
-                  <div className="border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="h-full overflow-auto scrollbar-thin border border-gray-200 rounded-lg">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-gray-50 dark:bg-gray-800">
@@ -320,11 +316,11 @@ export default function MarcasModelos() {
                 )}
               </TabsContent>
 
-              {/* Tab: Modelos */}
-              <TabsContent value="modelos" className="mt-0">
-                <div className="mb-4">
+              {/* Tab: Modelos com scroll */}
+              <TabsContent value="modelos" className="flex-1 flex flex-col overflow-hidden mt-0">
+                <div className="flex-shrink-0 mb-3">
                   <Select value={selectedMarcaId || 'all'} onValueChange={(v) => setSelectedMarcaId(v === 'all' ? null : v)}>
-                    <SelectTrigger className="w-full md:w-[200px] h-9 md:h-10 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800">
+                    <SelectTrigger className="w-full md:w-[200px] h-9 text-sm">
                       <SelectValue placeholder="Filtrar por marca" />
                     </SelectTrigger>
                     <SelectContent>
@@ -342,7 +338,7 @@ export default function MarcasModelos() {
                     action={{ label: 'Novo Modelo', onClick: () => handleOpenModeloDialog() }}
                   />
                 ) : (
-                  <div className="border-2 border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="flex-1 overflow-auto scrollbar-thin border border-gray-200 rounded-lg">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-gray-50 dark:bg-gray-800">

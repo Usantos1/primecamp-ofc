@@ -309,55 +309,55 @@ export default function Clientes() {
 
   return (
     <ModernLayout title="Clientes" subtitle="Gerenciar clientes">
-      <div className="space-y-3 md:space-y-4 px-1 md:px-0">
-        {/* Barra de ações */}
-        <Card className="border-2 border-gray-300">
-          <CardContent className="py-2 md:py-3 px-3 md:px-6">
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, CPF, RG, telefone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
-                />
-              </div>
-              <Button 
-                onClick={handleNew} 
-                className="gap-2 h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Novo Cliente</span>
-                <span className="sm:hidden">Novo</span>
-              </Button>
-              <Button 
-                onClick={() => setShowImportDialog(true)}
-                variant="outline"
-                className="gap-2 h-9 md:h-10 border-2 border-gray-300"
-              >
-                <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline">Importar</span>
-              </Button>
-              <Button 
-                onClick={async () => {
-                  await loadAniversarioConfig();
-                  setShowAniversarioConfig(true);
-                }}
-                variant="outline"
-                className="gap-2 h-9 md:h-10 border-2 border-gray-300"
-              >
-                <Cake className="h-4 w-4" />
-                <span className="hidden sm:inline">Config. Aniversário</span>
-                <span className="sm:hidden">Aniversário</span>
-              </Button>
+      <div className="flex flex-col h-full overflow-hidden gap-3">
+        {/* Barra de ações - fixo no topo */}
+        <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg p-3">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, CPF, RG, telefone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9 text-sm border-gray-200"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Button 
+              onClick={handleNew} 
+              size="sm"
+              className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Cliente</span>
+              <span className="sm:hidden">Novo</span>
+            </Button>
+            <Button 
+              onClick={() => setShowImportDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2 h-9"
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Importar</span>
+            </Button>
+            <Button 
+              onClick={async () => {
+                await loadAniversarioConfig();
+                setShowAniversarioConfig(true);
+              }}
+              variant="outline"
+              size="sm"
+              className="gap-2 h-9"
+            >
+              <Cake className="h-4 w-4" />
+              <span className="hidden sm:inline">Config. Aniversário</span>
+            </Button>
+          </div>
+        </div>
 
-        {/* Lista de clientes */}
-        <Card className="border-2 border-gray-300">
-          <CardContent className="p-0">
+        {/* Lista de clientes - flex-1 com scroll interno */}
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
+          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-0">
             {filteredClientes.length === 0 ? (
               <div className="p-6 md:p-12">
                 <EmptyState
@@ -369,8 +369,9 @@ export default function Clientes() {
               </div>
             ) : (
               <>
-                {/* Desktop: Tabela */}
-                <div className="hidden md:block overflow-x-auto">
+                {/* Desktop: Tabela com scroll interno */}
+                <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
+                  <div className="flex-1 overflow-auto scrollbar-thin">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
@@ -421,10 +422,11 @@ export default function Clientes() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </div>
 
-                {/* Mobile: Cards */}
-                <div className="md:hidden space-y-3 p-2">
+                {/* Mobile: Cards com scroll */}
+                <div className="md:hidden flex-1 overflow-auto scrollbar-thin p-2 space-y-3">
                   {filteredClientes.map((cliente, index) => (
                     <Card 
                       key={cliente.id}
@@ -494,51 +496,25 @@ export default function Clientes() {
                   ))}
                 </div>
 
-                {/* Paginação */}
+                {/* Paginação - fixo no rodapé */}
                 {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t-2 border-gray-200">
-                    <div className="text-sm text-muted-foreground">
-                      Mostrando {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} de {totalCount} clientes
+                  <div className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-200 bg-muted/30">
+                    <div className="text-xs text-muted-foreground">
+                      Mostrando {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} de {totalCount}
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 border-2 border-gray-300"
-                        onClick={() => goToPage(1)}
-                        disabled={page === 1}
-                      >
-                        <ChevronsLeft className="h-4 w-4" />
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={page === 1}>
+                        <ChevronsLeft className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 border-2 border-gray-300"
-                        onClick={prevPage}
-                        disabled={page === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevPage} disabled={page === 1}>
+                        <ChevronLeft className="h-3.5 w-3.5" />
                       </Button>
-                      <span className="px-3 py-1 text-sm font-medium">
-                        {page} / {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 border-2 border-gray-300"
-                        onClick={nextPage}
-                        disabled={page === totalPages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
+                      <span className="px-2 text-xs font-medium">{page} / {totalPages}</span>
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextPage} disabled={page === totalPages}>
+                        <ChevronRight className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 border-2 border-gray-300"
-                        onClick={() => goToPage(totalPages)}
-                        disabled={page === totalPages}
-                      >
-                        <ChevronsRight className="h-4 w-4" />
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => goToPage(totalPages)} disabled={page === totalPages}>
+                        <ChevronsRight className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
