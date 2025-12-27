@@ -57,9 +57,8 @@ export function useSales() {
   // Criar venda
   const createSale = useCallback(async (data: SaleFormData): Promise<Sale> => {
     try {
-      // Gerar número da venda
-      // 🚫 Supabase RPC removido - usar timestamp como número temporário
-      const numero = Date.now();
+      // Gerar número da venda (usar últimos 9 dígitos do timestamp para caber em INTEGER)
+      const numero = Math.floor(Date.now() / 1000) % 1000000000;
 
       // Validar UUID do cliente
       const isValidUUID = (str: string | undefined | null): boolean => {
@@ -1019,9 +1018,8 @@ export function useCashRegister() {
         throw new Error('Já existe uma sessão de caixa aberta');
       }
 
-      // Gerar número da sessão
-      // 🚫 Supabase RPC removido - usar timestamp como número temporário
-      const numero = Date.now();
+      // Gerar número da sessão (usar últimos 9 dígitos do timestamp para caber em INTEGER)
+      const numero = Math.floor(Date.now() / 1000) % 1000000000;
 
       // Buscar profile do usuário para pegar o nome
       const operadorNome = profile?.display_name || user?.user_metadata?.name || user?.email || 'Operador';
