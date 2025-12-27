@@ -984,8 +984,9 @@ app.post('/api/whatsapp/send', async (req, res) => {
     // Formatar número (remover caracteres especiais)
     const formattedNumber = data.number.replace(/\D/g, '');
 
-    // Enviar mensagem via API do Ativa CRM
-    const ativaCrmResponse = await fetch('https://api.ativacrm.com.br/v1/whatsapp/send-text', {
+    // Enviar mensagem via API do Ativa CRM (documentação oficial)
+    // URL: https://api.ativacrm.com/api/messages/send
+    const ativaCrmResponse = await fetch('https://api.ativacrm.com/api/messages/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -993,7 +994,7 @@ app.post('/api/whatsapp/send', async (req, res) => {
       },
       body: JSON.stringify({
         number: formattedNumber,
-        text: data.body,
+        body: data.body,
       }),
     });
 
@@ -1003,11 +1004,11 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
     if (!ativaCrmResponse.ok) {
       // Verificar se é erro de WhatsApp não configurado
-      if (ativaCrmData.code === 'ERR_NO_DEF_WAPP_FOUND' || ativaCrmData.error?.includes('WhatsApp')) {
+      if (ativaCrmData.message?.includes('WhatsApp') || ativaCrmData.error?.includes('WhatsApp')) {
         return res.json({
           success: false,
           warning: 'ERR_NO_DEF_WAPP_FOUND',
-          message: 'Nenhum WhatsApp padrão configurado no Ativa CRM',
+          message: ativaCrmData.message || 'Nenhum WhatsApp padrão configurado no Ativa CRM',
         });
       }
       
@@ -1019,7 +1020,7 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Mensagem enviada com sucesso',
+      message: ativaCrmData.message || 'Mensagem enviada com sucesso',
       data: ativaCrmData,
     });
   } catch (error) {
