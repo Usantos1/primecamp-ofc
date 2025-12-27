@@ -5,7 +5,10 @@
  * Todas as operações passam pela API em api.primecamp.cloud
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+// Forçar uso da API de produção
+const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+  ? import.meta.env.VITE_API_URL 
+  : 'https://api.primecamp.cloud/api';
 
 // Validação de segurança
 if (API_URL.includes('.supabase.co')) {
