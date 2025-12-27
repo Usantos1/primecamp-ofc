@@ -179,13 +179,13 @@ export function AppSidebar() {
   return (
     <Sidebar
       className={cn(
-        "transition-all duration-300 ease-in-out border-r-2 border-gray-200 bg-gradient-to-b from-white to-gray-50",
+        "transition-all duration-300 ease-in-out border-r-2 border-gray-200 dark:border-gray-700 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950",
         collapsed ? "w-16" : "w-64"
       )}
       collapsible="icon"
     >
       {!collapsed && (
-        <SidebarHeader className="px-4 py-4 border-b-2 border-gray-200 h-16 flex items-center justify-center bg-white">
+        <SidebarHeader className="px-4 py-4 border-b-2 border-gray-200 dark:border-gray-700 h-16 flex items-center justify-center bg-white dark:bg-gray-900">
           <img
             src={logoImage}
             alt="Prime Camp Logo"
@@ -235,14 +235,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className={cn("border-t-2 border-gray-200 mt-auto bg-white", collapsed ? "p-2" : "p-3")}>
+      <SidebarFooter className={cn("border-t-2 border-gray-200 dark:border-gray-700 mt-auto bg-white dark:bg-gray-900", collapsed ? "p-2" : "p-3")}>
         {!collapsed ? (
           <div className="space-y-2">
             <NavLink
               to="/perfil"
               className="flex items-center gap-2 hover:bg-sidebar-accent rounded-lg p-2 transition-colors"
             >
-              <Avatar className="h-8 w-8 border-2 border-gray-200">
+              <Avatar className="h-8 w-8 border-2 border-gray-200 dark:border-gray-600">
                 <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
                   {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
@@ -258,7 +258,7 @@ export function AppSidebar() {
               variant="outline" 
               size="sm" 
               onClick={signOut} 
-              className="w-full h-8 text-xs border-2 border-gray-300 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+              className="w-full h-8 text-xs border-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400"
             >
               <LogOut className="h-3.5 w-3.5 mr-2" />
               Sair
@@ -271,7 +271,7 @@ export function AppSidebar() {
               className="w-10 h-10 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors mx-auto"
               title="Perfil"
             >
-              <Avatar className="h-8 w-8 border-2 border-gray-200">
+              <Avatar className="h-8 w-8 border-2 border-gray-200 dark:border-gray-600">
                 <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-blue-500 to-indigo-500 text-white">
                   {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
@@ -281,7 +281,7 @@ export function AppSidebar() {
               variant="outline"
               size="sm"
               onClick={signOut}
-              className="w-10 h-10 p-0 flex items-center justify-center mx-auto border-2 border-gray-300 hover:bg-red-50 hover:border-red-300"
+              className="w-10 h-10 p-0 flex items-center justify-center mx-auto border-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-950 hover:border-red-300 dark:hover:border-red-700"
               title="Sair"
             >
               <LogOut className="h-4 w-4" />
