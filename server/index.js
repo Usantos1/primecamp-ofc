@@ -748,6 +748,28 @@ app.post('/api/insert/:table', async (req, res) => {
     // Usar schema public explicitamente
     const tableName = table.includes('.') ? table : `public.${table}`;
 
+    // VALIDAÇÃO CRÍTICA: Verificar estoque para sale_items
+    if (table === 'sale_items' && data.produto_id && data.quantidade && data.produto_tipo === 'produto') {
+      const estoqueResult = await pool.query(
+        'SELECT quantidade FROM public.produtos WHERE id = $1',
+        [data.produto_id]
+      );
+      
+      if (estoqueResult.rows.length > 0) {
+        const estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
+        const quantidadeSolicitada = Number(data.quantidade || 0);
+        
+        if (quantidadeSolicitada > estoqueDisponivel) {
+          console.log(`[Insert] Bloqueado: Estoque insuficiente. Solicitado: ${quantidadeSolicitada}, Disponível: ${estoqueDisponivel}`);
+          return res.status(400).json({ 
+            error: `Estoque insuficiente para este produto. Disponível: ${estoqueDisponivel} unidade(s)`,
+            codigo: 'ESTOQUE_INSUFICIENTE',
+            estoque_disponivel: estoqueDisponivel
+          });
+        }
+      }
+    }
+
     const keys = Object.keys(data);
     const values = Object.values(data);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');

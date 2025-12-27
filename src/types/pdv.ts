@@ -418,6 +418,7 @@ export interface CartItem {
   desconto_percentual?: number; // Percentual de desconto aplicado
   observacao?: string;
   garantia_dias?: number;
+  estoque_disponivel?: number; // Quantidade em estoque do produto
 }
 
 // ==================== LIMITES DE DESCONTO POR PERFIL ====================

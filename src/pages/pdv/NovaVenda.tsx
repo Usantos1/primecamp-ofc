@@ -629,6 +629,23 @@ export default function NovaVenda() {
       return;
     }
 
+    // VALIDAÇÃO CRÍTICA: Verificar estoque de todos os itens
+    const itensComEstoqueInsuficiente = cart.filter(item => 
+      item.produto_tipo === 'produto' && 
+      item.estoque_disponivel !== undefined && 
+      item.quantidade > item.estoque_disponivel
+    );
+    
+    if (itensComEstoqueInsuficiente.length > 0) {
+      const nomes = itensComEstoqueInsuficiente.map(i => i.produto_nome).join(', ');
+      toast({ 
+        title: 'Estoque insuficiente', 
+        description: `Os seguintes produtos excedem o estoque: ${nomes}`,
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     // Validar se o caixa está aberto
     if (!cashSession || cashSession.status !== 'open') {
       toast({ 
@@ -846,20 +863,46 @@ export default function NovaVenda() {
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [cart, handleFinalize, isSaving]);
 
-  // Adicionar produto ao carrinho
+  // Adicionar produto ao carrinho (com validação de estoque)
   const handleAddProduct = (produto: any) => {
+    const estoqueDisponivel = Number(produto.quantidade || 0);
     const existingItem = cart.find(item => 
       item.produto_id === produto.id || 
       item.produto_nome === produto.descricao
     );
 
+    // Validar estoque para produtos (serviços não têm estoque)
+    const isProduto = normalizeProdutoTipo(produto.tipo) === 'produto';
+    
     if (existingItem) {
+      const novaQuantidade = existingItem.quantidade + 1;
+      
+      // Bloquear se ultrapassar estoque (apenas para produtos)
+      if (isProduto && novaQuantidade > estoqueDisponivel) {
+        toast({ 
+          title: 'Estoque insuficiente', 
+          description: `Disponível: ${estoqueDisponivel} unidade(s)`,
+          variant: 'destructive' 
+        });
+        return;
+      }
+      
       setCart(cart.map(item =>
         item === existingItem
-          ? { ...item, quantidade: item.quantidade + 1 }
+          ? { ...item, quantidade: novaQuantidade }
           : item
       ));
     } else {
+      // Bloquear se não tem estoque (apenas para produtos)
+      if (isProduto && estoqueDisponivel < 1) {
+        toast({ 
+          title: 'Produto sem estoque', 
+          description: 'Este produto não está disponível no momento.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+      
       setCart([...cart, {
         produto_id: produto.id && isValidUUID(produto.id) ? produto.id : undefined,
         produto_nome: produto.descricao || '',
@@ -870,6 +913,7 @@ export default function NovaVenda() {
         valor_unitario: produto.preco_venda || 0,
         desconto: 0,
         desconto_percentual: 0,
+        estoque_disponivel: isProduto ? estoqueDisponivel : undefined,
       }]);
     }
 
@@ -878,17 +922,33 @@ export default function NovaVenda() {
     searchInputRef.current?.focus();
   };
 
-  // Atualizar quantidade (recalcula desconto baseado no percentual)
+  // Atualizar quantidade (recalcula desconto baseado no percentual) COM VALIDAÇÃO DE ESTOQUE
   const handleUpdateQuantity = (index: number, delta: number) => {
-    setCart(cart.map((item, i) => {
-      if (i !== index) return item;
+    const item = cart[index];
+    if (!item) return;
+    
+    const novaQuantidade = Math.max(0.001, item.quantidade + delta);
+    
+    // Validar estoque se for produto (não serviço)
+    if (item.produto_tipo === 'produto' && item.estoque_disponivel !== undefined) {
+      if (novaQuantidade > item.estoque_disponivel) {
+        toast({ 
+          title: 'Estoque insuficiente', 
+          description: `Máximo disponível: ${item.estoque_disponivel} unidade(s)`,
+          variant: 'destructive' 
+        });
+        return;
+      }
+    }
+    
+    setCart(cart.map((it, i) => {
+      if (i !== index) return it;
       
-      const novaQuantidade = Math.max(0.001, item.quantidade + delta);
-      const valorBruto = item.valor_unitario * novaQuantidade;
-      const descontoCalculado = (valorBruto * (item.desconto_percentual || 0)) / 100;
+      const valorBruto = it.valor_unitario * novaQuantidade;
+      const descontoCalculado = (valorBruto * (it.desconto_percentual || 0)) / 100;
       
       return { 
-        ...item, 
+        ...it, 
         quantidade: novaQuantidade,
         desconto: descontoCalculado
       };
@@ -1840,13 +1900,26 @@ _PrimeCamp Assistência Técnica_`;
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
                           <div>
-                            <Label className="text-xs">Qtd</Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">Qtd</Label>
+                              {item.produto_tipo === 'produto' && item.estoque_disponivel !== undefined && (
+                                <span className={cn(
+                                  "text-[10px]",
+                                  item.quantidade > item.estoque_disponivel 
+                                    ? "text-red-500 font-medium" 
+                                    : "text-gray-400"
+                                )}>
+                                  Est: {item.estoque_disponivel}
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-1">
                               <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-8 w-8 md:h-7 md:w-7"
                                 onClick={() => handleUpdateQuantity(index, -1)}
+                                disabled={item.quantidade <= 0.001}
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
@@ -1854,14 +1927,31 @@ _PrimeCamp Assistência Técnica_`;
                                 type="number"
                                 value={item.quantidade}
                                 onChange={(e) => {
-                                  const qtd = Math.max(0.001, parseFloat(e.target.value) || 0);
+                                  let qtd = Math.max(0.001, parseFloat(e.target.value) || 0);
+                                  // Bloquear quantidade maior que estoque
+                                  if (item.produto_tipo === 'produto' && item.estoque_disponivel !== undefined) {
+                                    if (qtd > item.estoque_disponivel) {
+                                      toast({ 
+                                        title: 'Estoque insuficiente', 
+                                        description: `Máximo: ${item.estoque_disponivel}`,
+                                        variant: 'destructive' 
+                                      });
+                                      qtd = item.estoque_disponivel;
+                                    }
+                                  }
                                   const valorBruto = item.valor_unitario * qtd;
                                   const descontoCalculado = (valorBruto * (item.desconto_percentual || 0)) / 100;
                                   setCart(cart.map((it, i) =>
                                     i === index ? { ...it, quantidade: qtd, desconto: descontoCalculado } : it
                                   ));
                                 }}
-                                className="w-14 md:w-16 h-8 md:h-7 text-center text-xs md:text-sm"
+                                className={cn(
+                                  "w-14 md:w-16 h-8 md:h-7 text-center text-xs md:text-sm",
+                                  item.produto_tipo === 'produto' && 
+                                  item.estoque_disponivel !== undefined && 
+                                  item.quantidade > item.estoque_disponivel && 
+                                  "border-red-500 text-red-500"
+                                )}
                                 min="0.001"
                                 step="0.001"
                               />
@@ -1870,6 +1960,8 @@ _PrimeCamp Assistência Técnica_`;
                                 size="icon"
                                 className="h-8 w-8 md:h-7 md:w-7"
                                 onClick={() => handleUpdateQuantity(index, 1)}
+                                disabled={item.produto_tipo === 'produto' && item.estoque_disponivel !== undefined && item.quantidade >= item.estoque_disponivel}
+                                title={item.produto_tipo === 'produto' && item.estoque_disponivel !== undefined && item.quantidade >= item.estoque_disponivel ? 'Estoque máximo atingido' : ''}
                               >
                                 <Plus className="h-3 w-3" />
                               </Button>
@@ -2083,6 +2175,42 @@ _PrimeCamp Assistência Técnica_`;
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+
+        {/* Widget inferior - Atalhos de teclado */}
+        <div className="mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-6 text-xs text-gray-500">
+              <span className="font-medium text-gray-600 dark:text-gray-400">Atalhos:</span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border rounded text-[10px] font-mono shadow-sm">F2</kbd>
+                <span>Buscar produto</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border rounded text-[10px] font-mono shadow-sm">F4</kbd>
+                <span>Finalizar venda</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border rounded text-[10px] font-mono shadow-sm">ESC</kbd>
+                <span>Fechar modais</span>
+              </span>
+            </div>
+            {/* Info do caixa */}
+            <div className="flex items-center gap-4 text-xs">
+              {cashSession && cashSession.status === 'open' && (
+                <span className="flex items-center gap-1.5 text-emerald-600">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                  Caixa aberto
+                </span>
+              )}
+              {!cashSession || cashSession.status !== 'open' && (
+                <span className="flex items-center gap-1.5 text-orange-500">
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                  Caixa fechado
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
