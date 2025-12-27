@@ -67,7 +67,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
   // Hooks
   const { createOS, updateOS, getOSById, updateStatus } = useOrdensServicoSupabase();
-  const { clientes, searchClientes, createCliente, getClienteById } = useClientesSupabase();
+  const { clientes, searchClientes, searchClientesAsync, createCliente, getClienteById } = useClientesSupabase();
   const { marcas, modelos, getModelosByMarca } = useMarcasModelosSupabase();
   const { produtos, searchProdutos, updateProduto, isLoading: isLoadingProdutos } = useProdutosSupabase();
   
@@ -337,15 +337,32 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   }, [itens, colaboradores, getColaboradorById, updateItem]);
 
-  // Buscar cliente
+  // Buscar cliente (assíncrono via API com ILIKE)
   useEffect(() => {
     if (clienteSearch.length >= 2) {
-      const results = searchClientes(clienteSearch);
-      setClienteResults(results.slice(0, 10));
+      // Primeiro tenta busca local para resposta imediata
+      const localResults = searchClientes(clienteSearch);
+      if (localResults.length > 0) {
+        setClienteResults(localResults.slice(0, 10));
+      }
+      
+      // Depois faz busca assíncrona no banco para resultados completos
+      searchClientesAsync(clienteSearch, 15).then(asyncResults => {
+        if (asyncResults.length > 0) {
+          // Mescla resultados, removendo duplicados
+          const allResults = [...localResults];
+          asyncResults.forEach(r => {
+            if (!allResults.find(l => l.id === r.id)) {
+              allResults.push(r);
+            }
+          });
+          setClienteResults(allResults.slice(0, 15));
+        }
+      });
     } else {
       setClienteResults([]);
     }
-  }, [clienteSearch, searchClientes]);
+  }, [clienteSearch, searchClientes, searchClientesAsync]);
 
   // Buscar produtos - SEMPRE filtrar apenas produtos com estoque disponível
   useEffect(() => {
@@ -1850,22 +1867,25 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Tab Dados - com scroll interno */}
-          <TabsContent value="dados" className="flex-1 overflow-auto scrollbar-thin p-1 md:p-2">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-2">
+          <TabsContent value="dados" className="flex-1 overflow-auto scrollbar-thin p-2 md:p-3">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="border border-gray-200">
-                <CardHeader className="py-2 px-3 border-b border-gray-200">
-                  <CardTitle className="text-xs font-semibold">Dados da OS</CardTitle>
+              <Card className="border border-gray-200/80 shadow-sm rounded-xl bg-white">
+                <CardHeader className="py-3 px-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+                  <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    Dados da OS
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 p-3">
+                <CardContent className="space-y-4 p-4">
                   {/* Cliente */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div className="space-y-1 md:col-span-2">
-                      <Label className="text-[10px] text-muted-foreground">Cliente</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label className="text-xs font-medium text-gray-600">Cliente</Label>
                       <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          placeholder="Buscar cliente..."
+                          placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
                           value={selectedCliente ? selectedCliente.nome : clienteSearch}
                           onChange={(e) => {
                             if (selectedCliente) {
@@ -1876,13 +1896,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setShowClienteSearch(true);
                           }}
                           onFocus={() => setShowClienteSearch(true)}
-                          className="pl-8 h-8 text-xs"
+                          className={cn(
+                            "pl-10 h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg",
+                            selectedCliente ? "bg-green-50 border-green-300 text-green-800 font-medium" : ""
+                          )}
                         />
                         {selectedCliente && (
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-red-100 hover:text-red-600"
                             onClick={() => {
                               setSelectedCliente(null);
                               setFormData(prev => ({ ...prev, cliente_id: '' }));
@@ -1894,38 +1917,46 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         )}
                       </div>
                       {showClienteSearch && clienteResults.length > 0 && !selectedCliente && (
-                        <div className="absolute z-50 w-full bg-background border rounded shadow-lg max-h-48 overflow-auto mt-1">
+                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-56 overflow-auto mt-1">
                           {clienteResults.map(cliente => (
                             <div
                               key={cliente.id}
-                              className="p-2 hover:bg-muted cursor-pointer text-sm"
+                              className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                               onClick={() => handleSelectCliente(cliente)}
                             >
-                              <p className="font-medium">{cliente.nome}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {cliente.cpf_cnpj} • {cliente.telefone}
+                              <p className="font-semibold text-sm text-gray-800">{cliente.nome}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {cliente.cpf_cnpj && <span>{cliente.cpf_cnpj} • </span>}
+                                {cliente.telefone || cliente.whatsapp || 'Sem telefone'}
+                                {cliente.cidade && <span> • {cliente.cidade}/{cliente.estado}</span>}
                               </p>
                             </div>
                           ))}
                         </div>
                       )}
+                      {showClienteSearch && clienteSearch.length >= 2 && clienteResults.length === 0 && (
+                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl p-4 mt-1 text-center">
+                          <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
+                          <p className="text-xs text-gray-400 mt-1">Verifique o termo de busca ou cadastre um novo cliente</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Telefone *</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Telefone *</Label>
                       <Input
                         value={formData.telefone_contato || selectedCliente?.telefone || selectedCliente?.whatsapp || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, telefone_contato: e.target.value }))}
                         placeholder="(99) 99999-9999"
-                        className="h-8 text-xs"
+                        className="h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg"
                         required
                       />
                     </div>
                   </div>
                   
                   {/* Aparelho - Linha 1 */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Marca *</Label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Marca *</Label>
                       <Select 
                         value={formData.marca_id || ''} 
                         onValueChange={(v) => {
@@ -1936,8 +1967,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }));
                         }}
                       >
-                        <SelectTrigger className="w-full h-8 text-xs">
-                          <SelectValue placeholder="Marca">
+                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
+                          <SelectValue placeholder="Selecione a marca">
                             {formData.marca_id && marcas.length > 0 
                               ? (marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome || '')
                               : ''}
@@ -1949,13 +1980,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <SelectItem key={m.id} value={m.id} className="text-sm">{m.nome}</SelectItem>
                             ))
                           ) : (
-                            <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma marca cadastrada. Acesse Marcas e Modelos para cadastrar.</div>
+                            <div className="px-3 py-2 text-sm text-gray-500">Nenhuma marca cadastrada. Acesse Marcas e Modelos para cadastrar.</div>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Modelo *</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Modelo *</Label>
                       <Select 
                         value={formData.modelo_id || ''} 
                         onValueChange={(v) => {
@@ -1963,8 +1994,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }}
                         disabled={!formData.marca_id}
                       >
-                        <SelectTrigger className="w-full h-8 text-xs" disabled={!formData.marca_id}>
-                          <SelectValue placeholder="Modelo">
+                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg" disabled={!formData.marca_id}>
+                          <SelectValue placeholder="Selecione o modelo">
                             {formData.modelo_id && modelosFiltrados.length > 0
                               ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
                               : ''}
@@ -1976,76 +2007,76 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <SelectItem key={m.id} value={m.id} className="text-sm">{m.nome}</SelectItem>
                             ))
                           ) : (
-                            <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            <div className="px-3 py-2 text-sm text-gray-500">
                               {formData.marca_id ? 'Nenhum modelo disponível para esta marca' : 'Selecione uma marca primeiro'}
                             </div>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">IMEI</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">IMEI</Label>
                       <Input
                         value={formData.imei}
                         onChange={(e) => setFormData(prev => ({ ...prev, imei: e.target.value }))}
-                        placeholder="IMEI"
-                        className="h-8 text-xs"
+                        placeholder="Digite o IMEI"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Nº Série</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Nº Série</Label>
                       <Input
                         value={formData.numero_serie}
                         onChange={(e) => setFormData(prev => ({ ...prev, numero_serie: e.target.value }))}
-                        placeholder="Nº Série"
-                        className="h-10 text-sm"
+                        placeholder="Número de série"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
                   </div>
 
                   {/* Aparelho - Linha 2 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Cor</Label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Cor</Label>
                       <Input
                         value={formData.cor}
                         onChange={(e) => setFormData(prev => ({ ...prev, cor: e.target.value }))}
-                        placeholder="Cor"
-                        className="h-8 text-xs"
+                        placeholder="Ex: Preto, Branco"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Operadora</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Operadora</Label>
                       <Input
                         value={formData.operadora}
                         onChange={(e) => setFormData(prev => ({ ...prev, operadora: e.target.value }))}
-                        placeholder="Operadora"
-                        className="h-8 text-xs"
+                        placeholder="Ex: Vivo, Claro"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Previsão Entrega</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Previsão Entrega</Label>
                       <Input
                         type="date"
                         value={formData.previsao_entrega}
                         onChange={(e) => setFormData(prev => ({ ...prev, previsao_entrega: e.target.value }))}
-                        className="h-8 text-xs"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Hora</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Hora</Label>
                       <Input
                         type="time"
                         value={formData.hora_previsao || '18:00'}
                         onChange={(e) => setFormData(prev => ({ ...prev, hora_previsao: e.target.value }))}
-                        className="h-8 text-xs"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
                   </div>
 
                   {/* Deixou Aparelho */}
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Deixou aparelho</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-600">Deixou aparelho</Label>
                     <Select 
                       value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
                       onValueChange={(v) => {
@@ -2056,7 +2087,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-8 text-xs">
+                      <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
                         <SelectValue placeholder="Selecione">
                           {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'HORÁRIO AGENDADO' : 'NÃO'}
                         </SelectValue>
@@ -2070,35 +2101,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Descrição e Condições */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Descrição do Problema *</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Descrição do Problema *</Label>
                       <Textarea
                         value={formData.descricao_problema}
                         onChange={(e) => setFormData(prev => ({ ...prev, descricao_problema: e.target.value }))}
-                        placeholder="Descreva o problema..."
-                        rows={2}
-                        className="resize-none text-xs min-h-[60px]"
+                        placeholder="Descreva detalhadamente o problema relatado pelo cliente..."
+                        rows={3}
+                        className="resize-none text-sm border-gray-200 rounded-lg min-h-[80px]"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">Condições do Equipamento</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-gray-600">Condições do Equipamento</Label>
                       <Textarea
                         value={formData.condicoes_equipamento}
                         onChange={(e) => setFormData(prev => ({ ...prev, condicoes_equipamento: e.target.value }))}
-                        placeholder="Estado físico..."
-                        rows={2}
-                        className="resize-none text-xs min-h-[60px]"
+                        placeholder="Estado físico do aparelho: riscos, trincas, amassados..."
+                        rows={3}
+                        className="resize-none text-sm border-gray-200 rounded-lg min-h-[80px]"
                       />
                     </div>
                   </div>
 
                   {/* Orçamento Pré Autorizado */}
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Orçamento pré autorizado</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px] text-muted-foreground/80">Cartão até 6x</Label>
+                  <div className="p-3 bg-gray-50/80 rounded-lg border border-gray-100">
+                    <Label className="text-xs font-semibold text-gray-700 mb-2 block">Orçamento Pré-Autorizado</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-gray-500">Cartão até 6x</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -2110,12 +2141,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             const numValue = val === '' ? undefined : parseFloat(val);
                             setFormData(prev => ({ ...prev, orcamento_parcelado: numValue }));
                           }}
-                          placeholder="0,00"
-                          className="h-8 text-xs"
+                          placeholder="R$ 0,00"
+                          className="h-10 text-sm border-gray-200 rounded-lg"
                         />
                       </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px] text-muted-foreground/80">Dinheiro ou PIX</Label>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-gray-500">Dinheiro ou PIX</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -2127,8 +2158,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             const numValue = val === '' ? undefined : parseFloat(val);
                             setFormData(prev => ({ ...prev, orcamento_desconto: numValue }));
                           }}
-                          placeholder="0,00"
-                          className="h-8 text-xs"
+                          placeholder="R$ 0,00"
+                          className="h-10 text-sm border-gray-200 rounded-lg"
                         />
                       </div>
                     </div>
@@ -2137,17 +2168,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha e Áreas com Defeito */}
-              <Card className="border border-gray-200">
-                <CardHeader className="py-2 px-3 border-b border-gray-200">
-                  <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span>Senha e Áreas com Defeito</span>
+              <Card className="border border-gray-200/80 shadow-sm rounded-xl bg-white">
+                <CardHeader className="py-3 px-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+                  <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    Senha e Defeitos
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-2 space-y-2">
+                <CardContent className="p-4 space-y-4">
                   {/* Seção Senha */}
-                  <div className="space-y-1 flex-shrink-0">
-                    <Label className="text-[10px] text-muted-foreground">Possui senha</Label>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-gray-600">Possui senha</Label>
                     <Select 
                       value={formData.possui_senha_tipo || 'nao'} 
                       onValueChange={(v) => {
@@ -2158,13 +2189,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                     >
-                      <SelectTrigger className="w-full h-8 text-xs">
+                      <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
                         <SelectValue className="truncate">
                           {formData.possui_senha_tipo === 'sim' && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && 'SIM - DESLIZAR (DESENHO)'}
                           {(formData.possui_senha_tipo === 'nao' || !formData.possui_senha_tipo) && 'NÃO'}
-                          {formData.possui_senha_tipo === 'nao_sabe' && 'NÃO SABE, VAI PASSAR DEPOIS'}
-                          {formData.possui_senha_tipo === 'nao_autorizou' && 'CLIENTE NÃO QUIZ DEIXAR SENHA'}
+                          {formData.possui_senha_tipo === 'nao_sabe' && 'NÃO SABE'}
+                          {formData.possui_senha_tipo === 'nao_autorizou' && 'NÃO AUTORIZOU'}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="max-h-[200px]">
@@ -2172,7 +2203,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <SelectItem value="deslizar" className="text-sm">SIM - DESLIZAR (DESENHO)</SelectItem>
                         <SelectItem value="nao" className="text-sm">NÃO</SelectItem>
                         <SelectItem value="nao_sabe" className="text-sm">NÃO SABE, VAI PASSAR DEPOIS</SelectItem>
-                        <SelectItem value="nao_autorizou" className="text-sm">CLIENTE NÃO QUIZ DEIXAR SENHA</SelectItem>
+                        <SelectItem value="nao_autorizou" className="text-sm">CLIENTE NÃO QUIS DEIXAR SENHA</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -2182,35 +2213,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         type="text"
                         value={formData.senha_aparelho}
                         onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
-                        placeholder="Digite a senha"
-                        className="h-8 text-xs"
+                        placeholder="Digite a senha do aparelho"
+                        className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     )}
 
                     {/* Senha - PatternLock quando DESLIZAR */}
                     {formData.possui_senha_tipo === 'deslizar' && (
-                      <div className="space-y-1">
-                        <div className="flex justify-center">
+                      <div className="space-y-2">
+                        <div className="flex justify-center p-2 bg-gray-50 rounded-lg">
                           <PatternLock
                             value={formData.padrao_desbloqueio}
                             onChange={(pattern) => setFormData(prev => ({ ...prev, padrao_desbloqueio: pattern }))}
-                            className="max-w-[160px]"
+                            className="max-w-[180px]"
                           />
                         </div>
                         <Input
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
-                          placeholder="Senha adicional"
-                          className="h-8 text-xs"
+                          placeholder="Senha adicional (opcional)"
+                          className="h-10 text-sm border-gray-200 rounded-lg"
                         />
                       </div>
                     )}
                   </div>
 
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground mb-1 block">Referência Visual do Aparelho</Label>
-                    <div className="h-[200px] flex items-center justify-center bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20 p-1">
+                  <div className="border-t border-gray-100 pt-4">
+                    <Label className="text-xs font-medium text-gray-600 mb-2 block">Referência Visual do Aparelho</Label>
+                    <div className="h-[220px] flex items-center justify-center bg-gray-50/50 rounded-xl border border-gray-200 p-2">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
@@ -2218,8 +2249,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         readOnly={false}
                       />
                     </div>
-                    <div className="flex items-center justify-center mt-1">
-                      <p className="text-[10px] text-muted-foreground">
+                    <div className="flex items-center justify-between mt-2 px-1">
+                      <p className="text-xs text-gray-500">
                         Clique para marcar defeitos ({formData.areas_defeito?.length || 0})
                       </p>
                       {formData.areas_defeito && formData.areas_defeito.length > 0 && (
@@ -2229,10 +2260,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             e.stopPropagation();
                             setFormData(prev => ({ ...prev, areas_defeito: [] }));
                           }}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded p-0.5 transition-colors flex-shrink-0"
+                          className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded px-2 py-1 transition-colors flex items-center gap-1"
                           title="Limpar todos os defeitos"
                         >
                           <Trash2 className="h-3 w-3" />
+                          <span>Limpar</span>
                         </button>
                       )}
                     </div>

@@ -31,99 +31,126 @@ export function OSSummaryHeader({
   const statusColor = status ? STATUS_OS_COLORS[status as keyof typeof STATUS_OS_COLORS] || 'bg-gray-500' : 'bg-gray-500';
 
   return (
-    <Card className="sticky top-0 z-10 border-2 border-gray-300 shadow-sm mb-3 md:mb-4">
-      <CardContent className="p-2 md:p-3">
-        {/* Número da OS - destaque no topo */}
-        {numeroOS && (
-          <div className="mb-2 md:mb-3 pb-2 md:pb-3 border-b-2 border-gray-300">
-            <h2 className="text-base md:text-lg font-bold text-primary">OS #{numeroOS}</h2>
+    <Card className="sticky top-0 z-10 bg-white border border-gray-200 shadow-sm rounded-xl">
+      <CardContent className="p-3 md:p-4">
+        {/* Header com número da OS e status */}
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            {/* Número da OS como badge */}
+            {numeroOS && (
+              <Badge variant="outline" className="text-sm font-bold px-3 py-1 bg-gray-50 border-gray-300 text-gray-700">
+                OS #{numeroOS}
+              </Badge>
+            )}
+            {/* Status como pill colorido */}
+            <Badge className={cn('text-xs font-semibold px-3 py-1 text-white shadow-sm', statusColor)}>
+              {statusLabel}
+            </Badge>
           </div>
-        )}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 md:gap-3 items-center">
+          {/* Saldo pendente como alerta */}
+          {saldoPendente > 0 && (
+            <div className="flex items-center gap-1.5 bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-200">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-semibold">
+                Pendente: {currencyFormatters.brl(saldoPendente)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Grid de informações */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* Cliente */}
-          <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-            <User className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground">Cliente</p>
-              <p className="text-xs md:text-sm font-medium truncate">{clienteNome || 'Não informado'}</p>
+          <div className="flex items-start gap-2">
+            <div className="p-1.5 bg-blue-50 rounded-lg">
+              <User className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Cliente</p>
+              <p className={cn(
+                "text-sm font-semibold truncate",
+                clienteNome ? "text-gray-800" : "text-gray-400 italic"
+              )}>
+                {clienteNome || 'Selecione um cliente'}
+              </p>
             </div>
           </div>
 
           {/* Modelo */}
-          <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-            <Smartphone className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground">Modelo</p>
-              <p className="text-xs md:text-sm font-medium truncate">{modeloNome || 'Não informado'}</p>
+          <div className="flex items-start gap-2">
+            <div className="p-1.5 bg-purple-50 rounded-lg">
+              <Smartphone className="h-4 w-4 text-purple-600" />
             </div>
-          </div>
-
-          {/* Status */}
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground mb-0.5 md:mb-1">Status</p>
-              <Badge className={cn('text-[10px] md:text-xs text-white', statusColor)}>
-                {statusLabel}
-              </Badge>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Modelo</p>
+              <p className={cn(
+                "text-sm font-semibold truncate",
+                modeloNome ? "text-gray-800" : "text-gray-400 italic"
+              )}>
+                {modeloNome || 'Não informado'}
+              </p>
             </div>
           </div>
 
           {/* Valor Total */}
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <DollarSign className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground">Valor Total</p>
-              <p className="text-xs md:text-sm font-semibold text-green-600">
+          <div className="flex items-start gap-2">
+            <div className="p-1.5 bg-green-50 rounded-lg">
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Total</p>
+              <p className="text-sm font-bold text-green-600">
                 {currencyFormatters.brl(valorTotal)}
               </p>
             </div>
           </div>
 
           {/* Valor Pago */}
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <Wallet className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground">Valor Pago</p>
-              <p className="text-xs md:text-sm font-semibold text-blue-600">
+          <div className="flex items-start gap-2">
+            <div className="p-1.5 bg-blue-50 rounded-lg">
+              <Wallet className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Pago</p>
+              <p className="text-sm font-bold text-blue-600">
                 {currencyFormatters.brl(valorPago)}
               </p>
             </div>
           </div>
 
           {/* Previsão de Entrega */}
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground">Previsão</p>
-              <p className="text-xs md:text-sm font-medium">
+          <div className="flex items-start gap-2">
+            <div className="p-1.5 bg-amber-50 rounded-lg">
+              <Calendar className="h-4 w-4 text-amber-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Previsão</p>
+              <p className={cn(
+                "text-sm font-semibold",
+                previsaoEntrega ? "text-gray-800" : "text-gray-400 italic"
+              )}>
                 {previsaoEntrega ? dateFormatters.short(previsaoEntrega) : 'Não definida'}
               </p>
             </div>
           </div>
 
           {/* Técnico */}
-          <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
-            <UserCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] md:text-xs text-muted-foreground">Técnico</p>
-              <p className="text-xs md:text-sm font-medium truncate">{tecnicoNome || 'Não atribuído'}</p>
+          <div className="flex items-start gap-2">
+            <div className="p-1.5 bg-indigo-50 rounded-lg">
+              <UserCircle className="h-4 w-4 text-indigo-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Técnico</p>
+              <p className={cn(
+                "text-sm font-semibold truncate",
+                tecnicoNome ? "text-gray-800" : "text-gray-400 italic"
+              )}>
+                {tecnicoNome || 'Não atribuído'}
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Saldo Pendente - destaque se houver */}
-        {saldoPendente > 0 && (
-          <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t-2 border-gray-300 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 text-orange-500" />
-              <span className="text-xs md:text-sm font-medium text-orange-600">
-                Saldo Pendente: {currencyFormatters.brl(saldoPendente)}
-              </span>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
 }
-

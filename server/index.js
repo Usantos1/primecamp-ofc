@@ -1822,6 +1822,45 @@ app.post('/api/functions/import-clientes', authenticateToken, async (req, res) =
   }
 });
 
+// ============================================
+// ENDPOINT DE BUSCA DE CLIENTES (AUTOCOMPLETE)
+// ============================================
+
+// GET /api/clientes/search - Buscar clientes por termo (ILIKE)
+app.get('/api/clientes/search', authenticateToken, async (req, res) => {
+  try {
+    const { q, limit = 15 } = req.query;
+    
+    if (!q || q.length < 2) {
+      return res.json([]);
+    }
+
+    const searchTerm = `%${q}%`;
+    const limitNum = Math.min(parseInt(limit) || 15, 50);
+
+    const result = await pool.query(
+      `SELECT id, nome, cpf_cnpj, telefone, whatsapp, email, cidade, estado
+       FROM clientes 
+       WHERE (situacao IS NULL OR situacao != 'inativo')
+         AND (
+           nome ILIKE $1 
+           OR cpf_cnpj ILIKE $1 
+           OR telefone ILIKE $1 
+           OR whatsapp ILIKE $1
+           OR email ILIKE $1
+         )
+       ORDER BY nome ASC
+       LIMIT $2`,
+      [searchTerm, limitNum]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[ClientesSearch] Erro:', error);
+    res.status(500).json({ error: error.message || 'Erro ao buscar clientes' });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);

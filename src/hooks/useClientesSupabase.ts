@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Cliente } from '@/types/assistencia';
+
+// URL da API
+const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+  ? import.meta.env.VITE_API_URL 
+  : 'https://api.primecamp.cloud/api';
 
 export function useClientesSupabase(pageSize: number = 50) {
   const { user } = useAuth();
@@ -111,7 +116,7 @@ export function useClientesSupabase(pageSize: number = 50) {
     return clientes.find(c => c.id === id);
   };
 
-  // Buscar clientes
+  // Buscar clientes (síncrono - apenas nos carregados em memória)
   const searchClientes = (query: string): Cliente[] => {
     if (!query || query.length < 2) return [];
     const q = query.toLowerCase();
@@ -124,6 +129,32 @@ export function useClientesSupabase(pageSize: number = 50) {
     );
   };
 
+  // Buscar clientes (assíncrono - busca no banco via API com ILIKE)
+  const searchClientesAsync = useCallback(async (query: string, limit: number = 15): Promise<Cliente[]> => {
+    if (!query || query.length < 2) return [];
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/clientes/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        console.error('[searchClientesAsync] Erro na resposta:', response.status);
+        return [];
+      }
+
+      const data = await response.json();
+      return (data || []) as Cliente[];
+    } catch (error) {
+      console.error('[searchClientesAsync] Erro ao buscar clientes:', error);
+      return [];
+    }
+  }, []);
+
   return {
     clientes,
     isLoading,
@@ -132,6 +163,7 @@ export function useClientesSupabase(pageSize: number = 50) {
     deleteCliente: deleteCliente.mutateAsync,
     getClienteById,
     searchClientes,
+    searchClientesAsync,
     // Paginação
     page,
     totalPages,
