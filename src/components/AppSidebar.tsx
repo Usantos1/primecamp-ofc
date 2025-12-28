@@ -26,6 +26,8 @@ import {
   ChevronUp,
   KeyRound,
   UserCog,
+  Megaphone,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -121,6 +123,20 @@ export function AppSidebar() {
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
     { label: "Academy", path: "/treinamentos", icon: GraduationCap, permission: "rh.treinamentos" },
   ].filter(item => !item.permission || hasPermission(item.permission));
+
+  // ═══════════════════════════════════════════════════════════════
+  // FINANCEIRO - Gestão Financeira
+  // ═══════════════════════════════════════════════════════════════
+  const financeiroItems = [
+    { label: "Financeiro", path: "/admin/financeiro", icon: Wallet },
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // MARKETING - Campanhas, Leads, Métricas
+  // ═══════════════════════════════════════════════════════════════
+  const marketingItems = [
+    { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone },
+  ];
 
   // ═══════════════════════════════════════════════════════════════
   // ADMINISTRAÇÃO - Apenas para admins
@@ -234,6 +250,12 @@ export function AppSidebar() {
 
               {/* ══════ GESTÃO ══════ */}
               {renderSection("Gestão", Target, gestaoItems)}
+
+              {/* ══════ FINANCEIRO ══════ */}
+              {renderSection("Financeiro", Wallet, financeiroItems)}
+
+              {/* ══════ MARKETING ══════ */}
+              {renderSection("Marketing", Megaphone, marketingItems)}
 
               {/* Separador */}
               {adminItems.length > 0 && renderSeparator()}

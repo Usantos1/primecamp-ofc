@@ -48,8 +48,7 @@ export const useNPS = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('nps_surveys')
+      const { data, error } = await from('nps_surveys')
         .select('*')
         .order('created_at', { ascending: false })
         .execute();
@@ -104,8 +103,7 @@ export const useNPS = () => {
     if (!user) return;
     
     try {
-      const { data, error } = await supabase
-        .from('nps_responses')
+      const { data, error } = await from('nps_responses')
         .select('*')
         .order('created_at', { ascending: false })
         .execute();
@@ -135,8 +133,7 @@ export const useNPS = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('nps_surveys')
+      const { data, error } = await from('nps_surveys')
         .insert({
           title: surveyData.title,
           description: surveyData.description,
@@ -146,7 +143,7 @@ export const useNPS = () => {
           allowed_respondents: surveyData.allowed_respondents || [],
           target_employees: surveyData.target_employees || []
         })
-        .select()
+        .select('*')
         .single();
 
       if (error) {
@@ -180,10 +177,10 @@ export const useNPS = () => {
       if (updates.allowed_respondents !== undefined) updateData.allowed_respondents = updates.allowed_respondents;
       if (updates.target_employees !== undefined) updateData.target_employees = updates.target_employees;
 
-      const { error } = await supabase
-        .from('nps_surveys')
+      const { error } = await from('nps_surveys')
+        .eq('id', surveyId)
         .update(updateData)
-        .eq('id', surveyId);
+        .execute();
 
       if (error) {
         toast({
@@ -207,10 +204,10 @@ export const useNPS = () => {
 
   const deleteSurvey = async (surveyId: string) => {
     try {
-      const { error } = await supabase
-        .from('nps_surveys')
+      const { error } = await from('nps_surveys')
+        .eq('id', surveyId)
         .delete()
-        .eq('id', surveyId);
+        .execute();
 
       if (error) {
         toast({
@@ -236,16 +233,38 @@ export const useNPS = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('nps_responses')
-        .upsert({
-          survey_id: surveyId,
-          user_id: user.id,
-          responses,
-          date: new Date().toISOString().split('T')[0]
-        })
-        .select()
-        .single();
+      // Verificar se já existe uma resposta para hoje
+      const today = new Date().toISOString().split('T')[0];
+      const { data: existing } = await from('nps_responses')
+        .select('id')
+        .eq('survey_id', surveyId)
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .execute();
+
+      let data, error;
+      if (existing && existing.length > 0) {
+        // Update existing
+        const result = await from('nps_responses')
+          .eq('id', existing[0].id)
+          .update({ responses })
+          .execute();
+        data = result.data;
+        error = result.error;
+      } else {
+        // Insert new
+        const result = await from('nps_responses')
+          .insert({
+            survey_id: surveyId,
+            user_id: user.id,
+            responses,
+            date: today
+          })
+          .select('*')
+          .single();
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         toast({

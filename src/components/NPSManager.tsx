@@ -18,9 +18,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface NPSManagerProps {
   mode?: 'surveys' | 'manage' | 'analytics';
   hideTabs?: boolean;
+  hideStats?: boolean;
 }
 
-export const NPSManager = ({ mode = 'surveys', hideTabs = false }: NPSManagerProps = {}) => {
+export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = false }: NPSManagerProps = {}) => {
   const { surveys, responses, loading, createSurvey, updateSurvey, deleteSurvey, submitResponse, getTodayResponse } = useNPS();
   const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState(mode);
@@ -150,44 +151,24 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false }: NPSManagerPro
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        <Card className="border-2 border-gray-300 border-l-4 border-l-green-500 shadow-sm bg-green-50/50 md:bg-transparent">
-          <CardContent className="p-3 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-sm font-medium text-green-700 md:text-muted-foreground">Pesquisas Ativas</p>
-                <p className="text-base md:text-2xl font-bold text-green-700 md:text-foreground">{activeSurveys.length}</p>
-              </div>
-              <BarChart3 className="h-3 w-3 md:h-8 md:w-8 text-green-600 md:text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50 md:bg-transparent">
-          <CardContent className="p-3 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-sm font-medium text-blue-700 md:text-muted-foreground">Respostas Hoje</p>
-                <p className="text-base md:text-2xl font-bold text-blue-700 md:text-foreground">{todayResponses.length}</p>
-              </div>
-              <Calendar className="h-3 w-3 md:h-8 md:w-8 text-blue-600 md:text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-gray-300 border-l-4 border-l-purple-500 shadow-sm bg-purple-50/50 md:bg-transparent">
-          <CardContent className="p-3 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-sm font-medium text-purple-700 md:text-muted-foreground">Total de Respostas</p>
-                <p className="text-base md:text-2xl font-bold text-purple-700 md:text-foreground">{responses.length}</p>
-              </div>
-              <Users className="h-3 w-3 md:h-8 md:w-8 text-purple-600 md:text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-3">
+      {/* Estatísticas compactas inline - apenas se não estiver escondido */}
+      {!hideStats && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="h-10 flex flex-col items-center justify-center px-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800 min-w-[90px]">
+            <span className="text-[9px] text-green-600 dark:text-green-400 font-medium">Pesquisas Ativas</span>
+            <span className="text-sm font-bold text-green-700 dark:text-green-300">{activeSurveys.length}</span>
+          </div>
+          <div className="h-10 flex flex-col items-center justify-center px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 min-w-[90px]">
+            <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">Respostas Hoje</span>
+            <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{todayResponses.length}</span>
+          </div>
+          <div className="h-10 flex flex-col items-center justify-center px-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800 min-w-[100px]">
+            <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">Total Respostas</span>
+            <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{responses.length}</span>
+          </div>
+        </div>
+      )}
 
       {!hideTabs ? (
         <Tabs value={activeTab} onValueChange={setActiveTab}>

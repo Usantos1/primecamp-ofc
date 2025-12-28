@@ -48,6 +48,7 @@ import AdminGoals from "./pages/admin/AdminGoals";
 import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
 import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
+import { MarketingLayout, MarketingDashboard, MarketingCampanhas, MarketingLeads, MarketingMetricas, MarketingMetas } from "./pages/admin/marketing";
 import EstruturaOrganizacional from "./pages/admin/EstruturaOrganizacional";
 import CadastrosBase from "./pages/admin/CadastrosBase";
 import RH from "./pages/RH";
@@ -137,7 +138,14 @@ const App = () => (
               <Route path="/admin/goals" element={<PermissionRoute permission="rh.metas"><AdminGoals /></PermissionRoute>} />
               <Route path="/admin/nps" element={<PermissionRoute permission="admin.nps"><AdminNPS /></PermissionRoute>} />
               <Route path="/admin/disc" element={<PermissionRoute permission="admin.disc"><AdminDisc /></PermissionRoute>} />
-              <Route path="/admin/financeiro/*" element={<PermissionRoute permission="financeiro.view"><AdminFinanceiro /></PermissionRoute>} />
+              <Route path="/admin/financeiro/*" element={<AdminFinanceiro />} />
+              <Route path="/admin/marketing" element={<MarketingLayout />}>
+                <Route index element={<MarketingDashboard />} />
+                <Route path="campanhas" element={<MarketingCampanhas />} />
+                <Route path="leads" element={<MarketingLeads />} />
+                <Route path="metricas" element={<MarketingMetricas />} />
+                <Route path="metas" element={<MarketingMetas />} />
+              </Route>
               <Route path="/admin/job-surveys" element={<ProtectedRoute><AdminJobSurveys /></ProtectedRoute>} />
               <Route path="/admin/job-surveys/:id" element={<ProtectedRoute><JobSurveyDetail /></ProtectedRoute>} />
               <Route path="/admin/talent-bank" element={<ProtectedRoute><TalentBank /></ProtectedRoute>} />

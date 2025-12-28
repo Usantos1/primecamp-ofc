@@ -13,6 +13,8 @@ import { from } from '@/integrations/db/client';
 import { Barcode, Package, DollarSign, Warehouse, History } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProductFormOptimizedProps {
   open: boolean;
@@ -34,6 +36,7 @@ interface FormData {
   grupo?: string;
   sub_grupo?: string;
   qualidade?: string;
+  preco_custo?: number | string;
   valor_venda?: number | string;
   valor_parcelado_6x?: number | string;
   margem_percentual?: number;
@@ -45,10 +48,12 @@ interface FormData {
 interface EstoqueMovimentacao {
   id: string;
   data: string;
-  numero_os: number;
-  quantidade: number;
-  tipo: string;
+  ref_tipo: 'OS' | 'Venda' | 'Cancelamento' | 'Devolução' | 'Ajuste' | 'Inventário';
+  ref_id?: string;
+  ref_numero: number;
+  quantidade_delta: number; // negativo = saída, positivo = entrada
   descricao: string;
+  vendedor_nome?: string | null;
 }
 
 /**
@@ -83,10 +88,9 @@ function gerarEAN13(input?: string | number): string {
  */
 async function buscarProximoCodigo(): Promise<number> {
   try {
-    const { data, error } = await supabase
-      .from('produtos')
+    const { data, error } = await from('produtos')
       .select('codigo')
-      .execute().not('codigo', 'is', null)
+      .not('codigo', 'is', null)
       .order('codigo', { ascending: false })
       .limit(1)
       .single();
@@ -113,7 +117,7 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
 
     // 1. Buscar os_items relacionados ao produto (Ordens de Serviço)
     const { data: osItens } = await from('os_items')
-      .select('id, quantidade, tipo, descricao, created_at, ordem_servico_id')
+      .select('id, quantidade, tipo, descricao, created_at, ordem_servico_id, colaborador_nome')
       .eq('produto_id', produtoId)
       .eq('tipo', 'peca')
       .order('created_at', { ascending: false })
@@ -136,10 +140,12 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
         movimentacoes.push({
           id: item.id,
           data: item.created_at,
-          numero_os: osMap.get(item.ordem_servico_id) || 0,
-          quantidade: Number(item.quantidade || 0),
-          tipo: 'OS',
+          ref_tipo: 'OS',
+          ref_id: item.ordem_servico_id,
+          ref_numero: osMap.get(item.ordem_servico_id) || 0,
+          quantidade_delta: -Math.abs(Number(item.quantidade || 0)),
           descricao: item.descricao || 'Baixa via OS',
+          vendedor_nome: item.colaborador_nome || null,
         });
       });
     }
@@ -152,26 +158,126 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
       .execute();
 
     if (saleItens && saleItens.length > 0) {
+      // Agrupar por venda para evitar múltiplas linhas que parecem múltiplos cancelamentos
+      // (ex: mesmo produto lançado mais de uma vez na mesma venda)
+      const groupedBySale = new Map<string, { quantidade: number; created_at: string }>();
+      for (const item of saleItens as any[]) {
+        const saleId = item.sale_id;
+        if (!saleId) continue;
+        const prev = groupedBySale.get(saleId);
+        const qtd = Math.abs(Number(item.quantidade || 0));
+        if (!prev) {
+          groupedBySale.set(saleId, { quantidade: qtd, created_at: item.created_at });
+        } else {
+          groupedBySale.set(saleId, {
+            quantidade: prev.quantidade + qtd,
+            // manter o created_at mais recente (já vem ordenado desc, então prev é o mais recente)
+            created_at: prev.created_at,
+          });
+        }
+      }
+
       // Buscar números das vendas relacionadas
-      const saleIds = [...new Set(saleItens.map((item: any) => item.sale_id).filter(Boolean))];
+      const saleIds = [...groupedBySale.keys()];
       
       let salesMap = new Map();
+      let salesMeta = new Map<string, any>();
       if (saleIds.length > 0) {
         const { data: sales } = await from('sales')
-          .select('id, numero')
+          .select('id, numero, status, is_draft, vendedor_nome, created_at, finalized_at, canceled_at, updated_at')
           .in('id', saleIds)
           .execute();
         salesMap = new Map((sales || []).map((s: any) => [s.id, s.numero]));
+        salesMeta = new Map((sales || []).map((s: any) => [s.id, s]));
       }
 
-      saleItens.forEach((item: any) => {
+      for (const [saleId, agg] of groupedBySale.entries()) {
+        const sale = salesMeta.get(saleId);
+        const saleNumero = salesMap.get(saleId) || 0;
+        const qtd = Math.abs(Number(agg.quantidade || 0));
+
+        // Venda (saída) - apenas quando não é rascunho
+        const isDraft = Boolean(sale?.is_draft);
+        const saleStatus = (sale?.status || 'draft') as string;
+        const hasFinalizedAt = Boolean(sale?.finalized_at);
+        const baixaEfetivada = !isDraft && (hasFinalizedAt || ['open', 'paid', 'partial', 'canceled', 'refunded'].includes(saleStatus));
+
+        if (baixaEfetivada) {
+          movimentacoes.push({
+            id: `sale-${saleId}`,
+            data: sale?.finalized_at || sale?.created_at || agg.created_at,
+            ref_tipo: 'Venda',
+            ref_id: saleId,
+            ref_numero: saleNumero,
+            quantidade_delta: -qtd,
+            descricao: `Venda #${saleNumero || '?'}`,
+            vendedor_nome: sale?.vendedor_nome || null,
+          });
+        }
+
+        // Cancelamento (entrada) - quando cancelada e havia baixa efetivada
+        if (saleStatus === 'canceled' && sale?.canceled_at && baixaEfetivada) {
+          movimentacoes.push({
+            id: `sale-cancel-${saleId}`,
+            data: sale.canceled_at,
+            ref_tipo: 'Cancelamento',
+            ref_id: saleId,
+            ref_numero: saleNumero,
+            quantidade_delta: +qtd,
+            descricao: `Cancelamento da venda #${saleNumero || '?'}`,
+            vendedor_nome: sale?.vendedor_nome || null,
+          });
+        }
+
+        // Devolução (entrada) - se status for refunded
+        if (saleStatus === 'refunded' && baixaEfetivada) {
+          movimentacoes.push({
+            id: `sale-refund-${saleId}`,
+            data: sale?.updated_at || agg.created_at,
+            ref_tipo: 'Devolução',
+            ref_id: saleId,
+            ref_numero: saleNumero,
+            quantidade_delta: +qtd,
+            descricao: `Devolução da venda #${saleNumero || '?'}`,
+            vendedor_nome: sale?.vendedor_nome || null,
+          });
+        }
+      }
+    }
+
+    // 3. Movimentações internas (ajustes manuais / inventário)
+    const { data: internalMovs } = await from('produto_movimentacoes')
+      .select('id, tipo, motivo, quantidade_antes, quantidade_depois, quantidade_delta, valor_venda_antes, valor_venda_depois, valor_custo_antes, valor_custo_depois, inventario_id, user_nome, created_at')
+      .eq('produto_id', produtoId)
+      .order('created_at', { ascending: false })
+      .limit(200)
+      .execute();
+
+    if (internalMovs && internalMovs.length > 0) {
+      (internalMovs as any[]).forEach((m) => {
+        const isInventario = String(m.tipo || '').includes('inventario');
+        const qtdDelta = Number(m.quantidade_delta || 0);
+
+        const parts: string[] = [];
+        if (m.quantidade_antes !== null && m.quantidade_depois !== null) {
+          parts.push(`Estoque: ${m.quantidade_antes} → ${m.quantidade_depois} (${qtdDelta >= 0 ? '+' : ''}${qtdDelta})`);
+        }
+        if (m.valor_venda_antes !== null && m.valor_venda_depois !== null) {
+          parts.push(`Venda: ${formatBRL(Number(m.valor_venda_antes || 0))} → ${formatBRL(Number(m.valor_venda_depois || 0))}`);
+        }
+        if (m.valor_custo_antes !== null && m.valor_custo_depois !== null) {
+          parts.push(`Custo: ${formatBRL(Number(m.valor_custo_antes || 0))} → ${formatBRL(Number(m.valor_custo_depois || 0))}`);
+        }
+
         movimentacoes.push({
-          id: `sale-${item.id}`,
-          data: item.created_at,
-          numero_os: salesMap.get(item.sale_id) || 0,
-          quantidade: Number(item.quantidade || 0),
-          tipo: 'Venda',
-          descricao: `Venda #${salesMap.get(item.sale_id) || '?'}`,
+          id: `internal-${m.id}`,
+          data: m.created_at,
+          ref_tipo: isInventario ? 'Inventário' : 'Ajuste',
+          ref_id: m.inventario_id || undefined,
+          ref_numero: 0,
+          quantidade_delta: Number.isFinite(qtdDelta) ? qtdDelta : 0,
+          descricao: parts.length > 0 ? parts.join(' • ') : (m.motivo || 'Ajuste manual'),
+          vendedor_nome: m.user_nome || null,
         });
       });
     }
@@ -195,6 +301,8 @@ export function ProductFormOptimized({
   marcas = [],
   modelos = [],
 }: ProductFormOptimizedProps) {
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCodigo, setIsLoadingCodigo] = useState(false);
   const [activeTab, setActiveTab] = useState('dados');
@@ -211,6 +319,7 @@ export function ProductFormOptimized({
       grupo: '',
       sub_grupo: '',
       qualidade: '',
+      preco_custo: undefined,
       valor_venda: 0,
       valor_parcelado_6x: undefined,
       margem_percentual: undefined,
@@ -222,6 +331,7 @@ export function ProductFormOptimized({
 
   const codigoBarras = watch('codigo_barras');
   const codigo = watch('codigo');
+  const precoCusto = watch('preco_custo');
   const valorVenda = watch('valor_venda');
   const valorParcelado = watch('valor_parcelado_6x');
 
@@ -247,6 +357,7 @@ export function ProductFormOptimized({
           grupo: produto.grupo || produto.categoria || '',
           sub_grupo: produto.sub_grupo || '',
           qualidade: produto.qualidade || '',
+          preco_custo: (produto.preco_custo || produto.valor_compra || 0),
           valor_venda: produto.valor_venda || produto.preco_venda || 0,
           valor_parcelado_6x: produto.valor_parcelado_6x,
           margem_percentual: produto.margem_percentual || produto.margem_lucro,
@@ -298,11 +409,16 @@ export function ProductFormOptimized({
   };
 
   // Calcular margem automaticamente
-  const calcularMargem = () => {
-    const venda = typeof valorVenda === 'string' ? parseBRLInput(valorVenda) : (valorVenda || 0);
-    // Se não tiver valor de compra, não calcular margem
-    // Por enquanto, deixar manual
-  };
+  useEffect(() => {
+    const venda = typeof valorVenda === 'string' ? parseBRLInput(valorVenda) : Number(valorVenda || 0);
+    const custo = typeof precoCusto === 'string' ? parseBRLInput(precoCusto) : Number(precoCusto || 0);
+    if (!custo || custo <= 0) {
+      setValue('margem_percentual', 0);
+      return;
+    }
+    const margem = ((venda - custo) / custo) * 100;
+    setValue('margem_percentual', Number.isFinite(margem) ? Number(margem.toFixed(2)) : 0);
+  }, [valorVenda, precoCusto, setValue]);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -340,6 +456,11 @@ export function ProductFormOptimized({
       }
 
       // Preços (BRL)
+      const precoCustoNum = typeof data.preco_custo === 'string' ? parseBRLInput(data.preco_custo) : (data.preco_custo || 0);
+      if (precoCustoNum >= 0 || isEditing) {
+        (payload as any).preco_custo = precoCustoNum;
+      }
+
       const valorVendaNum = typeof data.valor_venda === 'string' ? parseBRLInput(data.valor_venda) : (data.valor_venda || 0);
       if (valorVendaNum > 0 || isEditing) {
         payload.valor_venda = valorVendaNum;
@@ -556,6 +677,23 @@ export function ProductFormOptimized({
             <TabsContent value="precos" className="flex-1 overflow-y-auto space-y-4 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="preco_custo">Valor de Compra / Custo</Label>
+                  <Input
+                    id="preco_custo"
+                    value={formatarValorInput(precoCusto)}
+                    onChange={(e) => {
+                      const masked = maskBRL(e.target.value);
+                      setValue('preco_custo', masked as any);
+                    }}
+                    placeholder="R$ 0,00"
+                    className="text-right text-base md:text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Usado para calcular a margem automaticamente
+                  </p>
+                </div>
+
+                <div>
                   <Label htmlFor="valor_venda">
                     Valor de Venda (Dinheiro/PIX) *
                   </Label>
@@ -658,16 +796,17 @@ export function ProductFormOptimized({
               ) : (
                 <div className="space-y-4">
                   <div className="text-sm text-muted-foreground">
-                    Histórico de movimentações de estoque vinculadas a este produto em Ordens de Serviço
+                    Histórico de movimentações de estoque vinculadas a este produto (Vendas e Ordens de Serviço)
                   </div>
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Data</TableHead>
-                          <TableHead>OS #</TableHead>
+                          <TableHead>Ref.</TableHead>
                           <TableHead>Quantidade</TableHead>
                           <TableHead>Tipo</TableHead>
+                          <TableHead>Vendedor</TableHead>
                           <TableHead>Descrição</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -677,12 +816,33 @@ export function ProductFormOptimized({
                             <TableCell>
                               {format(new Date(mov.data), "dd/MM/yyyy 'às' HH:mm")}
                             </TableCell>
-                            <TableCell className="font-mono">#{mov.numero_os}</TableCell>
-                            <TableCell className="font-semibold text-destructive">-{mov.quantidade}</TableCell>
+                            <TableCell className="font-mono">
+                              {mov.ref_id ? (
+                                <button
+                                  type="button"
+                                  className="underline underline-offset-2 hover:text-blue-600"
+                                  onClick={() => {
+                                    if (mov.ref_tipo === 'OS') navigate(`/os/${mov.ref_id}`);
+                                    if (mov.ref_tipo === 'Venda' || mov.ref_tipo === 'Cancelamento' || mov.ref_tipo === 'Devolução') navigate(`/pdv/venda/${mov.ref_id}`);
+                                  }}
+                                  title={mov.ref_tipo === 'OS' ? 'Abrir OS' : 'Abrir venda'}
+                                >
+                                  #{mov.ref_numero}
+                                </button>
+                              ) : (
+                                <>#{mov.ref_numero}</>
+                              )}
+                            </TableCell>
+                            <TableCell className={mov.quantidade_delta < 0 ? "font-semibold text-destructive" : "font-semibold text-emerald-700"}>
+                              {mov.quantidade_delta < 0 ? '-' : '+'}{Math.abs(mov.quantidade_delta)}
+                            </TableCell>
                             <TableCell>
                               <span className="px-2 py-1 bg-muted rounded text-xs">
-                                {mov.tipo === 'peca' ? 'Peça' : mov.tipo}
+                                {mov.ref_tipo}
                               </span>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {mov.vendedor_nome || '-'}
                             </TableCell>
                             <TableCell>{mov.descricao}</TableCell>
                           </TableRow>

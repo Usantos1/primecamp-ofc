@@ -51,9 +51,8 @@ interface PermissionHistory {
   role_name: string | null;
   description: string | null;
   created_at: string;
-  changed_by: {
-    display_name: string | null;
-  } | null;
+  changed_by: string | null;
+  changed_by_display_name?: string | null;
 }
 
 export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
@@ -70,6 +69,89 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
   useEffect(() => {
     loadData();
   }, [userId]);
+
+  const getDefaultDepartmentName = async (): Promise<string> => {
+    const { data: profileData } = await from('profiles')
+      .select('department')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return (profileData as any)?.department || 'Geral';
+  };
+
+  const getDefaultPositionId = async (): Promise<string | null> => {
+    // Pega a posição com maior nível como default (fallback)
+    const { data: positionData } = await from('positions')
+      .select('id')
+      .order('level', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (positionData as any)?.id || null;
+  };
+
+  const ensurePrimaryUserPositionDepartment = async (): Promise<{ id: string } | null> => {
+    // 1) Se já existe primário, use.
+    const { data: primary } = await from('user_position_departments')
+      .select('id, position_id, department_name')
+      .eq('user_id', userId)
+      .eq('is_primary', true)
+      .maybeSingle();
+
+    if ((primary as any)?.id) {
+      return { id: (primary as any).id };
+    }
+
+    // 2) Se existe algum registro, promova para primário.
+    const { data: anyRecord } = await from('user_position_departments')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle();
+
+    if ((anyRecord as any)?.id) {
+      const { error: promoteError } = await from('user_position_departments')
+        .update({ is_primary: true })
+        .eq('id', (anyRecord as any).id)
+        .execute();
+
+      if (promoteError) {
+        console.error('Erro ao promover registro existente:', promoteError);
+        return null;
+      }
+
+      return { id: (anyRecord as any).id };
+    }
+
+    // 3) Se não existe nada, crie com position_id + department_name válidos.
+    const [departmentName, positionId] = await Promise.all([
+      getDefaultDepartmentName(),
+      getDefaultPositionId(),
+    ]);
+
+    if (!positionId) {
+      toast({
+        title: 'Erro',
+        description: 'Não existe nenhum cargo cadastrado em "positions". Cadastre um cargo primeiro para atribuir role.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    const { data: inserted, error: insertError } = await from('user_position_departments')
+      .insert({
+        user_id: userId,
+        position_id: positionId,
+        department_name: departmentName,
+        is_primary: true,
+      })
+      .single();
+
+    if (insertError) {
+      console.error('Erro ao criar registro primário (user_position_departments):', insertError);
+      return null;
+    }
+
+    return inserted?.id ? { id: inserted.id } : null;
+  };
 
   const loadData = async () => {
     try {
@@ -119,10 +201,10 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
       if (userPermsData) {
         const permMap = new Map<string, boolean>();
         userPermsData.forEach((up: any) => {
-          if (up.permission) {
-            const key = `${up.permission.resource}.${up.permission.action}`;
-            permMap.set(key, up.granted);
-          }
+          const perm = (permsData as any[])?.find((p: any) => p.id === up.permission_id);
+          if (!perm) return;
+          const key = `${perm.resource}.${perm.action}`;
+          permMap.set(key, up.granted);
         });
         setCustomPermissions(permMap);
       }
@@ -136,7 +218,28 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         .execute();
 
       if (historyData) {
-        setPermissionHistory(historyData as PermissionHistory[]);
+        const changerIds = Array.from(
+          new Set((historyData as any[]).map(h => h.changed_by).filter(Boolean))
+        );
+
+        let namesByUserId = new Map<string, string | null>();
+        if (changerIds.length > 0) {
+          const { data: profilesData } = await from('profiles')
+            .select('user_id, display_name')
+            .in('user_id', changerIds)
+            .execute();
+
+          (profilesData as any[] | null)?.forEach((p: any) => {
+            namesByUserId.set(p.user_id, p.display_name || null);
+          });
+        }
+
+        setPermissionHistory(
+          (historyData as any[]).map((h: any) => ({
+            ...h,
+            changed_by_display_name: h.changed_by ? (namesByUserId.get(h.changed_by) ?? null) : null,
+          })) as PermissionHistory[]
+        );
       }
     } catch (error: any) {
       console.error('Erro ao carregar dados:', error);
@@ -156,81 +259,21 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
 
     // Se selecionou um role, atualizar user_position_departments
     if (finalRoleId) {
-      // Buscar registro primário primeiro
-      let { data: updData, error: selectError } = await from('user_position_departments')
-        .select('id, position_id, department_name')
-        .eq('user_id', userId)
-        .eq('is_primary', true)
-        .maybeSingle();
+      const ensured = await ensurePrimaryUserPositionDepartment();
+      if (!ensured?.id) return;
 
-      if (selectError) {
-        console.error('Erro ao buscar user_position_departments:', selectError);
+      const { error: updateError } = await from('user_position_departments')
+        .update({ role_id: finalRoleId })
+        .eq('id', ensured.id)
+        .execute();
+
+      if (updateError) {
+        console.error('Erro ao atualizar role:', updateError);
         toast({
           title: 'Erro',
-          description: 'Erro ao buscar dados do usuário',
+          description: 'Erro ao salvar role do usuário',
           variant: 'destructive',
         });
-        return;
-      }
-
-      if (updData) {
-        // Atualizar registro existente
-        const { error: updateError } = await from('user_position_departments')
-          .update({ role_id: finalRoleId })
-          .eq('id', updData.id);
-
-        if (updateError) {
-          console.error('Erro ao atualizar role:', updateError);
-          toast({
-            title: 'Erro',
-            description: 'Erro ao salvar role do usuário',
-            variant: 'destructive',
-          });
-        }
-      } else {
-        // Se não houver primário, tentar promover um registro existente
-        const { data: anyRecord } = await from('user_position_departments')
-          .select('id')
-          .eq('user_id', userId)
-          .limit(1)
-          .maybeSingle()
-          .execute();
-
-        if (anyRecord?.id) {
-          const { error: promoteError } = await from('user_position_departments')
-            .update({ is_primary: true, role_id: finalRoleId })
-            .eq('id', anyRecord.id)
-            .execute();
-
-          if (promoteError) {
-            console.error('Erro ao promover registro existente:', promoteError);
-            toast({
-              title: 'Erro',
-              description: 'Erro ao salvar role do usuário',
-              variant: 'destructive',
-            });
-            return;
-          }
-        } else {
-          // Criar registro primário mínimo (evita conflito de chave)
-          const { error: insertError } = await from('user_position_departments')
-            .insert({
-              user_id: userId,
-              is_primary: true,
-              role_id: finalRoleId,
-            })
-            .execute();
-
-          if (insertError) {
-            console.error('Erro ao criar registro de role:', insertError);
-            toast({
-              title: 'Erro',
-              description: 'Erro ao salvar role do usuário',
-              variant: 'destructive',
-            });
-            return;
-          }
-        }
       }
     } else {
       // Remover role se selecionou "none"
@@ -295,78 +338,29 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
         .eq('is_primary', true)
         .maybeSingle();
 
-      const oldRoleName = (oldRoleData as any)?.role?.display_name || null;
+      const oldRoleId = (oldRoleData as any)?.role_id || null;
+      const oldRoleName = oldRoleId ? (roles.find(r => r.id === oldRoleId)?.display_name || null) : null;
 
       // Salvar role se selecionado
       if (selectedRoleId) {
         const selectedRole = roles.find(r => r.id === selectedRoleId);
-        
-        // Buscar registro primário antes de salvar
-        const { data: currentUpdData } = await from('user_position_departments')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_primary', true)
-          .maybeSingle()
+
+        const ensured = await ensurePrimaryUserPositionDepartment();
+        if (!ensured?.id) return;
+
+        const { error: updateError } = await from('user_position_departments')
+          .update({ role_id: selectedRoleId })
+          .eq('id', ensured.id)
           .execute();
 
-        if (currentUpdData?.id) {
-          const { error: updateError } = await from('user_position_departments')
-            .update({ role_id: selectedRoleId })
-            .eq('id', currentUpdData.id)
-            .execute();
-
-          if (updateError) {
-            console.error('Erro ao atualizar role:', updateError);
-            toast({
-              title: 'Erro',
-              description: 'Erro ao salvar role do usuário',
-              variant: 'destructive',
-            });
-            return;
-          }
-        } else {
-          // Promover registro existente ou criar mínimo
-          const { data: anyRecord } = await from('user_position_departments')
-            .select('id')
-            .eq('user_id', userId)
-            .limit(1)
-            .maybeSingle()
-            .execute();
-
-          if (anyRecord?.id) {
-            const { error: promoteError } = await from('user_position_departments')
-              .update({ is_primary: true, role_id: selectedRoleId })
-              .eq('id', anyRecord.id)
-              .execute();
-
-            if (promoteError) {
-              console.error('Erro ao promover registro existente:', promoteError);
-              toast({
-                title: 'Erro',
-                description: 'Erro ao salvar role do usuário',
-                variant: 'destructive',
-              });
-              return;
-            }
-          } else {
-            const { error: insertError } = await from('user_position_departments')
-              .insert({
-                user_id: userId,
-                is_primary: true,
-                role_id: selectedRoleId,
-              })
-              .execute();
-
-            if (insertError) {
-              console.error('Erro ao criar registro de role:', insertError);
-              toast({
-                title: 'Erro',
-                description: 'Erro ao salvar role do usuário',
-                variant: 'destructive',
-              });
-              return;
-            }
-          }
+        if (updateError) {
+          console.error('Erro ao atualizar role:', updateError);
+          toast({
+            title: 'Erro',
+            description: 'Erro ao salvar role do usuário',
+            variant: 'destructive',
+          });
+          return;
         }
 
         // Log de mudança de role
@@ -388,8 +382,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
           .select('id')
           .eq('user_id', userId)
           .eq('is_primary', true)
-          .maybeSingle()
-          .execute();
+          .maybeSingle();
 
         if (updData) {
           await from('user_position_departments')
@@ -411,26 +404,22 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
 
       // Buscar permissões anteriores para histórico
       const { data: oldPermsData } = await from('user_permissions')
-        .select(`
-          permission_id,
-          granted,
-          permission:permissions(resource, action, description)
-        .execute()`)
-        .eq('user_id', userId);
+        .select('permission_id, granted')
+        .eq('user_id', userId)
+        .execute();
 
       const oldPermsMap = new Map<string, boolean>();
       (oldPermsData || []).forEach((up: any) => {
-        if (up.permission) {
-          const key = `${up.permission.resource}.${up.permission.action}`;
-          oldPermsMap.set(key, up.granted);
-        }
+        const perm = permissions.find(p => p.id === up.permission_id);
+        if (!perm) return;
+        const key = `${perm.resource}.${perm.action}`;
+        oldPermsMap.set(key, up.granted);
       });
 
       // Remover todas as permissões customizadas existentes
       await from('user_permissions')
-        .delete()
         .eq('user_id', userId)
-        .execute();
+        .delete();
 
       // Inserir novas permissões customizadas
       if (customPermissions.size > 0) {
@@ -724,7 +713,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
                               {change.description || '-'}
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
-                              {change.changed_by?.display_name || 'Sistema'}
+                              {change.changed_by_display_name || 'Sistema'}
                             </TableCell>
                           </TableRow>
                         );

@@ -388,16 +388,15 @@ export const useDiscTest = () => {
         newResponse = existingIncomplete;
       } else {
         // Criar nova resposta no banco
-        const { data: createdResponse, error: responseError } = await supabase
-          .from('disc_responses')
+        const { data: createdResponse, error: responseError } = await from('disc_responses')
           .insert({
             user_id: user.id,
             test_id: test.id,
             responses: [],
             is_completed: false
           })
-          .select()
-          .maybeSingle();
+          .select('*')
+          .single();
 
         if (responseError) {
           console.error('[DISC] Erro ao criar nova resposta:', responseError);

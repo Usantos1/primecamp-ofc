@@ -25,8 +25,8 @@ export default function Caixa() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { currentSession, isLoading, openCash, closeCash, refreshSession } = useCashRegister();
-  const { movements, isLoading: movementsLoading, addMovement, refreshMovements } = useCashMovements(
+  const { currentSession, isLoading, openCash, closeCash } = useCashRegister();
+  const { movements, isLoading: movementsLoading, addMovement } = useCashMovements(
     currentSession?.id || ''
   );
 
@@ -49,10 +49,9 @@ export default function Caixa() {
 
   useEffect(() => {
     if (currentSession?.id) {
-      refreshMovements();
       loadSales();
     }
-  }, [currentSession?.id, refreshMovements]);
+  }, [currentSession?.id]);
 
   // Carregar itens da venda quando seleciona
   useEffect(() => {
@@ -279,84 +278,63 @@ export default function Caixa() {
 
   return (
     <ModernLayout title="Caixa" subtitle="Abertura, fechamento e movimentos de caixa">
-      <div className="flex flex-col h-full overflow-hidden gap-3">
-        {/* Status do Caixa - Compacto e Fixo */}
-        <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg shadow-sm p-3">
+      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
+        {/* Status do Caixa */}
+        <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg shadow-sm p-2 md:p-3">
           {currentSession ? (
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Status Badge */}
-              <Badge className="bg-green-100 text-green-800 text-xs">
-                <Unlock className="h-3 w-3 mr-1" />
-                Caixa Aberto
-              </Badge>
-              
-              {/* Valores principais em linha */}
-              <div className="flex items-center gap-4 flex-wrap flex-1">
-                <div className="flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Inicial:</span>
-                  <span className="text-sm font-semibold">{currencyFormatters.brl(currentSession.valor_inicial)}</span>
+            <>
+              {/* Mobile: Layout compacto */}
+              <div className="md:hidden space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-green-100 text-green-800 text-[10px]">
+                    <Unlock className="h-3 w-3 mr-1" />Aberto
+                  </Badge>
+                  <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-7 text-xs">
+                    <Lock className="h-3 w-3 mr-1" />Fechar
+                  </Button>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-xs text-muted-foreground">Entradas:</span>
-                  <span className="text-sm font-semibold text-green-600">{currencyFormatters.brl(totalEntradas)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <TrendingDown className="h-3.5 w-3.5 text-red-600" />
-                  <span className="text-xs text-muted-foreground">Saídas:</span>
-                  <span className="text-sm font-semibold text-red-600">{currencyFormatters.brl(totalSaidas)}</span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded">
-                  <span className="text-xs text-muted-foreground">Esperado:</span>
-                  <span className="text-sm font-bold text-primary">{currencyFormatters.brl(valorEsperado)}</span>
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin text-[10px]">
+                  <span className="whitespace-nowrap px-1.5 py-0.5 bg-gray-100 rounded">Inicial: {currencyFormatters.brl(currentSession.valor_inicial)}</span>
+                  <span className="whitespace-nowrap px-1.5 py-0.5 bg-green-100 text-green-700 rounded">+{currencyFormatters.brl(totalEntradas)}</span>
+                  <span className="whitespace-nowrap px-1.5 py-0.5 bg-red-100 text-red-700 rounded">-{currencyFormatters.brl(totalSaidas)}</span>
+                  <span className="whitespace-nowrap px-1.5 py-0.5 bg-blue-100 text-blue-700 font-bold rounded">= {currencyFormatters.brl(valorEsperado)}</span>
                 </div>
               </div>
-              
-              {/* Formas de Pagamento em linha compacta */}
-              {Object.keys(pagamentosPorForma).length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
-                    <Badge key={forma} variant="outline" className="text-xs">
-                      {forma === 'dinheiro' ? '💵' : forma === 'pix' ? '📱' : forma === 'debito' ? '💳' : forma === 'credito' ? '💳' : '📄'}
-                      {' '}{currencyFormatters.brl(valor)}
-                    </Badge>
-                  ))}
+
+              {/* Desktop: Layout completo */}
+              <div className="hidden md:flex flex-wrap items-center gap-3">
+                <Badge className="bg-green-100 text-green-800 text-xs"><Unlock className="h-3 w-3 mr-1" />Caixa Aberto</Badge>
+                <div className="flex items-center gap-4 flex-wrap flex-1">
+                  <div className="flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground">Inicial:</span><span className="text-sm font-semibold">{currencyFormatters.brl(currentSession.valor_inicial)}</span></div>
+                  <div className="flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5 text-green-600" /><span className="text-xs text-muted-foreground">Entradas:</span><span className="text-sm font-semibold text-green-600">{currencyFormatters.brl(totalEntradas)}</span></div>
+                  <div className="flex items-center gap-1.5"><TrendingDown className="h-3.5 w-3.5 text-red-600" /><span className="text-xs text-muted-foreground">Saídas:</span><span className="text-sm font-semibold text-red-600">{currencyFormatters.brl(totalSaidas)}</span></div>
+                  <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded"><span className="text-xs text-muted-foreground">Esperado:</span><span className="text-sm font-bold text-primary">{currencyFormatters.brl(valorEsperado)}</span></div>
                 </div>
-              )}
-              
-              {/* Ações */}
-              <div className="flex items-center gap-2 ml-auto">
-                <Button 
-                  onClick={() => setShowCloseDialog(true)} 
-                  variant="destructive"
-                  size="sm"
-                  className="h-8"
-                >
-                  <Lock className="h-3.5 w-3.5 mr-1" />
-                  Fechar Caixa
-                </Button>
+                {Object.keys(pagamentosPorForma).length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
+                      <Badge key={forma} variant="outline" className="text-xs">{forma === 'dinheiro' ? '💵' : forma === 'pix' ? '📱' : forma === 'debito' ? '💳' : forma === 'credito' ? '💳' : '📄'} {currencyFormatters.brl(valor)}</Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-8"><Lock className="h-3.5 w-3.5 mr-1" />Fechar Caixa</Button>
+                </div>
+                <div className="w-full flex items-center gap-3 text-xs text-muted-foreground mt-1 pt-2 border-t">
+                  <span className="flex items-center gap-1"><User className="h-3 w-3" />{currentSession.operador_nome}</span>
+                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dateFormatters.short(currentSession.opened_at)}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(currentSession.opened_at).toLocaleTimeString('pt-BR')}</span>
+                </div>
               </div>
-              
-              {/* Info do operador */}
-              <div className="w-full flex items-center gap-3 text-xs text-muted-foreground mt-1 pt-2 border-t">
-                <span className="flex items-center gap-1"><User className="h-3 w-3" />{currentSession.operador_nome}</span>
-                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dateFormatters.short(currentSession.opened_at)}</span>
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(currentSession.opened_at).toLocaleTimeString('pt-BR')}</span>
-              </div>
-            </div>
+            </>
           ) : (
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="text-xs">
-                  <Lock className="h-3 w-3 mr-1" />
-                  Caixa Fechado
-                </Badge>
-                <span className="text-sm text-muted-foreground">Abra o caixa para começar a operar</span>
+              <div className="flex items-center gap-2 md:gap-3">
+                <Badge variant="outline" className="text-[10px] md:text-xs"><Lock className="h-3 w-3 mr-1" />Fechado</Badge>
+                <span className="text-xs md:text-sm text-muted-foreground hidden md:inline">Abra o caixa para começar a operar</span>
               </div>
-              <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-8">
-                <Unlock className="h-3.5 w-3.5 mr-1" />
-                Abrir Caixa
+              <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-7 md:h-8 text-xs md:text-sm">
+                <Unlock className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Abrir
               </Button>
             </div>
           )}

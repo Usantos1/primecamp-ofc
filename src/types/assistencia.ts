@@ -346,6 +346,12 @@ export interface OrdemServico {
   checklist_saida_aprovado?: boolean; // Se o aparelho foi aprovado no checklist de saída
   observacoes_checklist?: string; // Observações gerais do checklist de entrada
   observacoes_checklist_saida?: string; // Observações do checklist de saída (ressalvas)
+  checklist_entrada_realizado_por_id?: string;
+  checklist_entrada_realizado_por_nome?: string;
+  checklist_entrada_realizado_em?: string;
+  checklist_saida_realizado_por_id?: string;
+  checklist_saida_realizado_por_nome?: string;
+  checklist_saida_realizado_em?: string;
   areas_defeito: string[];
   
   // Condições
@@ -446,6 +452,9 @@ export interface OrdemServicoFormData {
   checklist_entrada: string[];
   areas_defeito: string[];
   observacoes_checklist?: string;
+  checklist_entrada_realizado_por_id?: string;
+  checklist_entrada_realizado_por_nome?: string;
+  checklist_entrada_realizado_em?: string;
   // Resolução
   problema_constatado?: string;
   tecnico_id?: string;

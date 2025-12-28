@@ -257,7 +257,6 @@ export function useDashboardData() {
     alerts,
     trendData,
     loading,
-    refresh: loadDashboardData,
   };
 }
 

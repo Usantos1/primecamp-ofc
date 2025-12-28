@@ -1,14 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Edit, Trash2, Smartphone, Tag, ChevronRight } from 'lucide-react';
 import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { Marca, Modelo } from '@/types/assistencia';
@@ -20,13 +18,7 @@ export default function MarcasModelos() {
   const { marcas, createMarca, updateMarca, deleteMarca, isLoading: isLoadingMarcas } = useMarcasSupabase();
   const { modelos, createModelo, updateModelo, deleteModelo, isLoading: isLoadingModelos } = useModelosSupabase();
   
-  // Log para debug
-  useEffect(() => {
-    console.log('[MarcasModelos] Marcas carregadas:', marcas.length);
-    console.log('[MarcasModelos] Modelos carregados:', modelos.length);
-  }, [marcas.length, modelos.length]);
-  
-  const [activeTab, setActiveTab] = useState('marcas');
+  const [activeTab, setActiveTab] = useState<'marcas' | 'modelos'>('marcas');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMarcaId, setSelectedMarcaId] = useState<string | null>(null);
   
@@ -175,225 +167,225 @@ export default function MarcasModelos() {
     return marca?.nome || '-';
   };
 
+  const currentData = activeTab === 'marcas' ? filteredMarcas : filteredModelos;
+  const isEmpty = currentData.length === 0;
+
   return (
     <ModernLayout title="Marcas e Modelos" subtitle="Gerencie marcas e modelos de celulares">
-      <div className="flex flex-col h-full overflow-hidden gap-3">
-        {/* Cards de resumo - fixo no topo */}
-        <div className="flex-shrink-0 grid grid-cols-2 gap-3">
+      {/* Container principal */}
+      <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-120px)] flex flex-col gap-2">
+        {/* Mobile: resumo inline compacto */}
+        <div className="md:hidden flex-shrink-0 flex items-center gap-2 px-2 py-1.5 bg-white/80 dark:bg-slate-900/50 border border-gray-200 rounded-lg">
+          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded font-medium">{marcas.length} marcas</span>
+          <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded font-medium">{modelos.length} modelos</span>
+        </div>
+        
+        {/* Desktop: Cards de resumo */}
+        <div className="hidden md:grid flex-shrink-0 grid-cols-2 gap-2">
           <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center gap-3">
-            <div className="bg-blue-500 text-white rounded-full p-2">
-              <Tag className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs text-blue-600 dark:text-blue-400">Marcas</p>
-              <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{marcas.length}</p>
-            </div>
+            <div className="bg-blue-500 text-white rounded-full p-2"><Tag className="h-4 w-4" /></div>
+            <div><p className="text-xs text-blue-600 dark:text-blue-400">Marcas</p><p className="text-xl font-bold text-blue-700 dark:text-blue-300">{marcas.length}</p></div>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 flex items-center gap-3">
-            <div className="bg-purple-500 text-white rounded-full p-2">
-              <Smartphone className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xs text-purple-600 dark:text-purple-400">Modelos</p>
-              <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{modelos.length}</p>
-            </div>
+            <div className="bg-purple-500 text-white rounded-full p-2"><Smartphone className="h-4 w-4" /></div>
+            <div><p className="text-xs text-purple-600 dark:text-purple-400">Modelos</p><p className="text-xl font-bold text-purple-700 dark:text-purple-300">{modelos.length}</p></div>
           </div>
         </div>
 
-        {/* Card principal com tabs - flex-1 */}
-        <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
-          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full overflow-hidden">
-              {/* Header das tabs - fixo */}
-              <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 mb-3 pb-3 border-b border-gray-200">
-                <TabsList className="grid grid-cols-2 w-full md:w-auto">
-                  <TabsTrigger value="marcas" className="flex items-center gap-2 text-xs">
-                    <Tag className="h-3.5 w-3.5" />
-                    Marcas
-                  </TabsTrigger>
-                  <TabsTrigger value="modelos" className="flex items-center gap-2 text-xs">
-                    <Smartphone className="h-3.5 w-3.5" />
-                    Modelos
-                  </TabsTrigger>
-                </TabsList>
-                
-                <div className="flex gap-2">
-                  <div className="relative flex-1 min-w-[150px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 h-9 text-sm"
-                    />
-                  </div>
-                  <Button 
-                    onClick={() => activeTab === 'marcas' ? handleOpenMarcaDialog() : handleOpenModeloDialog()}
-                    size="sm"
-                    className="h-9"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    <span className="hidden md:inline">{activeTab === 'marcas' ? 'Nova Marca' : 'Novo Modelo'}</span>
-                    <span className="md:hidden">Novo</span>
-                  </Button>
-                </div>
+        {/* Card principal - ocupa o resto da altura */}
+        <Card className="flex-1 flex flex-col overflow-hidden border border-gray-200">
+          {/* Header com tabs e filtros - altura fixa */}
+          <div className="flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-2 p-2 border-b border-gray-200 bg-white dark:bg-gray-900">
+            {/* Tabs customizadas */}
+            <div className="inline-flex h-9 items-center justify-center rounded-md bg-muted p-1">
+              <button
+                onClick={() => setActiveTab('marcas')}
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
+                  activeTab === 'marcas' 
+                    ? 'bg-background text-foreground shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Tag className="h-3.5 w-3.5 mr-1.5" />
+                Marcas
+              </button>
+              <button
+                onClick={() => setActiveTab('modelos')}
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
+                  activeTab === 'modelos' 
+                    ? 'bg-background text-foreground shadow-sm' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Smartphone className="h-3.5 w-3.5 mr-1.5" />
+                Modelos
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              {activeTab === 'modelos' && (
+                <Select
+                  value={selectedMarcaId || 'all'}
+                  onValueChange={(v) => setSelectedMarcaId(v === 'all' ? null : v)}
+                >
+                  <SelectTrigger className="h-8 w-[180px] text-sm">
+                    <SelectValue placeholder="Filtrar por marca" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Marcas</SelectItem>
+                    {marcas.map(m => (<SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="relative flex-1 min-w-[150px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
               </div>
+              <Button 
+                onClick={() => activeTab === 'marcas' ? handleOpenMarcaDialog() : handleOpenModeloDialog()}
+                size="sm"
+                className="h-8 px-3 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                <span className="hidden md:inline">{activeTab === 'marcas' ? 'Nova Marca' : 'Novo Modelo'}</span>
+                <span className="md:hidden">Novo</span>
+              </Button>
+            </div>
+          </div>
 
-              {/* Tab: Marcas com scroll */}
-              <TabsContent value="marcas" className="flex-1 overflow-hidden mt-0">
-                {filteredMarcas.length === 0 ? (
-                  <EmptyState
-                    variant="no-data"
-                    title="Nenhuma marca cadastrada"
-                    description="Cadastre as marcas de celulares."
-                    action={{ label: 'Nova Marca', onClick: () => handleOpenMarcaDialog() }}
-                  />
-                ) : (
-                  <div className="h-full overflow-auto scrollbar-thin border border-gray-200 rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50 dark:bg-gray-800">
-                          <TableHead className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Marca</TableHead>
-                          <TableHead className="text-center text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Modelos</TableHead>
-                          <TableHead className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Status</TableHead>
-                          <TableHead className="text-right text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredMarcas.map((marca, idx) => (
-                          <TableRow 
-                            key={marca.id} 
-                            className={`cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/30 ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'}`} 
-                            onClick={() => { setSelectedMarcaId(marca.id); setActiveTab('modelos'); }}
+          {/* Área da tabela - flex-1 para preencher todo o espaço restante */}
+          <div className="flex-1 overflow-auto scrollbar-thin">
+            {isEmpty ? (
+              <div className="p-4 h-full flex items-center justify-center">
+                <EmptyState
+                  variant="no-data"
+                  title={activeTab === 'marcas' ? "Nenhuma marca cadastrada" : "Nenhum modelo encontrado"}
+                  description={activeTab === 'marcas' ? "Cadastre as marcas de celulares." : (selectedMarcaId ? "Cadastre modelos para esta marca." : "Selecione uma marca ou cadastre um novo modelo.")}
+                  action={{ 
+                    label: activeTab === 'marcas' ? 'Nova Marca' : 'Novo Modelo', 
+                    onClick: () => activeTab === 'marcas' ? handleOpenMarcaDialog() : handleOpenModeloDialog() 
+                  }}
+                />
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left text-xs font-semibold text-gray-700 dark:text-gray-200 p-3">
+                      {activeTab === 'marcas' ? 'Marca' : 'Modelo'}
+                    </th>
+                    {activeTab === 'marcas' ? (
+                      <th className="text-center text-xs font-semibold text-gray-700 dark:text-gray-200 p-3">Modelos</th>
+                    ) : (
+                      <th className="text-left text-xs font-semibold text-gray-700 dark:text-gray-200 p-3">Marca</th>
+                    )}
+                    <th className="text-left text-xs font-semibold text-gray-700 dark:text-gray-200 p-3">Status</th>
+                    <th className="text-right text-xs font-semibold text-gray-700 dark:text-gray-200 p-3">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeTab === 'marcas' ? (
+                    // Renderizar Marcas
+                    filteredMarcas.map((marca, idx) => (
+                      <tr 
+                        key={marca.id} 
+                        className={`cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/30 border-b border-gray-100 dark:border-gray-800 ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'}`} 
+                        onClick={() => { setSelectedMarcaId(marca.id); setActiveTab('modelos'); }}
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 border border-gray-200 dark:border-gray-600 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xs">
+                              {marca.nome.charAt(0)}
+                            </div>
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{marca.nome}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge variant="secondary" className="text-[10px] border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
+                            {modelosPorMarca[marca.id] || 0} modelos
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge 
+                            variant={marca.situacao === 'ativo' ? 'default' : 'outline'}
+                            className={`text-[10px] ${marca.situacao === 'ativo' ? 'bg-green-500 text-white' : 'text-gray-400'}`}
                           >
-                            <TableCell className="font-medium text-xs md:text-sm">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 md:w-8 md:h-8 rounded bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xs md:text-sm">
-                                  {marca.nome.charAt(0)}
-                                </div>
-                                <span className="line-clamp-1 text-gray-900 dark:text-gray-100">{marca.nome}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="secondary" className="text-[10px] md:text-xs border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200">
-                                {modelosPorMarca[marca.id] || 0} modelos
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={marca.situacao === 'ativo' ? 'default' : 'outline'}
-                                className={`text-[10px] md:text-xs border-2 ${marca.situacao === 'ativo' ? 'bg-green-500 text-white border-green-600' : 'border-gray-300 dark:border-gray-600 dark:text-gray-400'}`}
-                              >
-                                {marca.situacao === 'ativo' ? 'Ativo' : 'Inativo'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 border-2 border-gray-300 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-950" 
-                                  onClick={(e) => { e.stopPropagation(); handleOpenMarcaDialog(marca); }}
-                                >
-                                  <Edit className="h-3 w-3 md:h-4 md:w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 border-2 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950" 
-                                  onClick={(e) => { e.stopPropagation(); setDeletingMarcaId(marca.id); setDeleteMarcaDialog(true); }}
-                                >
-                                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
-                                </Button>
-                                <ChevronRight className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Tab: Modelos com scroll */}
-              <TabsContent value="modelos" className="flex-1 flex flex-col overflow-hidden mt-0">
-                <div className="flex-shrink-0 mb-3">
-                  <Select value={selectedMarcaId || 'all'} onValueChange={(v) => setSelectedMarcaId(v === 'all' ? null : v)}>
-                    <SelectTrigger className="w-full md:w-[200px] h-9 text-sm">
-                      <SelectValue placeholder="Filtrar por marca" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas as Marcas</SelectItem>
-                      {marcas.map(m => (<SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {filteredModelos.length === 0 ? (
-                  <EmptyState
-                    variant="no-data"
-                    title="Nenhum modelo encontrado"
-                    description={selectedMarcaId ? "Cadastre modelos para esta marca." : "Selecione uma marca ou cadastre um novo modelo."}
-                    action={{ label: 'Novo Modelo', onClick: () => handleOpenModeloDialog() }}
-                  />
-                ) : (
-                  <div className="flex-1 overflow-auto scrollbar-thin border border-gray-200 rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50 dark:bg-gray-800">
-                          <TableHead className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Modelo</TableHead>
-                          <TableHead className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Marca</TableHead>
-                          <TableHead className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Status</TableHead>
-                          <TableHead className="text-right text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-200">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredModelos.map((modelo, idx) => (
-                          <TableRow key={modelo.id} className={idx % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'}>
-                            <TableCell className="font-medium text-xs md:text-sm text-gray-900 dark:text-gray-100">{modelo.nome}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[10px] md:text-xs border-2 border-gray-300 dark:border-gray-600 dark:text-gray-200">
-                                {getMarcaNome(modelo.marca_id)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={modelo.situacao === 'ativo' ? 'default' : 'outline'}
-                                className={`text-[10px] md:text-xs border-2 ${modelo.situacao === 'ativo' ? 'bg-green-500 text-white border-green-600' : 'border-gray-300 dark:border-gray-600 dark:text-gray-400'}`}
-                              >
-                                {modelo.situacao === 'ativo' ? 'Ativo' : 'Inativo'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 border-2 border-gray-300 dark:border-gray-600 hover:bg-purple-50 dark:hover:bg-purple-950" 
-                                  onClick={() => handleOpenModeloDialog(modelo)}
-                                >
-                                  <Edit className="h-3 w-3 md:h-4 md:w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 border-2 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950" 
-                                  onClick={() => { setDeletingModeloId(modelo.id); setDeleteModeloDialog(true); }}
-                                >
-                                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
+                            {marca.situacao === 'ativo' ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 hover:bg-blue-50 dark:hover:bg-blue-950" 
+                              onClick={(e) => { e.stopPropagation(); handleOpenMarcaDialog(marca); }}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950" 
+                              onClick={(e) => { e.stopPropagation(); setDeletingMarcaId(marca.id); setDeleteMarcaDialog(true); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    // Renderizar Modelos
+                    filteredModelos.map((modelo, idx) => (
+                      <tr key={modelo.id} className={`border-b border-gray-100 dark:border-gray-800 ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
+                        <td className="p-3 font-medium text-gray-900 dark:text-gray-100">{modelo.nome}</td>
+                        <td className="p-3">
+                          <Badge variant="outline" className="text-[10px] border border-gray-300 dark:border-gray-600 dark:text-gray-200">
+                            {getMarcaNome(modelo.marca_id)}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge 
+                            variant={modelo.situacao === 'ativo' ? 'default' : 'outline'}
+                            className={`text-[10px] ${modelo.situacao === 'ativo' ? 'bg-green-500 text-white' : 'text-gray-400'}`}
+                          >
+                            {modelo.situacao === 'ativo' ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 hover:bg-purple-50 dark:hover:bg-purple-950" 
+                              onClick={() => handleOpenModeloDialog(modelo)}
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950" 
+                              onClick={() => { setDeletingModeloId(modelo.id); setDeleteModeloDialog(true); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
         </Card>
       </div>
 
@@ -502,10 +494,3 @@ export default function MarcasModelos() {
     </ModernLayout>
   );
 }
-
-
-
-
-
-
-

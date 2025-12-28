@@ -15,9 +15,8 @@ export default function Goals() {
   );
   const isAdmin = profile?.role === 'admin';
 
-  // Simple refresh function for now
   const handleGoalUpdate = () => {
-    window.location.reload();
+    // Sem refresh/reload: os próprios hooks já atualizam o estado após salvar.
   };
 
   return (

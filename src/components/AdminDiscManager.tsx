@@ -354,51 +354,73 @@ export const AdminDiscManager = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciamento de Testes DISC</CardTitle>
-          <CardDescription>
-            Visualize e gerencie todos os resultados dos testes DISC realizados
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+    <div className="space-y-3">
+      {/* Header compacto com filtros e tabs */}
+      <Card className="border border-gray-200 shadow-sm">
+        <CardContent className="p-2 md:p-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* Busca */}
+            <div className="relative min-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-9 text-sm"
+              />
             </div>
+            
+            {/* Filtro de perfil */}
             <Select value={profileFilter} onValueChange={setProfileFilter}>
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filtrar por perfil" />
+              <SelectTrigger className="w-[160px] h-9 text-sm">
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
+                <SelectValue placeholder="Perfil" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os perfis</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="D">Dominante</SelectItem>
                 <SelectItem value="I">Influente</SelectItem>
                 <SelectItem value="S">Estável</SelectItem>
                 <SelectItem value="C">Cauteloso</SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* Estatísticas de totais */}
+            <div className="h-9 flex flex-col items-center justify-center px-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 min-w-[80px]">
+              <span className="text-[9px] text-gray-600 dark:text-gray-400 font-medium leading-none">Total</span>
+              <span className="text-xs font-bold text-gray-700 dark:text-gray-300 leading-none">{userResults.length + candidateResults.length}</span>
+            </div>
+            
+            {/* Estatísticas compactas */}
+            <div className="h-9 flex flex-col items-center justify-center px-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 min-w-[60px]">
+              <span className="text-[9px] text-red-600 dark:text-red-400 font-medium leading-none">D</span>
+              <span className="text-xs font-bold text-red-700 dark:text-red-300 leading-none">{userResults.filter(r => r.dominant_profile === 'D').length + candidateResults.filter(r => r.dominant_profile === 'D').length}</span>
+            </div>
+            <div className="h-9 flex flex-col items-center justify-center px-3 bg-yellow-50 dark:bg-yellow-950/30 rounded-lg border border-yellow-200 dark:border-yellow-800 min-w-[60px]">
+              <span className="text-[9px] text-yellow-600 dark:text-yellow-400 font-medium leading-none">I</span>
+              <span className="text-xs font-bold text-yellow-700 dark:text-yellow-300 leading-none">{userResults.filter(r => r.dominant_profile === 'I').length + candidateResults.filter(r => r.dominant_profile === 'I').length}</span>
+            </div>
+            <div className="h-9 flex flex-col items-center justify-center px-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800 min-w-[60px]">
+              <span className="text-[9px] text-green-600 dark:text-green-400 font-medium leading-none">S</span>
+              <span className="text-xs font-bold text-green-700 dark:text-green-300 leading-none">{userResults.filter(r => r.dominant_profile === 'S').length + candidateResults.filter(r => r.dominant_profile === 'S').length}</span>
+            </div>
+            <div className="h-9 flex flex-col items-center justify-center px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 min-w-[60px]">
+              <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium leading-none">C</span>
+              <span className="text-xs font-bold text-blue-700 dark:text-blue-300 leading-none">{userResults.filter(r => r.dominant_profile === 'C').length + candidateResults.filter(r => r.dominant_profile === 'C').length}</span>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <Tabs defaultValue="internal" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="internal">
-                Usuários Internos ({userResults.length})
-              </TabsTrigger>
-              <TabsTrigger value="external">
-                Candidatos Externos ({candidateResults.length})
-              </TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="internal" className="space-y-3">
+        <TabsList className="h-9">
+          <TabsTrigger value="internal" className="text-xs">
+            Internos ({userResults.length})
+          </TabsTrigger>
+          <TabsTrigger value="external" className="text-xs">
+            Externos ({candidateResults.length})
+          </TabsTrigger>
+        </TabsList>
 
             <TabsContent value="internal" className="space-y-4">
               <div className="flex justify-between items-center">
@@ -659,8 +681,6 @@ export const AdminDiscManager = () => {
               </div>
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
     </div>
   );
 };

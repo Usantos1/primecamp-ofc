@@ -75,10 +75,6 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
     window.location.href = '/';
   };
 
-  const handleReload = () => {
-    window.location.reload();
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-2xl">
@@ -113,10 +109,6 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
             <Button onClick={onReset} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Tentar Novamente
-            </Button>
-            <Button variant="outline" onClick={handleReload} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Recarregar Página
             </Button>
             <Button variant="outline" onClick={handleGoHome} className="gap-2">
               <Home className="h-4 w-4" />

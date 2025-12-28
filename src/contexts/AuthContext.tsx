@@ -126,6 +126,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Listener para atualizar o profile em tempo real (sem reload de página)
+  useEffect(() => {
+    const handleProfileChanged = () => {
+      if (user?.id) {
+        fetchProfile(user.id);
+      }
+    };
+
+    window.addEventListener('profile-changed', handleProfileChanged as EventListener);
+    return () => window.removeEventListener('profile-changed', handleProfileChanged as EventListener);
+  }, [user?.id]);
+
   const signOut = async () => {
     try {
       await authAPI.logout();

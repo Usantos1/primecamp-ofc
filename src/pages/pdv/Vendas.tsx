@@ -52,7 +52,7 @@ const SALE_STATUS_COLORS: Record<Sale['status'], string> = {
 
 export default function Vendas() {
   const navigate = useNavigate();
-  const { sales, isLoading, getSaleById, cancelSale, deleteSale, refreshSales } = useSales();
+  const { sales, isLoading, getSaleById, cancelSale, deleteSale } = useSales();
   const { isAdmin, profile } = useAuth();
   const { createRequest } = useCancelRequests();
   const { toast } = useToast();
@@ -390,22 +390,6 @@ export default function Vendas() {
       setDeleteDialogOpen(false);
       setSelectedSaleToDelete(null);
       setDeleteMotivo('');
-      
-      // Recarregar lista de vendas após fechar modal
-      console.log('Recarregando lista de vendas...');
-      if (refreshSales) {
-        try {
-          await refreshSales();
-          console.log('Lista recarregada via refreshSales');
-        } catch (refreshError) {
-          console.error('Erro ao recarregar via refreshSales:', refreshError);
-          // Forçar recarregamento da página se refreshSales falhar
-          setTimeout(() => window.location.reload(), 500);
-        }
-      } else {
-        console.warn('refreshSales não disponível, recarregando página...');
-        setTimeout(() => window.location.reload(), 500);
-      }
     } catch (error: any) {
       console.error('=== ERRO AO EXCLUIR VENDA ===');
       console.error('Erro completo:', error);
@@ -527,60 +511,62 @@ export default function Vendas() {
 
   return (
     <ModernLayout title="Vendas" subtitle="Gerenciamento de vendas do PDV">
-      <div className="flex flex-col h-full overflow-hidden gap-3">
-        {/* Estatísticas - fixo */}
-        <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-blue-50/50 dark:bg-blue-950/10 md:bg-transparent md:dark:bg-transparent">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Vendas Hoje</CardTitle>
-              <Calendar className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
+        {/* Estatísticas - Mobile: linha única compacta */}
+        <div className="md:hidden flex-shrink-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 text-xs whitespace-nowrap">
+            <span className="text-blue-600 font-bold">{stats.totalHoje}</span>
+            <span className="text-blue-500">hoje</span>
+            <span className="text-blue-600 font-medium">{currencyFormatters.brl(stats.totalHojeValor)}</span>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200 text-xs whitespace-nowrap">
+            <span className="text-yellow-600 font-bold">{sales.filter(s => s.is_draft).length}</span>
+            <span className="text-yellow-500">rascunhos</span>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-orange-50 dark:bg-orange-950/30 rounded border border-orange-200 text-xs whitespace-nowrap">
+            <span className="text-orange-600 font-bold">{sales.filter(s => s.status === 'partial' || s.status === 'open').length}</span>
+            <span className="text-orange-500">pendentes</span>
+          </div>
+        </div>
+
+        {/* Estatísticas - Desktop: cards completos */}
+        <div className="hidden md:grid flex-shrink-0 grid-cols-4 gap-3">
+          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
+              <CardTitle className="text-sm font-medium">Vendas Hoje</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
-                <div className="text-base md:text-2xl font-bold">{stats.totalHoje}</div>
-                <p className="text-[10px] md:text-xs text-muted-foreground md:mt-1">
-                  {currencyFormatters.brl(stats.totalHojeValor)}
-                </p>
-              </div>
+            <CardContent className="px-6 pb-3">
+              <div className="text-2xl font-bold">{stats.totalHoje}</div>
+              <p className="text-xs text-muted-foreground mt-1">{currencyFormatters.brl(stats.totalHojeValor)}</p>
             </CardContent>
           </Card>
-
-          <Card className="border-2 border-l-4 border-l-green-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-green-50/50 dark:bg-green-950/10 md:bg-transparent md:dark:bg-transparent">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Total Geral</CardTitle>
-              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+          <Card className="border-2 border-l-4 border-l-green-500 border-gray-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
+              <CardTitle className="text-sm font-medium">Total Geral</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="flex items-center justify-between md:flex-col md:items-start md:justify-start">
-                <div className="text-base md:text-2xl font-bold">{stats.totalGeral}</div>
-                <p className="text-[10px] md:text-xs text-muted-foreground md:mt-1">
-                  {currencyFormatters.brl(stats.totalGeralValor)}
-                </p>
-              </div>
+            <CardContent className="px-6 pb-3">
+              <div className="text-2xl font-bold">{stats.totalGeral}</div>
+              <p className="text-xs text-muted-foreground mt-1">{currencyFormatters.brl(stats.totalGeralValor)}</p>
             </CardContent>
           </Card>
-
-          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-yellow-50/50 dark:bg-yellow-950/10 md:bg-transparent md:dark:bg-transparent">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Rascunhos</CardTitle>
-              <Edit className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
+              <CardTitle className="text-sm font-medium">Rascunhos</CardTitle>
+              <Edit className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="text-base md:text-2xl font-bold">
-                {sales.filter(s => s.is_draft).length}
-              </div>
+            <CardContent className="px-6 pb-3">
+              <div className="text-2xl font-bold">{sales.filter(s => s.is_draft).length}</div>
             </CardContent>
           </Card>
-
-          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-orange-50/50 dark:bg-orange-950/10 md:bg-transparent md:dark:bg-transparent">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Pendentes</CardTitle>
-              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
+              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="text-base md:text-2xl font-bold">
-                {sales.filter(s => s.status === 'partial' || s.status === 'open').length}
-              </div>
+            <CardContent className="px-6 pb-3">
+              <div className="text-2xl font-bold">{sales.filter(s => s.status === 'partial' || s.status === 'open').length}</div>
             </CardContent>
           </Card>
         </div>
@@ -673,7 +659,19 @@ export default function Vendas() {
                           className={`cursor-pointer hover:bg-muted/50 border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
                           onClick={() => navigate(`/pdv/venda/${sale.id}`)}
                         >
-                          <TableCell className="font-bold text-primary border-r border-gray-200">#{sale.numero}</TableCell>
+                          <TableCell className="font-bold text-primary border-r border-gray-200">
+                            <button
+                              type="button"
+                              className="underline underline-offset-2 hover:text-blue-600"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleViewSale(sale);
+                              }}
+                              title="Visualizar venda"
+                            >
+                              #{sale.numero}
+                            </button>
+                          </TableCell>
                           <TableCell className="border-r border-gray-200">
                             <div>
                               <p className="font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
@@ -863,7 +861,17 @@ export default function Vendas() {
                       <CardContent className="p-3 space-y-2">
                         {/* Header: Número e Total */}
                         <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
-                          <span className="font-semibold text-sm">Venda #{sale.numero}</span>
+                          <button
+                            type="button"
+                            className="font-semibold text-sm underline underline-offset-2 hover:text-blue-600"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await handleViewSale(sale);
+                            }}
+                            title="Visualizar venda"
+                          >
+                            Venda #{sale.numero}
+                          </button>
                           <span className="text-base font-bold text-primary">
                             {currencyFormatters.brl(sale.total)}
                           </span>

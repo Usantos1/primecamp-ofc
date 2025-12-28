@@ -76,31 +76,29 @@ export function FinanceiroRelatorios() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Seleção de relatório */}
+    <div className="space-y-4">
+      {/* Seleção de relatório - Compacto */}
       <Card>
-        <CardContent className="pt-4 flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <Select value={selectedReport} onValueChange={setSelectedReport}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Selecione o relatório" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="dre">DRE - Demonstrativo de Resultados</SelectItem>
-                <SelectItem value="fluxo">Fluxo de Caixa</SelectItem>
-                <SelectItem value="contas">Contas a Pagar/Receber</SelectItem>
-                <SelectItem value="vendas">Vendas por Período</SelectItem>
-                <SelectItem value="balanco">Balanço Patrimonial</SelectItem>
-                <SelectItem value="graficos">Gráficos e Visualizações</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <CardContent className="p-2 md:p-3 flex items-center justify-between flex-wrap gap-2">
+          <Select value={selectedReport} onValueChange={setSelectedReport}>
+            <SelectTrigger className="w-[180px] md:w-[250px] h-8 text-xs md:text-sm">
+              <SelectValue placeholder="Selecione o relatório" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dre">DRE - Resultados</SelectItem>
+              <SelectItem value="fluxo">Fluxo de Caixa</SelectItem>
+              <SelectItem value="contas">Contas Pagar/Receber</SelectItem>
+              <SelectItem value="vendas">Vendas</SelectItem>
+              <SelectItem value="balanco">Balanço Patrimonial</SelectItem>
+              <SelectItem value="graficos">Gráficos</SelectItem>
+            </SelectContent>
+          </Select>
           
           <div className="flex items-center gap-2">
             <Button 
               variant="outline" 
               size="sm" 
-              className="gap-2"
+              className="h-8 px-2 md:px-3 text-xs"
               onClick={() => {
                 if (selectedReport === 'dre') {
                   exportDREToCSV(
@@ -120,12 +118,13 @@ export function FinanceiroRelatorios() {
                 }
               }}
             >
-              <FileSpreadsheet className="h-4 w-4" />Excel
+              <FileSpreadsheet className="h-3.5 w-3.5 md:mr-1" />
+              <span className="hidden md:inline">Excel</span>
             </Button>
             <Button 
               variant="outline" 
               size="sm" 
-              className="gap-2"
+              className="h-8 px-2 md:px-3 text-xs"
               onClick={() => {
                 if (selectedReport === 'dre') {
                   printData({
@@ -147,7 +146,8 @@ export function FinanceiroRelatorios() {
                 }
               }}
             >
-              <Printer className="h-4 w-4" />Imprimir
+              <Printer className="h-3.5 w-3.5 md:mr-1" />
+              <span className="hidden md:inline">Imprimir</span>
             </Button>
           </div>
         </CardContent>

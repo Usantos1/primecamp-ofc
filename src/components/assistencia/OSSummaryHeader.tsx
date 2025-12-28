@@ -29,7 +29,7 @@ export function OSSummaryHeader({
   const statusColor = status ? STATUS_OS_COLORS[status as keyof typeof STATUS_OS_COLORS] || 'bg-gray-500' : 'bg-gray-500';
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm px-6 py-3">
+    <div className="bg-white border-2 border-gray-300 rounded-xl shadow-sm px-6 py-3">
       <div className="flex items-center justify-center gap-8 flex-wrap">
         {/* OS # e Status */}
         <div className="flex items-center gap-3">

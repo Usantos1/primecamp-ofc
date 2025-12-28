@@ -309,48 +309,35 @@ export default function Clientes() {
 
   return (
     <ModernLayout title="Clientes" subtitle="Gerenciar clientes">
-      <div className="flex flex-col h-full overflow-hidden gap-3">
-        {/* Barra de ações - fixo no topo */}
-        <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg p-3">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3">
+      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
+        {/* Mobile: Header compacto */}
+        <div className="md:hidden flex-shrink-0 bg-white/80 dark:bg-slate-900/50 border border-gray-200 rounded-lg p-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 pl-8 text-sm border-gray-200" />
+            </div>
+            <Button onClick={handleNew} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Desktop: Barra de ações completa */}
+        <div className="hidden md:block flex-shrink-0 bg-card border border-gray-200 rounded-lg p-3">
+          <div className="flex items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, CPF, RG, telefone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9 text-sm border-gray-200"
-              />
+              <Input placeholder="Buscar por nome, CPF, RG, telefone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm border-gray-200" />
             </div>
-            <Button 
-              onClick={handleNew} 
-              size="sm"
-              className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Novo Cliente</span>
-              <span className="sm:hidden">Novo</span>
+            <Button onClick={handleNew} size="sm" className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="h-4 w-4" /><span>Novo Cliente</span>
             </Button>
-            <Button 
-              onClick={() => setShowImportDialog(true)}
-              variant="outline"
-              size="sm"
-              className="gap-2 h-9"
-            >
-              <Upload className="h-4 w-4" />
-              <span className="hidden sm:inline">Importar</span>
+            <Button onClick={() => setShowImportDialog(true)} variant="outline" size="sm" className="gap-2 h-9">
+              <Upload className="h-4 w-4" /><span>Importar</span>
             </Button>
-            <Button 
-              onClick={async () => {
-                await loadAniversarioConfig();
-                setShowAniversarioConfig(true);
-              }}
-              variant="outline"
-              size="sm"
-              className="gap-2 h-9"
-            >
-              <Cake className="h-4 w-4" />
-              <span className="hidden sm:inline">Config. Aniversário</span>
+            <Button onClick={async () => { await loadAniversarioConfig(); setShowAniversarioConfig(true); }} variant="outline" size="sm" className="gap-2 h-9">
+              <Cake className="h-4 w-4" /><span>Config. Aniversário</span>
             </Button>
           </div>
         </div>
@@ -971,7 +958,6 @@ export default function Clientes() {
               onClose={() => setShowImportDialog(false)}
               onSuccess={() => {
                 setShowImportDialog(false);
-                window.location.reload();
               }}
             />
           </DialogContent>

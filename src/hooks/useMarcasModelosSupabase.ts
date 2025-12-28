@@ -4,24 +4,24 @@ import { Marca, Modelo } from '@/types/assistencia';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Mapear marca do Supabase para assistencia.Marca
-function mapSupabaseToMarca(supabaseMarca: any): Marca {
+// Mapear marca do banco para assistencia.Marca
+function mapMarcaFromDB(marcaDB: any): Marca {
   return {
-    id: supabaseMarca.id,
-    nome: supabaseMarca.nome,
-    situacao: supabaseMarca.situacao || 'ativo',
-    created_at: supabaseMarca.created_at || new Date().toISOString(),
+    id: marcaDB.id,
+    nome: marcaDB.nome,
+    situacao: marcaDB.situacao || 'ativo',
+    created_at: marcaDB.created_at || new Date().toISOString(),
   };
 }
 
-// Mapear modelo do Supabase para assistencia.Modelo
-function mapSupabaseToModelo(supabaseModelo: any): Modelo {
+// Mapear modelo do banco para assistencia.Modelo
+function mapModeloFromDB(modeloDB: any): Modelo {
   return {
-    id: supabaseModelo.id,
-    marca_id: supabaseModelo.marca_id,
-    nome: supabaseModelo.nome,
-    situacao: supabaseModelo.situacao || 'ativo',
-    created_at: supabaseModelo.created_at || new Date().toISOString(),
+    id: modeloDB.id,
+    marca_id: modeloDB.marca_id,
+    nome: modeloDB.nome,
+    situacao: modeloDB.situacao || 'ativo',
+    created_at: modeloDB.created_at || new Date().toISOString(),
   };
 }
 
@@ -30,19 +30,20 @@ export function useMarcasSupabase() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Buscar marcas do Supabase
+  // Buscar marcas do banco
   const { data: marcasData, isLoading, error } = useQuery({
     queryKey: ['marcas-assistencia'],
     queryFn: async () => {
-      console.log('[useMarcasSupabase] Buscando marcas...');
+      console.log('[useMarcas] Buscando marcas...');
       const { data, error } = await from('marcas')
         .select('*')
+        .eq('situacao', 'ativo')
         .order('nome', { ascending: true })
         .execute();
 
-      console.log('[useMarcasSupabase] Resultado:', { data: data?.length, error });
+      console.log('[useMarcas] Resultado:', { data: data?.length, error });
       if (error) throw error;
-      return ((data || []) as any[]).map(mapSupabaseToMarca);
+      return ((data || []) as any[]).map(mapMarcaFromDB);
     },
   });
 
@@ -58,7 +59,9 @@ export function useMarcasSupabase() {
         nome: nome.trim(),
         situacao: 'ativo',
         created_by: userId,
-      });
+      })
+      .select('*')
+      .single();
 
     if (error) {
       console.error('[createMarca] Erro:', error);
@@ -77,7 +80,7 @@ export function useMarcasSupabase() {
       description: 'Marca criada com sucesso!',
     });
 
-    return mapSupabaseToMarca(novaMarca);
+    return mapMarcaFromDB(novaMarca);
   };
 
   // Atualizar marca
@@ -87,7 +90,8 @@ export function useMarcasSupabase() {
       .update({
         nome: data.nome?.trim(),
         situacao: data.situacao,
-      });
+      })
+      .execute();
 
     if (error) {
       console.error('[updateMarca] Erro:', error);
@@ -114,7 +118,8 @@ export function useMarcasSupabase() {
   const deleteMarca = async (id: string): Promise<boolean> => {
     const { error } = await from('marcas')
       .eq('id', id)
-      .update({ situacao: 'inativo' });
+      .update({ situacao: 'inativo' })
+      .execute();
 
     if (error) {
       console.error('[deleteMarca] Erro:', error);
@@ -158,19 +163,20 @@ export function useModelosSupabase() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Buscar modelos do Supabase
+  // Buscar modelos do banco
   const { data: modelosData, isLoading, error } = useQuery({
     queryKey: ['modelos-assistencia'],
     queryFn: async () => {
-      console.log('[useModelosSupabase] Buscando modelos...');
+      console.log('[useModelos] Buscando modelos...');
       const { data, error } = await from('modelos')
         .select('*')
+        .eq('situacao', 'ativo')
         .order('nome', { ascending: true })
         .execute();
 
-      console.log('[useModelosSupabase] Resultado:', { data: data?.length, error });
+      console.log('[useModelos] Resultado:', { data: data?.length, error });
       if (error) throw error;
-      return ((data || []) as any[]).map(mapSupabaseToModelo);
+      return ((data || []) as any[]).map(mapModeloFromDB);
     },
   });
 
@@ -187,7 +193,9 @@ export function useModelosSupabase() {
         nome: nome.trim(),
         situacao: 'ativo',
         created_by: userId,
-      });
+      })
+      .select('*')
+      .single();
 
     if (error) {
       console.error('[createModelo] Erro:', error);
@@ -206,7 +214,7 @@ export function useModelosSupabase() {
       description: 'Modelo criado com sucesso!',
     });
 
-    return mapSupabaseToModelo(novoModelo);
+    return mapModeloFromDB(novoModelo);
   };
 
   // Atualizar modelo
@@ -217,7 +225,8 @@ export function useModelosSupabase() {
         marca_id: data.marca_id,
         nome: data.nome?.trim(),
         situacao: data.situacao,
-      });
+      })
+      .execute();
 
     if (error) {
       console.error('[updateModelo] Erro:', error);
@@ -243,7 +252,8 @@ export function useModelosSupabase() {
   const deleteModelo = async (id: string): Promise<boolean> => {
     const { error } = await from('modelos')
       .eq('id', id)
-      .update({ situacao: 'inativo' });
+      .update({ situacao: 'inativo' })
+      .execute();
 
     if (error) {
       console.error('[deleteModelo] Erro:', error);

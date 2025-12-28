@@ -148,141 +148,119 @@ export default function Relatorios() {
 
   return (
     <ModernLayout title="Relatórios" subtitle="Relatórios de vendas e caixa">
-      <div className="flex flex-col h-full overflow-hidden gap-4 px-2 md:px-0">
-        {/* Filtros - fixo no topo */}
-        <Card className="flex-shrink-0 border-2 border-gray-300 shadow-sm rounded-xl bg-white/80 dark:bg-slate-900/50">
-          <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
-            <CardTitle className="text-base md:text-lg">Filtros</CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 md:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              <div className="space-y-1.5 md:space-y-2">
-                <Label className="text-xs md:text-sm">Período Início</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300",
-                        !periodoInicio && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
-                      <span className="truncate">
-                        {periodoInicio ? format(periodoInicio, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={periodoInicio}
-                      onSelect={setPeriodoInicio}
-                      initialFocus
-                      locale={ptBR}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1.5 md:space-y-2">
-                <Label className="text-xs md:text-sm">Período Fim</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300",
-                        !periodoFim && "text-muted-foreground"
-                      )}
-                    >
-                      <Calendar className="mr-2 h-3.5 w-3.5 md:h-4 md:w-4" />
-                      <span className="truncate">
-                        {periodoFim ? format(periodoFim, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione uma data</span>}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={periodoFim}
-                      onSelect={setPeriodoFim}
-                      initialFocus
-                      locale={ptBR}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1.5 md:space-y-2">
-                <Label className="text-xs md:text-sm">Vendedor</Label>
-                <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
-                  <SelectTrigger className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {vendedores.map(v => (
-                      <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <Button 
-                  className="w-full h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300 bg-gradient-to-r from-blue-500/90 to-indigo-500/90 text-white hover:shadow-md"
-                  onClick={() => {
-                    // Exportar relatório
-                    alert('Funcionalidade de exportação em desenvolvimento');
-                  }}
-                >
-                  <Download className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
-                  Exportar
-                </Button>
-              </div>
+      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
+        {/* Filtros - compacto no mobile */}
+        <div className="flex-shrink-0 bg-white/80 dark:bg-slate-900/50 border border-gray-200 shadow-sm rounded-lg p-2 md:p-3">
+          {/* Mobile: linha única com estatísticas */}
+          <div className="md:hidden flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 text-xs whitespace-nowrap">
+              <span className="text-blue-600 font-medium">{stats.totalVendas}</span>
+              <span className="text-blue-500">vendas</span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-1 px-2 py-1 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 text-xs whitespace-nowrap">
+              <span className="text-green-600 font-medium">{currencyFormatters.brl(stats.totalRecebido)}</span>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 dark:bg-purple-950/30 rounded border border-purple-200 text-xs whitespace-nowrap">
+              <span className="text-purple-500">Ticket:</span>
+              <span className="text-purple-600 font-medium">{currencyFormatters.brl(stats.ticketMedio)}</span>
+            </div>
+          </div>
+          
+          {/* Mobile: filtros em 2 linhas */}
+          <div className="md:hidden grid grid-cols-3 gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs justify-start border-gray-300">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {periodoInicio ? format(periodoInicio, "dd/MM", { locale: ptBR }) : "Início"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent mode="single" selected={periodoInicio} onSelect={setPeriodoInicio} initialFocus locale={ptBR} />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs justify-start border-gray-300">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {periodoFim ? format(periodoFim, "dd/MM", { locale: ptBR }) : "Fim"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent mode="single" selected={periodoFim} onSelect={setPeriodoFim} initialFocus locale={ptBR} />
+              </PopoverContent>
+            </Popover>
+            <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
+              <SelectTrigger className="h-8 text-xs border-gray-300">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {vendedores.map(v => (<SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Estatísticas - fixo */}
-        <div className="flex-shrink-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-blue-50 to-blue-100/70 dark:from-blue-950/40 dark:to-blue-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Total de Vendas</CardTitle>
-              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="text-base md:text-2xl font-bold">{stats.totalVendas}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 border-l-4 border-l-green-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-emerald-50 to-green-100/70 dark:from-green-950/40 dark:to-green-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Total Recebido</CardTitle>
-              <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="text-base md:text-2xl font-bold">{currencyFormatters.brl(stats.totalRecebido)}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-purple-50 to-purple-100/70 dark:from-purple-950/40 dark:to-purple-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Ticket Médio</CardTitle>
-              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="text-base md:text-2xl font-bold">{currencyFormatters.brl(stats.ticketMedio)}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300 cursor-pointer hover:shadow-md active:scale-95 md:active:scale-100 bg-gradient-to-br from-amber-50 to-orange-100/70 dark:from-orange-950/40 dark:to-orange-900/30 md:bg-transparent md:dark:bg-transparent rounded-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2 pt-2 md:pt-3 px-2 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium">Vendedores</CardTitle>
-              <User className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="px-2 md:px-6 pb-2 md:pb-3">
-              <div className="text-base md:text-2xl font-bold">{stats.vendasPorVendedor.length}</div>
-            </CardContent>
-          </Card>
+          {/* Desktop: layout completo */}
+          <div className="hidden md:grid grid-cols-8 gap-2 items-end">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10 text-sm border border-gray-300", !periodoInicio && "text-muted-foreground")}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <span className="truncate">{periodoInicio ? format(periodoInicio, "dd/MM/yyyy", { locale: ptBR }) : "Data"}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent mode="single" selected={periodoInicio} onSelect={setPeriodoInicio} initialFocus locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Fim</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10 text-sm border border-gray-300", !periodoFim && "text-muted-foreground")}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <span className="truncate">{periodoFim ? format(periodoFim, "dd/MM/yyyy", { locale: ptBR }) : "Data"}</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent mode="single" selected={periodoFim} onSelect={setPeriodoFim} initialFocus locale={ptBR} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">Vendedor</Label>
+              <Select value={vendedorFilter} onValueChange={setVendedorFilter}>
+                <SelectTrigger className="h-10 text-sm border border-gray-300"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {vendedores.map(v => (<SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="h-10 px-5 text-sm bg-blue-500 hover:bg-blue-600 text-white" onClick={() => alert('Funcionalidade de exportação em desenvolvimento')}>
+              <Download className="h-4 w-4 mr-2" />Exportar
+            </Button>
+            <div className="h-10 flex flex-col items-center justify-center px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 min-w-[80px]">
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Vendas</span>
+              <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{stats.totalVendas}</span>
+            </div>
+            <div className="h-10 flex flex-col items-center justify-center px-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800 min-w-[100px]">
+              <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">Total</span>
+              <span className="text-sm font-bold text-green-700 dark:text-green-300">{currencyFormatters.brl(stats.totalRecebido)}</span>
+            </div>
+            <div className="h-10 flex flex-col items-center justify-center px-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800 min-w-[90px]">
+              <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">Ticket</span>
+              <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{currencyFormatters.brl(stats.ticketMedio)}</span>
+            </div>
+            <div className="h-10 flex flex-col items-center justify-center px-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800 min-w-[90px]">
+              <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">Vendedores</span>
+              <span className="text-sm font-bold text-orange-700 dark:text-orange-300">{stats.vendasPorVendedor.length}</span>
+            </div>
+          </div>
         </div>
 
         {/* Conteúdo com scroll */}

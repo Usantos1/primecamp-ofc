@@ -748,41 +748,72 @@ app.post('/api/insert/:table', async (req, res) => {
     // Usar schema public explicitamente
     const tableName = table.includes('.') ? table : `public.${table}`;
 
+    // Suportar INSERT em lote: body pode ser array de objetos
+    const rowsToInsert = Array.isArray(data) ? data : [data];
+
+    if (!rowsToInsert || rowsToInsert.length === 0) {
+      return res.status(400).json({ error: 'Insert requires data' });
+    }
+
     // VALIDAÇÃO CRÍTICA: Verificar estoque para sale_items
-    if (table === 'sale_items' && data.produto_id && data.quantidade && data.produto_tipo === 'produto') {
-      const estoqueResult = await pool.query(
-        'SELECT quantidade FROM public.produtos WHERE id = $1',
-        [data.produto_id]
-      );
-      
-      if (estoqueResult.rows.length > 0) {
-        const estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
-        const quantidadeSolicitada = Number(data.quantidade || 0);
-        
-        if (quantidadeSolicitada > estoqueDisponivel) {
-          console.log(`[Insert] Bloqueado: Estoque insuficiente. Solicitado: ${quantidadeSolicitada}, Disponível: ${estoqueDisponivel}`);
-          return res.status(400).json({ 
-            error: `Estoque insuficiente para este produto. Disponível: ${estoqueDisponivel} unidade(s)`,
-            codigo: 'ESTOQUE_INSUFICIENTE',
-            estoque_disponivel: estoqueDisponivel
-          });
+    if (table === 'sale_items') {
+      for (const row of rowsToInsert) {
+        if (row?.produto_id && row?.quantidade && row?.produto_tipo === 'produto') {
+          const estoqueResult = await pool.query(
+            'SELECT quantidade FROM public.produtos WHERE id = $1',
+            [row.produto_id]
+          );
+          
+          if (estoqueResult.rows.length > 0) {
+            const estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
+            const quantidadeSolicitada = Number(row.quantidade || 0);
+            
+            if (quantidadeSolicitada > estoqueDisponivel) {
+              console.log(`[Insert] Bloqueado: Estoque insuficiente. Solicitado: ${quantidadeSolicitada}, Disponível: ${estoqueDisponivel}`);
+              return res.status(400).json({ 
+                error: `Estoque insuficiente para este produto. Disponível: ${estoqueDisponivel} unidade(s)`,
+                codigo: 'ESTOQUE_INSUFICIENTE',
+                estoque_disponivel: estoqueDisponivel
+              });
+            }
+          }
         }
       }
     }
 
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+    // Normalizar colunas a partir do primeiro item
+    const firstRow = rowsToInsert[0] || {};
+    const keys = Object.keys(firstRow);
+    if (keys.length === 0) {
+      return res.status(400).json({ error: 'Insert requires non-empty object' });
+    }
+
+    // Garantir que todas as linhas têm as mesmas colunas (evita SQL inválido)
+    for (const row of rowsToInsert) {
+      const rowKeys = Object.keys(row || {});
+      const same = rowKeys.length === keys.length && rowKeys.every(k => keys.includes(k));
+      if (!same) {
+        return res.status(400).json({ error: 'Insert batch requires consistent columns in all rows' });
+      }
+    }
+
+    const values = [];
+    const rowsPlaceholders = rowsToInsert.map((row, rowIndex) => {
+      const base = rowIndex * keys.length;
+      keys.forEach((k, i) => values.push(row[k]));
+      const placeholders = keys.map((_, i) => `$${base + i + 1}`).join(', ');
+      return `(${placeholders})`;
+    }).join(', ');
 
     const sql = `
       INSERT INTO ${tableName} (${keys.join(', ')})
-      VALUES (${placeholders})
+      VALUES ${rowsPlaceholders}
       RETURNING *
     `;
 
-    console.log(`[Insert] ${tableName}:`, keys);
+    console.log(`[Insert] ${tableName}:`, keys, Array.isArray(data) ? `(batch ${rowsToInsert.length})` : '(single)');
     const result = await pool.query(sql, values);
-    res.json({ data: result.rows[0], rows: result.rows });
+    res.json({ data: Array.isArray(data) ? result.rows : result.rows[0], rows: result.rows });
   } catch (error) {
     console.error('Erro ao inserir:', error);
     res.status(500).json({ error: error.message });
@@ -1125,7 +1156,7 @@ const requireAdmin = async (req, res, next) => {
 // POST /api/functions/admin-get-user
 app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.body?.userId || req.body?.body?.userId;
 
     if (!userId) {
       return res.status(400).json({ error: 'userId é obrigatório' });
@@ -1137,12 +1168,6 @@ app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async
       [userId]
     );
 
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
-    }
-
-    const user = userResult.rows[0];
-
     // Buscar profile
     const profileResult = await pool.query(
       'SELECT * FROM profiles WHERE user_id = $1',
@@ -1150,6 +1175,9 @@ app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async
     );
 
     const profile = profileResult.rows[0] || null;
+
+    // Se não existir em users, ainda assim retornar o profile (evita quebrar UI por dados órfãos)
+    const user = userResult.rows[0] || null;
 
     res.json({
       data: {
@@ -1166,7 +1194,8 @@ app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async
 // POST /api/functions/admin-update-user
 app.post('/api/functions/admin-update-user', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { userId, email, password } = req.body;
+    const rawBody = req.body?.body && typeof req.body.body === 'object' ? req.body.body : req.body;
+    const { userId, email, password } = rawBody || {};
 
     if (!userId) {
       return res.status(400).json({ error: 'userId é obrigatório' });
@@ -1248,34 +1277,54 @@ app.post('/api/functions/admin-update-user', authenticateToken, requireAdmin, as
 // POST /api/functions/admin-delete-user
 app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.body?.userId || req.body?.body?.userId;
 
     if (!userId) {
       return res.status(400).json({ error: 'userId é obrigatório' });
     }
 
-    // Verificar se usuário existe
-    const userResult = await pool.query(
-      'SELECT id, email FROM users WHERE id = $1',
-      [userId]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
-    }
+    console.log('[API] Tentando deletar usuário:', userId);
 
     // Verificar se é o próprio usuário (não permitir auto-deleção)
     if (req.user.id === userId) {
       return res.status(400).json({ error: 'Você não pode deletar seu próprio usuário' });
     }
 
-    // Deletar profile primeiro (devido a foreign key)
-    await pool.query('DELETE FROM profiles WHERE user_id = $1', [userId]);
+    // Verificar se existe em profiles ou users
+    const profileResult = await pool.query('SELECT user_id FROM profiles WHERE user_id = $1', [userId]);
+    const userResult = await pool.query('SELECT id, email FROM users WHERE id = $1', [userId]);
 
-    // Deletar usuário
-    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    if (profileResult.rows.length === 0 && userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
 
-    console.log('[API] Usuário deletado:', { userId, email: userResult.rows[0].email });
+    // Limpar todas as tabelas relacionadas (evita erro de FK)
+    const tablesToClean = [
+      'user_permissions',
+      'user_position_departments', 
+      'permission_changes_history',
+      'disc_responses',
+      'nps_responses',
+      'audit_logs'
+    ];
+
+    for (const table of tablesToClean) {
+      try {
+        await pool.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
+      } catch (e) {
+        // Ignorar se tabela não existir
+      }
+    }
+
+    // Deletar profile
+    await pool.query('DELETE FROM profiles WHERE user_id = $1', [userId]).catch(() => {});
+
+    // Deletar usuário da tabela users
+    if (userResult.rows.length > 0) {
+      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    }
+
+    console.log('[API] Usuário deletado com sucesso:', { userId, email: userResult.rows[0]?.email || null });
 
     res.json({
       data: {
@@ -1289,7 +1338,7 @@ app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, as
     // Verificar se é erro de foreign key
     if (error.code === '23503') {
       return res.status(400).json({ 
-        error: 'Não é possível deletar este usuário pois ele possui registros relacionados',
+        error: 'Não é possível deletar este usuário pois ele possui registros relacionados. Detalhes: ' + error.detail,
         warning: true
       });
     }
@@ -1988,6 +2037,222 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
       success: false, 
       error: error.message || 'Erro interno ao processar requisição do Telegram' 
     });
+  }
+});
+
+// =====================================================
+// WEBHOOK - Receber Leads de Fontes Externas (AtivaCRM, etc)
+// =====================================================
+
+// Endpoint público para receber webhooks (não requer autenticação)
+app.post('/api/webhook/leads/:webhookKey', async (req, res) => {
+  const { webhookKey } = req.params;
+  const payload = req.body;
+  
+  console.log(`[Webhook] Recebendo lead via webhook key: ${webhookKey}`);
+  console.log(`[Webhook] Payload:`, JSON.stringify(payload, null, 2));
+
+  try {
+    // Verificar se o webhook está ativo
+    const webhookResult = await pool.query(
+      `SELECT * FROM webhook_configs WHERE webhook_key = $1 AND is_active = true`,
+      [webhookKey]
+    );
+
+    if (webhookResult.rows.length === 0) {
+      console.log(`[Webhook] Webhook key não encontrada ou inativa: ${webhookKey}`);
+      return res.status(404).json({ success: false, error: 'Webhook não encontrado ou inativo' });
+    }
+
+    const webhook = webhookResult.rows[0];
+    
+    // Mapear campos do payload para os campos do lead
+    // Suporta vários formatos de CRM
+    const leadData = {
+      nome: payload.nome || payload.name || payload.full_name || payload.lead_name || payload.Nome || 'Lead sem nome',
+      email: payload.email || payload.Email || payload.e_mail || null,
+      telefone: payload.telefone || payload.phone || payload.tel || payload.Telefone || null,
+      whatsapp: payload.whatsapp || payload.whats || payload.celular || payload.mobile || payload.Whatsapp || payload.telefone || null,
+      cidade: payload.cidade || payload.city || payload.Cidade || null,
+      estado: payload.estado || payload.state || payload.uf || payload.Estado || null,
+      fonte: 'webhook',
+      webhook_id: webhook.id,
+      webhook_nome: webhook.nome,
+      utm_source: payload.utm_source || payload.source || webhook.fonte_padrao || null,
+      utm_medium: payload.utm_medium || payload.medium || null,
+      utm_campaign: payload.utm_campaign || payload.campaign || payload.campanha || null,
+      utm_term: payload.utm_term || payload.keyword || payload.palavra_chave || null,
+      utm_content: payload.utm_content || null,
+      interesse: payload.interesse || payload.interest || payload.produto || payload.servico || null,
+      observacoes: payload.observacoes || payload.obs || payload.notes || payload.mensagem || payload.message || null,
+      status: 'novo',
+      temperatura: 'frio',
+      convertido: false,
+      total_interacoes: 0,
+      raw_payload: JSON.stringify(payload), // Guardar payload original
+    };
+
+    // Inserir o lead
+    const insertResult = await pool.query(
+      `INSERT INTO leads (
+        nome, email, telefone, whatsapp, cidade, estado,
+        fonte, webhook_id, webhook_nome, 
+        utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+        interesse, observacoes, status, temperatura, convertido, total_interacoes, raw_payload
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+      RETURNING id`,
+      [
+        leadData.nome, leadData.email, leadData.telefone, leadData.whatsapp,
+        leadData.cidade, leadData.estado, leadData.fonte, leadData.webhook_id,
+        leadData.webhook_nome, leadData.utm_source, leadData.utm_medium,
+        leadData.utm_campaign, leadData.utm_term, leadData.utm_content,
+        leadData.interesse, leadData.observacoes, leadData.status,
+        leadData.temperatura, leadData.convertido, leadData.total_interacoes,
+        leadData.raw_payload
+      ]
+    );
+
+    // Atualizar contador de leads recebidos no webhook
+    await pool.query(
+      `UPDATE webhook_configs SET leads_recebidos = COALESCE(leads_recebidos, 0) + 1, ultimo_lead_em = NOW() WHERE id = $1`,
+      [webhook.id]
+    );
+
+    // Registrar log do webhook
+    await pool.query(
+      `INSERT INTO webhook_logs (webhook_id, tipo, payload, lead_id, ip_origem) VALUES ($1, $2, $3, $4, $5)`,
+      [webhook.id, 'lead_recebido', JSON.stringify(payload), insertResult.rows[0].id, req.ip]
+    );
+
+    console.log(`[Webhook] Lead criado com sucesso. ID: ${insertResult.rows[0].id}`);
+
+    res.json({ 
+      success: true, 
+      message: 'Lead recebido com sucesso',
+      lead_id: insertResult.rows[0].id 
+    });
+
+  } catch (error) {
+    console.error('[Webhook] Erro ao processar lead:', error);
+    
+    // Tentar registrar o erro no log
+    try {
+      const webhookResult = await pool.query(
+        `SELECT id FROM webhook_configs WHERE webhook_key = $1`,
+        [webhookKey]
+      );
+      if (webhookResult.rows.length > 0) {
+        await pool.query(
+          `INSERT INTO webhook_logs (webhook_id, tipo, payload, erro, ip_origem) VALUES ($1, $2, $3, $4, $5)`,
+          [webhookResult.rows[0].id, 'erro', JSON.stringify(payload), error.message, req.ip]
+        );
+      }
+    } catch (logError) {
+      console.error('[Webhook] Erro ao registrar log:', logError);
+    }
+
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erro ao processar lead',
+      details: error.message 
+    });
+  }
+});
+
+// GET - Listar webhooks configurados (autenticado)
+app.get('/api/webhook/configs', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM webhook_configs ORDER BY created_at DESC`
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[Webhook] Erro ao listar configs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Criar novo webhook (autenticado)
+app.post('/api/webhook/configs', authenticateToken, async (req, res) => {
+  try {
+    const { nome, fonte_padrao, descricao } = req.body;
+    
+    // Gerar chave única para o webhook
+    const crypto = await import('crypto');
+    const webhookKey = crypto.randomBytes(16).toString('hex');
+    
+    const result = await pool.query(
+      `INSERT INTO webhook_configs (nome, webhook_key, fonte_padrao, descricao, is_active, created_by)
+       VALUES ($1, $2, $3, $4, true, $5)
+       RETURNING *`,
+      [nome, webhookKey, fonte_padrao || 'webhook', descricao, req.user.id]
+    );
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[Webhook] Erro ao criar config:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT - Atualizar webhook (autenticado)
+app.put('/api/webhook/configs/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, fonte_padrao, descricao, is_active } = req.body;
+    
+    const result = await pool.query(
+      `UPDATE webhook_configs 
+       SET nome = COALESCE($1, nome), 
+           fonte_padrao = COALESCE($2, fonte_padrao), 
+           descricao = COALESCE($3, descricao),
+           is_active = COALESCE($4, is_active),
+           updated_at = NOW()
+       WHERE id = $5
+       RETURNING *`,
+      [nome, fonte_padrao, descricao, is_active, id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Webhook não encontrado' });
+    }
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[Webhook] Erro ao atualizar config:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE - Excluir webhook (autenticado)
+app.delete('/api/webhook/configs/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await pool.query(`DELETE FROM webhook_configs WHERE id = $1`, [id]);
+    
+    res.json({ success: true, message: 'Webhook excluído' });
+  } catch (error) {
+    console.error('[Webhook] Erro ao excluir config:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Logs do webhook (autenticado)
+app.get('/api/webhook/logs/:webhookId', authenticateToken, async (req, res) => {
+  try {
+    const { webhookId } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+    
+    const result = await pool.query(
+      `SELECT * FROM webhook_logs WHERE webhook_id = $1 ORDER BY created_at DESC LIMIT $2`,
+      [webhookId, limit]
+    );
+    
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[Webhook] Erro ao buscar logs:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

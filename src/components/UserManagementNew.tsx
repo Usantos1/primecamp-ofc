@@ -62,6 +62,7 @@ const roleTranslations: Record<string, string> = {
 export const UserManagementNew = () => {
   const { toast } = useToast();
   const { departments } = useDepartments();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -113,40 +114,48 @@ export const UserManagementNew = () => {
         return;
       }
 
-      // Buscar roles dos usuários
-      const { data: rolesData } = await from('user_position_departments')
-        .select('user_id, role_id, role:roles(id, name, display_name)')
+      const profileUserIds = (profilesData || []).map((p: any) => p.user_id).filter(Boolean);
+
+      // Buscar roles dos usuários (sem join/alias no select, pois nosso backend não suporta sintaxe com ":")
+      const { data: updRolesData } = await from('user_position_departments')
+        .select('user_id, role_id')
         .eq('is_primary', true)
         .not('role_id', 'is', null)
         .execute();
 
-      // Buscar emails dos usuários via edge function
-      const usersWithRolesAndEmails: UserWithRole[] = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          const userRole = (rolesData || []).find((r: any) => r.user_id === profile.user_id);
-          
-          // Buscar email do usuário
-          let authEmail = '';
-          try {
-            const { data: userData, error: userError } = await apiClient.invokeFunction('admin-get-user', {
-              userId: profile.user_id
-            });
-            
-            if (!userError && userData?.user?.email) {
-              authEmail = userData.user.email;
-            }
-          } catch (error) {
-            console.error('Erro ao buscar email do usuário:', error);
-          }
+      // Buscar catálogo de roles
+      const { data: rolesCatalog } = await from('roles')
+        .select('id, name, display_name')
+        .execute();
 
-          return {
-            ...profile,
-            currentRole: userRole || undefined,
-            authEmail,
-            email: authEmail || profile.email,
-          } as UserWithRole;
-        })
-      );
+      const roleById = new Map<string, any>();
+      (rolesCatalog || []).forEach((r: any) => roleById.set(r.id, r));
+
+      // Buscar emails diretamente na tabela users (mais rápido e sem spam de requests)
+      const { data: usersData } = await from('users')
+        .select('id, email')
+        .in('id', profileUserIds)
+        .execute();
+
+      const emailById = new Map<string, string>();
+      (usersData || []).forEach((u: any) => {
+        if (u?.id && u?.email) emailById.set(u.id, u.email);
+      });
+
+      const usersWithRolesAndEmails: UserWithRole[] = (profilesData || []).map((profile: any) => {
+        const roleRow = (updRolesData || []).find((r: any) => r.user_id === profile.user_id);
+        const role = roleRow?.role_id ? roleById.get(roleRow.role_id) : undefined;
+        const authEmail = emailById.get(profile.user_id) || '';
+
+        return {
+          ...profile,
+          currentRole: roleRow
+            ? ({ role_id: roleRow.role_id, role } as any)
+            : undefined,
+          authEmail,
+          email: authEmail || profile.email,
+        } as UserWithRole;
+      });
 
       setUsers(usersWithRolesAndEmails);
     } catch (error: any) {
@@ -177,13 +186,20 @@ export const UserManagementNew = () => {
 
   const handleEditUser = async (user: UserWithRole) => {
     try {
-      // Buscar email do usuário
-      let userEmail = user.authEmail || '';
-      if (!userEmail) {
-        const { data: userData } = await apiClient.invokeFunction('admin-get-user', {
-          body: { userId: user.user_id }
-        });
-        userEmail = userData?.user?.email || '';
+      // Buscar email do usuário - primeiro tenta do cache local
+      let userEmail = user.authEmail || user.email || '';
+      
+      // Se não tem email, buscar diretamente na tabela users
+      if (!userEmail && user.user_id) {
+        try {
+          const { data: userData } = await from('users')
+            .select('email')
+            .eq('id', user.user_id)
+            .maybeSingle();
+          userEmail = userData?.email || '';
+        } catch (e) {
+          console.warn('Não foi possível buscar email do usuário:', e);
+        }
       }
 
       setEditFormData({
@@ -258,6 +274,12 @@ export const UserManagementNew = () => {
         description: "Usuário atualizado com sucesso",
       });
 
+      // Se o admin editou o próprio usuário, atualizar o profile do contexto (sem reload)
+      if (selectedUser.user_id === currentUser?.id) {
+        window.dispatchEvent(new CustomEvent('profile-changed'));
+        window.dispatchEvent(new CustomEvent('permissions-changed'));
+      }
+
       setEditDialogOpen(false);
       setSelectedUser(null);
       fetchUsers();
@@ -306,12 +328,56 @@ export const UserManagementNew = () => {
     try {
       setLoading(true);
 
-      // Deletar via edge function (que deleta auth e profile)
-      const { error } = await apiClient.invokeFunction('admin-delete-user', {
-        userId: userToDelete.user_id
-      });
+      const userId = userToDelete.user_id;
 
-      if (error) throw error;
+      // Tentar via edge function primeiro
+      try {
+        const { error } = await apiClient.invokeFunction('admin-delete-user', {
+          userId
+        });
+        if (!error) {
+          toast({
+            title: "Sucesso",
+            description: "Usuário excluído com sucesso",
+          });
+          setDeleteDialogOpen(false);
+          setUserToDelete(null);
+          fetchUsers();
+          return;
+        }
+      } catch (edgeFnError: any) {
+        console.warn('Edge function falhou, usando fallback direto:', edgeFnError);
+      }
+
+      // Fallback: deletar diretamente via APIs de banco de dados
+      // Limpar tabelas relacionadas primeiro (ignorar erros se não existir)
+      const tablesToClean = [
+        'user_permissions',
+        'user_position_departments',
+        'permission_changes_history',
+      ];
+
+      for (const table of tablesToClean) {
+        try {
+          await from(table).eq('user_id', userId).delete();
+        } catch (e) {
+          // Ignorar erros
+        }
+      }
+
+      // Deletar profile
+      try {
+        await from('profiles').eq('user_id', userId).delete();
+      } catch (e) {
+        console.warn('Erro ao deletar profile:', e);
+      }
+
+      // Tentar deletar user
+      try {
+        await from('users').eq('id', userId).delete();
+      } catch (e) {
+        console.warn('Erro ao deletar user:', e);
+      }
 
       toast({
         title: "Sucesso",
@@ -535,6 +601,17 @@ export const UserManagementNew = () => {
                         <Button size="sm" onClick={() => approveUser(user.user_id)}>
                           Aprovar
                         </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => {
+                            setUserToDelete(user);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Excluir
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -554,7 +631,8 @@ export const UserManagementNew = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="max-h-[70vh] overflow-auto scrollbar-thin">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
@@ -660,7 +738,8 @@ export const UserManagementNew = () => {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

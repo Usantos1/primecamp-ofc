@@ -413,8 +413,6 @@ export default function Clientes() {
             onClose={() => setImportDialogOpen(false)}
             onSuccess={() => {
               setImportDialogOpen(false);
-              // Recarregar lista de clientes
-              window.location.reload();
             }}
           />
         </DialogContent>

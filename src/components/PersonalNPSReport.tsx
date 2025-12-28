@@ -33,28 +33,24 @@ export function PersonalNPSReport() {
   const fetchMonthlyResponses = async () => {
     if (!user) return;
     
-    console.log('NPS Debug - fetching responses for user:', user.id);
-    console.log('NPS Debug - date range:', format(monthStart, 'yyyy-MM-dd'), 'to', format(monthEnd, 'yyyy-MM-dd'));
-    
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('nps_responses')
+      const { data, error } = await from('nps_responses')
         .select('*')
-        .execute().eq('user_id', user.id)
+        .eq('user_id', user.id)
         .gte('date', format(monthStart, 'yyyy-MM-dd'))
         .lte('date', format(monthEnd, 'yyyy-MM-dd'))
-        .order('date', { ascending: true });
+        .order('date', { ascending: true })
+        .execute();
 
       if (error) {
-        console.error('NPS Debug - query error:', error);
+        console.error('[NPS] Erro na query:', error);
         throw error;
       }
       
-      console.log('NPS Debug - fetched data:', data);
       setMonthlyResponses(data || []);
     } catch (error) {
-      console.error('Erro ao buscar respostas NPS:', error);
+      console.error('[NPS] Erro ao buscar respostas:', error);
     } finally {
       setLoading(false);
     }
@@ -91,18 +87,13 @@ export function PersonalNPSReport() {
   const calculateAverageScores = () => {
     if (monthlyResponses.length === 0) return { satisfaction: 0, recommendation: 0 };
     
-    // Log para debug
-    console.log('NPS Debug - monthlyResponses:', monthlyResponses);
-    
     const totalSatisfaction = monthlyResponses.reduce((sum, response) => {
       const satisfaction = response.responses?.satisfaction || 0;
-      console.log('NPS Debug - satisfaction score:', satisfaction);
       return sum + satisfaction;
     }, 0);
     
     const totalRecommendation = monthlyResponses.reduce((sum, response) => {
       const recommendation = response.responses?.recommendation || 0;
-      console.log('NPS Debug - recommendation score:', recommendation);
       return sum + recommendation;
     }, 0);
     
@@ -121,81 +112,52 @@ export function PersonalNPSReport() {
   const averages = calculateAverageScores();
 
   return (
-    <div className="space-y-4 md:space-y-6 px-1 md:px-0">
-      {/* Header with Navigation */}
-      <Card className="border-2 border-gray-300 shadow-sm">
-        <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6 border-b-2 border-gray-200">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <CardTitle className="flex items-center gap-2 text-base md:text-xl">
-              <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-green-100 to-white border-2 border-gray-200">
-                <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
-              </div>
-              Meu Relatório NPS
-            </CardTitle>
-            
-            <div className="flex items-center justify-center gap-2">
+    <div className="space-y-3">
+      {/* Header compacto com navegação e estatísticas */}
+      <Card className="border border-gray-200 shadow-sm">
+        <CardContent className="p-2 md:p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Navegação do mês */}
+            <div className="flex items-center gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigateMonth('prev')}
-                className="h-9 w-9 border-2 border-gray-300"
+                className="h-8 w-8 border border-gray-300"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="font-medium min-w-[120px] md:min-w-32 text-center text-sm md:text-base">
-                {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
+              <span className="font-medium min-w-[100px] text-center text-sm">
+                {format(currentDate, 'MMM yyyy', { locale: ptBR })}
               </span>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigateMonth('next')}
-                className="h-9 w-9 border-2 border-gray-300"
+                className="h-8 w-8 border border-gray-300"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
+            
+            {/* Estatísticas inline */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="h-10 flex flex-col items-center justify-center px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 min-w-[70px]">
+                <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">Respostas</span>
+                <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{monthlyResponses.length}</span>
+              </div>
+              <div className="h-10 flex flex-col items-center justify-center px-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800 min-w-[70px]">
+                <span className="text-[9px] text-green-600 dark:text-green-400 font-medium">Satisfação</span>
+                <span className="text-sm font-bold text-green-700 dark:text-green-300">{averages.satisfaction}</span>
+              </div>
+              <div className="h-10 flex flex-col items-center justify-center px-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800 min-w-[80px]">
+                <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">Recomendação</span>
+                <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{averages.recommendation}</span>
+              </div>
+            </div>
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm bg-blue-50/50 md:bg-transparent">
-          <CardContent className="p-3 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-sm font-medium text-blue-700 md:text-muted-foreground">Respostas no Mês</p>
-                <p className="text-base md:text-2xl font-bold text-blue-700 md:text-foreground">{monthlyResponses.length}</p>
-              </div>
-              <BarChart3 className="h-3 w-3 md:h-8 md:w-8 text-blue-600 md:text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-gray-300 border-l-4 border-l-green-500 shadow-sm bg-green-50/50 md:bg-transparent">
-          <CardContent className="p-3 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-sm font-medium text-green-700 md:text-muted-foreground">Satisfação Média</p>
-                <p className="text-base md:text-2xl font-bold text-green-700 md:text-foreground">{averages.satisfaction}</p>
-              </div>
-              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-gray-200 ${getScoreColor(averages.satisfaction)}`} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-gray-300 border-l-4 border-l-purple-500 shadow-sm bg-purple-50/50 md:bg-transparent">
-          <CardContent className="p-3 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] md:text-sm font-medium text-purple-700 md:text-muted-foreground">Recomendação Média</p>
-                <p className="text-base md:text-2xl font-bold text-purple-700 md:text-foreground">{averages.recommendation}</p>
-              </div>
-              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full border-2 border-gray-200 ${getScoreColor(averages.recommendation)}`} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Chart */}
       {chartData.length > 0 && (

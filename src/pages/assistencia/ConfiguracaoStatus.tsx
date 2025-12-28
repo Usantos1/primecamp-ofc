@@ -27,7 +27,7 @@ export default function ConfiguracaoStatusPage() {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const { imageUrl, uploading, uploadImage, deleteImage } = useOSImageReference();
-  const { itemsEntrada, itemsSaida, createItem, updateItem, deleteItem, isLoading: isLoadingChecklist } = useChecklistConfig();
+  const { itemsEntradaAll, itemsSaidaAll, createItem, updateItem, deleteItem, isLoading: isLoadingChecklist } = useChecklistConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<ConfiguracaoStatus | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -208,7 +208,7 @@ export default function ConfiguracaoStatusPage() {
       item_id: '',
       nome: '',
       categoria: 'fisico',
-      ordem: itemsEntrada.length + 1,
+      ordem: itemsEntradaAll.length + 1,
       ativo: true,
     });
   };
@@ -284,15 +284,17 @@ export default function ConfiguracaoStatusPage() {
       title="Configuração de Status de OS" 
       subtitle="Gerencie as configurações e mensagens para cada status de ordem de serviço"
     >
-      <Tabs defaultValue="status" className="space-y-4 md:space-y-6 px-1 md:px-0">
-        <TabsList className="grid grid-cols-2 md:flex w-full md:w-auto gap-2 md:gap-0">
-          <TabsTrigger value="status" className="text-xs md:text-sm">Status de OS</TabsTrigger>
-          <TabsTrigger value="checklist" className="text-xs md:text-sm">Checklist</TabsTrigger>
-          <TabsTrigger value="imagem" className="text-xs md:text-sm col-span-2 md:col-span-1">Imagem de Referência</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-1 overflow-auto scrollbar-thin pr-1">
+          <Tabs defaultValue="status" className="space-y-4 md:space-y-6 px-1 md:px-0">
+            <TabsList className="grid grid-cols-2 md:flex w-full md:w-auto gap-2 md:gap-0">
+              <TabsTrigger value="status" className="text-xs md:text-sm">Status de OS</TabsTrigger>
+              <TabsTrigger value="checklist" className="text-xs md:text-sm">Checklist</TabsTrigger>
+              <TabsTrigger value="imagem" className="text-xs md:text-sm col-span-2 md:col-span-1">Imagem de Referência</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="status" className="space-y-4 md:space-y-6">
-          <Card className="border-2 border-gray-300">
+            <TabsContent value="status" className="space-y-4 md:space-y-6">
+              <Card className="border-2 border-gray-300">
         <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
             <ImageIcon className="h-4 w-4 md:h-5 md:w-5" />
@@ -545,9 +547,9 @@ export default function ConfiguracaoStatusPage() {
           </div>
         </CardContent>
       </Card>
-        </TabsContent>
+            </TabsContent>
 
-        <TabsContent value="checklist" className="space-y-4 md:space-y-6">
+            <TabsContent value="checklist" className="space-y-4 md:space-y-6">
           <Card className="border-2 border-gray-300">
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-0">
@@ -588,10 +590,10 @@ export default function ConfiguracaoStatusPage() {
                           <div className="space-y-2 pr-4">
                             {isLoadingChecklist ? (
                               <div className="text-sm text-muted-foreground">Carregando...</div>
-                            ) : itemsEntrada.filter(i => i.categoria === 'fisico').length === 0 ? (
+                            ) : itemsEntradaAll.filter(i => i.categoria === 'fisico').length === 0 ? (
                               <div className="text-sm text-muted-foreground">Nenhum item configurado</div>
                             ) : (
-                              itemsEntrada
+                              itemsEntradaAll
                                 .filter(i => i.categoria === 'fisico')
                                 .sort((a, b) => a.ordem - b.ordem)
                                 .map(item => (
@@ -636,10 +638,10 @@ export default function ConfiguracaoStatusPage() {
                           <div className="space-y-2 pr-4">
                             {isLoadingChecklist ? (
                               <div className="text-xs md:text-sm text-muted-foreground">Carregando...</div>
-                            ) : itemsEntrada.filter(i => i.categoria === 'funcional').length === 0 ? (
+                            ) : itemsEntradaAll.filter(i => i.categoria === 'funcional').length === 0 ? (
                               <div className="text-sm text-muted-foreground">Nenhum item configurado</div>
                             ) : (
-                              itemsEntrada
+                              itemsEntradaAll
                                 .filter(i => i.categoria === 'funcional')
                                 .sort((a, b) => a.ordem - b.ordem)
                                 .map(item => (
@@ -688,10 +690,10 @@ export default function ConfiguracaoStatusPage() {
                           <div className="space-y-2 pr-4">
                             {isLoadingChecklist ? (
                               <div className="text-sm text-muted-foreground">Carregando...</div>
-                            ) : itemsSaida.filter(i => i.categoria === 'fisico').length === 0 ? (
+                            ) : itemsSaidaAll.filter(i => i.categoria === 'fisico').length === 0 ? (
                               <div className="text-sm text-muted-foreground">Nenhum item configurado</div>
                             ) : (
-                              itemsSaida
+                              itemsSaidaAll
                                 .filter(i => i.categoria === 'fisico')
                                 .sort((a, b) => a.ordem - b.ordem)
                                 .map(item => (
@@ -736,10 +738,10 @@ export default function ConfiguracaoStatusPage() {
                           <div className="space-y-2 pr-4">
                             {isLoadingChecklist ? (
                               <div className="text-xs md:text-sm text-muted-foreground">Carregando...</div>
-                            ) : itemsSaida.filter(i => i.categoria === 'funcional').length === 0 ? (
+                            ) : itemsSaidaAll.filter(i => i.categoria === 'funcional').length === 0 ? (
                               <div className="text-sm text-muted-foreground">Nenhum item configurado</div>
                             ) : (
-                              itemsSaida
+                              itemsSaidaAll
                                 .filter(i => i.categoria === 'funcional')
                                 .sort((a, b) => a.ordem - b.ordem)
                                 .map(item => (
@@ -780,9 +782,9 @@ export default function ConfiguracaoStatusPage() {
               </Tabs>
             </CardContent>
           </Card>
-        </TabsContent>
+            </TabsContent>
 
-        <TabsContent value="imagem" className="space-y-4 md:space-y-6">
+            <TabsContent value="imagem" className="space-y-4 md:space-y-6">
           {/* Seção: Imagem de Referência do Aparelho */}
           <Card className="border-2 border-gray-300">
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
@@ -871,8 +873,10 @@ export default function ConfiguracaoStatusPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
       <Dialog open={!!editing || isCreating} onOpenChange={(open) => {
         if (!open) {

@@ -23,8 +23,7 @@ export const usePositions = () => {
   const fetchPositions = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('positions')
+      const { data, error } = await from('positions')
         .select('*')
         .order('level', { ascending: false })
         .execute();
@@ -58,14 +57,13 @@ export const usePositions = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('positions')
+      const { data, error } = await from('positions')
         .insert({
           ...positionData,
           created_by: user.id,
           permissions: []
         })
-        .select()
+        .select('*')
         .single();
 
       if (error) {
@@ -90,11 +88,10 @@ export const usePositions = () => {
 
   const updatePosition = async (id: string, updates: Partial<Position>) => {
     try {
-      const { data, error } = await supabase
-        .from('positions')
+      const { data, error } = await from('positions')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select('*')
         .single();
 
       if (error) {
@@ -122,10 +119,9 @@ export const usePositions = () => {
 
   const deletePosition = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('positions')
-        .delete()
-        .eq('id', id);
+      const { error } = await from('positions')
+        .eq('id', id)
+        .delete();
 
       if (error) {
         console.error('Error deleting position:', error);

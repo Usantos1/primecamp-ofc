@@ -529,16 +529,33 @@ export default function OrdensServico() {
       <div className="flex flex-col h-full overflow-hidden">
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* CARDS DE ESTATÍSTICAS */}
+        {/* Mobile: Estatísticas inline compactas */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="flex flex-wrap justify-center gap-2 shrink-0 mb-3">
+        <div className="md:hidden flex-shrink-0 flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-thin">
+          {statsCards.slice(0, 5).map((card) => (
+            <button
+              key={card.filter}
+              onClick={() => setStatusFilter(card.filter)}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap border",
+                statusFilter === card.filter ? `bg-${card.color}-100 border-${card.color}-400 text-${card.color}-700` : "bg-gray-50 border-gray-200 text-gray-600"
+              )}
+            >
+              <span className="font-bold">{card.value}</span>
+              <span>{card.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop: Cards de estatísticas */}
+        <div className="hidden md:flex flex-wrap justify-center gap-2 shrink-0 mb-3">
           {statsCards.map((card) => (
             <Card 
               key={card.filter}
               className={cn(
                 `border-l-4 border-${card.color}-500 cursor-pointer hover:shadow-md transition-all`,
                 statusFilter === card.filter ? `bg-${card.color}-50 dark:bg-${card.color}-950/20 ring-2 ring-${card.color}-400` : 'bg-white dark:bg-gray-900',
-                'w-[calc(50%-0.25rem)] sm:w-[calc(25%-0.5rem)] lg:w-[calc(12.5%-0.5rem)] min-w-[100px]'
+                'w-[calc(25%-0.5rem)] lg:w-[calc(12.5%-0.5rem)] min-w-[100px]'
               )}
               onClick={() => setStatusFilter(card.filter)}
             >
@@ -551,48 +568,53 @@ export default function OrdensServico() {
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* BARRA DE FILTROS */}
+        {/* Mobile: Filtros compactos */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-xl mb-3 border border-gray-200/50">
+        <div className="md:hidden flex-shrink-0 bg-white/80 dark:bg-slate-900/50 border border-gray-200 rounded-lg p-2 mb-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar OS..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 pl-8 text-sm border-gray-200" />
+            </div>
+            <PermissionGate permission="os.create">
+              <Button onClick={() => navigate('/os/nova')} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </PermissionGate>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-7 flex-1 text-xs border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 text-xs"><XCircle className="h-3 w-3" /></Button>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop: Barra de filtros completa */}
+        <div className="hidden md:block bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-xl mb-3 border border-gray-200/50">
           <div className="flex flex-col gap-3 p-4">
-            
-            {/* Linha 1: Busca principal */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nº OS, cliente, telefone, IMEI, problema..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-10 pl-10 text-base border-gray-200 focus:border-blue-400"
-                />
+                <Input placeholder="Buscar por nº OS, cliente, telefone, IMEI, problema..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 pl-10 text-base border-gray-200 focus:border-blue-400" />
               </div>
-              
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
+                <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                  {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
+                  {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
                 </SelectContent>
               </Select>
-
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={clearFilters}
-                disabled={!hasActiveFilters}
-                className="h-10 px-3 text-muted-foreground hover:text-foreground"
-              >
-                <XCircle className="h-4 w-4 mr-1.5" />
-                Limpar
+              <Button variant="ghost" size="sm" onClick={clearFilters} disabled={!hasActiveFilters} className="h-10 px-3 text-muted-foreground hover:text-foreground">
+                <XCircle className="h-4 w-4 mr-1.5" />Limpar
               </Button>
             </div>
-
-            {/* Linha 2: Período e Ações */}
             <div className="flex items-center gap-2 flex-wrap">
               {/* Filtros de período */}
               <div className="flex items-center gap-1">
@@ -808,7 +830,7 @@ export default function OrdensServico() {
       </div>
 
       {/* Modais */}
-      <ImportarOS open={showImportarOS} onOpenChange={setShowImportarOS} onSuccess={() => window.location.reload()} />
+      <ImportarOS open={showImportarOS} onOpenChange={setShowImportarOS} onSuccess={() => setShowImportarOS(false)} />
       
       {/* Modal de Exportação */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>

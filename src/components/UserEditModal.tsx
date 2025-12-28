@@ -78,7 +78,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({
             console.log('User email fetched successfully:', data);
             setFormData({
               display_name: user.display_name || '',
-              email: data.user?.email || '',
+              email: (data as any)?.data?.user?.email || '',
               phone: user.phone || '',
               department: user.department || '',
               role: user.role,

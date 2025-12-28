@@ -7,7 +7,9 @@ export default function AdminDisc() {
       title="Gestão de Testes DISC"
       subtitle="Monitore e gerencie testes DISC dos usuários"
     >
-      <AdminDiscManager />
+      <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-120px)] overflow-auto scrollbar-thin">
+        <AdminDiscManager />
+      </div>
     </ModernLayout>
   );
 }

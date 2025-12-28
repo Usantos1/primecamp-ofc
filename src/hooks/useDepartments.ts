@@ -16,10 +16,9 @@ export const useDepartments = () => {
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('departments')
+      const { data, error } = await from('departments')
         .select('*')
-        .order('name')
+        .order('name', { ascending: true })
         .execute();
 
       if (error) {

@@ -50,6 +50,7 @@ import { generateOSTermica } from '@/utils/osTermicaGenerator';
 import { generateOSPDF } from '@/utils/osPDFGenerator';
 import { printTermica } from '@/utils/pdfGenerator';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OrdemServicoFormProps {
   osId?: string;
@@ -64,6 +65,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const isEditing = Boolean(id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, profile } = useAuth();
+  const currentUserNome = profile?.display_name || user?.email || 'Usuário';
 
   // Hooks
   const { createOS, updateOS, getOSById, updateStatus } = useOrdensServicoSupabase();
@@ -198,7 +201,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     valor_minimo: 0,
     desconto: 0,
     garantia: 90, // Padrão de 90 dias
-    colaborador_id: '',
+    colaborador_id: user?.id || '',
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
 
@@ -216,7 +219,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const carregarOS = async () => {
         const os = getOSById(id);
         if (os) {
-          console.log('[OrdemServicoForm] Carregando OS pela primeira vez:', os.id);
           setCurrentOS(os);
           setFormData({
           cliente_id: os.cliente_id,
@@ -243,6 +245,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           checklist_entrada: os.checklist_entrada || [],
           areas_defeito: os.areas_defeito || [],
           observacoes_checklist: os.observacoes_checklist || '',
+          checklist_entrada_realizado_por_id: os.checklist_entrada_realizado_por_id || '',
+          checklist_entrada_realizado_por_nome: os.checklist_entrada_realizado_por_nome || '',
+          checklist_entrada_realizado_em: os.checklist_entrada_realizado_em || '',
           problema_constatado: os.problema_constatado || '',
           tecnico_id: os.tecnico_id || '',
           servico_executado: os.servico_executado || '',
@@ -256,7 +261,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         
         // Se não encontrou localmente e tem cliente_id, buscar via API
         if (!cliente && os.cliente_id) {
-          console.log('[OrdemServicoForm] Cliente não encontrado localmente, buscando via API...');
           try {
             const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
               ? import.meta.env.VITE_API_URL 
@@ -275,7 +279,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
               const clienteData = result.rows?.[0] || result.data?.[0];
               if (clienteData) {
                 cliente = clienteData;
-                console.log('[OrdemServicoForm] Cliente encontrado via API:', cliente.nome);
               }
             }
           } catch (error) {
@@ -317,12 +320,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       
       // Sempre atualizar se houver diferença (mesmo que pequena) ou se o total mudou
       if (Math.abs(novoTotal - valorTotalAtual) > 0.01 || (novoTotal > 0 && valorTotalAtual === 0)) {
-        console.log('[OrdemServicoForm] Atualizando valor_total da OS:', {
-          osId: currentOS.id,
-          valorAtual: valorTotalAtual,
-          novoTotal: novoTotal,
-          itens: itens.length
-        });
         updateOS(currentOS.id, { valor_total: novoTotal }).then(() => {
           // Invalidar queries relacionadas para atualizar a lista
           queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
@@ -342,7 +339,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           const colab = getColaboradorById(item.colaborador_id);
           if (colab) {
             updateItem(item.id, { colaborador_nome: colab.nome });
-            console.log(`Nome do colaborador atualizado para item ${item.id}: ${colab.nome}`);
           }
         }
       });
@@ -408,11 +404,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   useEffect(() => {
     // O hook useMarcasModelos já inicializa automaticamente
     // Mas vamos forçar a inicialização se necessário
-    if (marcas.length === 0) {
-      console.log('Marcas não carregadas, aguardando inicialização...');
-    } else {
-      console.log(`Marcas carregadas: ${marcas.length}`, marcas.map(m => m.nome));
-    }
+    // Sem logs aqui para evitar spam no console
   }, [marcas]);
 
   // Selecionar cliente
@@ -429,21 +421,26 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
   // Toggle checklist
   const toggleChecklist = (itemId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      checklist_entrada: prev.checklist_entrada.includes(itemId)
+    const userId = user?.id || '';
+    const userNome = profile?.display_name || user?.email || '';
+    const agora = new Date().toISOString();
+    setFormData(prev => {
+      const nextChecklist = prev.checklist_entrada.includes(itemId)
         ? prev.checklist_entrada.filter(i => i !== itemId)
-        : [...prev.checklist_entrada, itemId]
-    }));
+        : [...prev.checklist_entrada, itemId];
+      return {
+        ...prev,
+        checklist_entrada: nextChecklist,
+        checklist_entrada_realizado_por_id: userId || prev.checklist_entrada_realizado_por_id,
+        checklist_entrada_realizado_por_nome: userNome || prev.checklist_entrada_realizado_por_nome,
+        checklist_entrada_realizado_em: agora,
+      };
+    });
   };
 
   // Adicionar/Editar item
   const handleSubmitItem = async () => {
     try {
-      console.log('=== INICIANDO ADIÇÃO DE ITEM ===');
-      console.log('Item form:', itemForm);
-      console.log('OS ID:', id);
-      
       // Validar se é peça e tem estoque suficiente
       // NOTA: Se o usuário digitou manualmente a descrição sem selecionar do estoque,
       // permitir adicionar mas avisar que não terá controle de estoque
@@ -451,7 +448,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         // Se não tem produto_id mas tem descrição, pode ser que o usuário digitou manualmente
         // Nesse caso, apenas avisar mas permitir adicionar
         if (!itemForm.produto_id && itemForm.descricao.trim()) {
-          console.warn('Peça adicionada sem seleção do estoque - sem controle de estoque');
           // Não bloquear, apenas avisar
         } else if (!itemForm.produto_id) {
           toast({
@@ -474,9 +470,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             return;
           }
           
-          console.log('Produto encontrado:', produto);
           const estoqueDisponivel = produto.quantidade || 0;
-          console.log(`Estoque disponível: ${estoqueDisponivel}, Quantidade solicitada: ${itemForm.quantidade}`);
           
           if (estoqueDisponivel < itemForm.quantidade) {
             toast({
@@ -519,8 +513,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         return;
       }
       
-      console.log('OS ID para item:', osIdParaItem);
-      
       // Gerenciar estoque para peças (ANTES de criar itemData para validar)
       if (itemForm.tipo === 'peca' && itemForm.produto_id) {
         const produto = produtos.find(p => p.id === itemForm.produto_id);
@@ -546,26 +538,24 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
               }
               
               updateProduto(produto.id, { quantidade: novoEstoque });
-              console.log(`Estoque ajustado: ${estoqueAtual} → ${novoEstoque} (diferença: ${diferenca})`);
             }
           } else {
             // Ao adicionar: decrementar estoque
             const estoqueAtual = produto.quantidade || 0;
             const novoEstoque = Math.max(0, estoqueAtual - itemForm.quantidade);
             updateProduto(produto.id, { quantidade: novoEstoque });
-            console.log(`Estoque decrementado: ${estoqueAtual} → ${novoEstoque} (quantidade: ${itemForm.quantidade})`);
           }
         }
       }
       
       // Calcular dados do item APÓS validações de estoque
       const valorTotal = (itemForm.quantidade * itemForm.valor_unitario) - itemForm.desconto;
-      const colaborador = itemForm.colaborador_id ? getColaboradorById(itemForm.colaborador_id) : null;
-      
-      console.log('Valor total calculado:', valorTotal);
-      console.log('Colaborador encontrado:', colaborador);
-      console.log('Colaborador ID:', itemForm.colaborador_id);
-      console.log('Colaborador Nome:', colaborador?.nome);
+      const isCreatingItem = !editingItem;
+      const resolvedColaboradorId = isCreatingItem ? (user?.id || '') : (itemForm.colaborador_id || '');
+      const colaborador = resolvedColaboradorId ? getColaboradorById(resolvedColaboradorId) : null;
+      const resolvedColaboradorNome =
+        colaborador?.nome ||
+        (isCreatingItem ? currentUserNome : (editingItem?.colaborador_nome || currentUserNome));
       
       const itemData = {
         tipo: itemForm.tipo,
@@ -576,15 +566,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         valor_minimo: itemForm.valor_minimo || 0,
         desconto: itemForm.desconto,
         garantia: itemForm.garantia || 90,
-        colaborador_id: itemForm.colaborador_id || undefined,
-        colaborador_nome: colaborador?.nome || undefined, // Sempre recalcular o nome
+        colaborador_id: resolvedColaboradorId || undefined,
+        colaborador_nome: resolvedColaboradorNome || undefined,
         valor_total: valorTotal,
       };
-      
-      console.log('Dados do item a ser adicionado/editado:', itemData);
-      
+
       if (editingItem) {
-        console.log('Editando item:', editingItem.id);
         await updateItem(editingItem.id, itemData);
         setEditingItem(null);
         toast({
@@ -592,16 +579,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           description: 'O item foi atualizado com sucesso.',
         });
       } else {
-        console.log('Adicionando novo item...');
         await addItem(itemData);
         toast({
           title: 'Item adicionado',
           description: 'O item foi adicionado à ordem de serviço.',
         });
       }
-      
-      console.log('=== ITEM ADICIONADO COM SUCESSO ===');
-      
+
       setShowAddItem(false);
       setItemForm({
         tipo: 'servico',
@@ -612,15 +596,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         valor_minimo: 0,
         desconto: 0,
         garantia: 90,
-        colaborador_id: '',
+        colaborador_id: user?.id || '',
       });
       setProdutoSearch('');
     } catch (error: any) {
-      console.error('=== ERRO AO ADICIONAR ITEM ===');
-      console.error('Erro completo:', error);
-      console.error('Mensagem:', error.message);
-      console.error('Stack:', error.stack);
-      
       toast({
         title: 'Erro ao adicionar item',
         description: error.message || 'Ocorreu um erro ao adicionar o item. Verifique o console para mais detalhes.',
@@ -659,7 +638,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         const estoqueAtual = produto.quantidade || 0;
         const novoEstoque = estoqueAtual + quantidadeRemovida;
         updateProduto(produto.id, { quantidade: novoEstoque });
-        console.log(`Estoque revertido: ${estoqueAtual} → ${novoEstoque} (quantidade removida: ${quantidadeRemovida})`);
       }
     }
 
@@ -860,16 +838,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
   // Finalizar checklist de saída
   const handleFinalizarChecklistSaida = async () => {
-    console.log('[handleFinalizarChecklistSaida] Iniciando finalização do checklist de saída', {
-      currentOS: currentOS?.id,
-      pendingStatusChange,
-      checklistSaidaAprovado,
-      checklistSaidaMarcados: checklistSaidaMarcados.length,
-      checklistSaidaObservacoes
-    });
-
     if (!currentOS || !pendingStatusChange) {
-      console.error('[handleFinalizarChecklistSaida] OS ou status pendente não encontrado');
       toast({ 
         title: 'Erro', 
         description: 'OS não encontrada ou status não definido.',
@@ -891,26 +860,22 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     try {
       // Atualizar OS com checklist de saída
       const checklistSaidaIds = checklistSaidaMarcados;
-      console.log('[handleFinalizarChecklistSaida] Atualizando OS com dados:', {
-        osId: currentOS.id,
-        checklist_saida: checklistSaidaIds,
-        observacoes_checklist_saida: checklistSaidaObservacoes,
-        checklist_saida_aprovado: checklistSaidaAprovado,
-      });
+      const userId = user?.id || null;
+      const userNome = profile?.display_name || user?.email || null;
+      const agora = new Date().toISOString();
 
       const updatedOS = await updateOS(currentOS.id, {
         checklist_saida: checklistSaidaIds,
         observacoes_checklist_saida: checklistSaidaObservacoes || null,
         checklist_saida_aprovado: checklistSaidaAprovado,
+        checklist_saida_realizado_por_id: userId,
+        checklist_saida_realizado_por_nome: userNome,
+        checklist_saida_realizado_em: agora,
       });
 
-      console.log('[handleFinalizarChecklistSaida] OS atualizada com sucesso:', updatedOS);
-
       // Atualizar status
-      console.log('[handleFinalizarChecklistSaida] Atualizando status da OS:', pendingStatusChange);
       const config = getConfigByStatus(pendingStatusChange);
       await updateStatus(currentOS.id, pendingStatusChange as StatusOS, config?.notificar_whatsapp);
-      console.log('[handleFinalizarChecklistSaida] Status atualizado com sucesso');
 
       // Notificar cliente via WhatsApp
       const cliente = getClienteById(currentOS.cliente_id);
@@ -978,6 +943,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         status: pendingStatusChange,
         checklist_saida: checklistSaidaIds,
         checklist_saida_aprovado: checklistSaidaAprovado,
+        checklist_saida_realizado_por_id: userId,
+        checklist_saida_realizado_por_nome: userNome,
+        checklist_saida_realizado_em: agora,
       } : null);
 
       // Fechar modal e limpar estados
@@ -994,15 +962,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           : 'Checklist de saída registrado com ressalvas.'
       });
     } catch (error: any) {
-      console.error('[handleFinalizarChecklistSaida] Erro completo ao finalizar checklist de saída:', {
-        error,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        stack: error.stack
-      });
-      
       let errorMessage = 'Ocorreu um erro ao finalizar o checklist de saída.';
       if (error.message) {
         errorMessage = error.message;
@@ -1023,10 +982,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
   // WhatsApp - Enviar via API do Ativa CRM
   const handleWhatsApp = async () => {
-    console.log('[handleWhatsApp] Iniciando envio de mensagem da OS');
-    
     if (!currentOS && !isEditing) {
-      console.warn('[handleWhatsApp] OS não salva ainda');
       toast({ title: 'Salve a OS antes de enviar', variant: 'destructive' });
       return;
     }
@@ -1038,12 +994,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       return;
     }
 
-    console.log('[handleWhatsApp] OS encontrada:', { id: os.id, numero: os.numero });
-
     const cliente = getClienteById(os.cliente_id);
     const telefone = os.telefone_contato || cliente?.whatsapp || cliente?.telefone;
-    
-    console.log('[handleWhatsApp] Telefone encontrado:', { telefone, cliente_id: os.cliente_id, cliente_nome: cliente?.nome });
     
     if (!telefone) {
       console.error('[handleWhatsApp] Telefone não encontrado');
@@ -1072,8 +1024,6 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 4 - Ao ligar para a loja, informe o número da Ordem de Serviço para melhor atendê-lo.
 5 - Os aparelhos não retirados em no máximo 30 dias serão acrescido despesas de armazenamento de 6% ao mês.
 6 - Os aparelhos não retirados em até 90 dias a partir da data da comunicação para sua retirada, serão descartados.`;
-
-      console.log('[handleWhatsApp] Mensagem preparada:', mensagem.substring(0, 100) + '...');
 
       // Formatar número para API do Ativa CRM
       // A API espera: número com código do país SEM o +, apenas dígitos
@@ -1106,23 +1056,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         return;
       }
 
-      // Log para debug
-      console.log('[handleWhatsApp] Dados finais para envio:', {
-        numeroOriginal: telefone,
-        numeroFormatado: numero,
-        tamanho: numero.length,
-        mensagemLength: mensagem.length,
-        osNumero: os.numero
-      });
-
       // Enviar via API do Ativa CRM
-      console.log('[handleWhatsApp] Chamando sendMessage do hook useWhatsApp...');
       const result = await sendMessage({
         number: numero,
         body: mensagem
       });
-
-      console.log('[handleWhatsApp] Resposta do sendMessage:', result);
 
       // O hook useWhatsApp já exibe toast de sucesso
       toast({ 
@@ -2145,15 +2083,31 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 )}
               </TabsList>
 
+              {/* Auditoria: quem realizou */}
+              <div className="flex flex-wrap items-center gap-2 mb-3 px-2">
+                {formData.checklist_entrada_realizado_por_nome && (
+                  <Badge variant="outline" className="border-gray-300 text-gray-800 text-xs font-semibold">
+                    Entrada: {formData.checklist_entrada_realizado_por_nome}
+                    {formData.checklist_entrada_realizado_em ? ` • ${dateFormatters.short(formData.checklist_entrada_realizado_em)}` : ''}
+                  </Badge>
+                )}
+                {isEditing && currentOS?.checklist_saida_realizado_por_nome && (
+                  <Badge variant="outline" className="border-gray-300 text-gray-800 text-xs font-semibold">
+                    Saída: {currentOS.checklist_saida_realizado_por_nome}
+                    {currentOS.checklist_saida_realizado_em ? ` • ${dateFormatters.short(currentOS.checklist_saida_realizado_em)}` : ''}
+                  </Badge>
+                )}
+              </div>
+
               {/* Checklist de Entrada */}
               <TabsContent value="entrada" className="space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
                   {/* Problemas Encontrados - Entrada */}
-                  <Card className="border-2">
+                  <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
                     <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
+                          <CardTitle className="text-base font-semibold text-destructive">Problemas Encontrados</CardTitle>
                           <CardDescription className="text-xs">Marque os problemas encontrados</CardDescription>
                         </div>
                         <Badge variant="destructive" className="text-xs">
@@ -2170,9 +2124,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 id={`entrada-fisico-${item.id}`}
                                 checked={(formData.checklist_entrada || []).includes(item.item_id)}
                                 onCheckedChange={() => toggleChecklist(item.item_id)}
-                                disabled={isEditing && currentOS}
                               />
-                              <Label htmlFor={`entrada-fisico-${item.id}`} className={cn("text-sm cursor-pointer flex-1", isEditing && currentOS && "cursor-default opacity-75")}>
+                              <Label htmlFor={`entrada-fisico-${item.id}`} className="text-sm cursor-pointer flex-1 font-medium">
                                 {item.nome}
                               </Label>
                             </div>
@@ -2183,32 +2136,39 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </Card>
 
                   {/* Funcional OK - Entrada */}
-                  <Card className="border-2">
+                  <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
                     <CardHeader className="pb-2 pt-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
+                          <CardTitle className="text-base font-semibold text-green-700">Funcional OK</CardTitle>
                           <CardDescription className="text-xs">Marque o que está funcionando</CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
                             {checklistEntradaConfig.filter(i => i.categoria === 'funcional').filter(item => (formData.checklist_entrada || []).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'funcional').length}
                           </Badge>
-                          {!isEditing || !currentOS ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => {
-                                const funcionalIds = checklistEntradaConfig.filter(i => i.categoria === 'funcional').map(i => i.item_id);
-                                const novosIds = [...new Set([...(formData.checklist_entrada || []), ...funcionalIds])];
-                                setFormData(prev => ({ ...prev, checklist_entrada: novosIds }));
-                              }}
-                            >
-                              <Check className="h-3 w-3 mr-1" />
-                              Marcar tudo OK
-                            </Button>
-                          ) : null}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const funcionalIds = checklistEntradaConfig.filter(i => i.categoria === 'funcional').map(i => i.item_id);
+                              const novosIds = [...new Set([...(formData.checklist_entrada || []), ...funcionalIds])];
+                              const userId = user?.id || '';
+                              const userNome = profile?.display_name || user?.email || '';
+                              const agora = new Date().toISOString();
+                              setFormData(prev => ({
+                                ...prev,
+                                checklist_entrada: novosIds,
+                                checklist_entrada_realizado_por_id: userId || prev.checklist_entrada_realizado_por_id,
+                                checklist_entrada_realizado_por_nome: userNome || prev.checklist_entrada_realizado_por_nome,
+                                checklist_entrada_realizado_em: agora,
+                              }));
+                            }}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Marcar tudo OK
+                          </Button>
                         </div>
                       </div>
                     </CardHeader>
@@ -2221,9 +2181,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 id={`entrada-funcional-${item.id}`}
                                 checked={(formData.checklist_entrada || []).includes(item.item_id)}
                                 onCheckedChange={() => toggleChecklist(item.item_id)}
-                                disabled={isEditing && currentOS}
                               />
-                              <Label htmlFor={`entrada-funcional-${item.id}`} className={cn("text-sm cursor-pointer flex-1", isEditing && currentOS && "cursor-default opacity-75")}>
+                              <Label htmlFor={`entrada-funcional-${item.id}`} className="text-sm cursor-pointer flex-1 font-medium">
                                 {item.nome}
                               </Label>
                             </div>
@@ -2235,18 +2194,28 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </div>
                 
                 {/* Observações do Checklist de Entrada */}
-                <Card>
+                <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
                   <CardHeader className="pb-2 pt-3">
-                    <CardTitle className="text-base">Observações do Checklist de Entrada</CardTitle>
+                    <CardTitle className="text-base font-semibold">Observações do Checklist de Entrada</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-2">
                     <Textarea
                       value={formData.observacoes_checklist || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, observacoes_checklist: e.target.value }))}
+                      onChange={(e) => {
+                        const userId = user?.id || '';
+                        const userNome = profile?.display_name || user?.email || '';
+                        const agora = new Date().toISOString();
+                        setFormData(prev => ({
+                          ...prev,
+                          observacoes_checklist: e.target.value,
+                          checklist_entrada_realizado_por_id: userId || prev.checklist_entrada_realizado_por_id,
+                          checklist_entrada_realizado_por_nome: userNome || prev.checklist_entrada_realizado_por_nome,
+                          checklist_entrada_realizado_em: agora,
+                        }));
+                      }}
                       placeholder="Adicione observações gerais sobre o checklist de entrada..."
                       rows={3}
                       className="resize-none"
-                      disabled={isEditing && currentOS}
                     />
                   </CardContent>
                 </Card>
@@ -2325,9 +2294,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   
                   {/* Status do Checklist de Saída */}
                   {currentOS.checklist_saida_aprovado !== null && (
-                    <Card>
+                    <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
                       <CardHeader className="pb-2 pt-3">
-                        <CardTitle className="text-base">Resultado do Checklist de Saída</CardTitle>
+                        <CardTitle className="text-base font-semibold">Resultado do Checklist de Saída</CardTitle>
                       </CardHeader>
                       <CardContent className="pt-2">
                         <div className="flex items-center gap-2">
@@ -3625,7 +3594,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <CardTitle className="text-base">Peças e Serviços</CardTitle>
                     <Button onClick={() => {
                       setEditingItem(null);
-                      setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: '' });
+                      setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: user?.id || '' });
                       setShowAddItem(true);
                     }} size="sm" className="gap-2">
                       <Plus className="h-4 w-4" />
@@ -3644,7 +3613,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <Button 
                         onClick={() => {
                           setEditingItem(null);
-                          setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: '' });
+                          setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: user?.id || '' });
                           setShowAddItem(true);
                         }}
                         className="gap-2"
@@ -4010,7 +3979,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </Button>
                         
                         <Select onValueChange={(v) => handlePrint(v as 'termica' | 'a4' | 'pdf')}>
-                          <SelectTrigger className="w-[100px] h-8 rounded-lg text-xs">
+                          <SelectTrigger className="w-[110px] h-8 rounded-lg text-xs font-semibold border-2 border-gray-300 text-gray-900 bg-white hover:bg-gray-50">
                             <Printer className="h-4 w-4 mr-1" />
                             <span>Imprimir</span>
                           </SelectTrigger>
@@ -4219,27 +4188,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </div>
                 <div className="space-y-2">
                   <Label>Colaborador que lançou</Label>
-                  <Select
-                    value={itemForm.colaborador_id || ''}
-                    onValueChange={(v) => setItemForm(prev => ({ ...prev, colaborador_id: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingCargos ? (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">Carregando colaboradores...</div>
-                      ) : colaboradores.length > 0 ? (
-                        colaboradores.map(colab => (
-                          <SelectItem key={colab.id} value={colab.id}>
-                            {colab.nome} ({CARGOS_LABELS[colab.cargo]})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum colaborador cadastrado</div>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Input value={currentUserNome} readOnly className="bg-muted" />
+                  <p className="text-xs text-muted-foreground">Preenchido automaticamente pelo usuário logado</p>
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -21,6 +21,7 @@ export function useSales() {
   const profile = auth?.profile || null;
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const cancelInFlightRef = useRef(new Map<string, Promise<Sale>>());
 
   // Carregar vendas
   const loadSales = useCallback(async () => {
@@ -57,8 +58,30 @@ export function useSales() {
   // Criar venda
   const createSale = useCallback(async (data: SaleFormData): Promise<Sale> => {
     try {
-      // Gerar número da venda (usar últimos 9 dígitos do timestamp para caber em INTEGER)
-      const numero = Math.floor(Date.now() / 1000) % 1000000000;
+      // Gerar número sequencial da venda (iniciando em 1000)
+      // OBS: O ideal é o banco gerar via sequence/trigger. Aqui geramos no app com retry para minimizar colisões.
+      const getNextSaleNumber = async (): Promise<number> => {
+        const { data: lastSale, error } = await from('sales')
+          .select('numero')
+          .order('numero', { ascending: false })
+          .limit(1)
+          .single();
+
+        // Sem registros
+        if (error && error.code === 'PGRST116') return 1000;
+
+        const last = Number((lastSale as any)?.numero || 0);
+        return Math.max(999, last) + 1;
+      };
+
+      const isDuplicateNumero = (err: any): boolean => {
+        const code = String(err?.code || '');
+        const msg = String(err?.message || err?.error || '');
+        const lower = msg.toLowerCase();
+        return code === '23505' || (lower.includes('duplicate') && (lower.includes('numero') || lower.includes('unique')));
+      };
+
+      let numero = await getNextSaleNumber();
 
       // Validar UUID do cliente
       const isValidUUID = (str: string | undefined | null): boolean => {
@@ -67,8 +90,8 @@ export function useSales() {
         return uuidRegex.test(str);
       };
 
-      const saleData = {
-        numero,
+      const buildSaleData = (num: number) => ({
+        numero: num,
         status: 'draft' as SaleStatus,
         cliente_id: data.cliente_id && isValidUUID(data.cliente_id) ? data.cliente_id : null,
         cliente_nome: data.cliente_nome || null,
@@ -83,17 +106,37 @@ export function useSales() {
         desconto_total: 0,
         total: 0,
         total_pago: 0,
-      };
+      });
 
-      const { data: newSale, error } = await from('sales')
-        .insert(saleData)
-        .select('*')
-        .single();
+      let newSale: any = null;
+      let lastError: any = null;
 
-      if (error) throw error;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: inserted, error } = await from('sales')
+          .insert(buildSaleData(numero))
+          .select('*')
+          .single();
+
+        if (!error) {
+          newSale = inserted;
+          break;
+        }
+
+        lastError = error;
+        if (isDuplicateNumero(error)) {
+          numero = await getNextSaleNumber();
+          continue;
+        }
+
+        throw error;
+      }
+
+      if (!newSale) {
+        throw lastError || new Error('Não foi possível gerar número sequencial da venda. Tente novamente.');
+      }
 
       // Log de auditoria
-      await logAudit('create', 'sale', newSale.id, null, newSale, 'Venda criada', user);
+      await logAudit('create', 'sale', newSale.id, null, newSale, `Venda criada #${newSale.numero}`, user);
 
       setSales(prev => [newSale, ...prev]);
       return newSale;
@@ -355,123 +398,145 @@ export function useSales() {
 
   // Cancelar venda
   const cancelSale = useCallback(async (id: string, reason?: string): Promise<Sale> => {
-    try {
-      // Buscar venda do banco se não encontrar no estado
-      let sale = sales.find(s => s.id === id);
-      if (!sale) {
-        const { data: saleData, error: saleError } = await from('sales')
-        .select('*')
-        .eq('id', id)
-        .single();
-        if (saleError || !saleData) throw new Error('Venda não encontrada');
-        sale = saleData as Sale;
-      }
+    // Lock por venda para impedir clique duplo / chamadas paralelas no mesmo client
+    const existing = cancelInFlightRef.current.get(id);
+    if (existing) return existing;
 
-      const { data: updatedSale, error } = await from('sales')
-        .update({
-          status: 'canceled',
-          canceled_at: new Date().toISOString(),
-          canceled_by: user?.id || null,
-          cancel_reason: reason || null,
-        })
-        .eq('id', id)
-        .select()
-        .single()
-        .execute();
+    const promise = (async () => {
+      try {
+        // Sempre revalidar a venda no banco (estado local pode estar desatualizado)
+        const { data: dbSale, error: dbSaleError } = await from('sales')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (dbSaleError || !dbSale) throw new Error('Venda não encontrada');
 
-      if (error) throw error;
+        const saleAtual = dbSale as Sale;
 
-      // Reverter estoque se foi baixado
-      if ((sale as any).stock_decremented) {
-        try {
-          // Buscar itens da venda para reverter o estoque
-          const { data: saleItems } = await from('sale_items')
-            .select('*')
-            .eq('sale_id', id)
-            .execute();
-          
-          if (saleItems) {
-            for (const item of saleItems) {
-              if (item.produto_id && item.produto_tipo === 'produto') {
-                // Buscar quantidade atual do produto
-                const { data: produto } = await from('produtos')
-                  .select('id, quantidade')
-                  .eq('id', item.produto_id)
-                  .single();
-                
-                if (produto) {
-                  const quantidadeAtual = Number(produto.quantidade || 0);
-                  const quantidadeVendida = Number(item.quantidade || 0);
-                  const novaQuantidade = quantidadeAtual + quantidadeVendida;
-                  
-                  // Devolver ao estoque
-                  await from('produtos')
-                    .update({ quantidade: novaQuantidade })
+        // Idempotência: se já cancelou, não faz nada (e principalmente não mexe no estoque)
+        if (saleAtual.status === 'canceled') {
+          return saleAtual;
+        }
+
+        // Rascunho não é "cancelado": deve ser excluído
+        if (saleAtual.is_draft) {
+          throw new Error('Venda em rascunho não pode ser cancelada. Use excluir rascunho.');
+        }
+
+        // Atualizar status (com guarda para não "cancelar 2x")
+        const { data: updatedSaleMaybe, error } = await from('sales')
+          .update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString(),
+            canceled_by: user?.id || null,
+            cancel_reason: reason || null,
+          })
+          .eq('id', id)
+          .neq('status', 'canceled')
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Se por algum motivo não retornou a linha (corrida), buscar novamente
+        let updatedSale: Sale = (updatedSaleMaybe as Sale) || saleAtual;
+        if (!updatedSaleMaybe) {
+          const { data: refetch } = await from('sales').select('*').eq('id', id).single();
+          if (refetch) updatedSale = refetch as Sale;
+        }
+
+        // Reverter estoque APENAS se a venda ainda estava marcada como "baixou estoque"
+        if ((saleAtual as any).stock_decremented) {
+          try {
+            // Buscar itens da venda para reverter o estoque
+            const { data: saleItems } = await from('sale_items')
+              .select('*')
+              .eq('sale_id', id)
+              .execute();
+
+            if (saleItems) {
+              for (const item of saleItems) {
+                if (item.produto_id && item.produto_tipo === 'produto') {
+                  const { data: produto } = await from('produtos')
+                    .select('id, quantidade')
                     .eq('id', item.produto_id)
-                    .execute();
-                  
-                  console.log(`✅ Estoque revertido: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (+${quantidadeVendida})`);
+                    .single();
+
+                  if (produto) {
+                    const quantidadeAtual = Number(produto.quantidade || 0);
+                    const quantidadeVendida = Number(item.quantidade || 0);
+                    const novaQuantidade = quantidadeAtual + quantidadeVendida;
+
+                    await from('produtos')
+                      .update({ quantidade: novaQuantidade })
+                      .eq('id', item.produto_id)
+                      .execute();
+
+                    console.log(`✅ Estoque revertido: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (+${quantidadeVendida})`);
+                  }
                 }
               }
             }
+
+            // Marcar que o estoque foi revertido (idempotente)
+            await from('sales')
+              .update({ stock_decremented: false })
+              .eq('id', id)
+              .eq('stock_decremented', true)
+              .execute();
+
+            console.log('Estoque revertido com sucesso para a venda cancelada:', id);
+          } catch (error) {
+            console.error('Erro ao reverter estoque:', error);
+            // Não falhar o cancelamento se a reversão de estoque falhar
           }
-          
-          // Marcar que o estoque foi revertido
-          await from('sales')
-            .update({ stock_decremented: false })
-            .eq('id', id)
+        }
+
+        // Cancelar contas a receber
+        try {
+          await from('accounts_receivable')
+            .update({ status: 'cancelado' })
+            .eq('sale_id', id)
             .execute();
-          
-          console.log('Estoque revertido com sucesso para a venda cancelada:', id);
         } catch (error) {
-          console.error('Erro ao reverter estoque:', error);
-          // Não falhar o cancelamento se a reversão de estoque falhar
+          console.error('Erro ao cancelar contas a receber:', error);
         }
-      }
 
-      // Cancelar/remover transações financeiras e contas a receber
-      // (As transações podem ser mantidas para auditoria, mas as contas a receber devem ser canceladas)
-      try {
-        await from('accounts_receivable')
-          .update({ status: 'cancelado' })
-          .eq('sale_id', id)
-          .execute();
-      } catch (error) {
-        console.error('Erro ao cancelar contas a receber:', error);
-      }
+        // Log de auditoria
+        await logAudit('cancel', 'sale', id, saleAtual, updatedSale, `Venda cancelada: ${reason || 'Sem motivo'}`, user);
 
-      // Log de auditoria
-      await logAudit('cancel', 'sale', id, sale, updatedSale, `Venda cancelada: ${reason || 'Sem motivo'}`, user);
-
-      // Atualizar estado - adicionar se não existir, atualizar se existir
-      setSales(prev => {
-        const exists = prev.find(s => s.id === id);
-        if (exists) {
-          return prev.map(s => s.id === id ? (updatedSale as Sale) : s);
-        } else {
+        // Atualizar estado local
+        setSales(prev => {
+          const exists = prev.find(s => s.id === id);
+          if (exists) {
+            return prev.map(s => s.id === id ? (updatedSale as Sale) : s);
+          }
           return [...prev, updatedSale as Sale];
-        }
-      });
-      return updatedSale as Sale;
-    } catch (error) {
-      console.error('Erro ao cancelar venda:', error);
-      throw error;
-    }
+        });
+
+        return updatedSale as Sale;
+      } catch (error) {
+        console.error('Erro ao cancelar venda:', error);
+        throw error;
+      } finally {
+        cancelInFlightRef.current.delete(id);
+      }
+    })();
+
+    cancelInFlightRef.current.set(id, promise);
+    return promise;
   }, [sales, user]);
 
   // Deletar venda
   const deleteSale = useCallback(async (id: string, force: boolean = false): Promise<void> => {
     try {
-      // Buscar venda do banco se não encontrar no estado
-      let sale = sales.find(s => s.id === id);
-      if (!sale) {
-        const { data: saleData, error: saleError } = await from('sales')
+      // Sempre revalidar no banco (evita estado local desatualizado e dupla reversão)
+      const { data: saleData, error: saleError } = await from('sales')
         .select('*')
         .eq('id', id)
         .single();
-        if (saleError || !saleData) throw new Error('Venda não encontrada');
-        sale = saleData as Sale;
-      }
+      if (saleError || !saleData) throw new Error('Venda não encontrada');
+      const sale = saleData as Sale;
       
       // Se não for rascunho e não tiver permissão para forçar, não permitir
       if (!sale.is_draft && !force) {
@@ -479,7 +544,9 @@ export function useSales() {
       }
       
       // Se for venda finalizada e tiver estoque baixado, reverter
-      if (!sale.is_draft && (sale as any).stock_decremented) {
+      // ⚠️ Regra forte: venda já cancelada/devolvida NÃO reverte estoque novamente na exclusão
+      const isCanceledOrRefunded = sale.status === 'canceled' || sale.status === 'refunded';
+      if (!sale.is_draft && !isCanceledOrRefunded && (sale as any).stock_decremented) {
         try {
           // Buscar itens da venda para reverter o estoque
           const { data: saleItems } = await from('sale_items')
@@ -534,9 +601,8 @@ export function useSales() {
       console.log('Deletando itens da venda:', id);
       // Deletar itens primeiro (cascade)
       const { error: itemsError } = await from('sale_items')
-        .delete()
         .eq('sale_id', id)
-        .execute();
+        .delete();
       
       if (itemsError) {
         console.error('Erro ao deletar itens:', itemsError);
@@ -546,8 +612,8 @@ export function useSales() {
       console.log('Deletando pagamentos da venda:', id);
       // Deletar pagamentos
       const { error: paymentsError } = await from('payments')
-        .delete()
-        .eq('sale_id', id);
+        .eq('sale_id', id)
+        .delete();
       
       if (paymentsError) {
         console.error('Erro ao deletar pagamentos:', paymentsError);
@@ -557,8 +623,8 @@ export function useSales() {
       console.log('Deletando a venda:', id);
       // Deletar a venda
       const { error } = await from('sales')
-        .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .delete();
 
       if (error) {
         console.error('Erro ao deletar venda:', error);
@@ -572,24 +638,6 @@ export function useSales() {
         console.log(`Estado atualizado: ${prev.length} -> ${filtered.length} vendas`);
         return filtered;
       });
-      
-      // Forçar recarregamento do banco para garantir sincronização
-      console.log('Forçando recarregamento do banco...');
-      try {
-        const { data: updatedSales, error: loadError } = await from('sales')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .execute();
-        
-        if (!loadError && updatedSales) {
-          console.log(`Banco recarregado: ${updatedSales.length} vendas encontradas`);
-          setSales(updatedSales as Sale[]);
-        } else if (loadError) {
-          console.error('Erro ao recarregar do banco:', loadError);
-        }
-      } catch (reloadError) {
-        console.error('Erro ao forçar recarregamento:', reloadError);
-      }
 
       // Log de auditoria (não bloquear se falhar)
       try {
@@ -650,7 +698,6 @@ export function useSales() {
     cancelSale,
     deleteSale,
     getSaleById,
-    refreshSales: loadSales,
   };
 }
 
@@ -1189,7 +1236,6 @@ export function useCashRegister() {
     isLoading,
     openCash,
     closeCash,
-    refreshSession: loadCurrentSession,
   };
 }
 
@@ -1259,7 +1305,6 @@ export function useCashMovements(sessionId: string) {
     movements,
     isLoading,
     addMovement,
-    refreshMovements: loadMovements,
   };
 }
 

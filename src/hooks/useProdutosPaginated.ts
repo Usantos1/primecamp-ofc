@@ -25,6 +25,9 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     
     // Preço (BRL) - usar apenas colunas existentes
     valor_venda: Number(supabaseProduto.valor_dinheiro_pix || 0),
+    // Custo (compat): vi_custo (importação) / valor_compra (legado)
+    preco_custo: Number(supabaseProduto.vi_custo || supabaseProduto.valor_compra || 0),
+    valor_compra: Number(supabaseProduto.vi_custo || supabaseProduto.valor_compra || 0),
     valor_parcelado_6x: supabaseProduto.valor_parcelado_6x ? Number(supabaseProduto.valor_parcelado_6x) : undefined,
     margem_percentual: supabaseProduto.margem_percentual ? Number(supabaseProduto.margem_percentual) : undefined,
     
@@ -52,22 +55,25 @@ interface UseProdutosPaginatedOptions {
   pageSize?: number;
   searchTerm?: string;
   grupo?: string;
+  localizacao?: string;
 }
 
 export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const {
     page: initialPage = 1,
     pageSize: initialPageSize = 50,
     searchTerm: initialSearchTerm = '',
     grupo: initialGrupo = '',
+    localizacao: initialLocalizacao = '',
   } = options;
 
   const [page, setPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [grupo, setGrupo] = useState(initialGrupo);
+  const [localizacao, setLocalizacao] = useState(initialLocalizacao);
 
   // Debounce na busca (300ms)
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -83,10 +89,10 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     isFetching,
     error,
   } = useQuery({
-    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, grupo],
+    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, grupo, localizacao],
     queryFn: async () => {
       // Construir query base usando wrapper PostgreSQL
-      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
+      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
       
       let query = dbFrom('produtos')
         .select(selectFields)
@@ -95,6 +101,11 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       // Aplicar filtro de grupo/categoria
       if (grupo && grupo.trim() !== '') {
         query = query.eq('grupo', grupo);
+      }
+
+      // Aplicar filtro de localização
+      if (localizacao && localizacao.trim() !== '') {
+        query = query.eq('localizacao', localizacao.trim());
       }
 
       // Aplicar busca (nome, codigo, codigo_barras, referencia)
@@ -118,7 +129,35 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       query = query.range(from, to);
       
       // Executar query (count vem automaticamente)
-      const { data, error, count } = await query.execute();
+      let { data, error, count } = await query.execute();
+
+      // Fallback defensivo: se a coluna vi_custo não existir no banco, refazer sem ela
+      if (error && String(error.message || error).includes('vi_custo') && String(error.message || error).includes('does not exist')) {
+        const fallbackFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
+        let fallbackQuery = dbFrom('produtos')
+          .select(fallbackFields)
+          .order('nome', { ascending: true });
+        if (grupo && grupo.trim() !== '') fallbackQuery = fallbackQuery.eq('grupo', grupo);
+        if (localizacao && localizacao.trim() !== '') fallbackQuery = fallbackQuery.eq('localizacao', localizacao.trim());
+        if (debouncedSearchTerm.trim()) {
+          const search = debouncedSearchTerm.trim();
+          const codigoNum = parseInt(search);
+          if (!isNaN(codigoNum)) {
+            fallbackQuery = fallbackQuery.or(
+              `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
+            );
+          } else {
+            fallbackQuery = fallbackQuery.or(
+              `nome.ilike.%${search}%,codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
+            );
+          }
+        }
+        fallbackQuery = fallbackQuery.range(from, to);
+        const fallbackRes = await fallbackQuery.execute();
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+        count = fallbackRes.count;
+      }
 
       if (error) {
         console.error('[useProdutosPaginated] Erro na query:', {
@@ -169,9 +208,9 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       const nextTo = nextFrom + pageSize - 1;
       
       queryClient.prefetchQuery({
-        queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, grupo],
+        queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, grupo, localizacao],
         queryFn: async () => {
-          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
+          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
           
           let query = dbFrom('produtos')
             .select(selectFields)
@@ -179,6 +218,10 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
           if (grupo && grupo.trim() !== '') {
             query = query.eq('grupo', grupo);
+          }
+
+          if (localizacao && localizacao.trim() !== '') {
+            query = query.eq('localizacao', localizacao.trim());
           }
 
           if (debouncedSearchTerm.trim()) {
@@ -207,7 +250,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, produtos.length, totalPages, debouncedSearchTerm, grupo]);
+  }, [page, pageSize, produtos.length, totalPages, debouncedSearchTerm, grupo, localizacao]);
 
   // Resetar para página 1 quando filtros mudarem
   const handleSearchChange = useCallback((value: string) => {
@@ -217,6 +260,11 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
   const handleGrupoChange = useCallback((value: string) => {
     setGrupo(value);
+    setPage(1);
+  }, []);
+
+  const handleLocalizacaoChange = useCallback((value: string) => {
+    setLocalizacao(value);
     setPage(1);
   }, []);
 
@@ -280,6 +328,29 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   });
 
   const grupos = gruposData || [];
+
+  // Buscar localizações únicas para o filtro
+  const { data: localizacoesData } = useQuery({
+    queryKey: ['produtos-localizacoes'],
+    queryFn: async () => {
+      const { data, error } = await dbFrom('produtos')
+        .select('localizacao')
+        .not('localizacao', 'is', null)
+        .execute();
+
+      if (error) throw error;
+
+      const rows = data || [];
+      const locsUnicas = Array.from(
+        new Set(rows.map((p: any) => (p.localizacao || '').trim()).filter(Boolean))
+      ).sort();
+
+      return locsUnicas;
+    },
+    staleTime: 300000,
+  });
+
+  const localizacoes = localizacoesData || [];
 
   // Mapear produto assistencia.Produto para Supabase
   // Usar apenas colunas que existem no banco
@@ -351,6 +422,13 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       payload.localizacao = produto.localizacao;
     }
 
+    // Custo/Compra (quando existir no banco) - usar vi_custo (compatível com importação)
+    if ((produto as any).preco_custo !== undefined && (produto as any).preco_custo !== null) {
+      payload.vi_custo = Number((produto as any).preco_custo || 0);
+    } else if ((produto as any).valor_compra !== undefined && (produto as any).valor_compra !== null) {
+      payload.vi_custo = Number((produto as any).valor_compra || 0);
+    }
+
     // Remover campos que não devem ser enviados
     delete payload.id;
     delete payload.created_at;
@@ -396,6 +474,21 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
   // Atualizar produto
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
+    // Buscar estado anterior para auditoria
+    const { data: oldRow, error: oldErr } = await dbFrom('produtos')
+      .select('id, nome, quantidade, valor_dinheiro_pix, vi_custo')
+      .eq('id', id)
+      .single();
+
+    if (oldErr && oldErr.code !== 'PGRST116') {
+      toast({
+        title: 'Erro ao atualizar produto',
+        description: 'Não foi possível carregar o estado anterior para auditoria.',
+        variant: 'destructive',
+      });
+      throw oldErr;
+    }
+
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
     const { error } = await dbFrom('produtos')
@@ -414,11 +507,80 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
     queryClient.invalidateQueries({ queryKey: ['produtos-grupos'] });
     
+    // Registrar movimentações internas (estoque/preço/custo)
+    try {
+      const beforeQtd = Number((oldRow as any)?.quantidade ?? 0);
+      const afterQtd = data.quantidade !== undefined ? Number(data.quantidade ?? 0) : beforeQtd;
+      const beforeVenda = Number((oldRow as any)?.valor_dinheiro_pix ?? 0);
+      const afterVenda = data.valor_venda !== undefined ? Number(data.valor_venda ?? 0) : beforeVenda;
+      const beforeCusto = Number((oldRow as any)?.vi_custo ?? 0);
+      const afterCusto =
+        (data as any).preco_custo !== undefined
+          ? Number((data as any).preco_custo ?? 0)
+          : (data as any).valor_compra !== undefined
+            ? Number((data as any).valor_compra ?? 0)
+            : beforeCusto;
+
+      const userNome = profile?.display_name || user?.email || 'Usuário';
+      const movements: any[] = [];
+
+      if (afterQtd !== beforeQtd) {
+        movements.push({
+          produto_id: id,
+          tipo: 'ajuste_estoque',
+          motivo: 'Edição manual do produto',
+          quantidade_antes: beforeQtd,
+          quantidade_depois: afterQtd,
+          quantidade_delta: afterQtd - beforeQtd,
+          user_id: user?.id || null,
+          user_nome: userNome,
+        });
+      }
+
+      if (afterVenda !== beforeVenda) {
+        movements.push({
+          produto_id: id,
+          tipo: 'ajuste_preco_venda',
+          motivo: 'Edição manual do produto',
+          valor_venda_antes: beforeVenda,
+          valor_venda_depois: afterVenda,
+          user_id: user?.id || null,
+          user_nome: userNome,
+        });
+      }
+
+      if (afterCusto !== beforeCusto) {
+        movements.push({
+          produto_id: id,
+          tipo: 'ajuste_preco_custo',
+          motivo: 'Edição manual do produto',
+          valor_custo_antes: beforeCusto,
+          valor_custo_depois: afterCusto,
+          user_id: user?.id || null,
+          user_nome: userNome,
+        });
+      }
+
+      if (movements.length > 0) {
+        const { error: movErr } = await dbFrom('produto_movimentacoes')
+          .insert(movements)
+          .execute();
+        if (movErr) throw movErr;
+      }
+    } catch (auditErr) {
+      console.error('[useProdutosPaginated] Falha ao registrar movimentação interna:', auditErr);
+      toast({
+        title: 'Aviso',
+        description: 'Produto atualizado, mas falhou ao registrar movimentação interna. Verifique se a tabela produto_movimentacoes existe e foi aplicada no banco.',
+        variant: 'destructive',
+      });
+    }
+
     toast({
       title: 'Sucesso',
       description: 'Produto atualizado com sucesso!',
     });
-  }, [queryClient]);
+  }, [queryClient, user, profile]);
 
   // Deletar produto (deletar fisicamente)
   const deleteProduto = useCallback(async (id: string) => {
@@ -473,6 +635,9 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     setSearchTerm: handleSearchChange,
     grupo,
     setGrupo: handleGrupoChange,
+    localizacao,
+    setLocalizacao: handleLocalizacaoChange,
+    localizacoes,
 
     // Mutations
     createProduto,

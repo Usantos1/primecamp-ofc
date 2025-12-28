@@ -181,29 +181,27 @@ export function RolesManager() {
 
       if (editingRole) {
         // Atualizar role
-        const { data, error } = await supabase
-          .from('roles')
+        const { data, error } = await from('roles')
           .update({
             display_name: formData.display_name,
             description: formData.description || null,
           })
           .eq('id', editingRole.id)
-          .select()
+          .select('*')
           .single();
 
         if (error) throw error;
         roleId = data.id;
       } else {
         // Criar role
-        const { data, error } = await supabase
-          .from('roles')
+        const { data, error } = await from('roles')
           .insert({
             name: formData.name,
             display_name: formData.display_name,
             description: formData.description || null,
             is_system: false,
           })
-          .select()
+          .select('*')
           .single();
 
         if (error) throw error;
@@ -212,10 +210,9 @@ export function RolesManager() {
 
       // Atualizar permissões do role
       // Remover todas as permissões existentes
-      await supabase
-        .from('role_permissions')
-        .delete()
-        .eq('role_id', roleId);
+      await from('role_permissions')
+        .eq('role_id', roleId)
+        .delete();
 
       // Adicionar novas permissões
       if (rolePermissions.size > 0) {
@@ -224,9 +221,9 @@ export function RolesManager() {
           permission_id: permissionId,
         }));
 
-        await supabase
-          .from('role_permissions')
-          .insert(permissionsToInsert);
+        await from('role_permissions')
+          .insert(permissionsToInsert)
+          .execute();
       }
 
       toast({
@@ -251,11 +248,11 @@ export function RolesManager() {
 
     try {
       // Verificar se há usuários usando este role
-      const { data: usersWithRole } = await supabase
-        .from('user_position_departments')
+      const { data: usersWithRole } = await from('user_position_departments')
         .select('user_id')
-        .execute().eq('role_id', roleToDelete.id)
-        .limit(1);
+        .eq('role_id', roleToDelete.id)
+        .limit(1)
+        .execute();
 
       if (usersWithRole && usersWithRole.length > 0) {
         toast({
@@ -269,10 +266,9 @@ export function RolesManager() {
       }
 
       // Excluir role (as permissões serão excluídas automaticamente por CASCADE)
-      const { error } = await supabase
-        .from('roles')
-        .delete()
-        .eq('id', roleToDelete.id);
+      const { error } = await from('roles')
+        .eq('id', roleToDelete.id)
+        .delete();
 
       if (error) throw error;
 

@@ -12,10 +12,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/EmptyState';
 import { ImportarProdutos } from '@/components/ImportarProdutos';
 import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized';
+import { InventarioDialog } from '@/components/assistencia/InventarioDialog';
 import { useProdutosPaginated } from '@/hooks/useProdutosPaginated';
 import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters } from '@/utils/formatters';
 import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
 import { Produto } from '@/types/assistencia';
@@ -35,6 +37,7 @@ import {
   X,
   XCircle,
   Zap,
+  ClipboardList,
 } from 'lucide-react';
 
 // Componente de linha da tabela otimizado com React.memo
@@ -168,6 +171,7 @@ const EXPORT_COLUMNS = [
 export default function Produtos() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
 
   // Hook paginado
   const hookResult = useProdutosPaginated();
@@ -185,6 +189,9 @@ export default function Produtos() {
   const setSearchTerm = hookResult?.setSearchTerm || (() => {});
   const grupo = hookResult?.grupo || '';
   const setGrupo = hookResult?.setGrupo || (() => {});
+  const localizacao = (hookResult as any)?.localizacao || '';
+  const setLocalizacao = (hookResult as any)?.setLocalizacao || (() => {});
+  const localizacoes = (hookResult as any)?.localizacoes || [];
   const createProduto = hookResult?.createProduto || (async () => {});
   const updateProduto = hookResult?.updateProduto || (async () => {});
   const deleteProduto = hookResult?.deleteProduto || (async () => {});
@@ -198,6 +205,7 @@ export default function Produtos() {
   const [quantidadeEtiquetas, setQuantidadeEtiquetas] = useState(1);
   const [showEstoqueModal, setShowEstoqueModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showInventario, setShowInventario] = useState(false);
 
   // ═══════════════════════════════════════════════════════════════
   // EXPORTAÇÃO
@@ -364,6 +372,7 @@ export default function Produtos() {
   const handleClearFilters = () => {
     setSearchTerm('');
     setGrupo('');
+    setLocalizacao('');
   };
 
   const handleNew = () => {
@@ -476,115 +485,82 @@ export default function Produtos() {
       <div className="flex flex-col h-full overflow-hidden">
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* BARRA DE FILTROS - Layout melhorado */}
+        {/* BARRA DE FILTROS - Mobile: compacta, Desktop: completa */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-xl mb-3 border border-gray-200/50">
-          <div className="flex flex-col gap-3 p-4">
-            
-            {/* Linha 1: Busca principal */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por código, descrição, referência ou código de barras..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-10 pl-10 text-base border-gray-200 focus:border-blue-400 focus:ring-blue-400/20"
-                />
-              </div>
-              
-              <Select 
-                value={grupo && grupo.trim() !== '' ? grupo : 'all'} 
-                onValueChange={(value) => {
-                  setGrupo(value === 'all' ? '' : value);
-                  hookResult.setPage(1);
-                }}
-              >
-                <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200">
-                  <SelectValue placeholder="Grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os grupos</SelectItem>
-                  {grupos.map((g) => (
-                    <SelectItem key={g.id || g.nome} value={g.nome}>{g.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={handleClearFilters}
-                disabled={!searchTerm && !grupo}
-                className="h-10 px-3 text-muted-foreground hover:text-foreground"
-              >
-                <XCircle className="h-4 w-4 mr-1.5" />
-                Limpar
-              </Button>
+        
+        {/* Mobile: Header compacto */}
+        <div className="md:hidden bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-lg mb-2 border border-gray-200/50 p-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar produto..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8 pl-8 text-sm border-gray-200"
+              />
             </div>
-
-            {/* Linha 2: Ações */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button onClick={handleNew} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-                <Plus className="h-4 w-4" />
-                <span>Novo</span>
+            <Button onClick={handleNew} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin">
+            <Select value={grupo && grupo.trim() !== '' ? grupo : 'all'} onValueChange={(v) => { setGrupo(v === 'all' ? '' : v); hookResult.setPage(1); }}>
+              <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs border-gray-200"><SelectValue placeholder="Grupo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {grupos.map((g) => (<SelectItem key={g.id || g.nome} value={g.nome}>{g.nome}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={localizacao && localizacao.trim() !== '' ? localizacao : 'all'} onValueChange={(v) => { setLocalizacao(v === 'all' ? '' : v); hookResult.setPage(1); }}>
+              <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs border-gray-200"><SelectValue placeholder="Local" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {localizacoes.map((loc: string) => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            {(searchTerm || grupo || localizacao) && (
+              <Button variant="ghost" size="sm" onClick={handleClearFilters} className="h-7 px-2 text-xs">
+                <XCircle className="h-3 w-3" />
               </Button>
+            )}
+          </div>
+        </div>
 
-              <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
-                <FileSpreadsheet className="h-4 w-4" />
-                <span className="hidden sm:inline">Importar</span>
-              </Button>
-
-              <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Exportar</span>
-              </Button>
-
-              <div className="w-px h-6 bg-gray-200 mx-1 hidden md:block" />
-
-              <Button
-                onClick={() => selectedProduto && handleEdit(selectedProduto)}
-                size="sm"
-                variant="outline"
-                disabled={!selectedProduto}
-                className="h-9 gap-1.5 border-gray-200"
-              >
-                <Edit className="h-4 w-4" />
-                <span className="hidden sm:inline">Editar</span>
-              </Button>
-
-              <Button
-                onClick={handleInativar}
-                size="sm"
-                variant="outline"
-                disabled={!selectedProduto}
-                className="h-9 gap-1.5 border-gray-200"
-              >
-                <X className="h-4 w-4" />
-                <span className="hidden sm:inline">Inativar</span>
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!selectedProduto}
-                onClick={() => setShowEtiquetaModal(true)}
-                className="h-9 gap-1.5 border-gray-200"
-              >
-                <Barcode className="h-4 w-4" />
-                <span className="hidden lg:inline">Etiqueta</span>
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!selectedProduto}
-                onClick={() => setShowEstoqueModal(true)}
-                className="h-9 gap-1.5 border-gray-200"
-              >
-                <Warehouse className="h-4 w-4" />
-                <span className="hidden lg:inline">Estoque</span>
-              </Button>
+        {/* Desktop: Header completo */}
+        <div className="hidden md:block bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-xl mb-3 border border-gray-200/50">
+          <div className="flex flex-wrap items-center gap-2 p-3">
+            <div className="relative flex-1 min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar por código, descrição, referência ou código de barras..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 pl-10 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400/20" />
+            </div>
+            <Select value={grupo && grupo.trim() !== '' ? grupo : 'all'} onValueChange={(value) => { setGrupo(value === 'all' ? '' : value); hookResult.setPage(1); }}>
+              <SelectTrigger className="h-9 w-[170px] shrink-0 border-gray-200 text-sm"><SelectValue placeholder="Grupo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os grupos</SelectItem>
+                {grupos.map((g) => (<SelectItem key={g.id || g.nome} value={g.nome}>{g.nome}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Select value={localizacao && localizacao.trim() !== '' ? localizacao : 'all'} onValueChange={(value) => { setLocalizacao(value === 'all' ? '' : value); hookResult.setPage(1); }}>
+              <SelectTrigger className="h-9 w-[170px] shrink-0 border-gray-200 text-sm"><SelectValue placeholder="Localização" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas localizações</SelectItem>
+                {localizacoes.map((loc: string) => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={!searchTerm && !grupo && !localizacao} className="h-9 px-3 text-muted-foreground hover:text-foreground">
+              <XCircle className="h-4 w-4 mr-1.5" />Limpar
+            </Button>
+            <div className="flex items-center gap-2 flex-wrap ml-auto">
+              <Button onClick={handleNew} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"><Plus className="h-4 w-4" /><span>Novo</span></Button>
+              <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Importar</span></Button>
+              <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200"><Download className="h-4 w-4" /><span className="hidden sm:inline">Exportar</span></Button>
+              <div className="w-px h-6 bg-gray-200 mx-1" />
+              <Button onClick={() => selectedProduto && handleEdit(selectedProduto)} size="sm" variant="outline" disabled={!selectedProduto} className="h-9 gap-1.5 border-gray-200"><Edit className="h-4 w-4" /><span className="hidden sm:inline">Editar</span></Button>
+              <Button onClick={handleInativar} size="sm" variant="outline" disabled={!selectedProduto} className="h-9 gap-1.5 border-gray-200"><X className="h-4 w-4" /><span className="hidden sm:inline">Inativar</span></Button>
+              <Button size="sm" variant="outline" disabled={!selectedProduto} onClick={() => setShowEtiquetaModal(true)} className="h-9 gap-1.5 border-gray-200"><Barcode className="h-4 w-4" /><span className="hidden lg:inline">Etiqueta</span></Button>
+              <Button size="sm" variant="outline" disabled={!selectedProduto} onClick={() => setShowEstoqueModal(true)} className="h-9 gap-1.5 border-gray-200"><Warehouse className="h-4 w-4" /><span className="hidden lg:inline">Estoque</span></Button>
+              <Button size="sm" variant="outline" onClick={() => setShowInventario(true)} className="h-9 gap-1.5 border-gray-200"><ClipboardList className="h-4 w-4" /><span className="hidden lg:inline">Inventário</span></Button>
             </div>
           </div>
         </div>
@@ -601,7 +577,7 @@ export default function Produtos() {
                     icon={<Package className="h-12 w-12" />}
                     title="Erro ao carregar produtos"
                     description={hookResult.error instanceof Error ? hookResult.error.message : 'Ocorreu um erro.'}
-                    action={{ label: 'Recarregar', onClick: () => window.location.reload() }}
+                    action={undefined}
                   />
                 </div>
               ) : isLoading ? (
@@ -1087,6 +1063,13 @@ export default function Produtos() {
             <ImportarProdutos />
           </DialogContent>
         </Dialog>
+
+        {/* Inventário (página atual) */}
+        <InventarioDialog
+          open={showInventario}
+          onOpenChange={setShowInventario}
+          filtrosAtuais={{ searchTerm, grupo, localizacao }}
+        />
       </div>
     </ModernLayout>
   );
