@@ -340,21 +340,27 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
 
 /**
  * Hook para resumo financeiro
+ * Aceita month (legado) ou startDate/endDate para período personalizado
  */
-export function useFinancialSummary(month?: string) {
+export function useFinancialSummary(monthOrPeriod?: string | { startDate?: string; endDate?: string; month?: string }) {
+  // Normalizar parâmetros
+  const period = typeof monthOrPeriod === 'string' 
+    ? { month: monthOrPeriod, startDate: `${monthOrPeriod}-01`, endDate: `${monthOrPeriod}-31` }
+    : monthOrPeriod || { month: new Date().toISOString().slice(0, 7) };
+  
+  const startDate = period.startDate || `${period.month}-01`;
+  const endDate = period.endDate || `${period.month}-31`;
+  const month = period.month || startDate.slice(0, 7);
+
   const { data: bills } = useBillsToPay({ month });
   const { data: transactions } = useFinancialTransactions({ month });
   const { data: cashClosings } = useCashClosings({ month });
   
   // Buscar vendas pagas do período
   const { data: sales } = useQuery({
-    queryKey: ['sales-summary', month],
+    queryKey: ['sales-summary', startDate, endDate],
     queryFn: async () => {
       try {
-        const currentMonth = month || new Date().toISOString().slice(0, 7);
-        const startDate = `${currentMonth}-01`;
-        const endDate = `${currentMonth}-31`;
-        
         const { data, error } = await from('sales')
           .select('id, total, created_at')
           .gte('created_at', startDate)
@@ -383,7 +389,7 @@ export function useFinancialSummary(month?: string) {
   const totalTransacoesSaida = transactions?.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.amount, 0) || 0;
 
   const summary: FinancialSummary = {
-    period: month || new Date().toISOString().slice(0, 7),
+    period: `${startDate} - ${endDate}`,
     // Entradas = vendas pagas + transações de entrada
     total_entradas: totalVendas + totalTransacoesEntrada,
     total_saidas: totalTransacoesSaida,

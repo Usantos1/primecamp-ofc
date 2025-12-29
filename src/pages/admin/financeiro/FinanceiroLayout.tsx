@@ -3,15 +3,18 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { 
   LayoutDashboard, 
   DollarSign, 
   FileText, 
   TrendingUp, 
   BarChart3,
-  Wallet,
-  Receipt
+  CalendarDays
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,16 +30,49 @@ export function FinanceiroLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Mês selecionado (padrão: mês atual)
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  
-  // Gerar lista de meses (últimos 12 meses)
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - i);
-    return date.toISOString().slice(0, 7);
-  });
+  // Filtro de período (igual ao de vendas)
+  const [dateFilter, setDateFilter] = useState<string>('month');
+  const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);
+  const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Calcular datas baseado no filtro
+  const getDateRange = () => {
+    const today = new Date();
+    let startDate: string;
+    let endDate: string;
+
+    if (dateFilter === 'today') {
+      startDate = format(today, 'yyyy-MM-dd');
+      endDate = format(today, 'yyyy-MM-dd');
+    } else if (dateFilter === 'week') {
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      startDate = format(weekAgo, 'yyyy-MM-dd');
+      endDate = format(today, 'yyyy-MM-dd');
+    } else if (dateFilter === 'month') {
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      startDate = format(monthAgo, 'yyyy-MM-dd');
+      endDate = format(today, 'yyyy-MM-dd');
+    } else if (dateFilter === 'custom' && customDateStart && customDateEnd) {
+      startDate = format(customDateStart, 'yyyy-MM-dd');
+      endDate = format(customDateEnd, 'yyyy-MM-dd');
+    } else {
+      // all - últimos 365 dias
+      const yearAgo = new Date(today);
+      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+      startDate = format(yearAgo, 'yyyy-MM-dd');
+      endDate = format(today, 'yyyy-MM-dd');
+    }
+
+    // Calcular mês para compatibilidade
+    const month = startDate.slice(0, 7);
+
+    return { startDate, endDate, month };
+  };
+
+  const dateRange = getDateRange();
 
   const currentTab = tabs.find(t => 
     location.pathname === t.path || 
@@ -74,20 +110,112 @@ export function FinanceiroLayout() {
                 })}
               </div>
               
-              {/* Seletor de Período */}
-              <div className="flex items-center gap-2 ml-auto">
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-[130px] h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month} value={month}>
-                        {new Date(month + '-01').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Seletor de Período - Igual ao de Vendas */}
+              <div className="ml-auto">
+                <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "w-[180px] md:w-[200px] h-8 text-xs justify-start text-left font-normal",
+                        dateFilter === 'custom' && customDateStart && customDateEnd && "text-foreground"
+                      )}
+                    >
+                      <CalendarDays className="mr-2 h-3.5 w-3.5" />
+                      {dateFilter === 'custom' && customDateStart && customDateEnd ? (
+                        <span className="truncate">
+                          {format(customDateStart, 'dd/MM/yy', { locale: ptBR })} - {format(customDateEnd, 'dd/MM/yy', { locale: ptBR })}
+                        </span>
+                      ) : dateFilter === 'today' ? (
+                        'Hoje'
+                      ) : dateFilter === 'week' ? (
+                        'Últimos 7 dias'
+                      ) : dateFilter === 'month' ? (
+                        'Últimos 30 dias'
+                      ) : (
+                        'Todos'
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <div className="p-3 border-b space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                          variant={dateFilter === 'today' ? 'default' : 'outline'} 
+                          size="sm"
+                          onClick={() => { setDateFilter('today'); setShowDatePicker(false); }}
+                        >
+                          Hoje
+                        </Button>
+                        <Button 
+                          variant={dateFilter === 'week' ? 'default' : 'outline'} 
+                          size="sm"
+                          onClick={() => { setDateFilter('week'); setShowDatePicker(false); }}
+                        >
+                          7 dias
+                        </Button>
+                        <Button 
+                          variant={dateFilter === 'month' ? 'default' : 'outline'} 
+                          size="sm"
+                          onClick={() => { setDateFilter('month'); setShowDatePicker(false); }}
+                        >
+                          30 dias
+                        </Button>
+                        <Button 
+                          variant={dateFilter === 'all' ? 'default' : 'outline'} 
+                          size="sm"
+                          onClick={() => { setDateFilter('all'); setShowDatePicker(false); }}
+                        >
+                          Todos
+                        </Button>
+                      </div>
+                      <div className="text-xs text-muted-foreground text-center pt-1">
+                        ou selecione um período:
+                      </div>
+                    </div>
+                    <div className="p-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Data Início</Label>
+                          <Input
+                            type="date"
+                            value={customDateStart ? format(customDateStart, 'yyyy-MM-dd') : ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setCustomDateStart(new Date(e.target.value + 'T00:00:00'));
+                              }
+                            }}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Data Fim</Label>
+                          <Input
+                            type="date"
+                            value={customDateEnd ? format(customDateEnd, 'yyyy-MM-dd') : ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setCustomDateEnd(new Date(e.target.value + 'T23:59:59'));
+                              }
+                            }}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        className="w-full" 
+                        size="sm"
+                        disabled={!customDateStart || !customDateEnd}
+                        onClick={() => { 
+                          setDateFilter('custom'); 
+                          setShowDatePicker(false); 
+                        }}
+                      >
+                        Aplicar Período
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </CardContent>
@@ -96,10 +224,10 @@ export function FinanceiroLayout() {
         {/* Conteúdo com scroll */}
         <div className="flex-1 overflow-auto scrollbar-thin min-h-0">
           <Outlet context={{ 
-            month: selectedMonth, 
-            setMonth: setSelectedMonth,
-            startDate: `${selectedMonth}-01`,
-            endDate: `${selectedMonth}-31`
+            startDate: dateRange.startDate,
+            endDate: dateRange.endDate,
+            month: dateRange.month,
+            dateFilter,
           }} />
         </div>
       </div>

@@ -10,9 +10,13 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 export function FinanceiroDashboard() {
   const navigate = useNavigate();
   const context = useOutletContext<{ startDate: string; endDate?: string; month?: string }>();
-  const month = context.month || context.startDate.slice(0, 7);
-
-  const summary = useFinancialSummary(month);
+  
+  // Usar período completo
+  const summary = useFinancialSummary({ 
+    startDate: context.startDate, 
+    endDate: context.endDate,
+    month: context.month 
+  });
   const { data: billsDueSoon = [], isLoading: billsLoading } = useBillsDueSoon(7);
   const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
   const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
