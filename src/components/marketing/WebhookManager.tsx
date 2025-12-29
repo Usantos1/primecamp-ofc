@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, Copy, Trash2, Eye, CheckCircle, XCircle, 
-  Webhook, Link, Clock, AlertTriangle, ExternalLink, FlaskConical, ArrowRight
+  Webhook, Link, Clock, AlertTriangle, ExternalLink, FlaskConical, ArrowRight,
+  Radio, Square, Play, Loader2
 } from 'lucide-react';
 import { useWebhooks, useWebhookLogs, WebhookConfig } from '@/hooks/useWebhooks';
 import { dateFormatters } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
+
+const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
 
 // Função para mapear campos do payload para o lead
 const mapPayloadToLead = (payload: any) => {
@@ -95,33 +98,122 @@ export function WebhookManager() {
     descricao: '',
   });
 
-  // Estados para teste de webhook
-  const [testPayload, setTestPayload] = useState('');
-  const [parsedPayload, setParsedPayload] = useState<any>(null);
+  // Estados para teste de webhook em tempo real
+  const [testSession, setTestSession] = useState<{ sessionId: string; testUrl: string } | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [testEvents, setTestEvents] = useState<any[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [mappedResult, setMappedResult] = useState<{ mapped: Record<string, { value: string; originalKey: string }>; unmapped: Record<string, any> } | null>(null);
-  const [parseError, setParseError] = useState<string | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const { logs, isLoading: logsLoading } = useWebhookLogs(selectedWebhook?.id || null);
 
-  const handleAnalyzePayload = () => {
-    setParseError(null);
-    setParsedPayload(null);
-    setMappedResult(null);
-    
-    if (!testPayload.trim()) {
-      setParseError('Cole o JSON do payload para analisar');
-      return;
-    }
-    
+  // Iniciar sessão de teste
+  const startTestSession = async () => {
     try {
-      const parsed = JSON.parse(testPayload);
-      setParsedPayload(parsed);
-      const result = mapPayloadToLead(parsed);
-      setMappedResult(result);
-    } catch (e) {
-      setParseError('JSON inválido. Verifique a formatação.');
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${apiUrl}/api/webhook/test/session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setTestSession({ sessionId: data.sessionId, testUrl: data.testUrl });
+        setTestEvents([]);
+        setSelectedEvent(null);
+        setMappedResult(null);
+        setIsListening(true);
+        toast({ title: 'Sessão de teste iniciada!', description: 'Envie webhooks para a URL de teste' });
+        
+        // Iniciar polling
+        startPolling(data.sessionId);
+      } else {
+        toast({ title: 'Erro', description: data.error, variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Falha ao criar sessão de teste', variant: 'destructive' });
     }
   };
+  
+  // Polling para buscar eventos
+  const startPolling = (sessionId: string) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    
+    const fetchEvents = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch(`${apiUrl}/api/webhook/test/${sessionId}/events`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.events) {
+          setTestEvents(prev => {
+            // Mesclar eventos novos
+            const existingIds = new Set(prev.map(e => e.id));
+            const newEvents = data.events.filter((e: any) => !existingIds.has(e.id));
+            if (newEvents.length > 0) {
+              toast({ title: `${newEvents.length} novo(s) evento(s) recebido(s)!` });
+            }
+            return [...prev, ...newEvents];
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar eventos:', error);
+      }
+    };
+    
+    // Buscar imediatamente e depois a cada 2 segundos
+    fetchEvents();
+    pollingRef.current = setInterval(fetchEvents, 2000);
+  };
+  
+  // Parar sessão de teste
+  const stopTestSession = async () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
+    if (testSession) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        await fetch(`${apiUrl}/api/webhook/test/${testSession.sessionId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (error) {
+        console.error('Erro ao encerrar sessão:', error);
+      }
+    }
+    
+    setIsListening(false);
+    toast({ title: 'Sessão encerrada' });
+  };
+  
+  // Analisar evento selecionado
+  const analyzeEvent = (event: any) => {
+    setSelectedEvent(event);
+    const result = mapPayloadToLead(event.payload);
+    setMappedResult(result);
+  };
+  
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
 
   const resetForm = () => {
     setForm({ nome: '', fonte_padrao: 'ativacrm', descricao: '' });
@@ -197,117 +289,196 @@ export function WebhookManager() {
           )}
         </div>
 
-        {/* Tab de Teste de Payload */}
+        {/* Tab de Teste de Payload em Tempo Real */}
         <TabsContent value="test" className="space-y-4 mt-4">
+          {/* Controles do Listener */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <FlaskConical className="h-5 w-5 text-primary" />
-                Testar Mapeamento de Payload
+                <Radio className={`h-5 w-5 ${isListening ? 'text-green-500 animate-pulse' : 'text-muted-foreground'}`} />
+                Listener de Webhook em Tempo Real
               </CardTitle>
               <CardDescription>
-                Cole o JSON recebido pelo webhook para ver como os dados são mapeados para o lead
+                Inicie a escuta para receber e analisar webhooks de teste automaticamente
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>Payload JSON (copie dos logs ou do sistema de origem)</Label>
-                <Textarea
-                  value={testPayload}
-                  onChange={(e) => setTestPayload(e.target.value)}
-                  placeholder={`{\n  "Nome:": "João Silva",\n  "DDD + Telefone:": "+5519999999999",\n  "E-mail:": "joao@email.com",\n  "Mensagem:": "Tenho interesse...",\n  "utm_source": "google"\n}`}
-                  rows={8}
-                  className="font-mono text-xs"
-                />
-              </div>
-              
-              <Button onClick={handleAnalyzePayload} className="w-full">
-                <FlaskConical className="h-4 w-4 mr-2" />
-                Analisar Payload
-              </Button>
-              
-              {parseError && (
-                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-600 dark:text-red-400">{parseError}</p>
+              {!isListening ? (
+                <Button onClick={startTestSession} className="w-full" size="lg">
+                  <Play className="h-4 w-4 mr-2" />
+                  Iniciar Escuta
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  {/* URL de Teste */}
+                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Radio className="h-4 w-4 text-green-500 animate-pulse" />
+                      <span className="font-medium text-green-800 dark:text-green-200">Escutando...</span>
+                      <Badge variant="secondary" className="text-[10px]">{testEvents.length} evento(s)</Badge>
+                    </div>
+                    
+                    <Label className="text-xs text-green-700 dark:text-green-300">URL de Teste (envie webhooks para cá):</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="bg-white dark:bg-gray-900 px-3 py-2 rounded border text-xs flex-1 truncate">
+                        {testSession?.testUrl}
+                      </code>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(testSession?.testUrl || '');
+                          toast({ title: 'URL copiada!' });
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                      Configure esta URL no seu sistema de origem (AtivaCRM, Elementor, etc.) e envie um teste
+                    </p>
+                  </div>
+                  
+                  <Button onClick={stopTestSession} variant="destructive" className="w-full">
+                    <Square className="h-4 w-4 mr-2" />
+                    Parar Escuta
+                  </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+          
+          {/* Lista de Eventos Recebidos */}
+          {testEvents.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Eventos Recebidos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[200px]">
+                  <div className="space-y-2">
+                    {testEvents.map((event, index) => (
+                      <div 
+                        key={event.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedEvent?.id === event.id 
+                            ? 'bg-primary/10 border-primary' 
+                            : 'bg-muted/50 hover:bg-muted'
+                        }`}
+                        onClick={() => analyzeEvent(event)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px]">#{testEvents.length - index}</Badge>
+                            <span className="text-xs font-medium">
+                              {event.payload?.nome || event.payload?.name || event.payload?.['Nome:'] || 'Payload recebido'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(event.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                          {Object.keys(event.payload || {}).join(', ')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Análise do Evento Selecionado */}
+          {selectedEvent && mappedResult && (
+            <div className="space-y-4">
+              {/* Payload Original */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Payload Original Recebido</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto max-h-[200px]">
+{JSON.stringify(selectedEvent.payload, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
               
-              {mappedResult && (
-                <div className="space-y-4">
-                  {/* Campos Mapeados */}
-                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2 text-green-800 dark:text-green-200">
-                        <CheckCircle className="h-4 w-4" />
-                        Campos Mapeados ({Object.keys(mappedResult.mapped).length})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs">Campo Original</TableHead>
-                            <TableHead className="text-xs">→</TableHead>
-                            <TableHead className="text-xs">Campo do Lead</TableHead>
-                            <TableHead className="text-xs">Valor</TableHead>
+              {/* Campos Mapeados */}
+              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2 text-green-800 dark:text-green-200">
+                    <CheckCircle className="h-4 w-4" />
+                    Campos Mapeados ({Object.keys(mappedResult.mapped).length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Campo Original</TableHead>
+                        <TableHead className="text-xs">→</TableHead>
+                        <TableHead className="text-xs">Campo do Lead</TableHead>
+                        <TableHead className="text-xs">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(mappedResult.mapped).map(([field, { value, originalKey }]) => (
+                        <TableRow key={field}>
+                          <TableCell className="font-mono text-xs">{originalKey}</TableCell>
+                          <TableCell><ArrowRight className="h-3 w-3 text-muted-foreground" /></TableCell>
+                          <TableCell className="font-medium text-xs text-green-700 dark:text-green-300">{field}</TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate">{value || <span className="text-muted-foreground">(vazio)</span>}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+              
+              {/* Campos Não Mapeados */}
+              {Object.keys(mappedResult.unmapped).length > 0 && (
+                <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                      <AlertTriangle className="h-4 w-4" />
+                      Campos Não Mapeados ({Object.keys(mappedResult.unmapped).length})
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Estes campos são recebidos mas não são salvos automaticamente no lead
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Campo</TableHead>
+                          <TableHead className="text-xs">Valor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(mappedResult.unmapped).map(([key, value]) => (
+                          <TableRow key={key}>
+                            <TableCell className="font-mono text-xs">{key}</TableCell>
+                            <TableCell className="text-xs max-w-[300px] truncate">
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </TableCell>
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.entries(mappedResult.mapped).map(([field, { value, originalKey }]) => (
-                            <TableRow key={field}>
-                              <TableCell className="font-mono text-xs">{originalKey}</TableCell>
-                              <TableCell><ArrowRight className="h-3 w-3 text-muted-foreground" /></TableCell>
-                              <TableCell className="font-medium text-xs text-green-700 dark:text-green-300">{field}</TableCell>
-                              <TableCell className="text-xs max-w-[200px] truncate">{value || <span className="text-muted-foreground">(vazio)</span>}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* Campos Não Mapeados */}
-                  {Object.keys(mappedResult.unmapped).length > 0 && (
-                    <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
-                          <AlertTriangle className="h-4 w-4" />
-                          Campos Não Mapeados ({Object.keys(mappedResult.unmapped).length})
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                          Estes campos são recebidos mas não são salvos automaticamente no lead
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Campo</TableHead>
-                              <TableHead className="text-xs">Valor</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {Object.entries(mappedResult.unmapped).map(([key, value]) => (
-                              <TableRow key={key}>
-                                <TableCell className="font-mono text-xs">{key}</TableCell>
-                                <TableCell className="text-xs max-w-[300px] truncate">
-                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  )}
-                  
-                  {/* Preview do Lead */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Preview: Lead que seria criado</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Preview do Lead */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Preview: Lead que seria criado</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
 {JSON.stringify({
   nome: mappedResult.mapped.nome?.value || '',
   email: mappedResult.mapped.email?.value || '',
@@ -321,13 +492,11 @@ export function WebhookManager() {
   utm_medium: mappedResult.mapped.utm_medium?.value || '',
   utm_campaign: mappedResult.mapped.utm_campaign?.value || '',
 }, null, 2)}
-                      </pre>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </pre>
+                </CardContent>
+              </Card>
+            </div>
+          )}
           
           {/* Referência de Campos */}
           <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200">

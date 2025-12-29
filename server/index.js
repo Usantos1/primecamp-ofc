@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
 import fetch from 'node-fetch';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -195,14 +196,15 @@ app.use('/api/', limiter);
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*)
 // Os endpoints /api/functions/* e /api/whatsapp/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
-  // Pular autenticação para rotas de auth, health check, functions, whatsapp e webhook/leads
+  // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads e webhook/test (POST)
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
       req.path === '/health' ||
       req.path.startsWith('/api/functions/') ||
       req.path.startsWith('/api/storage/') ||
       req.path.startsWith('/api/whatsapp/') ||
-      req.path.startsWith('/api/webhook/leads/')) {
+      req.path.startsWith('/api/webhook/leads/') ||
+      (req.method === 'POST' && /^\/api\/webhook\/test\/[^/]+$/.test(req.path))) { // Webhook test público
     return next();
   }
   // Aplicar autenticação para outras rotas /api/*
@@ -2038,6 +2040,120 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
       success: false, 
       error: error.message || 'Erro interno ao processar requisição do Telegram' 
     });
+  }
+});
+
+// =====================================================
+// WEBHOOK TEST - Sistema de Teste em Tempo Real
+// =====================================================
+
+// Armazenamento em memória para eventos de teste (expira em 30 min)
+const webhookTestSessions = new Map();
+
+// Limpar sessões antigas a cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, session] of webhookTestSessions.entries()) {
+    if (now - session.createdAt > 30 * 60 * 1000) { // 30 minutos
+      webhookTestSessions.delete(sessionId);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Criar sessão de teste (autenticado)
+app.post('/api/webhook/test/session', authenticateToken, async (req, res) => {
+  const sessionId = crypto.randomUUID();
+  webhookTestSessions.set(sessionId, {
+    createdAt: Date.now(),
+    events: [],
+    userId: req.user.id
+  });
+  
+  const testUrl = `${process.env.STORAGE_BASE_URL?.replace('/uploads', '') || 'https://api.primecamp.cloud'}/api/webhook/test/${sessionId}`;
+  
+  res.json({ 
+    success: true, 
+    sessionId,
+    testUrl,
+    expiresIn: '30 minutos'
+  });
+});
+
+// Receber webhook de teste (público)
+app.post('/api/webhook/test/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const payload = req.body;
+  
+  console.log(`[Webhook Test] Sessão: ${sessionId}`);
+  console.log(`[Webhook Test] Payload:`, JSON.stringify(payload, null, 2));
+  
+  const session = webhookTestSessions.get(sessionId);
+  
+  if (!session) {
+    return res.status(404).json({ 
+      success: false, 
+      error: 'Sessão de teste não encontrada ou expirada' 
+    });
+  }
+  
+  // Adicionar evento
+  session.events.push({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    payload,
+    headers: {
+      'content-type': req.get('content-type'),
+      'user-agent': req.get('user-agent'),
+      'x-real-ip': req.get('x-real-ip') || req.ip
+    }
+  });
+  
+  // Manter apenas os últimos 50 eventos
+  if (session.events.length > 50) {
+    session.events = session.events.slice(-50);
+  }
+  
+  res.json({ success: true, message: 'Evento recebido' });
+});
+
+// Buscar eventos de teste (autenticado)
+app.get('/api/webhook/test/:sessionId/events', authenticateToken, (req, res) => {
+  const { sessionId } = req.params;
+  const { since } = req.query; // timestamp para buscar apenas novos eventos
+  
+  const session = webhookTestSessions.get(sessionId);
+  
+  if (!session) {
+    return res.status(404).json({ 
+      success: false, 
+      error: 'Sessão de teste não encontrada ou expirada' 
+    });
+  }
+  
+  let events = session.events;
+  
+  // Filtrar eventos desde um timestamp específico
+  if (since) {
+    events = events.filter(e => new Date(e.timestamp) > new Date(since));
+  }
+  
+  res.json({ 
+    success: true, 
+    events,
+    totalEvents: session.events.length,
+    sessionCreatedAt: new Date(session.createdAt).toISOString()
+  });
+});
+
+// Encerrar sessão de teste
+app.delete('/api/webhook/test/:sessionId', authenticateToken, (req, res) => {
+  const { sessionId } = req.params;
+  
+  if (webhookTestSessions.has(sessionId)) {
+    webhookTestSessions.delete(sessionId);
+    res.json({ success: true, message: 'Sessão encerrada' });
+  } else {
+    res.status(404).json({ success: false, error: 'Sessão não encontrada' });
   }
 });
 
