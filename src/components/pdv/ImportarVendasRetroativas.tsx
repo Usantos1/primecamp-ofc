@@ -139,7 +139,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
             desconto_total: 0,
             total: venda.venda,
             total_pago: venda.venda,
-            observacoes: `${observacao}\nData original: ${venda.dataFormatada}\nCusto: ${currencyFormatters.BRL(venda.custo)}\nLucro: ${currencyFormatters.BRL(venda.lucro)}`,
+            observacoes: `${observacao}\nData original: ${venda.dataFormatada}\nCusto: ${currencyFormatters.brl(venda.custo)}\nLucro: ${currencyFormatters.brl(venda.lucro)}`,
             is_draft: false,
             created_at: `${venda.data}T12:00:00Z`,
             finalized_at: `${venda.data}T12:00:00Z`,
@@ -161,7 +161,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
           valor_unitario: venda.venda,
           desconto: 0,
           valor_total: venda.venda,
-          observacao: `Custo: ${currencyFormatters.BRL(venda.custo)} | Lucro: ${currencyFormatters.BRL(venda.lucro)}`,
+          observacao: `Custo: ${currencyFormatters.brl(venda.custo)} | Lucro: ${currencyFormatters.brl(venda.lucro)}`,
         });
 
         // Criar pagamento genérico (dinheiro)
@@ -273,9 +273,9 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
                 {vendasParsed.length} vendas encontradas
               </span>
               <div className="flex gap-4 text-sm">
-                <span>Custo: <strong className="text-red-600">{currencyFormatters.BRL(totais.custo)}</strong></span>
-                <span>Venda: <strong className="text-blue-600">{currencyFormatters.BRL(totais.venda)}</strong></span>
-                <span>Lucro: <strong className="text-green-600">{currencyFormatters.BRL(totais.lucro)}</strong></span>
+                <span>Custo: <strong className="text-red-600">{currencyFormatters.brl(totais.custo)}</strong></span>
+                <span>Venda: <strong className="text-blue-600">{currencyFormatters.brl(totais.venda)}</strong></span>
+                <span>Lucro: <strong className="text-green-600">{currencyFormatters.brl(totais.lucro)}</strong></span>
               </div>
             </div>
 
@@ -294,9 +294,9 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
                   {vendasParsed.map((venda, idx) => (
                     <TableRow key={idx}>
                       <TableCell className="font-medium">{venda.dataFormatada}</TableCell>
-                      <TableCell className="text-right text-red-600">{currencyFormatters.BRL(venda.custo)}</TableCell>
-                      <TableCell className="text-right text-blue-600">{currencyFormatters.BRL(venda.venda)}</TableCell>
-                      <TableCell className="text-right text-green-600">{currencyFormatters.BRL(venda.lucro)}</TableCell>
+                      <TableCell className="text-right text-red-600">{currencyFormatters.brl(venda.custo)}</TableCell>
+                      <TableCell className="text-right text-blue-600">{currencyFormatters.brl(venda.venda)}</TableCell>
+                      <TableCell className="text-right text-green-600">{currencyFormatters.brl(venda.lucro)}</TableCell>
                       <TableCell className="text-center">
                         {venda.valido ? (
                           <Check className="h-4 w-4 text-green-600 mx-auto" />
