@@ -39,7 +39,7 @@ import { PatternLock } from '@/components/assistencia/PatternLock';
 import { useOSImageReference } from '@/hooks/useOSImageReference';
 import { OSImageReferenceViewer } from '@/components/assistencia/OSImageReferenceViewer';
 import { CameraCapture } from '@/components/assistencia/CameraCapture';
-import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { currencyFormatters, dateFormatters, parseJsonArray } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -242,8 +242,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           hora_previsao: os.hora_previsao || '18:00',
           observacoes: os.observacoes || '',
           observacoes_internas: os.observacoes_internas || '',
-          checklist_entrada: os.checklist_entrada || [],
-          areas_defeito: os.areas_defeito || [],
+          checklist_entrada: parseJsonArray(os.checklist_entrada),
+          areas_defeito: parseJsonArray(os.areas_defeito),
           observacoes_checklist: os.observacoes_checklist || '',
           checklist_entrada_realizado_por_id: os.checklist_entrada_realizado_por_id || '',
           checklist_entrada_realizado_por_nome: os.checklist_entrada_realizado_por_nome || '',
@@ -425,9 +425,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     const userNome = profile?.display_name || user?.email || '';
     const agora = new Date().toISOString();
     setFormData(prev => {
-      const nextChecklist = prev.checklist_entrada.includes(itemId)
-        ? prev.checklist_entrada.filter(i => i !== itemId)
-        : [...prev.checklist_entrada, itemId];
+      const currentChecklist = parseJsonArray(prev.checklist_entrada);
+      const nextChecklist = currentChecklist.includes(itemId)
+        ? currentChecklist.filter(i => i !== itemId)
+        : [...currentChecklist, itemId];
       return {
         ...prev,
         checklist_entrada: nextChecklist,
@@ -1119,7 +1120,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           marcaNome: marca?.nome || os.marca_nome,
           modeloNome: modelo?.nome || os.modelo_nome,
           checklistEntrada: checklistEntradaConfig,
-          checklistEntradaMarcados: os.checklist_entrada || [],
+          checklistEntradaMarcados: parseJsonArray(os.checklist_entrada),
           fotoEntradaUrl,
           imagemReferenciaUrl,
           areasDefeito,
@@ -1184,7 +1185,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           marcaNome: marca?.nome || os.marca_nome,
           modeloNome: modelo?.nome || os.modelo_nome,
           checklistEntrada: checklistEntradaConfig,
-          checklistEntradaMarcados: os.checklist_entrada || [],
+          checklistEntradaMarcados: parseJsonArray(os.checklist_entrada),
           fotoEntradaUrl,
           imagemReferenciaUrl,
           areasDefeito,
@@ -1198,7 +1199,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           marcaNome: marca?.nome || os.marca_nome,
           modeloNome: modelo?.nome || os.modelo_nome,
           checklistEntrada: checklistEntradaConfig,
-          checklistEntradaMarcados: os.checklist_entrada || [],
+          checklistEntradaMarcados: parseJsonArray(os.checklist_entrada),
           fotoEntradaUrl,
           imagemReferenciaUrl,
           areasDefeito,
@@ -1236,12 +1237,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
       // Formatar checklist de entrada (separando físico e funcional)
       const checklistFisico = checklistEntradaConfig
-        .filter(item => item.categoria === 'fisico' && (os.checklist_entrada || []).includes(item.item_id))
+        .filter(item => item.categoria === 'fisico' && parseJsonArray(os.checklist_entrada).includes(item.item_id))
         .map(item => item.nome)
         .join(', ') || 'Nenhum problema encontrado';
 
       const checklistFuncional = checklistEntradaConfig
-        .filter(item => item.categoria === 'funcional' && (os.checklist_entrada || []).includes(item.item_id))
+        .filter(item => item.categoria === 'funcional' && parseJsonArray(os.checklist_entrada).includes(item.item_id))
         .map(item => item.nome)
         .join(', ') || 'Nenhum item funcional verificado';
 
@@ -1515,12 +1516,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       
       // Formatar checklist de entrada
       const checklistFisicoA4 = checklistEntradaConfig
-        .filter(item => item.categoria === 'fisico' && (os.checklist_entrada || []).includes(item.item_id))
+        .filter(item => item.categoria === 'fisico' && parseJsonArray(os.checklist_entrada).includes(item.item_id))
         .map(item => item.nome)
         .join(', ') || 'Nenhum problema encontrado';
 
       const checklistFuncionalA4 = checklistEntradaConfig
-        .filter(item => item.categoria === 'funcional' && (os.checklist_entrada || []).includes(item.item_id))
+        .filter(item => item.categoria === 'funcional' && parseJsonArray(os.checklist_entrada).includes(item.item_id))
         .map(item => item.nome)
         .join(', ') || 'Nenhum item funcional verificado';
 
@@ -2111,7 +2112,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           <CardDescription className="text-xs">Marque os problemas encontrados</CardDescription>
                         </div>
                         <Badge variant="destructive" className="text-xs">
-                          {checklistEntradaConfig.filter(i => i.categoria === 'fisico').filter(item => (formData.checklist_entrada || []).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'fisico').length}
+                          {checklistEntradaConfig.filter(i => i.categoria === 'fisico').filter(item => parseJsonArray(formData.checklist_entrada).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'fisico').length}
                         </Badge>
                       </div>
                     </CardHeader>
@@ -2122,7 +2123,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
                               <Checkbox
                                 id={`entrada-fisico-${item.id}`}
-                                checked={(formData.checklist_entrada || []).includes(item.item_id)}
+                                checked={parseJsonArray(formData.checklist_entrada).includes(item.item_id)}
                                 onCheckedChange={() => toggleChecklist(item.item_id)}
                               />
                               <Label htmlFor={`entrada-fisico-${item.id}`} className="text-sm cursor-pointer flex-1 font-medium">
@@ -2145,7 +2146,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
-                            {checklistEntradaConfig.filter(i => i.categoria === 'funcional').filter(item => (formData.checklist_entrada || []).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'funcional').length}
+                            {checklistEntradaConfig.filter(i => i.categoria === 'funcional').filter(item => parseJsonArray(formData.checklist_entrada).includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'funcional').length}
                           </Badge>
                           <Button
                             variant="outline"
@@ -2179,7 +2180,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
                               <Checkbox
                                 id={`entrada-funcional-${item.id}`}
-                                checked={(formData.checklist_entrada || []).includes(item.item_id)}
+                                checked={parseJsonArray(formData.checklist_entrada).includes(item.item_id)}
                                 onCheckedChange={() => toggleChecklist(item.item_id)}
                               />
                               <Label htmlFor={`entrada-funcional-${item.id}`} className="text-sm cursor-pointer flex-1 font-medium">

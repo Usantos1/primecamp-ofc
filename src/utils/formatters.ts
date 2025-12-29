@@ -253,3 +253,39 @@ export const numberFormatters = {
   },
 };
 
+/**
+ * Helper para parsear JSON que pode vir como string do banco de dados
+ * Retorna array vazio se o valor for inválido
+ */
+export function parseJsonArray<T = any>(value: T[] | string | null | undefined): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/**
+ * Helper para parsear JSON objeto que pode vir como string do banco de dados
+ * Retorna objeto vazio ou default se o valor for inválido
+ */
+export function parseJsonObject<T = Record<string, any>>(value: T | string | null | undefined, defaultValue: T = {} as T): T {
+  if (!value) return defaultValue;
+  if (typeof value === 'object' && !Array.isArray(value)) return value as T;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : defaultValue;
+    } catch {
+      return defaultValue;
+    }
+  }
+  return defaultValue;
+}
+

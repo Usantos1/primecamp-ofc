@@ -22,14 +22,20 @@ export function OSImageReferenceViewer({
   readOnly = false 
 }: OSImageReferenceViewerProps) {
   const [defectPoints, setDefectPoints] = useState<DefectPoint[]>([]);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, left: 0, top: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Converter defects (strings) para DefectPoint[]
   useEffect(() => {
-    if (defects.length > 0) {
-      const points: DefectPoint[] = defects
+    // Garantir que defects é um array
+    const defectsArray = Array.isArray(defects) ? defects : [];
+    
+    if (defectsArray.length > 0) {
+      const points: DefectPoint[] = defectsArray
         .map((defect, index) => {
+          if (typeof defect !== 'string') return null;
           const parts = defect.split('-');
           if (parts.length >= 2) {
             return {
@@ -47,6 +53,30 @@ export function OSImageReferenceViewer({
     }
   }, [defects]);
 
+  // Atualizar dimensões da imagem quando carregada ou redimensionada
+  const updateImageDimensions = useCallback(() => {
+    if (imageRef.current && containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const imgRect = imageRef.current.getBoundingClientRect();
+      
+      setImageDimensions({
+        width: imgRect.width,
+        height: imgRect.height,
+        left: imgRect.left - containerRect.left,
+        top: imgRect.top - containerRect.top,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (imageLoaded) {
+      updateImageDimensions();
+      // Também atualizar em resize
+      window.addEventListener('resize', updateImageDimensions);
+      return () => window.removeEventListener('resize', updateImageDimensions);
+    }
+  }, [imageLoaded, updateImageDimensions]);
+
   // Converter DefectPoint[] para strings
   const saveDefects = useCallback((points: DefectPoint[]) => {
     const defectStrings = points.map(p => `${p.x.toFixed(1)}-${p.y.toFixed(1)}`);
@@ -56,21 +86,27 @@ export function OSImageReferenceViewer({
   const handleImageClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (readOnly || !imageRef.current || !containerRef.current) return;
 
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-    const img = imageRef.current;
-    const imgRect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const imgRect = imageRef.current.getBoundingClientRect();
 
-    // Calcular posição relativa à imagem (não ao container)
-    const x = ((event.clientX - imgRect.left) / imgRect.width) * 100;
-    const y = ((event.clientY - imgRect.top) / imgRect.height) * 100;
+    // Calcular posição do clique relativa ao container
+    const clickX = event.clientX - containerRect.left;
+    const clickY = event.clientY - containerRect.top;
+
+    // Calcular offset da imagem dentro do container
+    const imgOffsetX = imgRect.left - containerRect.left;
+    const imgOffsetY = imgRect.top - containerRect.top;
+
+    // Calcular posição relativa à imagem (em %)
+    const x = ((clickX - imgOffsetX) / imgRect.width) * 100;
+    const y = ((clickY - imgOffsetY) / imgRect.height) * 100;
 
     // Verificar se clicou dentro da imagem
     if (x < 0 || x > 100 || y < 0 || y > 100) return;
 
-    // Verificar se já existe um defeito próximo (dentro de 3%)
+    // Verificar se já existe um defeito próximo (dentro de 5%)
     const existingDefect = defectPoints.find(
-      d => Math.abs(d.x - x) < 3 && Math.abs(d.y - y) < 3
+      d => Math.abs(d.x - x) < 5 && Math.abs(d.y - y) < 5
     );
 
     if (existingDefect) {
@@ -117,20 +153,25 @@ export function OSImageReferenceViewer({
         className="max-w-full max-h-full w-auto h-auto object-contain select-none"
         style={{ maxWidth: '100%', maxHeight: '100%' }}
         draggable={false}
+        onLoad={() => {
+          setImageLoaded(true);
+          updateImageDimensions();
+        }}
       />
       
-      {/* Marcações X nos defeitos */}
-      {defectPoints.map(defect => {
-        const xPos = `${defect.x}%`;
-        const yPos = `${defect.y}%`;
+      {/* Marcações X nos defeitos - posicionadas relativas à imagem */}
+      {imageLoaded && imageDimensions.width > 0 && defectPoints.map(defect => {
+        // Calcular posição em pixels relativa ao container
+        const xPixel = imageDimensions.left + (defect.x / 100) * imageDimensions.width;
+        const yPixel = imageDimensions.top + (defect.y / 100) * imageDimensions.height;
         
         return (
           <div
             key={defect.id}
             className="absolute pointer-events-none"
             style={{
-              left: xPos,
-              top: yPos,
+              left: `${xPixel}px`,
+              top: `${yPixel}px`,
               transform: 'translate(-50%, -50%)',
             }}
           >
