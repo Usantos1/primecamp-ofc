@@ -91,11 +91,12 @@ export function useDashboardData() {
         .lte('created_at', fimMes.toISOString())
         .execute();
 
-      const faturamentoDia = vendasDia?.reduce((acc, v) => acc + (v.total_pago || v.total || 0), 0) || 0;
-      const faturamentoMes = vendasMes?.reduce((acc, v) => acc + (v.total_pago || v.total || 0), 0) || 0;
+      const faturamentoDia = vendasDia?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
+      const faturamentoMes = vendasMes?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
       const vendasHoje = vendasDia?.length || 0;
       const vendasMesCount = vendasMes?.length || 0;
-      const ticketMedio = vendasHoje > 0 ? faturamentoDia / vendasHoje : 0;
+      // Ticket médio baseado no mês (mais representativo)
+      const ticketMedio = vendasMesCount > 0 ? faturamentoMes / vendasMesCount : 0;
 
       // Total em caixa (sessão aberta)
       const { data: caixaSession } = await from('cash_register_sessions')
@@ -222,9 +223,9 @@ export function useDashboardData() {
         const inicioDia = startOfDay(new Date(dateISO));
         const fimDia = endOfDay(new Date(dateISO));
 
-        // Vendas do dia
+        // Vendas do dia (buscar total para mostrar faturamento)
         const { data: vendas } = await from('sales')
-          .select('id')
+          .select('id, total, total_pago')
           .eq('status', 'paid')
           .gte('created_at', inicioDia.toISOString())
           .lte('created_at', fimDia.toISOString())
@@ -237,9 +238,12 @@ export function useDashboardData() {
           .lte('created_at', fimDia.toISOString())
           .execute();
 
+        // Calcular faturamento do dia
+        const faturamentoDia = vendas?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
+
         return {
           date,
-          vendas: vendas?.length || 0,
+          vendas: faturamentoDia, // Agora mostra faturamento em R$
           os: os?.length || 0,
         };
       });
