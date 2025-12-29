@@ -152,6 +152,7 @@ export default function Vendas() {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     
+    // Vendas de hoje
     const vendasHoje = sales.filter(s => {
       const data = new Date(s.created_at);
       data.setHours(0, 0, 0, 0);
@@ -162,17 +163,26 @@ export default function Vendas() {
       .filter(s => s.status === 'paid')
       .reduce((sum, s) => sum + Number(s.total), 0);
 
-    const totalGeral = sales
-      .filter(s => s.status === 'paid')
-      .reduce((sum, s) => sum + Number(s.total), 0);
+    // Vendas do período filtrado (usando filteredSales)
+    const vendasPeriodo = filteredSales.filter(s => s.status === 'paid');
+    const totalPeriodo = vendasPeriodo.reduce((sum, s) => sum + Number(s.total), 0);
+    const ticketMedio = vendasPeriodo.length > 0 ? totalPeriodo / vendasPeriodo.length : 0;
+
+    // Rascunhos e pendentes do período
+    const rascunhos = filteredSales.filter(s => s.status === 'draft').length;
+    const pendentes = filteredSales.filter(s => s.status === 'open' || s.status === 'partial').length;
 
     return {
-      totalHoje: vendasHoje.length,
+      totalHoje: vendasHoje.filter(s => s.status === 'paid').length,
       totalHojeValor: totalHoje,
-      totalGeral: sales.length,
-      totalGeralValor: totalGeral,
+      // Período filtrado
+      qtdPeriodo: vendasPeriodo.length,
+      totalPeriodo,
+      ticketMedio,
+      rascunhos,
+      pendentes,
     };
-  }, [sales]);
+  }, [sales, filteredSales]);
 
   // Ações rápidas
   const handlePrintCupom = async (sale: Sale) => {
@@ -534,24 +544,31 @@ export default function Vendas() {
   return (
     <ModernLayout title="Vendas" subtitle="Gerenciamento de vendas do PDV">
       <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
-        {/* Estatísticas - Mobile: linha única compacta */}
+        {/* Estatísticas - Mobile: linha única compacta (reflete período filtrado) */}
         <div className="md:hidden flex-shrink-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 text-xs whitespace-nowrap">
+            <span className="text-green-600 font-bold">{currencyFormatters.brl(stats.totalPeriodo)}</span>
+            <span className="text-green-500">({stats.qtdPeriodo})</span>
+          </div>
+          <div className="flex items-center gap-1 px-2 py-1.5 bg-purple-50 dark:bg-purple-950/30 rounded border border-purple-200 text-xs whitespace-nowrap">
+            <span className="text-purple-500">Ticket:</span>
+            <span className="text-purple-600 font-bold">{currencyFormatters.brl(stats.ticketMedio)}</span>
+          </div>
           <div className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 text-xs whitespace-nowrap">
             <span className="text-blue-600 font-bold">{stats.totalHoje}</span>
             <span className="text-blue-500">hoje</span>
-            <span className="text-blue-600 font-medium">{currencyFormatters.brl(stats.totalHojeValor)}</span>
           </div>
           <div className="flex items-center gap-1 px-2 py-1.5 bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200 text-xs whitespace-nowrap">
-            <span className="text-yellow-600 font-bold">{sales.filter(s => s.is_draft).length}</span>
-            <span className="text-yellow-500">rascunhos</span>
+            <span className="text-yellow-600 font-bold">{stats.rascunhos}</span>
+            <span className="text-yellow-500">rasc.</span>
           </div>
           <div className="flex items-center gap-1 px-2 py-1.5 bg-orange-50 dark:bg-orange-950/30 rounded border border-orange-200 text-xs whitespace-nowrap">
-            <span className="text-orange-600 font-bold">{sales.filter(s => s.status === 'partial' || s.status === 'open').length}</span>
-            <span className="text-orange-500">pendentes</span>
+            <span className="text-orange-600 font-bold">{stats.pendentes}</span>
+            <span className="text-orange-500">pend.</span>
           </div>
         </div>
 
-        {/* Estatísticas - Desktop: cards completos */}
+        {/* Estatísticas - Desktop: cards completos (refletem o período filtrado) */}
         <div className="hidden md:grid flex-shrink-0 grid-cols-4 gap-3">
           <Card className="border-2 border-l-4 border-l-blue-500 border-gray-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
@@ -565,30 +582,36 @@ export default function Vendas() {
           </Card>
           <Card className="border-2 border-l-4 border-l-green-500 border-gray-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
-              <CardTitle className="text-sm font-medium">Total Geral</CardTitle>
+              <CardTitle className="text-sm font-medium">Total do Período</CardTitle>
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-6 pb-3">
-              <div className="text-2xl font-bold">{stats.totalGeral}</div>
-              <p className="text-xs text-muted-foreground mt-1">{currencyFormatters.brl(stats.totalGeralValor)}</p>
+              <div className="text-2xl font-bold text-green-600">{currencyFormatters.brl(stats.totalPeriodo)}</div>
+              <p className="text-xs text-muted-foreground mt-1">{stats.qtdPeriodo} vendas pagas</p>
             </CardContent>
           </Card>
-          <Card className="border-2 border-l-4 border-l-yellow-500 border-gray-300">
+          <Card className="border-2 border-l-4 border-l-purple-500 border-gray-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
-              <CardTitle className="text-sm font-medium">Rascunhos</CardTitle>
-              <Edit className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Ticket Médio</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-6 pb-3">
-              <div className="text-2xl font-bold">{sales.filter(s => s.is_draft).length}</div>
+              <div className="text-2xl font-bold text-purple-600">{currencyFormatters.brl(stats.ticketMedio)}</div>
+              <p className="text-xs text-muted-foreground mt-1">por venda</p>
             </CardContent>
           </Card>
           <Card className="border-2 border-l-4 border-l-orange-500 border-gray-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-3 px-6">
-              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Rascunhos / Pendentes</CardTitle>
+              <Edit className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-6 pb-3">
-              <div className="text-2xl font-bold">{sales.filter(s => s.status === 'partial' || s.status === 'open').length}</div>
+              <div className="text-2xl font-bold">
+                <span className="text-yellow-600">{stats.rascunhos}</span>
+                <span className="text-muted-foreground mx-1">/</span>
+                <span className="text-orange-600">{stats.pendentes}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">no período</p>
             </CardContent>
           </Card>
         </div>
