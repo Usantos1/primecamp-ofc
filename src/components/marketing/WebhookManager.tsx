@@ -10,19 +10,79 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, Copy, Trash2, Eye, CheckCircle, XCircle, 
-  Webhook, Link, Clock, AlertTriangle, ExternalLink
+  Webhook, Link, Clock, AlertTriangle, ExternalLink, FlaskConical, ArrowRight
 } from 'lucide-react';
 import { useWebhooks, useWebhookLogs, WebhookConfig } from '@/hooks/useWebhooks';
 import { dateFormatters } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 
+// Função para mapear campos do payload para o lead
+const mapPayloadToLead = (payload: any) => {
+  // Normaliza chaves removendo : e espaços extras
+  const normalizeKey = (key: string) => key.toLowerCase().replace(/[:\s]+/g, '').trim();
+  
+  const normalizedPayload: Record<string, any> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    normalizedPayload[normalizeKey(key)] = value;
+  }
+  
+  // Mapeamentos de campos conhecidos
+  const mappings: Record<string, string[]> = {
+    nome: ['nome', 'name', 'fullname', 'full_name', 'nomecompleto'],
+    email: ['email', 'e-mail', 'emailaddress'],
+    telefone: ['telefone', 'phone', 'fone', 'tel', 'dddtelefone', 'ddd+telefone'],
+    whatsapp: ['whatsapp', 'celular', 'mobile'],
+    cidade: ['cidade', 'city'],
+    estado: ['estado', 'state', 'uf'],
+    interesse: ['interesse', 'interest', 'produto', 'servico', 'mensagem', 'message'],
+    observacoes: ['observacoes', 'notes', 'obs', 'mensagem', 'message'],
+    utm_source: ['utm_source', 'utmsource', 'source'],
+    utm_medium: ['utm_medium', 'utmmedium', 'medium'],
+    utm_campaign: ['utm_campaign', 'utmcampaign', 'campaign', 'campanha'],
+    utm_term: ['utm_term', 'utmterm', 'term'],
+  };
+  
+  const result: Record<string, { value: string; originalKey: string }> = {};
+  
+  for (const [field, aliases] of Object.entries(mappings)) {
+    for (const alias of aliases) {
+      if (normalizedPayload[alias] !== undefined) {
+        // Encontra a chave original
+        const originalKey = Object.keys(payload).find(k => normalizeKey(k) === alias) || alias;
+        result[field] = { 
+          value: String(normalizedPayload[alias] || ''), 
+          originalKey 
+        };
+        break;
+      }
+    }
+  }
+  
+  // Campos não mapeados
+  const mappedAliases = new Set<string>();
+  for (const aliases of Object.values(mappings)) {
+    aliases.forEach(a => mappedAliases.add(a));
+  }
+  
+  const unmapped: Record<string, any> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (!mappedAliases.has(normalizeKey(key))) {
+      unmapped[key] = value;
+    }
+  }
+  
+  return { mapped: result, unmapped };
+};
+
 export function WebhookManager() {
   const { toast } = useToast();
   const { webhooks, isLoading, createWebhook, updateWebhook, deleteWebhook, getWebhookUrl, isCreating, isUpdating } = useWebhooks();
   
+  const [activeTab, setActiveTab] = useState<'config' | 'test'>('config');
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showLogsDialog, setShowLogsDialog] = useState(false);
@@ -35,7 +95,33 @@ export function WebhookManager() {
     descricao: '',
   });
 
+  // Estados para teste de webhook
+  const [testPayload, setTestPayload] = useState('');
+  const [parsedPayload, setParsedPayload] = useState<any>(null);
+  const [mappedResult, setMappedResult] = useState<{ mapped: Record<string, { value: string; originalKey: string }>; unmapped: Record<string, any> } | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
   const { logs, isLoading: logsLoading } = useWebhookLogs(selectedWebhook?.id || null);
+
+  const handleAnalyzePayload = () => {
+    setParseError(null);
+    setParsedPayload(null);
+    setMappedResult(null);
+    
+    if (!testPayload.trim()) {
+      setParseError('Cole o JSON do payload para analisar');
+      return;
+    }
+    
+    try {
+      const parsed = JSON.parse(testPayload);
+      setParsedPayload(parsed);
+      const result = mapPayloadToLead(parsed);
+      setMappedResult(result);
+    } catch (e) {
+      setParseError('JSON inválido. Verifique a formatação.');
+    }
+  };
 
   const resetForm = () => {
     setForm({ nome: '', fonte_padrao: 'ativacrm', descricao: '' });
@@ -90,18 +176,180 @@ export function WebhookManager() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Webhook className="h-5 w-5 text-primary" />
-          <span className="font-medium">Webhooks Configurados</span>
-          <Badge variant="secondary" className="text-xs">{webhooks.length}</Badge>
+      {/* Tabs: Configuração e Teste */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'config' | 'test')}>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="config" className="text-xs">
+              <Webhook className="h-3.5 w-3.5 mr-1.5" />
+              Configuração
+            </TabsTrigger>
+            <TabsTrigger value="test" className="text-xs">
+              <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
+              Testar Payload
+            </TabsTrigger>
+          </TabsList>
+          
+          {activeTab === 'config' && (
+            <Button onClick={() => handleOpenDialog()} size="sm" className="h-8">
+              <Plus className="h-4 w-4 mr-1" />Novo Webhook
+            </Button>
+          )}
         </div>
-        <Button onClick={() => handleOpenDialog()} size="sm" className="h-8">
-          <Plus className="h-4 w-4 mr-1" />Novo Webhook
-        </Button>
-      </div>
 
+        {/* Tab de Teste de Payload */}
+        <TabsContent value="test" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-primary" />
+                Testar Mapeamento de Payload
+              </CardTitle>
+              <CardDescription>
+                Cole o JSON recebido pelo webhook para ver como os dados são mapeados para o lead
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Payload JSON (copie dos logs ou do sistema de origem)</Label>
+                <Textarea
+                  value={testPayload}
+                  onChange={(e) => setTestPayload(e.target.value)}
+                  placeholder={`{\n  "Nome:": "João Silva",\n  "DDD + Telefone:": "+5519999999999",\n  "E-mail:": "joao@email.com",\n  "Mensagem:": "Tenho interesse...",\n  "utm_source": "google"\n}`}
+                  rows={8}
+                  className="font-mono text-xs"
+                />
+              </div>
+              
+              <Button onClick={handleAnalyzePayload} className="w-full">
+                <FlaskConical className="h-4 w-4 mr-2" />
+                Analisar Payload
+              </Button>
+              
+              {parseError && (
+                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-600 dark:text-red-400">{parseError}</p>
+                </div>
+              )}
+              
+              {mappedResult && (
+                <div className="space-y-4">
+                  {/* Campos Mapeados */}
+                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2 text-green-800 dark:text-green-200">
+                        <CheckCircle className="h-4 w-4" />
+                        Campos Mapeados ({Object.keys(mappedResult.mapped).length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">Campo Original</TableHead>
+                            <TableHead className="text-xs">→</TableHead>
+                            <TableHead className="text-xs">Campo do Lead</TableHead>
+                            <TableHead className="text-xs">Valor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(mappedResult.mapped).map(([field, { value, originalKey }]) => (
+                            <TableRow key={field}>
+                              <TableCell className="font-mono text-xs">{originalKey}</TableCell>
+                              <TableCell><ArrowRight className="h-3 w-3 text-muted-foreground" /></TableCell>
+                              <TableCell className="font-medium text-xs text-green-700 dark:text-green-300">{field}</TableCell>
+                              <TableCell className="text-xs max-w-[200px] truncate">{value || <span className="text-muted-foreground">(vazio)</span>}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Campos Não Mapeados */}
+                  {Object.keys(mappedResult.unmapped).length > 0 && (
+                    <Card className="bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                          <AlertTriangle className="h-4 w-4" />
+                          Campos Não Mapeados ({Object.keys(mappedResult.unmapped).length})
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Estes campos são recebidos mas não são salvos automaticamente no lead
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs">Campo</TableHead>
+                              <TableHead className="text-xs">Valor</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {Object.entries(mappedResult.unmapped).map(([key, value]) => (
+                              <TableRow key={key}>
+                                <TableCell className="font-mono text-xs">{key}</TableCell>
+                                <TableCell className="text-xs max-w-[300px] truncate">
+                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                  
+                  {/* Preview do Lead */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Preview: Lead que seria criado</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <pre className="bg-muted p-3 rounded-lg text-xs overflow-x-auto">
+{JSON.stringify({
+  nome: mappedResult.mapped.nome?.value || '',
+  email: mappedResult.mapped.email?.value || '',
+  telefone: mappedResult.mapped.telefone?.value || '',
+  whatsapp: mappedResult.mapped.whatsapp?.value || mappedResult.mapped.telefone?.value || '',
+  cidade: mappedResult.mapped.cidade?.value || '',
+  estado: mappedResult.mapped.estado?.value || '',
+  interesse: mappedResult.mapped.interesse?.value || '',
+  observacoes: mappedResult.mapped.observacoes?.value || '',
+  utm_source: mappedResult.mapped.utm_source?.value || '',
+  utm_medium: mappedResult.mapped.utm_medium?.value || '',
+  utm_campaign: mappedResult.mapped.utm_campaign?.value || '',
+}, null, 2)}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Referência de Campos */}
+          <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200">
+            <CardContent className="p-4">
+              <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Campos Suportados</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-blue-700 dark:text-blue-300">
+                <div><strong>nome:</strong> nome, name, fullname</div>
+                <div><strong>email:</strong> email, e-mail</div>
+                <div><strong>telefone:</strong> telefone, phone, ddd+telefone</div>
+                <div><strong>whatsapp:</strong> whatsapp, celular, mobile</div>
+                <div><strong>cidade:</strong> cidade, city</div>
+                <div><strong>estado:</strong> estado, state, uf</div>
+                <div><strong>interesse:</strong> interesse, produto, mensagem</div>
+                <div><strong>utm_source:</strong> utm_source, source</div>
+                <div><strong>utm_campaign:</strong> utm_campaign, campaign</div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab de Configuração */}
+        <TabsContent value="config" className="space-y-4 mt-4">
       {/* Lista de Webhooks */}
       {webhooks.length === 0 ? (
         <Card>
@@ -209,6 +457,8 @@ export function WebhookManager() {
           </p>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog de criação/edição */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
