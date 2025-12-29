@@ -427,26 +427,26 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
                           <div
                             key={msg.id}
                             className={cn(
-                              'flex mb-1 group',
+                              'flex mb-2 group w-full',
                               msg.direction === 'outbound' ? 'justify-end' : 'justify-start'
                             )}
                           >
-                            <div className="relative">
+                            <div className={cn(
+                              'relative flex items-start gap-1',
+                              msg.direction === 'outbound' ? 'flex-row-reverse' : 'flex-row'
+                            )}>
                               {/* Botão de apagar (aparece no hover) */}
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={cn(
-                                      'absolute top-0 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-black/50 shadow-sm z-10',
-                                      msg.direction === 'outbound' ? '-left-8' : '-right-8'
-                                    )}
+                                    className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-black/50 shadow-sm shrink-0"
                                   >
                                     <MoreVertical className="h-3 w-3" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align={msg.direction === 'outbound' ? 'start' : 'end'}>
+                                <DropdownMenuContent align={msg.direction === 'outbound' ? 'end' : 'start'}>
                                   <DropdownMenuItem 
                                     onClick={() => {
                                       setDeletingMessageId(msg.id);
@@ -461,14 +461,14 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
                               
                               <div
                                 className={cn(
-                                  'max-w-[65%] min-w-[100px] rounded-lg px-3 py-1.5 shadow-sm relative',
+                                  'max-w-[50%] rounded-lg px-3 py-2 shadow-sm',
                                   msg.direction === 'outbound'
                                     ? 'bg-[#d9fdd3] dark:bg-[#005c4b] rounded-tr-none'
                                     : 'bg-white dark:bg-[#202c33] rounded-tl-none'
                                 )}
                               >
                                 {msg.media_url && (
-                                  <div className="mb-1">
+                                  <div className="mb-2">
                                     <img 
                                       src={msg.media_url} 
                                       alt="Mídia" 
@@ -476,18 +476,20 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
                                     />
                                   </div>
                                 )}
-                                <p className="text-sm text-[#111b21] dark:text-[#e9edef] whitespace-pre-wrap break-words pr-14">
+                                <p className="text-sm text-[#111b21] dark:text-[#e9edef] whitespace-pre-wrap break-words">
                                   {msg.body}
                                 </p>
                                 <div className={cn(
-                                  'absolute bottom-1 right-2 flex items-center gap-0.5',
-                                  msg.direction === 'outbound' ? 'text-[#667781]' : 'text-[#667781]'
+                                  'flex items-center gap-1 mt-1',
+                                  msg.direction === 'outbound' ? 'justify-end' : 'justify-end'
                                 )}>
-                                  <span className="text-[11px]">
+                                  <span className="text-[10px] text-[#667781] dark:text-[#8696a0]">
                                     {formatMessageTime(msg.created_at)}
                                   </span>
                                   {msg.direction === 'outbound' && (
-                                    <span className="ml-0.5">{getStatusIcon(msg.status, msg.direction)}</span>
+                                    <span className="text-[#667781] dark:text-[#8696a0]">
+                                      {getStatusIcon(msg.status, msg.direction)}
+                                    </span>
                                   )}
                                 </div>
                               </div>
