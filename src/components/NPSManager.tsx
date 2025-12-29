@@ -23,12 +23,36 @@ interface NPSManagerProps {
 
 export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = false }: NPSManagerProps = {}) => {
   const { surveys, responses, loading, createSurvey, updateSurvey, deleteSurvey, submitResponse, getTodayResponse } = useNPS();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [activeTab, setActiveTab] = useState(mode);
   const [surveyResponses, setSurveyResponses] = useState<Record<string, any>>({});
+  const [initialized, setInitialized] = useState(false);
 
   const activeSurveys = surveys.filter(s => s.is_active);
-  const todayResponses = responses.filter(r => r.date === format(new Date(), 'yyyy-MM-dd'));
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayResponses = responses.filter(r => r.date === today);
+
+  // Carregar respostas existentes do usuário para hoje
+  useEffect(() => {
+    if (!loading && surveys.length > 0 && user && !initialized) {
+      const existingResponses: Record<string, any> = {};
+      
+      surveys.forEach(survey => {
+        const todayResponse = responses.find(
+          r => r.survey_id === survey.id && r.user_id === user.id && r.date === today
+        );
+        if (todayResponse?.responses) {
+          existingResponses[survey.id] = todayResponse.responses;
+        }
+      });
+      
+      if (Object.keys(existingResponses).length > 0) {
+        console.log('[NPS] Carregando respostas existentes:', existingResponses);
+        setSurveyResponses(existingResponses);
+      }
+      setInitialized(true);
+    }
+  }, [loading, surveys, responses, user, today, initialized]);
 
   const handleResponseSubmit = async (survey: NPSSurvey) => {
     await submitResponse(survey.id, surveyResponses[survey.id] || {});
