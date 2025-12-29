@@ -289,11 +289,13 @@ export const useNPS = () => {
 
   const getTodayResponse = (surveyId: string) => {
     const today = new Date().toISOString().split('T')[0];
-    return responses.find(
+    const found = responses.find(
       r => r.survey_id === surveyId && 
            r.user_id === user?.id && 
-           r.date === today
+           r.date?.split('T')[0] === today
     );
+    console.log('[NPS] getTodayResponse:', surveyId, 'today:', today, 'found:', found, 'responses:', responses.length);
+    return found;
   };
 
   useEffect(() => {
