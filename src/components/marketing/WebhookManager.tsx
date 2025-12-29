@@ -23,11 +23,49 @@ import { useToast } from '@/hooks/use-toast';
 
 const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
 
+// Função para extrair valor de um caminho aninhado (ex: "contact.name")
+const getNestedValue = (obj: any, path: string): any => {
+  return path.split('.').reduce((acc, key) => acc?.[key], obj);
+};
+
 // Função para mapear campos do payload para o lead
 const mapPayloadToLead = (payload: any) => {
   // Normaliza chaves removendo : e espaços extras
   const normalizeKey = (key: string) => key.toLowerCase().replace(/[:\s]+/g, '').trim();
   
+  // Primeiro, tenta detectar o formato do payload
+  const isAtivaCRMTicket = payload.ticket && payload.contact;
+  const isElementorForm = payload['Nome:'] || payload['E-mail:'] || payload.form_id;
+  
+  // Se for formato AtivaCRM (ticket de WhatsApp), extrair dados do contact
+  if (isAtivaCRMTicket) {
+    const contact = payload.contact || {};
+    const rawMessage = payload.rawMessage?.Info || {};
+    const messages = payload.messages || [];
+    const lastMessage = messages[0]?.body || payload.ticket?.lastMessage || '';
+    
+    return {
+      mapped: {
+        nome: { value: contact.name || rawMessage.PushName || '', originalKey: 'contact.name' },
+        telefone: { value: contact.number || rawMessage.Sender || '', originalKey: 'contact.number' },
+        whatsapp: { value: contact.number || rawMessage.Sender || '', originalKey: 'contact.number' },
+        email: { value: contact.email || '', originalKey: 'contact.email' },
+        observacoes: { value: lastMessage, originalKey: 'messages[0].body' },
+        utm_source: { value: 'ativacrm_whatsapp', originalKey: 'auto' },
+      },
+      unmapped: {
+        ticket_id: payload.ticket?.id,
+        ticket_status: payload.ticket?.status,
+        queue_name: payload.ticket?.queueName,
+        company_name: payload.company?.name,
+        whatsapp_name: payload.whatsapp?.name,
+        profile_pic: contact.profilePicUrl,
+      },
+      format: 'AtivaCRM WhatsApp Ticket'
+    };
+  }
+  
+  // Formato padrão (Elementor, formulários, etc.)
   const normalizedPayload: Record<string, any> = {};
   for (const [key, value] of Object.entries(payload)) {
     normalizedPayload[normalizeKey(key)] = value;
@@ -53,7 +91,7 @@ const mapPayloadToLead = (payload: any) => {
   
   for (const [field, aliases] of Object.entries(mappings)) {
     for (const alias of aliases) {
-      if (normalizedPayload[alias] !== undefined) {
+      if (normalizedPayload[alias] !== undefined && typeof normalizedPayload[alias] !== 'object') {
         // Encontra a chave original
         const originalKey = Object.keys(payload).find(k => normalizeKey(k) === alias) || alias;
         result[field] = { 
@@ -78,7 +116,7 @@ const mapPayloadToLead = (payload: any) => {
     }
   }
   
-  return { mapped: result, unmapped };
+  return { mapped: result, unmapped, format: isElementorForm ? 'Elementor Form' : 'Generic' };
 };
 
 export function WebhookManager() {
@@ -480,6 +518,18 @@ export function WebhookManager() {
           {/* Análise do Evento Selecionado */}
           {selectedEvent && mappedResult && (
             <div className="space-y-4">
+              {/* Formato Detectado */}
+              {(mappedResult as any).format && (
+                <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-purple-600">Formato Detectado</Badge>
+                    <span className="font-medium text-purple-800 dark:text-purple-200">
+                      {(mappedResult as any).format}
+                    </span>
+                  </div>
+                </div>
+              )}
+              
               {/* Payload Original */}
               <Card>
                 <CardHeader className="pb-2">
