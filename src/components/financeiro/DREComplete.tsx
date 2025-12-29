@@ -77,11 +77,22 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
 
   // Calcular valores do DRE
   const dreData = React.useMemo(() => {
+    // Garantir que sales e billsPaid são arrays válidos
+    const validSales = Array.isArray(sales) ? sales : [];
+    const validBills = Array.isArray(billsPaid) ? billsPaid : [];
+    const validTransactions = Array.isArray(transactions) ? transactions : [];
+    
     // RECEITA BRUTA DE VENDAS
-    const receitaBrutaVendas = sales.reduce((sum: number, s: any) => sum + Number(s.total || 0), 0);
+    const receitaBrutaVendas = validSales.reduce((sum: number, s: any) => {
+      const valor = Number(s.total || 0);
+      return sum + (isNaN(valor) ? 0 : valor);
+    }, 0);
     
     // CMV - Custo das Mercadorias Vendidas (extraído da observação)
-    const cmv = sales.reduce((sum: number, s: any) => sum + extractCusto(s.observacoes), 0);
+    const cmv = validSales.reduce((sum: number, s: any) => {
+      const valor = extractCusto(s.observacoes);
+      return sum + (isNaN(valor) ? 0 : valor);
+    }, 0);
     
     // LUCRO BRUTO
     const lucroBruto = receitaBrutaVendas - cmv;
@@ -89,9 +100,10 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     
     // Outras receitas (transações manuais de entrada)
     const outrasReceitas: Record<string, number> = {};
-    transactions.filter(t => t.type === 'entrada').forEach(t => {
+    validTransactions.filter(t => t.type === 'entrada').forEach(t => {
       const catName = t.category?.name || 'Outras Receitas';
-      outrasReceitas[catName] = (outrasReceitas[catName] || 0) + t.amount;
+      const valor = Number(t.amount || 0);
+      outrasReceitas[catName] = (outrasReceitas[catName] || 0) + (isNaN(valor) ? 0 : valor);
     });
     const totalOutrasReceitas = Object.values(outrasReceitas).reduce((sum, v) => sum + v, 0);
     
@@ -100,36 +112,52 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     const despesasVariaveis: Record<string, number> = {};
     
     // Contas pagas - agrupar por descrição
-    billsPaid.forEach((bill: any) => {
+    validBills.forEach((bill: any) => {
       const descricao = bill.description || 'Outras Despesas';
+      const valor = Number(bill.amount || 0);
+      const valorValido = isNaN(valor) ? 0 : valor;
       if (bill.expense_type === 'fixa') {
-        despesasFixas[descricao] = (despesasFixas[descricao] || 0) + Number(bill.amount || 0);
+        despesasFixas[descricao] = (despesasFixas[descricao] || 0) + valorValido;
       } else {
-        despesasVariaveis[descricao] = (despesasVariaveis[descricao] || 0) + Number(bill.amount || 0);
+        despesasVariaveis[descricao] = (despesasVariaveis[descricao] || 0) + valorValido;
       }
     });
     
     // Transações manuais de saída
-    transactions.filter(t => t.type === 'saida').forEach(t => {
+    validTransactions.filter(t => t.type === 'saida').forEach(t => {
       const catName = t.category?.name || 'Outras Despesas';
-      despesasVariaveis[catName] = (despesasVariaveis[catName] || 0) + t.amount;
+      const valor = Number(t.amount || 0);
+      despesasVariaveis[catName] = (despesasVariaveis[catName] || 0) + (isNaN(valor) ? 0 : valor);
     });
     
     const totalDespesasFixas = Object.values(despesasFixas).reduce((sum, v) => sum + v, 0);
     const totalDespesasVariaveis = Object.values(despesasVariaveis).reduce((sum, v) => sum + v, 0);
     const totalDespesasOperacionais = totalDespesasFixas + totalDespesasVariaveis;
     
-    // RESULTADO OPERACIONAL (EBITDA)
+    // RESULTADO OPERACIONAL (EBITDA) = Lucro Bruto - Despesas Operacionais
     const resultadoOperacional = lucroBruto + totalOutrasReceitas - totalDespesasOperacionais;
     const totalReceitas = receitaBrutaVendas + totalOutrasReceitas;
     const margemOperacional = totalReceitas > 0 ? (resultadoOperacional / totalReceitas) * 100 : 0;
     
-    // IMPOSTOS (estimado 6%)
-    const impostos = totalReceitas * 0.06;
+    // IMPOSTOS (estimado 6% sobre receitas)
+    const impostos = totalReceitas > 0 ? totalReceitas * 0.06 : 0;
     
-    // LUCRO LÍQUIDO
+    // LUCRO LÍQUIDO = Resultado Operacional - Impostos
     const lucroLiquido = resultadoOperacional - impostos;
     const margemLiquida = totalReceitas > 0 ? (lucroLiquido / totalReceitas) * 100 : 0;
+    
+    // Debug log para verificar valores
+    console.log('[DRE] Cálculos:', {
+      receitaBrutaVendas,
+      cmv,
+      lucroBruto,
+      totalDespesasOperacionais,
+      resultadoOperacional,
+      impostos,
+      lucroLiquido,
+      salesCount: validSales.length,
+      billsCount: validBills.length
+    });
     
     return {
       receitaBrutaVendas,
