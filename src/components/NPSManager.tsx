@@ -101,16 +101,18 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
                 const val = (question.scale_min || 1) + i;
                 const isSelected = value === val;
                 return (
-                  <Button
+                  <button
                     key={val}
                     type="button"
-                    variant={isSelected ? 'default' : 'outline'}
-                    size="sm"
                     onClick={() => updateResponse(surveyId, question.id, val)}
-                    className={`w-10 h-10 ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
+                    className={`w-10 h-10 rounded-md border text-sm font-medium transition-colors
+                      ${isSelected 
+                        ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300' 
+                        : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'
+                      }`}
                   >
                     {val}
-                  </Button>
+                  </button>
                 );
               })}
             </div>
