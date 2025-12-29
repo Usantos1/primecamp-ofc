@@ -2472,61 +2472,140 @@ app.post('/api/webhook/leads/:webhookKey', async (req, res) => {
       };
     }
 
-    // Inserir o lead
-    const insertResult = await pool.query(
-      `INSERT INTO leads (
-        nome, email, telefone, whatsapp, cidade, estado,
-        fonte, webhook_id, webhook_nome, 
-        utm_source, utm_medium, utm_campaign, utm_term, utm_content,
-        interesse, observacoes, status, temperatura, convertido, total_interacoes, raw_payload
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-      RETURNING id`,
-      [
-        leadData.nome, leadData.email, leadData.telefone, leadData.whatsapp,
-        leadData.cidade, leadData.estado, leadData.fonte, leadData.webhook_id,
-        leadData.webhook_nome, leadData.utm_source, leadData.utm_medium,
-        leadData.utm_campaign, leadData.utm_term, leadData.utm_content,
-        leadData.interesse, leadData.observacoes, leadData.status,
-        leadData.temperatura, leadData.convertido, leadData.total_interacoes,
-        leadData.raw_payload
-      ]
-    );
+    // Verificar se o lead já existe pelo telefone/whatsapp
+    const phoneNumber = leadData.whatsapp || leadData.telefone;
+    let leadId = null;
+    let isNewLead = false;
+    
+    if (phoneNumber) {
+      const cleanPhone = phoneNumber.replace(/\D/g, '');
+      const existingLead = await pool.query(
+        `SELECT id FROM leads WHERE 
+         REPLACE(REPLACE(REPLACE(whatsapp, '+', ''), '-', ''), ' ', '') = $1 OR
+         REPLACE(REPLACE(REPLACE(telefone, '+', ''), '-', ''), ' ', '') = $1
+         LIMIT 1`,
+        [cleanPhone]
+      );
+      
+      if (existingLead.rows.length > 0) {
+        leadId = existingLead.rows[0].id;
+        console.log(`[Webhook] Lead já existe. ID: ${leadId}`);
+        
+        // Atualizar dados do lead existente (exceto status e temperatura para não sobrescrever)
+        await pool.query(
+          `UPDATE leads SET 
+            nome = COALESCE(NULLIF($1, ''), nome),
+            email = COALESCE(NULLIF($2, ''), email),
+            total_interacoes = COALESCE(total_interacoes, 0) + 1,
+            updated_at = NOW()
+          WHERE id = $3`,
+          [leadData.nome, leadData.email, leadId]
+        );
+      }
+    }
+    
+    // Se não encontrou lead existente, criar novo
+    if (!leadId) {
+      isNewLead = true;
+      const insertResult = await pool.query(
+        `INSERT INTO leads (
+          nome, email, telefone, whatsapp, cidade, estado,
+          fonte, webhook_id, webhook_nome, 
+          utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+          interesse, observacoes, status, temperatura, convertido, total_interacoes, raw_payload
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        RETURNING id`,
+        [
+          leadData.nome, leadData.email, leadData.telefone, leadData.whatsapp,
+          leadData.cidade, leadData.estado, leadData.fonte, leadData.webhook_id,
+          leadData.webhook_nome, leadData.utm_source, leadData.utm_medium,
+          leadData.utm_campaign, leadData.utm_term, leadData.utm_content,
+          leadData.interesse, leadData.observacoes, leadData.status,
+          leadData.temperatura, leadData.convertido, leadData.total_interacoes,
+          leadData.raw_payload
+        ]
+      );
+      leadId = insertResult.rows[0].id;
+    }
 
-    // Atualizar contador de leads recebidos no webhook
-    await pool.query(
-      `UPDATE webhook_configs SET leads_recebidos = COALESCE(leads_recebidos, 0) + 1, ultimo_lead_em = NOW() WHERE id = $1`,
-      [webhook.id]
-    );
+    // Atualizar contador de leads recebidos no webhook (apenas para novos leads)
+    if (isNewLead) {
+      await pool.query(
+        `UPDATE webhook_configs SET leads_recebidos = COALESCE(leads_recebidos, 0) + 1, ultimo_lead_em = NOW() WHERE id = $1`,
+        [webhook.id]
+      );
+    }
 
     // Registrar log do webhook
     await pool.query(
       `INSERT INTO webhook_logs (webhook_id, tipo, payload, lead_id, ip_origem) VALUES ($1, $2, $3, $4, $5)`,
-      [webhook.id, 'lead_recebido', JSON.stringify(payload), insertResult.rows[0].id, req.ip]
+      [webhook.id, 'lead_recebido', JSON.stringify(payload), leadId, req.ip]
     );
 
-    const leadId = insertResult.rows[0].id;
-    console.log(`[Webhook] Lead criado com sucesso. ID: ${leadId}`);
+    console.log(`[Webhook] Lead ${isNewLead ? 'criado' : 'atualizado'} com sucesso. ID: ${leadId}`);
 
     // Se for um webhook do AtivaCRM com mensagem, salvar na tabela de mensagens
     if (isAtivaCRMTicket && leadData.observacoes) {
       try {
         const messageBody = leadData.observacoes.replace('Mensagem: ', '');
-        await pool.query(
-          `INSERT INTO lead_messages (lead_id, direction, message_type, body, sender_name, sender_number, metadata)
-           VALUES ($1, 'inbound', 'text', $2, $3, $4, $5)`,
-          [
-            leadId, 
-            messageBody,
-            payload.contact?.name || 'Desconhecido',
-            payload.contact?.number || null,
-            JSON.stringify({
-              ticket_id: payload.ticket?.id,
-              external_id: payload.messages?.[0]?.id,
-              queue_name: payload.ticket?.queueName
-            })
-          ]
-        );
-        console.log(`[Webhook] Mensagem salva para lead ${leadId}`);
+        const externalMessageId = payload.messages?.[0]?.id || null;
+        
+        // Verificar se a mensagem já existe pelo external_id
+        if (externalMessageId) {
+          const existingMsg = await pool.query(
+            `SELECT id FROM lead_messages WHERE external_id = $1 LIMIT 1`,
+            [externalMessageId]
+          );
+          
+          if (existingMsg.rows.length > 0) {
+            console.log(`[Webhook] Mensagem já existe. External ID: ${externalMessageId}`);
+          } else {
+            await pool.query(
+              `INSERT INTO lead_messages (lead_id, direction, message_type, body, sender_name, sender_number, external_id, metadata)
+               VALUES ($1, 'inbound', 'text', $2, $3, $4, $5, $6)`,
+              [
+                leadId, 
+                messageBody,
+                payload.contact?.name || 'Desconhecido',
+                payload.contact?.number || null,
+                externalMessageId,
+                JSON.stringify({
+                  ticket_id: payload.ticket?.id,
+                  queue_name: payload.ticket?.queueName
+                })
+              ]
+            );
+            console.log(`[Webhook] Mensagem salva para lead ${leadId}`);
+          }
+        } else {
+          // Sem external_id, verificar por body + lead_id + timestamp recente (evitar duplicatas)
+          const recentMsg = await pool.query(
+            `SELECT id FROM lead_messages 
+             WHERE lead_id = $1 AND body = $2 AND created_at > NOW() - INTERVAL '1 minute'
+             LIMIT 1`,
+            [leadId, messageBody]
+          );
+          
+          if (recentMsg.rows.length === 0) {
+            await pool.query(
+              `INSERT INTO lead_messages (lead_id, direction, message_type, body, sender_name, sender_number, metadata)
+               VALUES ($1, 'inbound', 'text', $2, $3, $4, $5)`,
+              [
+                leadId, 
+                messageBody,
+                payload.contact?.name || 'Desconhecido',
+                payload.contact?.number || null,
+                JSON.stringify({
+                  ticket_id: payload.ticket?.id,
+                  queue_name: payload.ticket?.queueName
+                })
+              ]
+            );
+            console.log(`[Webhook] Mensagem salva para lead ${leadId}`);
+          } else {
+            console.log(`[Webhook] Mensagem duplicada ignorada para lead ${leadId}`);
+          }
+        }
       } catch (msgError) {
         console.error('[Webhook] Erro ao salvar mensagem:', msgError);
         // Não falhar o webhook por erro na mensagem
@@ -2535,8 +2614,9 @@ app.post('/api/webhook/leads/:webhookKey', async (req, res) => {
 
     res.json({ 
       success: true, 
-      message: 'Lead recebido com sucesso',
-      lead_id: leadId 
+      message: isNewLead ? 'Lead recebido com sucesso' : 'Mensagem adicionada ao lead existente',
+      lead_id: leadId,
+      is_new_lead: isNewLead
     });
 
   } catch (error) {
