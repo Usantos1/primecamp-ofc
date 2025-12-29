@@ -195,13 +195,14 @@ app.use('/api/', limiter);
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*)
 // Os endpoints /api/functions/* e /api/whatsapp/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
-  // Pular autenticação para rotas de auth, health check, functions e whatsapp
+  // Pular autenticação para rotas de auth, health check, functions, whatsapp e webhook/leads
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
       req.path === '/health' ||
       req.path.startsWith('/api/functions/') ||
       req.path.startsWith('/api/storage/') ||
-      req.path.startsWith('/api/whatsapp/')) {
+      req.path.startsWith('/api/whatsapp/') ||
+      req.path.startsWith('/api/webhook/leads/')) {
     return next();
   }
   // Aplicar autenticação para outras rotas /api/*
