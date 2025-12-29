@@ -27,7 +27,6 @@ import {
   KeyRound,
   UserCog,
   Megaphone,
-  Wallet,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
