@@ -78,26 +78,19 @@ export const TimeClockWidget = () => {
     fetchAllTodayRecords();
   }, [user]);
 
-  // 🚫 Real-time subscription DESABILITADA - Supabase removido
-  // TODO: Implementar polling ou WebSockets quando necessário
+  // Polling para atualizar registros periodicamente
   useEffect(() => {
     if (!user) return;
 
-    // 🚫 SUPABASE REMOVIDO - Real-time desabilitado
-    // Por enquanto, usar polling manual se necessário
-    // const today = new Date().toISOString().split('T')[0];
+    // Atualizar registros a cada 60 segundos
+    const interval = setInterval(() => {
+      refetch();
+    }, 60000);
     
-    // Exemplo de polling (descomentar se necessário):
-    // const interval = setInterval(() => {
-    //   refetch();
-    // }, 30000); // Atualizar a cada 30 segundos
-    
-    // return () => {
-    //   clearInterval(interval);
-    // };
-    
-    console.log('TimeClockWidget: Real-time desabilitado (Supabase removido)');
-  }, [user, users, refetch]);
+    return () => {
+      clearInterval(interval);
+    };
+  }, [user, refetch]);
 
   if (!profile) {
     return null;
