@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,33 +26,26 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
   const { isAdmin, user } = useAuth();
   const [activeTab, setActiveTab] = useState(mode);
   const [surveyResponses, setSurveyResponses] = useState<Record<string, any>>({});
-  const [initialized, setInitialized] = useState(false);
 
   const activeSurveys = surveys.filter(s => s.is_active);
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayResponses = responses.filter(r => r.date === today);
 
-  // Carregar respostas existentes do usuário para hoje
-  useEffect(() => {
-    if (!loading && surveys.length > 0 && user && !initialized) {
-      const existingResponses: Record<string, any> = {};
-      
-      surveys.forEach(survey => {
-        const todayResponse = responses.find(
-          r => r.survey_id === survey.id && r.user_id === user.id && r.date === today
-        );
-        if (todayResponse?.responses) {
-          existingResponses[survey.id] = todayResponse.responses;
-        }
-      });
-      
-      if (Object.keys(existingResponses).length > 0) {
-        console.log('[NPS] Carregando respostas existentes:', existingResponses);
-        setSurveyResponses(existingResponses);
-      }
-      setInitialized(true);
+  // Função para obter o valor atual (do estado local ou da resposta existente)
+  const getQuestionValue = (surveyId: string, questionId: string) => {
+    // Primeiro verifica no estado local
+    if (surveyResponses[surveyId]?.[questionId] !== undefined) {
+      return surveyResponses[surveyId][questionId];
     }
-  }, [loading, surveys, responses, user, today, initialized]);
+    // Se não tiver no estado local, busca da resposta existente de hoje
+    const todayResponse = responses.find(
+      r => r.survey_id === surveyId && r.user_id === user?.id && r.date === today
+    );
+    if (todayResponse?.responses?.[questionId] !== undefined) {
+      return todayResponse.responses[questionId];
+    }
+    return undefined;
+  };
 
   const handleResponseSubmit = async (survey: NPSSurvey) => {
     await submitResponse(survey.id, surveyResponses[survey.id] || {});
@@ -108,9 +101,8 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
   };
 
   const renderQuestionInput = (question: NPSQuestion, surveyId: string) => {
-    const rawValue = surveyResponses[surveyId]?.[question.id];
+    const rawValue = getQuestionValue(surveyId, question.id);
     const value = rawValue !== undefined && rawValue !== '' ? Number(rawValue) : null;
-    console.log('[NPS] Renderizando pergunta:', question.id, 'rawValue:', rawValue, 'value:', value);
 
     switch (question.type) {
       case 'scale':
