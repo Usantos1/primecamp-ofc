@@ -8,8 +8,9 @@ import { FileText, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function FinanceiroContas() {
-  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string }>();
-  const month = context.month || context.startDate.slice(0, 7);
+  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string; dateFilter?: string }>();
+  // Só filtrar por mês se NÃO for "all"
+  const month = context.dateFilter === 'all' ? undefined : (context.month || context.startDate.slice(0, 7));
   const [activeTab, setActiveTab] = useState<'pagar' | 'receber'>('pagar');
   
   return (
