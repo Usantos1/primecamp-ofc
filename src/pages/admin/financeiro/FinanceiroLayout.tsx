@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -14,7 +15,9 @@ import {
   FileText, 
   TrendingUp, 
   BarChart3,
-  CalendarDays
+  CalendarDays,
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +38,10 @@ export function FinanceiroLayout() {
   const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Seletor de relatório (usado apenas na página de relatórios)
+  const [selectedReport, setSelectedReport] = useState('dre');
+  const isRelatoriosPage = location.pathname === '/admin/financeiro/relatorios';
 
   // Calcular datas baseado no filtro
   // Para vendas/transações = passado, para contas a pagar = futuro
@@ -89,7 +96,7 @@ export function FinanceiroLayout() {
           <CardContent className="p-2 md:p-3">
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               {/* Tabs - Mobile: scroll horizontal */}
-              <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin flex-1 md:flex-none">
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin flex-shrink-0">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = location.pathname === tab.path || 
@@ -112,8 +119,52 @@ export function FinanceiroLayout() {
                 })}
               </div>
               
+              {/* Seletor de Relatório + Botões (apenas na página de relatórios) */}
+              {isRelatoriosPage && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Select value={selectedReport} onValueChange={setSelectedReport}>
+                    <SelectTrigger className="w-[140px] md:w-[180px] h-8 text-xs md:text-sm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dre">DRE - Resultados</SelectItem>
+                      <SelectItem value="fluxo">Fluxo de Caixa</SelectItem>
+                      <SelectItem value="contas">Contas Pagar/Receber</SelectItem>
+                      <SelectItem value="vendas">Vendas</SelectItem>
+                      <SelectItem value="balanco">Balanço Patrimonial</SelectItem>
+                      <SelectItem value="graficos">Gráficos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 px-2 md:px-3 text-xs"
+                    onClick={() => {
+                      // Dispara evento customizado para exportar Excel
+                      window.dispatchEvent(new CustomEvent('financeiro-export-excel', { detail: { report: selectedReport } }));
+                    }}
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 md:mr-1" />
+                    <span className="hidden md:inline">Excel</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 px-2 md:px-3 text-xs"
+                    onClick={() => {
+                      // Dispara evento customizado para imprimir
+                      window.dispatchEvent(new CustomEvent('financeiro-print', { detail: { report: selectedReport } }));
+                    }}
+                  >
+                    <Printer className="h-3.5 w-3.5 md:mr-1" />
+                    <span className="hidden md:inline">Imprimir</span>
+                  </Button>
+                </div>
+              )}
+              
               {/* Seletor de Período - Igual ao de Vendas */}
-              <div className="ml-auto">
+              <div className="ml-auto flex-shrink-0">
                 <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                   <PopoverTrigger asChild>
                     <Button 
@@ -230,6 +281,8 @@ export function FinanceiroLayout() {
             endDate: dateRange.endDate,
             month: dateRange.month,
             dateFilter,
+            selectedReport,
+            setSelectedReport,
           }} />
         </div>
       </div>

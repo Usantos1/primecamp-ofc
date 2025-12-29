@@ -1,10 +1,8 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, FileSpreadsheet, FileText, Printer, TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { exportDREToCSV, exportTransactionsToCSV, printData } from '@/utils/exportFinancial';
 import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
@@ -15,14 +13,23 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { from } from '@/integrations/db/client';
 import { useQuery } from '@tanstack/react-query';
 
+interface FinanceiroContext {
+  startDate: string;
+  endDate?: string;
+  month?: string;
+  dateFilter?: string;
+  selectedReport: string;
+  setSelectedReport: (report: string) => void;
+}
+
 export function FinanceiroRelatorios() {
-  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string; dateFilter?: string }>();
+  const context = useOutletContext<FinanceiroContext>();
   // Se for "all", não filtrar
   const shouldFilter = context.dateFilter !== 'all';
   const month = shouldFilter ? (context.month || context.startDate?.slice(0, 7)) : undefined;
   const startDate = shouldFilter ? context.startDate : undefined;
   const endDate = shouldFilter ? context.endDate : undefined;
-  const [selectedReport, setSelectedReport] = useState('dre');
+  const selectedReport = context.selectedReport || 'dre';
 
   const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
   const { bills, isLoading: billsLoading } = useBillsToPay({ startDate, endDate });
@@ -82,88 +89,63 @@ export function FinanceiroRelatorios() {
   const lucroLiquido = totalReceitas - totalDespesas;
   const margemLucro = totalReceitas > 0 ? (lucroLiquido / totalReceitas) * 100 : 0;
 
+  // Escutar eventos de exportação e impressão do header
+  useEffect(() => {
+    const handleExportExcel = () => {
+      if (selectedReport === 'dre') {
+        exportDREToCSV(
+          dreData.receitas,
+          dreData.despesas,
+          totalReceitas,
+          totalDespesas,
+          lucroLiquido,
+          margemLucro,
+          month
+        );
+      } else if (selectedReport === 'vendas') {
+        exportTransactionsToCSV(
+          transactions.filter(t => t.type === 'entrada'),
+          month
+        );
+      }
+    };
+
+    const handlePrint = () => {
+      if (selectedReport === 'dre') {
+        printData({
+          title: `DRE - ${month ? month.replace('-', '/') : 'Todo período'}`,
+          headers: ['Descrição', 'Valor (R$)'],
+          rows: [
+            ['RECEITAS OPERACIONAIS', ''],
+            ...dreData.receitas.map(r => [r.descricao, currencyFormatters.brl(r.valor)]),
+            ['TOTAL RECEITAS', currencyFormatters.brl(totalReceitas)],
+            ['', ''],
+            ['DESPESAS OPERACIONAIS', ''],
+            ...dreData.despesas.map(d => [d.descricao, currencyFormatters.brl(d.valor)]),
+            ['TOTAL DESPESAS', currencyFormatters.brl(totalDespesas)],
+            ['', ''],
+            ['LUCRO LÍQUIDO', currencyFormatters.brl(lucroLiquido)],
+            ['MARGEM LÍQUIDA (%)', `${margemLucro.toFixed(2)}%`],
+          ],
+        }, `Período: ${month ? month.replace('-', '/') : 'Todo período'}`);
+      }
+    };
+
+    window.addEventListener('financeiro-export-excel', handleExportExcel);
+    window.addEventListener('financeiro-print', handlePrint);
+
+    return () => {
+      window.removeEventListener('financeiro-export-excel', handleExportExcel);
+      window.removeEventListener('financeiro-print', handlePrint);
+    };
+  }, [selectedReport, dreData, totalReceitas, totalDespesas, lucroLiquido, margemLucro, month, transactions]);
+
   if (transactionsLoading || billsLoading || closingsLoading || salesLoading) {
     return <LoadingSkeleton type="cards" count={2} />;
   }
 
   return (
     <div className="space-y-4">
-      {/* Seleção de relatório - Compacto */}
-      <Card>
-        <CardContent className="p-2 md:p-3 flex items-center justify-between flex-wrap gap-2">
-          <Select value={selectedReport} onValueChange={setSelectedReport}>
-            <SelectTrigger className="w-[180px] md:w-[250px] h-8 text-xs md:text-sm">
-              <SelectValue placeholder="Selecione o relatório" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dre">DRE - Resultados</SelectItem>
-              <SelectItem value="fluxo">Fluxo de Caixa</SelectItem>
-              <SelectItem value="contas">Contas Pagar/Receber</SelectItem>
-              <SelectItem value="vendas">Vendas</SelectItem>
-              <SelectItem value="balanco">Balanço Patrimonial</SelectItem>
-              <SelectItem value="graficos">Gráficos</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 px-2 md:px-3 text-xs"
-              onClick={() => {
-                if (selectedReport === 'dre') {
-                  exportDREToCSV(
-                    dreData.receitas,
-                    dreData.despesas,
-                    totalReceitas,
-                    totalDespesas,
-                    lucroLiquido,
-                    margemLucro,
-                    month
-                  );
-                } else if (selectedReport === 'vendas') {
-                  exportTransactionsToCSV(
-                    transactions.filter(t => t.type === 'entrada'),
-                    month
-                  );
-                }
-              }}
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 md:mr-1" />
-              <span className="hidden md:inline">Excel</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 px-2 md:px-3 text-xs"
-              onClick={() => {
-                if (selectedReport === 'dre') {
-                  printData({
-                    title: `DRE - ${month ? month.replace('-', '/') : 'Todo período'}`,
-                    headers: ['Descrição', 'Valor (R$)'],
-                    rows: [
-                      ['RECEITAS OPERACIONAIS', ''],
-                      ...dreData.receitas.map(r => [r.descricao, currencyFormatters.brl(r.valor)]),
-                      ['TOTAL RECEITAS', currencyFormatters.brl(totalReceitas)],
-                      ['', ''],
-                      ['DESPESAS OPERACIONAIS', ''],
-                      ...dreData.despesas.map(d => [d.descricao, currencyFormatters.brl(d.valor)]),
-                      ['TOTAL DESPESAS', currencyFormatters.brl(totalDespesas)],
-                      ['', ''],
-                      ['LUCRO LÍQUIDO', currencyFormatters.brl(lucroLiquido)],
-                      ['MARGEM LÍQUIDA (%)', `${margemLucro.toFixed(2)}%`],
-                    ],
-                  }, `Período: ${month ? month.replace('-', '/') : 'Todo período'}`);
-                }
-              }}
-            >
-              <Printer className="h-3.5 w-3.5 md:mr-1" />
-              <span className="hidden md:inline">Imprimir</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* DRE Completo */}
       {selectedReport === 'dre' && (
         <DREComplete month={month} startDate={startDate} endDate={endDate} />
