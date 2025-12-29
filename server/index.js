@@ -2044,6 +2044,229 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
 });
 
 // =====================================================
+// MINI CRM - Chat com Leads via AtivaCRM
+// =====================================================
+
+// Buscar configuração do AtivaCRM
+app.get('/api/ativacrm/config', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, is_active, created_at FROM ativacrm_config LIMIT 1');
+    res.json({ data: result.rows[0] || null, hasConfig: result.rows.length > 0 });
+  } catch (error) {
+    console.error('Erro ao buscar config AtivaCRM:', error);
+    res.status(500).json({ error: 'Erro ao buscar configuração' });
+  }
+});
+
+// Salvar configuração do AtivaCRM
+app.post('/api/ativacrm/config', authenticateToken, async (req, res) => {
+  const { api_token, webhook_secret } = req.body;
+  
+  try {
+    // Verificar se já existe configuração
+    const existing = await pool.query('SELECT id FROM ativacrm_config LIMIT 1');
+    
+    if (existing.rows.length > 0) {
+      await pool.query(
+        'UPDATE ativacrm_config SET api_token = $1, webhook_secret = $2, updated_at = NOW() WHERE id = $3',
+        [api_token, webhook_secret, existing.rows[0].id]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO ativacrm_config (api_token, webhook_secret) VALUES ($1, $2)',
+        [api_token, webhook_secret]
+      );
+    }
+    
+    res.json({ success: true, message: 'Configuração salva com sucesso' });
+  } catch (error) {
+    console.error('Erro ao salvar config AtivaCRM:', error);
+    res.status(500).json({ error: 'Erro ao salvar configuração' });
+  }
+});
+
+// Buscar mensagens de um lead
+app.get('/api/leads/:leadId/messages', authenticateToken, async (req, res) => {
+  const { leadId } = req.params;
+  const { limit = 50, offset = 0 } = req.query;
+  
+  try {
+    const result = await pool.query(
+      `SELECT * FROM lead_messages 
+       WHERE lead_id = $1 
+       ORDER BY created_at ASC 
+       LIMIT $2 OFFSET $3`,
+      [leadId, limit, offset]
+    );
+    
+    const countResult = await pool.query(
+      'SELECT COUNT(*) as total FROM lead_messages WHERE lead_id = $1',
+      [leadId]
+    );
+    
+    res.json({ 
+      data: result.rows, 
+      total: parseInt(countResult.rows[0].total),
+      hasMore: result.rows.length === parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Erro ao buscar mensagens:', error);
+    res.status(500).json({ error: 'Erro ao buscar mensagens' });
+  }
+});
+
+// Enviar mensagem para um lead via AtivaCRM
+app.post('/api/leads/:leadId/messages/send', authenticateToken, async (req, res) => {
+  const { leadId } = req.params;
+  const { body, media_url } = req.body;
+  
+  try {
+    // Buscar lead para pegar o número
+    const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+    if (leadResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Lead não encontrado' });
+    }
+    
+    const lead = leadResult.rows[0];
+    const phoneNumber = lead.whatsapp || lead.telefone;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'Lead não possui número de telefone' });
+    }
+    
+    // Buscar token do AtivaCRM
+    const configResult = await pool.query('SELECT api_token FROM ativacrm_config WHERE is_active = true LIMIT 1');
+    if (configResult.rows.length === 0) {
+      return res.status(400).json({ error: 'AtivaCRM não configurado' });
+    }
+    
+    const apiToken = configResult.rows[0].api_token;
+    
+    // Limpar número (apenas dígitos)
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    
+    // Enviar mensagem via AtivaCRM
+    console.log(`[AtivaCRM] Enviando mensagem para ${cleanNumber}`);
+    
+    const ativaCrmPayload = media_url 
+      ? { number: cleanNumber, body, url: media_url }
+      : { number: cleanNumber, body };
+    
+    const ativaCrmResponse = await fetch('https://api.ativacrm.com/api/messages/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`
+      },
+      body: JSON.stringify(ativaCrmPayload)
+    });
+    
+    const ativaCrmResult = await ativaCrmResponse.json();
+    
+    if (!ativaCrmResponse.ok) {
+      console.error('[AtivaCRM] Erro ao enviar:', ativaCrmResult);
+      return res.status(500).json({ error: 'Erro ao enviar mensagem via AtivaCRM', details: ativaCrmResult });
+    }
+    
+    console.log('[AtivaCRM] Mensagem enviada:', ativaCrmResult);
+    
+    // Salvar mensagem no banco
+    const messageResult = await pool.query(
+      `INSERT INTO lead_messages (lead_id, direction, message_type, body, media_url, status, sender_name)
+       VALUES ($1, 'outbound', $2, $3, $4, 'sent', $5)
+       RETURNING *`,
+      [leadId, media_url ? 'image' : 'text', body, media_url, req.user.email]
+    );
+    
+    // Atualizar última interação do lead
+    await pool.query(
+      'UPDATE leads SET total_interacoes = COALESCE(total_interacoes, 0) + 1, updated_at = NOW() WHERE id = $1',
+      [leadId]
+    );
+    
+    res.json({ 
+      success: true, 
+      message: messageResult.rows[0],
+      ativacrm: ativaCrmResult
+    });
+  } catch (error) {
+    console.error('Erro ao enviar mensagem:', error);
+    res.status(500).json({ error: 'Erro ao enviar mensagem' });
+  }
+});
+
+// Buscar conversas recentes (leads com mensagens)
+app.get('/api/leads/conversations', authenticateToken, async (req, res) => {
+  const { limit = 20 } = req.query;
+  
+  try {
+    const result = await pool.query(`
+      SELECT 
+        l.*,
+        lm.last_message,
+        lm.last_message_at,
+        lm.unread_count,
+        lm.last_direction
+      FROM leads l
+      INNER JOIN (
+        SELECT 
+          lead_id,
+          MAX(body) FILTER (WHERE created_at = max_created) as last_message,
+          MAX(created_at) as last_message_at,
+          COUNT(*) FILTER (WHERE direction = 'inbound' AND status != 'read') as unread_count,
+          MAX(direction) FILTER (WHERE created_at = max_created) as last_direction
+        FROM (
+          SELECT *, MAX(created_at) OVER (PARTITION BY lead_id) as max_created
+          FROM lead_messages
+        ) sub
+        GROUP BY lead_id
+      ) lm ON l.id = lm.lead_id
+      ORDER BY lm.last_message_at DESC
+      LIMIT $1
+    `, [limit]);
+    
+    res.json({ data: result.rows });
+  } catch (error) {
+    console.error('Erro ao buscar conversas:', error);
+    // Se a query complexa falhar, tentar uma mais simples
+    try {
+      const simpleResult = await pool.query(`
+        SELECT DISTINCT ON (l.id)
+          l.*,
+          lm.body as last_message,
+          lm.created_at as last_message_at,
+          lm.direction as last_direction
+        FROM leads l
+        INNER JOIN lead_messages lm ON l.id = lm.lead_id
+        ORDER BY l.id, lm.created_at DESC
+        LIMIT $1
+      `, [limit]);
+      
+      res.json({ data: simpleResult.rows });
+    } catch (simpleError) {
+      res.status(500).json({ error: 'Erro ao buscar conversas' });
+    }
+  }
+});
+
+// Marcar mensagens como lidas
+app.post('/api/leads/:leadId/messages/read', authenticateToken, async (req, res) => {
+  const { leadId } = req.params;
+  
+  try {
+    await pool.query(
+      `UPDATE lead_messages SET status = 'read' WHERE lead_id = $1 AND direction = 'inbound' AND status != 'read'`,
+      [leadId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao marcar como lido:', error);
+    res.status(500).json({ error: 'Erro ao marcar como lido' });
+  }
+});
+
+// =====================================================
 // WEBHOOK TEST - Sistema de Teste em Tempo Real
 // =====================================================
 
@@ -2281,12 +2504,39 @@ app.post('/api/webhook/leads/:webhookKey', async (req, res) => {
       [webhook.id, 'lead_recebido', JSON.stringify(payload), insertResult.rows[0].id, req.ip]
     );
 
-    console.log(`[Webhook] Lead criado com sucesso. ID: ${insertResult.rows[0].id}`);
+    const leadId = insertResult.rows[0].id;
+    console.log(`[Webhook] Lead criado com sucesso. ID: ${leadId}`);
+
+    // Se for um webhook do AtivaCRM com mensagem, salvar na tabela de mensagens
+    if (isAtivaCRMTicket && leadData.observacoes) {
+      try {
+        const messageBody = leadData.observacoes.replace('Mensagem: ', '');
+        await pool.query(
+          `INSERT INTO lead_messages (lead_id, direction, message_type, body, sender_name, sender_number, metadata)
+           VALUES ($1, 'inbound', 'text', $2, $3, $4, $5)`,
+          [
+            leadId, 
+            messageBody,
+            payload.contact?.name || 'Desconhecido',
+            payload.contact?.number || null,
+            JSON.stringify({
+              ticket_id: payload.ticket?.id,
+              external_id: payload.messages?.[0]?.id,
+              queue_name: payload.ticket?.queueName
+            })
+          ]
+        );
+        console.log(`[Webhook] Mensagem salva para lead ${leadId}`);
+      } catch (msgError) {
+        console.error('[Webhook] Erro ao salvar mensagem:', msgError);
+        // Não falhar o webhook por erro na mensagem
+      }
+    }
 
     res.json({ 
       success: true, 
       message: 'Lead recebido com sucesso',
-      lead_id: insertResult.rows[0].id 
+      lead_id: leadId 
     });
 
   } catch (error) {

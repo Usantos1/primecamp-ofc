@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Plus, Pencil, Trash2, Phone, MessageSquare, Mail, 
   ThermometerSun, ThermometerSnowflake, Flame,
-  CheckCircle, XCircle, Clock, User, History, Webhook, Users
+  CheckCircle, XCircle, Clock, User, History, Webhook, Users, MessagesSquare
 } from 'lucide-react';
 import { useLeads, useLeadInteractions, useAdsCampaigns, Lead, LeadInteraction } from '@/hooks/useMarketing';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
@@ -21,6 +21,7 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { WebhookManager } from '@/components/marketing/WebhookManager';
+import { LeadChatPanel } from '@/components/marketing/LeadChatPanel';
 import { cn } from '@/lib/utils';
 
 const fontes = [
@@ -69,7 +70,8 @@ export function MarketingLeads() {
     endDate: `${month}-31`,
   });
   
-  const [activeTab, setActiveTab] = useState<'leads' | 'webhooks'>('leads');
+  const [activeTab, setActiveTab] = useState<'leads' | 'webhooks' | 'chat'>('leads');
+  const [chatLead, setChatLead] = useState<Lead | null>(null);
   const [showDialog, setShowDialog] = useState(false);
   const [showInteractionDialog, setShowInteractionDialog] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -236,7 +238,7 @@ export function MarketingLeads() {
 
   return (
     <div className="space-y-4">
-      {/* Tabs: Leads e Webhooks */}
+      {/* Tabs: Leads, Chat e Webhooks */}
       <Card>
         <CardContent className="p-2">
           <div className="flex items-center gap-2">
@@ -251,6 +253,15 @@ export function MarketingLeads() {
               <Badge variant="secondary" className="ml-2 text-[10px]">{leads.length}</Badge>
             </Button>
             <Button
+              variant={activeTab === 'chat' ? 'default' : 'ghost'}
+              size="sm"
+              className={cn('h-8 text-xs', activeTab === 'chat' && 'bg-green-600 hover:bg-green-700')}
+              onClick={() => { setActiveTab('chat'); setChatLead(null); }}
+            >
+              <MessagesSquare className="h-3.5 w-3.5 mr-1.5" />
+              Chat
+            </Button>
+            <Button
               variant={activeTab === 'webhooks' ? 'default' : 'ghost'}
               size="sm"
               className={cn('h-8 text-xs', activeTab === 'webhooks' && 'bg-orange-600 hover:bg-orange-700')}
@@ -262,6 +273,15 @@ export function MarketingLeads() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Conteúdo da Tab Chat */}
+      {activeTab === 'chat' && (
+        <LeadChatPanel 
+          lead={chatLead} 
+          onClose={() => setChatLead(null)}
+          fullScreen
+        />
+      )}
 
       {/* Conteúdo da Tab Webhooks */}
       {activeTab === 'webhooks' && <WebhookManager />}
@@ -400,6 +420,15 @@ export function MarketingLeads() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8" 
+                              onClick={() => { setChatLead(lead); setActiveTab('chat'); }}
+                              title="Abrir chat"
+                            >
+                              <MessagesSquare className="h-4 w-4 text-green-600" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenInteractionDialog(lead)}>
                               <History className="h-4 w-4" />
                             </Button>
