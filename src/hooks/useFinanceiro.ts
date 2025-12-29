@@ -106,13 +106,46 @@ export function useBillsToPay(filters?: {
 
   const createBill = useMutation({
     mutationFn: async (data: BillToPayFormData) => {
-      const { data: result, error } = await from('bills_to_pay').insert(data);
-      if (error) throw error;
-      return result as BillToPay;
+      // Se for recorrente, criar para os próximos 12 meses
+      if (data.recurring && data.recurring_day) {
+        const bills: BillToPayFormData[] = [];
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        
+        for (let i = 0; i < 12; i++) {
+          const month = (currentMonth + i) % 12;
+          const year = currentYear + Math.floor((currentMonth + i) / 12);
+          
+          // Calcular o último dia do mês para evitar datas inválidas
+          const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+          const day = Math.min(data.recurring_day, lastDayOfMonth);
+          
+          const dueDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          
+          bills.push({
+            ...data,
+            due_date: dueDate,
+          });
+        }
+        
+        // Inserir todas as contas
+        const { data: result, error } = await from('bills_to_pay').insert(bills);
+        if (error) throw error;
+        return result as BillToPay;
+      } else {
+        // Conta única
+        const { data: result, error } = await from('bills_to_pay').insert(data);
+        if (error) throw error;
+        return result as BillToPay;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
-      toast({ title: 'Conta cadastrada com sucesso!' });
+      const msg = variables.recurring 
+        ? 'Contas recorrentes criadas para os próximos 12 meses!' 
+        : 'Conta cadastrada com sucesso!';
+      toast({ title: msg });
     },
     onError: (error) => handleError(error, { context: 'createBill' }),
   });
