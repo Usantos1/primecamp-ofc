@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
@@ -70,42 +71,47 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     },
   });
 
-  // Receitas Operacionais
-  const receitasOperacionais = transactions
-    .filter(t => t.type === 'entrada')
-    .reduce((acc, t) => {
+  // Calcular receitas (incluindo vendas)
+  const { receitasOperacionais, totalReceitasOperacionais } = React.useMemo(() => {
+    const receitas: Record<string, number> = {};
+    
+    // Transações manuais de entrada
+    transactions.filter(t => t.type === 'entrada').forEach(t => {
       const catName = t.category?.name || 'Outras Receitas';
-      if (!acc[catName]) acc[catName] = 0;
-      acc[catName] += t.amount;
-      return acc;
-    }, {} as Record<string, number>);
+      receitas[catName] = (receitas[catName] || 0) + t.amount;
+    });
+    
+    // Vendas do PDV
+    const totalVendas = sales.reduce((sum: number, s: any) => sum + Number(s.total || 0), 0);
+    if (totalVendas > 0) {
+      receitas['Vendas de Produtos/Serviços'] = (receitas['Vendas de Produtos/Serviços'] || 0) + totalVendas;
+    }
+    
+    const total = Object.values(receitas).reduce((sum, v) => sum + v, 0);
+    
+    return { receitasOperacionais: receitas, totalReceitasOperacionais: total };
+  }, [transactions, sales]);
 
-  // Adicionar vendas como receita principal
-  const totalVendas = sales.reduce((sum, s) => sum + Number(s.total || 0), 0);
-  if (totalVendas > 0) {
-    receitasOperacionais['Vendas de Produtos/Serviços'] = (receitasOperacionais['Vendas de Produtos/Serviços'] || 0) + totalVendas;
-  }
-
-  const totalReceitasOperacionais = Object.values(receitasOperacionais).reduce((sum, v) => sum + v, 0);
-
-  // Despesas Operacionais (transações manuais + contas pagas)
-  const despesasOperacionais = transactions
-    .filter(t => t.type === 'saida')
-    .reduce((acc, t) => {
+  // Calcular despesas (incluindo contas pagas)
+  const { despesasOperacionais, totalDespesasOperacionais } = React.useMemo(() => {
+    const despesas: Record<string, number> = {};
+    
+    // Transações manuais de saída
+    transactions.filter(t => t.type === 'saida').forEach(t => {
       const catName = t.category?.name || 'Outras Despesas';
-      if (!acc[catName]) acc[catName] = 0;
-      acc[catName] += t.amount;
-      return acc;
-    }, {} as Record<string, number>);
-  
-  // Adicionar contas pagas como despesas
-  billsPaid.forEach((bill: any) => {
-    const catName = bill.expense_type === 'fixa' ? 'Despesas Fixas' : 'Despesas Variáveis';
-    if (!despesasOperacionais[catName]) despesasOperacionais[catName] = 0;
-    despesasOperacionais[catName] += Number(bill.amount || 0);
-  });
-
-  const totalDespesasOperacionais = Object.values(despesasOperacionais).reduce((sum, v) => sum + v, 0);
+      despesas[catName] = (despesas[catName] || 0) + t.amount;
+    });
+    
+    // Contas pagas
+    billsPaid.forEach((bill: any) => {
+      const catName = bill.expense_type === 'fixa' ? 'Despesas Fixas' : 'Despesas Variáveis';
+      despesas[catName] = (despesas[catName] || 0) + Number(bill.amount || 0);
+    });
+    
+    const total = Object.values(despesas).reduce((sum, v) => sum + v, 0);
+    
+    return { despesasOperacionais: despesas, totalDespesasOperacionais: total };
+  }, [transactions, billsPaid]);
 
   // Resultado Operacional
   const resultadoOperacional = totalReceitasOperacionais - totalDespesasOperacionais;
