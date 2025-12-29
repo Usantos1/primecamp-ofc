@@ -139,7 +139,7 @@ export function FinanceiroRelatorios() {
               onClick={() => {
                 if (selectedReport === 'dre') {
                   printData({
-                    title: `DRE - ${month.replace('-', '/')}`,
+                    title: `DRE - ${month ? month.replace('-', '/') : 'Todo período'}`,
                     headers: ['Descrição', 'Valor (R$)'],
                     rows: [
                       ['RECEITAS OPERACIONAIS', ''],
@@ -153,7 +153,7 @@ export function FinanceiroRelatorios() {
                       ['LUCRO LÍQUIDO', currencyFormatters.brl(lucroLiquido)],
                       ['MARGEM LÍQUIDA (%)', `${margemLucro.toFixed(2)}%`],
                     ],
-                  }, `Período: ${month.replace('-', '/')}`);
+                  }, `Período: ${month ? month.replace('-', '/') : 'Todo período'}`);
                 }
               }}
             >
@@ -180,7 +180,7 @@ export function FinanceiroRelatorios() {
           <Card>
             <CardHeader>
               <CardTitle>Contas a Pagar</CardTitle>
-              <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+              <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo período'}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg overflow-hidden">
@@ -229,7 +229,7 @@ export function FinanceiroRelatorios() {
           <Card>
             <CardHeader>
               <CardTitle>Fechamentos de Caixa</CardTitle>
-              <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+              <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo período'}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="border rounded-lg overflow-hidden">
@@ -279,7 +279,7 @@ export function FinanceiroRelatorios() {
         <Card>
           <CardHeader>
             <CardTitle>Vendas por Período</CardTitle>
-            <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+            <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo período'}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-hidden">
@@ -339,7 +339,7 @@ export function FinanceiroRelatorios() {
         <Card>
           <CardHeader>
             <CardTitle>Balanço Patrimonial</CardTitle>
-            <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+            <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo período'}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

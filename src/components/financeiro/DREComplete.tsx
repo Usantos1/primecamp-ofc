@@ -8,7 +8,7 @@ import { from } from '@/integrations/db/client';
 import { cn } from '@/lib/utils';
 
 interface DRECompleteProps {
-  month: string;
+  month?: string;
 }
 
 interface DRESection {
@@ -26,16 +26,27 @@ export function DREComplete({ month }: DRECompleteProps) {
   const { data: sales = [] } = useQuery({
     queryKey: ['sales-dre', month],
     queryFn: async () => {
-      const start = `${month}-01`;
-      const end = `${month}-31`;
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-       .execute() .gte('created_at', start)
-        .lte('created_at', end)
-        .eq('status', 'paid');
-      if (error) throw error;
-      return data || [];
+      try {
+        let q = from('sales')
+          .select('*')
+          .eq('status', 'paid');
+        
+        if (month) {
+          // Calcular último dia do mês
+          const [year, mon] = month.split('-').map(Number);
+          const lastDay = new Date(year, mon, 0).getDate();
+          const start = `${month}-01`;
+          const end = `${month}-${lastDay.toString().padStart(2, '0')}`;
+          q = q.gte('created_at', start).lte('created_at', end + 'T23:59:59');
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar vendas DRE:', err);
+        return [];
+      }
     },
   });
 
@@ -93,7 +104,7 @@ export function DREComplete({ month }: DRECompleteProps) {
     <Card>
       <CardHeader>
         <CardTitle>DRE - Demonstrativo de Resultado do Exercício</CardTitle>
-        <CardDescription>Período: {month.replace('-', '/')}</CardDescription>
+        <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo o período'}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg overflow-hidden">
