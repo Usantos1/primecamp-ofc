@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils';
 
 export function FinanceiroContas() {
   const context = useOutletContext<{ startDate: string; endDate?: string; month?: string; dateFilter?: string }>();
-  // Só filtrar por mês se NÃO for "all"
-  const month = context.dateFilter === 'all' ? undefined : (context.month || context.startDate.slice(0, 7));
+  // Se for "all", não filtrar por data
+  const shouldFilter = context.dateFilter !== 'all';
   const [activeTab, setActiveTab] = useState<'pagar' | 'receber'>('pagar');
   
   return (
@@ -48,8 +48,17 @@ export function FinanceiroContas() {
       </Card>
 
       {/* Conteúdo */}
-      {activeTab === 'pagar' && <BillsManager month={month} />}
-      {activeTab === 'receber' && <AccountsReceivableManager month={month} />}
+      {activeTab === 'pagar' && (
+        <BillsManager 
+          startDate={shouldFilter ? context.startDate : undefined}
+          endDate={shouldFilter ? context.endDate : undefined}
+        />
+      )}
+      {activeTab === 'receber' && (
+        <AccountsReceivableManager 
+          month={shouldFilter ? context.month : undefined}
+        />
+      )}
     </div>
   );
 }

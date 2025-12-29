@@ -59,6 +59,8 @@ export function useBillsToPay(filters?: {
   status?: BillStatus;
   expense_type?: 'fixa' | 'variavel';
   month?: string;
+  startDate?: string;
+  endDate?: string;
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -78,11 +80,15 @@ export function useBillsToPay(filters?: {
         if (filters?.expense_type) {
           q = q.eq('expense_type', filters.expense_type);
         }
-        if (filters?.month) {
+        // Filtrar por startDate/endDate se fornecidos
+        if (filters?.startDate && filters?.endDate) {
+          q = q.gte('due_date', filters.startDate).lte('due_date', filters.endDate);
+        } else if (filters?.month) {
           const startDate = `${filters.month}-01`;
           const endDate = getLastDayOfMonth(filters.month);
           q = q.gte('due_date', startDate).lte('due_date', endDate);
         }
+        // Se não tem filtro de data, busca tudo
 
         const { data, error } = await q.execute();
         if (error) {

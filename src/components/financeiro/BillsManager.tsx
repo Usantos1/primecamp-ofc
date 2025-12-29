@@ -20,9 +20,11 @@ import { cn } from '@/lib/utils';
 
 interface BillsManagerProps {
   month?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-export function BillsManager({ month }: BillsManagerProps) {
+export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,6 +39,8 @@ export function BillsManager({ month }: BillsManagerProps) {
   const { data: categories = [] } = useFinancialCategories();
   const { bills, isLoading, createBill, updateBill, payBill, deleteBill } = useBillsToPay({
     month,
+    startDate,
+    endDate,
     status: statusFilter !== 'all' ? statusFilter as any : undefined,
     expense_type: typeFilter !== 'all' ? typeFilter as any : undefined,
   });
