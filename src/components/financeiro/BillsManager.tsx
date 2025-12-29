@@ -45,7 +45,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     expense_type: typeFilter !== 'all' ? typeFilter as any : undefined,
   });
 
-  const [formData, setFormData] = useState<BillToPayFormData>({
+  const [formData, setFormData] = useState<BillToPayFormData & { recurring_start?: string; recurring_end?: string }>({
     description: '',
     amount: 0,
     category_id: '',
@@ -54,6 +54,8 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     supplier: '',
     notes: '',
     recurring: false,
+    recurring_start: '2025-01',
+    recurring_end: new Date().toISOString().slice(0, 7),
   });
 
   const filteredBills = bills.filter(bill =>
@@ -74,6 +76,8 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         notes: bill.notes || '',
         recurring: bill.recurring,
         recurring_day: bill.recurring_day,
+        recurring_start: '2025-01',
+        recurring_end: new Date().toISOString().slice(0, 7),
       });
     } else {
       setEditingBill(null);
@@ -86,6 +90,8 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         supplier: '',
         notes: '',
         recurring: false,
+        recurring_start: '2025-01',
+        recurring_end: new Date().toISOString().slice(0, 7),
       });
     }
     setIsDialogOpen(true);
@@ -363,22 +369,44 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
                   className="h-4 w-4 rounded border-gray-300 cursor-pointer"
                 />
                 <Label htmlFor="recurring" className="cursor-pointer font-medium">
-                  Conta recorrente
+                  Conta recorrente (criar múltiplas)
                 </Label>
               </div>
               {formData.recurring && (
-                <div className="space-y-2 pl-2">
-                  <Label>Dia do mês para recorrência *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.recurring_day || ''}
-                    onChange={(e) => setFormData({ ...formData, recurring_day: parseInt(e.target.value) || undefined })}
-                    placeholder="Ex: 5 (dia 5 de cada mês)"
-                  />
+                <div className="space-y-3 pl-2 border-l-2 border-primary/20">
+                  <div>
+                    <Label>Dia do mês para recorrência *</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={formData.recurring_day || ''}
+                      onChange={(e) => setFormData({ ...formData, recurring_day: parseInt(e.target.value) || undefined })}
+                      placeholder="Ex: 28 (dia 28 de cada mês)"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Mês Inicial *</Label>
+                      <Input
+                        type="month"
+                        value={formData.recurring_start || ''}
+                        onChange={(e) => setFormData({ ...formData, recurring_start: e.target.value })}
+                        placeholder="2025-01"
+                      />
+                    </div>
+                    <div>
+                      <Label>Mês Final *</Label>
+                      <Input
+                        type="month"
+                        value={formData.recurring_end || ''}
+                        onChange={(e) => setFormData({ ...formData, recurring_end: e.target.value })}
+                        placeholder="2025-12"
+                      />
+                    </div>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    A conta será criada automaticamente todo mês neste dia
+                    Serão criadas contas para cada mês entre o período selecionado
                   </p>
                 </div>
               )}

@@ -105,45 +105,62 @@ export function useBillsToPay(filters?: {
   });
 
   const createBill = useMutation({
-    mutationFn: async (data: BillToPayFormData) => {
-      // Se for recorrente, criar para os próximos 12 meses
-      if (data.recurring && data.recurring_day) {
+    mutationFn: async (data: BillToPayFormData & { recurring_start?: string; recurring_end?: string }) => {
+      // Se for recorrente, criar para o período especificado
+      if (data.recurring && data.recurring_day && data.recurring_start && data.recurring_end) {
         const bills: BillToPayFormData[] = [];
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth();
         
-        for (let i = 0; i < 12; i++) {
-          const month = (currentMonth + i) % 12;
-          const year = currentYear + Math.floor((currentMonth + i) / 12);
-          
+        // Parse das datas de início e fim (formato: YYYY-MM)
+        const [startYear, startMonth] = data.recurring_start.split('-').map(Number);
+        const [endYear, endMonth] = data.recurring_end.split('-').map(Number);
+        
+        let year = startYear;
+        let month = startMonth;
+        
+        while (year < endYear || (year === endYear && month <= endMonth)) {
           // Calcular o último dia do mês para evitar datas inválidas
-          const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+          const lastDayOfMonth = new Date(year, month, 0).getDate();
           const day = Math.min(data.recurring_day, lastDayOfMonth);
           
-          const dueDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          
+          // Remover campos extras antes de inserir
+          const { recurring_start, recurring_end, ...billData } = data;
           
           bills.push({
-            ...data,
+            ...billData,
             due_date: dueDate,
           });
+          
+          // Próximo mês
+          month++;
+          if (month > 12) {
+            month = 1;
+            year++;
+          }
+        }
+        
+        if (bills.length === 0) {
+          throw new Error('Período inválido');
         }
         
         // Inserir todas as contas
         const { data: result, error } = await from('bills_to_pay').insert(bills);
         if (error) throw error;
-        return result as BillToPay;
+        return { ...result, count: bills.length } as BillToPay & { count: number };
       } else {
-        // Conta única
-        const { data: result, error } = await from('bills_to_pay').insert(data);
+        // Conta única - remover campos extras
+        const { recurring_start, recurring_end, ...billData } = data as any;
+        const { data: result, error } = await from('bills_to_pay').insert(billData);
         if (error) throw error;
         return result as BillToPay;
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
-      const msg = variables.recurring 
-        ? 'Contas recorrentes criadas para os próximos 12 meses!' 
+      const count = (result as any)?.count;
+      const msg = variables.recurring && count
+        ? `${count} contas recorrentes criadas com sucesso!` 
         : 'Conta cadastrada com sucesso!';
       toast({ title: msg });
     },
