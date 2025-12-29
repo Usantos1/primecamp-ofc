@@ -29,8 +29,9 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { 
   Plus, Search, Eye, Edit, Filter, Printer, Download, Send, MoreVertical, X, Trash2,
-  ShoppingCart, DollarSign, Calendar, User
+  ShoppingCart, DollarSign, Calendar, User, Upload
 } from 'lucide-react';
+import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
 import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useCancelRequests } from '@/hooks/usePDV';
@@ -79,6 +80,9 @@ export default function Vendas() {
   const [previewItems, setPreviewItems] = useState<any[]>([]);
   const [previewPayments, setPreviewPayments] = useState<any[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  
+  // Estado do modal de importação retroativa
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Filtrar vendas
   const filteredSales = useMemo(() => {
@@ -577,14 +581,25 @@ export default function Vendas() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold">Lista de Vendas</CardTitle>
               <PermissionGate permission="vendas.create">
-                <Button 
-                  onClick={() => navigate('/pdv/venda/nova')} 
-                  size="sm"
-                  className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span className="text-xs">Nova Venda</span>
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => setImportDialogOpen(true)} 
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 h-9"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="text-xs hidden sm:inline">Importar</span>
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/pdv/venda/nova')} 
+                    size="sm"
+                    className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="text-xs">Nova Venda</span>
+                  </Button>
+                </div>
               </PermissionGate>
             </div>
           </CardHeader>
@@ -1384,6 +1399,13 @@ export default function Vendas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Importação Retroativa */}
+      <ImportarVendasRetroativas
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => window.location.reload()}
+      />
     </ModernLayout>
   );
 }
