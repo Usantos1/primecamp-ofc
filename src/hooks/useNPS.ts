@@ -103,10 +103,13 @@ export const useNPS = () => {
     if (!user) return;
     
     try {
+      console.log('[NPS] Buscando respostas...');
       const { data, error } = await from('nps_responses')
         .select('*')
         .order('created_at', { ascending: false })
         .execute();
+
+      console.log('[NPS] Respostas do banco:', data?.length || 0, 'erro:', error);
 
       if (error) {
         console.error('Error fetching NPS responses:', error);
@@ -123,6 +126,7 @@ export const useNPS = () => {
         user_name: 'Usuário'
       }));
 
+      console.log('[NPS] Respostas formatadas:', formattedResponses.length);
       setResponses(formattedResponses);
     } catch (error) {
       console.error('Error in fetchResponses:', error);
