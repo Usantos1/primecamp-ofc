@@ -18,8 +18,8 @@ export function FinanceiroDashboard() {
     month: context.month 
   });
   const { data: billsDueSoon = [], isLoading: billsLoading } = useBillsDueSoon(7);
-  const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
-  const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
+  const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month: context.month });
+  const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month: context.month });
 
   // Calcular margem líquida corretamente
   const lucroLiquido = summary.total_entradas - summary.total_saidas;
