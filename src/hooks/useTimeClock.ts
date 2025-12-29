@@ -70,9 +70,15 @@ export const useTimeClock = () => {
 
       setRecords(formattedRecords);
 
-      // Get today's record
+      // Get today's record - comparar apenas a parte da data (YYYY-MM-DD)
       const today = new Date().toISOString().split('T')[0];
-      const todaysRecord = formattedRecords.find(r => r.date === today && r.user_id === user.id);
+      const todaysRecord = formattedRecords.find(r => {
+        // Normalizar a data do registro para comparação
+        const recordDate = r.date ? r.date.split('T')[0] : '';
+        return recordDate === today && r.user_id === user.id;
+      });
+      
+      console.log('[TimeClock] Today:', today, 'Records:', formattedRecords.length, 'TodayRecord:', todaysRecord);
       setTodayRecord(todaysRecord || null);
     } catch (error) {
       console.error('Error in fetchRecords:', error);
