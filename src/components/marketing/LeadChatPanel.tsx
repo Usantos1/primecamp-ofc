@@ -7,11 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   MessageSquare, Send, Phone, Clock, Check, CheckCheck,
   Settings, X, ArrowLeft, Loader2, MessageCircle, Search,
-  MoreVertical, Smile, Paperclip, Mic
+  MoreVertical, Smile, Paperclip, Mic, Trash2, Trophy, XCircle,
+  ThermometerSun, Flame, ThermometerSnowflake, Tag
 } from 'lucide-react';
 import { useLeadMessages, useConversations, useAtivaCRMConfig, LeadMessage, Conversation } from '@/hooks/useLeadChat';
 import { Lead } from '@/hooks/useMarketing';
@@ -31,10 +34,12 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
   const [showConfig, setShowConfig] = useState(false);
   const [apiToken, setApiToken] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { conversations, isLoading: conversationsLoading, refetch: refetchConversations } = useConversations();
-  const { messages, isLoading: messagesLoading, sendMessage, markAsRead, isSending } = useLeadMessages(selectedLead?.id || null);
+  const { conversations, isLoading: conversationsLoading, refetch: refetchConversations, updateLeadStatus } = useConversations();
+  const { messages, isLoading: messagesLoading, sendMessage, markAsRead, deleteMessage, deleteAllMessages, isSending } = useLeadMessages(selectedLead?.id || null);
   const { config, hasConfig, saveConfig, isLoading: configLoading } = useAtivaCRMConfig();
 
   // Scroll para o final quando novas mensagens chegam
@@ -297,18 +302,91 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-[#111b21] dark:text-[#e9edef] truncate">{selectedLead.nome}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium text-[#111b21] dark:text-[#e9edef] truncate">{selectedLead.nome}</h3>
+                    {/* Tags de Status */}
+                    {(selectedLead as any).status === 'convertido' && (
+                      <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0">GANHO</Badge>
+                    )}
+                    {(selectedLead as any).status === 'perdido' && (
+                      <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0">PERDIDO</Badge>
+                    )}
+                    {(selectedLead as any).temperatura === 'quente' && (
+                      <Badge className="bg-orange-500 text-white text-[10px] px-1.5 py-0">🔥 QUENTE</Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-[#667781] dark:text-[#8696a0] flex items-center gap-1">
                     {selectedLead.whatsapp || selectedLead.telefone || 'Sem telefone'}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
-                    <Search className="h-5 w-5 text-[#54656f] dark:text-[#aebac1]" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
-                    <MoreVertical className="h-5 w-5 text-[#54656f] dark:text-[#aebac1]" />
-                  </Button>
+                  {/* Botões de Status */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" title="Marcar status">
+                        <Tag className="h-5 w-5 text-[#54656f] dark:text-[#aebac1]" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => updateLeadStatus.mutate({ leadId: selectedLead.id, status: 'convertido' })}
+                        className="text-green-600"
+                      >
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Marcar como Ganho
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => updateLeadStatus.mutate({ leadId: selectedLead.id, status: 'perdido' })}
+                        className="text-red-600"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Marcar como Perdido
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => updateLeadStatus.mutate({ leadId: selectedLead.id, temperatura: 'quente' })}
+                      >
+                        <Flame className="h-4 w-4 mr-2 text-red-500" />
+                        Lead Quente
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => updateLeadStatus.mutate({ leadId: selectedLead.id, temperatura: 'morno' })}
+                      >
+                        <ThermometerSun className="h-4 w-4 mr-2 text-yellow-500" />
+                        Lead Morno
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => updateLeadStatus.mutate({ leadId: selectedLead.id, temperatura: 'frio' })}
+                      >
+                        <ThermometerSnowflake className="h-4 w-4 mr-2 text-blue-500" />
+                        Lead Frio
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  {/* Menu de Opções */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full">
+                        <MoreVertical className="h-5 w-5 text-[#54656f] dark:text-[#aebac1]" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => refetchConversations()}>
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Atualizar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Apagar conversa
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
                   {onClose && (
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full" onClick={onClose}>
                       <X className="h-5 w-5 text-[#54656f] dark:text-[#aebac1]" />
@@ -349,40 +427,69 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
                           <div
                             key={msg.id}
                             className={cn(
-                              'flex mb-1',
+                              'flex mb-1 group',
                               msg.direction === 'outbound' ? 'justify-end' : 'justify-start'
                             )}
                           >
-                            <div
-                              className={cn(
-                                'max-w-[65%] rounded-lg px-3 py-1.5 shadow-sm relative',
-                                msg.direction === 'outbound'
-                                  ? 'bg-[#d9fdd3] dark:bg-[#005c4b] rounded-tr-none'
-                                  : 'bg-white dark:bg-[#202c33] rounded-tl-none'
-                              )}
-                            >
-                              {msg.media_url && (
-                                <div className="mb-1">
-                                  <img 
-                                    src={msg.media_url} 
-                                    alt="Mídia" 
-                                    className="rounded max-w-full max-h-64 object-cover"
-                                  />
-                                </div>
-                              )}
-                              <p className="text-sm text-[#111b21] dark:text-[#e9edef] whitespace-pre-wrap break-words pr-14">
-                                {msg.body}
-                              </p>
-                              <div className={cn(
-                                'absolute bottom-1 right-2 flex items-center gap-0.5',
-                                msg.direction === 'outbound' ? 'text-[#667781]' : 'text-[#667781]'
-                              )}>
-                                <span className="text-[11px]">
-                                  {formatMessageTime(msg.created_at)}
-                                </span>
-                                {msg.direction === 'outbound' && (
-                                  <span className="ml-0.5">{getStatusIcon(msg.status, msg.direction)}</span>
+                            <div className="relative">
+                              {/* Botão de apagar (aparece no hover) */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                      'absolute top-0 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-black/50 shadow-sm z-10',
+                                      msg.direction === 'outbound' ? '-left-8' : '-right-8'
+                                    )}
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align={msg.direction === 'outbound' ? 'start' : 'end'}>
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setDeletingMessageId(msg.id);
+                                    }}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Apagar mensagem
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              
+                              <div
+                                className={cn(
+                                  'max-w-[65%] min-w-[100px] rounded-lg px-3 py-1.5 shadow-sm relative',
+                                  msg.direction === 'outbound'
+                                    ? 'bg-[#d9fdd3] dark:bg-[#005c4b] rounded-tr-none'
+                                    : 'bg-white dark:bg-[#202c33] rounded-tl-none'
                                 )}
+                              >
+                                {msg.media_url && (
+                                  <div className="mb-1">
+                                    <img 
+                                      src={msg.media_url} 
+                                      alt="Mídia" 
+                                      className="rounded max-w-full max-h-64 object-cover"
+                                    />
+                                  </div>
+                                )}
+                                <p className="text-sm text-[#111b21] dark:text-[#e9edef] whitespace-pre-wrap break-words pr-14">
+                                  {msg.body}
+                                </p>
+                                <div className={cn(
+                                  'absolute bottom-1 right-2 flex items-center gap-0.5',
+                                  msg.direction === 'outbound' ? 'text-[#667781]' : 'text-[#667781]'
+                                )}>
+                                  <span className="text-[11px]">
+                                    {formatMessageTime(msg.created_at)}
+                                  </span>
+                                  {msg.direction === 'outbound' && (
+                                    <span className="ml-0.5">{getStatusIcon(msg.status, msg.direction)}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -463,6 +570,56 @@ export function LeadChatPanel({ lead, onClose, fullScreen = false }: LeadChatPan
         isSaving={saveConfig.isPending}
         hasConfig={hasConfig}
       />
+
+      {/* Dialog de confirmação para apagar conversa */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Todas as mensagens desta conversa serão apagadas permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                deleteAllMessages.mutate();
+                setShowDeleteDialog(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de confirmação para apagar mensagem */}
+      <AlertDialog open={!!deletingMessageId} onOpenChange={() => setDeletingMessageId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar mensagem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta mensagem será apagada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deletingMessageId) {
+                  deleteMessage.mutate(deletingMessageId);
+                  setDeletingMessageId(null);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

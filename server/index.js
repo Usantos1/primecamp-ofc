@@ -2266,6 +2266,82 @@ app.post('/api/leads/:leadId/messages/read', authenticateToken, async (req, res)
   }
 });
 
+// Apagar uma mensagem específica
+app.delete('/api/leads/:leadId/messages/:messageId', authenticateToken, async (req, res) => {
+  const { leadId, messageId } = req.params;
+  
+  try {
+    await pool.query(
+      `DELETE FROM lead_messages WHERE id = $1 AND lead_id = $2`,
+      [messageId, leadId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao apagar mensagem:', error);
+    res.status(500).json({ error: 'Erro ao apagar mensagem' });
+  }
+});
+
+// Apagar todas as mensagens de um lead (limpar conversa)
+app.delete('/api/leads/:leadId/messages', authenticateToken, async (req, res) => {
+  const { leadId } = req.params;
+  
+  try {
+    await pool.query(
+      `DELETE FROM lead_messages WHERE lead_id = $1`,
+      [leadId]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao apagar conversa:', error);
+    res.status(500).json({ error: 'Erro ao apagar conversa' });
+  }
+});
+
+// Atualizar status do lead (ganho/perdido)
+app.patch('/api/leads/:leadId/status', authenticateToken, async (req, res) => {
+  const { leadId } = req.params;
+  const { status, temperatura } = req.body;
+  
+  try {
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+    
+    if (status) {
+      updates.push(`status = $${paramIndex}`);
+      values.push(status);
+      paramIndex++;
+      
+      // Se convertido, marcar como tal
+      if (status === 'convertido') {
+        updates.push(`convertido = true`);
+      }
+    }
+    
+    if (temperatura) {
+      updates.push(`temperatura = $${paramIndex}`);
+      values.push(temperatura);
+      paramIndex++;
+    }
+    
+    updates.push(`updated_at = NOW()`);
+    values.push(leadId);
+    
+    await pool.query(
+      `UPDATE leads SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+      values
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao atualizar status:', error);
+    res.status(500).json({ error: 'Erro ao atualizar status' });
+  }
+});
+
 // =====================================================
 // WEBHOOK TEST - Sistema de Teste em Tempo Real
 // =====================================================

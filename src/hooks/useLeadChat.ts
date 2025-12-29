@@ -151,6 +151,53 @@ export function useLeadMessages(leadId: string | null) {
     }
   });
 
+  const deleteMessage = useMutation({
+    mutationFn: async (messageId: string) => {
+      const response = await fetch(`${apiUrl}/api/leads/${leadId}/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao apagar mensagem');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-messages', leadId] });
+      toast({ title: 'Mensagem apagada' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao apagar', variant: 'destructive' });
+    }
+  });
+
+  const deleteAllMessages = useMutation({
+    mutationFn: async () => {
+      if (!leadId) return;
+      
+      const response = await fetch(`${apiUrl}/api/leads/${leadId}/messages`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao apagar conversa');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead-messages', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast({ title: 'Conversa apagada' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao apagar conversa', variant: 'destructive' });
+    }
+  });
+
   return {
     messages: (data?.data || []) as LeadMessage[],
     total: data?.total || 0,
@@ -158,12 +205,17 @@ export function useLeadMessages(leadId: string | null) {
     refetch,
     sendMessage,
     markAsRead,
+    deleteMessage,
+    deleteAllMessages,
     isSending: sendMessage.isPending
   };
 }
 
 // Hook para lista de conversas
 export function useConversations() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['conversations'],
     queryFn: async () => {
@@ -175,10 +227,35 @@ export function useConversations() {
     refetchInterval: 10000 // Atualizar a cada 10 segundos
   });
 
+  const updateLeadStatus = useMutation({
+    mutationFn: async ({ leadId, status, temperatura }: { leadId: string; status?: string; temperatura?: string }) => {
+      const response = await fetch(`${apiUrl}/api/leads/${leadId}/status`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ status, temperatura })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar status');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({ title: 'Status atualizado!' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao atualizar', variant: 'destructive' });
+    }
+  });
+
   return {
     conversations: (data?.data || []) as Conversation[],
     isLoading,
-    refetch
+    refetch,
+    updateLeadStatus
   };
 }
 
