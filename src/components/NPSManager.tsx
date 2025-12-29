@@ -79,7 +79,8 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
   };
 
   const renderQuestionInput = (question: NPSQuestion, surveyId: string) => {
-    const value = surveyResponses[surveyId]?.[question.id] || '';
+    const rawValue = surveyResponses[surveyId]?.[question.id];
+    const value = rawValue !== undefined && rawValue !== '' ? Number(rawValue) : null;
 
     switch (question.type) {
       case 'scale':
@@ -92,14 +93,15 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
             <div className="flex gap-2">
               {Array.from({ length: (question.scale_max || 10) - (question.scale_min || 1) + 1 }, (_, i) => {
                 const val = (question.scale_min || 1) + i;
+                const isSelected = value === val;
                 return (
                   <Button
                     key={val}
                     type="button"
-                    variant={value === val ? 'default' : 'outline'}
+                    variant={isSelected ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => updateResponse(surveyId, question.id, val)}
-                    className="w-10 h-10"
+                    className={`w-10 h-10 ${isSelected ? 'bg-primary text-primary-foreground' : ''}`}
                   >
                     {val}
                   </Button>
@@ -119,7 +121,7 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
                 variant="ghost"
                 size="sm"
                 onClick={() => updateResponse(surveyId, question.id, i + 1)}
-                className={`p-1 ${value >= i + 1 ? 'text-yellow-500' : 'text-gray-300'}`}
+                className={`p-1 ${value !== null && value >= i + 1 ? 'text-yellow-500' : 'text-gray-300'}`}
               >
                 ⭐
               </Button>
