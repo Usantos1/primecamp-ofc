@@ -2235,7 +2235,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <CardDescription className="text-xs">Itens verificados na saída</CardDescription>
                           </div>
                           <Badge variant="destructive" className="text-xs">
-                            {checklistSaidaConfig.filter(i => i.categoria === 'fisico').filter(item => (currentOS.checklist_saida || []).includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'fisico').length}
+                            {checklistSaidaConfig.filter(i => i.categoria === 'fisico').filter(item => parseJsonArray(currentOS.checklist_saida).includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'fisico').length}
                           </Badge>
                         </div>
                       </CardHeader>
@@ -2246,7 +2246,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
                                 <Checkbox
                                   id={`saida-fisico-${item.id}`}
-                                  checked={(currentOS.checklist_saida || []).includes(item.item_id)}
+                                  checked={parseJsonArray(currentOS.checklist_saida).includes(item.item_id)}
                                   disabled
                                 />
                                 <Label htmlFor={`saida-fisico-${item.id}`} className="text-sm cursor-default opacity-75 flex-1">
@@ -2268,7 +2268,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <CardDescription className="text-xs">Itens funcionais verificados na saída</CardDescription>
                           </div>
                           <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
-                            {checklistSaidaConfig.filter(i => i.categoria === 'funcional').filter(item => (currentOS.checklist_saida || []).includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'funcional').length}
+                            {checklistSaidaConfig.filter(i => i.categoria === 'funcional').filter(item => parseJsonArray(currentOS.checklist_saida).includes(item.item_id)).length} / {checklistSaidaConfig.filter(i => i.categoria === 'funcional').length}
                           </Badge>
                         </div>
                       </CardHeader>
@@ -2279,7 +2279,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
                                 <Checkbox
                                   id={`saida-funcional-${item.id}`}
-                                  checked={(currentOS.checklist_saida || []).includes(item.item_id)}
+                                  checked={parseJsonArray(currentOS.checklist_saida).includes(item.item_id)}
                                   disabled
                                 />
                                 <Label htmlFor={`saida-funcional-${item.id}`} className="text-sm cursor-default opacity-75 flex-1">
@@ -2497,7 +2497,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   chatId: chatId, // Salvar chatId para poder deletar depois
                                 }));
                                 const updatedFotos = [
-                                  ...(currentOS.fotos_telegram_entrada || []),
+                                  ...parseJsonArray(currentOS.fotos_telegram_entrada),
                                   ...newPhotos
                                 ];
 
@@ -2607,7 +2607,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   chatId: chatId,
                                 }));
                                 const updatedFotos = [
-                                  ...(currentOS.fotos_telegram_entrada || []),
+                                  ...parseJsonArray(currentOS.fotos_telegram_entrada),
                                   ...newPhotos
                                 ];
 
@@ -2723,7 +2723,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   chatId: chatId, // Salvar chatId para poder deletar depois
                                 }));
                                 const updatedFotos = [
-                                  ...(currentOS.fotos_telegram_processo || []),
+                                  ...parseJsonArray(currentOS.fotos_telegram_processo),
                                   ...newPhotos
                                 ];
 
@@ -2837,7 +2837,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   chatId: chatId,
                                 }));
                                 const updatedFotos = [
-                                  ...(currentOS.fotos_telegram_processo || []),
+                                  ...parseJsonArray(currentOS.fotos_telegram_processo),
                                   ...newPhotos
                                 ];
 
@@ -2953,7 +2953,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   chatId: chatId, // Salvar chatId para poder deletar depois
                                 }));
                                 const updatedFotos = [
-                                  ...(currentOS.fotos_telegram_saida || []),
+                                  ...parseJsonArray(currentOS.fotos_telegram_saida),
                                   ...newPhotos
                                 ];
 
@@ -3065,7 +3065,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   chatId: chatId,
                                 }));
                                 const updatedFotos = [
-                                  ...(currentOS.fotos_telegram_saida || []),
+                                  ...parseJsonArray(currentOS.fotos_telegram_saida),
                                   ...newPhotos
                                 ];
 
@@ -3196,7 +3196,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 const result = await deleteTelegramMessage(chatId, fotoData.messageId);
                                 if (result.success) {
                                   // Remover foto da lista
-                                  const updatedFotos = currentOS.fotos_telegram_entrada?.filter((_, i) => i !== index) || [];
+                                  const updatedFotos = parseJsonArray(currentOS.fotos_telegram_entrada).filter((_, i) => i !== index);
                                   await updateOS(currentOS.id, {
                                     fotos_telegram_entrada: updatedFotos,
                                   });
@@ -3343,7 +3343,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 
                                 const result = await deleteTelegramMessage(chatId, fotoData.messageId);
                                 if (result.success) {
-                                  const updatedFotos = currentOS.fotos_telegram_processo?.filter((_, i) => i !== index) || [];
+                                  const updatedFotos = parseJsonArray(currentOS.fotos_telegram_processo).filter((_, i) => i !== index);
                                   await updateOS(currentOS.id, {
                                     fotos_telegram_processo: updatedFotos,
                                   });
@@ -3474,7 +3474,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 
                                 const result = await deleteTelegramMessage(chatId, fotoData.messageId);
                                 if (result.success) {
-                                  const updatedFotos = currentOS.fotos_telegram_saida?.filter((_, i) => i !== index) || [];
+                                  const updatedFotos = parseJsonArray(currentOS.fotos_telegram_saida).filter((_, i) => i !== index);
                                   await updateOS(currentOS.id, {
                                     fotos_telegram_saida: updatedFotos,
                                   });
