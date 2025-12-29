@@ -803,7 +803,14 @@ app.post('/api/insert/:table', async (req, res) => {
     const values = [];
     const rowsPlaceholders = rowsToInsert.map((row, rowIndex) => {
       const base = rowIndex * keys.length;
-      keys.forEach((k, i) => values.push(row[k]));
+      keys.forEach((k, i) => {
+        // Serializar objetos/arrays como JSON para campos JSONB
+        let value = row[k];
+        if (value !== null && typeof value === 'object') {
+          value = JSON.stringify(value);
+        }
+        values.push(value);
+      });
       const placeholders = keys.map((_, i) => `$${base + i + 1}`).join(', ');
       return `(${placeholders})`;
     }).join(', ');
@@ -837,7 +844,13 @@ app.post('/api/update/:table', async (req, res) => {
     }
 
     const keys = Object.keys(data);
-    const values = Object.values(data);
+    // Serializar objetos/arrays como JSON para campos JSONB
+    const values = Object.values(data).map(value => {
+      if (value !== null && typeof value === 'object') {
+        return JSON.stringify(value);
+      }
+      return value;
+    });
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     
     // Passar o número de valores do SET como offset para buildWhereClause
@@ -874,7 +887,13 @@ app.post('/api/upsert/:table', async (req, res) => {
     const tableName = table.includes('.') ? table : `public.${table}`;
 
     const keys = Object.keys(data);
-    const values = Object.values(data);
+    // Serializar objetos/arrays como JSON para campos JSONB
+    const values = Object.values(data).map(value => {
+      if (value !== null && typeof value === 'object') {
+        return JSON.stringify(value);
+      }
+      return value;
+    });
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
 
     // Determinar coluna de conflito (padrão: 'key' para kv_store, 'id' para outras)
