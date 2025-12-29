@@ -37,7 +37,8 @@ export function FinanceiroLayout() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Calcular datas baseado no filtro
-  // Para contas a pagar, consideramos vencimentos futuros
+  // Para vendas/transações = passado, para contas a pagar = futuro
+  // Usamos range que cobre ambos os casos
   const getDateRange = () => {
     const today = new Date();
     let startDate: string;
@@ -47,17 +48,17 @@ export function FinanceiroLayout() {
       startDate = format(today, 'yyyy-MM-dd');
       endDate = format(today, 'yyyy-MM-dd');
     } else if (dateFilter === 'week') {
-      // Próximos 7 dias (para contas a pagar)
-      startDate = format(today, 'yyyy-MM-dd');
-      const weekAhead = new Date(today);
-      weekAhead.setDate(weekAhead.getDate() + 7);
-      endDate = format(weekAhead, 'yyyy-MM-dd');
+      // Últimos 7 dias (para vendas/transações)
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      startDate = format(weekAgo, 'yyyy-MM-dd');
+      endDate = format(today, 'yyyy-MM-dd');
     } else if (dateFilter === 'month') {
-      // Próximos 30 dias (para contas a pagar)
-      startDate = format(today, 'yyyy-MM-dd');
-      const monthAhead = new Date(today);
-      monthAhead.setDate(monthAhead.getDate() + 30);
-      endDate = format(monthAhead, 'yyyy-MM-dd');
+      // Últimos 30 dias (para vendas/transações)
+      const monthAgo = new Date(today);
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      startDate = format(monthAgo, 'yyyy-MM-dd');
+      endDate = format(today, 'yyyy-MM-dd');
     } else if (dateFilter === 'custom' && customDateStart && customDateEnd) {
       startDate = format(customDateStart, 'yyyy-MM-dd');
       endDate = format(customDateEnd, 'yyyy-MM-dd');
