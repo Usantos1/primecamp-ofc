@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { useQuery } from '@tanstack/react-query';
@@ -14,27 +14,27 @@ interface DRECompleteProps {
   endDate?: string;
 }
 
-interface DRESection {
-  title: string;
-  items: { descricao: string; valor: number }[];
-  total: number;
-  type: 'receita' | 'despesa';
-}
+// Função para extrair custo da observação
+const extractCusto = (observacoes: string | null): number => {
+  if (!observacoes) return 0;
+  const custoMatch = observacoes.match(/Custo:\s*R\$\s*([\d.,]+)/i);
+  if (!custoMatch) return 0;
+  return parseFloat(custoMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
+};
 
 export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
   const { transactions } = useFinancialTransactions({ month });
   const { data: categories = [] } = useFinancialCategories();
 
-  // Buscar vendas do período
+  // Buscar vendas do período (incluindo observacoes para extrair custo)
   const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['sales-dre', startDate, endDate],
     queryFn: async () => {
       try {
         let q = from('sales')
-          .select('*')
+          .select('id, total, observacoes, created_at')
           .eq('status', 'paid');
         
-        // Só aplicar filtro se ambos estiverem definidos e não vazios
         if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
         }
@@ -44,7 +44,6 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           console.warn('Erro ao buscar vendas DRE:', error);
           return [];
         }
-        console.log('[DRE] Vendas encontradas:', data?.length || 0, 'Total:', data?.reduce((s: number, v: any) => s + Number(v.total || 0), 0));
         return data || [];
       } catch (err) {
         console.warn('Erro ao buscar vendas DRE:', err);
@@ -53,7 +52,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     },
   });
   
-  // Buscar contas pagas no período (filtrar por due_date, não payment_date)
+  // Buscar contas pagas no período (filtrar por due_date)
   const { data: billsPaid = [], isLoading: billsLoading } = useQuery({
     queryKey: ['bills-paid-dre', startDate, endDate],
     queryFn: async () => {
@@ -62,14 +61,12 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           .select('*')
           .eq('status', 'pago');
         
-        // Filtrar por due_date (vencimento) para despesas do período correto
         if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('due_date', startDate).lte('due_date', endDate);
         }
         
         const { data, error } = await q.execute();
         if (error) throw error;
-        console.log('[DRE] Contas pagas no período:', data?.length || 0, 'Total:', data?.reduce((s: number, b: any) => s + Number(b.amount || 0), 0));
         return data || [];
       } catch (err) {
         console.warn('Erro ao buscar contas pagas DRE:', err);
@@ -78,67 +75,82 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     },
   });
 
-  // Calcular receitas (incluindo vendas)
-  const { receitasOperacionais, totalReceitasOperacionais } = React.useMemo(() => {
-    const receitas: Record<string, number> = {};
+  // Calcular valores do DRE
+  const dreData = React.useMemo(() => {
+    // RECEITA BRUTA DE VENDAS
+    const receitaBrutaVendas = sales.reduce((sum: number, s: any) => sum + Number(s.total || 0), 0);
     
-    // Transações manuais de entrada
+    // CMV - Custo das Mercadorias Vendidas (extraído da observação)
+    const cmv = sales.reduce((sum: number, s: any) => sum + extractCusto(s.observacoes), 0);
+    
+    // LUCRO BRUTO
+    const lucroBruto = receitaBrutaVendas - cmv;
+    const margemBruta = receitaBrutaVendas > 0 ? (lucroBruto / receitaBrutaVendas) * 100 : 0;
+    
+    // Outras receitas (transações manuais de entrada)
+    const outrasReceitas: Record<string, number> = {};
     transactions.filter(t => t.type === 'entrada').forEach(t => {
       const catName = t.category?.name || 'Outras Receitas';
-      receitas[catName] = (receitas[catName] || 0) + t.amount;
+      outrasReceitas[catName] = (outrasReceitas[catName] || 0) + t.amount;
     });
+    const totalOutrasReceitas = Object.values(outrasReceitas).reduce((sum, v) => sum + v, 0);
     
-    // Vendas do PDV
-    const totalVendas = sales.reduce((sum: number, s: any) => sum + Number(s.total || 0), 0);
-    if (totalVendas > 0) {
-      receitas['Vendas de Produtos/Serviços'] = (receitas['Vendas de Produtos/Serviços'] || 0) + totalVendas;
-    }
+    // DESPESAS OPERACIONAIS (contas a pagar + transações manuais de saída)
+    const despesasFixas: Record<string, number> = {};
+    const despesasVariaveis: Record<string, number> = {};
     
-    const total = Object.values(receitas).reduce((sum, v) => sum + v, 0);
-    
-    return { receitasOperacionais: receitas, totalReceitasOperacionais: total };
-  }, [transactions, sales]);
-
-  // Calcular despesas (incluindo contas pagas)
-  const { despesasOperacionais, totalDespesasOperacionais } = React.useMemo(() => {
-    const despesas: Record<string, number> = {};
+    // Contas pagas - agrupar por descrição
+    billsPaid.forEach((bill: any) => {
+      const descricao = bill.description || 'Outras Despesas';
+      if (bill.expense_type === 'fixa') {
+        despesasFixas[descricao] = (despesasFixas[descricao] || 0) + Number(bill.amount || 0);
+      } else {
+        despesasVariaveis[descricao] = (despesasVariaveis[descricao] || 0) + Number(bill.amount || 0);
+      }
+    });
     
     // Transações manuais de saída
     transactions.filter(t => t.type === 'saida').forEach(t => {
       const catName = t.category?.name || 'Outras Despesas';
-      despesas[catName] = (despesas[catName] || 0) + t.amount;
+      despesasVariaveis[catName] = (despesasVariaveis[catName] || 0) + t.amount;
     });
     
-    // Contas pagas
-    billsPaid.forEach((bill: any) => {
-      const catName = bill.expense_type === 'fixa' ? 'Despesas Fixas' : 'Despesas Variáveis';
-      despesas[catName] = (despesas[catName] || 0) + Number(bill.amount || 0);
-    });
+    const totalDespesasFixas = Object.values(despesasFixas).reduce((sum, v) => sum + v, 0);
+    const totalDespesasVariaveis = Object.values(despesasVariaveis).reduce((sum, v) => sum + v, 0);
+    const totalDespesasOperacionais = totalDespesasFixas + totalDespesasVariaveis;
     
-    const total = Object.values(despesas).reduce((sum, v) => sum + v, 0);
+    // RESULTADO OPERACIONAL (EBITDA)
+    const resultadoOperacional = lucroBruto + totalOutrasReceitas - totalDespesasOperacionais;
+    const totalReceitas = receitaBrutaVendas + totalOutrasReceitas;
+    const margemOperacional = totalReceitas > 0 ? (resultadoOperacional / totalReceitas) * 100 : 0;
     
-    return { despesasOperacionais: despesas, totalDespesasOperacionais: total };
-  }, [transactions, billsPaid]);
-
-  // Resultado Operacional
-  const resultadoOperacional = totalReceitasOperacionais - totalDespesasOperacionais;
-
-  // Receitas Não Operacionais (se houver)
-  const receitasNaoOperacionais: Record<string, number> = {};
-  const totalReceitasNaoOperacionais = Object.values(receitasNaoOperacionais).reduce((sum, v) => sum + v, 0);
-
-  // Despesas Não Operacionais (se houver)
-  const despesasNaoOperacionais: Record<string, number> = {};
-  const totalDespesasNaoOperacionais = Object.values(despesasNaoOperacionais).reduce((sum, v) => sum + v, 0);
-
-  // Resultado Antes do IR
-  const resultadoAntesIR = resultadoOperacional + totalReceitasNaoOperacionais - totalDespesasNaoOperacionais;
-
-  // Impostos (estimado - pode ser calculado de forma mais precisa)
-  const impostos = totalReceitasOperacionais * 0.06; // 6% estimado
-  const lucroLiquido = resultadoAntesIR - impostos;
-  const margemLiquida = totalReceitasOperacionais > 0 ? (lucroLiquido / totalReceitasOperacionais) * 100 : 0;
-  const margemOperacional = totalReceitasOperacionais > 0 ? (resultadoOperacional / totalReceitasOperacionais) * 100 : 0;
+    // IMPOSTOS (estimado 6%)
+    const impostos = totalReceitas * 0.06;
+    
+    // LUCRO LÍQUIDO
+    const lucroLiquido = resultadoOperacional - impostos;
+    const margemLiquida = totalReceitas > 0 ? (lucroLiquido / totalReceitas) * 100 : 0;
+    
+    return {
+      receitaBrutaVendas,
+      cmv,
+      lucroBruto,
+      margemBruta,
+      outrasReceitas,
+      totalOutrasReceitas,
+      despesasFixas,
+      despesasVariaveis,
+      totalDespesasFixas,
+      totalDespesasVariaveis,
+      totalDespesasOperacionais,
+      resultadoOperacional,
+      margemOperacional,
+      impostos,
+      lucroLiquido,
+      margemLiquida,
+      totalReceitas,
+    };
+  }, [transactions, sales, billsPaid]);
 
   return (
     <Card>
@@ -156,73 +168,61 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* RECEITAS OPERACIONAIS */}
+              {/* RECEITA BRUTA DE VENDAS */}
               <TableRow className="bg-green-50/50">
                 <TableCell className="font-bold text-green-700 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  RECEITAS OPERACIONAIS
+                  RECEITA BRUTA DE VENDAS
                 </TableCell>
                 <TableCell className="text-right font-bold text-green-700">
-                  {currencyFormatters.brl(totalReceitasOperacionais)}
+                  {currencyFormatters.brl(dreData.receitaBrutaVendas)}
                 </TableCell>
               </TableRow>
-              {Object.entries(receitasOperacionais).map(([descricao, valor]) => (
-                <TableRow key={descricao}>
-                  <TableCell className="pl-8">{descricao}</TableCell>
-                  <TableCell className="text-right text-green-600">{currencyFormatters.brl(valor)}</TableCell>
-                </TableRow>
-              ))}
 
-              {/* DESPESAS OPERACIONAIS */}
-              <TableRow className="bg-red-50/50">
-                <TableCell className="font-bold text-red-700 flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4" />
-                  (-) DESPESAS OPERACIONAIS
+              {/* CMV - CUSTO DAS MERCADORIAS VENDIDAS */}
+              <TableRow className="bg-orange-50/50">
+                <TableCell className="font-bold text-orange-700 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  (-) CMV - Custo das Mercadorias/Peças
                 </TableCell>
-                <TableCell className="text-right font-bold text-red-700">
-                  ({currencyFormatters.brl(totalDespesasOperacionais)})
+                <TableCell className="text-right font-bold text-orange-700">
+                  ({currencyFormatters.brl(dreData.cmv)})
                 </TableCell>
               </TableRow>
-              {Object.entries(despesasOperacionais).map(([descricao, valor]) => (
-                <TableRow key={descricao}>
-                  <TableCell className="pl-8">{descricao}</TableCell>
-                  <TableCell className="text-right text-red-600">({currencyFormatters.brl(valor)})</TableCell>
-                </TableRow>
-              ))}
 
-              {/* RESULTADO OPERACIONAL */}
+              {/* LUCRO BRUTO */}
               <TableRow className={cn(
                 "border-t-2 border-b-2",
-                resultadoOperacional >= 0 ? 'bg-blue-50/50' : 'bg-red-100/50'
+                dreData.lucroBruto >= 0 ? 'bg-blue-50/50' : 'bg-red-100/50'
               )}>
-                <TableCell className="font-bold text-lg">RESULTADO OPERACIONAL (EBITDA)</TableCell>
+                <TableCell className="font-bold text-lg">LUCRO BRUTO</TableCell>
                 <TableCell className={cn(
                   "text-right font-bold text-lg",
-                  resultadoOperacional >= 0 ? 'text-blue-700' : 'text-red-700'
+                  dreData.lucroBruto >= 0 ? 'text-blue-700' : 'text-red-700'
                 )}>
-                  {currencyFormatters.brl(resultadoOperacional)}
+                  {currencyFormatters.brl(dreData.lucroBruto)}
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8 text-sm text-muted-foreground">Margem Operacional</TableCell>
+                <TableCell className="pl-8 text-sm text-muted-foreground">Margem Bruta</TableCell>
                 <TableCell className={cn(
                   "text-right font-semibold",
-                  margemOperacional >= 0 ? 'text-blue-600' : 'text-red-600'
+                  dreData.margemBruta >= 0 ? 'text-blue-600' : 'text-red-600'
                 )}>
-                  {margemOperacional.toFixed(2)}%
+                  {dreData.margemBruta.toFixed(2)}%
                 </TableCell>
               </TableRow>
 
-              {/* RECEITAS NÃO OPERACIONAIS */}
-              {totalReceitasNaoOperacionais > 0 && (
+              {/* OUTRAS RECEITAS */}
+              {dreData.totalOutrasReceitas > 0 && (
                 <>
                   <TableRow className="bg-green-50/30">
-                    <TableCell className="font-bold text-green-700">RECEITAS NÃO OPERACIONAIS</TableCell>
+                    <TableCell className="font-bold text-green-700">(+) OUTRAS RECEITAS</TableCell>
                     <TableCell className="text-right font-bold text-green-700">
-                      {currencyFormatters.brl(totalReceitasNaoOperacionais)}
+                      {currencyFormatters.brl(dreData.totalOutrasReceitas)}
                     </TableCell>
                   </TableRow>
-                  {Object.entries(receitasNaoOperacionais).map(([descricao, valor]) => (
+                  {Object.entries(dreData.outrasReceitas).map(([descricao, valor]) => (
                     <TableRow key={descricao}>
                       <TableCell className="pl-8">{descricao}</TableCell>
                       <TableCell className="text-right text-green-600">{currencyFormatters.brl(valor)}</TableCell>
@@ -231,17 +231,20 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
                 </>
               )}
 
-              {/* DESPESAS NÃO OPERACIONAIS */}
-              {totalDespesasNaoOperacionais > 0 && (
+              {/* DESPESAS FIXAS */}
+              {dreData.totalDespesasFixas > 0 && (
                 <>
-                  <TableRow className="bg-red-50/30">
-                    <TableCell className="font-bold text-red-700">(-) DESPESAS NÃO OPERACIONAIS</TableCell>
+                  <TableRow className="bg-red-50/50">
+                    <TableCell className="font-bold text-red-700 flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4" />
+                      (-) DESPESAS FIXAS
+                    </TableCell>
                     <TableCell className="text-right font-bold text-red-700">
-                      ({currencyFormatters.brl(totalDespesasNaoOperacionais)})
+                      ({currencyFormatters.brl(dreData.totalDespesasFixas)})
                     </TableCell>
                   </TableRow>
-                  {Object.entries(despesasNaoOperacionais).map(([descricao, valor]) => (
-                    <TableRow key={descricao}>
+                  {Object.entries(dreData.despesasFixas).map(([descricao, valor]) => (
+                    <TableRow key={`fixa-${descricao}`}>
                       <TableCell className="pl-8">{descricao}</TableCell>
                       <TableCell className="text-right text-red-600">({currencyFormatters.brl(valor)})</TableCell>
                     </TableRow>
@@ -249,29 +252,67 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
                 </>
               )}
 
-              {/* RESULTADO ANTES DO IR */}
-              <TableRow className="border-t">
-                <TableCell className="font-bold">RESULTADO ANTES DO IR</TableCell>
+              {/* DESPESAS VARIÁVEIS */}
+              {dreData.totalDespesasVariaveis > 0 && (
+                <>
+                  <TableRow className="bg-red-50/30">
+                    <TableCell className="font-bold text-red-600">(-) DESPESAS VARIÁVEIS</TableCell>
+                    <TableCell className="text-right font-bold text-red-600">
+                      ({currencyFormatters.brl(dreData.totalDespesasVariaveis)})
+                    </TableCell>
+                  </TableRow>
+                  {Object.entries(dreData.despesasVariaveis).map(([descricao, valor]) => (
+                    <TableRow key={`var-${descricao}`}>
+                      <TableCell className="pl-8">{descricao}</TableCell>
+                      <TableCell className="text-right text-red-600">({currencyFormatters.brl(valor)})</TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              )}
+
+              {/* TOTAL DESPESAS OPERACIONAIS */}
+              <TableRow className="bg-red-100/50">
+                <TableCell className="font-bold text-red-700">TOTAL DESPESAS OPERACIONAIS</TableCell>
+                <TableCell className="text-right font-bold text-red-700">
+                  ({currencyFormatters.brl(dreData.totalDespesasOperacionais)})
+                </TableCell>
+              </TableRow>
+
+              {/* RESULTADO OPERACIONAL (EBITDA) */}
+              <TableRow className={cn(
+                "border-t-2 border-b-2",
+                dreData.resultadoOperacional >= 0 ? 'bg-blue-50/50' : 'bg-red-100/50'
+              )}>
+                <TableCell className="font-bold text-lg">RESULTADO OPERACIONAL (EBITDA)</TableCell>
                 <TableCell className={cn(
-                  "text-right font-bold",
-                  resultadoAntesIR >= 0 ? 'text-blue-700' : 'text-red-700'
+                  "text-right font-bold text-lg",
+                  dreData.resultadoOperacional >= 0 ? 'text-blue-700' : 'text-red-700'
                 )}>
-                  {currencyFormatters.brl(resultadoAntesIR)}
+                  {currencyFormatters.brl(dreData.resultadoOperacional)}
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="pl-8 text-sm text-muted-foreground">Margem Operacional</TableCell>
+                <TableCell className={cn(
+                  "text-right font-semibold",
+                  dreData.margemOperacional >= 0 ? 'text-blue-600' : 'text-red-600'
+                )}>
+                  {dreData.margemOperacional.toFixed(2)}%
                 </TableCell>
               </TableRow>
 
               {/* IMPOSTOS */}
-              {impostos > 0 && (
+              {dreData.impostos > 0 && (
                 <TableRow>
-                  <TableCell className="pl-8">(-) Impostos e Contribuições (Estimado)</TableCell>
-                  <TableCell className="text-right text-red-600">({currencyFormatters.brl(impostos)})</TableCell>
+                  <TableCell className="pl-8">(-) Impostos e Contribuições (Estimado 6%)</TableCell>
+                  <TableCell className="text-right text-red-600">({currencyFormatters.brl(dreData.impostos)})</TableCell>
                 </TableRow>
               )}
 
               {/* LUCRO LÍQUIDO */}
               <TableRow className={cn(
                 "border-t-2 border-b-2 bg-primary/5",
-                lucroLiquido >= 0 ? 'border-primary' : 'border-destructive'
+                dreData.lucroLiquido >= 0 ? 'border-primary' : 'border-destructive'
               )}>
                 <TableCell className="font-bold text-xl flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />
@@ -279,18 +320,18 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
                 </TableCell>
                 <TableCell className={cn(
                   "text-right font-bold text-xl",
-                  lucroLiquido >= 0 ? 'text-primary' : 'text-destructive'
+                  dreData.lucroLiquido >= 0 ? 'text-primary' : 'text-destructive'
                 )}>
-                  {currencyFormatters.brl(lucroLiquido)}
+                  {currencyFormatters.brl(dreData.lucroLiquido)}
                 </TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Margem Líquida</TableCell>
                 <TableCell className={cn(
                   "text-right font-bold text-lg",
-                  margemLiquida >= 0 ? 'text-primary' : 'text-destructive'
+                  dreData.margemLiquida >= 0 ? 'text-primary' : 'text-destructive'
                 )}>
-                  {margemLiquida.toFixed(2)}%
+                  {dreData.margemLiquida.toFixed(2)}%
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -298,22 +339,29 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
         </div>
 
         {/* Indicadores */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="p-4 bg-muted/50 rounded-lg text-center">
-            <p className="text-sm text-muted-foreground">Receitas Totais</p>
-            <p className="text-2xl font-bold text-green-600">{currencyFormatters.brl(totalReceitasOperacionais)}</p>
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 bg-green-50 rounded-lg text-center border border-green-200">
+            <p className="text-xs text-muted-foreground">Receita Bruta</p>
+            <p className="text-lg font-bold text-green-600">{currencyFormatters.brl(dreData.receitaBrutaVendas)}</p>
           </div>
-          <div className="p-4 bg-muted/50 rounded-lg text-center">
-            <p className="text-sm text-muted-foreground">Despesas Totais</p>
-            <p className="text-2xl font-bold text-red-600">{currencyFormatters.brl(totalDespesasOperacionais)}</p>
+          <div className="p-3 bg-orange-50 rounded-lg text-center border border-orange-200">
+            <p className="text-xs text-muted-foreground">Custo (CMV)</p>
+            <p className="text-lg font-bold text-orange-600">{currencyFormatters.brl(dreData.cmv)}</p>
           </div>
-          <div className="p-4 bg-muted/50 rounded-lg text-center">
-            <p className="text-sm text-muted-foreground">Margem Líquida</p>
+          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
+            <p className="text-xs text-muted-foreground">Despesas</p>
+            <p className="text-lg font-bold text-red-600">{currencyFormatters.brl(dreData.totalDespesasOperacionais)}</p>
+          </div>
+          <div className={cn(
+            "p-3 rounded-lg text-center border",
+            dreData.lucroLiquido >= 0 ? 'bg-primary/10 border-primary/30' : 'bg-destructive/10 border-destructive/30'
+          )}>
+            <p className="text-xs text-muted-foreground">Lucro Líquido</p>
             <p className={cn(
-              "text-2xl font-bold",
-              margemLiquida >= 0 ? 'text-primary' : 'text-destructive'
+              "text-lg font-bold",
+              dreData.lucroLiquido >= 0 ? 'text-primary' : 'text-destructive'
             )}>
-              {margemLiquida.toFixed(2)}%
+              {currencyFormatters.brl(dreData.lucroLiquido)}
             </p>
           </div>
         </div>
