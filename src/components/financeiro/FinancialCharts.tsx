@@ -26,7 +26,8 @@ export function FinancialCharts({ month, startDate, endDate }: FinancialChartsPr
           .select('id, total, created_at')
           .eq('status', 'paid');
         
-        if (startDate && endDate) {
+        // Só aplicar filtro se ambos estiverem definidos e não vazios
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
         }
         

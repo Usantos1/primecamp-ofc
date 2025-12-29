@@ -26,7 +26,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
   const { data: categories = [] } = useFinancialCategories();
 
   // Buscar vendas do período
-  const { data: sales = [] } = useQuery({
+  const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['sales-dre', startDate, endDate],
     queryFn: async () => {
       try {
@@ -34,12 +34,17 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           .select('*')
           .eq('status', 'paid');
         
-        if (startDate && endDate) {
+        // Só aplicar filtro se ambos estiverem definidos e não vazios
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
         }
         
         const { data, error } = await q.execute();
-        if (error) throw error;
+        if (error) {
+          console.warn('Erro ao buscar vendas DRE:', error);
+          return [];
+        }
+        console.log('[DRE] Vendas encontradas:', data?.length || 0, 'Total:', data?.reduce((s: number, v: any) => s + Number(v.total || 0), 0));
         return data || [];
       } catch (err) {
         console.warn('Erro ao buscar vendas DRE:', err);
@@ -49,7 +54,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
   });
   
   // Buscar contas pagas no período
-  const { data: billsPaid = [] } = useQuery({
+  const { data: billsPaid = [], isLoading: billsLoading } = useQuery({
     queryKey: ['bills-paid-dre', startDate, endDate],
     queryFn: async () => {
       try {
@@ -57,7 +62,8 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           .select('*')
           .eq('status', 'pago');
         
-        if (startDate && endDate) {
+        // Só aplicar filtro se ambos estiverem definidos e não vazios
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('payment_date', startDate).lte('payment_date', endDate);
         }
         

@@ -26,7 +26,8 @@ export function CashFlowChart({ month, startDate, endDate }: CashFlowChartProps)
           .eq('status', 'paid')
           .order('created_at', { ascending: true });
         
-        if (startDate && endDate) {
+        // Só aplicar filtro se ambos estiverem definidos e não vazios
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
         }
         
