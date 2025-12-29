@@ -86,18 +86,25 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       source: 'manual' | 'sale';
     }> = [];
     
-    // Transações manuais
+    // Transações manuais - EXCLUIR as que referenciam vendas (já buscamos vendas diretamente)
     transactions.forEach(t => {
-      items.push({
-        id: t.id,
-        date: t.transaction_date,
-        type: t.type,
-        description: t.description,
-        category: t.category?.name || '-',
-        method: t.payment_method ? PAYMENT_METHOD_LABELS[t.payment_method] : '-',
-        amount: t.amount,
-        source: 'manual',
-      });
+      // Ignorar transações que são referências a vendas
+      const isFromSale = t.reference_type === 'sale' || 
+                         t.description?.toLowerCase().includes('quitação') ||
+                         t.description?.toLowerCase().includes('venda #');
+      
+      if (!isFromSale) {
+        items.push({
+          id: t.id,
+          date: t.transaction_date,
+          type: t.type,
+          description: t.description,
+          category: t.category?.name || '-',
+          method: t.payment_method ? PAYMENT_METHOD_LABELS[t.payment_method] : '-',
+          amount: t.amount,
+          source: 'manual',
+        });
+      }
     });
     
     // Vendas como entradas (apenas pagas)
