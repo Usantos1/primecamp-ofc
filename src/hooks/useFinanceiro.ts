@@ -80,7 +80,7 @@ export function useBillsToPay(filters?: {
         }
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
-          const endDate = `${filters.month}-31`;
+          const endDate = getLastDayOfMonth(filters.month);
           q = q.gte('due_date', startDate).lte('due_date', endDate);
         }
 
@@ -190,7 +190,7 @@ export function useCashClosings(filters?: { month?: string; seller_id?: string }
 
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
-          const endDate = `${filters.month}-31`;
+          const endDate = getLastDayOfMonth(filters.month);
           q = q.gte('closing_date', startDate).lte('closing_date', endDate);
         }
         if (filters?.seller_id) {
@@ -295,7 +295,7 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
 
         if (filters?.month) {
           const startDate = `${filters.month}-01`;
-          const endDate = `${filters.month}-31`;
+          const endDate = getLastDayOfMonth(filters.month);
           q = q.gte('transaction_date', startDate).lte('transaction_date', endDate);
         }
         if (filters?.type) {
@@ -339,18 +339,28 @@ export function useFinancialTransactions(filters?: { month?: string; type?: 'ent
 }
 
 /**
+ * Calcula o último dia do mês
+ */
+function getLastDayOfMonth(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${yearMonth}-${lastDay.toString().padStart(2, '0')}`;
+}
+
+/**
  * Hook para resumo financeiro
  * Aceita month (legado) ou startDate/endDate para período personalizado
  */
 export function useFinancialSummary(monthOrPeriod?: string | { startDate?: string; endDate?: string; month?: string }) {
   // Normalizar parâmetros
+  const currentMonth = new Date().toISOString().slice(0, 7);
   const period = typeof monthOrPeriod === 'string' 
-    ? { month: monthOrPeriod, startDate: `${monthOrPeriod}-01`, endDate: `${monthOrPeriod}-31` }
-    : monthOrPeriod || { month: new Date().toISOString().slice(0, 7) };
+    ? { month: monthOrPeriod, startDate: `${monthOrPeriod}-01`, endDate: getLastDayOfMonth(monthOrPeriod) }
+    : monthOrPeriod || { month: currentMonth };
   
-  const startDate = period.startDate || `${period.month}-01`;
-  const endDate = period.endDate || `${period.month}-31`;
-  const month = period.month || startDate.slice(0, 7);
+  const month = period.month || currentMonth;
+  const startDate = period.startDate || `${month}-01`;
+  const endDate = period.endDate || getLastDayOfMonth(month);
 
   const { data: bills } = useBillsToPay({ month });
   const { data: transactions } = useFinancialTransactions({ month });
