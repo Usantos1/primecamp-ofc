@@ -36,13 +36,18 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
   };
 
   const updateResponse = (surveyId: string, questionId: string, value: any) => {
-    setSurveyResponses(prev => ({
-      ...prev,
-      [surveyId]: {
-        ...prev[surveyId],
-        [questionId]: value
-      }
-    }));
+    console.log('[NPS] Atualizando resposta:', surveyId, questionId, value);
+    setSurveyResponses(prev => {
+      const newState = {
+        ...prev,
+        [surveyId]: {
+          ...prev[surveyId],
+          [questionId]: value
+        }
+      };
+      console.log('[NPS] Novo estado:', newState);
+      return newState;
+    });
   };
 
   const getResponseChartData = (survey: NPSSurvey) => {
@@ -81,6 +86,7 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
   const renderQuestionInput = (question: NPSQuestion, surveyId: string) => {
     const rawValue = surveyResponses[surveyId]?.[question.id];
     const value = rawValue !== undefined && rawValue !== '' ? Number(rawValue) : null;
+    console.log('[NPS] Renderizando pergunta:', question.id, 'rawValue:', rawValue, 'value:', value);
 
     switch (question.type) {
       case 'scale':
