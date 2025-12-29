@@ -45,7 +45,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     queryFn: async () => {
       try {
         let q = from('sales')
-          .select('id, numero, cliente_nome, total, created_at, status, observacao')
+          .select('id, numero, cliente_nome, total, created_at, status, observacoes')
           .eq('status', 'paid')
           .order('created_at', { ascending: false });
         
@@ -78,11 +78,11 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     notes: '',
   });
 
-  // Função para extrair custo e lucro da observação
-  const extractCustoLucro = (observacao: string | null) => {
-    if (!observacao) return { custo: 0, lucro: 0 };
-    const custoMatch = observacao.match(/Custo:\s*R\$\s*([\d.,]+)/i);
-    const lucroMatch = observacao.match(/Lucro:\s*R\$\s*([\d.,]+)/i);
+  // Função para extrair custo e lucro da observação (campo observacoes)
+  const extractCustoLucro = (observacoes: string | null) => {
+    if (!observacoes) return { custo: 0, lucro: 0 };
+    const custoMatch = observacoes.match(/Custo:\s*R\$\s*([\d.,]+)/i);
+    const lucroMatch = observacoes.match(/Lucro:\s*R\$\s*([\d.,]+)/i);
     const parseValor = (str: string) => {
       if (!str) return 0;
       return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
@@ -132,7 +132,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     // Vendas como entradas (apenas pagas)
     sales.forEach((sale: any) => {
       if (typeFilter === 'all' || typeFilter === 'entrada') {
-        const { custo, lucro } = extractCustoLucro(sale.observacao);
+        const { custo, lucro } = extractCustoLucro(sale.observacoes);
         items.push({
           id: `sale-${sale.id}`,
           date: sale.created_at?.split('T')[0] || '',

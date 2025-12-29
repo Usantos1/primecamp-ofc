@@ -35,7 +35,7 @@ export function FinanceiroRelatorios() {
     queryFn: async () => {
       try {
         let q = from('sales')
-          .select('*')
+          .select('id, numero, cliente_nome, total, created_at, status, observacoes')
           .eq('status', 'paid')
           .order('created_at', { ascending: false });
         
@@ -277,10 +277,10 @@ export function FinanceiroRelatorios() {
       {/* Vendas por Período */}
       {selectedReport === 'vendas' && (() => {
         // Função para extrair custo e lucro da observação
-        const extractCustoLucro = (observacao: string | null) => {
-          if (!observacao) return { custo: 0, lucro: 0 };
-          const custoMatch = observacao.match(/Custo:\s*R\$\s*([\d.,]+)/i);
-          const lucroMatch = observacao.match(/Lucro:\s*R\$\s*([\d.,]+)/i);
+        const extractCustoLucro = (observacoes: string | null) => {
+          if (!observacoes) return { custo: 0, lucro: 0 };
+          const custoMatch = observacoes.match(/Custo:\s*R\$\s*([\d.,]+)/i);
+          const lucroMatch = observacoes.match(/Lucro:\s*R\$\s*([\d.,]+)/i);
           const parseValor = (str: string) => {
             if (!str) return 0;
             return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
@@ -293,7 +293,7 @@ export function FinanceiroRelatorios() {
 
         // Calcular totais
         const totais = sales.reduce((acc, sale) => {
-          const { custo, lucro } = extractCustoLucro(sale.observacao);
+          const { custo, lucro } = extractCustoLucro(sale.observacoes);
           return {
             custo: acc.custo + custo,
             venda: acc.venda + Number(sale.total || 0),
@@ -329,7 +329,7 @@ export function FinanceiroRelatorios() {
                       </TableRow>
                     ) : (
                       sales.map(sale => {
-                        const { custo, lucro } = extractCustoLucro(sale.observacao);
+                        const { custo, lucro } = extractCustoLucro(sale.observacoes);
                         return (
                           <TableRow key={sale.id}>
                             <TableCell className="font-medium">#{sale.numero}</TableCell>
