@@ -345,11 +345,48 @@ export function useFinancialSummary(month?: string) {
   const { data: bills } = useBillsToPay({ month });
   const { data: transactions } = useFinancialTransactions({ month });
   const { data: cashClosings } = useCashClosings({ month });
+  
+  // Buscar vendas pagas do período
+  const { data: sales } = useQuery({
+    queryKey: ['sales-summary', month],
+    queryFn: async () => {
+      try {
+        const currentMonth = month || new Date().toISOString().slice(0, 7);
+        const startDate = `${currentMonth}-01`;
+        const endDate = `${currentMonth}-31`;
+        
+        const { data, error } = await from('sales')
+          .select('id, total, created_at')
+          .gte('created_at', startDate)
+          .lte('created_at', endDate)
+          .eq('status', 'paid')
+          .execute();
+        
+        if (error) {
+          console.warn('Erro ao buscar vendas para resumo:', error);
+          return [];
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar vendas:', err);
+        return [];
+      }
+    },
+    retry: false,
+  });
+
+  // Total de vendas pagas
+  const totalVendas = sales?.reduce((sum, s) => sum + Number(s.total || 0), 0) || 0;
+  
+  // Transações manuais
+  const totalTransacoesEntrada = transactions?.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.amount, 0) || 0;
+  const totalTransacoesSaida = transactions?.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.amount, 0) || 0;
 
   const summary: FinancialSummary = {
     period: month || new Date().toISOString().slice(0, 7),
-    total_entradas: transactions?.filter(t => t.type === 'entrada').reduce((sum, t) => sum + t.amount, 0) || 0,
-    total_saidas: transactions?.filter(t => t.type === 'saida').reduce((sum, t) => sum + t.amount, 0) || 0,
+    // Entradas = vendas pagas + transações de entrada
+    total_entradas: totalVendas + totalTransacoesEntrada,
+    total_saidas: totalTransacoesSaida,
     saldo: 0,
     bills_pending: bills?.filter(b => b.status === 'pendente').length || 0,
     bills_overdue: bills?.filter(b => b.status === 'atrasado' || (b.status === 'pendente' && new Date(b.due_date) < new Date())).length || 0,
