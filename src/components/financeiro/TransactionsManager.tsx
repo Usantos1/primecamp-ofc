@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
 import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, TransactionType } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
@@ -16,20 +16,51 @@ import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { from } from '@/integrations/db/client';
 
 interface TransactionsManagerProps {
   month?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-export function TransactionsManager({ month }: TransactionsManagerProps) {
+const ITEMS_PER_PAGE = 20;
+
+export function TransactionsManager({ month, startDate, endDate }: TransactionsManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: categories = [] } = useFinancialCategories();
   const { transactions, isLoading, createTransaction } = useFinancialTransactions({
     month,
     type: typeFilter !== 'all' ? typeFilter as any : undefined,
+  });
+  
+  // Buscar vendas pagas do período
+  const { data: sales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ['sales-transactions', startDate, endDate],
+    queryFn: async () => {
+      try {
+        let q = from('sales')
+          .select('id, numero, cliente_nome, total, created_at, status')
+          .eq('status', 'paid')
+          .order('created_at', { ascending: false });
+        
+        if (startDate && endDate) {
+          q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar vendas:', err);
+        return [];
+      }
+    },
   });
 
   const [formData, setFormData] = useState({
@@ -42,8 +73,64 @@ export function TransactionsManager({ month }: TransactionsManagerProps) {
     notes: '',
   });
 
-  const filteredTransactions = transactions.filter(t =>
+  // Combinar transações manuais + vendas
+  const allTransactions = useMemo(() => {
+    const items: Array<{
+      id: string;
+      date: string;
+      type: 'entrada' | 'saida';
+      description: string;
+      category: string;
+      method: string;
+      amount: number;
+      source: 'manual' | 'sale';
+    }> = [];
+    
+    // Transações manuais
+    transactions.forEach(t => {
+      items.push({
+        id: t.id,
+        date: t.transaction_date,
+        type: t.type,
+        description: t.description,
+        category: t.category?.name || '-',
+        method: t.payment_method ? PAYMENT_METHOD_LABELS[t.payment_method] : '-',
+        amount: t.amount,
+        source: 'manual',
+      });
+    });
+    
+    // Vendas como entradas (apenas pagas)
+    sales.forEach((sale: any) => {
+      if (typeFilter === 'all' || typeFilter === 'entrada') {
+        items.push({
+          id: `sale-${sale.id}`,
+          date: sale.created_at?.split('T')[0] || '',
+          type: 'entrada',
+          description: `Venda #${sale.numero}${sale.cliente_nome ? ` - ${sale.cliente_nome}` : ''}`,
+          category: 'Vendas',
+          method: 'PDV',
+          amount: Number(sale.total || 0),
+          source: 'sale',
+        });
+      }
+    });
+    
+    // Ordenar por data (mais recentes primeiro)
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    return items;
+  }, [transactions, sales, typeFilter]);
+
+  const filteredTransactions = allTransactions.filter(t =>
     t.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  // Paginação
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const handleOpenDialog = () => {
@@ -69,7 +156,7 @@ export function TransactionsManager({ month }: TransactionsManagerProps) {
 
   const availableCategories = categories.filter(c => c.type === formData.type);
 
-  // Calcular totais
+  // Calcular totais usando dados filtrados (sem paginação)
   const totalEntradas = filteredTransactions
     .filter(t => t.type === 'entrada')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -77,7 +164,7 @@ export function TransactionsManager({ month }: TransactionsManagerProps) {
     .filter(t => t.type === 'saida')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  if (isLoading) {
+  if (isLoading || salesLoading) {
     return <LoadingSkeleton type="table" count={5} />;
   }
 
@@ -160,57 +247,85 @@ export function TransactionsManager({ month }: TransactionsManagerProps) {
             action={{ label: 'Nova Transação', onClick: handleOpenDialog }}
           />
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>{dateFormatters.short(transaction.transaction_date)}</TableCell>
-                    <TableCell>
-                      <Badge className={cn(
-                        transaction.type === 'entrada'
-                          ? 'bg-success/10 text-success border-success/30'
-                          : 'bg-destructive/10 text-destructive border-destructive/30'
-                      )}>
-                        {transaction.type === 'entrada' ? (
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 mr-1" />
-                        )}
-                        {TRANSACTION_TYPE_LABELS[transaction.type]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{transaction.description}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {transaction.category?.name || '-'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {transaction.payment_method 
-                        ? PAYMENT_METHOD_LABELS[transaction.payment_method] 
-                        : '-'}
-                    </TableCell>
-                    <TableCell className={cn(
-                      "text-right font-semibold",
-                      transaction.type === 'entrada' ? 'text-success' : 'text-destructive'
-                    )}>
-                      {transaction.type === 'entrada' ? '+' : '-'}
-                      {currencyFormatters.brl(transaction.amount)}
-                    </TableCell>
+          <>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTransactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{dateFormatters.short(transaction.date)}</TableCell>
+                      <TableCell>
+                        <Badge className={cn(
+                          transaction.type === 'entrada'
+                            ? 'bg-success/10 text-success border-success/30'
+                            : 'bg-destructive/10 text-destructive border-destructive/30'
+                        )}>
+                          {transaction.source === 'sale' ? (
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                          ) : transaction.type === 'entrada' ? (
+                            <TrendingUp className="h-3 w-3 mr-1" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 mr-1" />
+                          )}
+                          {transaction.source === 'sale' ? 'Venda' : TRANSACTION_TYPE_LABELS[transaction.type]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{transaction.description}</TableCell>
+                      <TableCell className="text-muted-foreground">{transaction.category}</TableCell>
+                      <TableCell className="text-muted-foreground">{transaction.method}</TableCell>
+                      <TableCell className={cn(
+                        "text-right font-semibold",
+                        transaction.type === 'entrada' ? 'text-success' : 'text-destructive'
+                      )}>
+                        {transaction.type === 'entrada' ? '+' : '-'}
+                        {currencyFormatters.brl(transaction.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} de {filteredTransactions.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
 
