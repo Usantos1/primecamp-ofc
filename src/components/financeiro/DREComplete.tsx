@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 
 interface DRECompleteProps {
   month?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface DRESection {
@@ -18,26 +20,21 @@ interface DRESection {
   type: 'receita' | 'despesa';
 }
 
-export function DREComplete({ month }: DRECompleteProps) {
+export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
   const { transactions } = useFinancialTransactions({ month });
   const { data: categories = [] } = useFinancialCategories();
 
   // Buscar vendas do período
   const { data: sales = [] } = useQuery({
-    queryKey: ['sales-dre', month],
+    queryKey: ['sales-dre', startDate, endDate],
     queryFn: async () => {
       try {
         let q = from('sales')
           .select('*')
           .eq('status', 'paid');
         
-        if (month) {
-          // Calcular último dia do mês
-          const [year, mon] = month.split('-').map(Number);
-          const lastDay = new Date(year, mon, 0).getDate();
-          const start = `${month}-01`;
-          const end = `${month}-${lastDay.toString().padStart(2, '0')}`;
-          q = q.gte('created_at', start).lte('created_at', end + 'T23:59:59');
+        if (startDate && endDate) {
+          q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
         }
         
         const { data, error } = await q.execute();
@@ -45,6 +42,29 @@ export function DREComplete({ month }: DRECompleteProps) {
         return data || [];
       } catch (err) {
         console.warn('Erro ao buscar vendas DRE:', err);
+        return [];
+      }
+    },
+  });
+  
+  // Buscar contas pagas no período
+  const { data: billsPaid = [] } = useQuery({
+    queryKey: ['bills-paid-dre', startDate, endDate],
+    queryFn: async () => {
+      try {
+        let q = from('bills_to_pay')
+          .select('*')
+          .eq('status', 'pago');
+        
+        if (startDate && endDate) {
+          q = q.gte('payment_date', startDate).lte('payment_date', endDate);
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar contas pagas DRE:', err);
         return [];
       }
     },
@@ -68,7 +88,7 @@ export function DREComplete({ month }: DRECompleteProps) {
 
   const totalReceitasOperacionais = Object.values(receitasOperacionais).reduce((sum, v) => sum + v, 0);
 
-  // Despesas Operacionais
+  // Despesas Operacionais (transações manuais + contas pagas)
   const despesasOperacionais = transactions
     .filter(t => t.type === 'saida')
     .reduce((acc, t) => {
@@ -77,6 +97,13 @@ export function DREComplete({ month }: DRECompleteProps) {
       acc[catName] += t.amount;
       return acc;
     }, {} as Record<string, number>);
+  
+  // Adicionar contas pagas como despesas
+  billsPaid.forEach((bill: any) => {
+    const catName = bill.expense_type === 'fixa' ? 'Despesas Fixas' : 'Despesas Variáveis';
+    if (!despesasOperacionais[catName]) despesasOperacionais[catName] = 0;
+    despesasOperacionais[catName] += Number(bill.amount || 0);
+  });
 
   const totalDespesasOperacionais = Object.values(despesasOperacionais).reduce((sum, v) => sum + v, 0);
 

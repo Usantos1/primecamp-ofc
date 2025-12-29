@@ -166,12 +166,12 @@ export function FinanceiroRelatorios() {
 
       {/* DRE Completo */}
       {selectedReport === 'dre' && (
-        <DREComplete month={month} />
+        <DREComplete month={month} startDate={startDate} endDate={endDate} />
       )}
 
       {/* Fluxo de Caixa */}
       {selectedReport === 'fluxo' && (
-        <CashFlowChart month={month} />
+        <CashFlowChart month={month} startDate={startDate} endDate={endDate} />
       )}
 
       {/* Contas a Pagar/Receber */}
@@ -475,7 +475,7 @@ export function FinanceiroRelatorios() {
 
       {/* Gráficos e Visualizações */}
       {selectedReport === 'graficos' && (
-        <FinancialCharts month={month} />
+        <FinancialCharts month={month} startDate={startDate} endDate={endDate} />
       )}
     </div>
   );

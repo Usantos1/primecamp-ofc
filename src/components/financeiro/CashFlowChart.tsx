@@ -1,33 +1,78 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useFinancialTransactions } from '@/hooks/useFinanceiro';
+import { useFinancialTransactions, useBillsToPay } from '@/hooks/useFinanceiro';
 import { currencyFormatters } from '@/utils/formatters';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { from } from '@/integrations/db/client';
 
 interface CashFlowChartProps {
   month?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
-export function CashFlowChart({ month }: CashFlowChartProps) {
+export function CashFlowChart({ month, startDate, endDate }: CashFlowChartProps) {
   const { transactions, isLoading } = useFinancialTransactions({ month });
+  const { bills } = useBillsToPay({ startDate, endDate });
 
-  if (isLoading) {
+  // Buscar vendas pagas
+  const { data: sales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ['sales-cashflow', startDate, endDate],
+    queryFn: async () => {
+      try {
+        let q = from('sales')
+          .select('id, total, created_at')
+          .eq('status', 'paid')
+          .order('created_at', { ascending: true });
+        
+        if (startDate && endDate) {
+          q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar vendas:', err);
+        return [];
+      }
+    },
+  });
+
+  if (isLoading || salesLoading) {
     return <Card><CardContent className="pt-6">Carregando...</CardContent></Card>;
   }
 
-  // Agrupar por dia
-  const dailyData = transactions.reduce((acc, t) => {
+  // Agrupar por dia - incluindo vendas como entrada
+  const dailyData: Record<string, { entrada: number; saida: number }> = {};
+  
+  // Adicionar vendas como entradas
+  sales.forEach((sale: any) => {
+    const date = sale.created_at?.split('T')[0];
+    if (date) {
+      if (!dailyData[date]) dailyData[date] = { entrada: 0, saida: 0 };
+      dailyData[date].entrada += Number(sale.total || 0);
+    }
+  });
+  
+  // Adicionar transações manuais
+  transactions.forEach(t => {
     const date = t.transaction_date;
-    if (!acc[date]) {
-      acc[date] = { entrada: 0, saida: 0 };
-    }
+    if (!dailyData[date]) dailyData[date] = { entrada: 0, saida: 0 };
     if (t.type === 'entrada') {
-      acc[date].entrada += t.amount;
+      dailyData[date].entrada += t.amount;
     } else {
-      acc[date].saida += t.amount;
+      dailyData[date].saida += t.amount;
     }
-    return acc;
-  }, {} as Record<string, { entrada: number; saida: number }>);
+  });
+  
+  // Adicionar contas pagas como saída
+  bills.filter(b => b.status === 'pago' && b.payment_date).forEach(bill => {
+    const date = bill.payment_date!;
+    if (!dailyData[date]) dailyData[date] = { entrada: 0, saida: 0 };
+    dailyData[date].saida += bill.amount;
+  });
 
   const sortedDays = Object.keys(dailyData).sort();
   const allValues = Object.values(dailyData).flatMap(d => [d.entrada, d.saida]).filter(v => v > 0);

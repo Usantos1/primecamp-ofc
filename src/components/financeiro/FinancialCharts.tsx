@@ -1,43 +1,90 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFinancialTransactions } from '@/hooks/useFinanceiro';
+import { useFinancialTransactions, useBillsToPay } from '@/hooks/useFinanceiro';
 import { currencyFormatters } from '@/utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
+import { from } from '@/integrations/db/client';
 
 interface FinancialChartsProps {
-  month: string;
+  month?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
-export function FinancialCharts({ month }: FinancialChartsProps) {
+export function FinancialCharts({ month, startDate, endDate }: FinancialChartsProps) {
   const { transactions } = useFinancialTransactions({ month });
+  const { bills } = useBillsToPay({ startDate, endDate });
+  
+  // Buscar vendas
+  const { data: sales = [] } = useQuery({
+    queryKey: ['sales-charts', startDate, endDate],
+    queryFn: async () => {
+      try {
+        let q = from('sales')
+          .select('id, total, created_at')
+          .eq('status', 'paid');
+        
+        if (startDate && endDate) {
+          q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        return [];
+      }
+    },
+  });
 
   // Dados para gráfico de barras (entradas vs saídas por dia)
-  const dailyData = transactions.reduce((acc, t) => {
+  const dailyData: Record<string, { date: string; entradas: number; saidas: number }> = {};
+  
+  // Adicionar vendas como entradas
+  sales.forEach((sale: any) => {
+    const date = sale.created_at?.split('T')[0];
+    if (date) {
+      if (!dailyData[date]) dailyData[date] = { date, entradas: 0, saidas: 0 };
+      dailyData[date].entradas += Number(sale.total || 0);
+    }
+  });
+  
+  // Adicionar transações manuais
+  transactions.forEach(t => {
     const date = t.transaction_date;
-    if (!acc[date]) {
-      acc[date] = { date, entradas: 0, saidas: 0 };
-    }
+    if (!dailyData[date]) dailyData[date] = { date, entradas: 0, saidas: 0 };
     if (t.type === 'entrada') {
-      acc[date].entradas += t.amount;
+      dailyData[date].entradas += t.amount;
     } else {
-      acc[date].saidas += t.amount;
+      dailyData[date].saidas += t.amount;
     }
-    return acc;
-  }, {} as Record<string, { date: string; entradas: number; saidas: number }>);
+  });
+  
+  // Adicionar contas pagas como saída
+  bills.filter(b => b.status === 'pago' && b.payment_date).forEach(bill => {
+    const date = bill.payment_date!;
+    if (!dailyData[date]) dailyData[date] = { date, entradas: 0, saidas: 0 };
+    dailyData[date].saidas += bill.amount;
+  });
 
   const dailyChartData = Object.values(dailyData).sort((a, b) => 
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
   // Dados para gráfico de pizza (despesas por categoria)
-  const expensesByCategory = transactions
-    .filter(t => t.type === 'saida')
-    .reduce((acc, t) => {
-      const catName = t.category?.name || 'Outras';
-      acc[catName] = (acc[catName] || 0) + t.amount;
-      return acc;
-    }, {} as Record<string, number>);
+  const expensesByCategory: Record<string, number> = {};
+  
+  transactions.filter(t => t.type === 'saida').forEach(t => {
+    const catName = t.category?.name || 'Outras';
+    expensesByCategory[catName] = (expensesByCategory[catName] || 0) + t.amount;
+  });
+  
+  bills.filter(b => b.status === 'pago').forEach(bill => {
+    const catName = bill.expense_type === 'fixa' ? 'Despesas Fixas' : 'Despesas Variáveis';
+    expensesByCategory[catName] = (expensesByCategory[catName] || 0) + bill.amount;
+  });
 
   const pieChartData = Object.entries(expensesByCategory).map(([name, value]) => ({
     name,
