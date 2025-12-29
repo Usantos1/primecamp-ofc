@@ -49,12 +49,17 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
           .eq('status', 'paid')
           .order('created_at', { ascending: false });
         
-        if (startDate && endDate) {
+        // Só aplicar filtro de data se ambos estiverem definidos e não vazios
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
         }
         
         const { data, error } = await q.execute();
-        if (error) throw error;
+        if (error) {
+          console.warn('Erro ao buscar vendas:', error);
+          return [];
+        }
+        console.log('[TransactionsManager] Vendas encontradas:', data?.length || 0);
         return data || [];
       } catch (err) {
         console.warn('Erro ao buscar vendas:', err);
