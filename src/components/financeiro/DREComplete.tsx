@@ -53,7 +53,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     },
   });
   
-  // Buscar contas pagas no período
+  // Buscar contas pagas no período (filtrar por due_date, não payment_date)
   const { data: billsPaid = [], isLoading: billsLoading } = useQuery({
     queryKey: ['bills-paid-dre', startDate, endDate],
     queryFn: async () => {
@@ -62,13 +62,14 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           .select('*')
           .eq('status', 'pago');
         
-        // Só aplicar filtro se ambos estiverem definidos e não vazios
+        // Filtrar por due_date (vencimento) para despesas do período correto
         if (startDate && endDate && startDate !== '' && endDate !== '') {
-          q = q.gte('payment_date', startDate).lte('payment_date', endDate);
+          q = q.gte('due_date', startDate).lte('due_date', endDate);
         }
         
         const { data, error } = await q.execute();
         if (error) throw error;
+        console.log('[DRE] Contas pagas no período:', data?.length || 0, 'Total:', data?.reduce((s: number, b: any) => s + Number(b.amount || 0), 0));
         return data || [];
       } catch (err) {
         console.warn('Erro ao buscar contas pagas DRE:', err);

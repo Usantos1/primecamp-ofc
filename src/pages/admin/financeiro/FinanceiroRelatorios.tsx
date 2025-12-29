@@ -275,64 +275,114 @@ export function FinanceiroRelatorios() {
       )}
 
       {/* Vendas por Período */}
-      {selectedReport === 'vendas' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Vendas por Período</CardTitle>
-            <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo período'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Número</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sales.length === 0 ? (
+      {selectedReport === 'vendas' && (() => {
+        // Função para extrair custo e lucro da observação
+        const extractCustoLucro = (observacao: string | null) => {
+          if (!observacao) return { custo: 0, lucro: 0 };
+          const custoMatch = observacao.match(/Custo:\s*R\$\s*([\d.,]+)/i);
+          const lucroMatch = observacao.match(/Lucro:\s*R\$\s*([\d.,]+)/i);
+          const parseValor = (str: string) => {
+            if (!str) return 0;
+            return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+          };
+          return {
+            custo: custoMatch ? parseValor(custoMatch[1]) : 0,
+            lucro: lucroMatch ? parseValor(lucroMatch[1]) : 0,
+          };
+        };
+
+        // Calcular totais
+        const totais = sales.reduce((acc, sale) => {
+          const { custo, lucro } = extractCustoLucro(sale.observacao);
+          return {
+            custo: acc.custo + custo,
+            venda: acc.venda + Number(sale.total || 0),
+            lucro: acc.lucro + lucro,
+          };
+        }, { custo: 0, venda: 0, lucro: 0 });
+
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Vendas por Período</CardTitle>
+              <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo período'}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        Nenhuma venda encontrada
-                      </TableCell>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead className="text-right text-red-600">Vl Custo</TableHead>
+                      <TableHead className="text-right text-blue-600">Vl Venda</TableHead>
+                      <TableHead className="text-right text-green-600">Lucro Líquido</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ) : (
-                    sales.map(sale => (
-                      <TableRow key={sale.id}>
-                        <TableCell className="font-medium">#{sale.numero}</TableCell>
-                        <TableCell>{sale.cliente_nome || '-'}</TableCell>
-                        <TableCell>{dateFormatters.short(sale.created_at)}</TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {currencyFormatters.brl(sale.total)}
-                        </TableCell>
-                        <TableCell>
-                          <span className="px-2 py-1 rounded text-xs bg-success/10 text-success">
-                            {sale.status}
-                          </span>
+                  </TableHeader>
+                  <TableBody>
+                    {sales.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          Nenhuma venda encontrada
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            {sales.length > 0 && (
-              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total de Vendas:</span>
-                  <span className="text-xl font-bold text-primary">
-                    {currencyFormatters.brl(sales.reduce((sum, s) => sum + Number(s.total), 0))}
-                  </span>
-                </div>
+                    ) : (
+                      sales.map(sale => {
+                        const { custo, lucro } = extractCustoLucro(sale.observacao);
+                        return (
+                          <TableRow key={sale.id}>
+                            <TableCell className="font-medium">#{sale.numero}</TableCell>
+                            <TableCell>{dateFormatters.short(sale.created_at)}</TableCell>
+                            <TableCell className="text-right text-red-600">
+                              {custo > 0 ? currencyFormatters.brl(custo) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-blue-600">
+                              {currencyFormatters.brl(sale.total)}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-green-600">
+                              {lucro > 0 ? currencyFormatters.brl(lucro) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <span className="px-2 py-1 rounded text-xs bg-success/10 text-success">
+                                {sale.status}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              {sales.length > 0 && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Total Custo</p>
+                      <p className="text-lg font-bold text-red-600">
+                        {currencyFormatters.brl(totais.custo)}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Total Vendas</p>
+                      <p className="text-lg font-bold text-blue-600">
+                        {currencyFormatters.brl(totais.venda)}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Total Lucro</p>
+                      <p className="text-lg font-bold text-green-600">
+                        {currencyFormatters.brl(totais.lucro)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Balanço Patrimonial */}
       {selectedReport === 'balanco' && (

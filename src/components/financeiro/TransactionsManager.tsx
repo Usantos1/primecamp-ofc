@@ -45,7 +45,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     queryFn: async () => {
       try {
         let q = from('sales')
-          .select('id, numero, cliente_nome, total, created_at, status')
+          .select('id, numero, cliente_nome, total, created_at, status, observacao')
           .eq('status', 'paid')
           .order('created_at', { ascending: false });
         
@@ -78,6 +78,21 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     notes: '',
   });
 
+  // Função para extrair custo e lucro da observação
+  const extractCustoLucro = (observacao: string | null) => {
+    if (!observacao) return { custo: 0, lucro: 0 };
+    const custoMatch = observacao.match(/Custo:\s*R\$\s*([\d.,]+)/i);
+    const lucroMatch = observacao.match(/Lucro:\s*R\$\s*([\d.,]+)/i);
+    const parseValor = (str: string) => {
+      if (!str) return 0;
+      return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+    };
+    return {
+      custo: custoMatch ? parseValor(custoMatch[1]) : 0,
+      lucro: lucroMatch ? parseValor(lucroMatch[1]) : 0,
+    };
+  };
+
   // Combinar transações manuais + vendas
   const allTransactions = useMemo(() => {
     const items: Array<{
@@ -89,6 +104,8 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       method: string;
       amount: number;
       source: 'manual' | 'sale';
+      custo?: number;
+      lucro?: number;
     }> = [];
     
     // Transações manuais - EXCLUIR as que referenciam vendas (já buscamos vendas diretamente)
@@ -115,6 +132,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     // Vendas como entradas (apenas pagas)
     sales.forEach((sale: any) => {
       if (typeFilter === 'all' || typeFilter === 'entrada') {
+        const { custo, lucro } = extractCustoLucro(sale.observacao);
         items.push({
           id: `sale-${sale.id}`,
           date: sale.created_at?.split('T')[0] || '',
@@ -124,6 +142,8 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
           method: 'PDV',
           amount: Number(sale.total || 0),
           source: 'sale',
+          custo,
+          lucro,
         });
       }
     });
@@ -169,12 +189,22 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
   const availableCategories = categories.filter(c => c.type === formData.type);
 
   // Calcular totais usando dados filtrados (sem paginação)
-  const totalEntradas = filteredTransactions
-    .filter(t => t.type === 'entrada')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalSaidas = filteredTransactions
-    .filter(t => t.type === 'saida')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totais = useMemo(() => {
+    const vendasItems = filteredTransactions.filter(t => t.source === 'sale');
+    const totalCusto = vendasItems.reduce((sum, t) => sum + (t.custo || 0), 0);
+    const totalVenda = vendasItems.reduce((sum, t) => sum + t.amount, 0);
+    const totalLucro = vendasItems.reduce((sum, t) => sum + (t.lucro || 0), 0);
+    const totalEntradas = filteredTransactions
+      .filter(t => t.type === 'entrada')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalSaidas = filteredTransactions
+      .filter(t => t.type === 'saida')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    return { totalCusto, totalVenda, totalLucro, totalEntradas, totalSaidas };
+  }, [filteredTransactions]);
+
+  const { totalCusto, totalVenda, totalLucro, totalEntradas, totalSaidas } = totais;
 
   if (isLoading || salesLoading) {
     return <LoadingSkeleton type="table" count={5} />;
@@ -196,30 +226,28 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Resumo */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="p-4 rounded-lg bg-success/10 border border-success/30">
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-success" />
-              Entradas
-            </p>
-            <p className="text-xl font-bold text-success">{currencyFormatters.brl(totalEntradas)}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+            <p className="text-xs text-muted-foreground">Total Custo</p>
+            <p className="text-lg font-bold text-red-600">{currencyFormatters.brl(totalCusto)}</p>
           </div>
-          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-destructive" />
-              Saídas
-            </p>
-            <p className="text-xl font-bold text-destructive">{currencyFormatters.brl(totalSaidas)}</p>
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+            <p className="text-xs text-muted-foreground">Total Vendas</p>
+            <p className="text-lg font-bold text-blue-600">{currencyFormatters.brl(totalVenda)}</p>
+          </div>
+          <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+            <p className="text-xs text-muted-foreground">Total Lucro</p>
+            <p className="text-lg font-bold text-green-600">{currencyFormatters.brl(totalLucro)}</p>
           </div>
           <div className={cn(
-            "p-4 rounded-lg border",
+            "p-3 rounded-lg border",
             totalEntradas - totalSaidas >= 0 
               ? "bg-primary/10 border-primary/30" 
               : "bg-destructive/10 border-destructive/30"
           )}>
-            <p className="text-sm text-muted-foreground">Saldo</p>
+            <p className="text-xs text-muted-foreground">Saldo (Entradas - Saídas)</p>
             <p className={cn(
-              "text-xl font-bold",
+              "text-lg font-bold",
               totalEntradas - totalSaidas >= 0 ? "text-primary" : "text-destructive"
             )}>
               {currencyFormatters.brl(totalEntradas - totalSaidas)}
@@ -260,16 +288,16 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
           />
         ) : (
           <>
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Descrição</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right text-red-600">Custo</TableHead>
+                    <TableHead className="text-right text-blue-600">Venda</TableHead>
+                    <TableHead className="text-right text-green-600">Lucro</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -293,14 +321,14 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{transaction.description}</TableCell>
-                      <TableCell className="text-muted-foreground">{transaction.category}</TableCell>
-                      <TableCell className="text-muted-foreground">{transaction.method}</TableCell>
-                      <TableCell className={cn(
-                        "text-right font-semibold",
-                        transaction.type === 'entrada' ? 'text-success' : 'text-destructive'
-                      )}>
-                        {transaction.type === 'entrada' ? '+' : '-'}
-                        {currencyFormatters.brl(transaction.amount)}
+                      <TableCell className="text-right text-red-600">
+                        {transaction.custo && transaction.custo > 0 ? currencyFormatters.brl(transaction.custo) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-blue-600">
+                        {transaction.source === 'sale' ? currencyFormatters.brl(transaction.amount) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">
+                        {transaction.lucro && transaction.lucro > 0 ? currencyFormatters.brl(transaction.lucro) : '-'}
                       </TableCell>
                     </TableRow>
                   ))}
