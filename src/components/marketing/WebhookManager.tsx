@@ -104,6 +104,8 @@ export function WebhookManager() {
   const [testEvents, setTestEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [mappedResult, setMappedResult] = useState<{ mapped: Record<string, { value: string; originalKey: string }>; unmapped: Record<string, any> } | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [lastPoll, setLastPoll] = useState<Date | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const { logs, isLoading: logsLoading } = useWebhookLogs(selectedWebhook?.id || null);
@@ -153,7 +155,15 @@ export function WebhookManager() {
           }
         });
         
+        if (!response.ok) {
+          setConnectionStatus('error');
+          console.error('Erro na resposta:', response.status);
+          return;
+        }
+        
         const data = await response.json();
+        setConnectionStatus('connected');
+        setLastPoll(new Date());
         
         if (data.success && data.events) {
           setTestEvents(prev => {
@@ -161,17 +171,19 @@ export function WebhookManager() {
             const existingIds = new Set(prev.map(e => e.id));
             const newEvents = data.events.filter((e: any) => !existingIds.has(e.id));
             if (newEvents.length > 0) {
-              toast({ title: `${newEvents.length} novo(s) evento(s) recebido(s)!` });
+              toast({ title: `🎉 ${newEvents.length} novo(s) evento(s) recebido(s)!`, description: 'Clique no evento para analisar' });
             }
             return [...prev, ...newEvents];
           });
         }
       } catch (error) {
         console.error('Erro ao buscar eventos:', error);
+        setConnectionStatus('error');
       }
     };
     
     // Buscar imediatamente e depois a cada 2 segundos
+    setConnectionStatus('connecting');
     fetchEvents();
     pollingRef.current = setInterval(fetchEvents, 2000);
   };
@@ -310,34 +322,109 @@ export function WebhookManager() {
                 </Button>
               ) : (
                 <div className="space-y-4">
-                  {/* URL de Teste */}
-                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Radio className="h-4 w-4 text-green-500 animate-pulse" />
-                      <span className="font-medium text-green-800 dark:text-green-200">Escutando...</span>
-                      <Badge variant="secondary" className="text-[10px]">{testEvents.length} evento(s)</Badge>
+                  {/* Status da Conexão */}
+                  <div className={`rounded-lg p-3 border ${
+                    connectionStatus === 'connected' ? 'bg-green-50 dark:bg-green-950/20 border-green-300' :
+                    connectionStatus === 'error' ? 'bg-red-50 dark:bg-red-950/20 border-red-300' :
+                    'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {connectionStatus === 'connected' ? (
+                          <>
+                            <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse" />
+                            <span className="text-sm font-medium text-green-700 dark:text-green-300">Conectado - Aguardando webhooks</span>
+                          </>
+                        ) : connectionStatus === 'error' ? (
+                          <>
+                            <div className="h-3 w-3 bg-red-500 rounded-full" />
+                            <span className="text-sm font-medium text-red-700 dark:text-red-300">Erro de conexão</span>
+                          </>
+                        ) : (
+                          <>
+                            <Loader2 className="h-3 w-3 text-yellow-600 animate-spin" />
+                            <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">Conectando...</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">{testEvents.length} evento(s)</Badge>
+                        {lastPoll && (
+                          <span className="text-[10px] text-muted-foreground">
+                            Último check: {lastPoll.toLocaleTimeString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    
-                    <Label className="text-xs text-green-700 dark:text-green-300">URL de Teste (envie webhooks para cá):</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="bg-white dark:bg-gray-900 px-3 py-2 rounded border text-xs flex-1 truncate">
-                        {testSession?.testUrl}
-                      </code>
+                  </div>
+                  
+                  {/* URL de Teste */}
+                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 rounded-lg p-4">
+                    <Label className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      📋 URL de Teste - Copie e cole no sistema de origem:
+                    </Label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input 
+                        value={testSession?.testUrl || ''} 
+                        readOnly 
+                        className="font-mono text-xs bg-white dark:bg-gray-900"
+                      />
                       <Button 
-                        variant="outline" 
+                        variant="default" 
                         size="sm"
                         onClick={() => {
                           navigator.clipboard.writeText(testSession?.testUrl || '');
-                          toast({ title: 'URL copiada!' });
+                          toast({ title: '✅ URL copiada!', description: 'Cole no sistema de origem e envie um teste' });
                         }}
                       >
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copiar
                       </Button>
                     </div>
                     
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                      Configure esta URL no seu sistema de origem (AtivaCRM, Elementor, etc.) e envie um teste
-                    </p>
+                    <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded border">
+                      <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">📌 Passos para testar:</p>
+                      <ol className="text-xs text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
+                        <li>Copie a URL acima</li>
+                        <li>Cole no AtivaCRM, Elementor ou outro sistema</li>
+                        <li>Envie um webhook de teste</li>
+                        <li>O evento aparecerá automaticamente na lista abaixo</li>
+                      </ol>
+                    </div>
+                    
+                    {/* Botão de Teste Manual */}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(testSession?.testUrl || '', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              'Nome:': 'Lead de Teste',
+                              'E-mail:': 'teste@exemplo.com',
+                              'DDD + Telefone:': '+5519999999999',
+                              'Mensagem:': 'Este é um webhook de teste enviado manualmente',
+                              'utm_source': 'teste_manual',
+                              'Data': new Date().toLocaleDateString('pt-BR'),
+                              'Horário': new Date().toLocaleTimeString('pt-BR')
+                            })
+                          });
+                          if (response.ok) {
+                            toast({ title: '✅ Webhook de teste enviado!', description: 'Aguarde aparecer na lista abaixo' });
+                          } else {
+                            toast({ title: '❌ Erro ao enviar', description: 'Verifique se o backend está atualizado', variant: 'destructive' });
+                          }
+                        } catch (error) {
+                          toast({ title: '❌ Erro de conexão', description: 'Não foi possível enviar o teste', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      <FlaskConical className="h-4 w-4 mr-2" />
+                      Enviar Webhook de Teste Manual
+                    </Button>
                   </div>
                   
                   <Button onClick={stopTestSession} variant="destructive" className="w-full">
