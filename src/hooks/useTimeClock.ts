@@ -173,17 +173,35 @@ export const useTimeClock = () => {
 
       const { location, ip } = await getLocation();
 
-      const { data, error } = await supabase
-        .from('time_clock')
-        .upsert({
-          user_id: user.id,
-          date: today,
-          clock_in: now,
-          location,
-          ip_address: ip
-        })
-        .select()
-        .single();
+      let data, error;
+      if (existingRecord.data?.id) {
+        // Update existing record
+        const result = await from('time_clock')
+          .eq('id', existingRecord.data.id)
+          .update({
+            clock_in: now,
+            location,
+            ip_address: ip
+          })
+          .execute();
+        data = existingRecord.data;
+        error = result.error;
+      } else {
+        // Insert new record
+        const result = await from('time_clock')
+          .insert({
+            user_id: user.id,
+            date: today,
+            clock_in: now,
+            location,
+            ip_address: ip,
+            status: 'pending'
+          })
+          .select('*')
+          .single();
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         toast({
@@ -195,7 +213,7 @@ export const useTimeClock = () => {
       }
 
       // Log activity
-      await logActivity('time_clock', 'Registro de entrada', 'time_clock', data.id);
+      await logActivity('time_clock', 'Registro de entrada', 'time_clock', data?.id || '');
 
       toast({
         title: "Entrada registrada",
@@ -222,13 +240,13 @@ export const useTimeClock = () => {
       const totalMinutes = Math.floor((totalMs % (1000 * 60 * 60)) / (1000 * 60));
       const totalHoursFormatted = `${totalHours}:${totalMinutes.toString().padStart(2, '0')}:00`;
 
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
+        .eq('id', todayRecord.id)
         .update({
           clock_out: now,
           total_hours: totalHoursFormatted
         })
-        .eq('id', todayRecord.id);
+        .execute();
 
       if (error) {
         toast({
@@ -259,12 +277,12 @@ export const useTimeClock = () => {
     try {
       const now = new Date().toISOString();
 
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
+        .eq('id', todayRecord.id)
         .update({
           break_start: now
         })
-        .eq('id', todayRecord.id);
+        .execute();
 
       if (error) {
         toast({
@@ -295,12 +313,12 @@ export const useTimeClock = () => {
     try {
       const now = new Date().toISOString();
 
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
+        .eq('id', todayRecord.id)
         .update({
           break_end: now
         })
-        .eq('id', todayRecord.id);
+        .execute();
 
       if (error) {
         toast({
@@ -331,12 +349,12 @@ export const useTimeClock = () => {
     try {
       const now = new Date().toISOString();
 
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
+        .eq('id', todayRecord.id)
         .update({
           lunch_start: now
         })
-        .eq('id', todayRecord.id);
+        .execute();
 
       if (error) {
         toast({
@@ -367,12 +385,12 @@ export const useTimeClock = () => {
     try {
       const now = new Date().toISOString();
 
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
+        .eq('id', todayRecord.id)
         .update({
           lunch_end: now
         })
-        .eq('id', todayRecord.id);
+        .execute();
 
       if (error) {
         toast({
