@@ -16,29 +16,40 @@ import { from } from '@/integrations/db/client';
 import { useQuery } from '@tanstack/react-query';
 
 export function FinanceiroRelatorios() {
-  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string }>();
-  const month = context.month || context.startDate.slice(0, 7);
+  const context = useOutletContext<{ startDate: string; endDate?: string; month?: string; dateFilter?: string }>();
+  // Se for "all", não filtrar
+  const shouldFilter = context.dateFilter !== 'all';
+  const month = shouldFilter ? (context.month || context.startDate?.slice(0, 7)) : undefined;
+  const startDate = shouldFilter ? context.startDate : undefined;
+  const endDate = shouldFilter ? context.endDate : undefined;
   const [selectedReport, setSelectedReport] = useState('dre');
 
   const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
-  const { bills, isLoading: billsLoading } = useBillsToPay({ month });
+  const { bills, isLoading: billsLoading } = useBillsToPay({ startDate, endDate });
   const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
   const { data: categories = [] } = useFinancialCategories();
 
   // Buscar vendas do período
   const { data: sales = [], isLoading: salesLoading } = useQuery({
-    queryKey: ['sales-report', month],
+    queryKey: ['sales-report', startDate, endDate],
     queryFn: async () => {
-      const start = `${month}-01`;
-      const end = `${month}-31`;
-      const { data, error } = await from('sales')
-        .select('*')
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .eq('status', 'paid')
-        .execute();
-      if (error) throw error;
-      return data || [];
+      try {
+        let q = from('sales')
+          .select('*')
+          .eq('status', 'paid')
+          .order('created_at', { ascending: false });
+        
+        if (startDate && endDate) {
+          q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar vendas:', err);
+        return [];
+      }
     },
   });
 
