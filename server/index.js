@@ -2068,24 +2068,24 @@ app.post('/api/webhook/leads/:webhookKey', async (req, res) => {
     const webhook = webhookResult.rows[0];
     
     // Mapear campos do payload para os campos do lead
-    // Suporta vários formatos de CRM
+    // Suporta vários formatos: CRM, Elementor, AtivaCRM, etc.
     const leadData = {
-      nome: payload.nome || payload.name || payload.full_name || payload.lead_name || payload.Nome || 'Lead sem nome',
-      email: payload.email || payload.Email || payload.e_mail || null,
-      telefone: payload.telefone || payload.phone || payload.tel || payload.Telefone || null,
-      whatsapp: payload.whatsapp || payload.whats || payload.celular || payload.mobile || payload.Whatsapp || payload.telefone || null,
-      cidade: payload.cidade || payload.city || payload.Cidade || null,
-      estado: payload.estado || payload.state || payload.uf || payload.Estado || null,
+      nome: payload.nome || payload.name || payload.full_name || payload.lead_name || payload.Nome || payload['Nome:'] || payload['Nome'] || 'Lead sem nome',
+      email: payload.email || payload.Email || payload.e_mail || payload['E-mail:'] || payload['E-mail'] || payload['email:'] || null,
+      telefone: payload.telefone || payload.phone || payload.tel || payload.Telefone || payload['DDD + Telefone:'] || payload['Telefone:'] || payload['Celular:'] || payload['WhatsApp:'] || null,
+      whatsapp: payload.whatsapp || payload.whats || payload.celular || payload.mobile || payload.Whatsapp || payload['WhatsApp:'] || payload['Celular:'] || payload['DDD + Telefone:'] || payload.telefone || null,
+      cidade: payload.cidade || payload.city || payload.Cidade || payload['Cidade:'] || null,
+      estado: payload.estado || payload.state || payload.uf || payload.Estado || payload['Estado:'] || payload['UF:'] || null,
       fonte: 'webhook',
       webhook_id: webhook.id,
       webhook_nome: webhook.nome,
-      utm_source: payload.utm_source || payload.source || webhook.fonte_padrao || null,
-      utm_medium: payload.utm_medium || payload.medium || null,
-      utm_campaign: payload.utm_campaign || payload.campaign || payload.campanha || null,
-      utm_term: payload.utm_term || payload.keyword || payload.palavra_chave || null,
-      utm_content: payload.utm_content || null,
-      interesse: payload.interesse || payload.interest || payload.produto || payload.servico || null,
-      observacoes: payload.observacoes || payload.obs || payload.notes || payload.mensagem || payload.message || null,
+      utm_source: payload.utm_source || payload.source || payload['URL da página'] || webhook.fonte_padrao || null,
+      utm_medium: payload.utm_medium || payload.medium || payload.form_name || null,
+      utm_campaign: payload.utm_campaign || payload.campaign || payload.campanha || payload['Campanha:'] || null,
+      utm_term: payload.utm_term || payload.keyword || payload.palavra_chave || payload['Palavra-chave:'] || null,
+      utm_content: payload.utm_content || payload.form_id || null,
+      interesse: payload.interesse || payload.interest || payload.produto || payload.servico || payload['Interesse:'] || payload['Serviço:'] || payload['Produto:'] || null,
+      observacoes: payload.observacoes || payload.obs || payload.notes || payload.mensagem || payload.message || payload['Mensagem:'] || payload['Observações:'] || null,
       status: 'novo',
       temperatura: 'frio',
       convertido: false,
