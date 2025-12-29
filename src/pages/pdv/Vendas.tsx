@@ -27,9 +27,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { 
   Plus, Search, Eye, Edit, Filter, Printer, Download, Send, MoreVertical, X, Trash2,
-  ShoppingCart, DollarSign, Calendar, User, Upload
+  ShoppingCart, DollarSign, Calendar, User, Upload, CalendarDays
 } from 'lucide-react';
 import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
 import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
@@ -61,6 +65,11 @@ export default function Vendas() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   // Default: mostrar histórico (últimos 30 dias) para não ficar "tudo zerado"
   const [dateFilter, setDateFilter] = useState<string>('month');
+  
+  // Estado do período personalizado
+  const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);
+  const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   // Estado do modal de cancelamento
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -111,6 +120,15 @@ export default function Vendas() {
       const monthAgo = new Date(today);
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       result = result.filter(sale => new Date(sale.created_at) >= monthAgo);
+    } else if (dateFilter === 'custom' && customDateStart && customDateEnd) {
+      const startDate = new Date(customDateStart);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(customDateEnd);
+      endDate.setHours(23, 59, 59, 999);
+      result = result.filter(sale => {
+        const saleDate = new Date(sale.created_at);
+        return saleDate >= startDate && saleDate <= endDate;
+      });
     } else if (dateFilter === 'all') {
       // Sem filtro de data
     }
@@ -127,7 +145,7 @@ export default function Vendas() {
     }
 
     return result;
-  }, [sales, statusFilter, dateFilter, searchTerm]);
+  }, [sales, statusFilter, dateFilter, searchTerm, customDateStart, customDateEnd]);
 
   // Estatísticas
   const stats = useMemo(() => {
@@ -628,17 +646,110 @@ export default function Vendas() {
                   <SelectItem value="canceled">Cancelada</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="w-full md:w-[180px] h-9 md:h-10 text-sm border-2 border-gray-300">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="week">Últimos 7 dias</SelectItem>
-                  <SelectItem value="month">Últimos 30 dias</SelectItem>
-                </SelectContent>
-              </Select>
+              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className={cn(
+                      "w-full md:w-[220px] h-9 md:h-10 text-sm border-2 border-gray-300 justify-start text-left font-normal",
+                      dateFilter === 'custom' && customDateStart && customDateEnd && "text-foreground"
+                    )}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {dateFilter === 'custom' && customDateStart && customDateEnd ? (
+                      <span className="truncate">
+                        {format(customDateStart, 'dd/MM/yy', { locale: ptBR })} - {format(customDateEnd, 'dd/MM/yy', { locale: ptBR })}
+                      </span>
+                    ) : dateFilter === 'today' ? (
+                      'Hoje'
+                    ) : dateFilter === 'week' ? (
+                      'Últimos 7 dias'
+                    ) : dateFilter === 'month' ? (
+                      'Últimos 30 dias'
+                    ) : (
+                      'Todos os períodos'
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <div className="p-3 border-b space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        variant={dateFilter === 'today' ? 'default' : 'outline'} 
+                        size="sm"
+                        onClick={() => { setDateFilter('today'); setShowDatePicker(false); }}
+                      >
+                        Hoje
+                      </Button>
+                      <Button 
+                        variant={dateFilter === 'week' ? 'default' : 'outline'} 
+                        size="sm"
+                        onClick={() => { setDateFilter('week'); setShowDatePicker(false); }}
+                      >
+                        7 dias
+                      </Button>
+                      <Button 
+                        variant={dateFilter === 'month' ? 'default' : 'outline'} 
+                        size="sm"
+                        onClick={() => { setDateFilter('month'); setShowDatePicker(false); }}
+                      >
+                        30 dias
+                      </Button>
+                      <Button 
+                        variant={dateFilter === 'all' ? 'default' : 'outline'} 
+                        size="sm"
+                        onClick={() => { setDateFilter('all'); setShowDatePicker(false); }}
+                      >
+                        Todos
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-center pt-1">
+                      ou selecione um período:
+                    </div>
+                  </div>
+                  <div className="p-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs">Data Início</Label>
+                        <Input
+                          type="date"
+                          value={customDateStart ? format(customDateStart, 'yyyy-MM-dd') : ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setCustomDateStart(new Date(e.target.value + 'T00:00:00'));
+                            }
+                          }}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Data Fim</Label>
+                        <Input
+                          type="date"
+                          value={customDateEnd ? format(customDateEnd, 'yyyy-MM-dd') : ''}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setCustomDateEnd(new Date(e.target.value + 'T23:59:59'));
+                            }
+                          }}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <Button 
+                      className="w-full" 
+                      size="sm"
+                      disabled={!customDateStart || !customDateEnd}
+                      onClick={() => { 
+                        setDateFilter('custom'); 
+                        setShowDatePicker(false); 
+                      }}
+                    >
+                      Aplicar Período
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Tabela de vendas - scroll interno */}
