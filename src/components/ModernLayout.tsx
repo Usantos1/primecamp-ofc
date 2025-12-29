@@ -94,19 +94,13 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out">
           {/* Mobile Header */}
-          <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 md:hidden">
-            <div className="h-14 flex items-center px-4">
-              <SidebarTrigger className="h-8 w-8" />
-              {title && (
-                <div className="ml-4 min-w-0 flex-1">
-                  <h1 className="font-semibold text-lg truncate">{title}</h1>
-                </div>
-              )}
-            </div>
-            {/* Mobile AppBar - Navegação horizontal com scroll */}
-            <div className="border-t">
-              <AppBar />
-            </div>
+          <header className="h-16 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 md:hidden flex items-center px-4">
+            <SidebarTrigger className="h-8 w-8" />
+            {title && (
+              <div className="ml-4 min-w-0 flex-1">
+                <h1 className="font-semibold text-lg truncate">{title}</h1>
+              </div>
+            )}
           </header>
 
           {/* Desktop Header */}

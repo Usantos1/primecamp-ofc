@@ -92,8 +92,9 @@ export function AppBar() {
 
   return (
     <div className={cn(
-      "border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-      "flex items-center justify-center gap-0 px-2 py-1.5 overflow-x-auto max-w-full"
+      "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      "flex items-center justify-center gap-0 px-2 py-1.5 overflow-x-auto max-w-full",
+      "scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
     )}>
       {quickNavItems.map((item, index) => {
         const Icon = item.icon;
