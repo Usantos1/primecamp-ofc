@@ -3159,8 +3159,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         COALESCE(p.quantidade, 0) as quantidade,
         COALESCE(p.quantidade, 0) as estoque_atual,
         COALESCE(p.estoque_minimo, 0) as estoque_minimo,
-        COALESCE(p.preco_custo, p.vi_custo, 0) as preco_custo,
-        COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) as preco_venda,
+        COALESCE(p.vi_custo, 0) as preco_custo,
+        COALESCE(p.valor_dinheiro_pix, 0) as preco_venda,
         p.unidade,
         p.marca,
         p.modelo,
@@ -3244,13 +3244,13 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     if (preco_min !== undefined) {
-      query += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) >= $${paramIndex}`;
+      query += ` AND COALESCE(p.valor_dinheiro_pix, 0) >= $${paramIndex}`;
       params.push(parseFloat(preco_min));
       paramIndex++;
     }
     
     if (preco_max !== undefined) {
-      query += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) <= $${paramIndex}`;
+      query += ` AND COALESCE(p.valor_dinheiro_pix, 0) <= $${paramIndex}`;
       params.push(parseFloat(preco_max));
       paramIndex++;
     }
@@ -3269,10 +3269,10 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     let campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'nome';
     // Mapear 'descricao' para 'nome' para compatibilidade
     if (campoOrdenar === 'descricao') campoOrdenar = 'nome';
-    // Mapear 'preco_venda' para usar COALESCE
+    // Mapear 'preco_venda' para usar valor_dinheiro_pix
     let campoReal;
     if (campoOrdenar === 'preco_venda') {
-      campoReal = 'COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0)';
+      campoReal = 'COALESCE(p.valor_dinheiro_pix, 0)';
     } else {
       campoReal = `p.${campoOrdenar}`;
     }
@@ -3344,12 +3344,12 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
       countParamIndex++;
     }
     if (preco_min !== undefined) {
-      countQuery += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) >= $${countParamIndex}`;
+      countQuery += ` AND COALESCE(p.valor_dinheiro_pix, 0) >= $${countParamIndex}`;
       countParams.push(parseFloat(preco_min));
       countParamIndex++;
     }
     if (preco_max !== undefined) {
-      countQuery += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) <= $${countParamIndex}`;
+      countQuery += ` AND COALESCE(p.valor_dinheiro_pix, 0) <= $${countParamIndex}`;
       countParams.push(parseFloat(preco_max));
       countParamIndex++;
     }
