@@ -29,24 +29,44 @@ export function brlToNumber(brlString: string): number {
 }
 
 /**
- * Mask input for BRL currency
+ * Mask input for BRL currency - permite digitar números e decimais sem formatação durante digitação
  * @param value - Input value
- * @returns Masked string
+ * @returns Numeric string formatada apenas para exibição
  */
 export function maskBRL(value: string): string {
-  // Remove all non-numeric characters except comma and dot
+  // Remove tudo exceto números, vírgula e ponto
   let numericValue = value.replace(/[^\d,\.]/g, '');
   
   if (!numericValue) return '';
   
-  // Replace comma with dot for parsing
-  numericValue = numericValue.replace(',', '.');
+  // Permite apenas uma vírgula ou ponto (para decimais)
+  const parts = numericValue.split(/[,\.]/);
+  if (parts.length > 2) {
+    // Se tem mais de um separador, mantém apenas o primeiro
+    numericValue = parts[0] + (parts[1] ? ',' + parts.slice(1).join('') : '');
+  }
   
-  // Parse to number and format
-  const number = parseFloat(numericValue);
-  if (isNaN(number)) return '';
+  // Garante que após vírgula/ponto tenha no máximo 2 dígitos
+  if (numericValue.includes(',') || numericValue.includes('.')) {
+    const separator = numericValue.includes(',') ? ',' : '.';
+    const [intPart, decPart] = numericValue.split(separator);
+    if (decPart && decPart.length > 2) {
+      numericValue = intPart + separator + decPart.substring(0, 2);
+    }
+  }
   
-  return formatBRL(number);
+  return numericValue;
+}
+
+/**
+ * Formata valor BRL apenas para exibição (não durante digitação)
+ * @param value - Input value (pode ser número ou string)
+ * @returns String formatada
+ */
+export function formatBRLInput(value: number | string | undefined): string {
+  if (!value && value !== 0) return '';
+  const num = typeof value === 'string' ? parseBRLInput(value) : value;
+  return formatBRL(num);
 }
 
 /**

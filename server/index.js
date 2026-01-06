@@ -3149,26 +3149,9 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     let query = `
       SELECT 
         p.id,
-        p.codigo,
-        p.referencia,
-        p.codigo_barras,
         p.nome,
-        p.nome as descricao,
-        p.grupo,
-        p.localizacao,
-        COALESCE(p.quantidade, 0) as quantidade,
-        COALESCE(p.quantidade, 0) as estoque_atual,
-        COALESCE(p.estoque_minimo, 0) as estoque_minimo,
-        COALESCE(p.vi_custo, 0) as preco_custo,
-        COALESCE(p.valor_dinheiro_pix, 0) as preco_venda,
-        'UN' as unidade,
-        p.marca,
-        p.modelo,
-        p.marca as marca_nome,
-        p.modelo as modelo_nome,
-        CASE WHEN p.situacao = 'ativo' OR p.situacao = 'ATIVO' THEN true ELSE false END as ativo,
-        NULL::TIMESTAMP as created_at,
-        NULL::TIMESTAMP as updated_at
+        COALESCE(p.valor_dinheiro_pix, 0) as valor_dinheiro_pix,
+        COALESCE(p.valor_parcelado_6x, 0) as valor_parcelado_6x
       FROM produtos p
       WHERE 1=1
     `;

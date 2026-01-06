@@ -334,6 +334,11 @@ export function ProductFormOptimized({
   const precoCusto = watch('preco_custo');
   const valorVenda = watch('valor_venda');
   const valorParcelado = watch('valor_parcelado_6x');
+  
+  // Estados para controlar valores brutos durante digitação (sem formatação)
+  const [precoCustoRaw, setPrecoCustoRaw] = useState<string>('');
+  const [valorVendaRaw, setValorVendaRaw] = useState<string>('');
+  const [valorParceladoRaw, setValorParceladoRaw] = useState<string>('');
 
   // Buscar movimentações de estoque (apenas quando editar e produto tiver ID)
   const { data: movimentacoes = [], isLoading: isLoadingMovimentacoes } = useQuery({
@@ -387,6 +392,10 @@ export function ProductFormOptimized({
             estoque_minimo: 0,
             localizacao: '',
           });
+          // Limpar valores brutos
+          setPrecoCustoRaw('');
+          setValorVendaRaw('');
+          setValorParceladoRaw('');
           setIsLoadingCodigo(false);
           setActiveTab('dados');
         });
@@ -401,11 +410,12 @@ export function ProductFormOptimized({
     setValue('codigo_barras', ean13);
   };
 
-  // Formatar valor para exibir dentro do input
-  const formatarValorInput = (valor: number | string | undefined): string => {
-    if (!valor) return '';
-    const num = typeof valor === 'string' ? parseBRLInput(valor) : valor;
-    return formatBRL(num);
+  // Converter valor bruto (string com vírgula) para número
+  const parseRawValue = (rawValue: string): number => {
+    if (!rawValue) return 0;
+    const cleaned = rawValue.replace(/[^\d,\.]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
   };
 
   // Calcular margem automaticamente
@@ -680,12 +690,22 @@ export function ProductFormOptimized({
                   <Label htmlFor="preco_custo">Valor de Compra / Custo</Label>
                   <Input
                     id="preco_custo"
-                    value={formatarValorInput(precoCusto)}
+                    type="text"
+                    inputMode="decimal"
+                    value={precoCustoRaw}
                     onChange={(e) => {
-                      const masked = maskBRL(e.target.value);
-                      setValue('preco_custo', masked as any);
+                      const raw = maskBRL(e.target.value);
+                      setPrecoCustoRaw(raw);
+                      const numValue = parseRawValue(raw);
+                      setValue('preco_custo', numValue);
                     }}
-                    placeholder="R$ 0,00"
+                    onBlur={() => {
+                      const numValue = parseRawValue(precoCustoRaw);
+                      if (numValue > 0) {
+                        setPrecoCustoRaw(numValue.toFixed(2).replace('.', ','));
+                      }
+                    }}
+                    placeholder="0,00"
                     className="text-right text-base md:text-sm"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -699,12 +719,22 @@ export function ProductFormOptimized({
                   </Label>
                   <Input
                     id="valor_venda"
-                    value={formatarValorInput(valorVenda)}
+                    type="text"
+                    inputMode="decimal"
+                    value={valorVendaRaw}
                     onChange={(e) => {
-                      const masked = maskBRL(e.target.value);
-                      setValue('valor_venda', masked as any);
+                      const raw = maskBRL(e.target.value);
+                      setValorVendaRaw(raw);
+                      const numValue = parseRawValue(raw);
+                      setValue('valor_venda', numValue);
                     }}
-                    placeholder="R$ 0,00"
+                    onBlur={() => {
+                      const numValue = parseRawValue(valorVendaRaw);
+                      if (numValue > 0) {
+                        setValorVendaRaw(numValue.toFixed(2).replace('.', ','));
+                      }
+                    }}
+                    placeholder="0,00"
                     className="text-right font-semibold text-base md:text-sm"
                   />
                 </div>
@@ -713,12 +743,22 @@ export function ProductFormOptimized({
                   <Label htmlFor="valor_parcelado_6x">Valor Parcelado 6x</Label>
                   <Input
                     id="valor_parcelado_6x"
-                    value={formatarValorInput(valorParcelado)}
+                    type="text"
+                    inputMode="decimal"
+                    value={valorParceladoRaw}
                     onChange={(e) => {
-                      const masked = maskBRL(e.target.value);
-                      setValue('valor_parcelado_6x', masked as any);
+                      const raw = maskBRL(e.target.value);
+                      setValorParceladoRaw(raw);
+                      const numValue = parseRawValue(raw);
+                      setValue('valor_parcelado_6x', numValue);
                     }}
-                    placeholder="R$ 0,00"
+                    onBlur={() => {
+                      const numValue = parseRawValue(valorParceladoRaw);
+                      if (numValue > 0) {
+                        setValorParceladoRaw(numValue.toFixed(2).replace('.', ','));
+                      }
+                    }}
+                    placeholder="0,00"
                     className="text-right text-base md:text-sm"
                   />
                 </div>
