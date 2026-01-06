@@ -30,15 +30,36 @@ import {
   Download,
   Edit,
   FileSpreadsheet,
+  MoreVertical,
   Package,
   Plus,
   Search,
+  Trash2,
   Warehouse,
   X,
   XCircle,
   Zap,
   ClipboardList,
+  ExternalLink,
+  Ban,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // Componente de linha da tabela otimizado com React.memo
 const ProdutoTableRow = memo(({ 
@@ -46,12 +67,16 @@ const ProdutoTableRow = memo(({
   isSelected, 
   onSelect, 
   onEdit,
+  onDelete,
+  onInativar,
   index = 0
 }: { 
   produto: Produto; 
   isSelected: boolean; 
   onSelect: () => void; 
   onEdit: () => void;
+  onDelete: () => void;
+  onInativar: () => void;
   index?: number;
 }) => {
   const valorVenda = useMemo(() => 
@@ -142,14 +167,38 @@ const ProdutoTableRow = memo(({
       </td>
       {/* Ações */}
       <td className="py-3.5 px-3 text-center w-[80px]">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
-        >
-          <Edit className="h-3.5 w-3.5" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Abrir
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={(e) => { e.stopPropagation(); onInativar(); }}
+              className="text-amber-600 focus:text-amber-600"
+            >
+              <Ban className="h-4 w-4 mr-2" />
+              Inativar
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </td>
     </tr>
   );
@@ -206,6 +255,10 @@ export default function Produtos() {
   const [showEstoqueModal, setShowEstoqueModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showInventario, setShowInventario] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showInativarDialog, setShowInativarDialog] = useState(false);
+  const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
+  const [produtoToInativar, setProdutoToInativar] = useState<Produto | null>(null);
 
   // ═══════════════════════════════════════════════════════════════
   // EXPORTAÇÃO
@@ -387,12 +440,21 @@ export default function Produtos() {
     setShowForm(true);
   };
 
-  const handleInativar = async () => {
-    if (!selectedProduto) return;
+  // Abrir diálogo de inativar
+  const handleInativarClick = (produto: Produto) => {
+    setProdutoToInativar(produto);
+    setShowInativarDialog(true);
+  };
+
+  // Confirmar inativação
+  const handleConfirmInativar = async () => {
+    if (!produtoToInativar) return;
     try {
-      await deleteProduto(selectedProduto.id);
-      toast({ title: 'Produto inativado!' });
+      await updateProduto(produtoToInativar.id, { ...produtoToInativar, ativo: false });
+      toast({ title: 'Produto inativado!', description: 'O produto foi marcado como inativo.' });
       setSelectedProduto(null);
+      setProdutoToInativar(null);
+      setShowInativarDialog(false);
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -400,6 +462,36 @@ export default function Produtos() {
         variant: 'destructive',
       });
     }
+  };
+
+  // Abrir diálogo de excluir
+  const handleDeleteClick = (produto: Produto) => {
+    setProdutoToDelete(produto);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!produtoToDelete) return;
+    try {
+      await deleteProduto(produtoToDelete.id);
+      toast({ title: 'Produto excluído!', description: 'O produto foi removido permanentemente.' });
+      setSelectedProduto(null);
+      setProdutoToDelete(null);
+      setShowDeleteDialog(false);
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error?.message || 'Não foi possível excluir.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handler para o botão na toolbar (usando produto selecionado)
+  const handleInativar = async () => {
+    if (!selectedProduto) return;
+    handleInativarClick(selectedProduto);
   };
 
   const gerarCodigoBarras = (produto: Produto): string => {
@@ -633,6 +725,8 @@ export default function Produtos() {
                                 isSelected={selectedProduto?.id === produto.id}
                                 onSelect={() => setSelectedProduto(produto)}
                                 onEdit={() => handleEdit(produto)}
+                                onDelete={() => handleDeleteClick(produto)}
+                                onInativar={() => handleInativarClick(produto)}
                                 index={index}
                               />
                             ))
@@ -1070,6 +1164,54 @@ export default function Produtos() {
           onOpenChange={setShowInventario}
           filtrosAtuais={{ searchTerm, grupo, localizacao }}
         />
+
+        {/* Dialog de Confirmação - Inativar */}
+        <AlertDialog open={showInativarDialog} onOpenChange={setShowInativarDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Inativar Produto</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja inativar o produto <strong>"{produtoToInativar?.descricao || produtoToInativar?.nome}"</strong>?
+                <br /><br />
+                O produto ficará oculto nas listagens, mas poderá ser reativado posteriormente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setProdutoToInativar(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmInativar}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                <Ban className="h-4 w-4 mr-2" />
+                Inativar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog de Confirmação - Excluir */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja <strong>excluir permanentemente</strong> o produto <strong>"{produtoToDelete?.descricao || produtoToDelete?.nome}"</strong>?
+                <br /><br />
+                <span className="text-destructive font-medium">Esta ação não pode ser desfeita!</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setProdutoToDelete(null)}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </ModernLayout>
   );
