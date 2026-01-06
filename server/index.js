@@ -3387,9 +3387,9 @@ app.get('/api/v1/produtos/:id', validateApiToken, async (req, res) => {
         p.*,
         p.marca as marca_nome,
         p.modelo as modelo_nome,
-        COALESCE(p.quantidade, p.estoque_atual, 0) as quantidade,
-        COALESCE(p.estoque_atual, p.quantidade, 0) as estoque_atual,
-        COALESCE(p.ativo, p.situacao = 'ativo', true) as ativo
+        COALESCE(p.quantidade, 0) as quantidade,
+        COALESCE(p.quantidade, 0) as estoque_atual,
+        CASE WHEN p.situacao = 'ativo' OR p.situacao = 'ATIVO' THEN true ELSE false END as ativo
       FROM produtos p
       WHERE p.id = $1 OR p.codigo::text = $1 OR p.codigo_barras = $1
     `, [id]);
