@@ -3152,9 +3152,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         p.codigo,
         p.referencia,
         p.codigo_barras,
-        p.descricao,
         p.nome,
-        p.descricao_abreviada,
+        p.nome as descricao,
         p.grupo,
         p.localizacao,
         COALESCE(p.quantidade, p.estoque_atual, 0) as quantidade,
@@ -3179,7 +3178,6 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     // Filtros
     if (busca) {
       query += ` AND (
-        p.descricao ILIKE $${paramIndex} OR 
         p.nome ILIKE $${paramIndex} OR 
         p.codigo::text ILIKE $${paramIndex} OR
         p.referencia ILIKE $${paramIndex} OR
@@ -3192,7 +3190,7 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     if (modelo) {
-      query += ` AND (p.modelo ILIKE $${paramIndex} OR p.descricao ILIKE $${paramIndex} OR p.nome ILIKE $${paramIndex})`;
+      query += ` AND (p.modelo ILIKE $${paramIndex} OR p.nome ILIKE $${paramIndex})`;
       params.push(`%${modelo}%`);
       paramIndex++;
     }
@@ -3287,12 +3285,12 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     // Aplicar os mesmos filtros da query principal
     if (busca) {
-      countQuery += ` AND (p.descricao ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex} OR p.codigo::text ILIKE $${countParamIndex} OR p.referencia ILIKE $${countParamIndex} OR p.codigo_barras ILIKE $${countParamIndex} OR p.modelo ILIKE $${countParamIndex} OR p.marca ILIKE $${countParamIndex})`;
+      countQuery += ` AND (p.nome ILIKE $${countParamIndex} OR p.codigo::text ILIKE $${countParamIndex} OR p.referencia ILIKE $${countParamIndex} OR p.codigo_barras ILIKE $${countParamIndex} OR p.modelo ILIKE $${countParamIndex} OR p.marca ILIKE $${countParamIndex})`;
       countParams.push(`%${busca}%`);
       countParamIndex++;
     }
     if (modelo) {
-      countQuery += ` AND (p.modelo ILIKE $${countParamIndex} OR p.descricao ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex})`;
+      countQuery += ` AND (p.modelo ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex})`;
       countParams.push(`%${modelo}%`);
       countParamIndex++;
     }
