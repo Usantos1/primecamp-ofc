@@ -29,33 +29,44 @@ export function brlToNumber(brlString: string): number {
 }
 
 /**
- * Mask input for BRL currency - permite digitar números e decimais sem formatação durante digitação
+ * Mask input for BRL currency - permite digitar números e decimais
+ * Aceita valores como: 100, 100.50, 100,50, 1000.99, etc
  * @param value - Input value
- * @returns Numeric string formatada apenas para exibição
+ * @returns String limpa com apenas números e um separador decimal
  */
 export function maskBRL(value: string): string {
+  if (!value) return '';
+  
   // Remove tudo exceto números, vírgula e ponto
   let numericValue = value.replace(/[^\d,\.]/g, '');
   
   if (!numericValue) return '';
   
-  // Permite apenas uma vírgula ou ponto (para decimais)
-  const parts = numericValue.split(/[,\.]/);
-  if (parts.length > 2) {
-    // Se tem mais de um separador, mantém apenas o primeiro
-    numericValue = parts[0] + (parts[1] ? ',' + parts.slice(1).join('') : '');
+  // Se começar com vírgula ou ponto, adiciona zero antes
+  if (numericValue.startsWith(',') || numericValue.startsWith('.')) {
+    numericValue = '0' + numericValue;
   }
   
-  // Garante que após vírgula/ponto tenha no máximo 2 dígitos
-  if (numericValue.includes(',') || numericValue.includes('.')) {
-    const separator = numericValue.includes(',') ? ',' : '.';
-    const [intPart, decPart] = numericValue.split(separator);
+  // Substitui vírgula por ponto para processamento interno
+  numericValue = numericValue.replace(',', '.');
+  
+  // Permite apenas um ponto decimal
+  const parts = numericValue.split('.');
+  if (parts.length > 2) {
+    // Se tem mais de um ponto, mantém apenas o primeiro
+    numericValue = parts[0] + '.' + parts.slice(1).join('');
+  }
+  
+  // Garante que após ponto tenha no máximo 2 dígitos
+  if (numericValue.includes('.')) {
+    const [intPart, decPart] = numericValue.split('.');
     if (decPart && decPart.length > 2) {
-      numericValue = intPart + separator + decPart.substring(0, 2);
+      numericValue = intPart + '.' + decPart.substring(0, 2);
     }
   }
   
-  return numericValue;
+  // Converte de volta para vírgula para exibição BRL
+  return numericValue.replace('.', ',');
 }
 
 /**

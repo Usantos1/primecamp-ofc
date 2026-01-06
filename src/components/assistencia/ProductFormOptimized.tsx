@@ -412,10 +412,31 @@ export function ProductFormOptimized({
 
   // Converter valor bruto (string com vírgula) para número
   const parseRawValue = (rawValue: string): number => {
-    if (!rawValue) return 0;
-    const cleaned = rawValue.replace(/[^\d,\.]/g, '').replace(',', '.');
+    if (!rawValue || rawValue.trim() === '') return 0;
+    // Remove espaços e converte vírgula para ponto
+    const cleaned = rawValue.trim().replace(/[^\d,\.]/g, '').replace(',', '.');
+    if (!cleaned || cleaned === '.') return 0;
     const num = parseFloat(cleaned);
     return isNaN(num) ? 0 : num;
+  };
+  
+  // Handler genérico para campos de preço
+  const handlePrecoChange = (
+    value: string,
+    setRaw: (val: string) => void,
+    setFormValue: (val: number) => void
+  ) => {
+    // Permite backspace e delete funcionarem normalmente
+    if (value === '') {
+      setRaw('');
+      setFormValue(0);
+      return;
+    }
+    
+    const masked = maskBRL(value);
+    setRaw(masked);
+    const numValue = parseRawValue(masked);
+    setFormValue(numValue);
   };
 
   // Calcular margem automaticamente
@@ -694,15 +715,24 @@ export function ProductFormOptimized({
                     inputMode="decimal"
                     value={precoCustoRaw}
                     onChange={(e) => {
-                      const raw = maskBRL(e.target.value);
-                      setPrecoCustoRaw(raw);
-                      const numValue = parseRawValue(raw);
-                      setValue('preco_custo', numValue);
+                      handlePrecoChange(
+                        e.target.value,
+                        setPrecoCustoRaw,
+                        (val) => setValue('preco_custo', val)
+                      );
                     }}
                     onBlur={() => {
                       const numValue = parseRawValue(precoCustoRaw);
                       if (numValue > 0) {
                         setPrecoCustoRaw(numValue.toFixed(2).replace('.', ','));
+                      } else if (precoCustoRaw === '' || precoCustoRaw === '0') {
+                        setPrecoCustoRaw('');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Permite backspace, delete, tab, enter, arrow keys funcionarem normalmente
+                      if (['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                        return;
                       }
                     }}
                     placeholder="0,00"
@@ -723,15 +753,24 @@ export function ProductFormOptimized({
                     inputMode="decimal"
                     value={valorVendaRaw}
                     onChange={(e) => {
-                      const raw = maskBRL(e.target.value);
-                      setValorVendaRaw(raw);
-                      const numValue = parseRawValue(raw);
-                      setValue('valor_venda', numValue);
+                      handlePrecoChange(
+                        e.target.value,
+                        setValorVendaRaw,
+                        (val) => setValue('valor_venda', val)
+                      );
                     }}
                     onBlur={() => {
                       const numValue = parseRawValue(valorVendaRaw);
                       if (numValue > 0) {
                         setValorVendaRaw(numValue.toFixed(2).replace('.', ','));
+                      } else if (valorVendaRaw === '' || valorVendaRaw === '0') {
+                        setValorVendaRaw('');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Permite backspace, delete, tab, enter, arrow keys funcionarem normalmente
+                      if (['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                        return;
                       }
                     }}
                     placeholder="0,00"
@@ -747,15 +786,24 @@ export function ProductFormOptimized({
                     inputMode="decimal"
                     value={valorParceladoRaw}
                     onChange={(e) => {
-                      const raw = maskBRL(e.target.value);
-                      setValorParceladoRaw(raw);
-                      const numValue = parseRawValue(raw);
-                      setValue('valor_parcelado_6x', numValue);
+                      handlePrecoChange(
+                        e.target.value,
+                        setValorParceladoRaw,
+                        (val) => setValue('valor_parcelado_6x', val)
+                      );
                     }}
                     onBlur={() => {
                       const numValue = parseRawValue(valorParceladoRaw);
                       if (numValue > 0) {
                         setValorParceladoRaw(numValue.toFixed(2).replace('.', ','));
+                      } else if (valorParceladoRaw === '' || valorParceladoRaw === '0') {
+                        setValorParceladoRaw('');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      // Permite backspace, delete, tab, enter, arrow keys funcionarem normalmente
+                      if (['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                        return;
                       }
                     }}
                     placeholder="0,00"
