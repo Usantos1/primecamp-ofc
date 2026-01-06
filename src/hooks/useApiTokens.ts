@@ -45,7 +45,10 @@ export function useApiTokens() {
     queryKey: ['api-tokens'],
     queryFn: async () => {
       const response = await apiClient.get<{ success: boolean; data: ApiToken[] }>('/api-tokens');
-      return response.data || [];
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.data?.data || [];
     },
   });
 
@@ -53,7 +56,10 @@ export function useApiTokens() {
   const createMutation = useMutation({
     mutationFn: async (data: CreateTokenData) => {
       const response = await apiClient.post<{ success: boolean; data: ApiToken }>('/api-tokens', data);
-      return response.data;
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.data?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-tokens'] });
@@ -68,7 +74,10 @@ export function useApiTokens() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ApiToken> }) => {
       const response = await apiClient.put<{ success: boolean; data: ApiToken }>(`/api-tokens/${id}`, data);
-      return response.data;
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.data?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-tokens'] });
@@ -82,7 +91,10 @@ export function useApiTokens() {
   // Excluir token
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(`/api-tokens/${id}`);
+      const response = await apiClient.delete(`/api-tokens/${id}`);
+      if (response.error) {
+        throw new Error(response.error);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['api-tokens'] });
@@ -97,7 +109,10 @@ export function useApiTokens() {
   const fetchLogs = useCallback(async (tokenId: string): Promise<ApiAccessLog[]> => {
     try {
       const response = await apiClient.get<{ success: boolean; data: ApiAccessLog[] }>(`/api-tokens/${tokenId}/logs`);
-      return response.data || [];
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.data?.data || [];
     } catch (error) {
       console.error('Erro ao buscar logs:', error);
       return [];

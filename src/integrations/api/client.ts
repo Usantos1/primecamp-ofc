@@ -47,10 +47,31 @@ class APIClient {
       throw new Error('Sessão expirada');
     }
 
-    const data = await response.json().catch(() => ({}));
+    let data: any = {};
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.warn('[API Client] Failed to parse JSON response:', e);
+      }
+    } else {
+      const text = await response.text().catch(() => '');
+      if (text) {
+        console.warn('[API Client] Non-JSON response:', text.substring(0, 100));
+      }
+    }
     
     if (!response.ok) {
-      throw new Error(data.error || data.message || `Erro ${response.status}`);
+      const errorMessage = data.error || data.message || `Erro ${response.status}: ${response.statusText}`;
+      console.error('[API Client] Request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        error: errorMessage,
+        data
+      });
+      throw new Error(errorMessage);
     }
 
     return data;
@@ -58,10 +79,13 @@ class APIClient {
 
   async get(endpoint: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const url = `${this.baseURL}${endpoint}`;
+      console.log('[API Client] GET:', url);
+      const response = await fetch(url, {
         method: 'GET',
         headers: this.getHeaders(),
       });
+      console.log('[API Client] Response status:', response.status, response.statusText);
       const data = await this.handleResponse(response);
       return { data };
     } catch (error: any) {
@@ -72,11 +96,14 @@ class APIClient {
 
   async post(endpoint: string, body?: any, customHeaders?: Record<string, string>): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const url = `${this.baseURL}${endpoint}`;
+      console.log('[API Client] POST:', url, body);
+      const response = await fetch(url, {
         method: 'POST',
         headers: { ...this.getHeaders(), ...customHeaders },
         body: body ? JSON.stringify(body) : undefined,
       });
+      console.log('[API Client] Response status:', response.status, response.statusText);
       const data = await this.handleResponse(response);
       return { data };
     } catch (error: any) {
