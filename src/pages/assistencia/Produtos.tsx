@@ -257,6 +257,8 @@ export default function Produtos() {
   const [showInventario, setShowInventario] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showInativarDialog, setShowInativarDialog] = useState(false);
+  const [showGerarCodigosDialog, setShowGerarCodigosDialog] = useState(false);
+  const [isGerandoCodigos, setIsGerandoCodigos] = useState(false);
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
   const [produtoToInativar, setProdutoToInativar] = useState<Produto | null>(null);
 
@@ -488,6 +490,44 @@ export default function Produtos() {
     }
   };
 
+  // Gerar códigos em massa para produtos sem código
+  const handleGerarCodigos = async () => {
+    setIsGerandoCodigos(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/functions/gerar-codigos-produtos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao gerar códigos');
+      }
+
+      toast({ 
+        title: 'Sucesso!', 
+        description: data.message || `${data.atualizados} produtos receberam códigos automaticamente.` 
+      });
+      
+      // Recarregar lista de produtos
+      hookResult.invalidateQueries();
+      setShowGerarCodigosDialog(false);
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error?.message || 'Não foi possível gerar os códigos.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGerandoCodigos(false);
+    }
+  };
+
   // Handler para o botão na toolbar (usando produto selecionado)
   const handleInativar = async () => {
     if (!selectedProduto) return;
@@ -647,6 +687,16 @@ export default function Produtos() {
               <Button onClick={handleNew} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"><Plus className="h-4 w-4" /><span>Novo</span></Button>
               <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Importar</span></Button>
               <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200"><Download className="h-4 w-4" /><span className="hidden sm:inline">Exportar</span></Button>
+              <Button 
+                onClick={() => setShowGerarCodigosDialog(true)} 
+                size="sm" 
+                variant="outline" 
+                className="h-9 gap-1.5 border-gray-200"
+                disabled={isGerandoCodigos}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Gerar Códigos</span>
+              </Button>
               <div className="w-px h-6 bg-gray-200 mx-1" />
               <Button onClick={() => selectedProduto && handleEdit(selectedProduto)} size="sm" variant="outline" disabled={!selectedProduto} className="h-9 gap-1.5 border-gray-200"><Edit className="h-4 w-4" /><span className="hidden sm:inline">Editar</span></Button>
               <Button onClick={handleInativar} size="sm" variant="outline" disabled={!selectedProduto} className="h-9 gap-1.5 border-gray-200"><X className="h-4 w-4" /><span className="hidden sm:inline">Inativar</span></Button>
@@ -1208,6 +1258,31 @@ export default function Produtos() {
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog para gerar códigos em massa */}
+        <AlertDialog open={showGerarCodigosDialog} onOpenChange={setShowGerarCodigosDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Gerar Códigos para Produtos sem Código</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação irá gerar códigos sequenciais automaticamente para todos os produtos que não possuem código.
+                Os códigos serão gerados a partir do maior código existente + 1.
+                <br /><br />
+                <strong>Esta ação não pode ser desfeita.</strong>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isGerandoCodigos}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleGerarCodigos}
+                disabled={isGerandoCodigos}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isGerandoCodigos ? 'Gerando...' : 'Gerar Códigos'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

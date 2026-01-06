@@ -363,7 +363,7 @@ export function ProductFormOptimized({
           modelo: produto.modelo || produto.modelo_compativel || '',
           grupo: produto.grupo || produto.categoria || '',
           sub_grupo: produto.sub_grupo || '',
-          qualidade: produto.qualidade || '',
+          qualidade: (produto as any).qualidade || '',
           preco_custo: (produto.preco_custo || produto.valor_compra || 0),
           valor_venda: produto.valor_venda || produto.preco_venda || 0,
           valor_parcelado_6x: produto.valor_parcelado_6x,
@@ -485,7 +485,7 @@ export function ProductFormOptimized({
         payload.sub_grupo = data.sub_grupo.trim();
       }
       if (data.qualidade && data.qualidade.trim()) {
-        payload.qualidade = data.qualidade.trim();
+        (payload as any).qualidade = data.qualidade.trim();
       }
 
       // Preços (BRL)
@@ -581,16 +581,40 @@ export function ProductFormOptimized({
 
                 <div>
                   <Label htmlFor="codigo">Código</Label>
-                  <Input
-                    id="codigo"
-                    type="number"
-                    {...register('codigo', { valueAsNumber: true })}
-                    placeholder="Código do produto"
-                    disabled={isLoadingCodigo || isEditing}
-                    className="text-base md:text-sm"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="codigo"
+                      type="number"
+                      {...register('codigo', { valueAsNumber: true })}
+                      placeholder="Código do produto"
+                      disabled={isLoadingCodigo || (isEditing && produto?.codigo !== null && produto?.codigo !== undefined)}
+                      className="flex-1 text-base md:text-sm"
+                    />
+                    {(isEditing && (produto?.codigo === null || produto?.codigo === undefined)) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          setIsLoadingCodigo(true);
+                          const proximoCodigo = await buscarProximoCodigo();
+                          setValue('codigo', proximoCodigo);
+                          setIsLoadingCodigo(false);
+                        }}
+                        disabled={isLoadingCodigo}
+                        className="gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Gerar
+                      </Button>
+                    )}
+                  </div>
                   {isLoadingCodigo && (
                     <p className="text-xs text-muted-foreground mt-1">Carregando próximo código...</p>
+                  )}
+                  {isEditing && (produto?.codigo === null || produto?.codigo === undefined) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Este produto não tem código. Clique em "Gerar" para criar um automaticamente.
+                    </p>
                   )}
                 </div>
 
