@@ -3159,8 +3159,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         COALESCE(p.quantidade, 0) as quantidade,
         COALESCE(p.quantidade, 0) as estoque_atual,
         COALESCE(p.estoque_minimo, 0) as estoque_minimo,
-        p.preco_custo,
-        p.preco_venda,
+        COALESCE(p.preco_custo, p.vi_custo, 0) as preco_custo,
+        COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) as preco_venda,
         p.unidade,
         p.marca,
         p.modelo,
@@ -3244,13 +3244,13 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     if (preco_min !== undefined) {
-      query += ` AND p.preco_venda >= $${paramIndex}`;
+      query += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) >= $${paramIndex}`;
       params.push(parseFloat(preco_min));
       paramIndex++;
     }
     
     if (preco_max !== undefined) {
-      query += ` AND p.preco_venda <= $${paramIndex}`;
+      query += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) <= $${paramIndex}`;
       params.push(parseFloat(preco_max));
       paramIndex++;
     }
