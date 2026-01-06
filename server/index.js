@@ -3167,8 +3167,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         p.marca as marca_nome,
         p.modelo as modelo_nome,
         CASE WHEN p.situacao = 'ativo' OR p.situacao = 'ATIVO' THEN true ELSE false END as ativo,
-        p.created_at,
-        p.updated_at
+        NULL::TIMESTAMP as created_at,
+        NULL::TIMESTAMP as updated_at
       FROM produtos p
       WHERE 1=1
     `;
@@ -3263,7 +3263,7 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     // Ordenação
-    const ordenarCampos = ['nome', 'codigo', 'quantidade', 'created_at'];
+    const ordenarCampos = ['nome', 'codigo', 'quantidade'];
     const ordemValida = ['asc', 'desc'];
     let campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'nome';
     // Mapear 'descricao' para 'nome' para compatibilidade
