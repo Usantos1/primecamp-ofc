@@ -2861,8 +2861,9 @@ const validateApiToken = async (req, res, next) => {
       });
     }
     
-    const token = authHeader.substring(7);
+    const token = authHeader.substring(7).trim();
     console.log('[API Token Validation] Validando token:', token.substring(0, 20) + '...');
+    console.log('[API Token Validation] Tamanho do token:', token.length);
     
     // Buscar token no banco (primeiro sem filtro de ativo para debug)
     const resultAll = await pool.query(
