@@ -3183,7 +3183,9 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         p.nome ILIKE $${paramIndex} OR 
         p.codigo::text ILIKE $${paramIndex} OR
         p.referencia ILIKE $${paramIndex} OR
-        p.codigo_barras ILIKE $${paramIndex}
+        p.codigo_barras ILIKE $${paramIndex} OR
+        p.modelo ILIKE $${paramIndex} OR
+        p.marca ILIKE $${paramIndex}
       )`;
       params.push(`%${busca}%`);
       paramIndex++;
@@ -3285,7 +3287,7 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     // Aplicar os mesmos filtros da query principal
     if (busca) {
-      countQuery += ` AND (p.descricao ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex} OR p.codigo::text ILIKE $${countParamIndex} OR p.referencia ILIKE $${countParamIndex} OR p.codigo_barras ILIKE $${countParamIndex})`;
+      countQuery += ` AND (p.descricao ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex} OR p.codigo::text ILIKE $${countParamIndex} OR p.referencia ILIKE $${countParamIndex} OR p.codigo_barras ILIKE $${countParamIndex} OR p.modelo ILIKE $${countParamIndex} OR p.marca ILIKE $${countParamIndex})`;
       countParams.push(`%${busca}%`);
       countParamIndex++;
     }
