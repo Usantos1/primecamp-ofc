@@ -3166,7 +3166,7 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         p.modelo,
         p.marca as marca_nome,
         p.modelo as modelo_nome,
-        COALESCE(p.ativo, p.situacao = 'ativo', true) as ativo,
+        CASE WHEN p.situacao = 'ativo' OR p.situacao = 'ATIVO' THEN true ELSE false END as ativo,
         p.created_at,
         p.updated_at
       FROM produtos p
@@ -3257,9 +3257,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     if (ativo !== undefined) {
       const ativoValue = ativo === 'true' || ativo === true;
-      // Verificar se existe coluna ativo ou usar situacao
-      query += ` AND (p.ativo = $${paramIndex} OR (p.ativo IS NULL AND p.situacao = $${paramIndex + 1}))`;
-      params.push(ativoValue, ativoValue ? 'ativo' : 'inativo');
+      query += ` AND (p.situacao = $${paramIndex} OR UPPER(p.situacao) = $${paramIndex + 1})`;
+      params.push(ativoValue ? 'ativo' : 'inativo', ativoValue ? 'ATIVO' : 'INATIVO');
       paramIndex += 2;
     }
     
@@ -3355,8 +3354,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     if (ativo !== undefined) {
       const ativoValue = ativo === 'true' || ativo === true;
-      countQuery += ` AND (p.ativo = $${countParamIndex} OR (p.ativo IS NULL AND p.situacao = $${countParamIndex + 1}))`;
-      countParams.push(ativoValue, ativoValue ? 'ativo' : 'inativo');
+      countQuery += ` AND (p.situacao = $${countParamIndex} OR UPPER(p.situacao) = $${countParamIndex + 1})`;
+      countParams.push(ativoValue ? 'ativo' : 'inativo', ativoValue ? 'ATIVO' : 'INATIVO');
       countParamIndex += 2;
     }
     
