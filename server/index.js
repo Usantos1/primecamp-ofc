@@ -3179,11 +3179,8 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     if (busca) {
       query += ` AND (
         p.nome ILIKE $${paramIndex} OR 
-        p.codigo::text ILIKE $${paramIndex} OR
         p.referencia ILIKE $${paramIndex} OR
-        p.codigo_barras ILIKE $${paramIndex} OR
-        p.modelo ILIKE $${paramIndex} OR
-        p.marca ILIKE $${paramIndex}
+        p.modelo ILIKE $${paramIndex}
       )`;
       params.push(`%${busca}%`);
       paramIndex++;
