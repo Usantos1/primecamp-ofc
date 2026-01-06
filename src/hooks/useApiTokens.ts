@@ -41,16 +41,21 @@ export function useApiTokens() {
   const queryClient = useQueryClient();
 
   // Listar tokens
-  const { data: tokens = [], isLoading, refetch } = useQuery({
+  const { data: tokensData, isLoading, refetch } = useQuery({
     queryKey: ['api-tokens'],
     queryFn: async () => {
       const response = await apiClient.get<{ success: boolean; data: ApiToken[] }>('/api-tokens');
       if (response.error) {
         throw new Error(response.error);
       }
-      return response.data?.data || [];
+      // Garantir que sempre retornamos um array
+      const data = response.data?.data;
+      return Array.isArray(data) ? data : [];
     },
   });
+
+  // Garantir que tokens seja sempre um array
+  const tokens = Array.isArray(tokensData) ? tokensData : [];
 
   // Criar token
   const createMutation = useMutation({
@@ -112,7 +117,8 @@ export function useApiTokens() {
       if (response.error) {
         throw new Error(response.error);
       }
-      return response.data?.data || [];
+      const data = response.data?.data;
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Erro ao buscar logs:', error);
       return [];
