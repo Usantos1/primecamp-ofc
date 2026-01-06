@@ -3232,13 +3232,13 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     if (estoque_min !== undefined) {
-      query += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) >= $${paramIndex}`;
+      query += ` AND COALESCE(p.quantidade, 0) >= $${paramIndex}`;
       params.push(parseInt(estoque_min));
       paramIndex++;
     }
     
     if (estoque_max !== undefined) {
-      query += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) <= $${paramIndex}`;
+      query += ` AND COALESCE(p.quantidade, 0) <= $${paramIndex}`;
       params.push(parseInt(estoque_max));
       paramIndex++;
     }
@@ -3325,12 +3325,12 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
       countParamIndex++;
     }
     if (estoque_min !== undefined) {
-      countQuery += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) >= $${countParamIndex}`;
+      countQuery += ` AND COALESCE(p.quantidade, 0) >= $${countParamIndex}`;
       countParams.push(parseInt(estoque_min));
       countParamIndex++;
     }
     if (estoque_max !== undefined) {
-      countQuery += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) <= $${countParamIndex}`;
+      countQuery += ` AND COALESCE(p.quantidade, 0) <= $${countParamIndex}`;
       countParams.push(parseInt(estoque_max));
       countParamIndex++;
     }
