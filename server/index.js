@@ -3161,7 +3161,7 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         COALESCE(p.estoque_minimo, 0) as estoque_minimo,
         COALESCE(p.vi_custo, 0) as preco_custo,
         COALESCE(p.valor_dinheiro_pix, 0) as preco_venda,
-        p.unidade,
+        'UN' as unidade,
         p.marca,
         p.modelo,
         p.marca as marca_nome,
