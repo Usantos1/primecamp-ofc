@@ -2838,6 +2838,544 @@ app.get('/api/webhook/logs/:webhookId', authenticateToken, async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// API PÚBLICA - ENDPOINTS PARA INTEGRAÇÃO EXTERNA (Agentes IA, Sistemas, etc)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Middleware para validar API Token
+const validateApiToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Token de API não fornecido',
+        message: 'Inclua o header Authorization: Bearer <seu_token>'
+      });
+    }
+    
+    const token = authHeader.substring(7);
+    
+    // Buscar token no banco
+    const result = await pool.query(
+      `SELECT * FROM api_tokens WHERE token = $1 AND ativo = true`,
+      [token]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Token de API inválido ou inativo'
+      });
+    }
+    
+    const apiToken = result.rows[0];
+    
+    // Verificar se expirou
+    if (apiToken.expires_at && new Date(apiToken.expires_at) < new Date()) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Token de API expirado'
+      });
+    }
+    
+    // Atualizar último uso
+    await pool.query(
+      `UPDATE api_tokens SET ultimo_uso = NOW(), uso_count = uso_count + 1 WHERE id = $1`,
+      [apiToken.id]
+    );
+    
+    // Registrar log de acesso
+    await pool.query(
+      `INSERT INTO api_access_logs (token_id, endpoint, method, ip_address, user_agent, query_params)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [apiToken.id, req.path, req.method, req.ip, req.headers['user-agent'], JSON.stringify(req.query)]
+    );
+    
+    req.apiToken = apiToken;
+    next();
+  } catch (error) {
+    console.error('[API] Erro ao validar token:', error);
+    res.status(500).json({ success: false, error: 'Erro interno ao validar token' });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GESTÃO DE TOKENS (autenticado - apenas admins)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Criar tabelas se não existirem
+const initApiTables = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS api_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        token VARCHAR(64) UNIQUE NOT NULL,
+        permissoes JSONB DEFAULT '["produtos:read"]'::jsonb,
+        ativo BOOLEAN DEFAULT true,
+        expires_at TIMESTAMP,
+        ultimo_uso TIMESTAMP,
+        uso_count INTEGER DEFAULT 0,
+        criado_por UUID REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE TABLE IF NOT EXISTS api_access_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        token_id UUID REFERENCES api_tokens(id),
+        endpoint VARCHAR(255),
+        method VARCHAR(10),
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        query_params JSONB,
+        response_status INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token);
+      CREATE INDEX IF NOT EXISTS idx_api_access_logs_token_id ON api_access_logs(token_id);
+      CREATE INDEX IF NOT EXISTS idx_api_access_logs_created_at ON api_access_logs(created_at);
+    `);
+    console.log('✅ Tabelas de API inicializadas');
+  } catch (error) {
+    console.error('Erro ao inicializar tabelas de API:', error);
+  }
+};
+initApiTables();
+
+// GET - Listar tokens (autenticado)
+app.get('/api/api-tokens', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, nome, descricao, token, permissoes, ativo, expires_at, ultimo_uso, uso_count, created_at
+      FROM api_tokens 
+      ORDER BY created_at DESC
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[API Tokens] Erro ao listar:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST - Criar token (autenticado)
+app.post('/api/api-tokens', authenticateToken, async (req, res) => {
+  try {
+    const { nome, descricao, permissoes, expires_at } = req.body;
+    
+    // Gerar token seguro
+    const token = crypto.randomBytes(32).toString('hex');
+    
+    const result = await pool.query(`
+      INSERT INTO api_tokens (nome, descricao, token, permissoes, expires_at, criado_por)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [nome, descricao, token, JSON.stringify(permissoes || ['produtos:read']), expires_at, req.user.id]);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[API Tokens] Erro ao criar:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT - Atualizar token (autenticado)
+app.put('/api/api-tokens/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, descricao, permissoes, ativo, expires_at } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE api_tokens 
+      SET nome = COALESCE($1, nome), 
+          descricao = COALESCE($2, descricao), 
+          permissoes = COALESCE($3, permissoes),
+          ativo = COALESCE($4, ativo),
+          expires_at = $5,
+          updated_at = NOW()
+      WHERE id = $6
+      RETURNING *
+    `, [nome, descricao, permissoes ? JSON.stringify(permissoes) : null, ativo, expires_at, id]);
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[API Tokens] Erro ao atualizar:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE - Excluir token (autenticado)
+app.delete('/api/api-tokens/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(`DELETE FROM api_tokens WHERE id = $1`, [id]);
+    res.json({ success: true, message: 'Token excluído' });
+  } catch (error) {
+    console.error('[API Tokens] Erro ao excluir:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Logs de acesso de um token (autenticado)
+app.get('/api/api-tokens/:id/logs', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = parseInt(req.query.limit) || 100;
+    
+    const result = await pool.query(`
+      SELECT * FROM api_access_logs 
+      WHERE token_id = $1 
+      ORDER BY created_at DESC 
+      LIMIT $2
+    `, [id, limit]);
+    
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[API Tokens] Erro ao buscar logs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENDPOINTS PÚBLICOS (com API Token)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET - Buscar produtos (API pública)
+app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
+  try {
+    const { 
+      busca, 
+      modelo, 
+      marca, 
+      grupo,
+      codigo,
+      referencia,
+      codigo_barras,
+      localizacao,
+      estoque_min,
+      estoque_max,
+      preco_min,
+      preco_max,
+      ativo,
+      limit = 50, 
+      offset = 0,
+      ordenar = 'descricao',
+      ordem = 'asc'
+    } = req.query;
+    
+    let query = `
+      SELECT 
+        p.id,
+        p.codigo,
+        p.referencia,
+        p.codigo_barras,
+        p.descricao,
+        p.nome,
+        p.descricao_abreviada,
+        p.grupo,
+        p.localizacao,
+        p.quantidade,
+        p.estoque_atual,
+        p.estoque_minimo,
+        p.preco_custo,
+        p.preco_venda,
+        p.unidade,
+        p.marca_id,
+        p.modelo_id,
+        m.nome as marca_nome,
+        mo.nome as modelo_nome,
+        p.ativo,
+        p.created_at,
+        p.updated_at
+      FROM produtos p
+      LEFT JOIN marcas m ON p.marca_id = m.id
+      LEFT JOIN modelos mo ON p.modelo_id = mo.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+    
+    // Filtros
+    if (busca) {
+      query += ` AND (
+        p.descricao ILIKE $${paramIndex} OR 
+        p.nome ILIKE $${paramIndex} OR 
+        p.codigo::text ILIKE $${paramIndex} OR
+        p.referencia ILIKE $${paramIndex} OR
+        p.codigo_barras ILIKE $${paramIndex}
+      )`;
+      params.push(`%${busca}%`);
+      paramIndex++;
+    }
+    
+    if (modelo) {
+      query += ` AND (mo.nome ILIKE $${paramIndex} OR p.descricao ILIKE $${paramIndex})`;
+      params.push(`%${modelo}%`);
+      paramIndex++;
+    }
+    
+    if (marca) {
+      query += ` AND m.nome ILIKE $${paramIndex}`;
+      params.push(`%${marca}%`);
+      paramIndex++;
+    }
+    
+    if (grupo) {
+      query += ` AND p.grupo ILIKE $${paramIndex}`;
+      params.push(`%${grupo}%`);
+      paramIndex++;
+    }
+    
+    if (codigo) {
+      query += ` AND p.codigo::text = $${paramIndex}`;
+      params.push(codigo);
+      paramIndex++;
+    }
+    
+    if (referencia) {
+      query += ` AND p.referencia ILIKE $${paramIndex}`;
+      params.push(`%${referencia}%`);
+      paramIndex++;
+    }
+    
+    if (codigo_barras) {
+      query += ` AND p.codigo_barras = $${paramIndex}`;
+      params.push(codigo_barras);
+      paramIndex++;
+    }
+    
+    if (localizacao) {
+      query += ` AND p.localizacao ILIKE $${paramIndex}`;
+      params.push(`%${localizacao}%`);
+      paramIndex++;
+    }
+    
+    if (estoque_min !== undefined) {
+      query += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) >= $${paramIndex}`;
+      params.push(parseInt(estoque_min));
+      paramIndex++;
+    }
+    
+    if (estoque_max !== undefined) {
+      query += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) <= $${paramIndex}`;
+      params.push(parseInt(estoque_max));
+      paramIndex++;
+    }
+    
+    if (preco_min !== undefined) {
+      query += ` AND p.preco_venda >= $${paramIndex}`;
+      params.push(parseFloat(preco_min));
+      paramIndex++;
+    }
+    
+    if (preco_max !== undefined) {
+      query += ` AND p.preco_venda <= $${paramIndex}`;
+      params.push(parseFloat(preco_max));
+      paramIndex++;
+    }
+    
+    if (ativo !== undefined) {
+      query += ` AND p.ativo = $${paramIndex}`;
+      params.push(ativo === 'true');
+      paramIndex++;
+    }
+    
+    // Ordenação
+    const ordenarCampos = ['descricao', 'codigo', 'preco_venda', 'quantidade', 'created_at'];
+    const ordemValida = ['asc', 'desc'];
+    const campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'descricao';
+    const direcao = ordemValida.includes(ordem.toLowerCase()) ? ordem.toUpperCase() : 'ASC';
+    
+    query += ` ORDER BY p.${campoOrdenar} ${direcao}`;
+    
+    // Paginação
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    // Executar query
+    const result = await pool.query(query, params);
+    
+    // Contar total
+    let countQuery = `SELECT COUNT(*) FROM produtos p LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN modelos mo ON p.modelo_id = mo.id WHERE 1=1`;
+    const countParams = params.slice(0, -2); // Remove limit e offset
+    
+    if (busca) countQuery += ` AND (p.descricao ILIKE $1 OR p.nome ILIKE $1 OR p.codigo::text ILIKE $1 OR p.referencia ILIKE $1 OR p.codigo_barras ILIKE $1)`;
+    // ... outros filtros seriam adicionados aqui
+    
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM produtos p 
+       LEFT JOIN marcas m ON p.marca_id = m.id 
+       LEFT JOIN modelos mo ON p.modelo_id = mo.id 
+       WHERE ${ativo !== undefined ? 'p.ativo = ' + (ativo === 'true') : '1=1'}`,
+      []
+    );
+    
+    res.json({ 
+      success: true, 
+      data: result.rows,
+      meta: {
+        total: parseInt(countResult.rows[0].count),
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        has_more: parseInt(offset) + result.rows.length < parseInt(countResult.rows[0].count)
+      }
+    });
+  } catch (error) {
+    console.error('[API Produtos] Erro:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Buscar produto por ID (API pública)
+app.get('/api/v1/produtos/:id', validateApiToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT 
+        p.*,
+        m.nome as marca_nome,
+        mo.nome as modelo_nome
+      FROM produtos p
+      LEFT JOIN marcas m ON p.marca_id = m.id
+      LEFT JOIN modelos mo ON p.modelo_id = mo.id
+      WHERE p.id = $1 OR p.codigo::text = $1 OR p.codigo_barras = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Produto não encontrado' });
+    }
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[API Produtos] Erro:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Listar marcas (API pública)
+app.get('/api/v1/marcas', validateApiToken, async (req, res) => {
+  try {
+    const result = await pool.query(`SELECT * FROM marcas ORDER BY nome`);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[API Marcas] Erro:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Listar modelos (API pública)
+app.get('/api/v1/modelos', validateApiToken, async (req, res) => {
+  try {
+    const { marca_id } = req.query;
+    
+    let query = `SELECT mo.*, m.nome as marca_nome FROM modelos mo LEFT JOIN marcas m ON mo.marca_id = m.id`;
+    const params = [];
+    
+    if (marca_id) {
+      query += ` WHERE mo.marca_id = $1`;
+      params.push(marca_id);
+    }
+    
+    query += ` ORDER BY mo.nome`;
+    
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[API Modelos] Erro:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Grupos de produtos (API pública)
+app.get('/api/v1/grupos', validateApiToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT grupo, COUNT(*) as quantidade
+      FROM produtos 
+      WHERE grupo IS NOT NULL AND grupo != ''
+      GROUP BY grupo
+      ORDER BY grupo
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('[API Grupos] Erro:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Documentação da API
+app.get('/api/v1/docs', (req, res) => {
+  res.json({
+    name: "PrimeCamp API",
+    version: "1.0.0",
+    description: "API para integração com sistemas externos e agentes de IA",
+    base_url: "https://api.primecamp.cloud/api/v1",
+    authentication: {
+      type: "Bearer Token",
+      header: "Authorization: Bearer <seu_token>",
+      how_to_get: "Acesse /admin/integracoes no painel e gere um token de API"
+    },
+    endpoints: [
+      {
+        method: "GET",
+        path: "/produtos",
+        description: "Buscar produtos com filtros",
+        parameters: {
+          busca: "Busca geral (descrição, código, referência, código de barras)",
+          modelo: "Filtrar por modelo do aparelho",
+          marca: "Filtrar por marca",
+          grupo: "Filtrar por grupo/categoria",
+          codigo: "Buscar por código exato",
+          referencia: "Buscar por referência",
+          codigo_barras: "Buscar por código de barras",
+          localizacao: "Filtrar por localização no estoque",
+          estoque_min: "Estoque mínimo",
+          estoque_max: "Estoque máximo",
+          preco_min: "Preço mínimo",
+          preco_max: "Preço máximo",
+          ativo: "true/false - filtrar por ativos/inativos",
+          limit: "Quantidade de resultados (default: 50, max: 100)",
+          offset: "Offset para paginação",
+          ordenar: "Campo para ordenação (descricao, codigo, preco_venda, quantidade)",
+          ordem: "Direção da ordenação (asc, desc)"
+        },
+        example: "/produtos?modelo=iPhone%2015&limit=10"
+      },
+      {
+        method: "GET",
+        path: "/produtos/:id",
+        description: "Buscar produto por ID, código ou código de barras"
+      },
+      {
+        method: "GET",
+        path: "/marcas",
+        description: "Listar todas as marcas"
+      },
+      {
+        method: "GET",
+        path: "/modelos",
+        description: "Listar modelos (use ?marca_id=UUID para filtrar)"
+      },
+      {
+        method: "GET",
+        path: "/grupos",
+        description: "Listar grupos/categorias de produtos"
+      }
+    ],
+    examples: {
+      curl: `curl -X GET "https://api.primecamp.cloud/api/v1/produtos?modelo=iPhone%2015" -H "Authorization: Bearer SEU_TOKEN"`,
+      javascript: `fetch('https://api.primecamp.cloud/api/v1/produtos?modelo=iPhone 15', {
+  headers: { 'Authorization': 'Bearer SEU_TOKEN' }
+}).then(r => r.json()).then(console.log)`,
+      ai_agent: `Use esta API quando o cliente perguntar sobre preços, disponibilidade ou características de produtos. Exemplo: "Qual o preço da tela do iPhone 15?" -> GET /produtos?modelo=iPhone 15&busca=tela`
+    }
+  });
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);

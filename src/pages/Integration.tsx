@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
-import { MessageSquare, Send, Settings, Webhook, Paperclip } from 'lucide-react';
+import { MessageSquare, Send, Settings, Webhook, Paperclip, Key, Plug } from 'lucide-react';
 import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ApiManager } from '@/components/ApiManager';
 
 interface IntegrationSettings {
   ativaCrmToken: string;
@@ -304,6 +306,33 @@ export default function Integration() {
       subtitle="Configure integrações com APIs externas"
     >
       <div className="h-full overflow-y-auto overflow-x-hidden -mx-2 md:-mx-4 px-2 md:px-4">
+        <Tabs defaultValue="api" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="api" className="flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              API Externa
+            </TabsTrigger>
+            <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              WhatsApp
+            </TabsTrigger>
+            <TabsTrigger value="telegram" className="flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Telegram
+            </TabsTrigger>
+            <TabsTrigger value="outros" className="flex items-center gap-2">
+              <Plug className="h-4 w-4" />
+              Outros
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab API Externa */}
+          <TabsContent value="api" className="space-y-6">
+            <ApiManager />
+          </TabsContent>
+
+          {/* Tab WhatsApp */}
+          <TabsContent value="whatsapp" className="space-y-6">
         <div className="grid gap-4 md:gap-6 pb-6 max-w-full">
         {/* WhatsApp / Ativa CRM Integration */}
         <Card>
@@ -393,78 +422,6 @@ export default function Integration() {
           </CardContent>
         </Card>
 
-        {/* IA / OpenAI */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              OpenAI / IA
-            </CardTitle>
-            <CardDescription>
-              Chave usada para gerar descrição/slug e perguntas de vagas no painel.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Provider</Label>
-                <Select
-                  value={settings.aiProvider || 'openai'}
-                  onValueChange={(v) => setSettings(prev => ({ ...prev, aiProvider: v as 'openai' }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>API Key</Label>
-                <Input
-                  type="password"
-                  placeholder="sk-..."
-                  value={settings.aiApiKey || ''}
-                  onChange={(e) => setSettings(prev => ({ ...prev, aiApiKey: e.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Armazenada no servidor; usada automaticamente no editor de vagas.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Modelo LLM</Label>
-              <Select
-                value={settings.aiModel || 'gpt-4.1-mini'}
-                onValueChange={(v) => setSettings(prev => ({ ...prev, aiModel: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o modelo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gpt-5">GPT-5 (Avançado)</SelectItem>
-                  <SelectItem value="gpt-5-mini">GPT-5 Mini</SelectItem>
-                  <SelectItem value="chatgpt-5.1">ChatGPT 5.1</SelectItem>
-                  <SelectItem value="chatgpt-5.1-mini">ChatGPT 5.1 Mini</SelectItem>
-                  <SelectItem value="gpt-4.1">GPT-4.1</SelectItem>
-                  <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Modelo usado para gerar descrições, slugs e perguntas de vagas.
-              </p>
-            </div>
-
-            <Button onClick={saveSettings} disabled={loading}>
-              <Settings className="h-4 w-4 mr-2" />
-              Salvar Configurações
-            </Button>
-          </CardContent>
-        </Card>
-
         {/* Test WhatsApp Integration */}
         {settings.ativaCrmToken && (
           <Card>
@@ -531,7 +488,11 @@ export default function Integration() {
             </CardContent>
           </Card>
         )}
+        </div>
+          </TabsContent>
 
+          {/* Tab Telegram */}
+          <TabsContent value="telegram" className="space-y-6">
         {/* Telegram Integration */}
         <Card>
           <CardHeader>
@@ -616,6 +577,81 @@ export default function Integration() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          {/* Tab Outros */}
+          <TabsContent value="outros" className="space-y-6">
+        {/* IA / OpenAI */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              OpenAI / IA
+            </CardTitle>
+            <CardDescription>
+              Chave usada para gerar descrição/slug e perguntas de vagas no painel.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Provider</Label>
+                <Select
+                  value={settings.aiProvider || 'openai'}
+                  onValueChange={(v) => setSettings(prev => ({ ...prev, aiProvider: v as 'openai' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>API Key</Label>
+                <Input
+                  type="password"
+                  placeholder="sk-..."
+                  value={settings.aiApiKey || ''}
+                  onChange={(e) => setSettings(prev => ({ ...prev, aiApiKey: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Armazenada no servidor; usada automaticamente no editor de vagas.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Modelo LLM</Label>
+              <Select
+                value={settings.aiModel || 'gpt-4.1-mini'}
+                onValueChange={(v) => setSettings(prev => ({ ...prev, aiModel: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o modelo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gpt-5">GPT-5 (Avançado)</SelectItem>
+                  <SelectItem value="gpt-5-mini">GPT-5 Mini</SelectItem>
+                  <SelectItem value="chatgpt-5.1">ChatGPT 5.1</SelectItem>
+                  <SelectItem value="chatgpt-5.1-mini">ChatGPT 5.1 Mini</SelectItem>
+                  <SelectItem value="gpt-4.1">GPT-4.1</SelectItem>
+                  <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Modelo usado para gerar descrições, slugs e perguntas de vagas.
+              </p>
+            </div>
+
+            <Button onClick={saveSettings} disabled={loading}>
+              <Settings className="h-4 w-4 mr-2" />
+              Salvar Configurações
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Webhook Configuration */}
         <Card>
@@ -644,7 +680,8 @@ export default function Integration() {
             </div>
           </CardContent>
         </Card>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </ModernLayout>
   );
