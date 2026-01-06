@@ -3353,9 +3353,9 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     if (ativo !== undefined) {
       const ativoValue = ativo === 'true' || ativo === true;
-      countQuery += ` AND (COALESCE(p.ativo, p.situacao = 'ativo', true) = $${countParamIndex} OR (p.situacao IS NOT NULL AND p.situacao = ${ativoValue ? "'ativo'" : "'inativo'"}))`;
-      countParams.push(ativoValue);
-      countParamIndex++;
+      countQuery += ` AND (p.ativo = $${countParamIndex} OR (p.ativo IS NULL AND p.situacao = $${countParamIndex + 1}))`;
+      countParams.push(ativoValue, ativoValue ? 'ativo' : 'inativo');
+      countParamIndex += 2;
     }
     
     const countResult = await pool.query(countQuery, countParams);
