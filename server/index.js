@@ -3256,8 +3256,9 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     if (ativo !== undefined) {
-      query += ` AND p.ativo = $${paramIndex}`;
-      params.push(ativo === 'true');
+      const ativoValue = ativo === 'true' || ativo === true;
+      query += ` AND (COALESCE(p.ativo, p.situacao = 'ativo', true) = $${paramIndex} OR (p.situacao IS NOT NULL AND p.situacao = ${ativoValue ? "'ativo'" : "'inativo'"}))`;
+      params.push(ativoValue);
       paramIndex++;
     }
     
