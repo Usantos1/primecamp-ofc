@@ -3264,12 +3264,14 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     // Ordenação
-    const ordenarCampos = ['descricao', 'codigo', 'preco_venda', 'quantidade', 'created_at'];
+    const ordenarCampos = ['nome', 'codigo', 'preco_venda', 'quantidade', 'created_at'];
     const ordemValida = ['asc', 'desc'];
-    const campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'descricao';
+    const campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'nome';
+    // Mapear 'descricao' para 'nome' para compatibilidade
+    const campoReal = campoOrdenar === 'descricao' ? 'nome' : campoOrdenar;
     const direcao = ordemValida.includes(ordem.toLowerCase()) ? ordem.toUpperCase() : 'ASC';
     
-    query += ` ORDER BY p.${campoOrdenar} ${direcao}`;
+    query += ` ORDER BY p.${campoReal} ${direcao}`;
     
     // Paginação
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
