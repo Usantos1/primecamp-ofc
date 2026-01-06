@@ -3341,16 +3341,29 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     const countResult = await pool.query(countQuery, countParams);
     
-    res.json({ 
-      success: true, 
-      data: result.rows,
-      meta: {
-        total: parseInt(countResult.rows[0].count),
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        has_more: parseInt(offset) + result.rows.length < parseInt(countResult.rows[0].count)
-      }
-    });
+    // Formato compacto para economizar tokens (sem metadados)
+    const compact = req.query.compact === 'true';
+    
+    if (compact) {
+      // Retorna apenas array de produtos com campos mínimos
+      res.json(result.rows.map(p => ({
+        n: p.nome, // nome abreviado
+        v: parseFloat(p.valor_dinheiro_pix), // valor_dinheiro_pix
+        p: parseFloat(p.valor_parcelado_6x) // valor_parcelado_6x
+      })));
+    } else {
+      // Formato completo (padrão)
+      res.json({ 
+        success: true, 
+        data: result.rows,
+        meta: {
+          total: parseInt(countResult.rows[0].count),
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          has_more: parseInt(offset) + result.rows.length < parseInt(countResult.rows[0].count)
+        }
+      });
+    }
   } catch (error) {
     console.error('[API Produtos] Erro:', error);
     res.status(500).json({ success: false, error: error.message });
