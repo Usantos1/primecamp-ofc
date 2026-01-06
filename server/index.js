@@ -3257,9 +3257,10 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     if (ativo !== undefined) {
       const ativoValue = ativo === 'true' || ativo === true;
-      query += ` AND (COALESCE(p.ativo, p.situacao = 'ativo', true) = $${paramIndex} OR (p.situacao IS NOT NULL AND p.situacao = ${ativoValue ? "'ativo'" : "'inativo'"}))`;
-      params.push(ativoValue);
-      paramIndex++;
+      // Verificar se existe coluna ativo ou usar situacao
+      query += ` AND (p.ativo = $${paramIndex} OR (p.ativo IS NULL AND p.situacao = $${paramIndex + 1}))`;
+      params.push(ativoValue, ativoValue ? 'ativo' : 'inativo');
+      paramIndex += 2;
     }
     
     // Ordenação
