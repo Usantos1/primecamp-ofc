@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS api_access_logs (
     user_agent TEXT,
     query_params JSONB,
     response_status INTEGER,
+    response_body TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 

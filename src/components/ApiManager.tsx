@@ -492,9 +492,24 @@ export function ApiManager() {
                       IP: {log.ip_address} • {log.user_agent?.substring(0, 50)}...
                     </div>
                     {log.query_params && Object.keys(log.query_params).length > 0 && (
-                      <code className="block mt-1 text-[10px] bg-muted p-1 rounded">
-                        {JSON.stringify(log.query_params)}
-                      </code>
+                      <div className="mt-1">
+                        <div className="text-[10px] text-muted-foreground mb-1">Payload:</div>
+                        <code className="block text-[10px] bg-muted p-1 rounded">
+                          {JSON.stringify(log.query_params)}
+                        </code>
+                      </div>
+                    )}
+                    {log.response_body && (
+                      <div className="mt-2">
+                        <div className="text-[10px] text-muted-foreground mb-1">
+                          Resposta {log.response_status && `(${log.response_status})`}:
+                        </div>
+                        <code className="block text-[10px] bg-green-50 dark:bg-green-950 p-1 rounded max-h-32 overflow-auto">
+                          {log.response_body.length > 500 
+                            ? log.response_body.substring(0, 500) + '...' 
+                            : log.response_body}
+                        </code>
+                      </div>
                     )}
                   </div>
                 ))}

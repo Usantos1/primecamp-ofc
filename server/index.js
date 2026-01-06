@@ -2913,12 +2913,27 @@ const validateApiToken = async (req, res, next) => {
       [apiToken.id]
     );
     
-    // Registrar log de acesso
-    await pool.query(
-      `INSERT INTO api_access_logs (token_id, endpoint, method, ip_address, user_agent, query_params)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [apiToken.id, req.path, req.method, req.ip, req.headers['user-agent'], JSON.stringify(req.query)]
-    );
+    // Interceptar resposta para salvar no log
+    const originalJson = res.json.bind(res);
+    res.json = function(body) {
+      // Salvar log com resposta (assíncrono, não bloqueia resposta)
+      pool.query(
+        `INSERT INTO api_access_logs (token_id, endpoint, method, ip_address, user_agent, query_params, response_status, response_body)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          apiToken.id, 
+          req.path, 
+          req.method, 
+          req.ip, 
+          req.headers['user-agent'], 
+          JSON.stringify(req.query),
+          res.statusCode,
+          JSON.stringify(body).substring(0, 5000) // Limitar a 5000 caracteres
+        ]
+      ).catch(err => console.error('[API Log] Erro ao salvar log:', err));
+      
+      return originalJson(body);
+    };
     
     req.apiToken = apiToken;
     next();
@@ -2976,8 +2991,20 @@ const initApiTables = async () => {
         user_agent TEXT,
         query_params JSONB,
         response_status INTEGER,
+        response_body TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );
+      
+      -- Adicionar coluna response_body se não existir (para tabelas já criadas)
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'api_access_logs' AND column_name = 'response_body'
+        ) THEN
+          ALTER TABLE api_access_logs ADD COLUMN response_body TEXT;
+        END IF;
+      END $$;
       
       CREATE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token);
       CREATE INDEX IF NOT EXISTS idx_api_tokens_ativo ON api_tokens(ativo);

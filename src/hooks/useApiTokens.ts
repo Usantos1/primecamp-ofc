@@ -26,6 +26,7 @@ export interface ApiAccessLog {
   user_agent: string;
   query_params: Record<string, any>;
   response_status?: number;
+  response_body?: string;
   created_at: string;
 }
 
