@@ -3157,22 +3157,20 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         p.descricao_abreviada,
         p.grupo,
         p.localizacao,
-        p.quantidade,
-        p.estoque_atual,
-        p.estoque_minimo,
+        COALESCE(p.quantidade, p.estoque_atual, 0) as quantidade,
+        COALESCE(p.estoque_atual, p.quantidade, 0) as estoque_atual,
+        COALESCE(p.estoque_minimo, 0) as estoque_minimo,
         p.preco_custo,
         p.preco_venda,
         p.unidade,
-        p.marca_id,
-        p.modelo_id,
-        m.nome as marca_nome,
-        mo.nome as modelo_nome,
-        p.ativo,
+        p.marca,
+        p.modelo,
+        p.marca as marca_nome,
+        p.modelo as modelo_nome,
+        COALESCE(p.ativo, p.situacao = 'ativo', true) as ativo,
         p.created_at,
         p.updated_at
       FROM produtos p
-      LEFT JOIN marcas m ON p.marca_id = m.id
-      LEFT JOIN modelos mo ON p.modelo_id = mo.id
       WHERE 1=1
     `;
     const params = [];
@@ -3192,13 +3190,13 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     if (modelo) {
-      query += ` AND (mo.nome ILIKE $${paramIndex} OR p.descricao ILIKE $${paramIndex})`;
+      query += ` AND (p.modelo ILIKE $${paramIndex} OR p.descricao ILIKE $${paramIndex} OR p.nome ILIKE $${paramIndex})`;
       params.push(`%${modelo}%`);
       paramIndex++;
     }
     
     if (marca) {
-      query += ` AND m.nome ILIKE $${paramIndex}`;
+      query += ` AND p.marca ILIKE $${paramIndex}`;
       params.push(`%${marca}%`);
       paramIndex++;
     }
@@ -3279,7 +3277,7 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     const result = await pool.query(query, params);
     
     // Contar total
-    let countQuery = `SELECT COUNT(*) FROM produtos p LEFT JOIN marcas m ON p.marca_id = m.id LEFT JOIN modelos mo ON p.modelo_id = mo.id WHERE 1=1`;
+    let countQuery = `SELECT COUNT(*) FROM produtos p WHERE 1=1`;
     const countParams = params.slice(0, -2); // Remove limit e offset
     
     if (busca) countQuery += ` AND (p.descricao ILIKE $1 OR p.nome ILIKE $1 OR p.codigo::text ILIKE $1 OR p.referencia ILIKE $1 OR p.codigo_barras ILIKE $1)`;
@@ -3317,11 +3315,12 @@ app.get('/api/v1/produtos/:id', validateApiToken, async (req, res) => {
     const result = await pool.query(`
       SELECT 
         p.*,
-        m.nome as marca_nome,
-        mo.nome as modelo_nome
+        p.marca as marca_nome,
+        p.modelo as modelo_nome,
+        COALESCE(p.quantidade, p.estoque_atual, 0) as quantidade,
+        COALESCE(p.estoque_atual, p.quantidade, 0) as estoque_atual,
+        COALESCE(p.ativo, p.situacao = 'ativo', true) as ativo
       FROM produtos p
-      LEFT JOIN marcas m ON p.marca_id = m.id
-      LEFT JOIN modelos mo ON p.modelo_id = mo.id
       WHERE p.id = $1 OR p.codigo::text = $1 OR p.codigo_barras = $1
     `, [id]);
     
