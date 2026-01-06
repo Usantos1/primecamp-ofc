@@ -3278,13 +3278,6 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     // Executar query
     const result = await pool.query(query, params);
     
-    // Contar total
-    let countQuery = `SELECT COUNT(*) FROM produtos p WHERE 1=1`;
-    const countParams = params.slice(0, -2); // Remove limit e offset
-    
-    if (busca) countQuery += ` AND (p.descricao ILIKE $1 OR p.nome ILIKE $1 OR p.codigo::text ILIKE $1 OR p.referencia ILIKE $1 OR p.codigo_barras ILIKE $1)`;
-    // ... outros filtros seriam adicionados aqui
-    
     // Construir query de count com os mesmos filtros
     let countQuery = `SELECT COUNT(*) FROM produtos p WHERE 1=1`;
     const countParams = [];
