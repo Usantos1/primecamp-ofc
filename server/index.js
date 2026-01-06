@@ -2862,14 +2862,31 @@ const validateApiToken = async (req, res, next) => {
     }
     
     const token = authHeader.substring(7);
+    console.log('[API Token Validation] Validando token:', token.substring(0, 20) + '...');
     
-    // Buscar token no banco
+    // Buscar token no banco (primeiro sem filtro de ativo para debug)
+    const resultAll = await pool.query(
+      `SELECT id, nome, token, ativo, expires_at FROM api_tokens WHERE token = $1`,
+      [token]
+    );
+    
+    console.log('[API Token Validation] Token encontrado no banco:', resultAll.rows.length > 0);
+    if (resultAll.rows.length > 0) {
+      console.log('[API Token Validation] Status do token:', {
+        nome: resultAll.rows[0].nome,
+        ativo: resultAll.rows[0].ativo,
+        expires_at: resultAll.rows[0].expires_at
+      });
+    }
+    
+    // Buscar token no banco (com filtro de ativo)
     const result = await pool.query(
       `SELECT * FROM api_tokens WHERE token = $1 AND ativo = true`,
       [token]
     );
     
     if (result.rows.length === 0) {
+      console.log('[API Token Validation] Token não encontrado ou inativo');
       return res.status(401).json({ 
         success: false, 
         error: 'Token de API inválido ou inativo'
