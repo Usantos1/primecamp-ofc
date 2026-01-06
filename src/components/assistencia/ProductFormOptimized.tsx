@@ -306,6 +306,8 @@ export function ProductFormOptimized({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCodigo, setIsLoadingCodigo] = useState(false);
   const [activeTab, setActiveTab] = useState('dados');
+  const [showNewGrupoDialog, setShowNewGrupoDialog] = useState(false);
+  const [newGrupoNome, setNewGrupoNome] = useState('');
   const isEditing = Boolean(produto?.id);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
@@ -667,7 +669,13 @@ export function ProductFormOptimized({
                   <Label htmlFor="grupo">Grupo/Categoria</Label>
                   <Select
                     value={watch('grupo') || ''}
-                    onValueChange={(value) => setValue('grupo', value)}
+                    onValueChange={(value) => {
+                      if (value === '__new__') {
+                        setShowNewGrupoDialog(true);
+                      } else {
+                        setValue('grupo', value);
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o grupo" />
@@ -678,8 +686,68 @@ export function ProductFormOptimized({
                           {grupo.nome || grupo}
                         </SelectItem>
                       ))}
+                      <SelectItem value="__new__" className="text-primary font-semibold">
+                        <Plus className="h-4 w-4 inline mr-2" />
+                        Criar novo grupo
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  
+                  {/* Dialog para criar novo grupo */}
+                  <Dialog open={showNewGrupoDialog} onOpenChange={setShowNewGrupoDialog}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Novo Grupo/Categoria</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="new-grupo-nome">Nome do Grupo *</Label>
+                          <Input
+                            id="new-grupo-nome"
+                            value={newGrupoNome}
+                            onChange={(e) => setNewGrupoNome(e.target.value)}
+                            placeholder="Ex: ACESSÓRIOS"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (newGrupoNome.trim()) {
+                                  setValue('grupo', newGrupoNome.trim());
+                                  setShowNewGrupoDialog(false);
+                                  setNewGrupoNome('');
+                                }
+                              }
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowNewGrupoDialog(false);
+                              setNewGrupoNome('');
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              if (newGrupoNome.trim()) {
+                                setValue('grupo', newGrupoNome.trim());
+                                setShowNewGrupoDialog(false);
+                                setNewGrupoNome('');
+                              }
+                            }}
+                            disabled={!newGrupoNome.trim()}
+                          >
+                            Criar e Selecionar
+                          </Button>
+                        </DialogFooter>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 <div>
