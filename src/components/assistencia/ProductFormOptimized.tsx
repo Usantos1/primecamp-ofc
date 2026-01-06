@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Produto } from '@/types/assistencia';
 import { parseBRLInput, maskBRL, formatBRL } from '@/utils/currency';
 import { from } from '@/integrations/db/client';
-import { Barcode, Package, DollarSign, Warehouse, History } from 'lucide-react';
+import { Barcode, Package, DollarSign, Warehouse, History, Plus, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
