@@ -198,10 +198,10 @@ app.get('/api/api-tokens/test', (req, res) => {
   res.json({ success: true, message: 'Rota de API tokens está funcionando!' });
 });
 
-// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*)
-// Os endpoints /api/functions/* e /api/whatsapp/* terão autenticação própria dentro de cada rota
+// Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*, /api/v1/*)
+// Os endpoints /api/functions/*, /api/whatsapp/* e /api/v1/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
-  // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads e webhook/test (POST)
+  // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads, webhook/test e API pública v1
   // Também pular para rota de teste de api-tokens
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
@@ -210,6 +210,7 @@ app.use((req, res, next) => {
       req.path.startsWith('/api/storage/') ||
       req.path.startsWith('/api/whatsapp/') ||
       req.path.startsWith('/api/webhook/leads/') ||
+      req.path.startsWith('/api/v1/') ||  // API pública v1 usa validateApiToken
       req.path === '/api/api-tokens/test' ||
       (req.method === 'POST' && /^\/api\/webhook\/test\/[^/]+$/.test(req.path))) { // Webhook test público
     return next();
