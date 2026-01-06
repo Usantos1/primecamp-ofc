@@ -3264,14 +3264,21 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     
     // Ordenação
-    const ordenarCampos = ['nome', 'codigo', 'preco_venda', 'quantidade', 'created_at'];
+    const ordenarCampos = ['nome', 'codigo', 'quantidade', 'created_at'];
     const ordemValida = ['asc', 'desc'];
-    const campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'nome';
+    let campoOrdenar = ordenarCampos.includes(ordenar) ? ordenar : 'nome';
     // Mapear 'descricao' para 'nome' para compatibilidade
-    const campoReal = campoOrdenar === 'descricao' ? 'nome' : campoOrdenar;
+    if (campoOrdenar === 'descricao') campoOrdenar = 'nome';
+    // Mapear 'preco_venda' para usar COALESCE
+    let campoReal;
+    if (campoOrdenar === 'preco_venda') {
+      campoReal = 'COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0)';
+    } else {
+      campoReal = `p.${campoOrdenar}`;
+    }
     const direcao = ordemValida.includes(ordem.toLowerCase()) ? ordem.toUpperCase() : 'ASC';
     
-    query += ` ORDER BY p.${campoReal} ${direcao}`;
+    query += ` ORDER BY ${campoReal} ${direcao}`;
     
     // Paginação
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -3337,12 +3344,12 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
       countParamIndex++;
     }
     if (preco_min !== undefined) {
-      countQuery += ` AND p.preco_venda >= $${countParamIndex}`;
+      countQuery += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) >= $${countParamIndex}`;
       countParams.push(parseFloat(preco_min));
       countParamIndex++;
     }
     if (preco_max !== undefined) {
-      countQuery += ` AND p.preco_venda <= $${countParamIndex}`;
+      countQuery += ` AND COALESCE(p.preco_venda, p.valor_dinheiro_pix, 0) <= $${countParamIndex}`;
       countParams.push(parseFloat(preco_max));
       countParamIndex++;
     }
