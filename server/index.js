@@ -3283,13 +3283,80 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     if (busca) countQuery += ` AND (p.descricao ILIKE $1 OR p.nome ILIKE $1 OR p.codigo::text ILIKE $1 OR p.referencia ILIKE $1 OR p.codigo_barras ILIKE $1)`;
     // ... outros filtros seriam adicionados aqui
     
-    const countResult = await pool.query(
-      `SELECT COUNT(*) FROM produtos p 
-       LEFT JOIN marcas m ON p.marca_id = m.id 
-       LEFT JOIN modelos mo ON p.modelo_id = mo.id 
-       WHERE ${ativo !== undefined ? 'p.ativo = ' + (ativo === 'true') : '1=1'}`,
-      []
-    );
+    // Construir query de count com os mesmos filtros
+    let countQuery = `SELECT COUNT(*) FROM produtos p WHERE 1=1`;
+    const countParams = [];
+    let countParamIndex = 1;
+    
+    // Aplicar os mesmos filtros da query principal
+    if (busca) {
+      countQuery += ` AND (p.descricao ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex} OR p.codigo::text ILIKE $${countParamIndex} OR p.referencia ILIKE $${countParamIndex} OR p.codigo_barras ILIKE $${countParamIndex})`;
+      countParams.push(`%${busca}%`);
+      countParamIndex++;
+    }
+    if (modelo) {
+      countQuery += ` AND (p.modelo ILIKE $${countParamIndex} OR p.descricao ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex})`;
+      countParams.push(`%${modelo}%`);
+      countParamIndex++;
+    }
+    if (marca) {
+      countQuery += ` AND p.marca ILIKE $${countParamIndex}`;
+      countParams.push(`%${marca}%`);
+      countParamIndex++;
+    }
+    if (grupo) {
+      countQuery += ` AND p.grupo ILIKE $${countParamIndex}`;
+      countParams.push(`%${grupo}%`);
+      countParamIndex++;
+    }
+    if (codigo) {
+      countQuery += ` AND p.codigo::text = $${countParamIndex}`;
+      countParams.push(codigo);
+      countParamIndex++;
+    }
+    if (referencia) {
+      countQuery += ` AND p.referencia ILIKE $${countParamIndex}`;
+      countParams.push(`%${referencia}%`);
+      countParamIndex++;
+    }
+    if (codigo_barras) {
+      countQuery += ` AND p.codigo_barras = $${countParamIndex}`;
+      countParams.push(codigo_barras);
+      countParamIndex++;
+    }
+    if (localizacao) {
+      countQuery += ` AND p.localizacao ILIKE $${countParamIndex}`;
+      countParams.push(`%${localizacao}%`);
+      countParamIndex++;
+    }
+    if (estoque_min !== undefined) {
+      countQuery += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) >= $${countParamIndex}`;
+      countParams.push(parseInt(estoque_min));
+      countParamIndex++;
+    }
+    if (estoque_max !== undefined) {
+      countQuery += ` AND COALESCE(p.quantidade, p.estoque_atual, 0) <= $${countParamIndex}`;
+      countParams.push(parseInt(estoque_max));
+      countParamIndex++;
+    }
+    if (preco_min !== undefined) {
+      countQuery += ` AND p.preco_venda >= $${countParamIndex}`;
+      countParams.push(parseFloat(preco_min));
+      countParamIndex++;
+    }
+    if (preco_max !== undefined) {
+      countQuery += ` AND p.preco_venda <= $${countParamIndex}`;
+      countParams.push(parseFloat(preco_max));
+      countParamIndex++;
+    }
+    if (ativo !== undefined) {
+      const ativoValue = ativo === 'true' || ativo === true;
+      countQuery += ` AND (COALESCE(p.ativo, p.situacao = 'ativo', true) = $${countParamIndex} OR (p.situacao IS NOT NULL AND p.situacao = ${ativoValue ? "'ativo'" : "'inativo'"}))`;
+      countParams.push(ativoValue);
+      countParamIndex++;
+    }
+    
+    const countResult = await pool.query(countQuery, countParams);
     
     res.json({ 
       success: true, 
