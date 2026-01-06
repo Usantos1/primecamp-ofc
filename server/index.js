@@ -2851,8 +2851,10 @@ app.get('/api/webhook/logs/:webhookId', authenticateToken, async (req, res) => {
 
 // Middleware para validar API Token
 const validateApiToken = async (req, res, next) => {
+  console.log('[API Token Validation] Middleware chamado para:', req.method, req.path);
   try {
     const authHeader = req.headers.authorization;
+    console.log('[API Token Validation] Header authorization recebido:', authHeader ? 'SIM' : 'NÃO');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ 
         success: false, 
