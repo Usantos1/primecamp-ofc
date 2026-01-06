@@ -193,10 +193,16 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/', limiter);
 
+// Rota de teste de API tokens (ANTES do middleware de autenticação)
+app.get('/api/api-tokens/test', (req, res) => {
+  res.json({ success: true, message: 'Rota de API tokens está funcionando!' });
+});
+
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*)
 // Os endpoints /api/functions/* e /api/whatsapp/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
   // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads e webhook/test (POST)
+  // Também pular para rota de teste de api-tokens
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
       req.path === '/health' ||
@@ -204,6 +210,7 @@ app.use((req, res, next) => {
       req.path.startsWith('/api/storage/') ||
       req.path.startsWith('/api/whatsapp/') ||
       req.path.startsWith('/api/webhook/leads/') ||
+      req.path === '/api/api-tokens/test' ||
       (req.method === 'POST' && /^\/api\/webhook\/test\/[^/]+$/.test(req.path))) { // Webhook test público
     return next();
   }
@@ -2907,6 +2914,22 @@ const validateApiToken = async (req, res, next) => {
 // Criar tabelas se não existirem
 const initApiTables = async () => {
   try {
+    console.log('[API Tables] Iniciando criação de tabelas...');
+    
+    // Verificar se tabela users existe
+    const usersCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM pg_tables 
+        WHERE schemaname = 'public' 
+        AND tablename = 'users'
+      );
+    `);
+    
+    if (!usersCheck.rows[0].exists) {
+      console.error('[API Tables] ❌ ERRO: Tabela users não existe! Execute CRIAR_TABELAS_API_TOKENS.sql primeiro.');
+      return;
+    }
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS api_tokens (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2925,7 +2948,7 @@ const initApiTables = async () => {
       
       CREATE TABLE IF NOT EXISTS api_access_logs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        token_id UUID REFERENCES api_tokens(id),
+        token_id UUID REFERENCES api_tokens(id) ON DELETE CASCADE,
         endpoint VARCHAR(255),
         method VARCHAR(10),
         ip_address VARCHAR(45),
@@ -2936,12 +2959,40 @@ const initApiTables = async () => {
       );
       
       CREATE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token);
+      CREATE INDEX IF NOT EXISTS idx_api_tokens_ativo ON api_tokens(ativo);
+      CREATE INDEX IF NOT EXISTS idx_api_tokens_criado_por ON api_tokens(criado_por);
       CREATE INDEX IF NOT EXISTS idx_api_access_logs_token_id ON api_access_logs(token_id);
       CREATE INDEX IF NOT EXISTS idx_api_access_logs_created_at ON api_access_logs(created_at);
     `);
-    console.log('✅ Tabelas de API inicializadas');
+    
+    // Verificar se as tabelas foram criadas
+    const tokensCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM pg_tables 
+        WHERE schemaname = 'public' 
+        AND tablename = 'api_tokens'
+      );
+    `);
+    
+    const logsCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM pg_tables 
+        WHERE schemaname = 'public' 
+        AND tablename = 'api_access_logs'
+      );
+    `);
+    
+    if (tokensCheck.rows[0].exists && logsCheck.rows[0].exists) {
+      console.log('✅ Tabelas de API inicializadas com sucesso');
+    } else {
+      console.error('[API Tables] ❌ ERRO: Tabelas não foram criadas corretamente!');
+      console.error('[API Tables] api_tokens existe:', tokensCheck.rows[0].exists);
+      console.error('[API Tables] api_access_logs existe:', logsCheck.rows[0].exists);
+    }
   } catch (error) {
-    console.error('Erro ao inicializar tabelas de API:', error);
+    console.error('[API Tables] ❌ ERRO ao inicializar tabelas de API:', error);
+    console.error('[API Tables] Detalhes:', error.message);
+    console.error('[API Tables] Stack:', error.stack);
   }
 };
 initApiTables();
@@ -2949,11 +3000,13 @@ initApiTables();
 // GET - Listar tokens (autenticado)
 app.get('/api/api-tokens', authenticateToken, async (req, res) => {
   try {
+    console.log('[API Tokens] GET /api/api-tokens - Usuário:', req.user?.id);
     const result = await pool.query(`
       SELECT id, nome, descricao, token, permissoes, ativo, expires_at, ultimo_uso, uso_count, created_at
       FROM api_tokens 
       ORDER BY created_at DESC
     `);
+    console.log('[API Tokens] Tokens encontrados:', result.rows.length);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[API Tokens] Erro ao listar:', error);
@@ -2964,7 +3017,12 @@ app.get('/api/api-tokens', authenticateToken, async (req, res) => {
 // POST - Criar token (autenticado)
 app.post('/api/api-tokens', authenticateToken, async (req, res) => {
   try {
+    console.log('[API Tokens] POST /api/api-tokens - Usuário:', req.user?.id, 'Body:', req.body);
     const { nome, descricao, permissoes, expires_at } = req.body;
+    
+    if (!nome) {
+      return res.status(400).json({ success: false, error: 'Nome é obrigatório' });
+    }
     
     // Gerar token seguro
     const token = crypto.randomBytes(32).toString('hex');
@@ -2975,6 +3033,7 @@ app.post('/api/api-tokens', authenticateToken, async (req, res) => {
       RETURNING *
     `, [nome, descricao, token, JSON.stringify(permissoes || ['produtos:read']), expires_at, req.user.id]);
     
+    console.log('[API Tokens] Token criado com sucesso:', result.rows[0].id);
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('[API Tokens] Erro ao criar:', error);
