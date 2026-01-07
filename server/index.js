@@ -1057,6 +1057,7 @@ app.post('/api/update/:table', async (req, res) => {
     // Passar o número de valores do SET como offset para buildWhereClause
     const { clause: whereClause, params: whereParams } = buildWhereClause(where, values.length);
     let params = [...values, ...whereParams];
+    let finalWhereClause = whereClause;
     
     // Adicionar filtro de company_id se necessário
     if (needsCompanyFilter && req.user && req.companyId) {
@@ -1066,7 +1067,11 @@ app.post('/api/update/:table', async (req, res) => {
       );
       
       if (!hasCompanyFilter) {
-        whereClause += ` AND ${tableNameOnly}.company_id = $${params.length + 1}`;
+        if (finalWhereClause) {
+          finalWhereClause += ` AND ${tableNameOnly}.company_id = $${params.length + 1}`;
+        } else {
+          finalWhereClause = `WHERE ${tableNameOnly}.company_id = $${params.length + 1}`;
+        }
         params.push(req.companyId);
         console.log(`[Update] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
       }
@@ -1075,11 +1080,11 @@ app.post('/api/update/:table', async (req, res) => {
     const sql = `
       UPDATE ${tableName}
       SET ${setClause}
-      ${whereClause}
+      ${finalWhereClause}
       RETURNING *
     `;
 
-    console.log(`[Update] ${tableName}:`, keys, 'WHERE:', where);
+    console.log(`[Update] ${tableName}:`, keys, 'WHERE:', finalWhereClause, 'Params:', params.length);
     const result = await pool.query(sql, params);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
