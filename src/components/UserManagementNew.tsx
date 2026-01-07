@@ -65,6 +65,9 @@ export const UserManagementNew = () => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Obter company_id do usuário logado para filtrar usuários
+  const currentCompanyId = currentUser?.company_id;
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -92,23 +95,56 @@ export const UserManagementNew = () => {
   });
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (currentCompanyId) {
+      fetchUsers();
+    }
+  }, [currentCompanyId]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
 
-      // Buscar perfis
+      // IMPORTANTE: Filtrar usuários pela mesma empresa do usuário logado
+      // Primeiro buscar os user_ids da tabela users que pertencem à mesma empresa
+      let usersQuery = from('users').select('id, email, company_id');
+      
+      // Se o usuário tem company_id, filtrar apenas usuários da mesma empresa
+      if (currentCompanyId) {
+        usersQuery = usersQuery.eq('company_id', currentCompanyId);
+      }
+      
+      const { data: usersData, error: usersError } = await usersQuery.execute();
+      
+      if (usersError) {
+        console.error('Erro ao buscar usuários:', usersError);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar usuários",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Obter IDs dos usuários da mesma empresa
+      const companyUserIds = (usersData || []).map((u: any) => u.id).filter(Boolean);
+      
+      if (companyUserIds.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+
+      // Buscar perfis apenas dos usuários da mesma empresa
       const { data: profilesData, error: profilesError } = await from('profiles')
         .select('*')
+        .in('user_id', companyUserIds)
         .order('created_at', { ascending: false })
         .execute();
 
       if (profilesError) {
         toast({
           title: "Erro",
-          description: "Erro ao carregar usuários",
+          description: "Erro ao carregar perfis",
           variant: "destructive"
         });
         return;
@@ -131,12 +167,7 @@ export const UserManagementNew = () => {
       const roleById = new Map<string, any>();
       (rolesCatalog || []).forEach((r: any) => roleById.set(r.id, r));
 
-      // Buscar emails diretamente na tabela users (mais rápido e sem spam de requests)
-      const { data: usersData } = await from('users')
-        .select('id, email')
-        .in('id', profileUserIds)
-        .execute();
-
+      // Mapear emails pelos usuários já buscados
       const emailById = new Map<string, string>();
       (usersData || []).forEach((u: any) => {
         if (u?.id && u?.email) emailById.set(u.id, u.email);
