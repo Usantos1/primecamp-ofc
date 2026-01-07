@@ -318,7 +318,7 @@ export const AdminTimeClockManager = () => {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="list" className="space-y-4 mt-4">
+            <TabsContent value="list" className="space-y-4 mt-4 overflow-hidden">
           <div className="space-y-4">
             {/* Search and User Filter */}
             <div className="flex items-center gap-4">
