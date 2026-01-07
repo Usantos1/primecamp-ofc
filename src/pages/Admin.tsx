@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ModernLayout } from "@/components/ModernLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,8 +23,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+// ID da empresa principal (Prime Camp LTDA)
+const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+
 export default function Admin() {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, loading, profile } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -141,13 +144,14 @@ export default function Admin() {
       path: "/admin/logs",
       color: "text-gray-600"
     },
-    {
+    // Gestão de Revenda - apenas para empresa principal
+    ...(user?.company_id === ADMIN_COMPANY_ID ? [{
       title: "Gestão de Revenda",
       description: "Gerencie empresas, assinaturas e pagamentos",
       icon: Store,
       path: "/admin/revenda",
       color: "text-amber-600"
-    }
+    }] : [])
   ];
 
   return (
