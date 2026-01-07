@@ -43,7 +43,14 @@ export default function AdminReseller() {
     createCompany, 
     updateCompany,
     listPlans,
-    createSubscription
+    createPlan,
+    updatePlan,
+    deletePlan,
+    createSubscription,
+    listCompanyUsers,
+    createCompanyUser,
+    resetUserPassword,
+    toggleUserActive
   } = useReseller();
 
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -54,6 +61,17 @@ export default function AdminReseller() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [usersDialogOpen, setUsersDialogOpen] = useState(false);
+  const [plansDialogOpen, setPlansDialogOpen] = useState(false);
+  const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+  const [planFormData, setPlanFormData] = useState<Partial<Plan>>({});
+  const [userFormData, setUserFormData] = useState({
+    email: '',
+    password: '',
+    display_name: '',
+    role: 'member',
+    phone: ''
+  });
   const [formData, setFormData] = useState<Partial<Company> & { plan_id?: string; billing_cycle?: 'monthly' | 'yearly' }>({
     name: '',
     cnpj: '',
@@ -196,6 +214,97 @@ export default function AdminReseller() {
     setSubscriptionDialogOpen(true);
   };
 
+  const openUsersDialog = async (company: Company) => {
+    setSelectedCompany(company);
+    setUsersDialogOpen(true);
+    try {
+      const users = await listCompanyUsers(company.id);
+      setCompanyUsers(users || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao carregar usuários');
+    }
+  };
+
+  const openPlansDialog = () => {
+    setPlansDialogOpen(true);
+    loadPlans();
+  };
+
+  const handleCreatePlan = async () => {
+    try {
+      await createPlan(planFormData);
+      toast.success('Plano criado com sucesso!');
+      setPlansDialogOpen(false);
+      setPlanFormData({});
+      loadPlans();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar plano');
+    }
+  };
+
+  const handleUpdatePlan = async (plan: Plan) => {
+    try {
+      await updatePlan(plan.id, planFormData);
+      toast.success('Plano atualizado com sucesso!');
+      setPlansDialogOpen(false);
+      setPlanFormData({});
+      loadPlans();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar plano');
+    }
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm('Tem certeza que deseja desativar este plano?')) return;
+    try {
+      await deletePlan(planId);
+      toast.success('Plano desativado com sucesso!');
+      loadPlans();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao desativar plano');
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!selectedCompany) return;
+    try {
+      await createCompanyUser(selectedCompany.id, userFormData);
+      toast.success('Usuário criado com sucesso!');
+      setUserFormData({ email: '', password: '', display_name: '', role: 'member', phone: '' });
+      const users = await listCompanyUsers(selectedCompany.id);
+      setCompanyUsers(users || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao criar usuário');
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!selectedCompany) return;
+    const newPassword = prompt('Digite a nova senha (mínimo 6 caracteres):');
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    try {
+      await resetUserPassword(selectedCompany.id, userId, newPassword);
+      toast.success('Senha resetada com sucesso!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao resetar senha');
+    }
+  };
+
+  const handleToggleUserActive = async (userId: string) => {
+    if (!selectedCompany) return;
+    try {
+      await toggleUserActive(selectedCompany.id, userId);
+      toast.success('Status do usuário alterado!');
+      const users = await listCompanyUsers(selectedCompany.id);
+      setCompanyUsers(users || []);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao alterar status do usuário');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       active: 'default',
@@ -259,10 +368,16 @@ export default function AdminReseller() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={openCreateDialog} className="w-full md:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Empresa
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={openPlansDialog} variant="outline" className="w-full md:w-auto">
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Gerenciar Planos
+                </Button>
+                <Button onClick={openCreateDialog} className="w-full md:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Empresa
+                </Button>
+              </div>
             </div>
           </CardHeader>
         </Card>
@@ -336,6 +451,13 @@ export default function AdminReseller() {
                               onClick={() => openSubscriptionDialog(company)}
                             >
                               <DollarSign className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openUsersDialog(company)}
+                            >
+                              <Users className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -575,6 +697,282 @@ export default function AdminReseller() {
                 disabled={!formData.plan_id}
               >
                 Criar Assinatura
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de gerenciar usuários */}
+        <Dialog open={usersDialogOpen} onOpenChange={setUsersDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Usuários de {selectedCompany?.name}</DialogTitle>
+              <DialogDescription>
+                Gerencie os usuários desta empresa
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Formulário de criar usuário */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Novo Usuário</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="user_email">Email *</Label>
+                      <Input
+                        id="user_email"
+                        type="email"
+                        value={userFormData.email}
+                        onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                        placeholder="usuario@empresa.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="user_password">Senha *</Label>
+                      <Input
+                        id="user_password"
+                        type="password"
+                        value={userFormData.password}
+                        onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="user_display_name">Nome</Label>
+                      <Input
+                        id="user_display_name"
+                        value={userFormData.display_name}
+                        onChange={(e) => setUserFormData({ ...userFormData, display_name: e.target.value })}
+                        placeholder="Nome completo"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="user_role">Função</Label>
+                      <Select
+                        value={userFormData.role}
+                        onValueChange={(value) => setUserFormData({ ...userFormData, role: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="member">Membro</SelectItem>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button onClick={handleCreateUser} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Usuário
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Lista de usuários */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Usuários Cadastrados ({companyUsers.length})</h3>
+                <div className="space-y-2">
+                  {companyUsers.map((user) => (
+                    <Card key={user.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{user.display_name || user.email}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.role} • {user.email_verified ? 'Ativo' : 'Inativo'}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResetPassword(user.id)}
+                            >
+                              Resetar Senha
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleUserActive(user.id)}
+                            >
+                              {user.email_verified ? 'Desativar' : 'Ativar'}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {companyUsers.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum usuário cadastrado
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setUsersDialogOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de gerenciar planos */}
+        <Dialog open={plansDialogOpen} onOpenChange={setPlansDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Planos</DialogTitle>
+              <DialogDescription>
+                Crie, edite ou desative planos de assinatura
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Formulário de criar/editar plano */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {planFormData.id ? 'Editar Plano' : 'Novo Plano'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_name">Nome *</Label>
+                      <Input
+                        id="plan_name"
+                        value={planFormData.name || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
+                        placeholder="Ex: Básico"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_code">Código *</Label>
+                      <Input
+                        id="plan_code"
+                        value={planFormData.code || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, code: e.target.value })}
+                        placeholder="Ex: basic"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plan_description">Descrição</Label>
+                    <Input
+                      id="plan_description"
+                      value={planFormData.description || ''}
+                      onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
+                      placeholder="Descrição do plano"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_price_monthly">Preço Mensal *</Label>
+                      <Input
+                        id="plan_price_monthly"
+                        type="number"
+                        step="0.01"
+                        value={planFormData.price_monthly || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, price_monthly: parseFloat(e.target.value) })}
+                        placeholder="99.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_price_yearly">Preço Anual</Label>
+                      <Input
+                        id="plan_price_yearly"
+                        type="number"
+                        step="0.01"
+                        value={planFormData.price_yearly || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, price_yearly: parseFloat(e.target.value) })}
+                        placeholder="990.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_max_users">Máx. Usuários</Label>
+                      <Input
+                        id="plan_max_users"
+                        type="number"
+                        value={planFormData.max_users || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, max_users: parseInt(e.target.value) || null })}
+                        placeholder="Ilimitado"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={planFormData.id ? () => handleUpdatePlan(planFormData as Plan) : handleCreatePlan}
+                      className="flex-1"
+                    >
+                      {planFormData.id ? 'Atualizar' : 'Criar'} Plano
+                    </Button>
+                    {planFormData.id && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setPlanFormData({})}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Lista de planos */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Planos Cadastrados ({plans.length})</h3>
+                <div className="space-y-2">
+                  {plans.map((plan) => (
+                    <Card key={plan.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{plan.name} ({plan.code})</div>
+                            <div className="text-sm text-muted-foreground">
+                              {formatCurrency(plan.price_monthly)}/mês
+                              {plan.price_yearly && ` • ${formatCurrency(plan.price_yearly)}/ano`}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Máx. {plan.max_users || '∞'} usuários • {plan.active ? 'Ativo' : 'Inativo'}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPlanFormData(plan)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {plan.active && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeletePlan(plan.id)}
+                              >
+                                Desativar
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setPlansDialogOpen(false);
+                setPlanFormData({});
+              }}>
+                Fechar
               </Button>
             </DialogFooter>
           </DialogContent>

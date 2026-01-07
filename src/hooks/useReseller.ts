@@ -318,6 +318,190 @@ export const useReseller = () => {
     }
   };
 
+  // Criar plano
+  const createPlan = async (planData: Partial<Plan>) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/plans`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(planData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao criar plano');
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Atualizar plano
+  const updatePlan = async (id: string, planData: Partial<Plan>) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/plans/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(planData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao atualizar plano');
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Deletar plano
+  const deletePlan = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/plans/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao deletar plano');
+      }
+
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Listar usuários de uma empresa
+  const listCompanyUsers = async (companyId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${companyId}/users`, {
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao listar usuários');
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Criar usuário para uma empresa
+  const createCompanyUser = async (companyId: string, userData: {
+    email: string;
+    password: string;
+    display_name?: string;
+    role?: string;
+    phone?: string;
+    department_id?: string;
+    position_id?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${companyId}/users`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(userData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao criar usuário');
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Resetar senha de usuário
+  const resetUserPassword = async (companyId: string, userId: string, newPassword: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${companyId}/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ new_password: newPassword })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao resetar senha');
+      }
+
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Toggle ativo/inativo usuário
+  const toggleUserActive = async (companyId: string, userId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${companyId}/users/${userId}/toggle-active`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao alterar status do usuário');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     error,
@@ -326,8 +510,15 @@ export const useReseller = () => {
     createCompany,
     updateCompany,
     listPlans,
+    createPlan,
+    updatePlan,
+    deletePlan,
     createSubscription,
-    listPayments
+    listPayments,
+    listCompanyUsers,
+    createCompanyUser,
+    resetUserPassword,
+    toggleUserActive
   };
 };
 

@@ -245,15 +245,24 @@ router.put('/companies/:id', async (req, res) => {
   }
 });
 
-// Listar planos disponíveis
+// Listar planos disponíveis (todos, incluindo inativos)
 router.get('/plans', async (req, res) => {
   try {
     console.log('[Revenda] GET /plans - Iniciando busca de planos...');
     console.log('[Revenda] User autenticado:', req.user?.id);
     
-    const result = await pool.query(
-      `SELECT * FROM plans WHERE active = true ORDER BY price_monthly ASC`
-    );
+    const { active } = req.query;
+    let query = `SELECT * FROM plans`;
+    const params = [];
+    
+    if (active !== undefined) {
+      query += ` WHERE active = $1`;
+      params.push(active === 'true');
+    }
+    
+    query += ` ORDER BY price_monthly ASC`;
+    
+    const result = await pool.query(query, params);
     
     console.log('[Revenda] Planos encontrados:', result.rows.length);
     console.log('[Revenda] Planos:', result.rows.map(p => ({ id: p.id, name: p.name })));
@@ -262,6 +271,92 @@ router.get('/plans', async (req, res) => {
   } catch (error) {
     console.error('[Revenda] Erro ao listar planos:', error);
     console.error('[Revenda] Stack trace:', error.stack);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Criar novo plano
+router.post('/plans', async (req, res) => {
+  try {
+    const { name, code, description, price_monthly, price_yearly, max_users, features, active = true } = req.body;
+    
+    if (!name || !code || !price_monthly) {
+      return res.status(400).json({ success: false, error: 'Nome, código e preço mensal são obrigatórios' });
+    }
+    
+    const result = await pool.query(
+      `INSERT INTO plans (name, code, description, price_monthly, price_yearly, max_users, features, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [name, code, description, price_monthly, price_yearly || null, max_users || null, features ? JSON.stringify(features) : null, active]
+    );
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Erro ao criar plano:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Atualizar plano
+router.put('/plans/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, code, description, price_monthly, price_yearly, max_users, features, active } = req.body;
+    
+    const updateFields = [];
+    const values = [];
+    let paramCount = 1;
+    
+    if (name !== undefined) { updateFields.push(`name = $${paramCount++}`); values.push(name); }
+    if (code !== undefined) { updateFields.push(`code = $${paramCount++}`); values.push(code); }
+    if (description !== undefined) { updateFields.push(`description = $${paramCount++}`); values.push(description); }
+    if (price_monthly !== undefined) { updateFields.push(`price_monthly = $${paramCount++}`); values.push(price_monthly); }
+    if (price_yearly !== undefined) { updateFields.push(`price_yearly = $${paramCount++}`); values.push(price_yearly); }
+    if (max_users !== undefined) { updateFields.push(`max_users = $${paramCount++}`); values.push(max_users); }
+    if (features !== undefined) { updateFields.push(`features = $${paramCount++}`); values.push(JSON.stringify(features)); }
+    if (active !== undefined) { updateFields.push(`active = $${paramCount++}`); values.push(active); }
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    }
+    
+    updateFields.push(`updated_at = NOW()`);
+    values.push(id);
+    
+    const result = await pool.query(
+      `UPDATE plans SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Plano não encontrado' });
+    }
+    
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Erro ao atualizar plano:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Deletar plano (soft delete)
+router.delete('/plans/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      `UPDATE plans SET active = false, updated_at = NOW() WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Plano não encontrado' });
+    }
+    
+    res.json({ success: true, message: 'Plano desativado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao deletar plano:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -319,6 +414,151 @@ router.get('/companies/:id/payments', async (req, res) => {
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('Erro ao listar pagamentos:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Listar usuários de uma empresa
+router.get('/companies/:id/users', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT 
+        u.id,
+        u.email,
+        u.email_verified,
+        u.created_at,
+        p.display_name,
+        p.role,
+        p.phone,
+        p.department_id,
+        p.position_id
+       FROM users u
+       LEFT JOIN profiles p ON p.user_id = u.id
+       WHERE u.company_id = $1
+       ORDER BY u.created_at DESC`,
+      [id]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Erro ao listar usuários:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Criar usuário para uma empresa
+router.post('/companies/:id/users', async (req, res) => {
+  try {
+    const { id: companyId } = req.params;
+    const { email, password, display_name, role = 'member', phone, department_id, position_id } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
+    }
+    
+    // Verificar se email já existe
+    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'Email já cadastrado' });
+    }
+    
+    // Hash da senha
+    const bcrypt = (await import('bcrypt')).default;
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    await pool.query('BEGIN');
+    
+    // Criar usuário
+    const userResult = await pool.query(
+      `INSERT INTO users (email, password_hash, company_id)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [email.toLowerCase(), passwordHash, companyId]
+    );
+    
+    const user = userResult.rows[0];
+    
+    // Criar perfil
+    await pool.query(
+      `INSERT INTO profiles (user_id, display_name, role, phone, department_id, position_id)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [user.id, display_name, role, phone, department_id, position_id]
+    );
+    
+    await pool.query('COMMIT');
+    
+    res.json({ success: true, data: user });
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    console.error('Erro ao criar usuário:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Resetar senha de um usuário
+router.post('/companies/:companyId/users/:userId/reset-password', async (req, res) => {
+  try {
+    const { companyId, userId } = req.params;
+    const { new_password } = req.body;
+    
+    if (!new_password || new_password.length < 6) {
+      return res.status(400).json({ success: false, error: 'Nova senha deve ter pelo menos 6 caracteres' });
+    }
+    
+    // Verificar se usuário pertence à empresa
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE id = $1 AND company_id = $2',
+      [userId, companyId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Usuário não encontrado nesta empresa' });
+    }
+    
+    // Hash da nova senha
+    const bcrypt = (await import('bcrypt')).default;
+    const passwordHash = await bcrypt.hash(new_password, 10);
+    
+    // Atualizar senha
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [passwordHash, userId]
+    );
+    
+    res.json({ success: true, message: 'Senha resetada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao resetar senha:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Desativar/ativar usuário
+router.put('/companies/:companyId/users/:userId/toggle-active', async (req, res) => {
+  try {
+    const { companyId, userId } = req.params;
+    
+    // Verificar se usuário pertence à empresa
+    const userResult = await pool.query(
+      'SELECT id, email_verified FROM users WHERE id = $1 AND company_id = $2',
+      [userId, companyId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Usuário não encontrado nesta empresa' });
+    }
+    
+    // Toggle email_verified (usado como ativo/inativo)
+    const newStatus = !userResult.rows[0].email_verified;
+    
+    await pool.query(
+      'UPDATE users SET email_verified = $1, updated_at = NOW() WHERE id = $2',
+      [newStatus, userId]
+    );
+    
+    res.json({ success: true, message: `Usuário ${newStatus ? 'ativado' : 'desativado'} com sucesso` });
+  } catch (error) {
+    console.error('Erro ao alterar status do usuário:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
