@@ -148,8 +148,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       if (error && String(error.message || error).includes('vi_custo') && String(error.message || error).includes('does not exist')) {
         const fallbackFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
         let fallbackQuery = dbFrom('produtos')
-          .select(fallbackFields)
-          .order('nome', { ascending: true });
+          .select(fallbackFields);
+        fallbackQuery = fallbackQuery.order(orderBy === 'codigo' ? 'codigo' : 'nome', { ascending: orderDirection === 'asc', nullsFirst: orderBy === 'codigo' ? false : true });
         if (grupo && grupo.trim() !== '') fallbackQuery = fallbackQuery.eq('grupo', grupo);
         if (localizacao && localizacao.trim() !== '') fallbackQuery = fallbackQuery.eq('localizacao', localizacao.trim());
         if (debouncedSearchTerm.trim()) {
