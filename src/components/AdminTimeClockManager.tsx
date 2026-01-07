@@ -305,9 +305,9 @@ export const AdminTimeClockManager = () => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+        <CardContent className="flex flex-col h-full min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
+            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
               <TabsTrigger value="list" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Lista de Registros
@@ -318,7 +318,7 @@ export const AdminTimeClockManager = () => {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="list" className="space-y-4 mt-4 overflow-hidden">
+            <TabsContent value="list" className="flex-1 flex flex-col overflow-hidden mt-4 min-h-0">
           <div className="space-y-4">
             {/* Search and User Filter */}
             <div className="flex items-center gap-4">
