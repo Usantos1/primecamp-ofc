@@ -177,20 +177,43 @@ export const AdminTimeClockManager = () => {
     }
 
     // Prepare data for Excel
-    const excelData = filteredRecords.map(record => ({
-      'Usuário': getUserName(record.user_id),
-      'Data': format(new Date(record.date), 'dd/MM/yyyy'),
-      'Entrada': record.clock_in ? format(new Date(record.clock_in), 'HH:mm') : '-',
-      'Saída': record.clock_out ? format(new Date(record.clock_out), 'HH:mm') : '-',
-      'Início Almoço': record.lunch_start ? format(new Date(record.lunch_start), 'HH:mm') : '-',
-      'Fim Almoço': record.lunch_end ? format(new Date(record.lunch_end), 'HH:mm') : '-',
-      'Total de Horas': record.total_hours || '-',
-      'Localização': record.location || '-',
-      'IP': record.ip_address || '-',
-      'Status': record.status === 'pending' ? 'Pendente' : 
-                record.status === 'approved' ? 'Aprovado' : 'Rejeitado',
-      'Observações': record.notes || '-'
-    }));
+    const excelData = filteredRecords.map(record => {
+      const formatDateSafe = (dateStr: string | undefined) => {
+        if (!dateStr) return '-';
+        try {
+          const date = typeof dateStr === 'string' ? parseISO(dateStr) : new Date(dateStr);
+          return isValid(date) ? format(date, 'HH:mm') : '-';
+        } catch {
+          return '-';
+        }
+      };
+      
+      const formatDateOnly = (dateStr: string | undefined) => {
+        if (!dateStr) return '-';
+        try {
+          const dateStrOnly = typeof dateStr === 'string' ? dateStr.split('T')[0] : format(new Date(dateStr), 'yyyy-MM-dd');
+          const date = parseISO(dateStrOnly + 'T00:00:00');
+          return isValid(date) ? format(date, 'dd/MM/yyyy') : '-';
+        } catch {
+          return '-';
+        }
+      };
+      
+      return {
+        'Usuário': getUserName(record.user_id),
+        'Data': formatDateOnly(record.date),
+        'Entrada': formatDateSafe(record.clock_in),
+        'Saída': formatDateSafe(record.clock_out),
+        'Início Almoço': formatDateSafe(record.lunch_start),
+        'Fim Almoço': formatDateSafe(record.lunch_end),
+        'Total de Horas': record.total_hours || '-',
+        'Localização': record.location || '-',
+        'IP': record.ip_address || '-',
+        'Status': record.status === 'pending' ? 'Pendente' : 
+                  record.status === 'approved' ? 'Aprovado' : 'Rejeitado',
+        'Observações': record.notes || '-'
+      };
+    });
 
     // Create workbook and worksheet
     const ws = XLSX.utils.json_to_sheet(excelData);
