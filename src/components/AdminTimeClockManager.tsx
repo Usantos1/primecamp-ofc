@@ -383,7 +383,7 @@ export const AdminTimeClockManager = () => {
           ) : (
             <div className="border rounded-lg overflow-x-auto max-h-[calc(100vh-400px)] overflow-y-auto">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Data</TableHead>
