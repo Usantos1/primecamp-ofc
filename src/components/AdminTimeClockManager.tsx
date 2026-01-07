@@ -381,7 +381,7 @@ export const AdminTimeClockManager = () => {
               <p className="mt-2 text-muted-foreground">Carregando registros...</p>
             </div>
           ) : (
-            <div className="border rounded-lg">
+            <div className="border rounded-lg overflow-x-auto max-h-[calc(100vh-400px)] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
