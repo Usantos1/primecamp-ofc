@@ -27,6 +27,7 @@ import {
   KeyRound,
   UserCog,
   Megaphone,
+  Store,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -141,6 +142,7 @@ export function AppSidebar() {
   // ADMINISTRAÇÃO - Apenas para admins
   // ═══════════════════════════════════════════════════════════════
   const adminItems = [
+    { label: "Gestão de Revenda", path: "/admin/revenda", icon: Store }, // Sem permissão específica - apenas admins acessam
     { label: "Usuários e Permissões", path: "/admin/users", icon: Users, permission: "admin.users" },
     { label: "Estrutura Organizacional", path: "/admin/estrutura", icon: Building2, permission: "admin.config" },
     { label: "Cadastros Base", path: "/admin/cadastros", icon: FolderOpen, permission: "admin.config" },
