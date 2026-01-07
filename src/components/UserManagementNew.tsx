@@ -432,13 +432,22 @@ export const UserManagementNew = () => {
 
   const approveUser = async (userId: string) => {
     try {
-      const { error } = await from('profiles')
+      console.log('[UserManagement] Aprovando usuário:', userId);
+      
+      const currentUserData = await authAPI.getUser();
+      const approvedBy = currentUserData.data.user?.id;
+      
+      console.log('[UserManagement] Aprovado por:', approvedBy);
+      
+      const { error, data } = await from('profiles')
         .update({
           approved: true,
           approved_at: new Date().toISOString(),
-          approved_by: (await authAPI.getUser()).data.user?.id
+          approved_by: approvedBy
         })
         .eq('user_id', userId);
+
+      console.log('[UserManagement] Resultado da aprovação:', { error, data });
 
       if (error) throw error;
 
@@ -449,6 +458,7 @@ export const UserManagementNew = () => {
 
       fetchUsers();
     } catch (error: any) {
+      console.error('[UserManagement] Erro ao aprovar:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao aprovar usuário",
@@ -471,12 +481,14 @@ export const UserManagementNew = () => {
 
     try {
       // Criar usuário via API PostgreSQL
+      // IMPORTANTE: Passar company_id para associar usuário à empresa correta
       const authResponse = await authAPI.signup({
         email: newUser.email,
         password: newUser.password,
         display_name: newUser.display_name,
         department: newUser.department,
         role: newUser.role,
+        company_id: currentCompanyId, // Associar à mesma empresa do admin
       });
 
       if (authResponse.user) {

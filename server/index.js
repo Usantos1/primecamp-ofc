@@ -468,9 +468,9 @@ app.post('/api/auth/login', async (req, res) => {
 // Signup (Cadastro)
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { email, password, display_name, phone, department, role } = req.body;
+    const { email, password, display_name, phone, department, role, company_id } = req.body;
 
-    console.log('[API] Tentativa de cadastro:', { email: email?.toLowerCase(), hasDisplayName: !!display_name });
+    console.log('[API] Tentativa de cadastro:', { email: email?.toLowerCase(), hasDisplayName: !!display_name, company_id });
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
@@ -495,12 +495,12 @@ app.post('/api/auth/signup', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     console.log('[API] Senha hash criada');
 
-    // Criar usuário
+    // Criar usuário com company_id (se fornecido)
     const userResult = await pool.query(
-      `INSERT INTO users (email, password_hash, email_verified)
-       VALUES ($1, $2, true)
+      `INSERT INTO users (email, password_hash, email_verified, company_id)
+       VALUES ($1, $2, true, $3)
        RETURNING *`,
-      [email.toLowerCase().trim(), passwordHash]
+      [email.toLowerCase().trim(), passwordHash, company_id || null]
     );
 
     const newUser = userResult.rows[0];
