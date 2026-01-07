@@ -226,8 +226,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
           const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
           
           let query = dbFrom('produtos')
-            .select(selectFields)
-            .order('nome', { ascending: true });
+            .select(selectFields);
+          query = query.order(orderBy === 'codigo' ? 'codigo' : 'nome', { ascending: orderDirection === 'asc', nullsFirst: orderBy === 'codigo' ? false : true });
 
           if (grupo && grupo.trim() !== '') {
             query = query.eq('grupo', grupo);
