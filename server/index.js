@@ -92,6 +92,9 @@ app.use(cors({
       'http://127.0.0.1:3000',
       apiOrigin,
       'https://primecamp.cloud',
+      'http://primecamp.cloud',
+      'https://www.primecamp.cloud',
+      'http://www.primecamp.cloud',
     ].filter(Boolean);
     
     if (allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1')) {
