@@ -143,13 +143,20 @@ export function AppSidebar() {
   // ═══════════════════════════════════════════════════════════════
   // Verificar se é admin da empresa principal (ID: 00000000-0000-0000-0000-000000000001)
   const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+  
+  // Debug: log completo para diagnóstico
+  console.log('[AppSidebar] Verificação de permissões:', {
+    isAdmin,
+    profileRole: profile?.role,
+    userCompanyId: user?.company_id,
+    ADMIN_COMPANY_ID,
+    userObject: user
+  });
+  
   // Só mostrar Gestão de Revenda se for admin E pertencer à empresa principal
   const isAdminCompany = isAdmin && profile?.role === 'admin' && user?.company_id === ADMIN_COMPANY_ID;
   
-  // Debug: log para verificar (remover em produção)
-  if (isAdmin && profile?.role === 'admin') {
-    console.log('[AppSidebar] Admin detectado - company_id:', user?.company_id, 'ADMIN_COMPANY_ID:', ADMIN_COMPANY_ID, 'isAdminCompany:', isAdminCompany);
-  }
+  console.log('[AppSidebar] isAdminCompany:', isAdminCompany);
   
   const adminItems = [
     // Gestão de Revenda - APENAS para admins da empresa principal
