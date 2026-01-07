@@ -275,8 +275,14 @@ try {
     throw new Error('resellerRoutes é undefined ou null');
   }
   
+  // Registrar rotas de revenda
   app.use('/api/admin/revenda', resellerRoutes);
   console.log('[Server] ✅ Rotas de revenda registradas com sucesso');
+  
+  // Rota de teste para verificar se está funcionando
+  app.get('/api/admin/revenda/test', (req, res) => {
+    res.json({ success: true, message: 'Rotas de revenda estão funcionando!' });
+  });
   
   // Listar rotas registradas (debug)
   console.log('[Server] Rotas registradas no Express:', app._router?.stack?.filter(r => r.route || r.regexp?.test('/api/admin/revenda')).length || 'N/A');
