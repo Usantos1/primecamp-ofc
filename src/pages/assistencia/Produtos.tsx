@@ -44,6 +44,8 @@ import {
   Ban,
   Settings,
   Shield,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   DropdownMenu,
