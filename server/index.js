@@ -13,6 +13,9 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 import resellerRoutes from './routes/reseller.js';
+import paymentsRoutes from './routes/payments.js';
+import dashboardRoutes from './routes/dashboard.js';
+import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -281,6 +284,26 @@ try {
   // Registrar rotas de revenda
   app.use('/api/admin/revenda', resellerRoutes);
   console.log('[Server] ✅ Rotas de revenda registradas com sucesso');
+  
+  // Registrar rotas de pagamentos
+  app.use('/api/payments', paymentsRoutes);
+  console.log('[Server] ✅ Rotas de pagamentos registradas com sucesso');
+  
+  // Registrar rotas de dashboard
+  app.use('/api/dashboard', dashboardRoutes);
+  console.log('[Server] ✅ Rotas de dashboard registradas com sucesso');
+  
+  // Job para verificar inadimplentes a cada hora
+  setInterval(async () => {
+    try {
+      const result = await checkAndBlockOverdueCompanies();
+      if (result.blocked > 0) {
+        console.log(`[Server] ${result.blocked} empresas bloqueadas por inadimplência`);
+      }
+    } catch (error) {
+      console.error('[Server] Erro ao verificar inadimplentes:', error);
+    }
+  }, 60 * 60 * 1000); // 1 hora
   
   // Rota de teste para verificar se está funcionando
   app.get('/api/admin/revenda/test', (req, res) => {
