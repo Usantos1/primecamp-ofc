@@ -332,7 +332,7 @@ export const UserManagementNew = () => {
         .update({
           approved: !user.approved,
           approved_at: !user.approved ? new Date().toISOString() : null,
-          approved_by: !user.approved ? (await authAPI.getUser()).data.user?.id : null
+          approved_by: !user.approved ? (await authAPI.getCurrentUser()).data.user?.id : null
         })
         .eq('user_id', user.user_id);
 
@@ -434,8 +434,8 @@ export const UserManagementNew = () => {
     try {
       console.log('[DEBUG] Aprovando userId:', userId);
       
-      const currentUserData = await authAPI.getUser();
-      const approvedBy = currentUserData.data.user?.id;
+      const currentUserData = await authAPI.getCurrentUser();
+      const approvedBy = currentUserData.data?.user?.id;
       console.log('[DEBUG] approvedBy:', approvedBy);
       
       const { error, data } = await from('profiles')
@@ -498,7 +498,7 @@ export const UserManagementNew = () => {
             role: newUser.role,
             approved: true,
             approved_at: new Date().toISOString(),
-            approved_by: (await authAPI.getUser()).data.user?.id
+            approved_by: (await authAPI.getCurrentUser()).data.user?.id
           })
           .eq('user_id', authResponse.user.id)
           .execute();
