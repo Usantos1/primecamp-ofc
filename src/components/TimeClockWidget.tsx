@@ -69,7 +69,19 @@ export const TimeClockWidget = () => {
           return;
         }
 
-        setAllRecords(data || []);
+        // Converter location para string se for objeto
+        const formattedRecords = (data || []).map((record: any) => {
+          if (record.location && typeof record.location === 'object') {
+            if ('latitude' in record.location && 'longitude' in record.location) {
+              return { ...record, location: `${record.location.latitude}, ${record.location.longitude}` };
+            } else {
+              return { ...record, location: JSON.stringify(record.location) };
+            }
+          }
+          return record;
+        });
+
+        setAllRecords(formattedRecords);
       } catch (error) {
         console.error('Erro ao buscar registros:', error);
       }

@@ -48,25 +48,45 @@ export const useTimeClock = () => {
         return;
       }
 
-      const formattedRecords: TimeClockRecord[] = (data || []).map(record => ({
-        id: record.id,
-        user_id: record.user_id,
-        date: record.date,
-        clock_in: record.clock_in,
-        clock_out: record.clock_out,
-        break_start: record.break_start,
-        break_end: record.break_end,
-        lunch_start: record.lunch_start,
-        lunch_end: record.lunch_end,
-        total_hours: record.total_hours as string,
-        status: record.status as 'pending' | 'approved' | 'rejected',
-        notes: record.notes,
-        location: record.location,
-        ip_address: record.ip_address,
-        created_at: record.created_at,
-        updated_at: record.updated_at,
-        user_name: 'Usuário'
-      }));
+      const formattedRecords: TimeClockRecord[] = (data || []).map(record => {
+        // Converter location para string se for objeto
+        let locationString: string | null = null;
+        if (record.location) {
+          if (typeof record.location === 'string') {
+            locationString = record.location;
+          } else if (typeof record.location === 'object') {
+            // Se for objeto com latitude e longitude
+            if ('latitude' in record.location && 'longitude' in record.location) {
+              locationString = `${record.location.latitude}, ${record.location.longitude}`;
+            } else {
+              // Tentar converter para string
+              locationString = JSON.stringify(record.location);
+            }
+          } else {
+            locationString = String(record.location);
+          }
+        }
+        
+        return {
+          id: record.id,
+          user_id: record.user_id,
+          date: record.date,
+          clock_in: record.clock_in,
+          clock_out: record.clock_out,
+          break_start: record.break_start,
+          break_end: record.break_end,
+          lunch_start: record.lunch_start,
+          lunch_end: record.lunch_end,
+          total_hours: record.total_hours as string,
+          status: record.status as 'pending' | 'approved' | 'rejected',
+          notes: record.notes,
+          location: locationString,
+          ip_address: record.ip_address,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+          user_name: 'Usuário'
+        };
+      });
 
       setRecords(formattedRecords);
 
