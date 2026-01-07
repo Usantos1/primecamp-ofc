@@ -422,14 +422,23 @@ router.get('/companies/:id/payments', async (req, res) => {
 router.get('/companies/:id/users', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('[Revenda] GET /companies/:id/users - Company ID:', id);
+    
+    // Verificar se empresa existe
+    const companyCheck = await pool.query('SELECT id FROM companies WHERE id = $1', [id]);
+    if (companyCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Empresa não encontrada' });
+    }
+    
     const result = await pool.query(
       `SELECT 
         u.id,
         u.email,
         u.email_verified,
         u.created_at,
-        p.display_name,
-        p.role,
+        u.updated_at,
+        COALESCE(p.display_name, '') as display_name,
+        COALESCE(p.role, 'member') as role,
         p.phone,
         p.department_id,
         p.position_id
@@ -440,9 +449,11 @@ router.get('/companies/:id/users', async (req, res) => {
       [id]
     );
 
+    console.log('[Revenda] Usuários encontrados:', result.rows.length);
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('Erro ao listar usuários:', error);
+    console.error('[Revenda] Erro ao listar usuários:', error);
+    console.error('[Revenda] Stack trace:', error.stack);
     res.status(500).json({ success: false, error: error.message });
   }
 });
