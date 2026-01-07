@@ -456,7 +456,11 @@ export const TimeClockWidget = () => {
                 <div className="pt-2 border-t">
                   <div className="flex justify-between text-sm font-medium">
                     <span>Total:</span>
-                    <span className="font-mono">{todayRecord.total_hours}</span>
+                    <span className="font-mono">
+                      {typeof todayRecord.total_hours === 'string' 
+                        ? todayRecord.total_hours 
+                        : String(todayRecord.total_hours || '--:--')}
+                    </span>
                   </div>
                 </div>
               )}
