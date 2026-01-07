@@ -301,8 +301,16 @@ export const TimeClockWidget = () => {
     }
   };
 
-  const formatTime = (timeString: string | null) => {
+  const formatTime = (timeString: string | null | undefined | object) => {
+    // Garantir que seja string ou null
     if (!timeString) return '--:--';
+    if (typeof timeString !== 'string') {
+      // Se for objeto, tentar converter
+      if (typeof timeString === 'object') {
+        return '--:--';
+      }
+      return String(timeString);
+    }
     try {
       return format(new Date(timeString), 'HH:mm', { locale: ptBR });
     } catch {
