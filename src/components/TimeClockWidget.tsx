@@ -207,13 +207,13 @@ export const TimeClockWidget = () => {
       correctionDateTime.setHours(parseInt(correctionTime.split(':')[0]));
       correctionDateTime.setMinutes(parseInt(correctionTime.split(':')[1]));
       
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
         .update({
           [correctionData.field]: correctionDateTime.toISOString(),
           notes: (todayRecord?.notes || '') + `\n[CORREÇÃO ${format(new Date(), 'dd/MM/yyyy HH:mm')}] ${correctionData.label}: ${correctionReason}`
         })
-        .eq('id', todayRecord?.id);
+        .eq('id', todayRecord?.id)
+        .execute();
 
       if (error) throw error;
 

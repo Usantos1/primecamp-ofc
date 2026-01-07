@@ -48,16 +48,41 @@ export function TimeSheetManager() {
     
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('time_clock')
+      const { data, error } = await from('time_clock')
         .select('*')
-        .execute().eq('user_id', selectedUser)
+        .eq('user_id', selectedUser)
         .gte('date', format(monthStart, 'yyyy-MM-dd'))
         .lte('date', format(monthEnd, 'yyyy-MM-dd'))
-        .order('date', { ascending: true });
+        .order('date', { ascending: true })
+        .execute();
 
       if (error) throw error;
-      setMonthlyRecords(data || []);
+      
+      // Converter location para string se for objeto
+      const formattedRecords = (data || []).map((record: any) => {
+        let locationString: string | null = null;
+        if (record.location) {
+          if (typeof record.location === 'string') {
+            locationString = record.location;
+          } else if (typeof record.location === 'object') {
+            if ('latitude' in record.location && 'longitude' in record.location) {
+              locationString = `${record.location.latitude}, ${record.location.longitude}`;
+            } else {
+              locationString = JSON.stringify(record.location);
+            }
+          } else {
+            locationString = String(record.location);
+          }
+        }
+        
+        return {
+          ...record,
+          location: locationString,
+          total_hours: typeof record.total_hours === 'string' ? record.total_hours : (record.total_hours ? String(record.total_hours) : null)
+        };
+      });
+      
+      setMonthlyRecords(formattedRecords);
     } catch (error) {
       console.error('Erro ao buscar registros:', error);
     } finally {
