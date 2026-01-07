@@ -77,7 +77,20 @@ export const useTimeClock = () => {
           break_end: record.break_end || null,
           lunch_start: record.lunch_start || null,
           lunch_end: record.lunch_end || null,
-          total_hours: typeof record.total_hours === 'string' ? record.total_hours : (record.total_hours ? String(record.total_hours) : null),
+          total_hours: (() => {
+            const total = record.total_hours;
+            if (typeof total === 'string') return total;
+            if (typeof total === 'number') return String(total);
+            if (typeof total === 'object' && total !== null) {
+              // Se for objeto, tentar converter para string formatada
+              if ('hours' in total && 'minutes' in total) {
+                return `${total.hours}:${String(total.minutes).padStart(2, '0')}:00`;
+              }
+              // Se não conseguir converter, retornar null
+              return null;
+            }
+            return total ? String(total) : null;
+          })(),
           status: (record.status || 'pending') as 'pending' | 'approved' | 'rejected',
           notes: typeof record.notes === 'string' ? record.notes : (record.notes ? String(record.notes) : null),
           location: locationString,

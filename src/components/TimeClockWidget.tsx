@@ -457,9 +457,23 @@ export const TimeClockWidget = () => {
                   <div className="flex justify-between text-sm font-medium">
                     <span>Total:</span>
                     <span className="font-mono">
-                      {typeof todayRecord.total_hours === 'string' 
-                        ? todayRecord.total_hours 
-                        : String(todayRecord.total_hours || '--:--')}
+                      {(() => {
+                        const total = todayRecord.total_hours;
+                        if (typeof total === 'string') {
+                          return total;
+                        }
+                        if (typeof total === 'number') {
+                          return String(total);
+                        }
+                        if (typeof total === 'object' && total !== null) {
+                          // Se for objeto, tentar extrair valor ou usar JSON
+                          if ('hours' in total && 'minutes' in total) {
+                            return `${total.hours}:${String(total.minutes).padStart(2, '0')}`;
+                          }
+                          return '--:--';
+                        }
+                        return String(total || '--:--');
+                      })()}
                     </span>
                   </div>
                 </div>
