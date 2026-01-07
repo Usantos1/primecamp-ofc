@@ -58,6 +58,13 @@ export default function RH() {
       color: 'text-indigo-600',
     },
     {
+      title: 'Gestão de Ponto (Admin)',
+      description: 'Monitore e gerencie registros de ponto dos funcionários',
+      icon: Clock,
+      path: '/admin/timeclock',
+      color: 'text-indigo-700',
+    },
+    {
       title: 'Colaboradores',
       description: 'Dados dos colaboradores (via Usuários)',
       icon: Users,
