@@ -649,6 +649,45 @@ export default function Produtos() {
                 {localizacoes.map((loc: string) => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
               </SelectContent>
             </Select>
+            <Select 
+              value={`${orderBy}-${orderDirection}`} 
+              onValueChange={(value) => {
+                const [field, direction] = value.split('-');
+                setOrderBy(field as 'nome' | 'codigo');
+                setOrderDirection(direction as 'asc' | 'desc');
+                hookResult.setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 w-[200px] shrink-0 border-gray-200 text-sm">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nome-asc">
+                  <div className="flex items-center gap-2">
+                    <ArrowUp className="h-3 w-3" />
+                    Nome (A-Z)
+                  </div>
+                </SelectItem>
+                <SelectItem value="nome-desc">
+                  <div className="flex items-center gap-2">
+                    <ArrowDown className="h-3 w-3" />
+                    Nome (Z-A)
+                  </div>
+                </SelectItem>
+                <SelectItem value="codigo-asc">
+                  <div className="flex items-center gap-2">
+                    <ArrowUp className="h-3 w-3" />
+                    Código (Menor → Maior)
+                  </div>
+                </SelectItem>
+                <SelectItem value="codigo-desc">
+                  <div className="flex items-center gap-2">
+                    <ArrowDown className="h-3 w-3" />
+                    Código (Maior → Menor)
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="ghost" size="sm" onClick={handleClearFilters} disabled={!searchTerm && !grupo && !localizacao} className="h-9 px-3 text-muted-foreground hover:text-foreground">
               <XCircle className="h-4 w-4 mr-1.5" />Limpar
             </Button>
