@@ -86,11 +86,12 @@ router.post('/create', authenticateToken, async (req, res) => {
     // Criar registro de pagamento
     const result = await pool.query(
       `INSERT INTO payments (
-        company_id, subscription_id, amount, payment_method, 
+        company_id, subscription_id, valor, forma_pagamento, 
         status, external_id, pix_code, pix_qr_code, expires_at,
-        description, created_at
-      ) VALUES ($1, $2, $3, 'pix', 'pending', $4, $5, $6, $7, $8, NOW())
-      RETURNING *`,
+        description, created_at, sale_id, troco
+      ) VALUES ($1, $2, $3, 'pix', 'pending', $4, $5, $6, $7, $8, NOW(), 
+        (SELECT id FROM vendas WHERE company_id = $1 LIMIT 1), 0)
+      RETURNING *, valor as amount`,
       [company_id, subscription_id, amount, externalId, pixCode, qrCodeBase64, expiresAt, description]
     );
 
@@ -191,7 +192,7 @@ router.post('/webhook', async (req, res) => {
       await pool.query(
         `INSERT INTO usage_logs (company_id, action, details, created_at)
          VALUES ($1, 'payment_confirmed', $2, NOW())`,
-        [paymentData.company_id, JSON.stringify({ payment_id: paymentData.id, amount: paymentData.amount })]
+        [paymentData.company_id, JSON.stringify({ payment_id: paymentData.id, amount: paymentData.valor })]
       );
 
       console.log('[Payments] Pagamento confirmado:', paymentData.id);
@@ -243,12 +244,16 @@ router.get('/company/:companyId', authenticateToken, async (req, res) => {
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT p.id, p.company_id, p.amount, p.payment_method, p.status, 
-             p.external_id, p.created_at,
-             COALESCE(p.subscription_id, NULL) as subscription_id,
-             COALESCE(p.pix_code, NULL) as pix_code,
+      SELECT p.id, p.company_id, 
+             COALESCE(p.valor, 0) as amount, 
+             COALESCE(p.forma_pagamento, 'pix') as payment_method, 
+             p.status, 
+             COALESCE(p.external_id, '') as external_id, 
+             p.created_at,
+             p.subscription_id,
+             p.pix_code,
              COALESCE(p.description, 'Pagamento') as description,
-             COALESCE(p.paid_at, NULL) as paid_at,
+             p.paid_at,
              COALESCE(pl.name, 'N/A') as plan_name
       FROM payments p
       LEFT JOIN subscriptions s ON s.id = p.subscription_id

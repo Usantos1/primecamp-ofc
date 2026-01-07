@@ -278,7 +278,7 @@ router.get('/admin/overview', async (req, res) => {
 
     // Receita mensal (pagamentos confirmados no mês)
     const monthlyRevenue = await pool.query(
-      `SELECT COALESCE(SUM(amount), 0) as total
+      `SELECT COALESCE(SUM(valor), 0) as total
        FROM payments
        WHERE status = 'paid'
        AND paid_at >= date_trunc('month', CURRENT_DATE)`
@@ -286,7 +286,7 @@ router.get('/admin/overview', async (req, res) => {
 
     // Receita total
     const totalRevenue = await pool.query(
-      `SELECT COALESCE(SUM(amount), 0) as total
+      `SELECT COALESCE(SUM(valor), 0) as total
        FROM payments
        WHERE status = 'paid'`
     );
@@ -307,7 +307,7 @@ router.get('/admin/overview', async (req, res) => {
 
     // Pagamentos pendentes
     const pendingPayments = await pool.query(
-      `SELECT COUNT(*), COALESCE(SUM(amount), 0) as total
+      `SELECT COUNT(*), COALESCE(SUM(valor), 0) as total
        FROM payments
        WHERE status = 'pending'`
     );
@@ -424,7 +424,10 @@ router.get('/admin/recent-payments', async (req, res) => {
 
     const result = await pool.query(
       `SELECT 
-        p.*,
+        p.id, p.company_id, p.status, p.created_at,
+        COALESCE(p.valor, 0) as amount,
+        COALESCE(p.forma_pagamento, 'pix') as payment_method,
+        p.subscription_id, p.description, p.paid_at,
         c.name as company_name,
         pl.name as plan_name
        FROM payments p
