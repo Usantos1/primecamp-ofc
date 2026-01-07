@@ -177,27 +177,34 @@ export function TimeSheetManager() {
       if (!isValid(clockIn) || !isValid(clockOut)) return '0h 0m';
       
       let totalMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60);
-    
-    // Subtrair tempo de almoço
-    if (record.lunch_start && record.lunch_end) {
-      const lunchStart = new Date(record.lunch_start);
-      const lunchEnd = new Date(record.lunch_end);
-      const lunchMinutes = (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60);
-      totalMinutes -= lunchMinutes;
+      
+      // Subtrair tempo de almoço
+      if (record.lunch_start && record.lunch_end) {
+        const lunchStart = typeof record.lunch_start === 'string' ? parseISO(record.lunch_start) : new Date(record.lunch_start);
+        const lunchEnd = typeof record.lunch_end === 'string' ? parseISO(record.lunch_end) : new Date(record.lunch_end);
+        if (isValid(lunchStart) && isValid(lunchEnd)) {
+          const lunchMinutes = (lunchEnd.getTime() - lunchStart.getTime()) / (1000 * 60);
+          totalMinutes -= lunchMinutes;
+        }
+      }
+      
+      // Subtrair tempo de pausa
+      if (record.break_start && record.break_end) {
+        const breakStart = typeof record.break_start === 'string' ? parseISO(record.break_start) : new Date(record.break_start);
+        const breakEnd = typeof record.break_end === 'string' ? parseISO(record.break_end) : new Date(record.break_end);
+        if (isValid(breakStart) && isValid(breakEnd)) {
+          const breakMinutes = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60);
+          totalMinutes -= breakMinutes;
+        }
+      }
+      
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = Math.floor(totalMinutes % 60);
+      
+      return `${hours}h ${minutes}m`;
+    } catch {
+      return '0h 0m';
     }
-    
-    // Subtrair tempo de pausa
-    if (record.break_start && record.break_end) {
-      const breakStart = new Date(record.break_start);
-      const breakEnd = new Date(record.break_end);
-      const breakMinutes = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60);
-      totalMinutes -= breakMinutes;
-    }
-    
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.floor(totalMinutes % 60);
-    
-    return `${hours}h ${minutes}m`;
   };
 
   const getStatusBadge = (date: Date, record: TimeRecord | undefined) => {
