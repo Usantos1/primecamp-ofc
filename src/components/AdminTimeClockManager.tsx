@@ -104,10 +104,10 @@ export const AdminTimeClockManager = () => {
 
   const updateRecord = async (recordId: string, updates: Partial<TimeClockRecord>) => {
     try {
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
         .update(updates)
-        .eq('id', recordId);
+        .eq('id', recordId)
+        .execute();
 
       if (error) {
         toast({
@@ -132,10 +132,10 @@ export const AdminTimeClockManager = () => {
 
   const deleteRecord = async (recordId: string) => {
     try {
-      const { error } = await supabase
-        .from('time_clock')
+      const { error } = await from('time_clock')
         .delete()
-        .eq('id', recordId);
+        .eq('id', recordId)
+        .execute();
 
       if (error) {
         console.error('Delete error:', error);
