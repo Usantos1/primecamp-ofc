@@ -80,6 +80,10 @@ export const useReseller = () => {
 
   const getHeaders = () => {
     const token = authAPI.getToken();
+    console.log('[useReseller] Token obtido:', token ? `${token.substring(0, 20)}...` : 'NÃO ENCONTRADO');
+    if (!token) {
+      console.warn('[useReseller] ⚠️ Token não encontrado no localStorage!');
+    }
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -220,8 +224,12 @@ export const useReseller = () => {
     setLoading(true);
     setError(null);
     try {
+      const headers = getHeaders();
+      console.log('[useReseller] Buscando planos em:', `${API_BASE}/plans`);
+      console.log('[useReseller] Headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : 'NÃO DEFINIDO' });
+      
       const response = await fetch(`${API_BASE}/plans`, {
-        headers: getHeaders()
+        headers
       });
 
       if (!response.ok) {
