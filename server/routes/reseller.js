@@ -36,11 +36,19 @@ const authenticateToken = (req, res, next) => {
 
 // Aplicar autenticação e depois verificação de admin
 router.use((req, res, next) => {
-  console.log('[Revenda] Rota acessada:', req.method, req.path);
+  console.log('[Revenda] Rota acessada:', req.method, req.path, 'Headers:', JSON.stringify(req.headers));
   next();
 });
 router.use(authenticateToken);
+router.use((req, res, next) => {
+  console.log('[Revenda] Após autenticação, user:', req.user?.id);
+  next();
+});
 router.use(requireAdminCompany);
+router.use((req, res, next) => {
+  console.log('[Revenda] Após verificação admin, prosseguindo...');
+  next();
+});
 
 const pool = new Pool({
   host: process.env.DB_HOST,
