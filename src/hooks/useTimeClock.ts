@@ -179,26 +179,50 @@ export const useTimeClock = () => {
           return;
         }
 
-        // Timeout curto para resposta rápida
+        // Timeout aumentado para permitir GPS de alta precisão
         const timeoutId = setTimeout(() => {
+          console.warn('[TimeClock] GPS timeout após 10s');
           resolve({ location: 'Timeout' });
-        }, 5000); // 5 segundos máximo
+        }, 10000); // 10 segundos para GPS de alta precisão
 
         navigator.geolocation.getCurrentPosition(
           (position) => {
             clearTimeout(timeoutId);
-            const location = `${position.coords.latitude}, ${position.coords.longitude}`;
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy; // Precisão em metros
+            
+            console.log('[TimeClock] GPS obtido:', { 
+              lat, 
+              lng, 
+              accuracy: `${accuracy}m`,
+              highAccuracy: accuracy < 50 ? 'SIM (GPS)' : 'NÃO (Rede)'
+            });
+            
+            // Usar coordenadas com mais casas decimais para maior precisão
+            const location = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
             resolve({ location });
           },
           (error) => {
             clearTimeout(timeoutId);
-            console.warn('Geolocation error:', error);
-            resolve({ location: 'Permissão negada' });
+            console.warn('[TimeClock] Erro GPS:', error.code, error.message);
+            
+            // Códigos de erro do Geolocation API
+            // 1 = PERMISSION_DENIED
+            // 2 = POSITION_UNAVAILABLE
+            // 3 = TIMEOUT
+            if (error.code === 1) {
+              resolve({ location: 'Permissão negada' });
+            } else if (error.code === 2) {
+              resolve({ location: 'Indisponível' });
+            } else {
+              resolve({ location: 'Timeout' });
+            }
           },
           { 
-            enableHighAccuracy: false, // Mais rápido
-            timeout: 5000, // 5 segundos máximo
-            maximumAge: 60000 // Aceitar cache de até 1 minuto
+            enableHighAccuracy: true, // Ativar GPS de alta precisão
+            timeout: 10000, // 10 segundos para GPS
+            maximumAge: 0 // Sempre buscar nova localização (não usar cache)
           }
         );
       });
