@@ -849,7 +849,7 @@ app.post('/api/query/:table', async (req, res) => {
       // Verificar se já existe filtro de company_id no where
       const hasCompanyFilter = where && (
         (typeof where === 'object' && 'company_id' in where) ||
-        (Array.isArray(where) && where.some((w: any) => w.field === 'company_id' || w.company_id))
+        (Array.isArray(where) && where.some((w) => w.field === 'company_id' || w.company_id))
       );
       
       if (!hasCompanyFilter) {
@@ -1066,7 +1066,7 @@ app.post('/api/update/:table', async (req, res) => {
     if (needsCompanyFilter && req.user && req.companyId) {
       const hasCompanyFilter = where && (
         (typeof where === 'object' && 'company_id' in where) ||
-        (Array.isArray(where) && where.some((w: any) => w.field === 'company_id' || w.company_id))
+        (Array.isArray(where) && where.some((w) => w.field === 'company_id' || w.company_id))
       );
       
       if (!hasCompanyFilter) {
