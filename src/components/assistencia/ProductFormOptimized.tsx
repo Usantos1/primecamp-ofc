@@ -391,6 +391,10 @@ export function ProductFormOptimized({
     if (open) {
       if (produto) {
         // Modo edição
+        const precoCusto = Number(produto.preco_custo || produto.valor_compra || 0);
+        const valorVenda = Number(produto.valor_venda || produto.preco_venda || 0);
+        const valorParcelado = produto.valor_parcelado_6x ? Number(produto.valor_parcelado_6x) : undefined;
+        
         reset({
           nome: produto.nome || produto.descricao || '',
           codigo: produto.codigo,
@@ -400,14 +404,20 @@ export function ProductFormOptimized({
           modelo: produto.modelo || produto.modelo_compativel || '',
           grupo: produto.grupo || produto.categoria || '',
           qualidade: (produto as any).qualidade || '',
-          preco_custo: (produto.preco_custo || produto.valor_compra || 0),
-          valor_venda: produto.valor_venda || produto.preco_venda || 0,
-          valor_parcelado_6x: produto.valor_parcelado_6x,
+          preco_custo: precoCusto,
+          valor_venda: valorVenda,
+          valor_parcelado_6x: valorParcelado,
           margem_percentual: produto.margem_percentual || produto.margem_lucro,
           quantidade: produto.quantidade || produto.estoque_atual || 0,
           estoque_minimo: produto.estoque_minimo || 0,
           localizacao: produto.localizacao || '',
         });
+        
+        // Inicializar valores brutos formatados para exibição
+        setPrecoCustoRaw(precoCusto > 0 ? precoCusto.toFixed(2).replace('.', ',') : '');
+        setValorVendaRaw(valorVenda > 0 ? valorVenda.toFixed(2).replace('.', ',') : '');
+        setValorParceladoRaw(valorParcelado && valorParcelado > 0 ? valorParcelado.toFixed(2).replace('.', ',') : '');
+        
         setActiveTab('dados');
       } else {
         // Modo criação - buscar próximo código
