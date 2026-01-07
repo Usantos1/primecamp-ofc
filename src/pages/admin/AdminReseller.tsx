@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,12 +30,17 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useReseller, Company, Plan } from '@/hooks/useReseller';
+import { useAuth } from '@/contexts/AuthContext';
 import { Building2, Plus, Search, Edit, Eye, DollarSign, Users, Calendar, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+
 export default function AdminReseller() {
+  const { user, profile, isAdmin, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const { 
     loading, 
     error, 
@@ -84,13 +90,38 @@ export default function AdminReseller() {
     status: 'trial'
   });
 
+  // Verificar se é admin da empresa principal
   useEffect(() => {
-    loadCompanies();
-  }, [pagination.page, search, statusFilter]);
+    if (!authLoading) {
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      
+      // Verificar se é admin
+      if (!isAdmin || profile?.role !== 'admin') {
+        toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar esta página.');
+        navigate('/admin');
+        return;
+      }
+      
+      // Verificar se pertence à empresa admin (via API)
+      // O backend já faz essa verificação, mas vamos adicionar uma camada extra de segurança
+      // Se o backend retornar 403, o erro será tratado no hook useReseller
+    }
+  }, [user, profile, isAdmin, authLoading, navigate]);
 
   useEffect(() => {
-    loadPlans();
-  }, []);
+    if (user && isAdmin && profile?.role === 'admin') {
+      loadCompanies();
+    }
+  }, [pagination.page, search, statusFilter, user, isAdmin, profile]);
+
+  useEffect(() => {
+    if (user && isAdmin && profile?.role === 'admin') {
+      loadPlans();
+    }
+  }, [user, isAdmin, profile]);
 
   const loadCompanies = async () => {
     try {
@@ -100,6 +131,14 @@ export default function AdminReseller() {
         search: search || undefined,
         status: statusFilter === 'all' ? undefined : statusFilter || undefined
       });
+      
+      // Se retornar erro 403, significa que não é admin da empresa principal
+      if (data.error && data.error.includes('Acesso negado')) {
+        toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar esta página.');
+        navigate('/admin');
+        return;
+      }
+      
       setCompanies(data.data || []);
       if (data.pagination) {
         setPagination(prev => ({
@@ -109,6 +148,12 @@ export default function AdminReseller() {
         }));
       }
     } catch (err: any) {
+      // Se for erro 403, redirecionar
+      if (err.message?.includes('403') || err.message?.includes('Acesso negado')) {
+        toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar esta página.');
+        navigate('/admin');
+        return;
+      }
       toast.error(err.message || 'Erro ao carregar empresas');
     }
   };
@@ -117,8 +162,22 @@ export default function AdminReseller() {
     try {
       const plansData = await listPlans();
       console.log('[AdminReseller] Planos carregados:', plansData);
+      
+      // Se retornar erro 403, significa que não é admin da empresa principal
+      if (plansData?.error && plansData.error.includes('Acesso negado')) {
+        toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar esta página.');
+        navigate('/admin');
+        return;
+      }
+      
       setPlans(Array.isArray(plansData) ? plansData : []);
     } catch (err: any) {
+      // Se for erro 403, redirecionar
+      if (err.message?.includes('403') || err.message?.includes('Acesso negado')) {
+        toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar esta página.');
+        navigate('/admin');
+        return;
+      }
       console.error('Erro ao carregar planos:', err);
       toast.error('Erro ao carregar planos: ' + err.message);
       setPlans([]);
