@@ -436,7 +436,6 @@ router.get('/companies/:id/users', async (req, res) => {
         u.email,
         u.email_verified,
         u.created_at,
-        u.updated_at,
         COALESCE(p.display_name, '') as display_name,
         COALESCE(p.role, 'member') as role,
         p.phone
