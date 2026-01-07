@@ -135,10 +135,14 @@ export const useTimeClock = () => {
       
       if (data.error) throw new Error(data.reason || 'IP lookup failed');
       
-      // Construir endereço a partir dos dados
+      // Construir endereço completo a partir dos dados
       const parts = [];
+      if (data.road) parts.push(data.road);
+      if (data.house_number) parts.push(data.house_number);
+      if (data.neighbourhood || data.suburb) parts.push(data.neighbourhood || data.suburb);
       if (data.city) parts.push(data.city);
       if (data.region) parts.push(data.region);
+      if (data.postal) parts.push(`CEP: ${data.postal}`);
       if (data.country_name) parts.push(data.country_name);
       
       if (parts.length > 0) {
