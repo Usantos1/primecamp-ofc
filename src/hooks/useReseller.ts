@@ -111,8 +111,26 @@ export const useReseller = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao listar empresas');
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || `Erro ${response.status}: ${response.statusText}`;
+          if (response.status === 403) {
+            const enhancedError = new Error(errorMessage);
+            (enhancedError as any).is403 = true;
+            throw enhancedError;
+          }
+          throw new Error(errorMessage);
+        } else {
+          const errorText = await response.text();
+          const errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          if (response.status === 403) {
+            const enhancedError = new Error(errorMessage);
+            (enhancedError as any).is403 = true;
+            throw enhancedError;
+          }
+          throw new Error(errorMessage);
+        }
       }
 
       const data = await response.json();
