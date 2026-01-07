@@ -36,7 +36,8 @@ const authenticateToken = (req, res, next) => {
 
 // Aplicar autenticação e depois verificação de admin
 router.use((req, res, next) => {
-  console.log('[Revenda] Rota acessada:', req.method, req.path, 'Headers:', JSON.stringify(req.headers));
+  console.log('[Revenda] Rota acessada:', req.method, req.path);
+  console.log('[Revenda] Headers authorization:', req.headers['authorization'] ? 'SIM' : 'NÃO');
   next();
 });
 router.use(authenticateToken);
@@ -46,7 +47,7 @@ router.use((req, res, next) => {
 });
 router.use(requireAdminCompany);
 router.use((req, res, next) => {
-  console.log('[Revenda] Após verificação admin, prosseguindo...');
+  console.log('[Revenda] Após verificação admin, prosseguindo para:', req.method, req.path);
   next();
 });
 
