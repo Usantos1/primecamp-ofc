@@ -267,10 +267,22 @@ app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req,
 // Rotas de revenda (admin apenas) - ANTES do middleware global
 try {
   console.log('[Server] Registrando rotas de revenda em /api/admin/revenda');
+  console.log('[Server] Tipo de resellerRoutes:', typeof resellerRoutes);
+  console.log('[Server] resellerRoutes é função?', typeof resellerRoutes === 'function');
+  console.log('[Server] resellerRoutes:', resellerRoutes);
+  
+  if (!resellerRoutes) {
+    throw new Error('resellerRoutes é undefined ou null');
+  }
+  
   app.use('/api/admin/revenda', resellerRoutes);
   console.log('[Server] ✅ Rotas de revenda registradas com sucesso');
+  
+  // Listar rotas registradas (debug)
+  console.log('[Server] Rotas registradas no Express:', app._router?.stack?.filter(r => r.route || r.regexp?.test('/api/admin/revenda')).length || 'N/A');
 } catch (error) {
   console.error('[Server] ❌ Erro ao registrar rotas de revenda:', error);
+  console.error('[Server] Stack trace:', error.stack);
   app.use('/api/admin/revenda', (req, res) => {
     res.status(500).json({ error: 'Rotas de revenda não disponíveis', details: error.message });
   });
