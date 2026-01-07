@@ -198,6 +198,71 @@ app.get('/api/api-tokens/test', (req, res) => {
   res.json({ success: true, message: 'Rota de API tokens está funcionando!' });
 });
 
+// POST - Gerar códigos em massa para produtos sem código (autenticado)
+// IMPORTANTE: Esta rota deve estar ANTES do middleware global que pula /api/functions/*
+app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req, res) => {
+  try {
+    console.log('[Gerar Códigos] Iniciando geração de códigos para produtos sem código...');
+    
+    // Buscar o maior código existente
+    const maxCodigoResult = await pool.query(`
+      SELECT MAX(codigo) as max_codigo
+      FROM produtos
+      WHERE codigo IS NOT NULL
+    `);
+    
+    const maxCodigo = maxCodigoResult.rows[0]?.max_codigo || 0;
+    let proximoCodigo = maxCodigo + 1;
+    
+    // Buscar todos os produtos sem código
+    const produtosSemCodigoResult = await pool.query(`
+      SELECT id, nome
+      FROM produtos
+      WHERE codigo IS NULL
+      ORDER BY nome
+    `);
+    
+    const produtosSemCodigo = produtosSemCodigoResult.rows;
+    console.log(`[Gerar Códigos] Encontrados ${produtosSemCodigo.length} produtos sem código`);
+    
+    if (produtosSemCodigo.length === 0) {
+      return res.json({ 
+        success: true, 
+        message: 'Nenhum produto sem código encontrado',
+        atualizados: 0 
+      });
+    }
+    
+    // Atualizar cada produto com um código sequencial
+    let atualizados = 0;
+    for (const produto of produtosSemCodigo) {
+      try {
+        await pool.query(`
+          UPDATE produtos
+          SET codigo = $1
+          WHERE id = $2
+        `, [proximoCodigo, produto.id]);
+        
+        atualizados++;
+        proximoCodigo++;
+      } catch (error) {
+        console.error(`[Gerar Códigos] Erro ao atualizar produto ${produto.id}:`, error);
+      }
+    }
+    
+    console.log(`[Gerar Códigos] ${atualizados} produtos atualizados com sucesso`);
+    
+    res.json({ 
+      success: true, 
+      message: `${atualizados} produtos receberam códigos automaticamente`,
+      atualizados 
+    });
+  } catch (error) {
+    console.error('[Gerar Códigos] Erro:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*, /api/v1/*)
 // Os endpoints /api/functions/*, /api/whatsapp/* e /api/v1/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
