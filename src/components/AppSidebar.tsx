@@ -145,12 +145,22 @@ export function AppSidebar() {
   const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
   
   // Só mostrar Gestão de Revenda se for admin E pertencer à empresa principal
-  // VERIFICAÇÃO RIGOROSA: user?.company_id DEVE ser igual a ADMIN_COMPANY_ID
   const userCompanyId = user?.company_id;
   const isMainCompanyAdmin = userCompanyId === ADMIN_COMPANY_ID;
   const isAdminCompany = Boolean(isAdmin && profile?.role === 'admin' && isMainCompanyAdmin);
   
-  // Log para debug (sempre executado)
+  // DEBUG: Log SEMPRE executado (não condicional)
+  console.log('=== APP SIDEBAR DEBUG ===');
+  console.log('isAdmin:', isAdmin);
+  console.log('profile.role:', profile?.role);
+  console.log('user.company_id:', userCompanyId);
+  console.log('ADMIN_COMPANY_ID:', ADMIN_COMPANY_ID);
+  console.log('isMainCompanyAdmin:', isMainCompanyAdmin);
+  console.log('isAdminCompany:', isAdminCompany);
+  console.log('user object:', user);
+  console.log('========================');
+  
+  // Salvar em window para acesso direto
   if (typeof window !== 'undefined') {
     window.APP_SIDEBAR_DEBUG = {
       isAdmin,
@@ -161,7 +171,6 @@ export function AppSidebar() {
       isAdminCompany,
       userObject: user
     };
-    console.log('🔍 [AppSidebar DEBUG]', window.APP_SIDEBAR_DEBUG);
   }
   
   const adminItems = [
