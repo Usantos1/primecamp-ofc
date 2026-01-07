@@ -122,59 +122,52 @@ export const useTimeClock = () => {
 
   const getLocation = async (): Promise<{location: string, ip: string}> => {
     try {
-      // Get IP address with multiple fallbacks
-      let ipAddress = 'Não disponível';
-      try {
-        // Try multiple IP services as backup
-        const ipServices = [
-          'https://api.ipify.org?format=json',
-          'https://ipapi.co/json/',
-          'https://httpbin.org/ip'
-        ];
-        
-        for (const service of ipServices) {
-          try {
-            const response = await fetch(service);
-            const data = await response.json();
-            if (data.ip) {
-              ipAddress = data.ip;
-              break;
-            }
-            if (data.origin) { // httpbin format
-              ipAddress = data.origin;
-              break;
-            }
-          } catch (serviceError) {
-            console.warn(`Failed to get IP from ${service}:`, serviceError);
-            continue;
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to get IP:', error);
-      }
+      // Buscar IP e geolocalização em paralelo com timeout curto
+      const ipPromise = Promise.race([
+        fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) })
+          .then(res => res.json())
+          .then(data => data.ip || 'Não disponível')
+          .catch(() => 'Não disponível'),
+        new Promise<string>(resolve => setTimeout(() => resolve('Não disponível'), 3000))
+      ]);
 
-      // Then get geolocation
-      return new Promise((resolve) => {
-        if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = `${position.coords.latitude}, ${position.coords.longitude}`;
-          resolve({ location, ip: ipAddress });
-        },
-        (error) => {
-          console.warn('Geolocation error:', error);
-          resolve({ location: 'Permissão negada', ip: ipAddress });
-        },
-        { 
-          enableHighAccuracy: true,
-          timeout: 25000, // Enhanced for mobile devices
-          maximumAge: 30000 // Faster refresh for real-time accuracy
+      const geoPromise = new Promise<{location: string}>((resolve) => {
+        if (!navigator.geolocation) {
+          resolve({ location: 'Não suportado' });
+          return;
         }
-          );
-        } else {
-          resolve({ location: 'Não suportado', ip: ipAddress });
-        }
+
+        // Timeout curto para resposta rápida
+        const timeoutId = setTimeout(() => {
+          resolve({ location: 'Timeout' });
+        }, 5000); // 5 segundos máximo
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeoutId);
+            const location = `${position.coords.latitude}, ${position.coords.longitude}`;
+            resolve({ location });
+          },
+          (error) => {
+            clearTimeout(timeoutId);
+            console.warn('Geolocation error:', error);
+            resolve({ location: 'Permissão negada' });
+          },
+          { 
+            enableHighAccuracy: false, // Mais rápido
+            timeout: 5000, // 5 segundos máximo
+            maximumAge: 60000 // Aceitar cache de até 1 minuto
+          }
+        );
       });
+
+      // Aguardar ambos em paralelo
+      const [ipAddress, geoResult] = await Promise.all([ipPromise, geoPromise]);
+      
+      return { 
+        location: geoResult.location, 
+        ip: ipAddress 
+      };
     } catch (error) {
       console.error('Error in getLocation:', error);
       return { location: 'Erro', ip: 'Não disponível' };
