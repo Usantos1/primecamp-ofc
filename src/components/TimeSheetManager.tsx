@@ -82,7 +82,31 @@ export function TimeSheetManager() {
         };
       });
       
-      setMonthlyRecords(formattedRecords);
+      // Remover duplicatas: manter apenas o registro mais recente para cada data
+      const uniqueRecords = formattedRecords.reduce((acc: TimeRecord[], record: TimeRecord) => {
+        const existingIndex = acc.findIndex(r => {
+          const rDate = typeof r.date === 'string' ? r.date.split('T')[0] : format(new Date(r.date), 'yyyy-MM-dd');
+          const recordDate = typeof record.date === 'string' ? record.date.split('T')[0] : format(new Date(record.date), 'yyyy-MM-dd');
+          return rDate === recordDate && r.user_id === record.user_id;
+        });
+        
+        if (existingIndex === -1) {
+          acc.push(record);
+        } else {
+          // Se já existe, manter o mais recente (comparar created_at ou updated_at)
+          const existing = acc[existingIndex];
+          const existingDate = existing.updated_at || existing.created_at || '';
+          const recordDate = record.updated_at || record.created_at || '';
+          if (recordDate > existingDate) {
+            acc[existingIndex] = record;
+          }
+        }
+        
+        return acc;
+      }, []);
+      
+      console.log('[TimeSheetManager] Registros encontrados:', formattedRecords.length, 'Únicos:', uniqueRecords.length);
+      setMonthlyRecords(uniqueRecords);
     } catch (error) {
       console.error('Erro ao buscar registros:', error);
     } finally {
