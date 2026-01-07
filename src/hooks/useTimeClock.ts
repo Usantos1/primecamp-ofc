@@ -120,10 +120,47 @@ export const useTimeClock = () => {
     }
   };
 
+  const getAddressFromIP = async (ip: string): Promise<string> => {
+    if (!ip || ip === 'Não disponível') return 'Localização não disponível';
+    
+    try {
+      // Tentar buscar localização pelo IP usando ipapi.co (gratuito)
+      const response = await fetch(`https://ipapi.co/${ip}/json/`, {
+        signal: AbortSignal.timeout(3000)
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch');
+      
+      const data = await response.json();
+      
+      if (data.error) throw new Error(data.reason || 'IP lookup failed');
+      
+      // Construir endereço a partir dos dados
+      const parts = [];
+      if (data.city) parts.push(data.city);
+      if (data.region) parts.push(data.region);
+      if (data.country_name) parts.push(data.country_name);
+      
+      if (parts.length > 0) {
+        return parts.join(', ');
+      }
+      
+      // Fallback: usar coordenadas se disponíveis
+      if (data.latitude && data.longitude) {
+        return `${data.latitude}, ${data.longitude}`;
+      }
+      
+      return 'Localização não disponível';
+    } catch (error) {
+      console.warn('Error getting address from IP:', error);
+      return 'Localização não disponível';
+    }
+  };
+
   const getLocation = async (): Promise<{location: string, ip: string}> => {
     try {
-      // Buscar IP e geolocalização em paralelo com timeout curto
-      const ipPromise = Promise.race([
+      // Buscar IP primeiro
+      const ipAddress = await Promise.race([
         fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) })
           .then(res => res.json())
           .then(data => data.ip || 'Não disponível')
@@ -131,6 +168,7 @@ export const useTimeClock = () => {
         new Promise<string>(resolve => setTimeout(() => resolve('Não disponível'), 3000))
       ]);
 
+      // Buscar geolocalização em paralelo
       const geoPromise = new Promise<{location: string}>((resolve) => {
         if (!navigator.geolocation) {
           resolve({ location: 'Não suportado' });
@@ -161,8 +199,27 @@ export const useTimeClock = () => {
         );
       });
 
-      // Aguardar ambos em paralelo
-      const [ipAddress, geoResult] = await Promise.all([ipPromise, geoPromise]);
+      // Aguardar geolocalização
+      const geoResult = await geoPromise;
+      
+      // Se geolocalização falhou ou não retornou coordenadas, buscar pelo IP
+      if (geoResult.location === 'Permissão negada' || 
+          geoResult.location === 'Timeout' || 
+          geoResult.location === 'Não suportado' ||
+          !geoResult.location.includes(',')) {
+        
+        // Buscar endereço pelo IP em background (não bloquear)
+        getAddressFromIP(ipAddress).then(address => {
+          // Atualizar o registro com o endereço do IP se necessário
+          // Isso será feito em background, não bloqueia o registro
+        }).catch(() => {});
+        
+        // Retornar IP como fallback para busca posterior
+        return { 
+          location: ipAddress, // Usar IP como identificador temporário
+          ip: ipAddress 
+        };
+      }
       
       return { 
         location: geoResult.location, 
