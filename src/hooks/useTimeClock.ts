@@ -263,7 +263,25 @@ export const useTimeClock = () => {
         }
       }
 
-      const { location, ip } = locationData;
+      let { location, ip } = locationData;
+
+      // Se geolocalização falhou, tentar buscar endereço pelo IP antes de salvar
+      if ((!location || location === 'Permissão negada' || location === 'Timeout' || location === 'Não suportado' || !location.includes(',')) && ip && ip !== 'Não disponível') {
+        // Tentar buscar endereço pelo IP rapidamente (timeout de 2s)
+        try {
+          const addressFromIP = await Promise.race([
+            getAddressFromIP(ip),
+            new Promise<string>(resolve => setTimeout(() => resolve(ip), 2000))
+          ]);
+          if (addressFromIP && addressFromIP !== 'Localização não disponível' && addressFromIP !== ip) {
+            location = addressFromIP;
+          } else {
+            location = ip; // Usar IP como fallback
+          }
+        } catch {
+          location = ip; // Usar IP como fallback
+        }
+      }
 
       let data, error;
       if (existingRecord.data?.id) {
@@ -272,7 +290,7 @@ export const useTimeClock = () => {
           .eq('id', existingRecord.data.id)
           .update({
             clock_in: now,
-            location,
+            location: location || ip,
             ip_address: ip
           })
           .execute();
@@ -285,7 +303,7 @@ export const useTimeClock = () => {
             user_id: user.id,
             date: today,
             clock_in: now,
-            location,
+            location: location || ip,
             ip_address: ip,
             status: 'pending'
           })
@@ -302,6 +320,20 @@ export const useTimeClock = () => {
           variant: "destructive"
         });
         return;
+      }
+
+      // Se ainda não temos endereço completo, tentar buscar em background e atualizar
+      if (data?.id && location && (!location.includes(',') || location === ip) && ip && ip !== 'Não disponível') {
+        getAddressFromIP(ip).then(address => {
+          if (address && address !== 'Localização não disponível' && address !== ip) {
+            from('time_clock')
+              .eq('id', data.id)
+              .update({ location: address })
+              .execute()
+              .then(() => fetchRecords())
+              .catch(() => {});
+          }
+        }).catch(() => {});
       }
 
       // Mostrar sucesso imediatamente
