@@ -1,0 +1,325 @@
+import { useState, useEffect } from 'react';
+import { authAPI } from '@/integrations/auth/api-client';
+
+// URL base da API
+const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+  ? import.meta.env.VITE_API_URL 
+  : 'https://api.primecamp.cloud/api';
+
+export interface Company {
+  id: string;
+  name: string;
+  cnpj?: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  status: 'active' | 'suspended' | 'cancelled' | 'trial';
+  trial_ends_at?: string;
+  settings?: any;
+  logo_url?: string;
+  created_at: string;
+  updated_at: string;
+  subscription_status?: string;
+  subscription_expires_at?: string;
+  plan_name?: string;
+  plan_code?: string;
+  user_count?: number;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  price_monthly: number;
+  price_yearly?: number;
+  max_users: number;
+  max_storage_gb: number;
+  max_orders_per_month: number;
+  features: any;
+  active: boolean;
+}
+
+export interface Subscription {
+  id: string;
+  company_id: string;
+  plan_id: string;
+  billing_cycle: 'monthly' | 'yearly';
+  started_at: string;
+  expires_at: string;
+  cancelled_at?: string;
+  status: 'active' | 'expired' | 'cancelled' | 'pending_payment';
+  amount: number;
+  currency: string;
+}
+
+export interface Payment {
+  id: string;
+  company_id: string;
+  subscription_id?: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  pix_code?: string;
+  pix_qr_code?: string;
+  pix_expires_at?: string;
+  status: 'pending' | 'paid' | 'expired' | 'cancelled' | 'refunded';
+  paid_at?: string;
+  external_id?: string;
+  created_at: string;
+}
+
+const API_BASE = `${API_URL}/admin/revenda`;
+
+export const useReseller = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const getHeaders = () => {
+    const token = authAPI.getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
+  // Listar empresas
+  const listCompanies = async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.status) queryParams.append('status', params.status);
+
+      const response = await fetch(`${API_BASE}/companies?${queryParams}`, {
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao listar empresas');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Obter empresa específica
+  const getCompany = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${id}`, {
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao obter empresa');
+        } else {
+          const text = await response.text();
+          throw new Error(`Erro ${response.status}: ${text.substring(0, 100)}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Criar empresa
+  const createCompany = async (companyData: Partial<Company> & { plan_id?: string; billing_cycle?: 'monthly' | 'yearly' }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(companyData)
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao criar empresa');
+        } else {
+          const text = await response.text();
+          throw new Error(`Erro ${response.status}: ${text.substring(0, 100)}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Atualizar empresa
+  const updateCompany = async (id: string, updates: Partial<Company>) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(updates)
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao atualizar empresa');
+        } else {
+          const text = await response.text();
+          throw new Error(`Erro ${response.status}: ${text.substring(0, 100)}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Listar planos
+  const listPlans = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/plans`, {
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao listar planos');
+        } else {
+          const text = await response.text();
+          throw new Error(`Erro ${response.status}: ${text.substring(0, 100)}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Criar/atualizar assinatura
+  const createSubscription = async (companyId: string, planId: string, billingCycle: 'monthly' | 'yearly' = 'monthly') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${companyId}/subscription`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          plan_id: planId,
+          billing_cycle: billingCycle
+        })
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao criar assinatura');
+        } else {
+          const text = await response.text();
+          throw new Error(`Erro ${response.status}: ${text.substring(0, 100)}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Listar pagamentos de uma empresa
+  const listPayments = async (companyId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/companies/${companyId}/payments`, {
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro ao listar pagamentos');
+        } else {
+          const text = await response.text();
+          throw new Error(`Erro ${response.status}: ${text.substring(0, 100)}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.data;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    loading,
+    error,
+    listCompanies,
+    getCompany,
+    createCompany,
+    updateCompany,
+    listPlans,
+    createSubscription,
+    listPayments
+  };
+};
+
