@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Search, Edit, Clock, MapPin, Trash2, FileDown, Calendar, FileText } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';
@@ -381,13 +381,35 @@ export const AdminTimeClockManager = () => {
                         {getUserName(record.user_id)}
                       </TableCell>
                       <TableCell>
-                        {format(new Date(record.date + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}
+                        {(() => {
+                          try {
+                            const dateStr = record.date ? (typeof record.date === 'string' ? record.date.split('T')[0] : format(new Date(record.date), 'yyyy-MM-dd')) : '';
+                            const date = dateStr ? parseISO(dateStr + 'T00:00:00') : null;
+                            return date && isValid(date) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : '-';
+                          } catch {
+                            return '-';
+                          }
+                        })()}
                       </TableCell>
                       <TableCell>
-                        {record.clock_in ? format(new Date(record.clock_in), 'HH:mm') : '-'}
+                        {record.clock_in ? (() => {
+                          try {
+                            const date = typeof record.clock_in === 'string' ? parseISO(record.clock_in) : new Date(record.clock_in);
+                            return isValid(date) ? format(date, 'HH:mm') : '-';
+                          } catch {
+                            return '-';
+                          }
+                        })() : '-'}
                       </TableCell>
                       <TableCell>
-                        {record.clock_out ? format(new Date(record.clock_out), 'HH:mm') : '-'}
+                        {record.clock_out ? (() => {
+                          try {
+                            const date = typeof record.clock_out === 'string' ? parseISO(record.clock_out) : new Date(record.clock_out);
+                            return isValid(date) ? format(date, 'HH:mm') : '-';
+                          } catch {
+                            return '-';
+                          }
+                        })() : '-'}
                       </TableCell>
                       <TableCell>{record.total_hours || '-'}</TableCell>
                       <TableCell>

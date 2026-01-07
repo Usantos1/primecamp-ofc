@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, isSameDay, startOfWeek, endOfWeek, addDays, isSameMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSunday, isSameDay, startOfWeek, endOfWeek, addDays, isSameMonth, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Clock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -140,7 +140,16 @@ export function TimeSheetManager() {
         recordDateStr = record.date.split('T')[0];
       } else {
         // Se for Date object, formatar
-        recordDateStr = format(new Date(record.date), 'yyyy-MM-dd');
+        try {
+          const date = new Date(record.date);
+          if (isValid(date)) {
+            recordDateStr = format(date, 'yyyy-MM-dd');
+          } else {
+            return false;
+          }
+        } catch {
+          return false;
+        }
       }
       
       return recordDateStr === targetDateStr;
@@ -149,16 +158,25 @@ export function TimeSheetManager() {
 
   const formatTime = (timeString: string | null) => {
     if (!timeString) return '--:--';
-    return format(new Date(timeString), 'HH:mm');
+    try {
+      const date = typeof timeString === 'string' ? parseISO(timeString) : new Date(timeString);
+      if (!isValid(date)) return '--:--';
+      return format(date, 'HH:mm');
+    } catch {
+      return '--:--';
+    }
   };
 
   const calculateTotalHours = (record: TimeRecord | undefined) => {
     if (!record?.clock_in || !record?.clock_out) return '0h 0m';
     
-    const clockIn = new Date(record.clock_in);
-    const clockOut = new Date(record.clock_out);
-    
-    let totalMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60);
+    try {
+      const clockIn = typeof record.clock_in === 'string' ? parseISO(record.clock_in) : new Date(record.clock_in);
+      const clockOut = typeof record.clock_out === 'string' ? parseISO(record.clock_out) : new Date(record.clock_out);
+      
+      if (!isValid(clockIn) || !isValid(clockOut)) return '0h 0m';
+      
+      let totalMinutes = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60);
     
     // Subtrair tempo de almoço
     if (record.lunch_start && record.lunch_end) {
