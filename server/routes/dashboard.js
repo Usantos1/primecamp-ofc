@@ -95,39 +95,51 @@ router.get('/company/:companyId/metrics', async (req, res) => {
       [companyId]
     );
 
-    // Contar produtos
-    const productsCount = await pool.query(
-      'SELECT COUNT(*) FROM produtos WHERE company_id = $1',
-      [companyId]
-    );
+    // Contar produtos (com tratamento de erro)
+    let productsCount = { rows: [{ count: '0' }] };
+    try {
+      productsCount = await pool.query(
+        'SELECT COUNT(*) FROM produtos WHERE company_id = $1',
+        [companyId]
+      );
+    } catch (e) { console.log('[Dashboard] Erro ao contar produtos:', e.message); }
 
     // Contar ordens de serviço (total e do período)
-    const ordersTotal = await pool.query(
-      'SELECT COUNT(*) FROM ordens_servico WHERE company_id = $1',
-      [companyId]
-    );
-
-    const ordersPeriod = await pool.query(
-      'SELECT COUNT(*) FROM ordens_servico WHERE company_id = $1 AND created_at >= $2',
-      [companyId, startDate]
-    );
+    let ordersTotal = { rows: [{ count: '0' }] };
+    let ordersPeriod = { rows: [{ count: '0' }] };
+    try {
+      ordersTotal = await pool.query(
+        'SELECT COUNT(*) FROM ordens_servico WHERE company_id = $1',
+        [companyId]
+      );
+      ordersPeriod = await pool.query(
+        'SELECT COUNT(*) FROM ordens_servico WHERE company_id = $1 AND created_at >= $2',
+        [companyId, startDate]
+      );
+    } catch (e) { console.log('[Dashboard] Erro ao contar ordens:', e.message); }
 
     // Contar vendas (total e do período)
-    const salesTotal = await pool.query(
-      'SELECT COUNT(*), COALESCE(SUM(total), 0) as total_value FROM vendas WHERE company_id = $1',
-      [companyId]
-    );
-
-    const salesPeriod = await pool.query(
-      'SELECT COUNT(*), COALESCE(SUM(total), 0) as total_value FROM vendas WHERE company_id = $1 AND created_at >= $2',
-      [companyId, startDate]
-    );
+    let salesTotal = { rows: [{ count: '0', total_value: '0' }] };
+    let salesPeriod = { rows: [{ count: '0', total_value: '0' }] };
+    try {
+      salesTotal = await pool.query(
+        'SELECT COUNT(*), COALESCE(SUM(total), 0) as total_value FROM vendas WHERE company_id = $1',
+        [companyId]
+      );
+      salesPeriod = await pool.query(
+        'SELECT COUNT(*), COALESCE(SUM(total), 0) as total_value FROM vendas WHERE company_id = $1 AND created_at >= $2',
+        [companyId, startDate]
+      );
+    } catch (e) { console.log('[Dashboard] Erro ao contar vendas:', e.message); }
 
     // Contar clientes
-    const clientsCount = await pool.query(
-      'SELECT COUNT(*) FROM clientes WHERE company_id = $1',
-      [companyId]
-    );
+    let clientsCount = { rows: [{ count: '0' }] };
+    try {
+      clientsCount = await pool.query(
+        'SELECT COUNT(*) FROM clientes WHERE company_id = $1',
+        [companyId]
+      );
+    } catch (e) { console.log('[Dashboard] Erro ao contar clientes:', e.message); }
 
     // Calcular limites e uso
     const limits = {

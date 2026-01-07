@@ -83,16 +83,29 @@ router.post('/create', authenticateToken, async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
+    // Primeiro buscar ou criar uma venda dummy para o pagamento de assinatura
+    let saleId = null;
+    try {
+      const saleResult = await pool.query(
+        `SELECT id FROM vendas WHERE company_id = $1 LIMIT 1`,
+        [company_id]
+      );
+      if (saleResult.rows.length > 0) {
+        saleId = saleResult.rows[0].id;
+      }
+    } catch (e) {
+      console.log('[Payments] Tabela vendas não encontrada, criando pagamento sem sale_id');
+    }
+
     // Criar registro de pagamento
     const result = await pool.query(
       `INSERT INTO payments (
         company_id, subscription_id, valor, forma_pagamento, 
         status, external_id, pix_code, pix_qr_code, expires_at,
         description, created_at, sale_id, troco
-      ) VALUES ($1, $2, $3, 'pix', 'pending', $4, $5, $6, $7, $8, NOW(), 
-        (SELECT id FROM vendas WHERE company_id = $1 LIMIT 1), 0)
+      ) VALUES ($1, $2, $3, 'pix', 'pending', $4, $5, $6, $7, $8, NOW(), $9, 0)
       RETURNING *, valor as amount`,
-      [company_id, subscription_id, amount, externalId, pixCode, qrCodeBase64, expiresAt, description]
+      [company_id, subscription_id, amount, externalId, pixCode, qrCodeBase64, expiresAt, description, saleId]
     );
 
     res.json({
