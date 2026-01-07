@@ -243,7 +243,13 @@ router.get('/company/:companyId', authenticateToken, async (req, res) => {
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT p.*, s.plan_id, pl.name as plan_name
+      SELECT p.id, p.company_id, p.amount, p.payment_method, p.status, 
+             p.external_id, p.created_at,
+             COALESCE(p.subscription_id, NULL) as subscription_id,
+             COALESCE(p.pix_code, NULL) as pix_code,
+             COALESCE(p.description, 'Pagamento') as description,
+             COALESCE(p.paid_at, NULL) as paid_at,
+             COALESCE(pl.name, 'N/A') as plan_name
       FROM payments p
       LEFT JOIN subscriptions s ON s.id = p.subscription_id
       LEFT JOIN plans pl ON pl.id = s.plan_id

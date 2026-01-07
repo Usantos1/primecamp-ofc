@@ -63,11 +63,11 @@ router.get('/company/:companyId/metrics', async (req, res) => {
         s.status as subscription_status,
         s.expires_at,
         p.name as plan_name,
-        p.max_users,
-        p.max_products,
-        p.max_orders,
-        p.price_monthly,
-        p.price_yearly
+        COALESCE(p.max_users, 999999) as max_users,
+        COALESCE(p.max_products, 999999) as max_products,
+        COALESCE(p.max_orders, 999999) as max_orders,
+        COALESCE(p.price_monthly, 0) as price_monthly,
+        COALESCE(p.price_yearly, 0) as price_yearly
       FROM companies c
       LEFT JOIN subscriptions s ON s.company_id = c.id AND s.status IN ('active', 'trial', 'past_due')
       LEFT JOIN plans p ON p.id = s.plan_id
