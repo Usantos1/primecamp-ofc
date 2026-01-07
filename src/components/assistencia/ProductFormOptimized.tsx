@@ -7,14 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Produto } from '@/types/assistencia';
 import { parseBRLInput, maskBRL, formatBRL } from '@/utils/currency';
 import { from } from '@/integrations/db/client';
-import { Barcode, Package, DollarSign, Warehouse, History, Plus, X } from 'lucide-react';
+import { Barcode, Package, DollarSign, Warehouse, History, Plus, X, Check, ChevronsUpDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
+import { cn } from '@/lib/utils';
 
 interface ProductFormOptimizedProps {
   open: boolean;
@@ -308,6 +312,23 @@ export function ProductFormOptimized({
   const [activeTab, setActiveTab] = useState('dados');
   const [showNewGrupoDialog, setShowNewGrupoDialog] = useState(false);
   const [newGrupoNome, setNewGrupoNome] = useState('');
+  
+  // Estados para marcas
+  const [marcaOpen, setMarcaOpen] = useState(false);
+  const [showNewMarcaDialog, setShowNewMarcaDialog] = useState(false);
+  const [newMarcaNome, setNewMarcaNome] = useState('');
+  const { marcas: marcasFromHook, createMarca } = useMarcasSupabase();
+  
+  // Estados para modelos
+  const [modeloOpen, setModeloOpen] = useState(false);
+  const [showNewModeloDialog, setShowNewModeloDialog] = useState(false);
+  const [newModeloNome, setNewModeloNome] = useState('');
+  const { modelos: modelosFromHook, createModelo } = useModelosSupabase();
+  
+  // Usar marcas e modelos do hook se disponíveis, senão usar props
+  const marcasList = marcasFromHook.length > 0 ? marcasFromHook : (marcas || []);
+  const modelosList = modelosFromHook.length > 0 ? modelosFromHook : (modelos || []);
+  
   const isEditing = Boolean(produto?.id);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
@@ -410,6 +431,39 @@ export function ProductFormOptimized({
     const codigoAtual = codigo || codigoBarras;
     const ean13 = gerarEAN13(codigoAtual);
     setValue('codigo_barras', ean13);
+  };
+
+  // Criar nova marca
+  const handleCreateNewMarca = async () => {
+    if (!newMarcaNome.trim()) return;
+    
+    try {
+      const novaMarca = await createMarca(newMarcaNome.trim());
+      setValue('marca', novaMarca.nome);
+      setShowNewMarcaDialog(false);
+      setNewMarcaNome('');
+    } catch (error) {
+      console.error('[handleCreateNewMarca] Erro:', error);
+    }
+  };
+
+  // Criar novo modelo
+  const handleCreateNewModelo = async () => {
+    if (!newModeloNome.trim() || !watch('marca')) return;
+    
+    try {
+      const marcaSelecionada = marcasList.find(m => m.nome === watch('marca'));
+      if (!marcaSelecionada) {
+        throw new Error('Marca não encontrada');
+      }
+      
+      const novoModelo = await createModelo(marcaSelecionada.id, newModeloNome.trim());
+      setValue('modelo', novoModelo.nome);
+      setShowNewModeloDialog(false);
+      setNewModeloNome('');
+    } catch (error) {
+      console.error('[handleCreateNewModelo] Erro:', error);
+    }
   };
 
   // Converter valor bruto (string com vírgula) para número
@@ -653,40 +707,213 @@ export function ProductFormOptimized({
 
                 <div>
                   <Label htmlFor="marca">Marca</Label>
-                  <Select
-                    value={watch('marca') || ''}
-                    onValueChange={(value) => setValue('marca', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a marca" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {marcas.map((marca) => (
-                        <SelectItem key={marca.id || marca} value={marca.nome || marca}>
-                          {marca.nome || marca}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={marcaOpen} onOpenChange={setMarcaOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={marcaOpen}
+                        className="w-full justify-between text-base md:text-sm"
+                      >
+                        {watch('marca') || 'Selecione a marca'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar marca..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhuma marca encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {marcasList.map((marca) => (
+                              <CommandItem
+                                key={marca.id || marca}
+                                value={marca.nome || marca}
+                                onSelect={() => {
+                                  setValue('marca', marca.nome || marca);
+                                  setMarcaOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    watch('marca') === (marca.nome || marca) ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {marca.nome || marca}
+                              </CommandItem>
+                            ))}
+                            <CommandItem
+                              value="__new__"
+                              onSelect={() => {
+                                setMarcaOpen(false);
+                                setShowNewMarcaDialog(true);
+                              }}
+                              className="text-primary font-semibold"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Criar nova marca
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  {/* Dialog para criar nova marca */}
+                  <Dialog open={showNewMarcaDialog} onOpenChange={setShowNewMarcaDialog}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Nova Marca</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="new-marca-nome">Nome da Marca *</Label>
+                          <Input
+                            id="new-marca-nome"
+                            value={newMarcaNome}
+                            onChange={(e) => setNewMarcaNome(e.target.value)}
+                            placeholder="Ex: Samsung"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleCreateNewMarca();
+                              }
+                            }}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowNewMarcaDialog(false);
+                              setNewMarcaNome('');
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleCreateNewMarca}
+                            disabled={!newMarcaNome.trim()}
+                          >
+                            Criar e Selecionar
+                          </Button>
+                        </DialogFooter>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 <div>
                   <Label htmlFor="modelo">Modelo</Label>
-                  <Select
-                    value={watch('modelo') || ''}
-                    onValueChange={(value) => setValue('modelo', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o modelo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelos.map((modelo) => (
-                        <SelectItem key={modelo.id || modelo} value={modelo.nome || modelo}>
-                          {modelo.nome || modelo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={modeloOpen} onOpenChange={setModeloOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={modeloOpen}
+                        className="w-full justify-between text-base md:text-sm"
+                      >
+                        {watch('modelo') || 'Selecione o modelo'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar modelo..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {modelosList
+                              .filter((modelo) => {
+                                const marcaSelecionada = watch('marca');
+                                if (!marcaSelecionada) return true;
+                                // Filtrar modelos pela marca selecionada
+                                const marca = marcasList.find(m => m.nome === marcaSelecionada);
+                                if (!marca) return true;
+                                return modelo.marca_id === marca.id;
+                              })
+                              .map((modelo) => (
+                                <CommandItem
+                                  key={modelo.id || modelo}
+                                  value={modelo.nome || modelo}
+                                  onSelect={() => {
+                                    setValue('modelo', modelo.nome || modelo);
+                                    setModeloOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      watch('modelo') === (modelo.nome || modelo) ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {modelo.nome || modelo}
+                                </CommandItem>
+                              ))}
+                            <CommandItem
+                              value="__new__"
+                              onSelect={() => {
+                                setModeloOpen(false);
+                                setShowNewModeloDialog(true);
+                              }}
+                              className="text-primary font-semibold"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Criar novo modelo
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  {/* Dialog para criar novo modelo */}
+                  <Dialog open={showNewModeloDialog} onOpenChange={setShowNewModeloDialog}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Novo Modelo</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="new-modelo-nome">Nome do Modelo *</Label>
+                          <Input
+                            id="new-modelo-nome"
+                            value={newModeloNome}
+                            onChange={(e) => setNewModeloNome(e.target.value)}
+                            placeholder="Ex: Galaxy S21"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleCreateNewModelo();
+                              }
+                            }}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowNewModeloDialog(false);
+                              setNewModeloNome('');
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleCreateNewModelo}
+                            disabled={!newModeloNome.trim() || !watch('marca')}
+                          >
+                            Criar e Selecionar
+                          </Button>
+                        </DialogFooter>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 <div>
