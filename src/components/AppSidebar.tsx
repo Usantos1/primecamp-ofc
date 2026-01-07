@@ -28,6 +28,7 @@ import {
   UserCog,
   Megaphone,
   Store,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -136,6 +137,14 @@ export function AppSidebar() {
   // ═══════════════════════════════════════════════════════════════
   const marketingItems = [
     { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone },
+  ];
+
+  // ═══════════════════════════════════════════════════════════════
+  // MINHA EMPRESA - Dashboard e Assinatura
+  // ═══════════════════════════════════════════════════════════════
+  const empresaItems = [
+    { label: "Minha Empresa", path: "/minha-empresa", icon: Building2 },
+    { label: "Assinatura", path: "/assinatura", icon: CreditCard },
   ];
 
   // ═══════════════════════════════════════════════════════════════
@@ -266,6 +275,9 @@ export function AppSidebar() {
 
               {/* ══════ MARKETING ══════ */}
               {renderSection("Marketing", Megaphone, marketingItems)}
+
+              {/* ══════ MINHA EMPRESA ══════ */}
+              {renderSection("Minha Empresa", Building2, empresaItems)}
 
               {/* Separador */}
               {adminItems.length > 0 && renderSeparator()}

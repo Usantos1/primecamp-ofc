@@ -49,6 +49,8 @@ import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
 import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
 import AdminReseller from "./pages/admin/AdminReseller";
+import CompanyDashboardPage from "./pages/CompanyDashboardPage";
+import SubscriptionPage from "./pages/SubscriptionPage";
 import { MarketingLayout, MarketingDashboard, MarketingCampanhas, MarketingLeads, MarketingMetricas, MarketingMetas } from "./pages/admin/marketing";
 import EstruturaOrganizacional from "./pages/admin/EstruturaOrganizacional";
 import CadastrosBase from "./pages/admin/CadastrosBase";
@@ -141,6 +143,8 @@ const App = () => (
               <Route path="/admin/disc" element={<PermissionRoute permission="admin.disc"><AdminDisc /></PermissionRoute>} />
               <Route path="/admin/financeiro/*" element={<AdminFinanceiro />} />
               <Route path="/admin/revenda" element={<ProtectedRoute><AdminReseller /></ProtectedRoute>} />
+              <Route path="/minha-empresa" element={<ProtectedRoute><CompanyDashboardPage /></ProtectedRoute>} />
+              <Route path="/assinatura" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
               <Route path="/admin/marketing" element={<MarketingLayout />}>
                 <Route index element={<MarketingDashboard />} />
                 <Route path="campanhas" element={<MarketingCampanhas />} />
