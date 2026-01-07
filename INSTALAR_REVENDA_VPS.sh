@@ -34,39 +34,33 @@ echo ""
 # 2. Executar script SQL
 echo -e "${YELLOW}2. Executando script SQL do sistema de revenda...${NC}"
 
-# Tentar diferentes métodos de conexão PostgreSQL
-if psql -U postgres -d postgres -h 72.62.106.76 -f INSTALAR_SISTEMA_REVENDA_COMPLETO.sql 2>/dev/null; then
-    echo -e "${GREEN}✓ Script SQL executado com sucesso (método 1)${NC}"
-elif PGPASSWORD="${DB_PASSWORD:-postgres}" psql -U postgres -d postgres -h 72.62.106.76 -f INSTALAR_SISTEMA_REVENDA_COMPLETO.sql 2>/dev/null; then
-    echo -e "${GREEN}✓ Script SQL executado com sucesso (método 2)${NC}"
-elif sudo -u postgres psql -d postgres -f INSTALAR_SISTEMA_REVENDA_COMPLETO.sql 2>/dev/null; then
-    echo -e "${GREEN}✓ Script SQL executado com sucesso (método 3)${NC}"
+export PGPASSWORD='AndinhoSurf2015@'
+psql -U postgres -d postgres -h 72.62.106.76 -p 5432 -f INSTALAR_SISTEMA_REVENDA_COMPLETO.sql
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Script SQL executado com sucesso${NC}"
 else
-    echo -e "${RED}ERRO: Não foi possível executar script SQL${NC}"
-    echo -e "${YELLOW}Tentando executar manualmente...${NC}"
-    echo ""
-    echo "Execute manualmente:"
-    echo "  psql -U postgres -d postgres -f INSTALAR_SISTEMA_REVENDA_COMPLETO.sql"
-    echo ""
-    read -p "Pressione Enter após executar o SQL manualmente..."
+    echo -e "${RED}ERRO: Falha ao executar script SQL${NC}"
+    exit 1
 fi
 
 echo ""
 
 # 3. Verificar instalação
 echo -e "${YELLOW}3. Verificando instalação...${NC}"
-if psql -U postgres -d postgres -h 72.62.106.76 -c "SELECT COUNT(*) FROM companies;" > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Tabelas criadas com sucesso${NC}"
-    
-    # Mostrar estatísticas
-    psql -U postgres -d postgres -h 72.62.106.76 -c "
-    SELECT 
-        'Empresas' as tabela, COUNT(*) as registros FROM companies
-    UNION ALL
-    SELECT 'Planos', COUNT(*) FROM plans
-    UNION ALL
-    SELECT 'Assinaturas', COUNT(*) FROM subscriptions;
-    " 2>/dev/null || true
+
+export PGPASSWORD='AndinhoSurf2015@'
+psql -U postgres -d postgres -h 72.62.106.76 -p 5432 -c "
+SELECT 
+    'Empresas' as tabela, COUNT(*) as registros FROM companies
+UNION ALL
+SELECT 'Planos', COUNT(*) FROM plans
+UNION ALL
+SELECT 'Assinaturas', COUNT(*) FROM subscriptions;
+"
+
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Tabelas criadas e verificadas com sucesso${NC}"
 else
     echo -e "${RED}ERRO: Não foi possível verificar instalação${NC}"
 fi
