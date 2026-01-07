@@ -24,6 +24,8 @@ interface TimeRecord {
   total_hours: unknown;
   status: string;
   location: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export function TimeSheetManager() {
