@@ -13,11 +13,13 @@ import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Edit, Clock, MapPin, Trash2, FileDown, Calendar } from 'lucide-react';
+import { Search, Edit, Clock, MapPin, Trash2, FileDown, Calendar, FileText } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import { LocationDisplay } from '@/utils/locationUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TimeSheetManager } from '@/components/TimeSheetManager';
 
 interface TimeClockRecord {
   id: string;
@@ -45,6 +47,7 @@ export const AdminTimeClockManager = () => {
   const [userFilter, setUserFilter] = useState('all');
   const [selectedRecord, setSelectedRecord] = useState<TimeClockRecord | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('list');
   const [dateFilter, setDateFilter] = useState({
     start: format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd')
@@ -269,12 +272,31 @@ export const AdminTimeClockManager = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Gerenciar Registros de Ponto
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Gestão de Espelhos de Ponto - RH
+            </CardTitle>
+            <Button onClick={exportToExcel} variant="outline" size="sm">
+              <FileDown className="h-4 w-4 mr-2" />
+              Exportar Excel
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Lista de Registros
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Espelho de Ponto
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="list" className="space-y-4 mt-4">
           <div className="space-y-4">
             {/* Search and User Filter */}
             <div className="flex items-center gap-4">
@@ -327,12 +349,6 @@ export const AdminTimeClockManager = () => {
                   onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
                   className="w-40"
                 />
-              </div>
-               <div className="flex gap-2 ml-auto">
-                <Button onClick={exportToExcel} variant="outline">
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Exportar Excel
-                </Button>
               </div>
             </div>
           </div>
@@ -449,6 +465,12 @@ export const AdminTimeClockManager = () => {
               </Table>
             </div>
           )}
+            </TabsContent>
+            
+            <TabsContent value="calendar" className="mt-4">
+              <TimeSheetManager />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
