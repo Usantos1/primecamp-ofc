@@ -158,7 +158,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Verificar role do user_roles (sistema seguro)
   const isAdmin = profile?.role === 'admin';
   const isApproved = profile?.approved === true;
-  console.log('Auth state:', { user: !!user, profile, isAdmin, isApproved, loading });
 
   const value = {
     user,

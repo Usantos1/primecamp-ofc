@@ -15,7 +15,7 @@ if (API_URL.includes('.supabase.co')) {
   throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
 }
 
-console.log('[DB] ✅ Cliente PostgreSQL inicializado:', API_URL);
+// Cliente PostgreSQL inicializado silenciosamente
 
 interface QueryOptions {
   select?: string | string[];

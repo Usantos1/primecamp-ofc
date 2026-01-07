@@ -149,22 +149,6 @@ export function AppSidebar() {
   const isMainCompanyAdmin = userCompanyId === ADMIN_COMPANY_ID;
   const isAdminCompany = Boolean(isAdmin && profile?.role === 'admin' && isMainCompanyAdmin);
   
-  // DEBUG: Log SEMPRE executado - usando console.error para garantir visibilidade
-  console.error('🔴 [SIDEBAR] user.company_id:', userCompanyId, '| isAdminCompany:', isAdminCompany, '| ADMIN_COMPANY_ID:', ADMIN_COMPANY_ID);
-  
-  // Salvar em window para acesso direto
-  if (typeof window !== 'undefined') {
-    (window as any).APP_SIDEBAR_DEBUG = {
-      isAdmin,
-      profileRole: profile?.role,
-      userCompanyId,
-      ADMIN_COMPANY_ID,
-      isMainCompanyAdmin,
-      isAdminCompany,
-      userObject: user
-    };
-  }
-  
   const adminItems = [
     // Gestão de Revenda - APENAS para admins da empresa principal
     ...(isAdminCompany ? [{ label: "Gestão de Revenda", path: "/admin/revenda", icon: Store }] : []),

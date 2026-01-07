@@ -15,7 +15,7 @@ if (API_URL.includes('.supabase.co')) {
   throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
 }
 
-console.log('[API Client] ✅ Inicializado:', API_URL);
+// API Client inicializado silenciosamente
 
 interface ApiResponse {
   data?: any;

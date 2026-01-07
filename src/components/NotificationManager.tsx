@@ -7,7 +7,6 @@ interface NotificationManagerProps {
 }
 
 export function NotificationManager({ children }: NotificationManagerProps) {
-  console.log('NotificationManager: Component mounted and initializing...');
   const { 
     sendTaskNotification, 
     sendCalendarNotification, 
@@ -19,10 +18,7 @@ export function NotificationManager({ children }: NotificationManagerProps) {
   } = useWhatsApp();
 
   useEffect(() => {
-    console.log('NotificationManager: ⚠️ Real-time notifications DESABILITADAS (Supabase removido)');
-    console.log('NotificationManager: Use PostgreSQL API para buscar dados');
-    
-    // 🚫 SUPABASE REMOVIDO - Real-time desabilitado temporariamente
+    // Real-time notifications desabilitadas (Supabase removido)
     // TODO: Implementar real-time via PostgreSQL quando necessário
     
     // 🚫 DESABILITADO - Não buscar settings do Supabase
@@ -43,7 +39,7 @@ export function NotificationManager({ children }: NotificationManagerProps) {
     // 🚫 DESABILITAR TODAS AS SUBSCRIPTIONS - Supabase removido
     // Real-time não está disponível no PostgreSQL ainda
     return () => {
-      console.log('NotificationManager: Cleanup (no channels to remove)');
+      // Cleanup silencioso
     };
     
     // 🚫 TODAS AS SUBSCRIPTIONS DESABILITADAS - Supabase removido

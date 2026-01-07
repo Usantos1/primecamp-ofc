@@ -21,7 +21,7 @@ if (API_URL.includes('.supabase.co')) {
   throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
 }
 
-console.log('[Auth] ✅ Cliente de autenticação inicializado:', API_URL);
+// Cliente de autenticação inicializado silenciosamente
 
 // Limpar qualquer token antigo de outros sistemas
 const cleanOldTokens = () => {
@@ -34,7 +34,6 @@ const cleanOldTokens = () => {
   }
   keysToRemove.forEach(key => {
     localStorage.removeItem(key);
-    console.log('[Auth] Removido token antigo:', key);
   });
 };
 

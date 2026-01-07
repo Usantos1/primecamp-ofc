@@ -65,11 +65,7 @@ fbq('track', 'PageView');
           }
           keysToRemove.forEach(key => {
             localStorage.removeItem(key);
-            console.log('🧹 Removido token Supabase:', key);
           });
-          if (keysToRemove.length > 0) {
-            console.log('✅ Limpeza automática: removidos', keysToRemove.length, 'tokens do Supabase');
-          }
         } catch (e) {
           console.warn('Erro ao limpar tokens Supabase:', e);
         }
@@ -118,8 +114,7 @@ fbq('track', 'PageView');
           return new originalWebSocket(url, protocols);
         };
         
-        console.log('✅ Interceptação Supabase COMPLETA ATIVADA (fetch, XMLHttpRequest, WebSocket)');
-        console.log('✅ Limpeza automática de tokens Supabase executada');
+        // Interceptação Supabase ativada silenciosamente
       })();
     </script>
   </head>
