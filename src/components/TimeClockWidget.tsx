@@ -454,7 +454,13 @@ export const TimeClockWidget = () => {
               {todayRecord.location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  <LocationDisplay location={todayRecord.location} />
+                  <LocationDisplay location={
+                    typeof todayRecord.location === 'string' 
+                      ? todayRecord.location 
+                      : (todayRecord.location?.latitude && todayRecord.location?.longitude
+                          ? `${todayRecord.location.latitude}, ${todayRecord.location.longitude}`
+                          : JSON.stringify(todayRecord.location))
+                  } />
                 </div>
               )}
               {todayRecord.ip_address && (
