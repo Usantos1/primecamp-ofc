@@ -657,6 +657,12 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     updateProduto,
     deleteProduto,
 
+    // Ordenação
+    orderBy,
+    setOrderBy,
+    orderDirection,
+    setOrderDirection,
+
     // Utilitários
     invalidateQueries,
   };
