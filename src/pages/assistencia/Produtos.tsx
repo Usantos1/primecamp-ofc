@@ -246,6 +246,12 @@ export default function Produtos() {
   const createProduto = hookResult?.createProduto || (async () => {});
   const updateProduto = hookResult?.updateProduto || (async () => {});
   const deleteProduto = hookResult?.deleteProduto || (async () => {});
+  
+  // Ordenação
+  const orderBy = (hookResult as any)?.orderBy || 'nome';
+  const setOrderBy = (hookResult as any)?.setOrderBy || (() => {});
+  const orderDirection = (hookResult as any)?.orderDirection || 'asc';
+  const setOrderDirection = (hookResult as any)?.setOrderDirection || (() => {});
 
   const { marcas, modelos } = useMarcasModelosSupabase();
 
@@ -259,8 +265,6 @@ export default function Produtos() {
   const [showInventario, setShowInventario] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showInativarDialog, setShowInativarDialog] = useState(false);
-  const [orderBy, setOrderBy] = useState<'nome' | 'codigo'>('nome');
-  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>('asc');
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
   const [produtoToInativar, setProdutoToInativar] = useState<Produto | null>(null);
 
@@ -705,10 +709,6 @@ export default function Produtos() {
                   <DropdownMenuItem onClick={() => setShowExportModal(true)}>
                     <Download className="h-4 w-4 mr-2" />
                     Exportar Produtos
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowGerarCodigosDialog(true)} disabled={isGerandoCodigos}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {isGerandoCodigos ? 'Gerando Códigos...' : 'Gerar Códigos em Massa'}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleInativar} disabled={!selectedProduto}>
