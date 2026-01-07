@@ -313,6 +313,7 @@ export function ProductFormOptimized({
   const [grupoOpen, setGrupoOpen] = useState(false);
   const [showNewGrupoDialog, setShowNewGrupoDialog] = useState(false);
   const [newGrupoNome, setNewGrupoNome] = useState('');
+  const [gruposLocais, setGruposLocais] = useState<any[]>([]);
   
   // Estados para marcas
   const [marcaOpen, setMarcaOpen] = useState(false);
@@ -329,6 +330,21 @@ export function ProductFormOptimized({
   // Usar marcas e modelos do hook se disponíveis, senão usar props
   const marcasList = marcasFromHook.length > 0 ? marcasFromHook : (marcas || []);
   const modelosList = modelosFromHook.length > 0 ? modelosFromHook : (modelos || []);
+  
+  // Combinar grupos das props com grupos locais criados
+  const gruposList = useMemo(() => {
+    const gruposFromProps = grupos || [];
+    const gruposCombinados = [...gruposFromProps, ...gruposLocais];
+    // Remover duplicatas baseado no nome
+    const unique = gruposCombinados.filter((g, index, self) => 
+      index === self.findIndex((gr) => (gr.nome || gr) === (g.nome || g))
+    );
+    return unique.sort((a, b) => {
+      const nomeA = (a.nome || a).toLowerCase();
+      const nomeB = (b.nome || b).toLowerCase();
+      return nomeA.localeCompare(nomeB);
+    });
+  }, [grupos, gruposLocais]);
   
   const isEditing = Boolean(produto?.id);
 
@@ -468,11 +484,20 @@ export function ProductFormOptimized({
   const handleCreateNewGrupo = () => {
     if (!newGrupoNome.trim()) return;
     
-    // Grupos são apenas strings no campo grupo do produto
-    // Não há tabela separada, então apenas definimos o valor
-    setValue('grupo', newGrupoNome.trim());
+    const novoGrupoNome = newGrupoNome.trim();
     
-    // Invalidar query de grupos para atualizar a lista
+    // Adicionar à lista local de grupos
+    setGruposLocais(prev => {
+      // Verificar se já existe
+      const existe = prev.some(g => (g.nome || g) === novoGrupoNome);
+      if (existe) return prev;
+      return [...prev, { id: novoGrupoNome, nome: novoGrupoNome }];
+    });
+    
+    // Definir o valor no formulário
+    setValue('grupo', novoGrupoNome);
+    
+    // Invalidar query de grupos para atualizar a lista quando houver produtos com esse grupo
     queryClient.invalidateQueries({ queryKey: ['produtos-grupos'] });
     
     setShowNewGrupoDialog(false);
@@ -946,7 +971,7 @@ export function ProductFormOptimized({
                         <CommandList>
                           <CommandEmpty>Nenhum grupo encontrado.</CommandEmpty>
                           <CommandGroup>
-                            {grupos.map((grupo) => (
+                            {gruposList.map((grupo) => (
                               <CommandItem
                                 key={grupo.id || grupo}
                                 value={grupo.nome || grupo}
