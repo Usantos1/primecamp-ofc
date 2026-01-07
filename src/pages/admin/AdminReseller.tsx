@@ -80,11 +80,15 @@ export default function AdminReseller() {
         page: pagination.page,
         limit: pagination.limit,
         search: search || undefined,
-        status: statusFilter || undefined
+        status: statusFilter === 'all' ? undefined : statusFilter || undefined
       });
       setCompanies(data.data || []);
       if (data.pagination) {
-        setPagination(data.pagination);
+        setPagination(prev => ({
+          ...prev,
+          ...data.pagination,
+          page: data.pagination?.page || prev.page
+        }));
       }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao carregar empresas');
@@ -239,7 +243,7 @@ export default function AdminReseller() {
                     className="pl-8"
                   />
                 </div>
-                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value === "all" ? "" : value)}>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="Todos os status" />
                   </SelectTrigger>

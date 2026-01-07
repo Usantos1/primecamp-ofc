@@ -288,6 +288,17 @@ try {
   });
 }
 
+// Importar middleware de company
+let requireCompanyAccess;
+try {
+  const companyMiddleware = await import('./middleware/companyMiddleware.js');
+  requireCompanyAccess = companyMiddleware.requireCompanyAccess;
+  console.log('[Server] ✅ Middleware de company carregado');
+} catch (error) {
+  console.warn('[Server] ⚠️ Middleware de company não encontrado:', error.message);
+  requireCompanyAccess = null;
+}
+
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*, /api/v1/*)
 // Os endpoints /api/functions/*, /api/whatsapp/* e /api/v1/* terão autenticação própria dentro de cada rota
 app.use((req, res, next) => {
@@ -303,6 +314,7 @@ app.use((req, res, next) => {
       req.path.startsWith('/api/webhook/leads/') ||
       req.path.startsWith('/api/v1/') ||  // API pública v1 usa validateApiToken
       req.path.startsWith('/api/admin/revenda/') || // Rotas de revenda já têm autenticação própria
+      req.path.startsWith('/api/api-tokens') || // Rotas de API tokens (admin apenas)
       req.path === '/api/api-tokens/test' ||
       (req.method === 'POST' && /^\/api\/webhook\/test\/[^/]+$/.test(req.path))) { // Webhook test público
     return next();
@@ -313,6 +325,29 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Aplicar verificação de assinatura ativa para rotas que precisam (após autenticação)
+if (requireCompanyAccess) {
+  app.use((req, res, next) => {
+    // Pular verificação de company para rotas que não precisam
+    if (req.path.startsWith('/api/auth/') || 
+        req.path === '/api/health' || 
+        req.path === '/health' ||
+        req.path.startsWith('/api/functions/') ||
+        req.path.startsWith('/api/storage/') ||
+        req.path.startsWith('/api/whatsapp/') ||
+        req.path.startsWith('/api/webhook/') ||
+        req.path.startsWith('/api/v1/') ||  // API pública v1
+        req.path.startsWith('/api/admin/revenda/') || // Rotas de revenda
+        req.path.startsWith('/api/api-tokens') || // Rotas de API tokens
+        !req.user) { // Se não está autenticado, pula
+      return next();
+    }
+    // Aplicar verificação de company para rotas autenticadas
+    return requireCompanyAccess(req, res, next);
+  });
+  console.log('[Server] ✅ Middleware de verificação de assinatura aplicado');
+}
 
 // Health check
 app.get('/health', async (req, res) => {
