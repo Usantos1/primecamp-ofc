@@ -834,10 +834,10 @@ app.post('/api/query/:table', async (req, res) => {
     const { clause: whereClause, params } = buildWhereClause(where);
 
     // Lista de tabelas que precisam filtrar por company_id
-    // NOTA: tasks e processes NÃO têm company_id ainda
+    // NOTA: tasks, processes e profiles NÃO têm company_id ainda
     const tablesWithCompanyId = [
       'produtos', 'vendas', 'clientes', 'ordens_servico', 
-      'time_clock', 'users', 'profiles'
+      'time_clock', 'users'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
@@ -931,10 +931,10 @@ app.post('/api/insert/:table', async (req, res) => {
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
 
     // Lista de tabelas que precisam de company_id
-    // NOTA: tasks e processes NÃO têm company_id ainda
+    // NOTA: tasks, processes e profiles NÃO têm company_id ainda
     const tablesWithCompanyId = [
       'produtos', 'vendas', 'clientes', 'ordens_servico', 
-      'time_clock', 'users', 'profiles'
+      'time_clock', 'users'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1039,10 +1039,10 @@ app.post('/api/update/:table', async (req, res) => {
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
 
     // Lista de tabelas que precisam filtrar por company_id
-    // NOTA: tasks e processes NÃO têm company_id ainda
+    // NOTA: tasks, processes e profiles NÃO têm company_id ainda
     const tablesWithCompanyId = [
       'produtos', 'vendas', 'clientes', 'ordens_servico', 
-      'time_clock', 'users', 'profiles'
+      'time_clock', 'users'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
