@@ -135,18 +135,20 @@ export const AdminTimeClockManager = () => {
 
   const deleteRecord = async (recordId: string) => {
     try {
-      const { error } = await from('time_clock')
+      const { data, error } = await from('time_clock')
         .delete()
         .eq('id', recordId)
+        .select()
         .execute();
 
       if (error) {
         console.error('Delete error:', error);
         toast({
           title: "Erro",
-          description: `Erro ao excluir registro: ${error.message}`,
+          description: `Erro ao excluir registro: ${error.message || 'Erro desconhecido'}`,
           variant: "destructive"
         });
+        return;
         return;
       }
 
