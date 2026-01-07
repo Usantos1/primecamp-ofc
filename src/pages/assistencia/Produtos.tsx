@@ -42,6 +42,8 @@ import {
   ClipboardList,
   ExternalLink,
   Ban,
+  Settings,
+  Shield,
 } from 'lucide-react';
 import {
   DropdownMenu,
