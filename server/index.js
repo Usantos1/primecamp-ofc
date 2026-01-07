@@ -293,6 +293,7 @@ try {
 app.use((req, res, next) => {
   // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads, webhook/test e API pública v1
   // Também pular para rota de teste de api-tokens
+  // IMPORTANTE: Pular também para /api/admin/revenda/* pois já tem autenticação própria
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
       req.path === '/health' ||
@@ -301,6 +302,7 @@ app.use((req, res, next) => {
       req.path.startsWith('/api/whatsapp/') ||
       req.path.startsWith('/api/webhook/leads/') ||
       req.path.startsWith('/api/v1/') ||  // API pública v1 usa validateApiToken
+      req.path.startsWith('/api/admin/revenda/') || // Rotas de revenda já têm autenticação própria
       req.path === '/api/api-tokens/test' ||
       (req.method === 'POST' && /^\/api\/webhook\/test\/[^/]+$/.test(req.path))) { // Webhook test público
     return next();
