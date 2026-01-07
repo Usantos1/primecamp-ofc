@@ -228,11 +228,11 @@ ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name, email = EXCLUDED.email, status = EXCLUDED.status;
 
 -- Inserir planos padrão
-INSERT INTO public.plans (name, code, price_monthly, price_yearly, max_users, max_storage_gb, max_orders_per_month, features)
+INSERT INTO public.plans (name, code, price_monthly, price_yearly, max_users, max_storage_gb, max_orders_per_month, features, active)
 VALUES
-    ('Básico', 'basic', 99.00, 990.00, 5, 10, 100, '{"reports": true, "api": false, "custom_branding": false}'::jsonb),
-    ('Premium', 'premium', 299.00, 2990.00, 20, 50, 500, '{"reports": true, "api": true, "custom_branding": false}'::jsonb),
-    ('Enterprise', 'enterprise', 799.00, 7990.00, 100, 200, -1, '{"reports": true, "api": true, "custom_branding": true, "priority_support": true}'::jsonb)
+    ('Básico', 'basic', 99.00, 990.00, 5, 10, 100, '{"reports": true, "api": false, "custom_branding": false}'::jsonb, true),
+    ('Premium', 'premium', 299.00, 2990.00, 20, 50, 500, '{"reports": true, "api": true, "custom_branding": false}'::jsonb, true),
+    ('Enterprise', 'enterprise', 799.00, 7990.00, 100, 200, -1, '{"reports": true, "api": true, "custom_branding": true, "priority_support": true}'::jsonb, true)
 ON CONFLICT (code) DO UPDATE 
 SET name = EXCLUDED.name, 
     price_monthly = EXCLUDED.price_monthly,
@@ -240,7 +240,8 @@ SET name = EXCLUDED.name,
     max_users = EXCLUDED.max_users,
     max_storage_gb = EXCLUDED.max_storage_gb,
     max_orders_per_month = EXCLUDED.max_orders_per_month,
-    features = EXCLUDED.features;
+    features = EXCLUDED.features,
+    active = true;
 
 -- Criar assinatura para empresa admin (ilimitada)
 DO $$
