@@ -577,7 +577,7 @@ router.post('/companies/:companyId/users/:userId/reset-password', async (req, re
     
     // Atualizar senha
     await pool.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
       [passwordHash, userId]
     );
     
@@ -607,7 +607,7 @@ router.put('/companies/:companyId/users/:userId/toggle-active', async (req, res)
     const newStatus = !userResult.rows[0].email_verified;
     
     await pool.query(
-      'UPDATE users SET email_verified = $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET email_verified = $1 WHERE id = $2',
       [newStatus, userId]
     );
     
