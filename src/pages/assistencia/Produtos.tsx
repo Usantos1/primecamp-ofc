@@ -259,8 +259,8 @@ export default function Produtos() {
   const [showInventario, setShowInventario] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showInativarDialog, setShowInativarDialog] = useState(false);
-  const [showGerarCodigosDialog, setShowGerarCodigosDialog] = useState(false);
-  const [isGerandoCodigos, setIsGerandoCodigos] = useState(false);
+  const [orderBy, setOrderBy] = useState<'nome' | 'codigo'>('nome');
+  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>('asc');
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
   const [produtoToInativar, setProdutoToInativar] = useState<Produto | null>(null);
 
@@ -492,53 +492,6 @@ export default function Produtos() {
     }
   };
 
-  // Gerar códigos em massa para produtos sem código
-  const handleGerarCodigos = async () => {
-    setIsGerandoCodigos(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado');
-      }
-
-      const response = await fetch('/api/functions/gerar-codigos-produtos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `Erro ${response.status}: ${response.statusText}` }));
-        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Erro ao gerar códigos');
-      }
-
-      toast({ 
-        title: 'Sucesso!', 
-        description: data.message || `${data.atualizados} produtos receberam códigos automaticamente.` 
-      });
-      
-      // Recarregar lista de produtos
-      hookResult.invalidateQueries();
-      setShowGerarCodigosDialog(false);
-    } catch (error: any) {
-      console.error('[Gerar Códigos] Erro:', error);
-      toast({
-        title: 'Erro',
-        description: error?.message || 'Não foi possível gerar os códigos.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGerandoCodigos(false);
-    }
-  };
 
   // Handler para o botão na toolbar (usando produto selecionado)
   const handleInativar = async () => {
@@ -1328,30 +1281,6 @@ export default function Produtos() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Dialog para gerar códigos em massa */}
-        <AlertDialog open={showGerarCodigosDialog} onOpenChange={setShowGerarCodigosDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Gerar Códigos para Produtos sem Código</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação irá gerar códigos sequenciais automaticamente para todos os produtos que não possuem código.
-                Os códigos serão gerados a partir do maior código existente + 1.
-                <br /><br />
-                <strong>Esta ação não pode ser desfeita.</strong>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isGerandoCodigos}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleGerarCodigos}
-                disabled={isGerandoCodigos}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isGerandoCodigos ? 'Gerando...' : 'Gerar Códigos'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </ModernLayout>
   );

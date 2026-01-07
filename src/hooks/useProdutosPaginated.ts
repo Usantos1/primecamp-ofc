@@ -56,6 +56,8 @@ interface UseProdutosPaginatedOptions {
   searchTerm?: string;
   grupo?: string;
   localizacao?: string;
+  orderBy?: 'nome' | 'codigo';
+  orderDirection?: 'asc' | 'desc';
 }
 
 export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) {
@@ -67,6 +69,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     searchTerm: initialSearchTerm = '',
     grupo: initialGrupo = '',
     localizacao: initialLocalizacao = '',
+    orderBy: initialOrderBy = 'nome',
+    orderDirection: initialOrderDirection = 'asc',
   } = options;
 
   const [page, setPage] = useState(initialPage);
@@ -74,6 +78,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [grupo, setGrupo] = useState(initialGrupo);
   const [localizacao, setLocalizacao] = useState(initialLocalizacao);
+  const [orderBy, setOrderBy] = useState<'nome' | 'codigo'>(initialOrderBy);
+  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>(initialOrderDirection);
 
   // Debounce na busca (300ms)
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -89,14 +95,21 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     isFetching,
     error,
   } = useQuery({
-    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, grupo, localizacao],
+    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, grupo, localizacao, orderBy, orderDirection],
     queryFn: async () => {
       // Construir query base usando wrapper PostgreSQL
       const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
       
       let query = dbFrom('produtos')
-        .select(selectFields)
-        .order('nome', { ascending: true });
+        .select(selectFields);
+      
+      // Aplicar ordenação
+      if (orderBy === 'codigo') {
+        // Para código, precisamos tratar NULLs (produtos sem código vão para o final)
+        query = query.order('codigo', { ascending: orderDirection === 'asc', nullsFirst: false });
+      } else {
+        query = query.order('nome', { ascending: orderDirection === 'asc' });
+      }
 
       // Aplicar filtro de grupo/categoria
       if (grupo && grupo.trim() !== '') {
