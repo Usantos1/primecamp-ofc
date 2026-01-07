@@ -494,7 +494,11 @@ export default function Produtos() {
   const handleGerarCodigos = async () => {
     setIsGerandoCodigos(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+
       const response = await fetch('/api/functions/gerar-codigos-produtos', {
         method: 'POST',
         headers: {
@@ -503,9 +507,14 @@ export default function Produtos() {
         },
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `Erro ${response.status}: ${response.statusText}` }));
+        throw new Error(errorData.error || `Erro ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || 'Erro ao gerar códigos');
       }
 
@@ -518,6 +527,7 @@ export default function Produtos() {
       hookResult.invalidateQueries();
       setShowGerarCodigosDialog(false);
     } catch (error: any) {
+      console.error('[Gerar Códigos] Erro:', error);
       toast({
         title: 'Erro',
         description: error?.message || 'Não foi possível gerar os códigos.',
