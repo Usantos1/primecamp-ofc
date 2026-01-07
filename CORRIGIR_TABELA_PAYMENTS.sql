@@ -9,6 +9,18 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables 
                WHERE table_schema = 'public' AND table_name = 'payments') THEN
         
+        -- Adicionar updated_at se não existir (antes de qualquer UPDATE)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                       WHERE table_schema = 'public' 
+                       AND table_name = 'payments' 
+                       AND column_name = 'updated_at') THEN
+            ALTER TABLE public.payments ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+            RAISE NOTICE 'Coluna updated_at adicionada em payments';
+        END IF;
+        
+        -- Remover trigger antigo se existir (pode estar causando problema)
+        DROP TRIGGER IF EXISTS set_updated_at_payments ON public.payments;
+        
         -- Adicionar company_id se não existir
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                        WHERE table_schema = 'public' 
@@ -57,6 +69,12 @@ BEGIN
             CREATE INDEX idx_payments_external_id ON public.payments(external_id);
             RAISE NOTICE 'Índice idx_payments_external_id criado';
         END IF;
+        
+        -- Recriar trigger updated_at agora que a coluna existe
+        CREATE TRIGGER set_updated_at_payments
+            BEFORE UPDATE ON public.payments
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
         
         RAISE NOTICE 'Tabela payments corrigida com sucesso!';
     ELSE
