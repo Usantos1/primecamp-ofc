@@ -350,7 +350,7 @@ export const TimeClockWidget = () => {
                   <span>Entrada:</span>
                   <div className="flex items-center gap-1">
                     <span className="font-mono">{formatTime(todayRecord.clock_in)}</span>
-                    {todayRecord.clock_in && profile.role === 'admin' && (
+                    {todayRecord.clock_in && profile?.role === 'admin' && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -374,7 +374,7 @@ export const TimeClockWidget = () => {
                   <span>Almoço:</span>
                   <div className="flex items-center gap-1">
                     <span className="font-mono">{formatTime(todayRecord.lunch_start)}</span>
-                    {todayRecord.lunch_start && profile.role === 'admin' && (
+                    {todayRecord.lunch_start && profile?.role === 'admin' && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -398,7 +398,7 @@ export const TimeClockWidget = () => {
                   <span>Retorno:</span>
                   <div className="flex items-center gap-1">
                     <span className="font-mono">{formatTime(todayRecord.lunch_end)}</span>
-                    {todayRecord.lunch_end && profile.role === 'admin' && (
+                    {todayRecord.lunch_end && profile?.role === 'admin' && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -422,7 +422,7 @@ export const TimeClockWidget = () => {
                   <span>Saída:</span>
                   <div className="flex items-center gap-1">
                     <span className="font-mono">{formatTime(todayRecord.clock_out)}</span>
-                    {todayRecord.clock_out && profile.role === 'admin' && (
+                    {todayRecord.clock_out && profile?.role === 'admin' && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -624,7 +624,7 @@ export const TimeClockWidget = () => {
             </DialogTitle>
             <DialogDescription className="text-center space-y-3">
               <div className="text-lg font-semibold text-foreground">
-                ✨ Bom dia, {profile?.display_name}! ✨
+                ✨ Bom dia, {profile?.display_name || user?.email || 'Usuário'}! ✨
               </div>
               <div className="text-base text-muted-foreground">
                 Você acabou de bater o ponto de <strong>ENTRADA</strong>!
