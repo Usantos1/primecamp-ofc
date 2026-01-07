@@ -18,7 +18,8 @@ import {
   Tag,
   ArrowRight,
   Video,
-  FileText
+  FileText,
+  Store
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -139,6 +140,13 @@ export default function Admin() {
       icon: Activity,
       path: "/admin/logs",
       color: "text-gray-600"
+    },
+    {
+      title: "Gestão de Revenda",
+      description: "Gerencie empresas, assinaturas e pagamentos",
+      icon: Store,
+      path: "/admin/revenda",
+      color: "text-amber-600"
     }
   ];
 
