@@ -3475,6 +3475,7 @@ app.get('/api/v1/grupos', validateApiToken, async (req, res) => {
 });
 
 // POST - Gerar códigos em massa para produtos sem código (autenticado)
+// IMPORTANTE: Esta rota deve estar ANTES do middleware global que pula /api/functions/*
 app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req, res) => {
   try {
     console.log('[Gerar Códigos] Iniciando geração de códigos para produtos sem código...');
