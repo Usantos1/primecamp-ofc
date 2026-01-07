@@ -480,29 +480,84 @@ router.post('/companies/:id/users', async (req, res) => {
     
     await pool.query('BEGIN');
     
-    // Criar usuário
-    const userResult = await pool.query(
-      `INSERT INTO users (email, password_hash, company_id)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [email.toLowerCase(), passwordHash, companyId]
-    );
+    console.log('[Revenda] POST /companies/:id/users - Company ID:', companyId);
+    console.log('[Revenda] Dados do usuário:', { email, hasPassword: !!password, display_name, role });
     
-    const user = userResult.rows[0];
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, error: 'Senha deve ter pelo menos 6 caracteres' });
+    }
     
-    // Criar perfil
-    await pool.query(
-      `INSERT INTO profiles (user_id, display_name, role, phone, department_id, position_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [user.id, display_name, role, phone, department_id, position_id]
-    );
+    // Verificar se empresa existe
+    const companyCheck = await pool.query('SELECT id FROM companies WHERE id = $1', [companyId]);
+    if (companyCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Empresa não encontrada' });
+    }
     
-    await pool.query('COMMIT');
+    // Verificar se email já existe
+    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ success: false, error: 'Email já cadastrado' });
+    }
     
-    res.json({ success: true, data: user });
+    await pool.query('BEGIN');
+    
+    try {
+      // Criar usuário
+      const userResult = await pool.query(
+        `INSERT INTO users (email, password_hash, company_id, email_verified)
+         VALUES ($1, $2, $3, true)
+         RETURNING *`,
+        [email.toLowerCase().trim(), passwordHash, companyId]
+      );
+      
+      const user = userResult.rows[0];
+      console.log('[Revenda] Usuário criado:', user.id);
+      
+      // Criar perfil (se não existir)
+      const profileCheck = await pool.query('SELECT id FROM profiles WHERE user_id = $1', [user.id]);
+      if (profileCheck.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO profiles (user_id, display_name, role, phone, department_id, position_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [user.id, display_name || null, role, phone || null, department_id || null, position_id || null]
+        );
+        console.log('[Revenda] Perfil criado para usuário:', user.id);
+      } else {
+        // Atualizar perfil existente
+        await pool.query(
+          `UPDATE profiles SET display_name = $1, role = $2, phone = $3, department_id = $4, position_id = $5
+           WHERE user_id = $6`,
+          [display_name || null, role, phone || null, department_id || null, position_id || null, user.id]
+        );
+        console.log('[Revenda] Perfil atualizado para usuário:', user.id);
+      }
+      
+      await pool.query('COMMIT');
+      
+      // Buscar usuário completo com perfil
+      const fullUserResult = await pool.query(
+        `SELECT 
+          u.id,
+          u.email,
+          u.email_verified,
+          u.created_at,
+          p.display_name,
+          p.role,
+          p.phone
+         FROM users u
+         LEFT JOIN profiles p ON p.user_id = u.id
+         WHERE u.id = $1`,
+        [user.id]
+      );
+      
+      res.json({ success: true, data: fullUserResult.rows[0] });
+    } catch (dbError) {
+      await pool.query('ROLLBACK');
+      throw dbError;
+    }
   } catch (error) {
-    await pool.query('ROLLBACK');
-    console.error('Erro ao criar usuário:', error);
+    console.error('[Revenda] Erro ao criar usuário:', error);
+    console.error('[Revenda] Stack trace:', error.stack);
     res.status(500).json({ success: false, error: error.message });
   }
 });
