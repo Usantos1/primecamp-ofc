@@ -291,8 +291,8 @@ export const AdminTimeClockManager = () => {
   }, [dateFilter]);
 
   return (
-    <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-      <Card>
+    <div className="space-y-4 h-full flex flex-col">
+      <Card className="flex-shrink-0">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
