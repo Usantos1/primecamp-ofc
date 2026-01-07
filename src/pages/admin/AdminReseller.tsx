@@ -98,9 +98,12 @@ export default function AdminReseller() {
   const loadPlans = async () => {
     try {
       const plansData = await listPlans();
-      setPlans(plansData || []);
+      console.log('[AdminReseller] Planos carregados:', plansData);
+      setPlans(Array.isArray(plansData) ? plansData : []);
     } catch (err: any) {
       console.error('Erro ao carregar planos:', err);
+      toast.error('Erro ao carregar planos: ' + err.message);
+      setPlans([]);
     }
   };
 

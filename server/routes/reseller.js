@@ -248,13 +248,19 @@ router.put('/companies/:id', async (req, res) => {
 router.get('/plans', async (req, res) => {
   try {
     console.log('[Revenda] GET /plans - Iniciando busca de planos...');
+    console.log('[Revenda] User autenticado:', req.user?.id);
+    
     const result = await pool.query(
       `SELECT * FROM plans WHERE active = true ORDER BY price_monthly ASC`
     );
+    
     console.log('[Revenda] Planos encontrados:', result.rows.length);
+    console.log('[Revenda] Planos:', result.rows.map(p => ({ id: p.id, name: p.name })));
+    
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[Revenda] Erro ao listar planos:', error);
+    console.error('[Revenda] Stack trace:', error.stack);
     res.status(500).json({ success: false, error: error.message });
   }
 });
