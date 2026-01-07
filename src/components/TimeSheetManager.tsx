@@ -103,11 +103,23 @@ export function TimeSheetManager() {
   }, [user, selectedUser]);
 
   const getRecordForDay = (date: Date) => {
+    // Normalizar a data alvo para YYYY-MM-DD
+    const targetDateStr = format(date, 'yyyy-MM-dd');
+    
     return monthlyRecords.find(record => {
-      // Ensure we're comparing dates correctly by normalizing time zones
-      const recordDate = new Date(record.date + 'T00:00:00');
-      const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      return recordDate.getTime() === targetDate.getTime();
+      if (!record.date) return false;
+      
+      // Extrair apenas a parte da data (YYYY-MM-DD) do registro
+      let recordDateStr = '';
+      if (typeof record.date === 'string') {
+        // Se for string ISO completa, pegar apenas a parte da data
+        recordDateStr = record.date.split('T')[0];
+      } else {
+        // Se for Date object, formatar
+        recordDateStr = format(new Date(record.date), 'yyyy-MM-dd');
+      }
+      
+      return recordDateStr === targetDateStr;
     });
   };
 
