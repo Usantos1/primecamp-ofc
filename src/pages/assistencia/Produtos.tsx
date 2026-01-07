@@ -696,25 +696,78 @@ export default function Produtos() {
               <XCircle className="h-4 w-4 mr-1.5" />Limpar
             </Button>
             <div className="flex items-center gap-2 flex-wrap ml-auto">
-              <Button onClick={handleNew} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"><Plus className="h-4 w-4" /><span>Novo</span></Button>
-              <Button onClick={() => setShowImport(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200"><FileSpreadsheet className="h-4 w-4" /><span className="hidden sm:inline">Importar</span></Button>
-              <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200"><Download className="h-4 w-4" /><span className="hidden sm:inline">Exportar</span></Button>
+              {/* Botões essenciais sempre visíveis */}
+              <Button onClick={handleNew} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <Plus className="h-4 w-4" />
+                <span>Novo</span>
+              </Button>
               <Button 
-                onClick={() => setShowGerarCodigosDialog(true)} 
+                onClick={() => selectedProduto && handleEdit(selectedProduto)} 
                 size="sm" 
                 variant="outline" 
+                disabled={!selectedProduto} 
                 className="h-9 gap-1.5 border-gray-200"
-                disabled={isGerandoCodigos}
               >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Gerar Códigos</span>
+                <Edit className="h-4 w-4" />
+                <span className="hidden sm:inline">Editar</span>
               </Button>
-              <div className="w-px h-6 bg-gray-200 mx-1" />
-              <Button onClick={() => selectedProduto && handleEdit(selectedProduto)} size="sm" variant="outline" disabled={!selectedProduto} className="h-9 gap-1.5 border-gray-200"><Edit className="h-4 w-4" /><span className="hidden sm:inline">Editar</span></Button>
-              <Button onClick={handleInativar} size="sm" variant="outline" disabled={!selectedProduto} className="h-9 gap-1.5 border-gray-200"><X className="h-4 w-4" /><span className="hidden sm:inline">Inativar</span></Button>
-              <Button size="sm" variant="outline" disabled={!selectedProduto} onClick={() => setShowEtiquetaModal(true)} className="h-9 gap-1.5 border-gray-200"><Barcode className="h-4 w-4" /><span className="hidden lg:inline">Etiqueta</span></Button>
-              <Button size="sm" variant="outline" disabled={!selectedProduto} onClick={() => setShowEstoqueModal(true)} className="h-9 gap-1.5 border-gray-200"><Warehouse className="h-4 w-4" /><span className="hidden lg:inline">Estoque</span></Button>
-              <Button size="sm" variant="outline" onClick={() => setShowInventario(true)} className="h-9 gap-1.5 border-gray-200"><ClipboardList className="h-4 w-4" /><span className="hidden lg:inline">Inventário</span></Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                disabled={!selectedProduto} 
+                onClick={() => setShowEstoqueModal(true)} 
+                className="h-9 gap-1.5 border-gray-200"
+              >
+                <Warehouse className="h-4 w-4" />
+                <span className="hidden sm:inline">Estoque</span>
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                disabled={!selectedProduto} 
+                onClick={() => setShowEtiquetaModal(true)} 
+                className="h-9 gap-1.5 border-gray-200"
+              >
+                <Barcode className="h-4 w-4" />
+                <span className="hidden sm:inline">Etiqueta</span>
+              </Button>
+              
+              {/* Menu Admin com opções avançadas */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-9 gap-1.5 border-gray-200"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span className="hidden sm:inline">Admin</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => setShowImport(true)}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Importar Produtos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowExportModal(true)}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Exportar Produtos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowGerarCodigosDialog(true)} disabled={isGerandoCodigos}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isGerandoCodigos ? 'Gerando Códigos...' : 'Gerar Códigos em Massa'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleInativar} disabled={!selectedProduto}>
+                    <X className="h-4 w-4 mr-2" />
+                    Inativar Produto
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowInventario(true)}>
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    Inventário
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
