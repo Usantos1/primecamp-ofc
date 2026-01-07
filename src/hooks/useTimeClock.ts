@@ -181,12 +181,15 @@ export const useTimeClock = () => {
       const today = new Date().toISOString().split('T')[0];
       const now = new Date().toISOString();
 
-      // Check if already clocked in today within the same minute
-      const existingRecord = await from('time_clock')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .single();
+      // Verificar registro existente e buscar localização em paralelo
+      const [existingRecord, locationData] = await Promise.all([
+        from('time_clock')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('date', today)
+          .single(),
+        getLocation().catch(() => ({ location: 'Erro', ip: 'Não disponível' }))
+      ]);
 
       if (existingRecord.data?.clock_in) {
         const existingTime = new Date(existingRecord.data.clock_in);
@@ -203,7 +206,7 @@ export const useTimeClock = () => {
         }
       }
 
-      const { location, ip } = await getLocation();
+      const { location, ip } = locationData;
 
       let data, error;
       if (existingRecord.data?.id) {
@@ -244,15 +247,17 @@ export const useTimeClock = () => {
         return;
       }
 
-      // Log activity
-      await logActivity('time_clock', 'Registro de entrada', 'time_clock', data?.id || '');
-
+      // Mostrar sucesso imediatamente
       toast({
         title: "Entrada registrada",
         description: "Horário de entrada registrado com sucesso"
       });
 
-      fetchRecords();
+      // Atualizar registros e log em background (não bloquear)
+      Promise.all([
+        fetchRecords(),
+        logActivity('time_clock', 'Registro de entrada', 'time_clock', data?.id || '').catch(() => {})
+      ]).catch(() => {});
     } catch (error) {
       console.error('Error clocking in:', error);
     }
