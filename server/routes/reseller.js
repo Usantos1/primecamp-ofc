@@ -439,9 +439,7 @@ router.get('/companies/:id/users', async (req, res) => {
         u.updated_at,
         COALESCE(p.display_name, '') as display_name,
         COALESCE(p.role, 'member') as role,
-        p.phone,
-        p.department_id,
-        p.position_id
+        p.phone
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
        WHERE u.company_id = $1
@@ -462,26 +460,14 @@ router.get('/companies/:id/users', async (req, res) => {
 router.post('/companies/:id/users', async (req, res) => {
   try {
     const { id: companyId } = req.params;
-    const { email, password, display_name, role = 'member', phone, department_id, position_id } = req.body;
+    const { email, password, display_name, role = 'member', phone } = req.body;
+    
+    console.log('[Revenda] POST /companies/:id/users - Company ID:', companyId);
+    console.log('[Revenda] Dados do usuário:', { email, hasPassword: !!password, display_name, role });
     
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
     }
-    
-    // Verificar se email já existe
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ success: false, error: 'Email já cadastrado' });
-    }
-    
-    // Hash da senha
-    const bcrypt = (await import('bcrypt')).default;
-    const passwordHash = await bcrypt.hash(password, 10);
-    
-    await pool.query('BEGIN');
-    
-    console.log('[Revenda] POST /companies/:id/users - Company ID:', companyId);
-    console.log('[Revenda] Dados do usuário:', { email, hasPassword: !!password, display_name, role });
     
     if (password.length < 6) {
       return res.status(400).json({ success: false, error: 'Senha deve ter pelo menos 6 caracteres' });
@@ -494,10 +480,14 @@ router.post('/companies/:id/users', async (req, res) => {
     }
     
     // Verificar se email já existe
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
-    if (existingUser.rows.length > 0) {
+    const existingUserCheck = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase().trim()]);
+    if (existingUserCheck.rows.length > 0) {
       return res.status(400).json({ success: false, error: 'Email já cadastrado' });
     }
+    
+    // Hash da senha
+    const bcrypt = (await import('bcrypt')).default;
+    const passwordHash = await bcrypt.hash(password, 10);
     
     await pool.query('BEGIN');
     
@@ -517,17 +507,17 @@ router.post('/companies/:id/users', async (req, res) => {
       const profileCheck = await pool.query('SELECT id FROM profiles WHERE user_id = $1', [user.id]);
       if (profileCheck.rows.length === 0) {
         await pool.query(
-          `INSERT INTO profiles (user_id, display_name, role, phone, department_id, position_id)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [user.id, display_name || null, role, phone || null, department_id || null, position_id || null]
+          `INSERT INTO profiles (user_id, display_name, role, phone)
+           VALUES ($1, $2, $3, $4)`,
+          [user.id, display_name || null, role, phone || null]
         );
         console.log('[Revenda] Perfil criado para usuário:', user.id);
       } else {
         // Atualizar perfil existente
         await pool.query(
-          `UPDATE profiles SET display_name = $1, role = $2, phone = $3, department_id = $4, position_id = $5
-           WHERE user_id = $6`,
-          [display_name || null, role, phone || null, department_id || null, position_id || null, user.id]
+          `UPDATE profiles SET display_name = $1, role = $2, phone = $3
+           WHERE user_id = $4`,
+          [display_name || null, role, phone || null, user.id]
         );
         console.log('[Revenda] Perfil atualizado para usuário:', user.id);
       }
@@ -541,8 +531,8 @@ router.post('/companies/:id/users', async (req, res) => {
           u.email,
           u.email_verified,
           u.created_at,
-          p.display_name,
-          p.role,
+          COALESCE(p.display_name, '') as display_name,
+          COALESCE(p.role, 'member') as role,
           p.phone
          FROM users u
          LEFT JOIN profiles p ON p.user_id = u.id
