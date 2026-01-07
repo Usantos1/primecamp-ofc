@@ -43,6 +43,7 @@ interface User {
   email: string;
   role?: string;
   profile?: any;
+  company_id?: string;
 }
 
 interface AuthResponse {

@@ -142,10 +142,8 @@ export function AppSidebar() {
   // ADMINISTRAÇÃO - Apenas para admins
   // ═══════════════════════════════════════════════════════════════
   // Verificar se é admin da empresa principal (ID: 00000000-0000-0000-0000-000000000001)
-  // Isso será verificado via API, mas por enquanto vamos verificar se é admin
-  // A verificação completa será feita no backend
   const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
-  const isAdminCompany = isAdmin && profile?.role === 'admin'; // Verificação inicial, backend valida completamente
+  const isAdminCompany = isAdmin && profile?.role === 'admin' && user?.company_id === ADMIN_COMPANY_ID;
   
   const adminItems = [
     // Gestão de Revenda - APENAS para admins da empresa principal

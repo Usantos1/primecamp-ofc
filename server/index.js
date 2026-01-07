@@ -454,7 +454,8 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         email: user.email,
         email_verified: user.email_verified,
-        created_at: user.created_at
+        created_at: user.created_at,
+        company_id: user.company_id
       },
       profile
     });
@@ -558,7 +559,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 
     // Buscar usuário
     const userResult = await pool.query(
-      'SELECT id, email, email_verified, created_at FROM users WHERE id = $1',
+      'SELECT id, email, email_verified, created_at, company_id FROM users WHERE id = $1',
       [userId]
     );
 
