@@ -829,9 +829,41 @@ app.post('/api/query/:table', async (req, res) => {
     const fields = Array.isArray(select) ? select.join(', ') : (select || '*');
     const { clause: whereClause, params } = buildWhereClause(where);
 
+    // Lista de tabelas que precisam filtrar por company_id
+    const tablesWithCompanyId = [
+      'produtos', 'vendas', 'clientes', 'ordens_servico', 
+      'time_clock', 'users', 'profiles', 'tasks', 'processes'
+    ];
+    
+    const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
+    const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
+    
+    // Se a tabela precisa de filtro por company_id e o usuário está autenticado
+    let finalWhereClause = whereClause;
+    let finalParams = [...params];
+    
+    if (needsCompanyFilter && req.user && req.companyId) {
+      // Verificar se já existe filtro de company_id no where
+      const hasCompanyFilter = where && (
+        (typeof where === 'object' && 'company_id' in where) ||
+        (Array.isArray(where) && where.some((w: any) => w.field === 'company_id' || w.company_id))
+      );
+      
+      if (!hasCompanyFilter) {
+        // Adicionar filtro de company_id automaticamente
+        if (finalWhereClause) {
+          finalWhereClause += ` AND ${tableNameOnly}.company_id = $${finalParams.length + 1}`;
+        } else {
+          finalWhereClause = `WHERE ${tableNameOnly}.company_id = $${finalParams.length + 1}`;
+        }
+        finalParams.push(req.companyId);
+        console.log(`[Query] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
+      }
+    }
+
     // Query para buscar dados
     let sql = `SELECT ${fields} FROM ${tableName}`;
-    if (whereClause) sql += ` ${whereClause}`;
+    if (finalWhereClause) sql += ` ${finalWhereClause}`;
 
     // Validar coluna de ordenação para evitar erro "column ... does not exist"
     if (orderBy && orderBy.field) {
@@ -865,15 +897,15 @@ app.post('/api/query/:table', async (req, res) => {
       sql += ` OFFSET ${offset}`;
     }
 
-    console.log(`[Query] ${tableName}:`, sql, params);
-    const result = await pool.query(sql, params);
+    console.log(`[Query] ${tableName}:`, sql, finalParams);
+    const result = await pool.query(sql, finalParams);
     console.log(`[Query] ${tableName} resultado:`, result.rows.length, 'registros');
     
     // Query para contar total (sem limit/offset)
     let countSql = `SELECT COUNT(*) as total FROM ${tableName}`;
-    if (whereClause) countSql += ` ${whereClause}`;
+    if (finalWhereClause) countSql += ` ${finalWhereClause}`;
     
-    const countResult = await pool.query(countSql, params);
+    const countResult = await pool.query(countSql, finalParams);
     const totalCount = parseInt(countResult.rows[0]?.total || '0');
 
     res.json({ rows: result.rows, count: totalCount });
@@ -891,9 +923,28 @@ app.post('/api/insert/:table', async (req, res) => {
 
     // Usar schema public explicitamente
     const tableName = table.includes('.') ? table : `public.${table}`;
+    const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
+
+    // Lista de tabelas que precisam de company_id
+    const tablesWithCompanyId = [
+      'produtos', 'vendas', 'clientes', 'ordens_servico', 
+      'time_clock', 'users', 'profiles', 'tasks', 'processes'
+    ];
+    
+    const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
 
     // Suportar INSERT em lote: body pode ser array de objetos
     const rowsToInsert = Array.isArray(data) ? data : [data];
+    
+    // Adicionar company_id automaticamente se necessário
+    if (needsCompanyId && req.user && req.companyId) {
+      rowsToInsert.forEach(row => {
+        if (!row.company_id) {
+          row.company_id = req.companyId;
+        }
+      });
+      console.log(`[Insert] Adicionando company_id=${req.companyId} para tabela ${tableNameOnly}`);
+    }
 
     if (!rowsToInsert || rowsToInsert.length === 0) {
       return res.status(400).json({ error: 'Insert requires data' });
@@ -979,6 +1030,15 @@ app.post('/api/update/:table', async (req, res) => {
 
     // Usar schema public explicitamente
     const tableName = table.includes('.') ? table : `public.${table}`;
+    const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
+
+    // Lista de tabelas que precisam filtrar por company_id
+    const tablesWithCompanyId = [
+      'produtos', 'vendas', 'clientes', 'ordens_servico', 
+      'time_clock', 'users', 'profiles', 'tasks', 'processes'
+    ];
+    
+    const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
 
     if (!where || Object.keys(where).length === 0) {
       return res.status(400).json({ error: 'Update requires WHERE clause' });
@@ -996,7 +1056,21 @@ app.post('/api/update/:table', async (req, res) => {
     
     // Passar o número de valores do SET como offset para buildWhereClause
     const { clause: whereClause, params: whereParams } = buildWhereClause(where, values.length);
-    const params = [...values, ...whereParams];
+    let params = [...values, ...whereParams];
+    
+    // Adicionar filtro de company_id se necessário
+    if (needsCompanyFilter && req.user && req.companyId) {
+      const hasCompanyFilter = where && (
+        (typeof where === 'object' && 'company_id' in where) ||
+        (Array.isArray(where) && where.some((w: any) => w.field === 'company_id' || w.company_id))
+      );
+      
+      if (!hasCompanyFilter) {
+        whereClause += ` AND ${tableNameOnly}.company_id = $${params.length + 1}`;
+        params.push(req.companyId);
+        console.log(`[Update] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
+      }
+    }
 
     const sql = `
       UPDATE ${tableName}

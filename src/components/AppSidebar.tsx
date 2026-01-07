@@ -141,8 +141,15 @@ export function AppSidebar() {
   // ═══════════════════════════════════════════════════════════════
   // ADMINISTRAÇÃO - Apenas para admins
   // ═══════════════════════════════════════════════════════════════
+  // Verificar se é admin da empresa principal (ID: 00000000-0000-0000-0000-000000000001)
+  // Isso será verificado via API, mas por enquanto vamos verificar se é admin
+  // A verificação completa será feita no backend
+  const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+  const isAdminCompany = isAdmin && profile?.role === 'admin'; // Verificação inicial, backend valida completamente
+  
   const adminItems = [
-    { label: "Gestão de Revenda", path: "/admin/revenda", icon: Store }, // Sem permissão específica - apenas admins acessam
+    // Gestão de Revenda - APENAS para admins da empresa principal
+    ...(isAdminCompany ? [{ label: "Gestão de Revenda", path: "/admin/revenda", icon: Store }] : []),
     { label: "Usuários e Permissões", path: "/admin/users", icon: Users, permission: "admin.users" },
     { label: "Estrutura Organizacional", path: "/admin/estrutura", icon: Building2, permission: "admin.config" },
     { label: "Cadastros Base", path: "/admin/cadastros", icon: FolderOpen, permission: "admin.config" },
