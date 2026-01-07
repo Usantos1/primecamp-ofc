@@ -13,7 +13,7 @@ import { Produto } from '@/types/assistencia';
 import { parseBRLInput, maskBRL, formatBRL } from '@/utils/currency';
 import { from } from '@/integrations/db/client';
 import { Barcode, Package, DollarSign, Warehouse, History, Plus, X, Check, ChevronsUpDown } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,7 +38,6 @@ interface FormData {
   marca?: string;
   modelo?: string;
   grupo?: string;
-  sub_grupo?: string;
   qualidade?: string;
   preco_custo?: number | string;
   valor_venda?: number | string;
@@ -307,9 +306,11 @@ export function ProductFormOptimized({
 }: ProductFormOptimizedProps) {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCodigo, setIsLoadingCodigo] = useState(false);
   const [activeTab, setActiveTab] = useState('dados');
+  const [grupoOpen, setGrupoOpen] = useState(false);
   const [showNewGrupoDialog, setShowNewGrupoDialog] = useState(false);
   const [newGrupoNome, setNewGrupoNome] = useState('');
   
@@ -340,7 +341,6 @@ export function ProductFormOptimized({
       marca: '',
       modelo: '',
       grupo: '',
-      sub_grupo: '',
       qualidade: '',
       preco_custo: undefined,
       valor_venda: 0,
@@ -383,7 +383,6 @@ export function ProductFormOptimized({
           marca: produto.marca || '',
           modelo: produto.modelo || produto.modelo_compativel || '',
           grupo: produto.grupo || produto.categoria || '',
-          sub_grupo: produto.sub_grupo || '',
           qualidade: (produto as any).qualidade || '',
           preco_custo: (produto.preco_custo || produto.valor_compra || 0),
           valor_venda: produto.valor_venda || produto.preco_venda || 0,
@@ -406,7 +405,6 @@ export function ProductFormOptimized({
             marca: '',
             modelo: '',
             grupo: '',
-            sub_grupo: '',
             qualidade: '',
             valor_venda: 0,
             valor_parcelado_6x: undefined,
@@ -464,6 +462,21 @@ export function ProductFormOptimized({
     } catch (error) {
       console.error('[handleCreateNewModelo] Erro:', error);
     }
+  };
+
+  // Criar novo grupo
+  const handleCreateNewGrupo = () => {
+    if (!newGrupoNome.trim()) return;
+    
+    // Grupos são apenas strings no campo grupo do produto
+    // Não há tabela separada, então apenas definimos o valor
+    setValue('grupo', newGrupoNome.trim());
+    
+    // Invalidar query de grupos para atualizar a lista
+    queryClient.invalidateQueries({ queryKey: ['produtos-grupos'] });
+    
+    setShowNewGrupoDialog(false);
+    setNewGrupoNome('');
   };
 
   // Converter valor bruto (string com vírgula) para número
@@ -534,9 +547,6 @@ export function ProductFormOptimized({
       }
       if (data.grupo && data.grupo.trim()) {
         payload.grupo = data.grupo.trim();
-      }
-      if (data.sub_grupo && data.sub_grupo.trim()) {
-        payload.sub_grupo = data.sub_grupo.trim();
       }
       if (data.qualidade && data.qualidade.trim()) {
         (payload as any).qualidade = data.qualidade.trim();
@@ -918,31 +928,58 @@ export function ProductFormOptimized({
 
                 <div>
                   <Label htmlFor="grupo">Grupo/Categoria</Label>
-                  <Select
-                    value={watch('grupo') || ''}
-                    onValueChange={(value) => {
-                      if (value === '__new__') {
-                        setShowNewGrupoDialog(true);
-                      } else {
-                        setValue('grupo', value);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o grupo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {grupos.map((grupo) => (
-                        <SelectItem key={grupo.id || grupo} value={grupo.nome || grupo}>
-                          {grupo.nome || grupo}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="__new__" className="text-primary font-semibold">
-                        <Plus className="h-4 w-4 inline mr-2" />
-                        Criar novo grupo
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Popover open={grupoOpen} onOpenChange={setGrupoOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={grupoOpen}
+                        className="w-full justify-between text-base md:text-sm"
+                      >
+                        {watch('grupo') || 'Selecione o grupo'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar grupo..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum grupo encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {grupos.map((grupo) => (
+                              <CommandItem
+                                key={grupo.id || grupo}
+                                value={grupo.nome || grupo}
+                                onSelect={() => {
+                                  setValue('grupo', grupo.nome || grupo);
+                                  setGrupoOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    watch('grupo') === (grupo.nome || grupo) ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {grupo.nome || grupo}
+                              </CommandItem>
+                            ))}
+                            <CommandItem
+                              value="__new__"
+                              onSelect={() => {
+                                setGrupoOpen(false);
+                                setShowNewGrupoDialog(true);
+                              }}
+                              className="text-primary font-semibold"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Criar novo grupo
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   
                   {/* Dialog para criar novo grupo */}
                   <Dialog open={showNewGrupoDialog} onOpenChange={setShowNewGrupoDialog}>
@@ -961,11 +998,7 @@ export function ProductFormOptimized({
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
-                                if (newGrupoNome.trim()) {
-                                  setValue('grupo', newGrupoNome.trim());
-                                  setShowNewGrupoDialog(false);
-                                  setNewGrupoNome('');
-                                }
+                                handleCreateNewGrupo();
                               }
                             }}
                             autoFocus
@@ -984,13 +1017,7 @@ export function ProductFormOptimized({
                           </Button>
                           <Button
                             type="button"
-                            onClick={() => {
-                              if (newGrupoNome.trim()) {
-                                setValue('grupo', newGrupoNome.trim());
-                                setShowNewGrupoDialog(false);
-                                setNewGrupoNome('');
-                              }
-                            }}
+                            onClick={handleCreateNewGrupo}
                             disabled={!newGrupoNome.trim()}
                           >
                             Criar e Selecionar
@@ -999,16 +1026,6 @@ export function ProductFormOptimized({
                       </div>
                     </DialogContent>
                   </Dialog>
-                </div>
-
-                <div>
-                  <Label htmlFor="sub_grupo">Subgrupo</Label>
-                  <Input
-                    id="sub_grupo"
-                    {...register('sub_grupo')}
-                    placeholder="Ex: Acessórios"
-                    className="text-base md:text-sm"
-                  />
                 </div>
 
                 <div>
