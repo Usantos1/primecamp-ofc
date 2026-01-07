@@ -253,7 +253,8 @@ export function TimeSheetManager() {
           {loading ? (
             <div className="text-center py-8 text-sm md:text-base text-muted-foreground">Carregando registros...</div>
           ) : (
-            <div className="grid grid-cols-7 gap-1.5 md:gap-2">
+            <div className="overflow-x-auto">
+              <div className="grid grid-cols-7 gap-1.5 md:gap-2 min-w-[700px]">
               {/* Headers dos dias da semana */}
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
                 <div 
