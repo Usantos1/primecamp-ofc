@@ -265,9 +265,16 @@ app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req,
 });
 
 // Rotas de revenda (admin apenas) - ANTES do middleware global
-console.log('[Server] Registrando rotas de revenda em /api/admin/revenda');
-app.use('/api/admin/revenda', resellerRoutes);
-console.log('[Server] Rotas de revenda registradas');
+try {
+  console.log('[Server] Registrando rotas de revenda em /api/admin/revenda');
+  app.use('/api/admin/revenda', resellerRoutes);
+  console.log('[Server] ✅ Rotas de revenda registradas com sucesso');
+} catch (error) {
+  console.error('[Server] ❌ Erro ao registrar rotas de revenda:', error);
+  app.use('/api/admin/revenda', (req, res) => {
+    res.status(500).json({ error: 'Rotas de revenda não disponíveis', details: error.message });
+  });
+}
 
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*, /api/v1/*)
 // Os endpoints /api/functions/*, /api/whatsapp/* e /api/v1/* terão autenticação própria dentro de cada rota
