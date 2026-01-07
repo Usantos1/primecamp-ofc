@@ -432,16 +432,21 @@ export const UserManagementNew = () => {
 
   const approveUser = async (userId: string) => {
     try {
+      console.log('[DEBUG] Aprovando userId:', userId);
+      
       const currentUserData = await authAPI.getUser();
       const approvedBy = currentUserData.data.user?.id;
+      console.log('[DEBUG] approvedBy:', approvedBy);
       
-      const { error } = await from('profiles')
+      const { error, data } = await from('profiles')
         .update({
           approved: true,
           approved_at: new Date().toISOString(),
           approved_by: approvedBy
         })
         .eq('user_id', userId);
+
+      console.log('[DEBUG] Resultado update:', { error, data });
 
       if (error) throw error;
 
@@ -452,6 +457,7 @@ export const UserManagementNew = () => {
 
       fetchUsers();
     } catch (error: any) {
+      console.error('[DEBUG] Erro ao aprovar:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao aprovar usuário",
