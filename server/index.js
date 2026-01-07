@@ -12,6 +12,7 @@ import multer from 'multer';
 import fs from 'fs';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import resellerRoutes from './routes/reseller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -262,6 +263,11 @@ app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req,
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// Rotas de revenda (admin apenas) - ANTES do middleware global
+console.log('[Server] Registrando rotas de revenda em /api/admin/revenda');
+app.use('/api/admin/revenda', resellerRoutes);
+console.log('[Server] Rotas de revenda registradas');
 
 // Aplicar autenticação a rotas de dados (não aplicar em /api/auth/*, /api/health, /api/functions/*, /api/whatsapp/*, /api/v1/*)
 // Os endpoints /api/functions/*, /api/whatsapp/* e /api/v1/* terão autenticação própria dentro de cada rota
