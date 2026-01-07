@@ -149,20 +149,12 @@ export function AppSidebar() {
   const isMainCompanyAdmin = userCompanyId === ADMIN_COMPANY_ID;
   const isAdminCompany = Boolean(isAdmin && profile?.role === 'admin' && isMainCompanyAdmin);
   
-  // DEBUG: Log SEMPRE executado (não condicional)
-  console.log('=== APP SIDEBAR DEBUG ===');
-  console.log('isAdmin:', isAdmin);
-  console.log('profile.role:', profile?.role);
-  console.log('user.company_id:', userCompanyId);
-  console.log('ADMIN_COMPANY_ID:', ADMIN_COMPANY_ID);
-  console.log('isMainCompanyAdmin:', isMainCompanyAdmin);
-  console.log('isAdminCompany:', isAdminCompany);
-  console.log('user object:', user);
-  console.log('========================');
+  // DEBUG: Log SEMPRE executado - usando console.error para garantir visibilidade
+  console.error('🔴 [SIDEBAR] user.company_id:', userCompanyId, '| isAdminCompany:', isAdminCompany, '| ADMIN_COMPANY_ID:', ADMIN_COMPANY_ID);
   
   // Salvar em window para acesso direto
   if (typeof window !== 'undefined') {
-    window.APP_SIDEBAR_DEBUG = {
+    (window as any).APP_SIDEBAR_DEBUG = {
       isAdmin,
       profileRole: profile?.role,
       userCompanyId,
