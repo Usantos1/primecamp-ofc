@@ -1225,25 +1225,48 @@ export default function Produtos() {
             {selectedProduto ? (
               <div className="space-y-6 py-4">
                 <div className="border-b pb-4">
-                  <h3 className="font-semibold text-lg mb-2">{selectedProduto.descricao}</h3>
+                  <h3 className="font-semibold text-lg mb-2">{selectedProduto.nome || selectedProduto.descricao}</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
                     <div><span className="font-medium">Código:</span> {selectedProduto.codigo || selectedProduto.id}</div>
                     <div><span className="font-medium">Referência:</span> {selectedProduto.referencia || '-'}</div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Estoque Atual</p>
-                    <p className="text-2xl font-bold">{selectedProduto.estoque_atual || 0}</p>
+                    <p className="text-2xl font-bold">{selectedProduto.quantidade || selectedProduto.estoque_atual || 0}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Estoque Mínimo</p>
                     <p className="text-2xl font-semibold">{selectedProduto.estoque_minimo || 0}</p>
                   </div>
                   <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Preço de Venda</p>
+                    <p className="text-2xl font-semibold text-green-600">
+                      {currencyFormatters.brl(selectedProduto.valor_venda || selectedProduto.preco_venda || 0)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Valor Total (custo)</p>
                     <p className="text-2xl font-semibold">
-                      {currencyFormatters.brl((selectedProduto.estoque_atual || 0) * (selectedProduto.preco_custo || 0))}
+                      {currencyFormatters.brl((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.preco_custo || selectedProduto.valor_compra || 0))}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Valor Total em Estoque (venda)</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {currencyFormatters.brl((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.valor_venda || selectedProduto.preco_venda || 0))}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Lucro Potencial</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {currencyFormatters.brl(
+                        ((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.valor_venda || selectedProduto.preco_venda || 0)) - 
+                        ((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.preco_custo || selectedProduto.valor_compra || 0))
+                      )}
                     </p>
                   </div>
                 </div>
