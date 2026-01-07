@@ -337,6 +337,7 @@ export function TimeSheetManager() {
                   </Card>
                 );
               })}
+              </div>
             </div>
           )}
         </CardContent>
