@@ -100,7 +100,40 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Tabela de Pagamentos
+-- 4. Tabela de Pagamentos (verificar e corrigir se já existir)
+DO $$
+BEGIN
+    -- Se tabela existe mas não tem company_id ou external_id, adicionar
+    IF EXISTS (SELECT 1 FROM information_schema.tables 
+               WHERE table_schema = 'public' AND table_name = 'payments') THEN
+        
+        -- Adicionar company_id se não existir
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                       WHERE table_schema = 'public' 
+                       AND table_name = 'payments' 
+                       AND column_name = 'company_id') THEN
+            ALTER TABLE public.payments ADD COLUMN company_id UUID;
+            UPDATE public.payments 
+            SET company_id = '00000000-0000-0000-0000-000000000001'::UUID 
+            WHERE company_id IS NULL;
+            ALTER TABLE public.payments 
+            ADD CONSTRAINT fk_payments_company 
+            FOREIGN KEY (company_id) REFERENCES public.companies(id);
+            ALTER TABLE public.payments ALTER COLUMN company_id SET NOT NULL;
+            RAISE NOTICE 'Coluna company_id adicionada em payments';
+        END IF;
+        
+        -- Adicionar external_id se não existir
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                       WHERE table_schema = 'public' 
+                       AND table_name = 'payments' 
+                       AND column_name = 'external_id') THEN
+            ALTER TABLE public.payments ADD COLUMN external_id VARCHAR(255);
+            RAISE NOTICE 'Coluna external_id adicionada em payments';
+        END IF;
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS public.payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -155,9 +188,30 @@ CREATE INDEX IF NOT EXISTS idx_companies_cnpj ON public.companies(cnpj);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_company_id ON public.subscriptions(company_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON public.subscriptions(status);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_expires_at ON public.subscriptions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_payments_company_id ON public.payments(company_id);
-CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
-CREATE INDEX IF NOT EXISTS idx_payments_external_id ON public.payments(external_id);
+-- Criar índices apenas se as colunas existirem
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_schema = 'public' 
+               AND table_name = 'payments' 
+               AND column_name = 'company_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_payments_company_id ON public.payments(company_id);
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_schema = 'public' 
+               AND table_name = 'payments' 
+               AND column_name = 'status') THEN
+        CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_schema = 'public' 
+               AND table_name = 'payments' 
+               AND column_name = 'external_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_payments_external_id ON public.payments(external_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_usage_logs_company_period ON public.usage_logs(company_id, period_year, period_month);
 
 -- Função para atualizar updated_at
