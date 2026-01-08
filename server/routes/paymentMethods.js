@@ -32,23 +32,30 @@ router.get('/', async (req, res) => {
     const companyId = req.companyId;
     const { active_only } = req.query;
     
-    // Verificar se a coluna company_id existe
+    // Verificar estrutura da tabela
     const hasCompanyId = await columnExists('payment_methods', 'company_id');
     const hasName = await columnExists('payment_methods', 'name');
+    const hasCode = await columnExists('payment_methods', 'code');
+    const hasIsActive = await columnExists('payment_methods', 'is_active');
+    const hasAcceptsInstallments = await columnExists('payment_methods', 'accepts_installments');
+    const hasSortOrder = await columnExists('payment_methods', 'sort_order');
+    
     const nameCol = hasName ? 'name' : 'nome';
+    const codeCol = hasCode ? 'code' : 'codigo';
+    const activeCol = hasIsActive ? 'is_active' : 'ativo';
     
     let query = `
       SELECT pm.id, 
              pm.${nameCol} as name,
-             COALESCE(pm.code, pm.codigo, '') as code,
+             pm.${codeCol} as code,
              pm.description,
-             COALESCE(pm.is_active, pm.ativo, true) as is_active,
-             COALESCE(pm.accepts_installments, false) as accepts_installments,
-             COALESCE(pm.max_installments, 1) as max_installments,
+             COALESCE(pm.${activeCol}, true) as is_active,
+             COALESCE(pm.${hasAcceptsInstallments ? 'accepts_installments' : 'permite_parcelamento'}, false) as accepts_installments,
+             COALESCE(pm.${hasAcceptsInstallments ? 'max_installments' : 'max_parcelas'}, 1) as max_installments,
              COALESCE(pm.min_value_for_installments, 0) as min_value_for_installments,
              pm.icon,
              pm.color,
-             COALESCE(pm.sort_order, 0) as sort_order,
+             COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0) as sort_order,
              pm.created_at,
              pm.updated_at,
              (SELECT COUNT(*) FROM payment_fees pf WHERE pf.payment_method_id = pm.id) as fees_count
@@ -66,10 +73,10 @@ router.get('/', async (req, res) => {
     }
     
     if (active_only === 'true') {
-      query += ` AND COALESCE(pm.is_active, pm.ativo, true) = true`;
+      query += ` AND COALESCE(pm.${activeCol}, true) = true`;
     }
     
-    query += ` ORDER BY COALESCE(pm.sort_order, 0), pm.${nameCol}`;
+    query += ` ORDER BY COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0), pm.${nameCol}`;
     
     const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
@@ -85,20 +92,27 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     
     const hasName = await columnExists('payment_methods', 'name');
+    const hasCode = await columnExists('payment_methods', 'code');
+    const hasIsActive = await columnExists('payment_methods', 'is_active');
+    const hasAcceptsInstallments = await columnExists('payment_methods', 'accepts_installments');
+    const hasSortOrder = await columnExists('payment_methods', 'sort_order');
+    
     const nameCol = hasName ? 'name' : 'nome';
+    const codeCol = hasCode ? 'code' : 'codigo';
+    const activeCol = hasIsActive ? 'is_active' : 'ativo';
     
     const methodResult = await pool.query(`
       SELECT pm.id, 
              pm.${nameCol} as name,
-             COALESCE(pm.code, pm.codigo, '') as code,
+             pm.${codeCol} as code,
              pm.description,
-             COALESCE(pm.is_active, pm.ativo, true) as is_active,
-             COALESCE(pm.accepts_installments, false) as accepts_installments,
-             COALESCE(pm.max_installments, 1) as max_installments,
+             COALESCE(pm.${activeCol}, true) as is_active,
+             COALESCE(pm.${hasAcceptsInstallments ? 'accepts_installments' : 'permite_parcelamento'}, false) as accepts_installments,
+             COALESCE(pm.${hasAcceptsInstallments ? 'max_installments' : 'max_parcelas'}, 1) as max_installments,
              COALESCE(pm.min_value_for_installments, 0) as min_value_for_installments,
              pm.icon,
              pm.color,
-             COALESCE(pm.sort_order, 0) as sort_order
+             COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0) as sort_order
       FROM payment_methods pm
       WHERE pm.id = $1
     `, [id]);
