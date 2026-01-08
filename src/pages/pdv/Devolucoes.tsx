@@ -135,22 +135,38 @@ export default function Devolucoes() {
         return;
       }
 
+      console.log('[Devolução] Itens da venda raw:', items);
+      
       const saleItems: SaleItem[] = (items || []).map((item: any) => {
-        // Calcular preço unitário de várias formas possíveis
-        const precoUnit = item.preco_unitario || item.valor_unitario || item.price || item.unit_price || 
-          (item.subtotal && item.quantidade ? item.subtotal / item.quantidade : 0) ||
-          (item.total && item.quantidade ? item.total / item.quantidade : 0);
+        console.log('[Devolução] Item raw:', item);
+        
+        // Tentar todas as formas possíveis de obter o preço
+        const quantidade = Number(item.quantidade) || Number(item.quantity) || 1;
+        const subtotalItem = Number(item.subtotal) || Number(item.total) || 0;
+        
+        // Preço unitário: tentar campo direto ou calcular do subtotal
+        let precoUnit = Number(item.preco_unitario) || 
+                        Number(item.valor_unitario) || 
+                        Number(item.price) || 
+                        Number(item.unit_price) || 0;
+        
+        // Se não tem preço unitário, calcular do subtotal
+        if (precoUnit === 0 && subtotalItem > 0 && quantidade > 0) {
+          precoUnit = subtotalItem / quantidade;
+        }
+        
+        console.log('[Devolução] Item processado:', item.produto_nome, 'qty:', quantidade, 'price:', precoUnit, 'subtotal:', subtotalItem);
         
         return {
           id: item.id,
           produto_id: item.produto_id,
           produto_nome: item.produto_nome || item.nome || item.product_name || 'Produto',
-          quantidade: item.quantidade || item.quantity || 1,
+          quantidade: quantidade,
           preco_unitario: precoUnit,
-          subtotal: item.subtotal || item.total || (precoUnit * (item.quantidade || item.quantity || 1)),
+          subtotal: subtotalItem || (precoUnit * quantidade),
           selected: true,
-          refund_qty: item.quantidade || item.quantity || 1,
-          destination: 'stock' as ProductDestination // Padrão: volta ao estoque
+          refund_qty: quantidade,
+          destination: 'stock' as ProductDestination
         };
       });
 
@@ -218,16 +234,24 @@ export default function Devolucoes() {
 
     setProcessingRefund(true);
     try {
-      const refundItems = itemsToRefund.map(item => ({
-        sale_item_id: item.id,
-        product_id: item.produto_id,
-        product_name: item.produto_nome,
-        quantity: item.refund_qty || item.quantidade,
-        unit_price: item.preco_unitario,
-        return_to_stock: item.destination === 'stock', // Só volta ao estoque se destino for 'stock'
-        condition: item.destination === 'loss' ? 'defeituoso' : 'novo',
-        destination: item.destination
-      }));
+      const refundItems = itemsToRefund.map(item => {
+        // Garantir que temos valores numéricos válidos
+        const qty = Number(item.refund_qty) || Number(item.quantidade) || 1;
+        const price = Number(item.preco_unitario) || Number(item.subtotal / item.quantidade) || 0;
+        
+        console.log('[Devolução] Item:', item.produto_nome, 'Qty:', qty, 'Price:', price);
+        
+        return {
+          sale_item_id: item.id,
+          product_id: item.produto_id,
+          product_name: item.produto_nome,
+          quantity: qty,
+          unit_price: price,
+          return_to_stock: item.destination === 'stock',
+          condition: item.destination === 'loss' ? 'defeituoso' : 'novo',
+          destination: item.destination
+        };
+      });
 
       const result = await createRefund({
         sale_id: saleData.id,
@@ -355,6 +379,7 @@ export default function Devolucoes() {
     // Criar janela de impressão térmica
     const printWindow = window.open('', '_blank', 'width=300,height=600');
     if (printWindow) {
+      const valorVoucher = voucher.value || voucher.remaining_value || 0;
       printWindow.document.write(`
         <html>
           <head>
@@ -365,20 +390,34 @@ export default function Devolucoes() {
               .bold { font-weight: bold; }
               .line { border-top: 1px dashed #000; margin: 10px 0; }
               .big { font-size: 18px; }
+              .huge { font-size: 24px; }
+              .alert { background: #000; color: #fff; padding: 5px; margin: 10px 0; }
+              .value { font-size: 20px; }
             </style>
           </head>
           <body>
-            <div class="center bold big">VOUCHER DE CRÉDITO</div>
+            <div class="center bold big">VALE COMPRA</div>
             <div class="line"></div>
-            <div class="center bold big">${voucher.code}</div>
+            
+            <div class="center bold huge">${voucher.code}</div>
+            
             <div class="line"></div>
-            <div>Valor: <span class="bold">${formatCurrency(voucher.value)}</span></div>
-            <div>Saldo: <span class="bold">${formatCurrency(voucher.remaining_value)}</span></div>
+            <div class="center">
+              <div>Valor do Crédito:</div>
+              <div class="bold value">${formatCurrency(valorVoucher)}</div>
+            </div>
             <div class="line"></div>
+            
+            <div>Cliente: ${voucher.customer_name || '-'}</div>
             <div>Emitido: ${formatDate(voucher.created_at)}</div>
             <div>Validade: ${voucher.expires_at ? formatDate(voucher.expires_at) : 'Sem validade'}</div>
+            
             <div class="line"></div>
-            <div class="center">Este voucher é pessoal e intransferível.</div>
+            <div class="center alert bold">⚠️ GUARDE ESTE CUPOM ⚠️</div>
+            <div class="center" style="margin-top: 5px;">
+              Este vale é de USO ÚNICO.<br>
+              Apresente no caixa para usar.<br>
+              Não pode ser dividido.</div>
             <div class="center">Apresente este código no caixa.</div>
             <div class="line"></div>
             <div class="center" style="font-size: 10px;">Gerado por Prime Camp</div>

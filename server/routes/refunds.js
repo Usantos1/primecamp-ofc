@@ -138,7 +138,15 @@ router.post('/', async (req, res) => {
     const refundNumber = `DEV${String(seqResult.rows[0].num).padStart(6, '0')}`;
     
     // Calcular valor total da devolução
-    const totalRefundValue = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    // Garantir que os valores são números válidos
+    const totalRefundValue = items.reduce((sum, item) => {
+      const qty = parseFloat(item.quantity) || 0;
+      const price = parseFloat(item.unit_price) || 0;
+      console.log(`[Refund] Item: ${item.product_name}, qty: ${qty}, price: ${price}, subtotal: ${qty * price}`);
+      return sum + (qty * price);
+    }, 0);
+    
+    console.log(`[Refund] Total calculado: ${totalRefundValue}`);
     
     // Criar devolução
     const refundResult = await client.query(`
@@ -173,7 +181,8 @@ router.post('/', async (req, res) => {
     // Se o método for vale compra, criar o vale
     let voucher = null;
     if (refund_method === 'voucher') {
-      const voucherCodeResult = await client.query("SELECT generate_voucher_code() as code");
+      // Usar função de código simples (V001, V002, etc.)
+      const voucherCodeResult = await client.query("SELECT generate_simple_voucher_code() as code");
       const voucherCode = voucherCodeResult.rows[0].code;
       
       // Pegar documento do cliente se disponível
@@ -497,14 +506,14 @@ router.get('/vouchers/code/:code', async (req, res) => {
   }
 });
 
-// Usar vale em uma venda
+// Usar vale em uma venda (USO ÚNICO - VALOR TOTAL)
 router.post('/vouchers/:id/use', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     
     const { id } = req.params;
-    const { sale_id, amount, customer_document } = req.body;
+    const { sale_id, customer_document } = req.body;
     const companyId = req.companyId;
     const userId = req.user?.id || null;
     
@@ -522,11 +531,16 @@ router.post('/vouchers/:id/use', async (req, res) => {
     
     // Validações
     if (voucher.status !== 'active') {
-      throw new Error('Vale não está ativo');
+      throw new Error('Este vale já foi utilizado ou está cancelado');
     }
     
-    if (voucher.current_value < amount) {
-      throw new Error(`Saldo insuficiente. Saldo disponível: R$ ${voucher.current_value.toFixed(2)}`);
+    // Verificar se já foi usado antes (dupla proteção)
+    const usageCheck = await client.query(
+      'SELECT COUNT(*) as count FROM voucher_usage WHERE voucher_id = $1',
+      [id]
+    );
+    if (parseInt(usageCheck.rows[0].count) > 0) {
+      throw new Error('Este vale já foi utilizado anteriormente');
     }
     
     // Verificar se é intransferível e se o documento confere
@@ -536,17 +550,19 @@ router.post('/vouchers/:id/use', async (req, res) => {
       }
     }
     
-    const balanceBefore = voucher.current_value;
-    const balanceAfter = balanceBefore - amount;
-    const newStatus = balanceAfter === 0 ? 'used' : 'active';
+    // USO ÚNICO: usar o valor total do voucher
+    const amount = parseFloat(voucher.current_value) || 0;
+    const balanceBefore = amount;
+    const balanceAfter = 0; // Sempre zera - uso único
+    const newStatus = 'used'; // Sempre fica como usado
     
     // Registrar uso
     await client.query(`
-      INSERT INTO voucher_usage (voucher_id, sale_id, amount_used, balance_before, balance_after, used_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [id, sale_id, amount, balanceBefore, balanceAfter, userId]);
+      INSERT INTO voucher_usage (voucher_id, sale_id, amount_used, balance_before, balance_after, used_by, company_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [id, sale_id, amount, balanceBefore, balanceAfter, userId, companyId]);
     
-    // Atualizar vale
+    // Atualizar vale como USADO
     await client.query(`
       UPDATE vouchers 
       SET current_value = $1, status = $2, updated_at = NOW()
