@@ -125,18 +125,18 @@ export function AppSidebar() {
   ].filter(item => !item.permission || hasPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // FINANCEIRO - Gestão Financeira
+  // FINANCEIRO - Gestão Financeira (apenas financeiro, gerente, admin)
   // ═══════════════════════════════════════════════════════════════
   const financeiroItems = [
-    { label: "Financeiro", path: "/admin/financeiro", icon: Wallet },
-  ];
+    { label: "Financeiro", path: "/admin/financeiro", icon: Wallet, permission: "relatorios.financeiro" },
+  ].filter(item => !item.permission || hasPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // MARKETING - Campanhas, Leads, Métricas
+  // MARKETING - Campanhas, Leads, Métricas (gerente, admin)
   // ═══════════════════════════════════════════════════════════════
   const marketingItems = [
-    { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone },
-  ];
+    { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone, permission: "metricas.view" },
+  ].filter(item => !item.permission || hasPermission(item.permission));
 
 
   // ═══════════════════════════════════════════════════════════════
