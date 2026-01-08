@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +66,7 @@ export default function Clientes() {
     createCliente, 
     updateCliente, 
     deleteCliente,
+    searchClientesAsync,
     page,
     totalPages,
     totalCount,
@@ -75,6 +76,10 @@ export default function Clientes() {
     pageSize,
   } = useClientes(50);
   const { toast } = useToast();
+  
+  // Estado para clientes da busca no servidor
+  const [searchResults, setSearchResults] = useState<Cliente[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Buscar OSs do cliente
   const { data: clienteOSs = [], isLoading: loadingOSs } = useQuery({
@@ -110,19 +115,43 @@ export default function Clientes() {
     enabled: !!editingCliente?.id && showForm,
   });
 
-  // Filtrar clientes
+  // Buscar no servidor quando o termo de busca muda
+  useEffect(() => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchClientesAsync(searchTerm, 100);
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Erro na busca:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, searchClientesAsync]);
+
+  // Usar resultados da busca do servidor quando há termo de busca
   const filteredClientes = useMemo(() => {
     if (!searchTerm) return clientes;
-    const q = searchTerm.toLowerCase();
-    return clientes.filter(c => 
-      (c.nome || '').toLowerCase().includes(q) ||
-      c.cpf_cnpj?.includes(searchTerm) ||
-      c.rg?.includes(searchTerm) ||
-      c.telefone?.includes(searchTerm) ||
-      c.whatsapp?.includes(searchTerm) ||
-      c.email?.toLowerCase().includes(q)
-    );
-  }, [clientes, searchTerm]);
+    if (searchTerm.length < 2) {
+      // Busca local para termos muito curtos
+      const q = searchTerm.toLowerCase();
+      return clientes.filter(c => 
+        (c.nome || '').toLowerCase().includes(q) ||
+        c.cpf_cnpj?.includes(searchTerm) ||
+        c.telefone?.includes(searchTerm)
+      );
+    }
+    // Usar resultados da busca no servidor
+    return searchResults;
+  }, [clientes, searchTerm, searchResults]);
 
   // Abrir form para novo cliente
   const handleNew = () => {
@@ -183,8 +212,6 @@ export default function Clientes() {
 
   // Salvar cliente
   const handleSubmit = async () => {
-    console.log('[handleSubmit] Iniciando...', { formData, editingCliente: !!editingCliente });
-    
     if (!formData.nome) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
       return;
@@ -193,20 +220,18 @@ export default function Clientes() {
     setIsLoading(true);
     try {
       if (editingCliente) {
-        console.log('[handleSubmit] Atualizando cliente:', editingCliente.id);
-        const result = await updateCliente(editingCliente.id, formData as any);
-        console.log('[handleSubmit] Resultado update:', result);
+        await updateCliente(editingCliente.id, formData as any);
         toast({ title: 'Cliente atualizado!' });
       } else {
-        console.log('[handleSubmit] Criando novo cliente:', formData.nome);
-        const result = await createCliente(formData as any);
-        console.log('[handleSubmit] Resultado create:', result);
-        toast({ title: 'Cliente cadastrado!' });
+        await createCliente(formData as any);
+        toast({ title: 'Cliente cadastrado com sucesso!' });
+        // Limpar busca e definir para buscar o cliente recém criado
+        setSearchTerm(formData.nome.split(' ')[0]); // Buscar pelo primeiro nome
       }
       setShowForm(false);
       setFormData(INITIAL_FORM);
     } catch (error: any) {
-      console.error('[handleSubmit] Erro ao salvar cliente:', error);
+      console.error('Erro ao salvar cliente:', error);
       toast({ title: 'Erro ao salvar cliente', description: error?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -318,8 +343,8 @@ export default function Clientes() {
         <div className="md:hidden flex-shrink-0 bg-white/80 dark:bg-slate-900/50 border border-gray-200 rounded-lg p-2 space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 pl-8 text-sm border-gray-200" />
+              <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
+              <Input placeholder="Buscar cliente... (mín. 2 letras)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 pl-8 text-sm border-gray-200" />
             </div>
             <Button onClick={handleNew} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4" />
@@ -331,8 +356,8 @@ export default function Clientes() {
         <div className="hidden md:block flex-shrink-0 bg-card border border-gray-200 rounded-lg p-3">
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por nome, CPF, RG, telefone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm border-gray-200" />
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
+              <Input placeholder="Buscar por nome, CPF, telefone... (mín. 2 letras)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm border-gray-200" />
             </div>
             <Button onClick={handleNew} size="sm" className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4" /><span>Novo Cliente</span>
