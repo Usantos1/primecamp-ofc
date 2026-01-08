@@ -239,10 +239,19 @@ export default function Clientes() {
   };
 
   // Deletar cliente
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Deseja realmente excluir este cliente?')) {
-      deleteCliente(id);
-      toast({ title: 'Cliente excluído!' });
+      try {
+        await deleteCliente(id);
+        toast({ title: 'Cliente excluído!' });
+        // Atualizar resultados da busca removendo o cliente excluído
+        if (searchResults.length > 0) {
+          setSearchResults(prev => prev.filter(c => c.id !== id));
+        }
+      } catch (error: any) {
+        console.error('Erro ao excluir cliente:', error);
+        toast({ title: 'Erro ao excluir', description: error?.message, variant: 'destructive' });
+      }
     }
   };
 

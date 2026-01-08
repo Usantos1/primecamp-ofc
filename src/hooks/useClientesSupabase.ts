@@ -109,14 +109,20 @@ export function useClientesSupabase(pageSize: number = 50) {
   // Deletar cliente (soft delete - marca como inativo)
   const deleteCliente = useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      const { error } = await from('clientes')
+      console.log('[deleteCliente] Excluindo cliente:', id);
+      const { data, error } = await from('clientes')
         .eq('id', id)
         .update({ situacao: 'inativo' });
 
+      console.log('[deleteCliente] Resultado:', { data, error });
       if (error) throw error;
     },
     onSuccess: () => {
+      console.log('[deleteCliente] Sucesso! Invalidando queries...');
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
+    },
+    onError: (error) => {
+      console.error('[deleteCliente] Erro:', error);
     },
   });
 
