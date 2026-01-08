@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, FileText, CheckCircle, AlertCircle, X, Edit } from 'lucide-react';
 import { useClientesSupabase } from '@/hooks/useClientesSupabase';
 import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { useOrdensServicoSupabase } from '@/hooks/useOrdensServicoSupabase';
@@ -519,6 +522,13 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
         
         {step === 'preview' && dadosExtraidos && (
           <div className="space-y-4">
+            <Alert className="bg-blue-50 border-blue-200">
+              <Edit className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Edite os dados se necessário</strong> antes de importar. Campos em branco serão ignorados.
+              </AlertDescription>
+            </Alert>
+
             {erros.length > 0 && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -548,98 +558,248 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Dados da OS */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Dados da OS</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4" /> Dados da OS
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {dadosExtraidos.numero_os && (
-                    <div><strong>Nº OS Antiga:</strong> {dadosExtraidos.numero_os}</div>
-                  )}
-                  {dadosExtraidos.data_entrada && (
-                    <div><strong>Data:</strong> {dadosExtraidos.data_entrada}</div>
-                  )}
-                  {dadosExtraidos.hora_entrada && (
-                    <div><strong>Hora:</strong> {dadosExtraidos.hora_entrada}</div>
-                  )}
-                  {dadosExtraidos.status && (
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <strong>Status:</strong>{' '}
-                      <Badge>{dadosExtraidos.status}</Badge>
+                      <Label className="text-xs">Nº OS Original</Label>
+                      <Input
+                        value={dadosExtraidos.numero_os || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, numero_os: e.target.value})}
+                        placeholder="Ex: 1234"
+                        className="h-8 text-sm"
+                      />
                     </div>
-                  )}
-                  {dadosExtraidos.previsao_entrega && (
-                    <div><strong>Previsão:</strong> {dadosExtraidos.previsao_entrega}</div>
-                  )}
+                    <div>
+                      <Label className="text-xs">Status</Label>
+                      <Input
+                        value={dadosExtraidos.status || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, status: e.target.value})}
+                        placeholder="Ex: ABERTA"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Data Entrada</Label>
+                      <Input
+                        value={dadosExtraidos.data_entrada || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, data_entrada: e.target.value})}
+                        placeholder="dd/mm/aaaa"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Hora Entrada</Label>
+                      <Input
+                        value={dadosExtraidos.hora_entrada || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, hora_entrada: e.target.value})}
+                        placeholder="HH:MM"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Previsão Entrega</Label>
+                      <Input
+                        value={dadosExtraidos.previsao_entrega || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, previsao_entrega: e.target.value})}
+                        placeholder="dd/mm/aaaa"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Hora Previsão</Label>
+                      <Input
+                        value={dadosExtraidos.hora_previsao || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, hora_previsao: e.target.value})}
+                        placeholder="HH:MM"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               
+              {/* Cliente */}
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Cliente</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {dadosExtraidos.cliente_nome && (
-                    <div><strong>Nome:</strong> {dadosExtraidos.cliente_nome}</div>
-                  )}
-                  {dadosExtraidos.cliente_cpf_cnpj && (
-                    <div><strong>CPF/CNPJ:</strong> {dadosExtraidos.cliente_cpf_cnpj}</div>
-                  )}
-                  {dadosExtraidos.telefone_contato && (
-                    <div><strong>Contato:</strong> {dadosExtraidos.telefone_contato}</div>
-                  )}
-                  {dadosExtraidos.endereco && (
-                    <div><strong>Endereço:</strong> {dadosExtraidos.endereco}</div>
-                  )}
-                  {dadosExtraidos.bairro && (
-                    <div><strong>Bairro:</strong> {dadosExtraidos.bairro}</div>
-                  )}
-                  {dadosExtraidos.cidade && (
-                    <div><strong>Cidade:</strong> {dadosExtraidos.cidade}/{dadosExtraidos.estado}</div>
-                  )}
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs">Nome do Cliente *</Label>
+                    <Input
+                      value={dadosExtraidos.cliente_nome || ''}
+                      onChange={(e) => setDadosExtraidos({...dadosExtraidos, cliente_nome: e.target.value})}
+                      placeholder="Nome completo"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">CPF/CNPJ</Label>
+                      <Input
+                        value={dadosExtraidos.cliente_cpf_cnpj || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, cliente_cpf_cnpj: e.target.value})}
+                        placeholder="000.000.000-00"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Telefone *</Label>
+                      <Input
+                        value={dadosExtraidos.telefone_contato || dadosExtraidos.telefone || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, telefone_contato: e.target.value})}
+                        placeholder="(19) 99999-9999"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Endereço</Label>
+                    <Input
+                      value={dadosExtraidos.endereco || ''}
+                      onChange={(e) => setDadosExtraidos({...dadosExtraidos, endereco: e.target.value})}
+                      placeholder="Rua, número"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Bairro</Label>
+                      <Input
+                        value={dadosExtraidos.bairro || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, bairro: e.target.value})}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Cidade/UF</Label>
+                      <Input
+                        value={dadosExtraidos.cidade ? `${dadosExtraidos.cidade}/${dadosExtraidos.estado || ''}` : ''}
+                        onChange={(e) => {
+                          const [cidade, estado] = e.target.value.split('/');
+                          setDadosExtraidos({...dadosExtraidos, cidade, estado: estado || ''});
+                        }}
+                        placeholder="Campinas/SP"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               
+              {/* Equipamento */}
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Equipamento</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {dadosExtraidos.marca_nome && (
-                    <div><strong>Marca:</strong> {dadosExtraidos.marca_nome}</div>
-                  )}
-                  {dadosExtraidos.modelo_nome && (
-                    <div><strong>Modelo:</strong> {dadosExtraidos.modelo_nome}</div>
-                  )}
-                  {dadosExtraidos.tipo_aparelho && (
-                    <div><strong>Tipo:</strong> {dadosExtraidos.tipo_aparelho}</div>
-                  )}
-                  {dadosExtraidos.imei && (
-                    <div><strong>IMEI:</strong> {dadosExtraidos.imei}</div>
-                  )}
-                  {dadosExtraidos.numero_serie && (
-                    <div><strong>Série:</strong> {dadosExtraidos.numero_serie}</div>
-                  )}
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Marca</Label>
+                      <Input
+                        value={dadosExtraidos.marca_nome || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, marca_nome: e.target.value})}
+                        placeholder="Ex: Apple, Samsung"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Modelo</Label>
+                      <Input
+                        value={dadosExtraidos.modelo_nome || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, modelo_nome: e.target.value})}
+                        placeholder="Ex: iPhone 12, Galaxy S21"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">IMEI</Label>
+                      <Input
+                        value={dadosExtraidos.imei || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, imei: e.target.value})}
+                        placeholder="15 dígitos"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Nº Série</Label>
+                      <Input
+                        value={dadosExtraidos.numero_serie || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, numero_serie: e.target.value})}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               
+              {/* Problema e Senha */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Problema</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Problema e Senha</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {dadosExtraidos.descricao_problema && (
-                    <div><strong>Descrição:</strong> {dadosExtraidos.descricao_problema}</div>
-                  )}
-                  {dadosExtraidos.condicoes_equipamento && (
-                    <div><strong>Condições:</strong> {dadosExtraidos.condicoes_equipamento}</div>
-                  )}
-                  {dadosExtraidos.possui_senha && (
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-xs">Descrição do Problema *</Label>
+                    <Textarea
+                      value={dadosExtraidos.descricao_problema || ''}
+                      onChange={(e) => setDadosExtraidos({...dadosExtraidos, descricao_problema: e.target.value})}
+                      placeholder="Descreva o problema"
+                      rows={2}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Condições do Equipamento</Label>
+                    <Input
+                      value={dadosExtraidos.condicoes_equipamento || ''}
+                      onChange={(e) => setDadosExtraidos({...dadosExtraidos, condicoes_equipamento: e.target.value})}
+                      placeholder="Ex: Tela trincada, arranhões"
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <strong>Possui Senha:</strong>{' '}
-                      {dadosExtraidos.possui_senha.replace(/^Possui Senha:\s*/i, '').trim() || dadosExtraidos.possui_senha}
+                      <Label className="text-xs">Possui Senha?</Label>
+                      <Select
+                        value={dadosExtraidos.possui_senha?.toLowerCase().includes('sim') ? 'sim' : 
+                               dadosExtraidos.possui_senha?.toLowerCase().includes('não sabe') || dadosExtraidos.possui_senha?.toLowerCase().includes('nao sabe') ? 'nao_sabe' : 
+                               'nao'}
+                        onValueChange={(v) => setDadosExtraidos({...dadosExtraidos, possui_senha: v === 'sim' ? 'SIM' : v === 'nao_sabe' ? 'NÃO SABE' : 'NÃO'})}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nao">Não</SelectItem>
+                          <SelectItem value="sim">Sim</SelectItem>
+                          <SelectItem value="nao_sabe">Não sabe / Vai passar depois</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    <div>
+                      <Label className="text-xs">Senha do Aparelho</Label>
+                      <Input
+                        value={dadosExtraidos.senha || ''}
+                        onChange={(e) => setDadosExtraidos({...dadosExtraidos, senha: e.target.value})}
+                        placeholder="Ex: 1234"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -653,7 +813,7 @@ export function ImportarOS({ open, onOpenChange, onSuccess }: ImportarOSProps) {
               </Button>
               <Button 
                 onClick={handleImport} 
-                disabled={erros.length > 0 || isImporting}
+                disabled={!dadosExtraidos.cliente_nome || !dadosExtraidos.descricao_problema || isImporting}
                 className="bg-gradient-to-r from-blue-500 to-indigo-500"
               >
                 {isImporting ? (
