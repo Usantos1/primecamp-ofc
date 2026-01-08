@@ -192,12 +192,26 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Estados para novo cliente
   const [showNovoClienteModal, setShowNovoClienteModal] = useState(false);
   const [novoClienteData, setNovoClienteData] = useState({
+    tipo_pessoa: 'fisica' as 'fisica' | 'juridica',
     nome: '',
-    telefone: '',
+    nome_fantasia: '',
     cpf_cnpj: '',
+    rg: '',
+    data_nascimento: '',
+    telefone: '',
+    whatsapp: '',
+    telefone2: '',
     email: '',
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
   });
   const [isCreatingCliente, setIsCreatingCliente] = useState(false);
+  const [isBuscandoCEP, setIsBuscandoCEP] = useState(false);
   
   // Estados para novo modelo
   const [showNovoModeloModal, setShowNovoModeloModal] = useState(false);
@@ -452,26 +466,37 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
       return;
     }
-    if (!novoClienteData.telefone.trim()) {
-      toast({ title: 'Telefone é obrigatório', variant: 'destructive' });
+    if (!novoClienteData.whatsapp.trim()) {
+      toast({ title: 'Celular/WhatsApp é obrigatório', variant: 'destructive' });
       return;
     }
 
     setIsCreatingCliente(true);
     try {
       const novoCliente = await createCliente({
+        tipo_pessoa: novoClienteData.tipo_pessoa,
         nome: novoClienteData.nome.trim(),
-        telefone: novoClienteData.telefone.trim(),
-        whatsapp: novoClienteData.telefone.trim(),
-        cpf_cnpj: novoClienteData.cpf_cnpj.trim() || null,
-        email: novoClienteData.email.trim() || null,
+        nome_fantasia: novoClienteData.nome_fantasia?.trim() || null,
+        cpf_cnpj: novoClienteData.cpf_cnpj?.trim() || null,
+        rg: novoClienteData.rg?.trim() || null,
+        data_nascimento: novoClienteData.data_nascimento || null,
+        telefone: novoClienteData.whatsapp.trim(),
+        whatsapp: novoClienteData.whatsapp.trim(),
+        email: novoClienteData.email?.trim() || null,
+        cep: novoClienteData.cep?.trim() || null,
+        logradouro: novoClienteData.logradouro?.trim() || null,
+        numero: novoClienteData.numero?.trim() || null,
+        complemento: novoClienteData.complemento?.trim() || null,
+        bairro: novoClienteData.bairro?.trim() || null,
+        cidade: novoClienteData.cidade?.trim() || null,
+        estado: novoClienteData.estado?.trim() || null,
       });
 
       // Selecionar o cliente recém-criado
       handleSelectCliente(novoCliente);
       
       // Limpar e fechar modal
-      setNovoClienteData({ nome: '', telefone: '', cpf_cnpj: '', email: '' });
+      resetNovoClienteForm();
       setShowNovoClienteModal(false);
       
       toast({ title: 'Cliente cadastrado com sucesso!' });
@@ -487,8 +512,55 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   };
 
+  // Resetar form de novo cliente
+  const resetNovoClienteForm = () => {
+    setNovoClienteData({
+      tipo_pessoa: 'fisica',
+      nome: '',
+      nome_fantasia: '',
+      cpf_cnpj: '',
+      rg: '',
+      data_nascimento: '',
+      telefone: '',
+      whatsapp: '',
+      telefone2: '',
+      email: '',
+      cep: '',
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+    });
+  };
+
+  // Buscar CEP para novo cliente
+  const handleBuscarCEPNovoCliente = async () => {
+    if (!novoClienteData.cep || novoClienteData.cep.length < 8) return;
+    
+    setIsBuscandoCEP(true);
+    try {
+      const endereco = await buscarCEP(novoClienteData.cep.replace(/\D/g, ''));
+      if (endereco) {
+        setNovoClienteData(prev => ({
+          ...prev,
+          logradouro: endereco.logradouro || '',
+          bairro: endereco.bairro || '',
+          cidade: endereco.localidade || '',
+          estado: endereco.uf || '',
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    } finally {
+      setIsBuscandoCEP(false);
+    }
+  };
+
   // Abrir modal de novo cliente com nome da busca
   const handleOpenNovoClienteModal = () => {
+    resetNovoClienteForm();
     setNovoClienteData(prev => ({ 
       ...prev, 
       nome: clienteSearch.trim() 
@@ -4585,81 +4657,262 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         </DialogContent>
       </Dialog>
 
-      {/* Modal Novo Cliente */}
+      {/* Modal Novo Cliente - Completo igual /clientes */}
       <Dialog open={showNovoClienteModal} onOpenChange={setShowNovoClienteModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
               <User className="h-5 w-5" />
-              Cadastrar Novo Cliente
+              Novo Cliente
             </DialogTitle>
             <DialogDescription>
-              Preencha os dados do cliente. Após salvar, o cliente será selecionado automaticamente.
+              Preencha os dados do cliente. Após salvar, o cliente será selecionado automaticamente na OS.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Nome Completo *</Label>
-              <Input
-                value={novoClienteData.nome}
-                onChange={(e) => setNovoClienteData(prev => ({ ...prev, nome: e.target.value }))}
-                placeholder="Nome do cliente"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Telefone / WhatsApp *</Label>
-              <Input
-                value={novoClienteData.telefone}
-                onChange={(e) => setNovoClienteData(prev => ({ ...prev, telefone: e.target.value }))}
-                placeholder="(19) 99999-9999"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-6">
+            {/* Seção: Dados Pessoais */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Dados Pessoais</h3>
+              
+              {/* Tipo de Pessoa e CPF/CNPJ */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Pessoa</Label>
+                  <Select 
+                    value={novoClienteData.tipo_pessoa} 
+                    onValueChange={(v: 'fisica' | 'juridica') => setNovoClienteData(prev => ({ ...prev, tipo_pessoa: v }))}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fisica">Pessoa Física</SelectItem>
+                      <SelectItem value="juridica">Pessoa Jurídica</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{novoClienteData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}</Label>
+                  <Input
+                    tabIndex={1}
+                    value={novoClienteData.cpf_cnpj}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, cpf_cnpj: e.target.value }))}
+                    placeholder={novoClienteData.tipo_pessoa === 'fisica' ? '000.000.000-00' : '00.000.000/0000-00'}
+                    className="h-10"
+                  />
+                </div>
+                {novoClienteData.tipo_pessoa === 'fisica' && (
+                  <div className="space-y-2">
+                    <Label>RG <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                    <Input
+                      tabIndex={2}
+                      value={novoClienteData.rg}
+                      onChange={(e) => setNovoClienteData(prev => ({ ...prev, rg: e.target.value }))}
+                      placeholder="00.000.000-0"
+                      className="h-10"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Nome */}
               <div className="space-y-2">
-                <Label>CPF/CNPJ</Label>
+                <Label>Nome Completo *</Label>
                 <Input
-                  value={novoClienteData.cpf_cnpj}
-                  onChange={(e) => setNovoClienteData(prev => ({ ...prev, cpf_cnpj: e.target.value }))}
-                  placeholder="000.000.000-00"
+                  tabIndex={3}
+                  value={novoClienteData.nome}
+                  onChange={(e) => setNovoClienteData(prev => ({ ...prev, nome: e.target.value }))}
+                  placeholder="Nome completo do cliente"
+                  className="h-10 text-base"
+                  autoFocus
                 />
               </div>
+
+              {novoClienteData.tipo_pessoa === 'juridica' && (
+                <div className="space-y-2">
+                  <Label>Nome Fantasia</Label>
+                  <Input
+                    tabIndex={4}
+                    value={novoClienteData.nome_fantasia}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, nome_fantasia: e.target.value }))}
+                    placeholder="Nome fantasia da empresa"
+                    className="h-10"
+                  />
+                </div>
+              )}
+
+              {/* Celular, Telefone e Data de Nascimento */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Celular / WhatsApp *</Label>
+                  <Input
+                    tabIndex={5}
+                    value={novoClienteData.whatsapp}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, whatsapp: e.target.value, telefone: e.target.value }))}
+                    placeholder="(19) 99999-9999"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone Fixo</Label>
+                  <Input
+                    tabIndex={6}
+                    value={novoClienteData.telefone2}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, telefone2: e.target.value }))}
+                    placeholder="(19) 3333-3333"
+                    className="h-10"
+                  />
+                </div>
+                {novoClienteData.tipo_pessoa === 'fisica' && (
+                  <div className="space-y-2">
+                    <Label>Data de Nascimento</Label>
+                    <Input
+                      tabIndex={7}
+                      type="date"
+                      value={novoClienteData.data_nascimento}
+                      onChange={(e) => setNovoClienteData(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                      className="h-10"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
+                  tabIndex={8}
+                  type="email"
                   value={novoClienteData.email}
                   onChange={(e) => setNovoClienteData(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="email@exemplo.com"
-                  type="email"
+                  className="h-10"
                 />
+              </div>
+            </div>
+
+            {/* Seção: Endereço */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Endereço</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label>CEP</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      tabIndex={9}
+                      value={novoClienteData.cep}
+                      onChange={(e) => setNovoClienteData(prev => ({ ...prev, cep: e.target.value }))}
+                      placeholder="13000-000"
+                      className="h-10"
+                      onBlur={handleBuscarCEPNovoCliente}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={handleBuscarCEPNovoCliente} 
+                      disabled={isBuscandoCEP}
+                      className="h-10 w-10 p-0 shrink-0"
+                      tabIndex={-1}
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="md:col-span-3 space-y-2">
+                  <Label>Logradouro</Label>
+                  <Input
+                    tabIndex={10}
+                    value={novoClienteData.logradouro}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, logradouro: e.target.value }))}
+                    placeholder="Rua, Avenida, etc."
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="space-y-2">
+                  <Label>Número</Label>
+                  <Input
+                    tabIndex={11}
+                    value={novoClienteData.numero}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, numero: e.target.value }))}
+                    placeholder="123"
+                    className="h-10"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label>Complemento</Label>
+                  <Input
+                    tabIndex={12}
+                    value={novoClienteData.complemento}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, complemento: e.target.value }))}
+                    placeholder="Apto, Bloco, etc."
+                    className="h-10"
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label>Bairro</Label>
+                  <Input
+                    tabIndex={13}
+                    value={novoClienteData.bairro}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, bairro: e.target.value }))}
+                    placeholder="Bairro"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="md:col-span-3 space-y-2">
+                  <Label>Cidade</Label>
+                  <Input
+                    tabIndex={14}
+                    value={novoClienteData.cidade}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, cidade: e.target.value }))}
+                    placeholder="Cidade"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>UF</Label>
+                  <Input
+                    tabIndex={15}
+                    value={novoClienteData.estado}
+                    onChange={(e) => setNovoClienteData(prev => ({ ...prev, estado: e.target.value.toUpperCase() }))}
+                    maxLength={2}
+                    placeholder="SP"
+                    className="h-10"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t mt-4">
             <Button 
+              type="button" 
               variant="outline" 
               onClick={() => {
                 setShowNovoClienteModal(false);
-                setNovoClienteData({ nome: '', telefone: '', cpf_cnpj: '', email: '' });
+                resetNovoClienteForm();
               }}
               disabled={isCreatingCliente}
+              className="h-10"
             >
               Cancelar
             </Button>
             <Button 
               onClick={handleCreateNovoCliente}
-              disabled={isCreatingCliente || !novoClienteData.nome.trim() || !novoClienteData.telefone.trim()}
-              className="bg-green-600 hover:bg-green-700"
+              disabled={isCreatingCliente || !novoClienteData.nome.trim() || !novoClienteData.whatsapp.trim()}
+              className="h-10 bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isCreatingCliente ? (
                 <>Salvando...</>
               ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Cadastrar e Selecionar
-                </>
+                <>Cadastrar</>
               )}
             </Button>
           </DialogFooter>
