@@ -143,12 +143,12 @@ const App = () => (
               <Route path="/admin/goals" element={<PermissionRoute permission="rh.metas"><AdminGoals /></PermissionRoute>} />
               <Route path="/admin/nps" element={<PermissionRoute permission="admin.nps"><AdminNPS /></PermissionRoute>} />
               <Route path="/admin/disc" element={<PermissionRoute permission="admin.disc"><AdminDisc /></PermissionRoute>} />
-              <Route path="/admin/financeiro/*" element={<AdminFinanceiro />} />
+              <Route path="/admin/financeiro/*" element={<PermissionRoute permission="relatorios.financeiro"><AdminFinanceiro /></PermissionRoute>} />
               <Route path="/admin/revenda" element={<ProtectedRoute><AdminReseller /></ProtectedRoute>} />
-              <Route path="/admin/formas-pagamento" element={<ProtectedRoute><PaymentMethodsConfig /></ProtectedRoute>} />
+              <Route path="/admin/formas-pagamento" element={<PermissionRoute permission="relatorios.financeiro"><PaymentMethodsConfig /></PermissionRoute>} />
               <Route path="/minha-empresa" element={<ProtectedRoute><CompanyDashboardPage /></ProtectedRoute>} />
               <Route path="/assinatura" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
-              <Route path="/admin/marketing" element={<MarketingLayout />}>
+              <Route path="/admin/marketing" element={<PermissionRoute permission="metricas.view"><MarketingLayout /></PermissionRoute>}>
                 <Route index element={<MarketingDashboard />} />
                 <Route path="campanhas" element={<MarketingCampanhas />} />
                 <Route path="leads" element={<MarketingLeads />} />
