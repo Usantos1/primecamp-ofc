@@ -240,6 +240,8 @@ export default function Produtos() {
   const goToPreviousPage = hookResult?.goToPreviousPage || (() => {});
   const searchTerm = hookResult?.searchTerm || '';
   const setSearchTerm = hookResult?.setSearchTerm || (() => {});
+  const searchFieldFromHook = (hookResult as any)?.searchField || 'all';
+  const setSearchFieldFromHook = (hookResult as any)?.setSearchField || (() => {});
   const grupo = hookResult?.grupo || '';
   const setGrupo = hookResult?.setGrupo || (() => {});
   const localizacao = (hookResult as any)?.localizacao || '';
@@ -269,6 +271,20 @@ export default function Produtos() {
   const [showInativarDialog, setShowInativarDialog] = useState(false);
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
   const [produtoToInativar, setProdutoToInativar] = useState<Produto | null>(null);
+  
+  // Campo de busca selecionado (usa o estado do hook)
+  type SearchFieldType = 'all' | 'codigo' | 'referencia' | 'codigo_barras' | 'descricao' | 'localizacao';
+  const searchField = searchFieldFromHook as SearchFieldType;
+  const setSearchField = setSearchFieldFromHook as (field: SearchFieldType) => void;
+  
+  const SEARCH_FIELD_LABELS: Record<SearchFieldType, string> = {
+    all: 'Todos os campos',
+    codigo: 'Código',
+    referencia: 'Referência',
+    codigo_barras: 'Cód. Barras',
+    descricao: 'Descrição',
+    localizacao: 'Localização',
+  };
 
   // ═══════════════════════════════════════════════════════════════
   // EXPORTAÇÃO
@@ -436,6 +452,7 @@ export default function Produtos() {
     setSearchTerm('');
     setGrupo('');
     setLocalizacao('');
+    setSearchField('all');
   };
 
   const handleNew = () => {
@@ -635,7 +652,27 @@ export default function Produtos() {
           <div className="flex flex-wrap items-center gap-2 p-3">
             <div className="relative flex-1 min-w-[260px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por código, descrição, referência ou código de barras..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 pl-10 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400/20" />
+              <Input 
+                placeholder={searchField === 'all' ? "Buscar por código, descrição, referência ou código de barras..." : `Buscar por ${SEARCH_FIELD_LABELS[searchField]}...`} 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className={`h-9 pl-10 text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 ${searchField !== 'all' ? 'pr-24' : ''}`} 
+              />
+              {searchField !== 'all' && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                    {SEARCH_FIELD_LABELS[searchField]}
+                  </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-5 w-5 p-0" 
+                    onClick={() => setSearchField('all')}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
             <Select value={grupo && grupo.trim() !== '' ? grupo : 'all'} onValueChange={(value) => { setGrupo(value === 'all' ? '' : value); hookResult.setPage(1); }}>
               <SelectTrigger className="h-9 w-[170px] shrink-0 border-gray-200 text-sm"><SelectValue placeholder="Grupo" /></SelectTrigger>
@@ -806,11 +843,41 @@ export default function Produtos() {
                       <table className="w-full caption-bottom text-sm border-collapse table-fixed">
                         <thead className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 shadow-sm">
                           <tr className="border-b-2 border-gray-300 dark:border-gray-600">
-                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[90px] text-xs uppercase tracking-wide">Código</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[120px] hidden lg:table-cell text-xs uppercase tracking-wide">Referência</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[160px] hidden lg:table-cell text-xs uppercase tracking-wide">Cód. Barras</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 min-w-[200px] text-xs uppercase tracking-wide">Descrição</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[140px] hidden lg:table-cell text-xs uppercase tracking-wide">Localização</th>
+                            <th 
+                              className={`h-12 px-3 text-right align-middle font-semibold border-r border-gray-200 dark:border-gray-600 w-[90px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors ${searchField === 'codigo' ? 'bg-blue-200 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'codigo' ? 'all' : 'codigo')}
+                              title="Clique para filtrar por Código"
+                            >
+                              Código {searchField === 'codigo' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 dark:border-gray-600 w-[120px] hidden lg:table-cell text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors ${searchField === 'referencia' ? 'bg-blue-200 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'referencia' ? 'all' : 'referencia')}
+                              title="Clique para filtrar por Referência"
+                            >
+                              Referência {searchField === 'referencia' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 dark:border-gray-600 w-[160px] hidden lg:table-cell text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors ${searchField === 'codigo_barras' ? 'bg-blue-200 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'codigo_barras' ? 'all' : 'codigo_barras')}
+                              title="Clique para filtrar por Código de Barras"
+                            >
+                              Cód. Barras {searchField === 'codigo_barras' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 dark:border-gray-600 min-w-[200px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors ${searchField === 'descricao' ? 'bg-blue-200 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'descricao' ? 'all' : 'descricao')}
+                              title="Clique para filtrar por Descrição"
+                            >
+                              Descrição {searchField === 'descricao' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 dark:border-gray-600 w-[140px] hidden lg:table-cell text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors ${searchField === 'localizacao' ? 'bg-blue-200 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'localizacao' ? 'all' : 'localizacao')}
+                              title="Clique para filtrar por Localização"
+                            >
+                              Localização {searchField === 'localizacao' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
                             <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[100px] text-xs uppercase tracking-wide">Estoque</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[70px] hidden md:table-cell text-xs uppercase tracking-wide">Unid.</th>
                             <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[110px] text-xs uppercase tracking-wide">Valor</th>

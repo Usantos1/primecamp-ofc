@@ -50,10 +50,13 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
   } as Produto;
 }
 
+export type SearchField = 'all' | 'codigo' | 'referencia' | 'codigo_barras' | 'descricao' | 'localizacao';
+
 interface UseProdutosPaginatedOptions {
   page?: number;
   pageSize?: number;
   searchTerm?: string;
+  searchField?: SearchField;
   grupo?: string;
   localizacao?: string;
   orderBy?: 'nome' | 'codigo';
@@ -67,6 +70,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     page: initialPage = 1,
     pageSize: initialPageSize = 50,
     searchTerm: initialSearchTerm = '',
+    searchField: initialSearchField = 'all',
     grupo: initialGrupo = '',
     localizacao: initialLocalizacao = '',
     orderBy: initialOrderBy = 'nome',
@@ -76,6 +80,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   const [page, setPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [searchField, setSearchField] = useState<SearchField>(initialSearchField);
   const [grupo, setGrupo] = useState(initialGrupo);
   const [localizacao, setLocalizacao] = useState(initialLocalizacao);
   const [orderBy, setOrderBy] = useState<'nome' | 'codigo'>(initialOrderBy);
@@ -95,7 +100,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     isFetching,
     error,
   } = useQuery({
-    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, grupo, localizacao, orderBy, orderDirection],
+    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
     queryFn: async () => {
       // Construir query base usando wrapper PostgreSQL
       const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
@@ -125,16 +130,33 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       if (debouncedSearchTerm.trim()) {
         const search = debouncedSearchTerm.trim();
         const codigoNum = parseInt(search);
-        if (!isNaN(codigoNum)) {
-          // Busca por código numérico ou texto usando OR
-          query = query.or(
-            `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
-          );
+        
+        // Busca por campo específico ou todos
+        if (searchField === 'codigo') {
+          if (!isNaN(codigoNum)) {
+            query = query.eq('codigo', codigoNum);
+          } else {
+            query = query.ilike('codigo', `%${search}%`);
+          }
+        } else if (searchField === 'referencia') {
+          query = query.ilike('referencia', `%${search}%`);
+        } else if (searchField === 'codigo_barras') {
+          query = query.ilike('codigo_barras', `%${search}%`);
+        } else if (searchField === 'descricao') {
+          query = query.ilike('nome', `%${search}%`);
+        } else if (searchField === 'localizacao') {
+          query = query.ilike('localizacao', `%${search}%`);
         } else {
-          // Busca apenas por texto
-          query = query.or(
-            `nome.ilike.%${search}%,codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
-          );
+          // Busca em todos os campos
+          if (!isNaN(codigoNum)) {
+            query = query.or(
+              `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
+            );
+          } else {
+            query = query.or(
+              `nome.ilike.%${search}%,codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
+            );
+          }
         }
       }
 
@@ -646,6 +668,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     // Filtros
     searchTerm,
     setSearchTerm: handleSearchChange,
+    searchField,
+    setSearchField,
     grupo,
     setGrupo: handleGrupoChange,
     localizacao,
