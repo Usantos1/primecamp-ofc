@@ -4,7 +4,7 @@
 
 // ==================== TIPOS BASE ====================
 
-export type SaleStatus = 'draft' | 'open' | 'paid' | 'partial' | 'canceled' | 'refunded';
+export type SaleStatus = 'draft' | 'open' | 'paid' | 'partial' | 'canceled' | 'refunded' | 'partial_refund';
 export type PaymentStatus = 'pending' | 'confirmed' | 'canceled' | 'refunded';
 export type PaymentMethod = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'link_pagamento' | 'carteira_digital' | 'fiado';
 export type CashSessionStatus = 'open' | 'closed';
@@ -43,7 +43,8 @@ export const SALE_STATUS_LABELS: Record<SaleStatus, string> = {
   paid: 'Paga',
   partial: 'Parcial',
   canceled: 'Cancelada',
-  refunded: 'Estornada',
+  refunded: 'Devolvida',
+  partial_refund: 'Dev. Parcial',
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {

@@ -287,7 +287,7 @@ router.put('/:id/complete', async (req, res) => {
       [id]
     );
     
-    // Retornar produtos ao estoque
+    // Retornar produtos ao estoque (apenas se destination = 'stock')
     for (const item of itemsResult.rows) {
       if (item.return_to_stock && item.product_id) {
         await client.query(`
@@ -305,9 +305,42 @@ router.put('/:id/complete', async (req, res) => {
       WHERE id = $2
     `, [userId, id]);
     
+    // Atualizar status da venda original
+    // Se devolução em DINHEIRO → venda fica como 'refunded' (devolvida)
+    // Se devolução com VOUCHER → venda continua 'paid' (dinheiro no caixa, cliente tem crédito)
+    if (refund.sale_id) {
+      if (refund.refund_method === 'cash') {
+        // Verificar se é devolução total ou parcial
+        const saleResult = await client.query('SELECT total FROM sales WHERE id = $1', [refund.sale_id]);
+        const saleTotal = saleResult.rows[0]?.total || 0;
+        
+        if (refund.total_refund_value >= saleTotal * 0.99) {
+          // Devolução total em dinheiro → venda devolvida
+          await client.query(`
+            UPDATE sales 
+            SET status = 'refunded', updated_at = NOW()
+            WHERE id = $1
+          `, [refund.sale_id]);
+        } else {
+          // Devolução parcial em dinheiro → marca como parcialmente devolvida
+          await client.query(`
+            UPDATE sales 
+            SET status = 'partial_refund', updated_at = NOW()
+            WHERE id = $1
+          `, [refund.sale_id]);
+        }
+      }
+      // Se for voucher, a venda continua como 'paid' - não muda nada
+    }
+    
     await client.query('COMMIT');
     
-    res.json({ success: true, message: 'Devolução completada com sucesso' });
+    res.json({ 
+      success: true, 
+      message: refund.refund_method === 'cash' 
+        ? 'Devolução em dinheiro completada. Venda marcada como devolvida.' 
+        : 'Devolução com voucher completada. Venda permanece paga (dinheiro no caixa).'
+    });
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('[Refunds] Erro ao completar devolução:', error);

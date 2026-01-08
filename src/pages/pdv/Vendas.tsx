@@ -53,6 +53,7 @@ const SALE_STATUS_COLORS: Record<Sale['status'], string> = {
   partial: 'bg-yellow-100 text-yellow-800',
   canceled: 'bg-red-100 text-red-800',
   refunded: 'bg-orange-100 text-orange-800',
+  partial_refund: 'bg-amber-100 text-amber-800',
 };
 
 export default function Vendas() {
@@ -677,6 +678,8 @@ export default function Vendas() {
                   <SelectItem value="paid">Paga</SelectItem>
                   <SelectItem value="partial">Parcial</SelectItem>
                   <SelectItem value="canceled">Cancelada</SelectItem>
+                  <SelectItem value="refunded">Devolvida</SelectItem>
+                  <SelectItem value="partial_refund">Dev. Parcial</SelectItem>
                 </SelectContent>
               </Select>
               <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
