@@ -111,7 +111,7 @@ export const UserManagementNew = () => {
     password: '',
     display_name: '',
     department: '',
-    role: 'member' as 'admin' | 'member',
+    role: 'member' as UserRoleType,
   });
   const [editFormData, setEditFormData] = useState({
     display_name: '',
@@ -504,14 +504,16 @@ export const UserManagementNew = () => {
     try {
       // Criar usuário via API PostgreSQL
       // IMPORTANTE: Passar company_id para associar usuário à empresa correta
-      const authResponse = await authAPI.signup({
-        email: newUser.email,
-        password: newUser.password,
-        display_name: newUser.display_name,
-        department: newUser.department,
-        role: newUser.role,
-        company_id: currentCompanyId, // Associar à mesma empresa do admin
-      });
+      const authResponse = await authAPI.signup(
+        newUser.email,
+        newUser.password,
+        {
+          display_name: newUser.display_name,
+          department: newUser.department,
+          role: newUser.role,
+          company_id: currentCompanyId, // Associar à mesma empresa do admin
+        }
+      );
 
       if (authResponse.user) {
         const { error: profileError } = await from('profiles')
@@ -962,8 +964,8 @@ export const UserManagementNew = () => {
               <Label htmlFor="nome">Nome Completo *</Label>
               <Input
                 id="nome"
-                value={newUser.nome}
-                onChange={(e) => setNewUser({...newUser, nome: e.target.value})}
+                value={newUser.display_name}
+                onChange={(e) => setNewUser({...newUser, display_name: e.target.value})}
                 placeholder="Nome do usuário"
               />
             </div>
@@ -972,8 +974,8 @@ export const UserManagementNew = () => {
               <Input
                 id="senha"
                 type="password"
-                value={newUser.senha}
-                onChange={(e) => setNewUser({...newUser, senha: e.target.value})}
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
                 placeholder="Mínimo 6 caracteres"
               />
             </div>
