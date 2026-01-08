@@ -78,10 +78,10 @@ export function useRefunds() {
       if (filters?.endDate) params.append('endDate', filters.endDate);
       
       const response = await apiClient.get(`/refunds?${params.toString()}`);
-      if (response.success) {
-        setRefunds(response.data);
+      if (response.data?.success) {
+        setRefunds(response.data.data || []);
       }
-      return response.data;
+      return response.data?.data || [];
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -98,7 +98,7 @@ export function useRefunds() {
     setLoading(true);
     try {
       const response = await apiClient.get(`/refunds/${id}`);
-      return response.data;
+      return response.data?.data || null;
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -115,14 +115,14 @@ export function useRefunds() {
     setLoading(true);
     try {
       const response = await apiClient.post('/refunds', data);
-      if (response.success) {
+      if (response.data?.success) {
         toast({
           title: 'Sucesso',
           description: 'Devolução criada com sucesso'
         });
-        return response.data;
+        return response.data.data;
       }
-      throw new Error(response.error);
+      throw new Error(response.data?.error || response.error || 'Erro desconhecido');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -139,14 +139,14 @@ export function useRefunds() {
     setLoading(true);
     try {
       const response = await apiClient.put(`/refunds/${id}/approve`, {});
-      if (response.success) {
+      if (response.data?.success) {
         toast({
           title: 'Sucesso',
           description: 'Devolução aprovada'
         });
-        return response.data;
+        return response.data.data;
       }
-      throw new Error(response.error);
+      throw new Error(response.data?.error || response.error);
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -163,14 +163,14 @@ export function useRefunds() {
     setLoading(true);
     try {
       const response = await apiClient.put(`/refunds/${id}/complete`, {});
-      if (response.success) {
+      if (response.data?.success) {
         toast({
           title: 'Sucesso',
           description: 'Devolução completada e estoque atualizado'
         });
         return true;
       }
-      throw new Error(response.error);
+      throw new Error(response.data?.error || response.error);
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -187,14 +187,14 @@ export function useRefunds() {
     setLoading(true);
     try {
       const response = await apiClient.put(`/refunds/${id}/cancel`, { reason });
-      if (response.success) {
+      if (response.data?.success) {
         toast({
           title: 'Sucesso',
           description: 'Devolução cancelada'
         });
         return true;
       }
-      throw new Error(response.error);
+      throw new Error(response.data?.error || response.error);
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -219,10 +219,10 @@ export function useRefunds() {
       if (filters?.customer) params.append('customer', filters.customer);
       
       const response = await apiClient.get(`/refunds/vouchers/list?${params.toString()}`);
-      if (response.success) {
-        setVouchers(response.data);
+      if (response.data?.success) {
+        setVouchers(response.data.data || []);
       }
-      return response.data;
+      return response.data?.data || [];
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -239,7 +239,7 @@ export function useRefunds() {
     setLoading(true);
     try {
       const response = await apiClient.get(`/refunds/vouchers/code/${code}`);
-      return response;
+      return response.data; // Retorna { success, data, error }
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -260,14 +260,14 @@ export function useRefunds() {
         amount,
         customer_document: customerDocument
       });
-      if (response.success) {
+      if (response.data?.success) {
         toast({
           title: 'Sucesso',
-          description: `Vale utilizado. Saldo restante: R$ ${response.data.balance_after.toFixed(2)}`
+          description: `Vale utilizado. Saldo restante: R$ ${response.data.data.balance_after.toFixed(2)}`
         });
-        return response.data;
+        return response.data.data;
       }
-      throw new Error(response.error);
+      throw new Error(response.data?.error || response.error);
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -283,7 +283,7 @@ export function useRefunds() {
   const fetchVoucherHistory = useCallback(async (voucherId: string) => {
     try {
       const response = await apiClient.get(`/refunds/vouchers/${voucherId}/history`);
-      return response.data;
+      return response.data?.data || [];
     } catch (error: any) {
       return [];
     }
