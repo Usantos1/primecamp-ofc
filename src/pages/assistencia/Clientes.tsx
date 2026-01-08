@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 // Tabs removidas - formulário único sem abas
 import { 
   Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings, Upload,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X
 } from 'lucide-react';
 import { ImportarClientes } from '@/components/ImportarClientes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
@@ -46,9 +46,22 @@ const INITIAL_FORM: ClienteFormData = {
   estado: '',
 };
 
+// Tipos de campo de busca
+type SearchFieldType = 'all' | 'nome' | 'cpf_cnpj' | 'rg' | 'telefone' | 'email';
+
+const SEARCH_FIELD_LABELS: Record<SearchFieldType, string> = {
+  all: 'Todos',
+  nome: 'Nome',
+  cpf_cnpj: 'CPF/CNPJ',
+  rg: 'RG',
+  telefone: 'Telefone',
+  email: 'Email',
+};
+
 export default function Clientes() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState<SearchFieldType>('all');
   const [showForm, setShowForm] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [formData, setFormData] = useState<ClienteFormData>(INITIAL_FORM);
@@ -126,7 +139,17 @@ export default function Clientes() {
       setIsSearching(true);
       try {
         const results = await searchClientesAsync(searchTerm, 100);
-        setSearchResults(results);
+        // Filtrar por campo específico se selecionado
+        if (searchField !== 'all') {
+          const q = searchTerm.toLowerCase();
+          const filtered = results.filter(c => {
+            const value = c[searchField as keyof Cliente];
+            return value && String(value).toLowerCase().includes(q);
+          });
+          setSearchResults(filtered);
+        } else {
+          setSearchResults(results);
+        }
       } catch (error) {
         console.error('Erro na busca:', error);
       } finally {
@@ -135,7 +158,7 @@ export default function Clientes() {
     }, 300); // Debounce de 300ms
 
     return () => clearTimeout(timer);
-  }, [searchTerm, searchClientesAsync]);
+  }, [searchTerm, searchField, searchClientesAsync]);
 
   // Usar resultados da busca do servidor quando há termo de busca
   const filteredClientes = useMemo(() => {
@@ -143,15 +166,19 @@ export default function Clientes() {
     if (searchTerm.length < 2) {
       // Busca local para termos muito curtos
       const q = searchTerm.toLowerCase();
-      return clientes.filter(c => 
-        (c.nome || '').toLowerCase().includes(q) ||
-        c.cpf_cnpj?.includes(searchTerm) ||
-        c.telefone?.includes(searchTerm)
-      );
+      return clientes.filter(c => {
+        if (searchField === 'all') {
+          return (c.nome || '').toLowerCase().includes(q) ||
+            c.cpf_cnpj?.includes(searchTerm) ||
+            c.telefone?.includes(searchTerm);
+        }
+        const value = c[searchField as keyof Cliente];
+        return value && String(value).toLowerCase().includes(q);
+      });
     }
     // Usar resultados da busca no servidor
     return searchResults;
-  }, [clientes, searchTerm, searchResults]);
+  }, [clientes, searchTerm, searchField, searchResults]);
 
   // Abrir form para novo cliente
   const handleNew = () => {
@@ -353,7 +380,22 @@ export default function Clientes() {
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
-              <Input placeholder="Buscar cliente... (mín. 2 letras)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 pl-8 text-sm border-gray-200" />
+              <Input 
+                placeholder={searchField === 'all' ? "Buscar cliente..." : `Buscar por ${SEARCH_FIELD_LABELS[searchField]}...`} 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className={`h-8 pl-8 text-sm border-gray-200 ${searchField !== 'all' ? 'pr-20' : ''}`} 
+              />
+              {searchField !== 'all' && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                    {SEARCH_FIELD_LABELS[searchField]}
+                  </Badge>
+                  <button onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
             <Button onClick={handleNew} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4" />
@@ -366,7 +408,22 @@ export default function Clientes() {
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
-              <Input placeholder="Buscar por nome, CPF, telefone... (mín. 2 letras)" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm border-gray-200" />
+              <Input 
+                placeholder={searchField === 'all' ? "Buscar por nome, CPF, telefone... (clique na coluna para filtrar)" : `Buscar por ${SEARCH_FIELD_LABELS[searchField]}...`} 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className={`pl-9 h-9 text-sm border-gray-200 ${searchField !== 'all' ? 'pr-24' : ''}`} 
+              />
+              {searchField !== 'all' && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                    {SEARCH_FIELD_LABELS[searchField]}
+                  </Badge>
+                  <button onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
             <Button onClick={handleNew} size="sm" className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white">
               <Plus className="h-4 w-4" /><span>Novo Cliente</span>
@@ -400,11 +457,41 @@ export default function Clientes() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Nome</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">CPF/CNPJ</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">RG</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Telefone</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Email</TableHead>
+                        <TableHead 
+                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'nome' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                          onClick={() => setSearchField(searchField === 'nome' ? 'all' : 'nome')}
+                          title="Clique para filtrar por Nome"
+                        >
+                          Nome {searchField === 'nome' && <Search className="inline h-3 w-3 ml-1" />}
+                        </TableHead>
+                        <TableHead 
+                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cpf_cnpj' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                          onClick={() => setSearchField(searchField === 'cpf_cnpj' ? 'all' : 'cpf_cnpj')}
+                          title="Clique para filtrar por CPF/CNPJ"
+                        >
+                          CPF/CNPJ {searchField === 'cpf_cnpj' && <Search className="inline h-3 w-3 ml-1" />}
+                        </TableHead>
+                        <TableHead 
+                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'rg' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                          onClick={() => setSearchField(searchField === 'rg' ? 'all' : 'rg')}
+                          title="Clique para filtrar por RG"
+                        >
+                          RG {searchField === 'rg' && <Search className="inline h-3 w-3 ml-1" />}
+                        </TableHead>
+                        <TableHead 
+                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'telefone' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                          onClick={() => setSearchField(searchField === 'telefone' ? 'all' : 'telefone')}
+                          title="Clique para filtrar por Telefone"
+                        >
+                          Telefone {searchField === 'telefone' && <Search className="inline h-3 w-3 ml-1" />}
+                        </TableHead>
+                        <TableHead 
+                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'email' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                          onClick={() => setSearchField(searchField === 'email' ? 'all' : 'email')}
+                          title="Clique para filtrar por Email"
+                        >
+                          Email {searchField === 'email' && <Search className="inline h-3 w-3 ml-1" />}
+                        </TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cidade</TableHead>
                         <TableHead className="font-semibold bg-muted/60 text-right">Ações</TableHead>
                       </TableRow>

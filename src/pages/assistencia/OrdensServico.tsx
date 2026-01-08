@@ -227,8 +227,20 @@ export default function OrdensServico() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  // Tipos de campo de busca para OS
+  type OSSearchFieldType = 'all' | 'numero' | 'cliente' | 'aparelho' | 'problema';
+  
+  const OS_SEARCH_FIELD_LABELS: Record<OSSearchFieldType, string> = {
+    all: 'Todos',
+    numero: 'Nº OS',
+    cliente: 'Cliente',
+    aparelho: 'Aparelho',
+    problema: 'Problema',
+  };
+
   // Estados
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState<OSSearchFieldType>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
   const [showImportarOS, setShowImportarOS] = useState(false);
@@ -301,6 +313,27 @@ export default function OrdensServico() {
       const search = searchTerm.toLowerCase();
       result = result.filter(os => {
         const cliente = getClienteById(os.cliente_id);
+        
+        // Filtrar por campo específico se selecionado
+        if (searchField === 'numero') {
+          return String(os.numero).includes(search);
+        }
+        if (searchField === 'cliente') {
+          return cliente?.nome?.toLowerCase().includes(search) || 
+                 cliente?.telefone?.includes(searchTerm) ||
+                 cliente?.whatsapp?.includes(searchTerm);
+        }
+        if (searchField === 'aparelho') {
+          const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
+          const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
+          return marca?.nome?.toLowerCase().includes(search) || 
+                 modelo?.nome?.toLowerCase().includes(search) ||
+                 os.imei?.includes(searchTerm);
+        }
+        if (searchField === 'problema') {
+          return os.problema_relatado?.toLowerCase().includes(search) ||
+                 os.observacoes?.toLowerCase().includes(search);
+        }
         return (
           os.numero.toString().includes(search) ||
           os.descricao_problema?.toLowerCase().includes(search) ||
@@ -336,7 +369,7 @@ export default function OrdensServico() {
     }
 
     return result.sort((a, b) => b.numero - a.numero);
-  }, [ordens, statusFilter, searchTerm, periodoFilter, getClienteById]);
+  }, [ordens, statusFilter, searchTerm, searchField, periodoFilter, getClienteById, getMarcaById, getModeloById]);
 
   // Paginação
   const totalPages = Math.ceil(filteredOrdens.length / PAGE_SIZE);
@@ -346,7 +379,7 @@ export default function OrdensServico() {
   }, [filteredOrdens, page]);
 
   // Reset página quando filtros mudam
-  useEffect(() => { setPage(1); }, [searchTerm, statusFilter, periodoFilter]);
+  useEffect(() => { setPage(1); }, [searchTerm, searchField, statusFilter, periodoFilter]);
 
   // Handlers
   const handleWhatsApp = (telefone?: string) => {
@@ -355,6 +388,7 @@ export default function OrdensServico() {
 
   const clearFilters = () => {
     setSearchTerm('');
+    setSearchField('all');
     setStatusFilter('all');
     setPeriodoFilter('all');
   };
@@ -510,7 +544,7 @@ export default function OrdensServico() {
     }
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || periodoFilter !== 'all';
+  const hasActiveFilters = searchTerm || searchField !== 'all' || statusFilter !== 'all' || periodoFilter !== 'all';
 
   // Cards de estatísticas config
   const statsCards = [
@@ -602,7 +636,22 @@ export default function OrdensServico() {
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar por nº OS, cliente, telefone, IMEI, problema..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 pl-10 text-base border-gray-200 focus:border-blue-400" />
+                <Input 
+                  placeholder={searchField === 'all' ? "Buscar por nº OS, cliente, aparelho, problema... (clique na coluna)" : `Buscar por ${OS_SEARCH_FIELD_LABELS[searchField]}...`} 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                  className={`h-10 pl-10 text-base border-gray-200 focus:border-blue-400 ${searchField !== 'all' ? 'pr-24' : ''}`} 
+                />
+                {searchField !== 'all' && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                      {OS_SEARCH_FIELD_LABELS[searchField]}
+                    </Badge>
+                    <button onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -683,10 +732,34 @@ export default function OrdensServico() {
                       <table className="w-full caption-bottom text-sm border-collapse table-fixed">
                         <thead className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 shadow-sm">
                           <tr className="border-b-2 border-gray-300 dark:border-gray-600">
-                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[100px] text-xs uppercase tracking-wide">Nº OS</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 text-xs uppercase tracking-wide">Cliente</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[130px] hidden lg:table-cell text-xs uppercase tracking-wide">Aparelho</th>
-                            <th className="h-12 px-3 text-left align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 text-xs uppercase tracking-wide">Problema</th>
+                            <th 
+                              className={`h-12 px-3 text-center align-middle font-semibold border-r border-gray-200 w-[100px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'numero' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'numero' ? 'all' : 'numero')}
+                              title="Clique para filtrar por Nº OS"
+                            >
+                              Nº OS {searchField === 'numero' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cliente' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'cliente' ? 'all' : 'cliente')}
+                              title="Clique para filtrar por Cliente"
+                            >
+                              Cliente {searchField === 'cliente' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 w-[130px] hidden lg:table-cell text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'aparelho' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'aparelho' ? 'all' : 'aparelho')}
+                              title="Clique para filtrar por Aparelho"
+                            >
+                              Aparelho {searchField === 'aparelho' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
+                            <th 
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'problema' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              onClick={() => setSearchField(searchField === 'problema' ? 'all' : 'problema')}
+                              title="Clique para filtrar por Problema"
+                            >
+                              Problema {searchField === 'problema' && <Search className="inline h-3 w-3 ml-1" />}
+                            </th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[120px] text-xs uppercase tracking-wide">Status</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Entrada</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Previsão</th>
