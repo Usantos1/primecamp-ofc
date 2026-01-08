@@ -300,20 +300,20 @@ try {
   app.use('/api/admin/revenda', resellerRoutes);
   console.log('[Server] ✅ Rotas de revenda registradas com sucesso');
   
-  // Registrar rotas de pagamentos
-  app.use('/api/payments', paymentsRoutes);
+  // Registrar rotas de pagamentos (COM autenticação)
+  app.use('/api/payments', authenticateToken, paymentsRoutes);
   console.log('[Server] ✅ Rotas de pagamentos registradas com sucesso');
   
-  // Registrar rotas de dashboard
-  app.use('/api/dashboard', dashboardRoutes);
+  // Registrar rotas de dashboard (COM autenticação)
+  app.use('/api/dashboard', authenticateToken, dashboardRoutes);
   console.log('[Server] ✅ Rotas de dashboard registradas com sucesso');
   
-  // Registrar rotas de devoluções e vales
-  app.use('/api/refunds', refundsRoutes);
+  // Registrar rotas de devoluções e vales (COM autenticação)
+  app.use('/api/refunds', authenticateToken, refundsRoutes);
   console.log('[Server] ✅ Rotas de devoluções registradas com sucesso');
   
-  // Registrar rotas de formas de pagamento
-  app.use('/api/payment-methods', paymentMethodsRoutes);
+  // Registrar rotas de formas de pagamento (COM autenticação)
+  app.use('/api/payment-methods', authenticateToken, paymentMethodsRoutes);
   console.log('[Server] ✅ Rotas de formas de pagamento registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora

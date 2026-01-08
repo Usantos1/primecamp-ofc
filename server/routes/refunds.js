@@ -116,7 +116,11 @@ router.post('/', async (req, res) => {
     await client.query('BEGIN');
     
     const companyId = req.companyId;
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?.userId || null;
+    
+    if (!companyId) {
+      throw new Error('Company ID não encontrado na sessão');
+    }
     const {
       sale_id,
       refund_type,
@@ -231,7 +235,7 @@ router.put('/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
     const companyId = req.companyId;
-    const userId = req.user.id;
+    const userId = req.user?.id || null;
     
     const result = await pool.query(`
       UPDATE refunds 
@@ -259,7 +263,7 @@ router.put('/:id/complete', async (req, res) => {
     
     const { id } = req.params;
     const companyId = req.companyId;
-    const userId = req.user.id;
+    const userId = req.user?.id || null;
     
     // Buscar devolução
     const refundResult = await client.query(
@@ -322,7 +326,7 @@ router.put('/:id/cancel', async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
     const companyId = req.companyId;
-    const userId = req.user.id;
+    const userId = req.user?.id || null;
     
     // Buscar devolução
     const refundResult = await client.query(
@@ -469,7 +473,7 @@ router.post('/vouchers/:id/use', async (req, res) => {
     const { id } = req.params;
     const { sale_id, amount, customer_document } = req.body;
     const companyId = req.companyId;
-    const userId = req.user.id;
+    const userId = req.user?.id || null;
     
     // Buscar vale
     const voucherResult = await client.query(
