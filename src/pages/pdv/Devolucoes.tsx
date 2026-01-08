@@ -22,6 +22,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+type ProductDestination = 'stock' | 'exchange' | 'loss';
+
 interface SaleItem {
   id: string;
   produto_id: string;
@@ -31,6 +33,7 @@ interface SaleItem {
   subtotal: number;
   selected?: boolean;
   refund_qty?: number;
+  destination?: ProductDestination; // Destino do produto
 }
 
 interface SaleData {
@@ -126,7 +129,8 @@ export default function Devolucoes() {
         preco_unitario: item.preco_unitario || item.valor_unitario,
         subtotal: item.subtotal || item.total,
         selected: true,
-        refund_qty: item.quantidade
+        refund_qty: item.quantidade,
+        destination: 'stock' as ProductDestination // Padrão: volta ao estoque
       }));
 
       setSaleData({
@@ -184,7 +188,9 @@ export default function Devolucoes() {
         product_name: item.produto_nome,
         quantity: item.refund_qty || item.quantidade,
         unit_price: item.preco_unitario,
-        return_to_stock: true
+        return_to_stock: item.destination === 'stock', // Só volta ao estoque se destino for 'stock'
+        condition: item.destination === 'loss' ? 'defeituoso' : 'novo',
+        destination: item.destination
       }));
 
       const result = await createRefund({
@@ -242,6 +248,22 @@ export default function Devolucoes() {
         item.id === itemId ? { ...item, refund_qty: Math.min(qty, item.quantidade) } : item
       )
     );
+  };
+
+  // Atualizar destino do produto
+  const updateItemDestination = (itemId: string, destination: ProductDestination) => {
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, destination } : item
+      )
+    );
+  };
+
+  // Labels para destino
+  const destinationLabels: Record<ProductDestination, { label: string; color: string; icon: string }> = {
+    stock: { label: 'Estoque', color: 'text-green-600', icon: '📦' },
+    exchange: { label: 'Troca', color: 'text-blue-600', icon: '🔄' },
+    loss: { label: 'Prejuízo', color: 'text-red-600', icon: '⚠️' }
   };
 
   // Calcular total da devolução
@@ -720,35 +742,77 @@ export default function Devolucoes() {
               {/* Itens para Devolução */}
               <div>
                 <Label className="text-sm font-medium mb-2 block">Itens para devolver:</Label>
-                <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+                <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
                   {selectedItems.map((item) => (
-                    <div key={item.id} className="p-3 flex items-center gap-3">
-                      <Checkbox
-                        checked={item.selected}
-                        onCheckedChange={() => toggleItemSelection(item.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{item.produto_nome}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {formatCurrency(item.preco_unitario)} x {item.quantidade} = {formatCurrency(item.subtotal)}
+                    <div key={item.id} className="p-3 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={item.selected}
+                          onCheckedChange={() => toggleItemSelection(item.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{item.produto_nome}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatCurrency(item.preco_unitario)} x {item.quantidade} = {formatCurrency(item.subtotal)}
+                          </div>
                         </div>
+                        {item.selected && (
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs">Qtd:</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max={item.quantidade}
+                              value={item.refund_qty || item.quantidade}
+                              onChange={(e) => updateRefundQty(item.id, parseInt(e.target.value) || 1)}
+                              className="w-16 h-8 text-center"
+                            />
+                          </div>
+                        )}
                       </div>
+                      {/* Destino do Produto */}
                       {item.selected && (
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs">Qtd:</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            max={item.quantidade}
-                            value={item.refund_qty || item.quantidade}
-                            onChange={(e) => updateRefundQty(item.id, parseInt(e.target.value) || 1)}
-                            className="w-16 h-8 text-center"
-                          />
+                        <div className="ml-7 flex items-center gap-2">
+                          <Label className="text-xs text-muted-foreground">Destino:</Label>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={item.destination === 'stock' ? 'default' : 'outline'}
+                              className={`h-7 text-xs ${item.destination === 'stock' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                              onClick={() => updateItemDestination(item.id, 'stock')}
+                            >
+                              📦 Estoque
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={item.destination === 'exchange' ? 'default' : 'outline'}
+                              className={`h-7 text-xs ${item.destination === 'exchange' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                              onClick={() => updateItemDestination(item.id, 'exchange')}
+                            >
+                              🔄 Troca
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={item.destination === 'loss' ? 'default' : 'outline'}
+                              className={`h-7 text-xs ${item.destination === 'loss' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                              onClick={() => updateItemDestination(item.id, 'loss')}
+                            >
+                              ⚠️ Prejuízo
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  📦 <strong>Estoque:</strong> Produto volta ao estoque | 
+                  🔄 <strong>Troca:</strong> Cliente vai trocar por outro | 
+                  ⚠️ <strong>Prejuízo:</strong> Produto com defeito/descarte
+                </p>
               </div>
 
               {/* Motivo */}
