@@ -51,7 +51,7 @@ interface FormData {
 interface EstoqueMovimentacao {
   id: string;
   data: string;
-  ref_tipo: 'OS' | 'Venda' | 'Cancelamento' | 'Devolução' | 'Ajuste' | 'Inventário';
+  ref_tipo: 'OS' | 'Venda' | 'Cancelamento' | 'Devolução' | 'Ajuste' | 'Inventário' | 'Troca' | 'Perda';
   ref_id?: string;
   ref_numero: number;
   quantidade_delta: number; // negativo = saída, positivo = entrada
@@ -283,6 +283,78 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
           vendedor_nome: m.user_nome || null,
         });
       });
+    }
+
+    // 4. Buscar devoluções da tabela refund_items
+    try {
+      const { data: refundItens } = await from('refund_items')
+        .select('id, refund_id, quantity, unit_price, destination, created_at')
+        .eq('product_id', produtoId)
+        .order('created_at', { ascending: false })
+        .execute();
+
+      if (refundItens && refundItens.length > 0) {
+        // Buscar dados dos refunds relacionados
+        const refundIds = [...new Set(refundItens.map((item: any) => item.refund_id).filter(Boolean))];
+        
+        let refundMap = new Map();
+        if (refundIds.length > 0) {
+          const { data: refunds } = await from('refunds')
+            .select('id, refund_number, sale_id, reason, refund_method, status, created_at')
+            .in('id', refundIds)
+            .execute();
+          refundMap = new Map((refunds || []).map((r: any) => [r.id, r]));
+        }
+
+        refundItens.forEach((item: any) => {
+          const refund = refundMap.get(item.refund_id);
+          const qtd = Math.abs(Number(item.quantity || 0));
+          const destinoLabel = item.destination === 'stock' ? 'Estoque' : 
+                               item.destination === 'exchange' ? 'Troca' : 
+                               item.destination === 'loss' ? 'Perda' : item.destination;
+          
+          // Só adiciona entrada no estoque se destino for 'stock'
+          if (item.destination === 'stock') {
+            movimentacoes.push({
+              id: `refund-${item.id}`,
+              data: item.created_at,
+              ref_tipo: 'Devolução',
+              ref_id: item.refund_id,
+              ref_numero: refund?.refund_number || 0,
+              quantidade_delta: +qtd, // Entrada no estoque
+              descricao: `Devolução #${refund?.refund_number || '?'} → ${destinoLabel}`,
+              vendedor_nome: null,
+            });
+          } else if (item.destination === 'loss') {
+            // Perda não volta ao estoque
+            movimentacoes.push({
+              id: `refund-loss-${item.id}`,
+              data: item.created_at,
+              ref_tipo: 'Perda',
+              ref_id: item.refund_id,
+              ref_numero: refund?.refund_number || 0,
+              quantidade_delta: 0, // Não altera estoque
+              descricao: `Devolução #${refund?.refund_number || '?'} → Perda (produto descartado)`,
+              vendedor_nome: null,
+            });
+          } else if (item.destination === 'exchange') {
+            // Troca - separado para troca
+            movimentacoes.push({
+              id: `refund-exchange-${item.id}`,
+              data: item.created_at,
+              ref_tipo: 'Troca',
+              ref_id: item.refund_id,
+              ref_numero: refund?.refund_number || 0,
+              quantidade_delta: 0, // Separado para troca
+              descricao: `Devolução #${refund?.refund_number || '?'} → Separado para troca`,
+              vendedor_nome: null,
+            });
+          }
+        });
+      }
+    } catch (e) {
+      // Tabela refund_items pode não existir ainda
+      console.warn('Tabela refund_items não encontrada ou erro:', e);
     }
 
     // Ordenar por data decrescente
@@ -656,9 +728,9 @@ export function ProductFormOptimized({
                 <Warehouse className="h-4 w-4" />
                 Estoque
               </TabsTrigger>
-              <TabsTrigger value="condicional" className="gap-2" disabled={!isEditing}>
+              <TabsTrigger value="movimentacoes" className="gap-2" disabled={!isEditing}>
                 <History className="h-4 w-4" />
-                Estoque Condicional
+                Movimentações
               </TabsTrigger>
             </TabsList>
 
@@ -1240,8 +1312,8 @@ export function ProductFormOptimized({
               </div>
             </TabsContent>
 
-            {/* ABA: Estoque Condicional */}
-            <TabsContent value="condicional" className="flex-1 overflow-y-auto space-y-4 mt-4">
+            {/* ABA: Movimentações de Estoque */}
+            <TabsContent value="movimentacoes" className="flex-1 overflow-y-auto space-y-4 mt-4">
               {isLoadingMovimentacoes ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Carregando histórico...
@@ -1250,62 +1322,92 @@ export function ProductFormOptimized({
                 <div className="text-center py-8 text-muted-foreground">
                   <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>Nenhuma movimentação de estoque registrada</p>
-                  <p className="text-sm mt-2">As baixas de estoque vindas de vendas ou OS aparecerão aqui</p>
+                  <p className="text-sm mt-2">As baixas de estoque vindas de vendas, OS, devoluções ou ajustes aparecerão aqui</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="text-sm text-muted-foreground">
-                    Histórico de movimentações de estoque vinculadas a este produto (Vendas e Ordens de Serviço)
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Histórico completo de movimentações ({movimentacoes.length} registros)
+                    </div>
+                    <div className="flex gap-2 text-xs">
+                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded">Saída</span>
+                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded">Entrada</span>
+                    </div>
                   </div>
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="sticky top-0 bg-background">
                         <TableRow>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Ref.</TableHead>
-                          <TableHead>Quantidade</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Vendedor</TableHead>
+                          <TableHead className="w-[140px]">Data</TableHead>
+                          <TableHead className="w-[100px]">Tipo</TableHead>
+                          <TableHead className="w-[80px]">Ref.</TableHead>
+                          <TableHead className="w-[80px] text-center">Qtd</TableHead>
                           <TableHead>Descrição</TableHead>
+                          <TableHead className="w-[120px]">Responsável</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {movimentacoes.map((mov) => (
-                          <TableRow key={mov.id}>
-                            <TableCell>
-                              {format(new Date(mov.data), "dd/MM/yyyy 'às' HH:mm")}
-                            </TableCell>
-                            <TableCell className="font-mono">
-                              {mov.ref_id ? (
-                                <button
-                                  type="button"
-                                  className="underline underline-offset-2 hover:text-blue-600"
-                                  onClick={() => {
-                                    if (mov.ref_tipo === 'OS') navigate(`/os/${mov.ref_id}`);
-                                    if (mov.ref_tipo === 'Venda' || mov.ref_tipo === 'Cancelamento' || mov.ref_tipo === 'Devolução') navigate(`/pdv/venda/${mov.ref_id}`);
-                                  }}
-                                  title={mov.ref_tipo === 'OS' ? 'Abrir OS' : 'Abrir venda'}
-                                >
-                                  #{mov.ref_numero}
-                                </button>
-                              ) : (
-                                <>#{mov.ref_numero}</>
-                              )}
-                            </TableCell>
-                            <TableCell className={mov.quantidade_delta < 0 ? "font-semibold text-destructive" : "font-semibold text-emerald-700"}>
-                              {mov.quantidade_delta < 0 ? '-' : '+'}{Math.abs(mov.quantidade_delta)}
-                            </TableCell>
-                            <TableCell>
-                              <span className="px-2 py-1 bg-muted rounded text-xs">
-                                {mov.ref_tipo}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {mov.vendedor_nome || '-'}
-                            </TableCell>
-                            <TableCell>{mov.descricao}</TableCell>
-                          </TableRow>
-                        ))}
+                        {movimentacoes.map((mov) => {
+                          // Cores por tipo de movimentação
+                          const tipoBadgeColors: Record<string, string> = {
+                            'Venda': 'bg-blue-100 text-blue-700',
+                            'OS': 'bg-purple-100 text-purple-700',
+                            'Cancelamento': 'bg-orange-100 text-orange-700',
+                            'Devolução': 'bg-green-100 text-green-700',
+                            'Troca': 'bg-yellow-100 text-yellow-700',
+                            'Perda': 'bg-red-100 text-red-700',
+                            'Ajuste': 'bg-gray-100 text-gray-700',
+                            'Inventário': 'bg-indigo-100 text-indigo-700',
+                          };
+                          const badgeColor = tipoBadgeColors[mov.ref_tipo] || 'bg-muted';
+                          
+                          return (
+                            <TableRow key={mov.id}>
+                              <TableCell className="text-sm">
+                                {format(new Date(mov.data), "dd/MM/yy HH:mm")}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${badgeColor}`}>
+                                  {mov.ref_tipo}
+                                </span>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {mov.ref_id && mov.ref_numero > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="underline underline-offset-2 hover:text-blue-600"
+                                    onClick={() => {
+                                      if (mov.ref_tipo === 'OS') navigate(`/os/${mov.ref_id}`);
+                                      if (['Venda', 'Cancelamento'].includes(mov.ref_tipo)) navigate(`/pdv/venda/${mov.ref_id}`);
+                                      if (['Devolução', 'Troca', 'Perda'].includes(mov.ref_tipo)) navigate(`/pdv/devolucoes`);
+                                    }}
+                                    title={`Abrir ${mov.ref_tipo}`}
+                                  >
+                                    #{mov.ref_numero}
+                                  </button>
+                                ) : mov.ref_numero > 0 ? (
+                                  <span>#{mov.ref_numero}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {mov.quantidade_delta !== 0 ? (
+                                  <span className={`font-semibold ${mov.quantidade_delta < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                    {mov.quantidade_delta < 0 ? '' : '+'}{mov.quantidade_delta}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">{mov.descricao}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {mov.vendedor_nome || '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
