@@ -939,7 +939,7 @@ export const UserManagementNew = () => {
       </Dialog>
 
       {/* Dialog Criar Novo Usuário */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog open={newUserDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Criar Novo Usuário</DialogTitle>
