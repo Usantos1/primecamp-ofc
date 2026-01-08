@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   ReceiptText, Search, QrCode, Printer, Copy, CheckCircle, 
-  XCircle, Clock, RefreshCw, Eye, Ban, ArrowLeft, Package
+  XCircle, Clock, RefreshCw, Eye, Ban, ArrowLeft, Package,
+  User, AlertTriangle, ShoppingBag
 } from 'lucide-react';
 import { useRefunds, Refund, Voucher } from '@/hooks/useRefunds';
 import { from } from '@/integrations/db/client';
@@ -926,7 +927,7 @@ export default function Devolucoes() {
 
       {/* Dialog de Detalhes da Devolução */}
       <Dialog open={refundDetailsOpen} onOpenChange={setRefundDetailsOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -945,72 +946,135 @@ export default function Devolucoes() {
                 {getStatusBadge(selectedRefund.status)}
               </div>
               
-              {/* Informações */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              {/* Informações Principais */}
+              <div className="grid grid-cols-2 gap-4 text-sm border rounded-lg p-4">
                 <div>
-                  <span className="text-muted-foreground">Venda Original:</span>
-                  <div className="font-semibold">#{selectedRefund.original_sale_number || selectedRefund.sale_id?.slice(0,8)}</div>
+                  <span className="text-muted-foreground text-xs">Nº Devolução:</span>
+                  <div className="font-bold text-lg">#{selectedRefund.refund_number}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Cliente:</span>
+                  <span className="text-muted-foreground text-xs">Venda Original:</span>
+                  <div className="font-bold text-lg">#{selectedRefund.original_sale_number || selectedRefund.sale_id?.slice(0,8)}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Cliente:</span>
                   <div className="font-semibold">{selectedRefund.customer_name || 'Consumidor Final'}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Valor Total:</span>
-                  <div className="font-semibold text-green-600">{formatCurrency(selectedRefund.total_refund_value)}</div>
+                  <span className="text-muted-foreground text-xs">Valor Total:</span>
+                  <div className="font-bold text-green-600 text-lg">{formatCurrency(selectedRefund.total_refund_value)}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Método:</span>
+                  <span className="text-muted-foreground text-xs">Método de Devolução:</span>
                   <div className="font-semibold">
-                    {selectedRefund.refund_method === 'voucher' ? '🎟️ Voucher' : 
+                    {selectedRefund.refund_method === 'voucher' ? '🎟️ Vale Compra' : 
                      selectedRefund.refund_method === 'cash' ? '💵 Dinheiro' : 
                      selectedRefund.refund_method}
                   </div>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Motivo:</span>
-                  <div className="font-medium">{selectedRefund.reason || '-'}</div>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Data:</span>
-                  <div className="font-medium">{formatDate(selectedRefund.created_at)}</div>
+                <div>
+                  <span className="text-muted-foreground text-xs">Tipo:</span>
+                  <div className="font-semibold">
+                    {selectedRefund.refund_type === 'full' ? '📦 Devolução Total' : '📦 Devolução Parcial'}
+                  </div>
                 </div>
               </div>
 
+              {/* Rastreabilidade */}
+              <div className="border rounded-lg p-4 bg-slate-50">
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Rastreabilidade
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground text-xs">Processado por:</span>
+                    <div className="font-medium">{selectedRefund.created_by_name || selectedRefund.created_by || 'Usuário do sistema'}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Data/Hora:</span>
+                    <div className="font-medium">{formatDate(selectedRefund.created_at)}</div>
+                  </div>
+                  {selectedRefund.approved_by_name && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Aprovado por:</span>
+                      <div className="font-medium">{selectedRefund.approved_by_name}</div>
+                    </div>
+                  )}
+                  {selectedRefund.approved_at && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Data Aprovação:</span>
+                      <div className="font-medium">{formatDate(selectedRefund.approved_at)}</div>
+                    </div>
+                  )}
+                  {selectedRefund.voucher_code && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground text-xs">Voucher Gerado:</span>
+                      <div className="font-bold text-purple-600">{selectedRefund.voucher_code}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Motivo */}
+              <div className="border rounded-lg p-4">
+                <span className="text-muted-foreground text-xs">Motivo da Devolução:</span>
+                <div className="font-medium mt-1">{selectedRefund.reason || '-'}</div>
+              </div>
+
               {/* Itens da Devolução */}
-              <div>
-                <span className="text-sm font-medium">Produtos devolvidos:</span>
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  Produtos Devolvidos ({refundItems.length})
+                </h4>
                 {loadingRefundItems ? (
                   <div className="text-center py-4 text-muted-foreground">Carregando...</div>
                 ) : refundItems.length === 0 ? (
                   <div className="text-center py-4 text-muted-foreground">Nenhum item encontrado</div>
                 ) : (
-                  <div className="mt-2 border rounded-lg divide-y max-h-40 overflow-y-auto">
+                  <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
                     {refundItems.map((item, idx) => (
-                      <div key={item.id || idx} className="p-2 flex justify-between items-center text-sm">
-                        <div>
-                          <div className="font-medium">{item.product_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Qtd: {item.quantity} | {item.destination === 'stock' ? '📦 Estoque' : item.destination === 'exchange' ? '🔄 Troca' : '⚠️ Prejuízo'}
+                      <div key={item.id || idx} className="p-3 flex justify-between items-center text-sm hover:bg-muted/50">
+                        <div className="flex-1">
+                          <div className="font-semibold">{item.product_name}</div>
+                          <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                            <span>Qtd: <strong>{item.quantity}</strong></span>
+                            <span>Unit: <strong>{formatCurrency(parseFloat(item.unit_price) || 0)}</strong></span>
+                            <span className="inline-flex items-center">
+                              {item.destination === 'stock' ? (
+                                <><Package className="h-3 w-3 mr-1" /> Retorno ao Estoque</>
+                              ) : item.destination === 'exchange' ? (
+                                <><RefreshCw className="h-3 w-3 mr-1" /> Separado p/ Troca</>
+                              ) : (
+                                <><AlertTriangle className="h-3 w-3 mr-1 text-red-500" /> Prejuízo/Perda</>
+                              )}
+                            </span>
                           </div>
                         </div>
-                        <div className="font-semibold">{formatCurrency(parseFloat(item.total_price) || 0)}</div>
+                        <div className="font-bold text-right">
+                          {formatCurrency(parseFloat(item.total_price) || 0)}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Explicação do Status */}
-              <div className="p-3 bg-blue-50 rounded-lg text-sm">
-                <strong>Status da Devolução:</strong>
-                <ul className="mt-2 space-y-1 text-muted-foreground">
-                  <li>🟡 <strong>Pendente:</strong> Aguardando aprovação</li>
-                  <li>🔵 <strong>Aprovado:</strong> Aprovado, aguardando completar</li>
-                  <li>🟢 <strong>Concluído:</strong> Finalizado, estoque atualizado</li>
-                  <li>🔴 <strong>Cancelado:</strong> Devolução cancelada</li>
-                </ul>
-              </div>
+              {/* Legenda de Status */}
+              <details className="text-sm">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  Ver legenda de status
+                </summary>
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                  <ul className="space-y-1 text-muted-foreground text-xs">
+                    <li>🟡 <strong>Pendente:</strong> Aguardando aprovação de gestor</li>
+                    <li>🔵 <strong>Aprovado:</strong> Aprovado, aguardando completar operação</li>
+                    <li>🟢 <strong>Concluído:</strong> Finalizado, estoque/caixa atualizados</li>
+                    <li>🔴 <strong>Cancelado:</strong> Devolução cancelada</li>
+                  </ul>
+                </div>
+              </details>
             </div>
           )}
           
@@ -1338,4 +1402,5 @@ export default function Devolucoes() {
     </ModernLayout>
   );
 }
+
 

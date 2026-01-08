@@ -28,10 +28,18 @@ router.get('/', async (req, res) => {
              s.cliente_nome as sale_customer_name,
              s.total as sale_total,
              s.numero as original_sale_number,
-             u.email as created_by_email
+             vc.code as voucher_code,
+             u.email as created_by_email,
+             COALESCE(p.nome, u.email) as created_by_name,
+             u2.email as approved_by_email,
+             COALESCE(p2.nome, u2.email) as approved_by_name
       FROM refunds r
       LEFT JOIN sales s ON r.sale_id = s.id
+      LEFT JOIN vouchers vc ON r.voucher_id = vc.id
       LEFT JOIN users u ON r.created_by = u.id
+      LEFT JOIN profiles p ON r.created_by = p.id
+      LEFT JOIN users u2 ON r.approved_by = u2.id
+      LEFT JOIN profiles p2 ON r.approved_by = p2.id
       WHERE r.company_id = $1
     `;
     const params = [companyId];
@@ -78,10 +86,18 @@ router.get('/:id', async (req, res) => {
              s.total as sale_total,
              s.numero as original_sale_number,
              vc.code as voucher_code,
-             vc.current_value as voucher_current_value
+             vc.current_value as voucher_current_value,
+             u.email as created_by_email,
+             COALESCE(p.nome, u.email) as created_by_name,
+             u2.email as approved_by_email,
+             COALESCE(p2.nome, u2.email) as approved_by_name
       FROM refunds r
       LEFT JOIN sales s ON r.sale_id = s.id
       LEFT JOIN vouchers vc ON r.voucher_id = vc.id
+      LEFT JOIN users u ON r.created_by = u.id
+      LEFT JOIN profiles p ON r.created_by = p.id
+      LEFT JOIN users u2 ON r.approved_by = u2.id
+      LEFT JOIN profiles p2 ON r.approved_by = p2.id
       WHERE r.id = $1 AND r.company_id = $2
     `, [id, companyId]);
     
