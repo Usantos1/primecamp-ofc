@@ -79,8 +79,8 @@ export default function RH() {
       color: 'text-emerald-700',
     },
     {
-      title: 'Job Surveys',
-      description: 'Pesquisas de vaga e aplicações',
+      title: 'Formulários de Vagas',
+      description: 'Cadastro de vagas e candidaturas',
       icon: ClipboardCheck,
       path: '/admin/job-surveys',
       color: 'text-amber-700',

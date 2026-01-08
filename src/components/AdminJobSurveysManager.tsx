@@ -1134,7 +1134,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
   if (selectedSurvey) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-auto max-h-[calc(100vh-200px)] pb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button 
@@ -1918,7 +1918,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const weekDays = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-auto max-h-[calc(100vh-200px)] pb-8">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Formulários de Vaga</h1>
         <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70">
