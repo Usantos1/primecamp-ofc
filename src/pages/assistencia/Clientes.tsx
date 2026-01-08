@@ -183,6 +183,8 @@ export default function Clientes() {
 
   // Salvar cliente
   const handleSubmit = async () => {
+    console.log('[handleSubmit] Iniciando...', { formData, editingCliente: !!editingCliente });
+    
     if (!formData.nome) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
       return;
@@ -191,16 +193,20 @@ export default function Clientes() {
     setIsLoading(true);
     try {
       if (editingCliente) {
-        await updateCliente(editingCliente.id, formData as any);
+        console.log('[handleSubmit] Atualizando cliente:', editingCliente.id);
+        const result = await updateCliente(editingCliente.id, formData as any);
+        console.log('[handleSubmit] Resultado update:', result);
         toast({ title: 'Cliente atualizado!' });
       } else {
-        await createCliente(formData as any);
+        console.log('[handleSubmit] Criando novo cliente:', formData.nome);
+        const result = await createCliente(formData as any);
+        console.log('[handleSubmit] Resultado create:', result);
         toast({ title: 'Cliente cadastrado!' });
       }
       setShowForm(false);
       setFormData(INITIAL_FORM);
     } catch (error: any) {
-      console.error('Erro ao salvar cliente:', error);
+      console.error('[handleSubmit] Erro ao salvar cliente:', error);
       toast({ title: 'Erro ao salvar cliente', description: error?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setIsLoading(false);

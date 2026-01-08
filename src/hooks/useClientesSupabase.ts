@@ -72,13 +72,22 @@ export function useClientesSupabase(pageSize: number = 50) {
         created_by: user?.id || null,
       };
 
+      console.log('[createCliente] Dados a inserir:', novoCliente);
       const { data: inserted, error } = await from('clientes').insert(novoCliente);
+      console.log('[createCliente] Resultado:', { inserted, error });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[createCliente] Erro ao inserir:', error);
+        throw error;
+      }
       return (inserted?.data || inserted) as Cliente;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[createCliente] Sucesso! Cliente criado:', data);
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
+    },
+    onError: (error) => {
+      console.error('[createCliente] Erro na mutation:', error);
     },
   });
 
