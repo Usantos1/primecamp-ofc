@@ -185,6 +185,14 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Estados para busca
   const [clienteSearch, setClienteSearch] = useState('');
   const [clienteResults, setClienteResults] = useState<any[]>([]);
+  const [showNovoClienteModal, setShowNovoClienteModal] = useState(false);
+  const [novoClienteData, setNovoClienteData] = useState({
+    nome: '',
+    telefone: '',
+    cpf_cnpj: '',
+    email: '',
+  });
+  const [isCreatingCliente, setIsCreatingCliente] = useState(false);
   const [showClienteSearch, setShowClienteSearch] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
 
@@ -417,6 +425,57 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }));
     setShowClienteSearch(false);
     setClienteSearch('');
+  };
+
+  // Criar novo cliente e selecionar
+  const handleCreateNovoCliente = async () => {
+    if (!novoClienteData.nome.trim()) {
+      toast({ title: 'Nome é obrigatório', variant: 'destructive' });
+      return;
+    }
+    if (!novoClienteData.telefone.trim()) {
+      toast({ title: 'Telefone é obrigatório', variant: 'destructive' });
+      return;
+    }
+
+    setIsCreatingCliente(true);
+    try {
+      const novoCliente = await createCliente({
+        nome: novoClienteData.nome.trim(),
+        telefone: novoClienteData.telefone.trim(),
+        whatsapp: novoClienteData.telefone.trim(),
+        cpf_cnpj: novoClienteData.cpf_cnpj.trim() || null,
+        email: novoClienteData.email.trim() || null,
+      });
+
+      // Selecionar o cliente recém-criado
+      handleSelectCliente(novoCliente);
+      
+      // Limpar e fechar modal
+      setNovoClienteData({ nome: '', telefone: '', cpf_cnpj: '', email: '' });
+      setShowNovoClienteModal(false);
+      
+      toast({ title: 'Cliente cadastrado com sucesso!' });
+    } catch (error: any) {
+      console.error('Erro ao criar cliente:', error);
+      toast({ 
+        title: 'Erro ao cadastrar cliente', 
+        description: error?.message || 'Tente novamente',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsCreatingCliente(false);
+    }
+  };
+
+  // Abrir modal de novo cliente com nome da busca
+  const handleOpenNovoClienteModal = () => {
+    setNovoClienteData(prev => ({ 
+      ...prev, 
+      nome: clienteSearch.trim() 
+    }));
+    setShowNovoClienteModal(true);
+    setShowClienteSearch(false);
   };
 
   // Toggle checklist
@@ -1717,11 +1776,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         )}
                       </div>
                       {showClienteSearch && clienteResults.length > 0 && !selectedCliente && (
-                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-56 overflow-auto mt-1">
+                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto mt-1">
                           {clienteResults.map(cliente => (
                             <div
                               key={cliente.id}
-                              className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                              className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 transition-colors"
                               onClick={() => handleSelectCliente(cliente)}
                             >
                               <p className="font-semibold text-sm text-gray-800">{cliente.nome}</p>
@@ -1732,12 +1791,30 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               </p>
                             </div>
                           ))}
+                          {/* Botão Novo Cliente */}
+                          <div
+                            className="p-3 hover:bg-green-50 cursor-pointer border-t-2 border-gray-200 bg-gray-50 transition-colors flex items-center gap-2 text-green-700"
+                            onClick={handleOpenNovoClienteModal}
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span className="font-medium text-sm">Cadastrar Novo Cliente</span>
+                          </div>
                         </div>
                       )}
                       {showClienteSearch && clienteSearch.length >= 2 && clienteResults.length === 0 && (
-                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl p-4 mt-1 text-center">
-                          <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
-                          <p className="text-xs text-gray-400 mt-1">Verifique o termo de busca ou cadastre um novo cliente</p>
+                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1">
+                          <div className="p-4 text-center border-b border-gray-100">
+                            <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
+                            <p className="text-xs text-gray-400 mt-1">Verifique o termo ou cadastre um novo</p>
+                          </div>
+                          {/* Botão Novo Cliente quando não há resultados */}
+                          <div
+                            className="p-3 hover:bg-green-50 cursor-pointer bg-gray-50 transition-colors flex items-center justify-center gap-2 text-green-700"
+                            onClick={handleOpenNovoClienteModal}
+                          >
+                            <Plus className="h-4 w-4" />
+                            <span className="font-medium text-sm">Cadastrar "{clienteSearch}"</span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -4381,6 +4458,87 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             >
               <Save className="h-4 w-4 mr-2" />
               Finalizar Checklist e Atualizar Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Novo Cliente */}
+      <Dialog open={showNovoClienteModal} onOpenChange={setShowNovoClienteModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Cadastrar Novo Cliente
+            </DialogTitle>
+            <DialogDescription>
+              Preencha os dados do cliente. Após salvar, o cliente será selecionado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome Completo *</Label>
+              <Input
+                value={novoClienteData.nome}
+                onChange={(e) => setNovoClienteData(prev => ({ ...prev, nome: e.target.value }))}
+                placeholder="Nome do cliente"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone / WhatsApp *</Label>
+              <Input
+                value={novoClienteData.telefone}
+                onChange={(e) => setNovoClienteData(prev => ({ ...prev, telefone: e.target.value }))}
+                placeholder="(19) 99999-9999"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>CPF/CNPJ</Label>
+                <Input
+                  value={novoClienteData.cpf_cnpj}
+                  onChange={(e) => setNovoClienteData(prev => ({ ...prev, cpf_cnpj: e.target.value }))}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  value={novoClienteData.email}
+                  onChange={(e) => setNovoClienteData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@exemplo.com"
+                  type="email"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowNovoClienteModal(false);
+                setNovoClienteData({ nome: '', telefone: '', cpf_cnpj: '', email: '' });
+              }}
+              disabled={isCreatingCliente}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateNovoCliente}
+              disabled={isCreatingCliente || !novoClienteData.nome.trim() || !novoClienteData.telefone.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isCreatingCliente ? (
+                <>Salvando...</>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cadastrar e Selecionar
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
