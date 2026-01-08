@@ -30,16 +30,14 @@ router.get('/', async (req, res) => {
              s.numero as original_sale_number,
              vc.code as voucher_code,
              u.email as created_by_email,
-             COALESCE(p.nome, u.email) as created_by_name,
+             u.email as created_by_name,
              u2.email as approved_by_email,
-             COALESCE(p2.nome, u2.email) as approved_by_name
+             u2.email as approved_by_name
       FROM refunds r
       LEFT JOIN sales s ON r.sale_id = s.id
       LEFT JOIN vouchers vc ON r.voucher_id = vc.id
       LEFT JOIN users u ON r.created_by = u.id
-      LEFT JOIN profiles p ON r.created_by = p.id
       LEFT JOIN users u2 ON r.approved_by = u2.id
-      LEFT JOIN profiles p2 ON r.approved_by = p2.id
       WHERE r.company_id = $1
     `;
     const params = [companyId];
@@ -88,16 +86,14 @@ router.get('/:id', async (req, res) => {
              vc.code as voucher_code,
              vc.current_value as voucher_current_value,
              u.email as created_by_email,
-             COALESCE(p.nome, u.email) as created_by_name,
+             u.email as created_by_name,
              u2.email as approved_by_email,
-             COALESCE(p2.nome, u2.email) as approved_by_name
+             u2.email as approved_by_name
       FROM refunds r
       LEFT JOIN sales s ON r.sale_id = s.id
       LEFT JOIN vouchers vc ON r.voucher_id = vc.id
       LEFT JOIN users u ON r.created_by = u.id
-      LEFT JOIN profiles p ON r.created_by = p.id
       LEFT JOIN users u2 ON r.approved_by = u2.id
-      LEFT JOIN profiles p2 ON r.approved_by = p2.id
       WHERE r.id = $1 AND r.company_id = $2
     `, [id, companyId]);
     
@@ -165,25 +161,30 @@ router.post('/', async (req, res) => {
     const refundNumber = `DEV${String(seqResult.rows[0].num).padStart(6, '0')}`;
     
     // Calcular valor total da devolução
-    console.log('[Refund] Items recebidos:', JSON.stringify(items, null, 2));
+    console.log('[Refund] === CRIANDO DEVOLUÇÃO ===');
+    console.log('[Refund] Body completo:', JSON.stringify(req.body, null, 2));
+    console.log('[Refund] Items array length:', items?.length);
     
     let totalRefundValue = 0;
-    for (const item of items) {
-      // Converter valores garantindo que são números
-      const qty = Number(item.quantity) || 1;
-      const price = Number(item.unit_price) || 0;
-      const itemTotal = qty * price;
-      
-      console.log(`[Refund] Item: ${item.product_name}`);
-      console.log(`[Refund]   - quantity raw: ${item.quantity} (${typeof item.quantity})`);
-      console.log(`[Refund]   - unit_price raw: ${item.unit_price} (${typeof item.unit_price})`);
-      console.log(`[Refund]   - qty convertido: ${qty}, price convertido: ${price}`);
-      console.log(`[Refund]   - subtotal: ${itemTotal}`);
-      
-      totalRefundValue += itemTotal;
+    
+    if (!items || items.length === 0) {
+      console.log('[Refund] ERRO: Nenhum item recebido!');
+    } else {
+      for (const item of items) {
+        console.log('[Refund] Item raw:', JSON.stringify(item));
+        
+        // Converter valores garantindo que são números
+        const qty = parseFloat(item.quantity) || 1;
+        const price = parseFloat(item.unit_price) || 0;
+        const itemTotal = qty * price;
+        
+        console.log(`[Refund] Item: ${item.product_name}, qty=${qty}, price=${price}, total=${itemTotal}`);
+        
+        totalRefundValue += itemTotal;
+      }
     }
     
-    console.log(`[Refund] TOTAL FINAL: R$ ${totalRefundValue}`);
+    console.log(`[Refund] TOTAL FINAL CALCULADO: R$ ${totalRefundValue}`);
     
     // Criar devolução
     const refundResult = await client.query(`
@@ -240,6 +241,11 @@ router.post('/', async (req, res) => {
         }
       }
       
+      console.log(`[Refund] === CRIANDO VOUCHER ===`);
+      console.log(`[Refund] Código: ${voucherCode}`);
+      console.log(`[Refund] Valor a inserir: ${totalRefundValue}`);
+      console.log(`[Refund] Cliente: ${customer_name}`);
+      
       const voucherResult = await client.query(`
         INSERT INTO vouchers (
           company_id, code, original_sale_id, refund_id, customer_id,
@@ -252,6 +258,8 @@ router.post('/', async (req, res) => {
         customer_name, customerDocument, customerPhone,
         totalRefundValue, totalRefundValue, userId
       ]);
+      
+      console.log(`[Refund] Voucher criado:`, JSON.stringify(voucherResult.rows[0]));
       
       voucher = voucherResult.rows[0];
       
@@ -340,8 +348,10 @@ router.put('/:id/complete', async (req, res) => {
     // Retornar produtos ao estoque (apenas se destination = 'stock')
     for (const item of itemsResult.rows) {
       if (item.return_to_stock && item.product_id) {
-        // Converter quantity para número inteiro
-        const qty = Math.round(parseFloat(item.quantity) || 0);
+        // Converter quantity para número inteiro (remover separadores de milhar se houver)
+        const qtyStr = String(item.quantity).replace(/\./g, '').replace(',', '.');
+        const qty = Math.round(parseFloat(qtyStr) || 0);
+        console.log(`[Refund] Retornando ao estoque: produto=${item.product_id}, qty_raw=${item.quantity}, qty_convertido=${qty}`);
         if (qty > 0) {
           await client.query(`
             UPDATE produtos 
