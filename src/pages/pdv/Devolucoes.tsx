@@ -56,7 +56,10 @@ export default function Devolucoes() {
     fetchRefunds, 
     fetchVouchers, 
     checkVoucher,
-    createRefund
+    createRefund,
+    approveRefund,
+    completeRefund,
+    fetchRefund
   } = useRefunds();
   const { toast } = useToast();
   
@@ -73,6 +76,17 @@ export default function Devolucoes() {
   const [refundMethod, setRefundMethod] = useState<'voucher' | 'cash'>('voucher');
   const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
   const [processingRefund, setProcessingRefund] = useState(false);
+  
+  // Estado para visualização de devolução
+  const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
+  const [refundDetailsOpen, setRefundDetailsOpen] = useState(false);
+  const [loadingRefundDetails, setLoadingRefundDetails] = useState(false);
+  
+  // Estado para seleção de cliente
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState<any[]>([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
   // Verificar se veio com sale_id na URL
   useEffect(() => {
@@ -414,6 +428,95 @@ export default function Devolucoes() {
     });
   };
 
+  // Buscar clientes
+  const searchCustomers = async (term: string) => {
+    if (term.length < 2) {
+      setCustomerSearchResults([]);
+      return;
+    }
+    
+    setSearchingCustomers(true);
+    try {
+      const { data } = await from('clientes')
+        .select('id, nome, cpf_cnpj, telefone')
+        .ilike('nome', `%${term}%`)
+        .limit(10)
+        .execute();
+      
+      setCustomerSearchResults(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar clientes:', error);
+    } finally {
+      setSearchingCustomers(false);
+    }
+  };
+
+  // Selecionar cliente
+  const handleSelectCustomer = (customer: any) => {
+    setSelectedCustomer(customer);
+    if (saleData) {
+      setSaleData({
+        ...saleData,
+        cliente_id: customer.id,
+        cliente_nome: customer.nome
+      });
+    }
+    setCustomerSearchTerm('');
+    setCustomerSearchResults([]);
+    // Agora pode usar voucher
+    setRefundMethod('voucher');
+  };
+
+  // Carregar detalhes da devolução
+  const loadRefundDetails = async (refund: Refund) => {
+    setSelectedRefund(refund);
+    setRefundDetailsOpen(true);
+    
+    // Se precisar buscar itens, faz aqui
+    // Por agora, usamos os dados que já temos
+  };
+
+  // Aprovar devolução
+  const handleApproveRefund = async (refundId: string) => {
+    try {
+      const result = await approveRefund(refundId);
+      if (result) {
+        toast({
+          title: 'Sucesso',
+          description: 'Devolução aprovada!'
+        });
+        fetchRefunds();
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao aprovar devolução',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Completar devolução (estornar estoque)
+  const handleCompleteRefund = async (refundId: string) => {
+    try {
+      const result = await completeRefund(refundId);
+      if (result) {
+        toast({
+          title: 'Sucesso',
+          description: 'Devolução completada! Estoque atualizado.'
+        });
+        fetchRefunds();
+        setRefundDetailsOpen(false);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao completar devolução',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const filteredVouchers = vouchers.filter(v => 
     v.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
     v.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -630,24 +733,59 @@ export default function Devolucoes() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Data</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredRefunds.map((refund) => (
-                      <TableRow key={refund.id}>
+                      <TableRow key={refund.id} className="cursor-pointer hover:bg-muted/50">
                         <TableCell>#{refund.refund_number}</TableCell>
-                        <TableCell>#{refund.original_sale_number}</TableCell>
+                        <TableCell>#{refund.original_sale_number || refund.sale_id?.slice(0,8)}</TableCell>
                         <TableCell>{refund.customer_name || '-'}</TableCell>
                         <TableCell>{formatCurrency(refund.total_refund_value)}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {refund.refund_type === 'voucher' ? 'Voucher' : 
-                             refund.refund_type === 'cash' ? 'Dinheiro' : 
-                             refund.refund_type === 'card' ? 'Cartão' : refund.refund_type}
+                            {refund.refund_method === 'voucher' ? '🎟️ Voucher' : 
+                             refund.refund_method === 'cash' ? '💵 Dinheiro' : 
+                             refund.refund_method === 'card' ? '💳 Cartão' : refund.refund_method}
                           </Badge>
                         </TableCell>
                         <TableCell>{getStatusBadge(refund.status)}</TableCell>
                         <TableCell>{formatDate(refund.created_at)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => loadRefundDetails(refund)}
+                              title="Ver detalhes"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {refund.status === 'pending' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-600"
+                                onClick={() => handleApproveRefund(refund.id)}
+                                title="Aprovar"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {(refund.status === 'pending' || refund.status === 'approved') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600"
+                                onClick={() => handleCompleteRefund(refund.id)}
+                                title="Completar (estornar estoque)"
+                              >
+                                <Package className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -713,6 +851,98 @@ export default function Devolucoes() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog de Detalhes da Devolução */}
+      <Dialog open={refundDetailsOpen} onOpenChange={setRefundDetailsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Detalhes da Devolução
+            </DialogTitle>
+            <DialogDescription>
+              {selectedRefund && `#${selectedRefund.refund_number}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedRefund && (
+            <div className="space-y-4">
+              {/* Status */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <span className="text-sm font-medium">Status:</span>
+                {getStatusBadge(selectedRefund.status)}
+              </div>
+              
+              {/* Informações */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Venda Original:</span>
+                  <div className="font-semibold">#{selectedRefund.original_sale_number || selectedRefund.sale_id?.slice(0,8)}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cliente:</span>
+                  <div className="font-semibold">{selectedRefund.customer_name || 'Consumidor Final'}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Valor Total:</span>
+                  <div className="font-semibold text-green-600">{formatCurrency(selectedRefund.total_refund_value)}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Método:</span>
+                  <div className="font-semibold">
+                    {selectedRefund.refund_method === 'voucher' ? '🎟️ Voucher' : 
+                     selectedRefund.refund_method === 'cash' ? '💵 Dinheiro' : 
+                     selectedRefund.refund_method}
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Motivo:</span>
+                  <div className="font-medium">{selectedRefund.reason || '-'}</div>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Data:</span>
+                  <div className="font-medium">{formatDate(selectedRefund.created_at)}</div>
+                </div>
+              </div>
+
+              {/* Explicação do Status */}
+              <div className="p-3 bg-blue-50 rounded-lg text-sm">
+                <strong>Status da Devolução:</strong>
+                <ul className="mt-2 space-y-1 text-muted-foreground">
+                  <li>🟡 <strong>Pendente:</strong> Aguardando aprovação</li>
+                  <li>🔵 <strong>Aprovado:</strong> Aprovado, aguardando completar</li>
+                  <li>🟢 <strong>Completado:</strong> Finalizado, estoque atualizado</li>
+                  <li>🔴 <strong>Cancelado:</strong> Devolução cancelada</li>
+                </ul>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setRefundDetailsOpen(false)}>
+              Fechar
+            </Button>
+            {selectedRefund?.status === 'pending' && (
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => handleApproveRefund(selectedRefund.id)}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Aprovar
+              </Button>
+            )}
+            {(selectedRefund?.status === 'pending' || selectedRefund?.status === 'approved') && (
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => handleCompleteRefund(selectedRefund.id)}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Completar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog de Processamento de Devolução */}
       <Dialog open={refundDialogOpen} onOpenChange={(open) => {
         if (!open) {
@@ -760,6 +990,83 @@ export default function Devolucoes() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Seleção de Cliente (se for Consumidor Final) */}
+              {(!saleData.cliente_id || saleData.cliente_nome === 'Consumidor Final') && (
+                <Card className="border-orange-200 bg-orange-50">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-orange-700">
+                        <span className="text-lg">⚠️</span>
+                        <span className="font-medium">Venda para Consumidor Final</span>
+                      </div>
+                      <p className="text-sm text-orange-600">
+                        Para gerar voucher, selecione ou cadastre um cliente:
+                      </p>
+                      
+                      {selectedCustomer ? (
+                        <div className="flex items-center justify-between p-2 bg-white rounded border">
+                          <div>
+                            <div className="font-medium">{selectedCustomer.nome}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {selectedCustomer.cpf_cnpj || selectedCustomer.telefone || 'Sem documento'}
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCustomer(null);
+                              if (saleData) {
+                                setSaleData({
+                                  ...saleData,
+                                  cliente_id: undefined,
+                                  cliente_nome: 'Consumidor Final'
+                                });
+                              }
+                              setRefundMethod('cash');
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Input
+                            placeholder="Buscar cliente por nome..."
+                            value={customerSearchTerm}
+                            onChange={(e) => {
+                              setCustomerSearchTerm(e.target.value);
+                              searchCustomers(e.target.value);
+                            }}
+                          />
+                          {customerSearchResults.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                              {customerSearchResults.map((customer) => (
+                                <div
+                                  key={customer.id}
+                                  className="p-2 hover:bg-muted cursor-pointer"
+                                  onClick={() => handleSelectCustomer(customer)}
+                                >
+                                  <div className="font-medium">{customer.nome}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {customer.cpf_cnpj || customer.telefone || '-'}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {searchingCustomers && (
+                            <div className="absolute right-3 top-2">
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Itens para Devolução */}
               <div>
