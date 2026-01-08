@@ -22,8 +22,11 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
-// Middleware de autenticação JWT
-const authenticateToken = (req, res, next) => {
+// ID da empresa principal
+const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+
+// Middleware de autenticação JWT com busca de company_id
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -31,13 +34,44 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Token de autenticação necessário' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token inválido ou expirado' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    
+    // CRÍTICO: Buscar company_id do banco para garantir isolamento de dados
+    const userResult = await pool.query(
+      'SELECT company_id FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    
+    if (userResult.rows.length > 0) {
+      req.companyId = userResult.rows[0].company_id;
+      req.user.company_id = userResult.rows[0].company_id;
     }
-    req.user = user;
+    
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ error: 'Token inválido ou expirado' });
+  }
+};
+
+// Middleware para verificar acesso à empresa
+const verifyCompanyAccess = (req, res, next) => {
+  const requestedCompanyId = req.params.companyId;
+  const userCompanyId = req.companyId || req.user?.company_id;
+  
+  // Admin pode acessar qualquer empresa
+  if (userCompanyId === ADMIN_COMPANY_ID) {
+    return next();
+  }
+  
+  // Usuário normal só pode acessar sua própria empresa
+  if (requestedCompanyId !== userCompanyId) {
+    console.error(`[SEGURANÇA] Acesso negado: usuário ${req.user?.id} (empresa ${userCompanyId}) tentou acessar pagamentos da empresa ${requestedCompanyId}`);
+    return res.status(403).json({ error: 'Acesso negado. Você só pode acessar dados da sua própria empresa.' });
+  }
+  
+  next();
 };
 
 // Gerar código PIX (simulação - em produção usar API de pagamentos)
@@ -62,10 +96,19 @@ function generateQRCodeBase64(pixCode) {
 
 // ================== ROTAS DE PAGAMENTOS ==================
 
-// Criar novo pagamento PIX
+// Criar novo pagamento PIX (PROTEGIDO: usa company_id do usuário autenticado)
 router.post('/create', authenticateToken, async (req, res) => {
   try {
-    const { company_id, subscription_id, amount, description } = req.body;
+    const { subscription_id, amount, description } = req.body;
+    
+    // SEGURANÇA: company_id vem do token, não do body (exceto para admin)
+    const userCompanyId = req.companyId || req.user?.company_id;
+    let company_id = req.body.company_id;
+    
+    // Se não for admin, forçar uso do company_id do token
+    if (userCompanyId !== ADMIN_COMPANY_ID) {
+      company_id = userCompanyId;
+    }
 
     if (!company_id || !amount) {
       return res.status(400).json({ error: 'company_id e amount são obrigatórios' });
@@ -249,8 +292,8 @@ router.get('/status/:paymentId', authenticateToken, async (req, res) => {
   }
 });
 
-// Listar pagamentos de uma empresa
-router.get('/company/:companyId', authenticateToken, async (req, res) => {
+// Listar pagamentos de uma empresa (PROTEGIDO: só pode acessar própria empresa)
+router.get('/company/:companyId', authenticateToken, verifyCompanyAccess, async (req, res) => {
   try {
     const { companyId } = req.params;
     const { page = 1, limit = 20, status } = req.query;

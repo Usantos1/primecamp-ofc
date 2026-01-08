@@ -166,7 +166,7 @@ pool.on('error', (err) => {
 });
 
 // Middleware de autenticação JWT
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -174,13 +174,26 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Token de autenticação necessário' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token inválido ou expirado' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    
+    // CRÍTICO: Buscar company_id do banco para garantir isolamento de dados
+    // Mesmo que o token tenha company_id, buscar do banco para garantir dados atualizados
+    const userResult = await pool.query(
+      'SELECT company_id FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    
+    if (userResult.rows.length > 0) {
+      req.companyId = userResult.rows[0].company_id;
+      req.user.company_id = userResult.rows[0].company_id;
     }
-    req.user = user;
+    
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ error: 'Token inválido ou expirado' });
+  }
 };
 
 // Rate limiting - aumentado para suportar o dashboard com muitas queries
@@ -468,18 +481,19 @@ app.post('/api/auth/login', async (req, res) => {
     const profile = profileResult.rows[0] || null;
     console.log('[API] Profile encontrado:', { hasProfile: !!profile, role: profile?.role });
 
-    // Gerar token JWT
+    // Gerar token JWT (incluindo company_id para isolamento de dados)
     const token = jwt.sign(
       { 
         id: user.id, 
         email: user.email,
-        role: profile?.role || 'member'
+        role: profile?.role || 'member',
+        company_id: user.company_id
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    console.log('[API] Login bem-sucedido:', { userId: user.id, email: user.email, hasToken: !!token });
+    console.log('[API] Login bem-sucedido:', { userId: user.id, email: user.email, company_id: user.company_id, hasToken: !!token });
 
     res.json({
       token,
@@ -556,18 +570,19 @@ app.post('/api/auth/signup', async (req, res) => {
     const profile = profileResult.rows[0];
     console.log('[API] Profile criado:', { id: profile.id, display_name: profile.display_name, role: profile.role });
 
-    // Gerar token JWT
+    // Gerar token JWT (incluindo company_id para isolamento de dados)
     const token = jwt.sign(
       { 
         id: newUser.id, 
         email: newUser.email,
-        role: profile.role || 'member'
+        role: profile.role || 'member',
+        company_id: newUser.company_id
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    console.log('[API] Cadastro bem-sucedido:', { userId: newUser.id, email: newUser.email, hasToken: !!token });
+    console.log('[API] Cadastro bem-sucedido:', { userId: newUser.id, email: newUser.email, company_id: newUser.company_id, hasToken: !!token });
 
     res.status(201).json({
       token,

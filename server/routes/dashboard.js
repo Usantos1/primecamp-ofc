@@ -21,8 +21,8 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
-// Middleware de autenticação JWT
-const authenticateToken = (req, res, next) => {
+// Middleware de autenticação JWT com busca de company_id
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -30,13 +30,25 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Token de autenticação necessário' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Token inválido ou expirado' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    
+    // CRÍTICO: Buscar company_id do banco para garantir isolamento de dados
+    const userResult = await pool.query(
+      'SELECT company_id FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    
+    if (userResult.rows.length > 0) {
+      req.companyId = userResult.rows[0].company_id;
+      req.user.company_id = userResult.rows[0].company_id;
     }
-    req.user = user;
+    
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ error: 'Token inválido ou expirado' });
+  }
 };
 
 router.use(authenticateToken);
@@ -44,10 +56,29 @@ router.use(authenticateToken);
 // ID da empresa principal
 const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
 
+// Middleware para verificar acesso à empresa
+const verifyCompanyAccess = (req, res, next) => {
+  const requestedCompanyId = req.params.companyId;
+  const userCompanyId = req.companyId || req.user?.company_id;
+  
+  // Admin pode acessar qualquer empresa
+  if (userCompanyId === ADMIN_COMPANY_ID) {
+    return next();
+  }
+  
+  // Usuário normal só pode acessar sua própria empresa
+  if (requestedCompanyId !== userCompanyId) {
+    console.error(`[SEGURANÇA] Tentativa de acesso não autorizado: usuário ${req.user?.id} (empresa ${userCompanyId}) tentou acessar empresa ${requestedCompanyId}`);
+    return res.status(403).json({ error: 'Acesso negado. Você só pode acessar dados da sua própria empresa.' });
+  }
+  
+  next();
+};
+
 // ================== DASHBOARD DA EMPRESA ==================
 
-// Métricas gerais da empresa
-router.get('/company/:companyId/metrics', async (req, res) => {
+// Métricas gerais da empresa (PROTEGIDO: só pode acessar própria empresa)
+router.get('/company/:companyId/metrics', verifyCompanyAccess, async (req, res) => {
   try {
     const { companyId } = req.params;
     const { period = '30' } = req.query; // dias
@@ -207,8 +238,8 @@ router.get('/company/:companyId/metrics', async (req, res) => {
   }
 });
 
-// Gráfico de vendas por dia
-router.get('/company/:companyId/sales-chart', async (req, res) => {
+// Gráfico de vendas por dia (PROTEGIDO: só pode acessar própria empresa)
+router.get('/company/:companyId/sales-chart', verifyCompanyAccess, async (req, res) => {
   try {
     const { companyId } = req.params;
     const { period = '30' } = req.query;
@@ -233,8 +264,8 @@ router.get('/company/:companyId/sales-chart', async (req, res) => {
   }
 });
 
-// Gráfico de ordens por status
-router.get('/company/:companyId/orders-by-status', async (req, res) => {
+// Gráfico de ordens por status (PROTEGIDO: só pode acessar própria empresa)
+router.get('/company/:companyId/orders-by-status', verifyCompanyAccess, async (req, res) => {
   try {
     const { companyId } = req.params;
 
