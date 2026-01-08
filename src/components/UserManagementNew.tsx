@@ -909,96 +909,6 @@ export const UserManagementNew = () => {
                   </p>
                 )}
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </DialogContent>
-      <DialogFooter className="px-6 pb-6">
-        <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-          Cancelar
-        </Button>
-        <Button onClick={handleUpdateUser} disabled={loading}>
-          {loading ? 'Salvando...' : 'Salvar Alterações'}
-        </Button>
-      </DialogFooter>
-    </Dialog>
-
-    {/* Dialog Criar Novo Usuário - DUPLICADO CORRIGIDO */}
-    <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Criar Novo Usuário</DialogTitle>
-          <DialogDescription>
-            Preencha os dados para criar um novo usuário no sistema.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={newUser.email}
-              onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-              placeholder="email@empresa.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nome">Nome Completo *</Label>
-            <Input
-              id="nome"
-              value={newUser.nome}
-              onChange={(e) => setNewUser({...newUser, nome: e.target.value})}
-              placeholder="Nome do usuário"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="senha">Senha Temporária *</Label>
-            <Input
-              id="senha"
-              type="password"
-              value={newUser.senha}
-              onChange={(e) => setNewUser({...newUser, senha: e.target.value})}
-              placeholder="Mínimo 6 caracteres"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="department">Departamento *</Label>
-            <Select value={newUser.department} onValueChange={(value) => setNewUser({...newUser, department: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione..." />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map(dept => (
-                  <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="role">Função *</Label>
-            <Select value={newUser.role} onValueChange={(value: UserRoleType) => setNewUser({...newUser, role: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a função" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {newUser.role && (
-              <p className="text-xs text-muted-foreground">
-                {USER_ROLE_DESCRIPTIONS[newUser.role as UserRoleType]}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-0.5">
                   <Label htmlFor="edit_approved">Status do Usuário</Label>
@@ -1023,6 +933,90 @@ export const UserManagementNew = () => {
             </Button>
             <Button onClick={handleSaveEdit} disabled={loading}>
               {loading ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Criar Novo Usuário */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para criar um novo usuário no sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                placeholder="email@empresa.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nome">Nome Completo *</Label>
+              <Input
+                id="nome"
+                value={newUser.nome}
+                onChange={(e) => setNewUser({...newUser, nome: e.target.value})}
+                placeholder="Nome do usuário"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="senha">Senha Temporária *</Label>
+              <Input
+                id="senha"
+                type="password"
+                value={newUser.senha}
+                onChange={(e) => setNewUser({...newUser, senha: e.target.value})}
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department">Departamento *</Label>
+              <Select value={newUser.department} onValueChange={(value) => setNewUser({...newUser, department: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(dept => (
+                    <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">Função *</Label>
+              <Select value={newUser.role} onValueChange={(value: UserRoleType) => setNewUser({...newUser, role: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a função" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {newUser.role && (
+                <p className="text-xs text-muted-foreground">
+                  {USER_ROLE_DESCRIPTIONS[newUser.role as UserRoleType]}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateUser} disabled={loading}>
+              {loading ? 'Criando...' : 'Criar Usuário'}
             </Button>
           </DialogFooter>
         </DialogContent>
