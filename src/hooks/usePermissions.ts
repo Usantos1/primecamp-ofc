@@ -104,11 +104,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'rh.ponto',
   ],
   
-  // ATENDENTE - Atendimento básico
+  // ATENDENTE - Atendimento e vendas (sem acesso financeiro)
   atendente: [
     'dashboard.view',
+    'vendas.view', 'vendas.create', // PDV e vendas
+    'caixa.view', // Ver caixa (mas não gerenciar)
     'clientes.view', 'clientes.create',
-    'os.view',
+    'os.view', 'os.create',
     'produtos.view',
     'calendario.view',
     'rh.ponto',
