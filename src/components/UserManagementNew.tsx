@@ -515,7 +515,14 @@ export const UserManagementNew = () => {
         }
       );
 
-      if (authResponse.user) {
+      // authResponse retorna { data: { user }, error }
+      const newCreatedUser = authResponse.data?.user;
+      
+      if (authResponse.error) {
+        throw new Error(authResponse.error.message || 'Erro ao criar usuário');
+      }
+      
+      if (newCreatedUser) {
         const { error: profileError } = await from('profiles')
           .update({
             display_name: newUser.display_name,
@@ -525,14 +532,12 @@ export const UserManagementNew = () => {
             approved_at: new Date().toISOString(),
             approved_by: (await authAPI.getCurrentUser()).data.user?.id
           })
-          .eq('user_id', authResponse.user.id)
+          .eq('user_id', newCreatedUser.id)
           .execute();
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
         }
-      } else {
-        throw new Error('Erro ao criar usuário');
       }
 
       toast({
