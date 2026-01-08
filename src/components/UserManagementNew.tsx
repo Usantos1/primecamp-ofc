@@ -1015,7 +1015,7 @@ export const UserManagementNew = () => {
             <Button variant="outline" onClick={() => setNewUserDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateUser} disabled={loading}>
+            <Button onClick={() => createUser({ preventDefault: () => {} } as React.FormEvent)} disabled={loading}>
               {loading ? 'Criando...' : 'Criar Usuário'}
             </Button>
           </DialogFooter>
