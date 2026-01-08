@@ -19,6 +19,7 @@ import {
 import { useRefunds, Refund, Voucher } from '@/hooks/useRefunds';
 import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -62,6 +63,10 @@ export default function Devolucoes() {
     fetchRefund
   } = useRefunds();
   const { toast } = useToast();
+  const { profile, isAdmin } = useAuth();
+  
+  // Verificar se usuário pode fazer devolução (admin ou gestor)
+  const canProcessRefund = isAdmin || profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'gestor';
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
@@ -201,6 +206,16 @@ export default function Devolucoes() {
   // Processar devolução
   const handleProcessRefund = async () => {
     if (!saleData) return;
+    
+    // Verificar permissão
+    if (!canProcessRefund) {
+      toast({
+        title: 'Acesso Negado',
+        description: 'Apenas administradores ou gestores podem processar devoluções. Solicite autorização.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     const itemsToRefund = selectedItems.filter(i => i.selected && (i.refund_qty || 0) > 0);
     
@@ -353,13 +368,15 @@ export default function Devolucoes() {
       case 'active':
         return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Ativo</Badge>;
       case 'used':
-        return <Badge className="bg-blue-600"><CheckCircle className="h-3 w-3 mr-1" /> Usado</Badge>;
+        return <Badge className="bg-gray-600"><CheckCircle className="h-3 w-3 mr-1" /> Usado</Badge>;
       case 'expired':
         return <Badge className="bg-orange-600"><Clock className="h-3 w-3 mr-1" /> Expirado</Badge>;
       case 'cancelled':
         return <Badge className="bg-red-600"><XCircle className="h-3 w-3 mr-1" /> Cancelado</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-600"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
+      case 'approved':
+        return <Badge className="bg-blue-600"><CheckCircle className="h-3 w-3 mr-1" /> Aprovado</Badge>;
       case 'completed':
         return <Badge className="bg-green-600"><CheckCircle className="h-3 w-3 mr-1" /> Concluído</Badge>;
       default:
@@ -506,13 +523,30 @@ export default function Devolucoes() {
     setRefundMethod('voucher');
   };
 
-  // Carregar detalhes da devolução
+  // Estado para itens da devolução selecionada
+  const [refundItems, setRefundItems] = useState<any[]>([]);
+  const [loadingRefundItems, setLoadingRefundItems] = useState(false);
+
+  // Carregar detalhes da devolução com itens
   const loadRefundDetails = async (refund: Refund) => {
     setSelectedRefund(refund);
     setRefundDetailsOpen(true);
+    setLoadingRefundItems(true);
     
-    // Se precisar buscar itens, faz aqui
-    // Por agora, usamos os dados que já temos
+    try {
+      // Buscar itens da devolução
+      const { data: items } = await from('refund_items')
+        .select('*')
+        .eq('refund_id', refund.id)
+        .execute();
+      
+      setRefundItems(items || []);
+    } catch (error) {
+      console.error('Erro ao buscar itens da devolução:', error);
+      setRefundItems([]);
+    } finally {
+      setLoadingRefundItems(false);
+    }
   };
 
   // Aprovar devolução
@@ -943,13 +977,37 @@ export default function Devolucoes() {
                 </div>
               </div>
 
+              {/* Itens da Devolução */}
+              <div>
+                <span className="text-sm font-medium">Produtos devolvidos:</span>
+                {loadingRefundItems ? (
+                  <div className="text-center py-4 text-muted-foreground">Carregando...</div>
+                ) : refundItems.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">Nenhum item encontrado</div>
+                ) : (
+                  <div className="mt-2 border rounded-lg divide-y max-h-40 overflow-y-auto">
+                    {refundItems.map((item, idx) => (
+                      <div key={item.id || idx} className="p-2 flex justify-between items-center text-sm">
+                        <div>
+                          <div className="font-medium">{item.product_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Qtd: {item.quantity} | {item.destination === 'stock' ? '📦 Estoque' : item.destination === 'exchange' ? '🔄 Troca' : '⚠️ Prejuízo'}
+                          </div>
+                        </div>
+                        <div className="font-semibold">{formatCurrency(parseFloat(item.total_price) || 0)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Explicação do Status */}
               <div className="p-3 bg-blue-50 rounded-lg text-sm">
                 <strong>Status da Devolução:</strong>
                 <ul className="mt-2 space-y-1 text-muted-foreground">
                   <li>🟡 <strong>Pendente:</strong> Aguardando aprovação</li>
                   <li>🔵 <strong>Aprovado:</strong> Aprovado, aguardando completar</li>
-                  <li>🟢 <strong>Completado:</strong> Finalizado, estoque atualizado</li>
+                  <li>🟢 <strong>Concluído:</strong> Finalizado, estoque atualizado</li>
                   <li>🔴 <strong>Cancelado:</strong> Devolução cancelada</li>
                 </ul>
               </div>

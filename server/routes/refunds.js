@@ -133,6 +133,17 @@ router.post('/', async (req, res) => {
       notes
     } = req.body;
     
+    // VERIFICAR SE JÁ EXISTE DEVOLUÇÃO PARA ESTA VENDA
+    const existingRefund = await client.query(
+      `SELECT id, refund_number, status FROM refunds 
+       WHERE sale_id = $1 AND company_id = $2 AND status NOT IN ('cancelled')`,
+      [sale_id, companyId]
+    );
+    
+    if (existingRefund.rows.length > 0) {
+      throw new Error(`Esta venda já possui devolução registrada (#${existingRefund.rows[0].refund_number}). Não é possível devolver novamente.`);
+    }
+    
     // Buscar próximo número de devolução
     const seqResult = await client.query("SELECT nextval('refund_number_seq') as num");
     const refundNumber = `DEV${String(seqResult.rows[0].num).padStart(6, '0')}`;
@@ -299,11 +310,15 @@ router.put('/:id/complete', async (req, res) => {
     // Retornar produtos ao estoque (apenas se destination = 'stock')
     for (const item of itemsResult.rows) {
       if (item.return_to_stock && item.product_id) {
-        await client.query(`
-          UPDATE produtos 
-          SET quantidade = COALESCE(quantidade, 0) + $1, updated_at = NOW()
-          WHERE id = $2
-        `, [item.quantity, item.product_id]);
+        // Converter quantity para número inteiro
+        const qty = Math.round(parseFloat(item.quantity) || 0);
+        if (qty > 0) {
+          await client.query(`
+            UPDATE produtos 
+            SET quantidade = COALESCE(quantidade, 0) + $1, updated_at = NOW()
+            WHERE id = $2
+          `, [qty, item.product_id]);
+        }
       }
     }
     
