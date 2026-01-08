@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,24 +7,53 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   ReceiptText, Search, QrCode, Printer, Copy, CheckCircle, 
-  XCircle, Clock, RefreshCw, Eye, Ban
+  XCircle, Clock, RefreshCw, Eye, Ban, ArrowLeft, Package
 } from 'lucide-react';
 import { useRefunds, Refund, Voucher } from '@/hooks/useRefunds';
+import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+interface SaleItem {
+  id: string;
+  produto_id: string;
+  produto_nome: string;
+  quantidade: number;
+  preco_unitario: number;
+  subtotal: number;
+  selected?: boolean;
+  refund_qty?: number;
+}
+
+interface SaleData {
+  id: string;
+  numero: number;
+  cliente_nome: string;
+  cliente_id?: string;
+  total: number;
+  created_at: string;
+  items: SaleItem[];
+}
+
 export default function Devolucoes() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { 
     loading, 
     refunds, 
     vouchers, 
     fetchRefunds, 
     fetchVouchers, 
-    checkVoucher
+    checkVoucher,
+    createRefund
   } = useRefunds();
   const { toast } = useToast();
   
@@ -31,11 +61,195 @@ export default function Devolucoes() {
   const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
   const [voucherDialogOpen, setVoucherDialogOpen] = useState(false);
   const [validationCode, setValidationCode] = useState('');
+  
+  // Estado do formulário de devolução
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [saleData, setSaleData] = useState<SaleData | null>(null);
+  const [loadingSale, setLoadingSale] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundMethod, setRefundMethod] = useState<'voucher' | 'cash'>('voucher');
+  const [selectedItems, setSelectedItems] = useState<SaleItem[]>([]);
+  const [processingRefund, setProcessingRefund] = useState(false);
+
+  // Verificar se veio com sale_id na URL
+  useEffect(() => {
+    const saleId = searchParams.get('sale');
+    if (saleId) {
+      loadSaleForRefund(saleId);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchRefunds();
     fetchVouchers();
   }, []);
+
+  // Carregar dados da venda para devolução
+  const loadSaleForRefund = async (saleId: string) => {
+    setLoadingSale(true);
+    try {
+      // Buscar venda
+      const { data: sale, error: saleError } = await from('sales')
+        .select('*')
+        .eq('id', saleId)
+        .single();
+      
+      if (saleError || !sale) {
+        toast({
+          title: 'Erro',
+          description: 'Venda não encontrada',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Buscar itens da venda
+      const { data: items, error: itemsError } = await from('sale_items')
+        .select('*')
+        .eq('sale_id', saleId)
+        .execute();
+
+      if (itemsError) {
+        toast({
+          title: 'Erro',
+          description: 'Erro ao carregar itens da venda',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const saleItems: SaleItem[] = (items || []).map((item: any) => ({
+        id: item.id,
+        produto_id: item.produto_id,
+        produto_nome: item.produto_nome || item.nome || 'Produto',
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario || item.valor_unitario,
+        subtotal: item.subtotal || item.total,
+        selected: true,
+        refund_qty: item.quantidade
+      }));
+
+      setSaleData({
+        id: sale.id,
+        numero: sale.numero,
+        cliente_nome: sale.cliente_nome || 'Consumidor Final',
+        cliente_id: sale.cliente_id,
+        total: sale.total,
+        created_at: sale.created_at,
+        items: saleItems
+      });
+      
+      setSelectedItems(saleItems);
+      setRefundDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao carregar venda',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingSale(false);
+    }
+  };
+
+  // Processar devolução
+  const handleProcessRefund = async () => {
+    if (!saleData) return;
+    
+    const itemsToRefund = selectedItems.filter(i => i.selected && (i.refund_qty || 0) > 0);
+    
+    if (itemsToRefund.length === 0) {
+      toast({
+        title: 'Erro',
+        description: 'Selecione pelo menos um item para devolver',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!refundReason.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Informe o motivo da devolução',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setProcessingRefund(true);
+    try {
+      const refundItems = itemsToRefund.map(item => ({
+        sale_item_id: item.id,
+        product_id: item.produto_id,
+        product_name: item.produto_nome,
+        quantity: item.refund_qty || item.quantidade,
+        unit_price: item.preco_unitario,
+        return_to_stock: true
+      }));
+
+      const result = await createRefund({
+        sale_id: saleData.id,
+        refund_type: itemsToRefund.length === saleData.items.length ? 'full' : 'partial',
+        reason: refundReason,
+        refund_method: refundMethod,
+        items: refundItems,
+        customer_id: saleData.cliente_id,
+        customer_name: saleData.cliente_nome
+      });
+
+      if (result) {
+        toast({
+          title: 'Devolução criada!',
+          description: refundMethod === 'voucher' 
+            ? `Voucher gerado: ${result.voucher?.code || 'N/A'}`
+            : 'Devolução em dinheiro registrada'
+        });
+        
+        setRefundDialogOpen(false);
+        setSaleData(null);
+        setSelectedItems([]);
+        setRefundReason('');
+        fetchRefunds();
+        fetchVouchers();
+        
+        // Limpar parâmetro da URL
+        navigate('/pdv/devolucoes', { replace: true });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao processar devolução',
+        variant: 'destructive'
+      });
+    } finally {
+      setProcessingRefund(false);
+    }
+  };
+
+  // Toggle seleção de item
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => 
+      prev.map(item => 
+        item.id === itemId ? { ...item, selected: !item.selected } : item
+      )
+    );
+  };
+
+  // Atualizar quantidade de devolução
+  const updateRefundQty = (itemId: string, qty: number) => {
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, refund_qty: Math.min(qty, item.quantidade) } : item
+      )
+    );
+  };
+
+  // Calcular total da devolução
+  const calculateRefundTotal = () => {
+    return selectedItems
+      .filter(i => i.selected)
+      .reduce((sum, item) => sum + (item.refund_qty || 0) * item.preco_unitario, 0);
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -451,6 +665,174 @@ export default function Devolucoes() {
                 Imprimir
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Processamento de Devolução */}
+      <Dialog open={refundDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setRefundDialogOpen(false);
+          setSaleData(null);
+          setSelectedItems([]);
+          setRefundReason('');
+          navigate('/pdv/devolucoes', { replace: true });
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Processar Devolução/Troca
+            </DialogTitle>
+            <DialogDescription>
+              {saleData && `Venda #${saleData.numero} - ${saleData.cliente_nome}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingSale ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin" />
+              <span className="ml-2">Carregando venda...</span>
+            </div>
+          ) : saleData ? (
+            <div className="space-y-4">
+              {/* Info da Venda */}
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Venda:</span>
+                      <span className="font-semibold ml-2">#{saleData.numero}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Data:</span>
+                      <span className="ml-2">{formatDate(saleData.created_at)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total:</span>
+                      <span className="font-semibold ml-2">{formatCurrency(saleData.total)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Itens para Devolução */}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Itens para devolver:</Label>
+                <div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
+                  {selectedItems.map((item) => (
+                    <div key={item.id} className="p-3 flex items-center gap-3">
+                      <Checkbox
+                        checked={item.selected}
+                        onCheckedChange={() => toggleItemSelection(item.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{item.produto_nome}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatCurrency(item.preco_unitario)} x {item.quantidade} = {formatCurrency(item.subtotal)}
+                        </div>
+                      </div>
+                      {item.selected && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">Qtd:</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max={item.quantidade}
+                            value={item.refund_qty || item.quantidade}
+                            onChange={(e) => updateRefundQty(item.id, parseInt(e.target.value) || 1)}
+                            className="w-16 h-8 text-center"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Motivo */}
+              <div>
+                <Label htmlFor="reason">Motivo da devolução *</Label>
+                <Textarea
+                  id="reason"
+                  placeholder="Ex: Produto com defeito, Troca por outro tamanho..."
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Método de Reembolso */}
+              <div>
+                <Label>Forma de reembolso</Label>
+                <Select value={refundMethod} onValueChange={(v: 'voucher' | 'cash') => setRefundMethod(v)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="voucher">
+                      <div className="flex items-center gap-2">
+                        <ReceiptText className="h-4 w-4" />
+                        Voucher de Crédito (Recomendado)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="cash">
+                      <div className="flex items-center gap-2">
+                        <span>💵</span>
+                        Dinheiro
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {refundMethod === 'voucher' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Será gerado um voucher único e intransferível para o cliente.
+                  </p>
+                )}
+              </div>
+
+              {/* Total da Devolução */}
+              <Card className="bg-muted/50">
+                <CardContent className="pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium">Total a devolver:</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      {formatCurrency(calculateRefundTotal())}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : null}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setRefundDialogOpen(false);
+                navigate('/pdv/devolucoes', { replace: true });
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleProcessRefund}
+              disabled={processingRefund || !saleData || calculateRefundTotal() === 0}
+            >
+              {processingRefund ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Confirmar Devolução
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
