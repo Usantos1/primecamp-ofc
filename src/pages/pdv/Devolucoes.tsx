@@ -393,11 +393,12 @@ export default function Devolucoes() {
     });
   };
 
-  const handlePrintVoucher = (voucher: Voucher) => {
+  const handlePrintVoucher = (voucher: any) => {
     // Criar janela de impressão térmica
     const printWindow = window.open('', '_blank', 'width=300,height=600');
     if (printWindow) {
-      const valorVoucher = voucher.value || voucher.remaining_value || 0;
+      // Usar campos corretos do banco: original_value e current_value
+      const valorVoucher = voucher.original_value || voucher.current_value || voucher.value || voucher.remaining_value || 0;
       printWindow.document.write(`
         <html>
           <head>
@@ -605,7 +606,10 @@ export default function Devolucoes() {
   const stats = {
     totalVouchers: vouchers.length,
     activeVouchers: vouchers.filter(v => v.status === 'active').length,
-    totalValue: vouchers.filter(v => v.status === 'active').reduce((sum, v) => sum + (v.remaining_value || 0), 0),
+    totalValue: vouchers.filter(v => v.status === 'active').reduce((sum, v) => {
+      const valor = parseFloat(v.current_value) || parseFloat(v.remaining_value) || 0;
+      return sum + valor;
+    }, 0),
     totalRefunds: refunds.length
   };
 
@@ -735,9 +739,9 @@ export default function Devolucoes() {
                           </div>
                         </TableCell>
                         <TableCell>{voucher.customer_name || '-'}</TableCell>
-                        <TableCell>{formatCurrency(voucher.value)}</TableCell>
+                        <TableCell>{formatCurrency(voucher.original_value || voucher.value || 0)}</TableCell>
                         <TableCell className="font-semibold">
-                          {formatCurrency(voucher.remaining_value)}
+                          {formatCurrency(voucher.current_value || voucher.remaining_value || 0)}
                         </TableCell>
                         <TableCell>{getStatusBadge(voucher.status)}</TableCell>
                         <TableCell>
@@ -886,12 +890,12 @@ export default function Devolucoes() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm text-muted-foreground">Valor Original</div>
-                  <div className="font-semibold">{formatCurrency(selectedVoucher.value)}</div>
+                  <div className="font-semibold">{formatCurrency(selectedVoucher.original_value || selectedVoucher.value || 0)}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Saldo Disponível</div>
                   <div className="font-semibold text-green-600">
-                    {formatCurrency(selectedVoucher.remaining_value)}
+                    {formatCurrency(selectedVoucher.current_value || selectedVoucher.remaining_value || 0)}
                   </div>
                 </div>
                 <div>
