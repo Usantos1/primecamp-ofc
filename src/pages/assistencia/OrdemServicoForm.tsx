@@ -71,7 +71,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Hooks
   const { createOS, updateOS, getOSById, updateStatus } = useOrdensServicoSupabase();
   const { clientes, searchClientes, searchClientesAsync, createCliente, getClienteById } = useClientesSupabase();
-  const { marcas, modelos, getModelosByMarca } = useMarcasModelosSupabase();
+  const { marcas, modelos, getModelosByMarca, createModelo } = useMarcasModelosSupabase();
   const { produtos, searchProdutos, updateProduto, isLoading: isLoadingProdutos } = useProdutosSupabase();
   
   const { configuracoes, getConfigByStatus } = useConfiguracaoStatus();
@@ -182,9 +182,14 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   };
 
-  // Estados para busca
+  // Estados para busca de cliente
   const [clienteSearch, setClienteSearch] = useState('');
   const [clienteResults, setClienteResults] = useState<any[]>([]);
+  const [clienteSearchField, setClienteSearchField] = useState<'nome' | 'cpf_cnpj' | 'telefone'>('nome');
+  const [isSearchingCliente, setIsSearchingCliente] = useState(false);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Estados para novo cliente
   const [showNovoClienteModal, setShowNovoClienteModal] = useState(false);
   const [novoClienteData, setNovoClienteData] = useState({
     nome: '',
@@ -193,6 +198,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     email: '',
   });
   const [isCreatingCliente, setIsCreatingCliente] = useState(false);
+  
+  // Estados para novo modelo
+  const [showNovoModeloModal, setShowNovoModeloModal] = useState(false);
+  const [novoModeloNome, setNovoModeloNome] = useState('');
+  const [isCreatingModelo, setIsCreatingModelo] = useState(false);
   const [showClienteSearch, setShowClienteSearch] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
 
@@ -353,32 +363,41 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   }, [itens, colaboradores, getColaboradorById, updateItem]);
 
-  // Buscar cliente (assíncrono via API com ILIKE)
+  // Buscar cliente (com debounce para evitar flickering)
   useEffect(() => {
-    if (clienteSearch.length >= 2) {
-      // Primeiro tenta busca local para resposta imediata
-      const localResults = searchClientes(clienteSearch);
-      if (localResults.length > 0) {
-        setClienteResults(localResults.slice(0, 10));
-      }
-      
-      // Depois faz busca assíncrona no banco para resultados completos
-      searchClientesAsync(clienteSearch, 15).then(asyncResults => {
-        if (asyncResults.length > 0) {
-          // Mescla resultados, removendo duplicados
-          const allResults = [...localResults];
-          asyncResults.forEach(r => {
-            if (!allResults.find(l => l.id === r.id)) {
-              allResults.push(r);
-            }
-          });
-          setClienteResults(allResults.slice(0, 15));
-        }
-      });
-    } else {
-      setClienteResults([]);
+    // Limpar timeout anterior
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-  }, [clienteSearch, searchClientes, searchClientesAsync]);
+
+    if (clienteSearch.length < 2) {
+      setClienteResults([]);
+      setIsSearchingCliente(false);
+      return;
+    }
+
+    setIsSearchingCliente(true);
+
+    // Debounce de 400ms para evitar múltiplas requisições
+    const timeout = setTimeout(async () => {
+      try {
+        // Busca assíncrona com filtro de campo
+        const asyncResults = await searchClientesAsync(clienteSearch, 20, clienteSearchField);
+        setClienteResults(asyncResults);
+      } catch (error) {
+        console.error('Erro na busca de clientes:', error);
+        setClienteResults([]);
+      } finally {
+        setIsSearchingCliente(false);
+      }
+    }, 400);
+
+    setSearchTimeout(timeout);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [clienteSearch, clienteSearchField, searchClientesAsync]);
 
   // Buscar produtos - SEMPRE filtrar apenas produtos com estoque disponível
   useEffect(() => {
@@ -476,6 +495,41 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }));
     setShowNovoClienteModal(true);
     setShowClienteSearch(false);
+  };
+
+  // Criar novo modelo
+  const handleCreateNovoModelo = async () => {
+    if (!novoModeloNome.trim()) {
+      toast({ title: 'Nome do modelo é obrigatório', variant: 'destructive' });
+      return;
+    }
+    if (!formData.marca_id) {
+      toast({ title: 'Selecione uma marca primeiro', variant: 'destructive' });
+      return;
+    }
+
+    setIsCreatingModelo(true);
+    try {
+      const novoModelo = await createModelo(formData.marca_id, novoModeloNome.trim());
+      
+      // Selecionar o modelo recém-criado
+      setFormData(prev => ({ ...prev, modelo_id: novoModelo.id }));
+      
+      // Limpar e fechar modal
+      setNovoModeloNome('');
+      setShowNovoModeloModal(false);
+      
+      toast({ title: 'Modelo cadastrado com sucesso!' });
+    } catch (error: any) {
+      console.error('Erro ao criar modelo:', error);
+      toast({ 
+        title: 'Erro ao cadastrar modelo', 
+        description: error?.message || 'Tente novamente',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsCreatingModelo(false);
+    }
   };
 
   // Toggle checklist
@@ -1740,11 +1794,58 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Cliente */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-1.5 md:col-span-2">
-                      <Label className="text-xs font-medium text-gray-600">Cliente</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium text-gray-600">Cliente</Label>
+                        {/* Filtro de busca */}
+                        {!selectedCliente && (
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setClienteSearchField('nome')}
+                              className={cn(
+                                "px-2 py-0.5 text-[10px] rounded-full transition-colors",
+                                clienteSearchField === 'nome' 
+                                  ? "bg-blue-600 text-white" 
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              )}
+                            >
+                              Nome
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setClienteSearchField('cpf_cnpj')}
+                              className={cn(
+                                "px-2 py-0.5 text-[10px] rounded-full transition-colors",
+                                clienteSearchField === 'cpf_cnpj' 
+                                  ? "bg-blue-600 text-white" 
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              )}
+                            >
+                              CPF
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setClienteSearchField('telefone')}
+                              className={cn(
+                                "px-2 py-0.5 text-[10px] rounded-full transition-colors",
+                                clienteSearchField === 'telefone' 
+                                  ? "bg-blue-600 text-white" 
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              )}
+                            >
+                              Telefone
+                            </button>
+                          </div>
+                        )}
+                      </div>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
+                          placeholder={
+                            clienteSearchField === 'nome' ? "Buscar por nome..." :
+                            clienteSearchField === 'cpf_cnpj' ? "Buscar por CPF/CNPJ..." :
+                            "Buscar por telefone..."
+                          }
                           value={selectedCliente ? selectedCliente.nome : clienteSearch}
                           onChange={(e) => {
                             if (selectedCliente) {
@@ -1756,10 +1857,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }}
                           onFocus={() => setShowClienteSearch(true)}
                           className={cn(
-                            "pl-10 h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg",
+                            "pl-10 pr-10 h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg",
                             selectedCliente ? "bg-green-50 border-green-300 text-green-800 font-medium" : ""
                           )}
                         />
+                        {/* Loading indicator */}
+                        {isSearchingCliente && !selectedCliente && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
                         {selectedCliente && (
                           <Button 
                             variant="ghost" 
@@ -1775,7 +1882,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </Button>
                         )}
                       </div>
-                      {showClienteSearch && clienteResults.length > 0 && !selectedCliente && (
+                      {showClienteSearch && !isSearchingCliente && clienteResults.length > 0 && !selectedCliente && (
                         <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto mt-1">
                           {clienteResults.map(cliente => (
                             <div
@@ -1801,7 +1908,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </div>
                         </div>
                       )}
-                      {showClienteSearch && clienteSearch.length >= 2 && clienteResults.length === 0 && (
+                      {showClienteSearch && !isSearchingCliente && clienteSearch.length >= 2 && clienteResults.length === 0 && (
                         <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1">
                           <div className="p-4 text-center border-b border-gray-100">
                             <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
@@ -1864,32 +1971,47 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-gray-600">Modelo *</Label>
-                      <Select 
-                        value={formData.modelo_id || ''} 
-                        onValueChange={(v) => {
-                          setFormData(prev => ({ ...prev, modelo_id: v }));
-                        }}
-                        disabled={!formData.marca_id}
-                      >
-                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg" disabled={!formData.marca_id}>
-                          <SelectValue placeholder="Selecione o modelo">
-                            {formData.modelo_id && modelosFiltrados.length > 0
-                              ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
-                              : ''}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[200px]">
-                          {modelosFiltrados && modelosFiltrados.length > 0 ? (
-                            modelosFiltrados.filter(m => m.situacao === 'ativo').map(m => (
-                              <SelectItem key={m.id} value={m.id} className="text-sm">{m.nome}</SelectItem>
-                            ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-gray-500">
-                              {formData.marca_id ? 'Nenhum modelo disponível para esta marca' : 'Selecione uma marca primeiro'}
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-1">
+                        <Select 
+                          value={formData.modelo_id || ''} 
+                          onValueChange={(v) => {
+                            if (v === '__novo__') {
+                              setShowNovoModeloModal(true);
+                            } else {
+                              setFormData(prev => ({ ...prev, modelo_id: v }));
+                            }
+                          }}
+                          disabled={!formData.marca_id}
+                        >
+                          <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg" disabled={!formData.marca_id}>
+                            <SelectValue placeholder="Selecione o modelo">
+                              {formData.modelo_id && modelosFiltrados.length > 0
+                                ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
+                                : ''}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[250px]">
+                            {/* Opção para adicionar novo modelo */}
+                            {formData.marca_id && (
+                              <SelectItem value="__novo__" className="text-sm text-green-700 font-medium border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <Plus className="h-3.5 w-3.5" />
+                                  <span>Cadastrar Novo Modelo</span>
+                                </div>
+                              </SelectItem>
+                            )}
+                            {modelosFiltrados && modelosFiltrados.length > 0 ? (
+                              modelosFiltrados.filter(m => m.situacao === 'ativo').map(m => (
+                                <SelectItem key={m.id} value={m.id} className="text-sm">{m.nome}</SelectItem>
+                              ))
+                            ) : (
+                              <div className="px-3 py-2 text-sm text-gray-500">
+                                {formData.marca_id ? 'Nenhum modelo cadastrado. Clique em "+ Cadastrar"' : 'Selecione uma marca primeiro'}
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-gray-600">IMEI</Label>
@@ -4537,6 +4659,60 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 <>
                   <Plus className="h-4 w-4 mr-2" />
                   Cadastrar e Selecionar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Novo Modelo */}
+      <Dialog open={showNovoModeloModal} onOpenChange={setShowNovoModeloModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Cadastrar Novo Modelo
+            </DialogTitle>
+            <DialogDescription>
+              Marca selecionada: <strong>{marcas.find(m => m.id === formData.marca_id)?.nome || '-'}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome do Modelo *</Label>
+              <Input
+                value={novoModeloNome}
+                onChange={(e) => setNovoModeloNome(e.target.value)}
+                placeholder="Ex: iPhone 14, Galaxy S23, G22..."
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowNovoModeloModal(false);
+                setNovoModeloNome('');
+              }}
+              disabled={isCreatingModelo}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleCreateNovoModelo}
+              disabled={isCreatingModelo || !novoModeloNome.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isCreatingModelo ? (
+                <>Salvando...</>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cadastrar Modelo
                 </>
               )}
             </Button>

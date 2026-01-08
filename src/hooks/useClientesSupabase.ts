@@ -145,17 +145,18 @@ export function useClientesSupabase(pageSize: number = 50) {
   };
 
   // Buscar clientes (assíncrono - busca no banco via API com ILIKE)
-  const searchClientesAsync = useCallback(async (query: string, limit: number = 15): Promise<Cliente[]> => {
-    console.log('[searchClientesAsync] Buscando:', query);
+  const searchClientesAsync = useCallback(async (
+    query: string, 
+    limit: number = 15,
+    searchField: 'nome' | 'cpf_cnpj' | 'telefone' | 'all' = 'all'
+  ): Promise<Cliente[]> => {
     if (!query || query.length < 2) {
-      console.log('[searchClientesAsync] Query muito curta, retornando vazio');
       return [];
     }
     
     try {
       const token = localStorage.getItem('auth_token');
-      const url = `${API_URL}/clientes/search?q=${encodeURIComponent(query)}&limit=${limit}`;
-      console.log('[searchClientesAsync] URL:', url);
+      const url = `${API_URL}/clientes/search?q=${encodeURIComponent(query)}&limit=${limit}&searchField=${searchField}`;
       
       const response = await fetch(url, {
         headers: {
@@ -170,7 +171,6 @@ export function useClientesSupabase(pageSize: number = 50) {
       }
 
       const data = await response.json();
-      console.log('[searchClientesAsync] Resultados:', data?.length || 0, 'clientes');
       return (data || []) as Cliente[];
     } catch (error) {
       console.error('[searchClientesAsync] Erro ao buscar clientes:', error);

@@ -299,8 +299,8 @@ export function useModelosSupabase() {
 
 // Hook combinado para marcas e modelos
 export function useMarcasModelosSupabase() {
-  const { marcas, getMarcaById } = useMarcasSupabase();
-  const { modelos, getModeloById, getModelosByMarca } = useModelosSupabase();
+  const { marcas, getMarcaById, createMarca } = useMarcasSupabase();
+  const { modelos, getModeloById, getModelosByMarca, createModelo } = useModelosSupabase();
 
   return {
     marcas,
@@ -308,6 +308,8 @@ export function useMarcasModelosSupabase() {
     getMarcaById,
     getModeloById,
     getModelosByMarca,
+    createMarca,
+    createModelo,
   };
 }
 
