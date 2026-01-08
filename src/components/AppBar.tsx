@@ -18,7 +18,7 @@ interface QuickNavItem {
 const PDV_NAV_ITEMS: QuickNavItem[] = [
   { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
   { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
-  { label: 'Clientes', icon: Users, path: '/pdv/clientes' },
+  { label: 'Clientes', icon: Users, path: '/clientes' },
   { label: 'Produtos', icon: Package, path: '/produtos' },
   { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
 ];
@@ -28,7 +28,7 @@ const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
   '/pdv': PDV_NAV_ITEMS,
   '/pdv/venda': PDV_NAV_ITEMS,
   '/os': PDV_NAV_ITEMS,
-  '/pdv/clientes': PDV_NAV_ITEMS,
+  '/clientes': PDV_NAV_ITEMS,
   '/produtos': PDV_NAV_ITEMS,
   '/admin/financeiro': [
     { label: 'Dashboard', icon: Home, path: '/' },

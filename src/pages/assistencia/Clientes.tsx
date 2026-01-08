@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs removidas - formulário único sem abas
 import { 
   Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings, Upload,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
@@ -182,28 +182,26 @@ export default function Clientes() {
   };
 
   // Salvar cliente
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.nome) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
-      return;
-    }
-
-    // Validar: CPF ou RG deve ser preenchido para pessoa física
-    if (formData.tipo_pessoa === 'fisica' && !formData.cpf_cnpj && !formData.rg) {
-      toast({ title: 'CPF ou RG deve ser preenchido', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
       if (editingCliente) {
-        updateCliente(editingCliente.id, formData as any);
+        await updateCliente(editingCliente.id, formData as any);
         toast({ title: 'Cliente atualizado!' });
       } else {
-        createCliente(formData as any);
+        await createCliente(formData as any);
         toast({ title: 'Cliente cadastrado!' });
       }
       setShowForm(false);
+      setFormData(INITIAL_FORM);
+    } catch (error: any) {
+      console.error('Erro ao salvar cliente:', error);
+      toast({ title: 'Erro ao salvar cliente', description: error?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -511,34 +509,29 @@ export default function Clientes() {
           </CardContent>
         </Card>
 
-        {/* Form Dialog */}
+        {/* Form Dialog - Formulário único sem abas */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-3 md:p-6">
-            <DialogHeader className="pb-2 md:pb-4">
-              <DialogTitle className="text-base md:text-lg">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-lg font-semibold">
                 {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
               </DialogTitle>
             </DialogHeader>
 
-            <Tabs defaultValue="dados" className="w-full">
-              <TabsList className={`w-full grid ${editingCliente ? 'grid-cols-4' : 'grid-cols-3'} h-9 md:h-10`}>
-                <TabsTrigger value="dados" className="text-xs md:text-sm">Dados</TabsTrigger>
-                <TabsTrigger value="endereco" className="text-xs md:text-sm">Endereço</TabsTrigger>
-                <TabsTrigger value="contato" className="text-xs md:text-sm">Contato</TabsTrigger>
-                {editingCliente && (
-                  <TabsTrigger value="historico" className="text-xs md:text-sm">Histórico</TabsTrigger>
-                )}
-              </TabsList>
-
-              <TabsContent value="dados" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Tipo de Pessoa</Label>
+            <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
+              {/* Seção: Dados Pessoais */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Dados Pessoais</h3>
+                
+                {/* Tipo de Pessoa e CPF/CNPJ na mesma linha */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo de Pessoa</Label>
                     <Select 
                       value={formData.tipo_pessoa} 
                       onValueChange={(v: any) => setFormData(prev => ({ ...prev, tipo_pessoa: v }))}
                     >
-                      <SelectTrigger className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300">
+                      <SelectTrigger className="h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -547,327 +540,236 @@ export default function Clientes() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">
-                      {formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}
-                      {formData.tipo_pessoa === 'fisica' && <span className="text-muted-foreground ml-1">(ou RG)</span>}
-                    </Label>
+                  <div className="space-y-2">
+                    <Label>{formData.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'}</Label>
                     <Input
+                      tabIndex={1}
                       value={formData.cpf_cnpj}
                       onChange={(e) => setFormData(prev => ({ ...prev, cpf_cnpj: e.target.value }))}
                       placeholder={formData.tipo_pessoa === 'fisica' ? '000.000.000-00' : '00.000.000/0000-00'}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      className="h-10"
                     />
                   </div>
+                  {formData.tipo_pessoa === 'fisica' && (
+                    <div className="space-y-2">
+                      <Label>RG <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                      <Input
+                        tabIndex={2}
+                        value={formData.rg || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, rg: e.target.value }))}
+                        placeholder="00.000.000-0"
+                        className="h-10"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {formData.tipo_pessoa === 'fisica' && (
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">RG <span className="text-muted-foreground">(opcional, se não tiver CPF)</span></Label>
-                    <Input
-                      value={formData.rg || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, rg: e.target.value }))}
-                      placeholder="00.000.000-0"
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
-                    />
-                  </div>
-                )}
-
-                {formData.tipo_pessoa === 'fisica' && (
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Data de Nascimento <span className="text-muted-foreground">(opcional, para envio de mensagem de aniversário)</span></Label>
-                    <Input
-                      type="date"
-                      value={formData.data_nascimento || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1.5 md:space-y-2">
-                  <Label className="text-xs md:text-sm">Nome *</Label>
+                {/* Nome - Campo principal */}
+                <div className="space-y-2">
+                  <Label>Nome Completo *</Label>
                   <Input
+                    tabIndex={3}
                     value={formData.nome}
                     onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-                    placeholder="Nome completo"
-                    className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                    placeholder="Nome completo do cliente"
+                    className="h-10 text-base"
+                    autoFocus
+                    required
                   />
                 </div>
 
                 {formData.tipo_pessoa === 'juridica' && (
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Nome Fantasia</Label>
+                  <div className="space-y-2">
+                    <Label>Nome Fantasia</Label>
                     <Input
+                      tabIndex={4}
                       value={formData.nome_fantasia || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, nome_fantasia: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="Nome fantasia da empresa"
+                      className="h-10"
                     />
                   </div>
                 )}
-              </TabsContent>
 
-              <TabsContent value="endereco" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">CEP</Label>
+                {/* Celular e Data de Nascimento */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Celular / WhatsApp *</Label>
+                    <Input
+                      tabIndex={5}
+                      value={formData.whatsapp}
+                      onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value, telefone: e.target.value }))}
+                      placeholder="(19) 99999-9999"
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Telefone Fixo</Label>
+                    <Input
+                      tabIndex={6}
+                      value={formData.telefone2 || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, telefone2: e.target.value }))}
+                      placeholder="(19) 3333-3333"
+                      className="h-10"
+                    />
+                  </div>
+                  {formData.tipo_pessoa === 'fisica' && (
+                    <div className="space-y-2">
+                      <Label>Data de Nascimento</Label>
+                      <Input
+                        tabIndex={7}
+                        type="date"
+                        value={formData.data_nascimento || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                        className="h-10"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    tabIndex={8}
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="email@exemplo.com"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              {/* Seção: Endereço */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Endereço</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>CEP</Label>
                     <div className="flex gap-2">
                       <Input
+                        tabIndex={9}
                         value={formData.cep}
                         onChange={(e) => setFormData(prev => ({ ...prev, cep: e.target.value }))}
-                        placeholder="00000-000"
-                        className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                        placeholder="13000-000"
+                        className="h-10"
+                        onBlur={handleBuscarCEP}
                       />
                       <Button 
                         type="button" 
                         variant="outline" 
                         onClick={handleBuscarCEP} 
                         disabled={isLoading}
-                        className="h-9 md:h-10 w-9 md:w-10 p-0 border-2 border-gray-300"
+                        className="h-10 w-10 p-0 shrink-0"
+                        tabIndex={-1}
                       >
                         <Search className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  <div className="md:col-span-2 space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Logradouro</Label>
+                  <div className="md:col-span-3 space-y-2">
+                    <Label>Logradouro</Label>
                     <Input
+                      tabIndex={10}
                       value={formData.logradouro}
                       onChange={(e) => setFormData(prev => ({ ...prev, logradouro: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="Rua, Avenida, etc."
+                      className="h-10"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Número</Label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label>Número</Label>
                     <Input
+                      tabIndex={11}
                       value={formData.numero}
                       onChange={(e) => setFormData(prev => ({ ...prev, numero: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="123"
+                      className="h-10"
                     />
                   </div>
-                  <div className="md:col-span-3 space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Complemento</Label>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Complemento</Label>
                     <Input
+                      tabIndex={12}
                       value={formData.complemento}
                       onChange={(e) => setFormData(prev => ({ ...prev, complemento: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="Apto, Bloco, etc."
+                      className="h-10"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Bairro</Label>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label>Bairro</Label>
                     <Input
+                      tabIndex={13}
                       value={formData.bairro}
                       onChange={(e) => setFormData(prev => ({ ...prev, bairro: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="Bairro"
+                      className="h-10"
                     />
                   </div>
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Cidade</Label>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-3 space-y-2">
+                    <Label>Cidade</Label>
                     <Input
+                      tabIndex={14}
                       value={formData.cidade}
                       onChange={(e) => setFormData(prev => ({ ...prev, cidade: e.target.value }))}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="Cidade"
+                      className="h-10"
                     />
                   </div>
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Estado</Label>
+                  <div className="space-y-2">
+                    <Label>UF</Label>
                     <Input
+                      tabIndex={15}
                       value={formData.estado}
-                      onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value.toUpperCase() }))}
                       maxLength={2}
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+                      placeholder="SP"
+                      className="h-10"
                     />
                   </div>
                 </div>
-              </TabsContent>
+              </div>
 
-              <TabsContent value="contato" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">Telefone</Label>
-                    <Input
-                      value={formData.telefone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, telefone: e.target.value }))}
-                      placeholder="(00) 0000-0000"
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
-                    />
-                  </div>
-                  <div className="space-y-1.5 md:space-y-2">
-                    <Label className="text-xs md:text-sm">WhatsApp</Label>
-                    <Input
-                      value={formData.whatsapp}
-                      onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
-                      placeholder="(00) 00000-0000"
-                      className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 md:space-y-2">
-                  <Label className="text-xs md:text-sm">Email</Label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@exemplo.com"
-                    className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
-                  />
-                </div>
-              </TabsContent>
-
-              {editingCliente && (
-                <TabsContent value="historico" className="space-y-3 md:space-y-4 mt-3 md:mt-4">
-                  {/* Ordens de Serviço */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 pb-2 border-b-2 border-gray-300">
-                      <Wrench className="h-4 w-4 text-blue-600" />
-                      <h3 className="font-semibold text-sm md:text-base">Ordens de Serviço</h3>
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {clienteOSs.length}
-                      </Badge>
+              {/* Histórico (apenas na edição) */}
+              {editingCliente && (clienteOSs.length > 0 || clienteVendas.length > 0) && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">Histórico</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                      <div className="font-medium">Ordens de Serviço</div>
+                      <div className="text-2xl font-bold text-blue-600">{clienteOSs.length}</div>
                     </div>
-                    {loadingOSs ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">Carregando...</div>
-                    ) : clienteOSs.length === 0 ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">
-                        Nenhuma ordem de serviço encontrada
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {clienteOSs.map((os: any) => (
-                          <Card 
-                            key={os.id} 
-                            className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all"
-                            onClick={() => {
-                              setShowForm(false);
-                              navigate(`/os/${os.id}`);
-                            }}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold text-sm">OS #{os.numero}</span>
-                                    <Badge 
-                                      variant="outline" 
-                                      className="text-xs"
-                                      style={{ 
-                                        borderColor: STATUS_OS_COLORS[os.status as keyof typeof STATUS_OS_COLORS] || '#gray',
-                                        color: STATUS_OS_COLORS[os.status as keyof typeof STATUS_OS_COLORS] || '#gray'
-                                      }}
-                                    >
-                                      {STATUS_OS_LABELS[os.status as keyof typeof STATUS_OS_LABELS] || os.status}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground line-clamp-1">
-                                    {os.descricao_problema || 'Sem descrição'}
-                                  </p>
-                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                    {os.data_entrada && (
-                                      <span>Entrada: {dateFormatters.short(os.data_entrada)}</span>
-                                    )}
-                                    {os.valor_total > 0 && (
-                                      <span className="font-semibold text-foreground">
-                                        {currencyFormatters.brl(os.valor_total)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Vendas/Compras */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 pb-2 border-b-2 border-gray-300">
-                      <ShoppingCart className="h-4 w-4 text-green-600" />
-                      <h3 className="font-semibold text-sm md:text-base">Vendas/Compras</h3>
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {clienteVendas.length}
-                      </Badge>
+                    <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                      <div className="font-medium">Vendas</div>
+                      <div className="text-2xl font-bold text-green-600">{clienteVendas.length}</div>
                     </div>
-                    {loadingVendas ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">Carregando...</div>
-                    ) : clienteVendas.length === 0 ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">
-                        Nenhuma venda encontrada
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {clienteVendas.map((venda: any) => (
-                          <Card 
-                            key={venda.id} 
-                            className="border-2 border-gray-300 cursor-pointer hover:border-green-400 transition-all"
-                            onClick={() => {
-                              setShowForm(false);
-                              navigate(`/pdv/venda/${venda.id}`);
-                            }}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold text-sm">Venda #{venda.numero}</span>
-                                    <Badge 
-                                      variant="outline" 
-                                      className={`text-xs ${
-                                        venda.status === 'paid' ? 'border-green-500 text-green-600' :
-                                        venda.status === 'open' ? 'border-yellow-500 text-yellow-600' :
-                                        'border-gray-500 text-gray-600'
-                                      }`}
-                                    >
-                                      {venda.status === 'paid' ? 'Paga' :
-                                       venda.status === 'open' ? 'Aberta' :
-                                       venda.status === 'draft' ? 'Rascunho' :
-                                       venda.status}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                    {venda.created_at && (
-                                      <span>{dateFormatters.short(venda.created_at)}</span>
-                                    )}
-                                    {venda.total > 0 && (
-                                      <span className="font-semibold text-foreground">
-                                        {currencyFormatters.brl(venda.total)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                </TabsContent>
+                </div>
               )}
-            </Tabs>
+            </form>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <DialogFooter className="pt-4 border-t mt-4">
               <Button 
+                type="button" 
                 variant="outline" 
                 onClick={() => setShowForm(false)}
-                className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+                className="h-10"
               >
                 Cancelar
               </Button>
               <LoadingButton 
                 onClick={handleSubmit} 
                 loading={isLoading}
-                className="w-full sm:w-auto h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
+                className="h-10 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {editingCliente ? 'Atualizar' : 'Cadastrar'}
               </LoadingButton>

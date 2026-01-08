@@ -79,7 +79,7 @@ const Index = () => {
       title: 'Buscar Cliente',
       description: 'Consultar clientes',
       icon: UserCircle,
-      path: '/pdv/clientes',
+      path: '/clientes',
       permission: 'clientes.view',
     },
   ].filter(action => !action.permission || (permissionsLoading ? false : hasPermission(action.permission)));

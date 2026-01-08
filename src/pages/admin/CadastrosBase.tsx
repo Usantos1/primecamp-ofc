@@ -63,7 +63,7 @@ export default function CadastrosBase() {
       title: 'Clientes',
       description: 'Cadastro de clientes e fornecedores',
       icon: UserCircle,
-      path: '/pdv/clientes',
+      path: '/clientes',
       color: 'text-purple-600',
     },
     {

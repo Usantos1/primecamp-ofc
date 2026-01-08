@@ -221,7 +221,8 @@ const App = () => (
               {/* Redirect antigo /pdv/os para /os */}
               <Route path="/pdv/os" element={<Navigate to="/os" replace />} />
               <Route path="/pdv/os/*" element={<Navigate to="/os" replace />} />
-              <Route path="/pdv/clientes" element={<PermissionRoute permission="clientes.view"><AssistenciaClientes /></PermissionRoute>} />
+              <Route path="/clientes" element={<PermissionRoute permission="clientes.view"><AssistenciaClientes /></PermissionRoute>} />
+              <Route path="/pdv/clientes" element={<Navigate to="/clientes" replace />} />
               <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />
               <Route path="/pdv/configuracao-status" element={<PermissionRoute permission="os.config.status"><AssistenciaConfiguracaoStatus /></PermissionRoute>} />
               

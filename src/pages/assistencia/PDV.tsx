@@ -112,7 +112,7 @@ export default function PDV() {
 
           <Card 
             className="border-2 border-gray-300 cursor-pointer hover:shadow-md hover:border-orange-400 transition-all active:scale-95 md:active:scale-100 bg-gradient-to-br from-orange-50/50 to-orange-100/30 dark:from-orange-950/10 dark:to-orange-900/5 md:bg-transparent md:dark:bg-transparent" 
-            onClick={() => navigate('/pdv/clientes')}
+            onClick={() => navigate('/clientes')}
           >
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6 px-3 md:px-6">
               <CardTitle className="text-xs md:text-base flex items-center gap-2">

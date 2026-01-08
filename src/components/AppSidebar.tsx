@@ -91,7 +91,7 @@ export function AppSidebar() {
     { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true, permission: "vendas.create" },
     { label: "Ordem de Serviço", path: "/os", icon: Wrench, permission: "os.view" },
     { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
-    { label: "Clientes", path: "/pdv/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
+    { label: "Clientes", path: "/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
   ].filter(item => !item.permission || hasPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
