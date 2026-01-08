@@ -203,15 +203,29 @@ export default function PaymentMethodsConfig() {
               </Button>
             </div>
 
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!loading && paymentMethods.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma forma de pagamento cadastrada
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {paymentMethods.map((method) => (
+              {paymentMethods.map((method) => {
+                const methodColor = method.color || '#6b7280';
+                return (
                 <Card key={method.id} className={!method.is_active ? 'opacity-60' : ''}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div 
                           className="p-2 rounded-lg" 
-                          style={{ backgroundColor: method.color + '20', color: method.color }}
+                          style={{ backgroundColor: methodColor + '20', color: methodColor }}
                         >
                           {getIconComponent(method.icon || 'CreditCard')}
                         </div>
@@ -264,7 +278,7 @@ export default function PaymentMethodsConfig() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           </TabsContent>
 
