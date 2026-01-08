@@ -33,7 +33,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   Plus, Search, Eye, Edit, Filter, Printer, Download, Send, MoreVertical, X, Trash2,
-  ShoppingCart, DollarSign, Calendar, User, Upload, CalendarDays
+  ShoppingCart, DollarSign, Calendar, User, Upload, CalendarDays, ReceiptText
 } from 'lucide-react';
 import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
 import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
@@ -624,6 +624,16 @@ export default function Vendas() {
               <PermissionGate permission="vendas.create">
                 <div className="flex gap-2">
                   <Button 
+                    onClick={() => navigate('/pdv/devolucoes')} 
+                    size="sm"
+                    variant="ghost"
+                    className="gap-1 h-9 text-muted-foreground hover:text-foreground"
+                    title="Devoluções e Vouchers"
+                  >
+                    <ReceiptText className="h-4 w-4" />
+                    <span className="text-xs hidden lg:inline">Devoluções</span>
+                  </Button>
+                  <Button 
                     onClick={() => setImportDialogOpen(true)} 
                     size="sm"
                     variant="outline"
@@ -905,6 +915,17 @@ export default function Vendas() {
                                       <Download className="h-4 w-4 mr-2" />
                                       Salvar PDF
                                     </DropdownMenuItem>
+                                    {sale.status === 'paid' && (
+                                      <DropdownMenuItem 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(`/pdv/devolucoes?sale=${sale.id}`);
+                                        }}
+                                      >
+                                        <ReceiptText className="h-4 w-4 mr-2" />
+                                        Devolução/Troca
+                                      </DropdownMenuItem>
+                                    )}
                                     {sale.cliente_telefone && (
                                       <DropdownMenuItem 
                                         onClick={(e) => {
@@ -1128,6 +1149,17 @@ export default function Vendas() {
                                     <Printer className="h-4 w-4 mr-2" />
                                     Imprimir
                                   </DropdownMenuItem>
+                                  {sale.status === 'paid' && (
+                                    <DropdownMenuItem 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/pdv/devolucoes?sale=${sale.id}`);
+                                      }}
+                                    >
+                                      <ReceiptText className="h-4 w-4 mr-2" />
+                                      Devolver
+                                    </DropdownMenuItem>
+                                  )}
                                   {sale.cliente_telefone && (
                                     <DropdownMenuItem 
                                       onClick={(e) => {
