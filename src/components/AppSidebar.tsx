@@ -284,12 +284,20 @@ export function AppSidebar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left group">
-                {/* Status indicator + Avatar */}
+                {/* Avatar com foto ou iniciais */}
                 <div className="relative">
                   <Avatar className="h-10 w-10 border-2 border-emerald-400 dark:border-emerald-500 shadow-sm">
-                    <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
-                      {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                    </AvatarFallback>
+                    {(profile as any)?.avatar_url ? (
+                      <img 
+                        src={(profile as any).avatar_url} 
+                        alt={profile?.display_name || 'Avatar'} 
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                        {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   {/* Status online */}
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full" />
@@ -309,18 +317,10 @@ export function AppSidebar() {
                 <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuContent align="end" side="top" className="w-48">
               <DropdownMenuItem onClick={() => navigate('/perfil')}>
                 <UserCog className="h-4 w-4 mr-2" />
-                Meu Perfil
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/perfil?tab=security')}>
-                <KeyRound className="h-4 w-4 mr-2" />
-                Trocar Senha
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/perfil?tab=preferences')}>
-                <Settings className="h-4 w-4 mr-2" />
-                Preferências
+                Gerenciar Perfil
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -328,7 +328,7 @@ export function AppSidebar() {
                 className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Sair do Sistema
+                Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -337,26 +337,30 @@ export function AppSidebar() {
             <DropdownMenuTrigger asChild>
               <button className="w-10 h-10 flex items-center justify-center hover:bg-sidebar-accent rounded-lg transition-colors mx-auto relative">
                 <Avatar className="h-8 w-8 border-2 border-emerald-400 dark:border-emerald-500">
-                  <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
-                    {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
-                  </AvatarFallback>
+                  {(profile as any)?.avatar_url ? (
+                    <img 
+                      src={(profile as any).avatar_url} 
+                      alt={profile?.display_name || 'Avatar'} 
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <AvatarFallback className="text-xs font-semibold bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                      {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 {/* Status online */}
                 <span className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" side="top" className="w-56">
+            <DropdownMenuContent align="center" side="top" className="w-48">
               <div className="px-2 py-1.5 text-sm font-medium">
                 {profile?.display_name || user?.email?.split('@')[0]}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate('/perfil')}>
                 <UserCog className="h-4 w-4 mr-2" />
-                Meu Perfil
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/perfil?tab=security')}>
-                <KeyRound className="h-4 w-4 mr-2" />
-                Trocar Senha
+                Gerenciar Perfil
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
