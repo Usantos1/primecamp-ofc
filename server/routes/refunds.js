@@ -25,11 +25,12 @@ router.get('/', async (req, res) => {
     
     let query = `
       SELECT r.*, 
-             v.name as sale_customer_name,
-             v.total as sale_total,
+             s.cliente_nome as sale_customer_name,
+             s.total as sale_total,
+             s.numero as original_sale_number,
              u.email as created_by_email
       FROM refunds r
-      LEFT JOIN vendas v ON r.sale_id = v.id
+      LEFT JOIN sales s ON r.sale_id = s.id
       LEFT JOIN users u ON r.created_by = u.id
       WHERE r.company_id = $1
     `;
@@ -73,12 +74,13 @@ router.get('/:id', async (req, res) => {
     
     const refundResult = await pool.query(`
       SELECT r.*, 
-             v.name as sale_customer_name,
-             v.total as sale_total,
+             s.cliente_nome as sale_customer_name,
+             s.total as sale_total,
+             s.numero as original_sale_number,
              vc.code as voucher_code,
              vc.current_value as voucher_current_value
       FROM refunds r
-      LEFT JOIN vendas v ON r.sale_id = v.id
+      LEFT JOIN sales s ON r.sale_id = s.id
       LEFT JOIN vouchers vc ON r.voucher_id = vc.id
       WHERE r.id = $1 AND r.company_id = $2
     `, [id, companyId]);
@@ -540,10 +542,10 @@ router.get('/vouchers/:id/history', async (req, res) => {
     
     const result = await pool.query(`
       SELECT vu.*, 
-             v.numero as sale_number,
+             s.numero as sale_number,
              u.email as used_by_email
       FROM voucher_usage vu
-      LEFT JOIN vendas v ON vu.sale_id = v.id
+      LEFT JOIN sales s ON vu.sale_id = s.id
       LEFT JOIN users u ON vu.used_by = u.id
       WHERE vu.voucher_id = $1
       ORDER BY vu.used_at DESC
