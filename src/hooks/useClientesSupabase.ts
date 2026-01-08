@@ -140,11 +140,18 @@ export function useClientesSupabase(pageSize: number = 50) {
 
   // Buscar clientes (assíncrono - busca no banco via API com ILIKE)
   const searchClientesAsync = useCallback(async (query: string, limit: number = 15): Promise<Cliente[]> => {
-    if (!query || query.length < 2) return [];
+    console.log('[searchClientesAsync] Buscando:', query);
+    if (!query || query.length < 2) {
+      console.log('[searchClientesAsync] Query muito curta, retornando vazio');
+      return [];
+    }
     
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/clientes/search?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      const url = `${API_URL}/clientes/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+      console.log('[searchClientesAsync] URL:', url);
+      
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -157,6 +164,7 @@ export function useClientesSupabase(pageSize: number = 50) {
       }
 
       const data = await response.json();
+      console.log('[searchClientesAsync] Resultados:', data?.length || 0, 'clientes');
       return (data || []) as Cliente[];
     } catch (error) {
       console.error('[searchClientesAsync] Erro ao buscar clientes:', error);

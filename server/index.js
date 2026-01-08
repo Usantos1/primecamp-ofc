@@ -2241,18 +2241,23 @@ app.post('/api/functions/import-clientes', authenticateToken, async (req, res) =
 app.get('/api/clientes/search', authenticateToken, async (req, res) => {
   try {
     const { q, limit = 15 } = req.query;
+    const companyId = req.companyId;
+    
+    console.log('[ClientesSearch] Buscando:', { q, limit, companyId });
     
     if (!q || q.length < 2) {
       return res.json([]);
     }
 
     const searchTerm = `%${q}%`;
-    const limitNum = Math.min(parseInt(limit) || 15, 50);
+    const limitNum = Math.min(parseInt(limit) || 15, 100);
 
+    // CRÍTICO: Filtrar por company_id para isolamento de dados
     const result = await pool.query(
-      `SELECT id, nome, cpf_cnpj, telefone, whatsapp, email, cidade, estado
+      `SELECT id, nome, cpf_cnpj, rg, telefone, whatsapp, email, cidade, estado, tipo_pessoa, situacao
        FROM clientes 
-       WHERE (situacao IS NULL OR situacao != 'inativo')
+       WHERE company_id = $3
+         AND (situacao IS NULL OR situacao != 'inativo')
          AND (
            nome ILIKE $1 
            OR cpf_cnpj ILIKE $1 
@@ -2262,9 +2267,10 @@ app.get('/api/clientes/search', authenticateToken, async (req, res) => {
          )
        ORDER BY nome ASC
        LIMIT $2`,
-      [searchTerm, limitNum]
+      [searchTerm, limitNum, companyId]
     );
 
+    console.log('[ClientesSearch] Encontrados:', result.rows.length, 'clientes');
     res.json(result.rows);
   } catch (error) {
     console.error('[ClientesSearch] Erro:', error);
