@@ -13,18 +13,18 @@ BEGIN
   END IF;
 END $$;
 
--- Função para gerar código de voucher único
+-- Função para gerar código de voucher único (código curto de 6 caracteres)
 CREATE OR REPLACE FUNCTION generate_voucher_code()
 RETURNS TEXT AS $$
 DECLARE
-  chars TEXT := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  result TEXT := 'VC-';
+  chars TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; -- Sem I, O, 0, 1 para evitar confusão
+  result TEXT := 'VC';
   i INTEGER;
   code_exists BOOLEAN := TRUE;
 BEGIN
   WHILE code_exists LOOP
-    result := 'VC-';
-    FOR i IN 1..8 LOOP
+    result := 'VC';
+    FOR i IN 1..6 LOOP
       result := result || substr(chars, floor(random() * length(chars) + 1)::integer, 1);
     END LOOP;
     SELECT EXISTS(SELECT 1 FROM vouchers WHERE code = result) INTO code_exists;

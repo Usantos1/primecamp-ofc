@@ -121,22 +121,32 @@ export default function Devolucoes() {
         return;
       }
 
-      const saleItems: SaleItem[] = (items || []).map((item: any) => ({
-        id: item.id,
-        produto_id: item.produto_id,
-        produto_nome: item.produto_nome || item.nome || 'Produto',
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario || item.valor_unitario,
-        subtotal: item.subtotal || item.total,
-        selected: true,
-        refund_qty: item.quantidade,
-        destination: 'stock' as ProductDestination // Padrão: volta ao estoque
-      }));
+      const saleItems: SaleItem[] = (items || []).map((item: any) => {
+        // Calcular preço unitário de várias formas possíveis
+        const precoUnit = item.preco_unitario || item.valor_unitario || item.price || item.unit_price || 
+          (item.subtotal && item.quantidade ? item.subtotal / item.quantidade : 0) ||
+          (item.total && item.quantidade ? item.total / item.quantidade : 0);
+        
+        return {
+          id: item.id,
+          produto_id: item.produto_id,
+          produto_nome: item.produto_nome || item.nome || item.product_name || 'Produto',
+          quantidade: item.quantidade || item.quantity || 1,
+          preco_unitario: precoUnit,
+          subtotal: item.subtotal || item.total || (precoUnit * (item.quantidade || item.quantity || 1)),
+          selected: true,
+          refund_qty: item.quantidade || item.quantity || 1,
+          destination: 'stock' as ProductDestination // Padrão: volta ao estoque
+        };
+      });
 
+      const clienteNome = sale.cliente_nome || 'Consumidor Final';
+      const isConsumidorFinal = !sale.cliente_id || clienteNome === 'Consumidor Final';
+      
       setSaleData({
         id: sale.id,
         numero: sale.numero,
-        cliente_nome: sale.cliente_nome || 'Consumidor Final',
+        cliente_nome: clienteNome,
         cliente_id: sale.cliente_id,
         total: sale.total,
         created_at: sale.created_at,
@@ -144,6 +154,8 @@ export default function Devolucoes() {
       });
       
       setSelectedItems(saleItems);
+      // Se for consumidor final, forçar devolução em dinheiro
+      setRefundMethod(isConsumidorFinal ? 'cash' : 'voucher');
       setRefundDialogOpen(true);
     } catch (error: any) {
       toast({
@@ -175,6 +187,16 @@ export default function Devolucoes() {
       toast({
         title: 'Erro',
         description: 'Informe o motivo da devolução',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Se for voucher, precisa ter cliente identificado
+    if (refundMethod === 'voucher' && (!saleData.cliente_id || saleData.cliente_nome === 'Consumidor Final')) {
+      toast({
+        title: 'Cliente obrigatório',
+        description: 'Para gerar voucher, a venda precisa ter um cliente identificado. Vendas para "Consumidor Final" só podem ser devolvidas em dinheiro.',
         variant: 'destructive'
       });
       return;
@@ -830,12 +852,16 @@ export default function Devolucoes() {
               {/* Método de Reembolso */}
               <div>
                 <Label>Forma de reembolso</Label>
-                <Select value={refundMethod} onValueChange={(v: 'voucher' | 'cash') => setRefundMethod(v)}>
+                <Select 
+                  value={refundMethod} 
+                  onValueChange={(v: 'voucher' | 'cash') => setRefundMethod(v)}
+                  disabled={!saleData?.cliente_id || saleData?.cliente_nome === 'Consumidor Final'}
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="voucher">
+                    <SelectItem value="voucher" disabled={!saleData?.cliente_id || saleData?.cliente_nome === 'Consumidor Final'}>
                       <div className="flex items-center gap-2">
                         <ReceiptText className="h-4 w-4" />
                         Voucher de Crédito (Recomendado)
@@ -849,9 +875,14 @@ export default function Devolucoes() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                {refundMethod === 'voucher' && (
+                {refundMethod === 'voucher' && saleData?.cliente_id && saleData?.cliente_nome !== 'Consumidor Final' && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Será gerado um voucher único e intransferível para o cliente.
+                  </p>
+                )}
+                {(!saleData?.cliente_id || saleData?.cliente_nome === 'Consumidor Final') && (
+                  <p className="text-xs text-orange-600 mt-1 font-medium">
+                    ⚠️ Venda para Consumidor Final - apenas devolução em dinheiro disponível.
                   </p>
                 )}
               </div>
