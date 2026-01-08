@@ -881,11 +881,28 @@ app.post('/api/query/:table', async (req, res) => {
     const fields = Array.isArray(select) ? select.join(', ') : (select || '*');
     const { clause: whereClause, params } = buildWhereClause(where);
 
-    // Lista de tabelas que precisam filtrar por company_id
-    // NOTA: tasks, processes e profiles NÃO têm company_id ainda
+    // Lista COMPLETA de tabelas que precisam filtrar por company_id
+    // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
-      'produtos', 'vendas', 'clientes', 'ordens_servico', 
-      'time_clock', 'users'
+      // Dados de negócio principais
+      'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
+      'sale_items', 'os_items', 'produto_movimentacoes',
+      // Ponto eletrônico
+      'time_clock',
+      // Usuários (cada empresa só vê seus usuários)
+      'users',
+      // NPS e pesquisas
+      'nps_surveys', 'nps_responses',
+      // Vagas e recrutamento
+      'job_surveys', 'job_responses', 'job_application_drafts',
+      'job_candidate_ai_analysis', 'job_candidate_evaluations', 
+      'job_interviews', 'candidate_responses',
+      // Financeiro
+      'payments', 'caixa_sessions', 'caixa_movements',
+      // Marcas e modelos (se tiver por empresa)
+      'marcas', 'modelos',
+      // Configurações específicas da empresa
+      'configuracoes_empresa', 'company_settings'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
@@ -978,11 +995,18 @@ app.post('/api/insert/:table', async (req, res) => {
     const tableName = table.includes('.') ? table : `public.${table}`;
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
 
-    // Lista de tabelas que precisam de company_id
-    // NOTA: tasks, processes e profiles NÃO têm company_id ainda
+    // Lista COMPLETA de tabelas que precisam de company_id no INSERT
+    // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
-      'produtos', 'vendas', 'clientes', 'ordens_servico', 
-      'time_clock', 'users'
+      'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
+      'sale_items', 'os_items', 'produto_movimentacoes',
+      'time_clock', 'users',
+      'nps_surveys', 'nps_responses',
+      'job_surveys', 'job_responses', 'job_application_drafts',
+      'job_candidate_ai_analysis', 'job_candidate_evaluations', 
+      'job_interviews', 'candidate_responses',
+      'payments', 'caixa_sessions', 'caixa_movements',
+      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1086,11 +1110,18 @@ app.post('/api/update/:table', async (req, res) => {
     const tableName = table.includes('.') ? table : `public.${table}`;
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
 
-    // Lista de tabelas que precisam filtrar por company_id
-    // NOTA: tasks, processes e profiles NÃO têm company_id ainda
+    // Lista COMPLETA de tabelas que precisam filtrar por company_id no UPDATE
+    // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
-      'produtos', 'vendas', 'clientes', 'ordens_servico', 
-      'time_clock', 'users'
+      'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
+      'sale_items', 'os_items', 'produto_movimentacoes',
+      'time_clock', 'users',
+      'nps_surveys', 'nps_responses',
+      'job_surveys', 'job_responses', 'job_application_drafts',
+      'job_candidate_ai_analysis', 'job_candidate_evaluations', 
+      'job_interviews', 'candidate_responses',
+      'payments', 'caixa_sessions', 'caixa_movements',
+      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1254,7 +1285,7 @@ app.post('/api/upsert/:table', async (req, res) => {
   }
 });
 
-// Delete endpoint
+// Delete endpoint (COM FILTRO DE company_id OBRIGATÓRIO)
 app.post('/api/delete/:table', async (req, res) => {
   try {
     const { table } = req.params;
@@ -1262,21 +1293,55 @@ app.post('/api/delete/:table', async (req, res) => {
 
     // Usar schema public explicitamente
     const tableName = table.includes('.') ? table : `public.${table}`;
+    const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
 
     if (!where || Object.keys(where).length === 0) {
       return res.status(400).json({ error: 'Delete requires WHERE clause' });
     }
 
+    // Lista COMPLETA de tabelas que precisam filtrar por company_id no DELETE
+    // CRÍTICO: Garante isolamento de dados entre empresas
+    const tablesWithCompanyId = [
+      'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
+      'sale_items', 'os_items', 'produto_movimentacoes',
+      'time_clock', 'users',
+      'nps_surveys', 'nps_responses',
+      'job_surveys', 'job_responses', 'job_application_drafts',
+      'job_candidate_ai_analysis', 'job_candidate_evaluations', 
+      'job_interviews', 'candidate_responses',
+      'payments', 'caixa_sessions', 'caixa_movements',
+      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
+    ];
+    
+    const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
+
     const { clause: whereClause, params } = buildWhereClause(where);
+    let finalWhereClause = whereClause;
+    let finalParams = [...params];
+
+    // CRÍTICO: Adicionar filtro de company_id automaticamente
+    if (needsCompanyFilter && req.user && req.companyId) {
+      const hasCompanyFilter = where && (typeof where === 'object' && 'company_id' in where);
+      
+      if (!hasCompanyFilter) {
+        if (finalWhereClause) {
+          finalWhereClause += ` AND company_id = $${finalParams.length + 1}`;
+        } else {
+          finalWhereClause = `WHERE company_id = $${finalParams.length + 1}`;
+        }
+        finalParams.push(req.companyId);
+        console.log(`[Delete] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
+      }
+    }
 
     const sql = `
       DELETE FROM ${tableName}
-      ${whereClause}
+      ${finalWhereClause}
       RETURNING *
     `;
 
-    console.log(`[Delete] ${tableName}`);
-    const result = await pool.query(sql, params);
+    console.log(`[Delete] ${tableName} - SQL: ${sql.substring(0, 100)}...`);
+    const result = await pool.query(sql, finalParams);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
     console.error('Erro ao deletar:', error);
