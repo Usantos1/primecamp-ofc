@@ -154,6 +154,13 @@ export default function Admin() {
       color: "text-cyan-600"
     },
     {
+      title: "Formas de Pagamento",
+      description: "Configure meios de pagamento e taxas",
+      icon: CreditCard,
+      path: "/admin/formas-pagamento",
+      color: "text-emerald-600"
+    },
+    {
       title: "Assinatura",
       description: "Gerencie seu plano e pagamentos",
       icon: CreditCard,

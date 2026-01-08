@@ -61,6 +61,7 @@ import TalentBank from "./pages/admin/TalentBank";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminInterviews from "./pages/admin/AdminInterviews";
 import InterviewEvaluation from "./pages/admin/InterviewEvaluation";
+import PaymentMethodsConfig from "./pages/admin/PaymentMethodsConfig";
 import JobApplication from "./pages/JobApplication";
 import JobApplicationSteps from "./pages/JobApplicationSteps";
 import JobSuccess from "./pages/JobSuccess";
@@ -143,6 +144,7 @@ const App = () => (
               <Route path="/admin/disc" element={<PermissionRoute permission="admin.disc"><AdminDisc /></PermissionRoute>} />
               <Route path="/admin/financeiro/*" element={<AdminFinanceiro />} />
               <Route path="/admin/revenda" element={<ProtectedRoute><AdminReseller /></ProtectedRoute>} />
+              <Route path="/admin/formas-pagamento" element={<ProtectedRoute><PaymentMethodsConfig /></ProtectedRoute>} />
               <Route path="/minha-empresa" element={<ProtectedRoute><CompanyDashboardPage /></ProtectedRoute>} />
               <Route path="/assinatura" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
               <Route path="/admin/marketing" element={<MarketingLayout />}>

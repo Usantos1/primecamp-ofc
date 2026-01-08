@@ -15,6 +15,8 @@ import crypto from 'crypto';
 import resellerRoutes from './routes/reseller.js';
 import paymentsRoutes from './routes/payments.js';
 import dashboardRoutes from './routes/dashboard.js';
+import refundsRoutes from './routes/refunds.js';
+import paymentMethodsRoutes from './routes/paymentMethods.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -292,6 +294,14 @@ try {
   // Registrar rotas de dashboard
   app.use('/api/dashboard', dashboardRoutes);
   console.log('[Server] ✅ Rotas de dashboard registradas com sucesso');
+  
+  // Registrar rotas de devoluções e vales
+  app.use('/api/refunds', refundsRoutes);
+  console.log('[Server] ✅ Rotas de devoluções registradas com sucesso');
+  
+  // Registrar rotas de formas de pagamento
+  app.use('/api/payment-methods', paymentMethodsRoutes);
+  console.log('[Server] ✅ Rotas de formas de pagamento registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora
   setInterval(async () => {
