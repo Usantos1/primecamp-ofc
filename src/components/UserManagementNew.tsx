@@ -939,7 +939,7 @@ export const UserManagementNew = () => {
       </Dialog>
 
       {/* Dialog Criar Novo Usuário */}
-      <Dialog open={newUserDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog open={newUserDialogOpen} onOpenChange={setNewUserDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Criar Novo Usuário</DialogTitle>
@@ -1012,7 +1012,7 @@ export const UserManagementNew = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setNewUserDialogOpen(false)}>
               Cancelar
             </Button>
             <Button onClick={handleCreateUser} disabled={loading}>
