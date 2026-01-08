@@ -156,12 +156,13 @@ router.post('/', async (req, res) => {
       await client.query(`
         INSERT INTO refund_items (
           refund_id, sale_item_id, product_id, product_name, quantity,
-          unit_price, total_price, reason, condition, return_to_stock
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          unit_price, total_price, reason, condition, return_to_stock, destination
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `, [
         refund.id, item.sale_item_id, item.product_id, item.product_name,
         item.quantity, item.unit_price, item.quantity * item.unit_price,
-        item.reason || reason, item.condition || 'novo', item.return_to_stock !== false
+        item.reason || reason, item.condition || 'novo', item.return_to_stock !== false,
+        item.destination || 'stock' // 'stock', 'exchange', 'loss'
       ]);
     }
     
