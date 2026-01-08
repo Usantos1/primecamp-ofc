@@ -13,6 +13,15 @@ const pool = new Pool({
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
+// Helper para verificar se coluna existe
+async function columnExists(tableName, columnName) {
+  const result = await pool.query(`
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = $1 AND column_name = $2
+  `, [tableName, columnName]);
+  return result.rows.length > 0;
+}
+
 // ═══════════════════════════════════════════════════════
 // FORMAS DE PAGAMENTO
 // ═══════════════════════════════════════════════════════
@@ -23,20 +32,46 @@ router.get('/', async (req, res) => {
     const companyId = req.companyId;
     const { active_only } = req.query;
     
+    // Verificar se a coluna company_id existe
+    const hasCompanyId = await columnExists('payment_methods', 'company_id');
+    const hasName = await columnExists('payment_methods', 'name');
+    const nameCol = hasName ? 'name' : 'nome';
+    
     let query = `
-      SELECT pm.*,
+      SELECT pm.id, 
+             pm.${nameCol} as name,
+             COALESCE(pm.code, pm.codigo, '') as code,
+             pm.description,
+             COALESCE(pm.is_active, pm.ativo, true) as is_active,
+             COALESCE(pm.accepts_installments, false) as accepts_installments,
+             COALESCE(pm.max_installments, 1) as max_installments,
+             COALESCE(pm.min_value_for_installments, 0) as min_value_for_installments,
+             pm.icon,
+             pm.color,
+             COALESCE(pm.sort_order, 0) as sort_order,
+             pm.created_at,
+             pm.updated_at,
              (SELECT COUNT(*) FROM payment_fees pf WHERE pf.payment_method_id = pm.id) as fees_count
       FROM payment_methods pm
-      WHERE pm.company_id = $1
+      WHERE 1=1
     `;
     
-    if (active_only === 'true') {
-      query += ' AND pm.is_active = true';
+    const params = [];
+    let paramIndex = 1;
+    
+    if (hasCompanyId && companyId) {
+      query += ` AND (pm.company_id = $${paramIndex} OR pm.company_id IS NULL)`;
+      params.push(companyId);
+      paramIndex++;
     }
     
-    query += ' ORDER BY pm.sort_order, pm.name';
+    if (active_only === 'true') {
+      query += ` AND COALESCE(pm.is_active, pm.ativo, true) = true`;
+    }
     
-    const result = await pool.query(query, [companyId]);
+    query += ` ORDER BY COALESCE(pm.sort_order, 0), pm.${nameCol}`;
+    
+    const result = await pool.query(query, params);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao listar:', error);
@@ -48,27 +83,46 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
     
-    const methodResult = await pool.query(
-      'SELECT * FROM payment_methods WHERE id = $1 AND company_id = $2',
-      [id, companyId]
-    );
+    const hasName = await columnExists('payment_methods', 'name');
+    const nameCol = hasName ? 'name' : 'nome';
+    
+    const methodResult = await pool.query(`
+      SELECT pm.id, 
+             pm.${nameCol} as name,
+             COALESCE(pm.code, pm.codigo, '') as code,
+             pm.description,
+             COALESCE(pm.is_active, pm.ativo, true) as is_active,
+             COALESCE(pm.accepts_installments, false) as accepts_installments,
+             COALESCE(pm.max_installments, 1) as max_installments,
+             COALESCE(pm.min_value_for_installments, 0) as min_value_for_installments,
+             pm.icon,
+             pm.color,
+             COALESCE(pm.sort_order, 0) as sort_order
+      FROM payment_methods pm
+      WHERE pm.id = $1
+    `, [id]);
     
     if (methodResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Forma de pagamento não encontrada' });
     }
     
-    const feesResult = await pool.query(
-      'SELECT * FROM payment_fees WHERE payment_method_id = $1 ORDER BY installments',
-      [id]
-    );
+    let fees = [];
+    try {
+      const feesResult = await pool.query(
+        'SELECT * FROM payment_fees WHERE payment_method_id = $1 ORDER BY installments',
+        [id]
+      );
+      fees = feesResult.rows;
+    } catch (e) {
+      // Tabela payment_fees pode não existir ainda
+    }
     
     res.json({
       success: true,
       data: {
         ...methodResult.rows[0],
-        fees: feesResult.rows
+        fees
       }
     });
   } catch (error) {
@@ -86,21 +140,108 @@ router.post('/', async (req, res) => {
       max_installments, min_value_for_installments, icon, color, sort_order
     } = req.body;
     
-    const result = await pool.query(`
-      INSERT INTO payment_methods (
-        company_id, name, code, description, is_active, accepts_installments,
-        max_installments, min_value_for_installments, icon, color, sort_order
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `, [
-      companyId, name, code, description, is_active !== false, accepts_installments || false,
-      max_installments || 1, min_value_for_installments || 0, icon, color, sort_order || 0
-    ]);
+    // Verificar colunas existentes
+    const hasCompanyId = await columnExists('payment_methods', 'company_id');
+    const hasName = await columnExists('payment_methods', 'name');
+    const hasCode = await columnExists('payment_methods', 'code');
     
-    res.json({ success: true, data: result.rows[0] });
+    const nameCol = hasName ? 'name' : 'nome';
+    const codeCol = hasCode ? 'code' : 'codigo';
+    
+    // Montar query dinamicamente
+    const cols = ['id', nameCol, codeCol];
+    const vals = ['gen_random_uuid()', '$1', '$2'];
+    const params = [name, code];
+    let paramIdx = 3;
+    
+    if (hasCompanyId && companyId) {
+      cols.push('company_id');
+      vals.push(`$${paramIdx}`);
+      params.push(companyId);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'description')) {
+      cols.push('description');
+      vals.push(`$${paramIdx}`);
+      params.push(description || '');
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'is_active')) {
+      cols.push('is_active');
+      vals.push(`$${paramIdx}`);
+      params.push(is_active !== false);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'accepts_installments')) {
+      cols.push('accepts_installments');
+      vals.push(`$${paramIdx}`);
+      params.push(accepts_installments || false);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'max_installments')) {
+      cols.push('max_installments');
+      vals.push(`$${paramIdx}`);
+      params.push(max_installments || 1);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'min_value_for_installments')) {
+      cols.push('min_value_for_installments');
+      vals.push(`$${paramIdx}`);
+      params.push(min_value_for_installments || 0);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'icon')) {
+      cols.push('icon');
+      vals.push(`$${paramIdx}`);
+      params.push(icon || null);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'color')) {
+      cols.push('color');
+      vals.push(`$${paramIdx}`);
+      params.push(color || null);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'sort_order')) {
+      cols.push('sort_order');
+      vals.push(`$${paramIdx}`);
+      params.push(sort_order || 0);
+      paramIdx++;
+    }
+    
+    const query = `INSERT INTO payment_methods (${cols.join(', ')}) VALUES (${vals.join(', ')}) RETURNING *`;
+    
+    const result = await pool.query(query, params);
+    
+    // Normalizar resposta
+    const row = result.rows[0];
+    res.json({ 
+      success: true, 
+      data: {
+        id: row.id,
+        name: row.name || row.nome,
+        code: row.code || row.codigo,
+        description: row.description,
+        is_active: row.is_active ?? row.ativo ?? true,
+        accepts_installments: row.accepts_installments || false,
+        max_installments: row.max_installments || 1,
+        min_value_for_installments: row.min_value_for_installments || 0,
+        icon: row.icon,
+        color: row.color,
+        sort_order: row.sort_order || 0
+      }
+    });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao criar:', error);
-    if (error.code === '23505') { // unique_violation
+    if (error.code === '23505') {
       return res.status(400).json({ success: false, error: 'Já existe uma forma de pagamento com este código' });
     }
     res.status(500).json({ success: false, error: error.message });
@@ -111,38 +252,114 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
     const {
       name, code, description, is_active, accepts_installments,
       max_installments, min_value_for_installments, icon, color, sort_order
     } = req.body;
     
-    const result = await pool.query(`
-      UPDATE payment_methods SET
-        name = COALESCE($1, name),
-        code = COALESCE($2, code),
-        description = COALESCE($3, description),
-        is_active = COALESCE($4, is_active),
-        accepts_installments = COALESCE($5, accepts_installments),
-        max_installments = COALESCE($6, max_installments),
-        min_value_for_installments = COALESCE($7, min_value_for_installments),
-        icon = COALESCE($8, icon),
-        color = COALESCE($9, color),
-        sort_order = COALESCE($10, sort_order),
-        updated_at = NOW()
-      WHERE id = $11 AND company_id = $12
-      RETURNING *
-    `, [
-      name, code, description, is_active, accepts_installments,
-      max_installments, min_value_for_installments, icon, color, sort_order,
-      id, companyId
-    ]);
+    const hasName = await columnExists('payment_methods', 'name');
+    const hasCode = await columnExists('payment_methods', 'code');
+    
+    const nameCol = hasName ? 'name' : 'nome';
+    const codeCol = hasCode ? 'code' : 'codigo';
+    
+    const sets = [];
+    const params = [];
+    let paramIdx = 1;
+    
+    if (name !== undefined) {
+      sets.push(`${nameCol} = $${paramIdx}`);
+      params.push(name);
+      paramIdx++;
+    }
+    
+    if (code !== undefined && hasCode) {
+      sets.push(`${codeCol} = $${paramIdx}`);
+      params.push(code);
+      paramIdx++;
+    }
+    
+    if (description !== undefined && await columnExists('payment_methods', 'description')) {
+      sets.push(`description = $${paramIdx}`);
+      params.push(description);
+      paramIdx++;
+    }
+    
+    if (is_active !== undefined && await columnExists('payment_methods', 'is_active')) {
+      sets.push(`is_active = $${paramIdx}`);
+      params.push(is_active);
+      paramIdx++;
+    }
+    
+    if (accepts_installments !== undefined && await columnExists('payment_methods', 'accepts_installments')) {
+      sets.push(`accepts_installments = $${paramIdx}`);
+      params.push(accepts_installments);
+      paramIdx++;
+    }
+    
+    if (max_installments !== undefined && await columnExists('payment_methods', 'max_installments')) {
+      sets.push(`max_installments = $${paramIdx}`);
+      params.push(max_installments);
+      paramIdx++;
+    }
+    
+    if (min_value_for_installments !== undefined && await columnExists('payment_methods', 'min_value_for_installments')) {
+      sets.push(`min_value_for_installments = $${paramIdx}`);
+      params.push(min_value_for_installments);
+      paramIdx++;
+    }
+    
+    if (icon !== undefined && await columnExists('payment_methods', 'icon')) {
+      sets.push(`icon = $${paramIdx}`);
+      params.push(icon);
+      paramIdx++;
+    }
+    
+    if (color !== undefined && await columnExists('payment_methods', 'color')) {
+      sets.push(`color = $${paramIdx}`);
+      params.push(color);
+      paramIdx++;
+    }
+    
+    if (sort_order !== undefined && await columnExists('payment_methods', 'sort_order')) {
+      sets.push(`sort_order = $${paramIdx}`);
+      params.push(sort_order);
+      paramIdx++;
+    }
+    
+    if (await columnExists('payment_methods', 'updated_at')) {
+      sets.push('updated_at = NOW()');
+    }
+    
+    if (sets.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    }
+    
+    params.push(id);
+    const query = `UPDATE payment_methods SET ${sets.join(', ')} WHERE id = $${paramIdx} RETURNING *`;
+    
+    const result = await pool.query(query, params);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Forma de pagamento não encontrada' });
     }
     
-    res.json({ success: true, data: result.rows[0] });
+    const row = result.rows[0];
+    res.json({ 
+      success: true, 
+      data: {
+        id: row.id,
+        name: row.name || row.nome,
+        code: row.code || row.codigo,
+        description: row.description,
+        is_active: row.is_active ?? row.ativo ?? true,
+        accepts_installments: row.accepts_installments || false,
+        max_installments: row.max_installments || 1,
+        icon: row.icon,
+        color: row.color,
+        sort_order: row.sort_order || 0
+      }
+    });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao atualizar:', error);
     res.status(500).json({ success: false, error: error.message });
@@ -153,24 +370,10 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
-    
-    // Verificar se está sendo usada em vendas
-    const usageCheck = await pool.query(
-      "SELECT COUNT(*) as count FROM payments WHERE forma_pagamento = (SELECT code FROM payment_methods WHERE id = $1)",
-      [id]
-    );
-    
-    if (parseInt(usageCheck.rows[0].count) > 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Esta forma de pagamento está sendo usada em vendas e não pode ser excluída. Você pode desativá-la.'
-      });
-    }
     
     const result = await pool.query(
-      'DELETE FROM payment_methods WHERE id = $1 AND company_id = $2 RETURNING *',
-      [id, companyId]
+      'DELETE FROM payment_methods WHERE id = $1 RETURNING *',
+      [id]
     );
     
     if (result.rows.length === 0) {
@@ -212,34 +415,43 @@ router.post('/:id/fees', async (req, res) => {
     const companyId = req.companyId;
     const { installments, fee_percentage, fee_fixed, days_to_receive, description, is_active } = req.body;
     
-    // Verificar se a forma de pagamento pertence à empresa
-    const methodCheck = await pool.query(
-      'SELECT id FROM payment_methods WHERE id = $1 AND company_id = $2',
-      [id, companyId]
-    );
+    // Verificar se a forma de pagamento existe
+    const methodCheck = await pool.query('SELECT id FROM payment_methods WHERE id = $1', [id]);
     
     if (methodCheck.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Forma de pagamento não encontrada' });
     }
     
-    // Upsert da taxa
-    const result = await pool.query(`
-      INSERT INTO payment_fees (
-        company_id, payment_method_id, installments, fee_percentage, 
-        fee_fixed, days_to_receive, description, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      ON CONFLICT (payment_method_id, installments) DO UPDATE SET
-        fee_percentage = EXCLUDED.fee_percentage,
-        fee_fixed = EXCLUDED.fee_fixed,
-        days_to_receive = EXCLUDED.days_to_receive,
-        description = EXCLUDED.description,
-        is_active = EXCLUDED.is_active,
-        updated_at = NOW()
-      RETURNING *
-    `, [
-      companyId, id, installments, fee_percentage || 0,
-      fee_fixed || 0, days_to_receive || 0, description, is_active !== false
-    ]);
+    // Verificar se já existe taxa para este número de parcelas
+    const existingFee = await pool.query(
+      'SELECT id FROM payment_fees WHERE payment_method_id = $1 AND installments = $2',
+      [id, installments]
+    );
+    
+    let result;
+    if (existingFee.rows.length > 0) {
+      // Atualizar
+      result = await pool.query(`
+        UPDATE payment_fees SET
+          fee_percentage = $1,
+          fee_fixed = $2,
+          days_to_receive = $3,
+          description = $4,
+          is_active = $5,
+          updated_at = NOW()
+        WHERE payment_method_id = $6 AND installments = $7
+        RETURNING *
+      `, [fee_percentage || 0, fee_fixed || 0, days_to_receive || 0, description, is_active !== false, id, installments]);
+    } else {
+      // Inserir
+      result = await pool.query(`
+        INSERT INTO payment_fees (
+          company_id, payment_method_id, installments, fee_percentage,
+          fee_fixed, days_to_receive, description, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `, [companyId, id, installments, fee_percentage || 0, fee_fixed || 0, days_to_receive || 0, description, is_active !== false]);
+    }
     
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -252,14 +464,11 @@ router.post('/:id/fees', async (req, res) => {
 router.delete('/:methodId/fees/:feeId', async (req, res) => {
   try {
     const { methodId, feeId } = req.params;
-    const companyId = req.companyId;
     
-    const result = await pool.query(`
-      DELETE FROM payment_fees 
-      WHERE id = $1 AND payment_method_id = $2 
-        AND company_id = $3
-      RETURNING *
-    `, [feeId, methodId, companyId]);
+    const result = await pool.query(
+      'DELETE FROM payment_fees WHERE id = $1 AND payment_method_id = $2 RETURNING *',
+      [feeId, methodId]
+    );
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Taxa não encontrada' });
@@ -272,7 +481,7 @@ router.delete('/:methodId/fees/:feeId', async (req, res) => {
   }
 });
 
-// Atualizar todas as taxas de uma forma de pagamento de uma vez
+// Atualizar todas as taxas de uma forma de pagamento
 router.put('/:id/fees/bulk', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -282,11 +491,8 @@ router.put('/:id/fees/bulk', async (req, res) => {
     const companyId = req.companyId;
     const { fees } = req.body;
     
-    // Verificar se a forma de pagamento pertence à empresa
-    const methodCheck = await client.query(
-      'SELECT id FROM payment_methods WHERE id = $1 AND company_id = $2',
-      [id, companyId]
-    );
+    // Verificar se a forma de pagamento existe
+    const methodCheck = await client.query('SELECT id FROM payment_methods WHERE id = $1', [id]);
     
     if (methodCheck.rows.length === 0) {
       throw new Error('Forma de pagamento não encontrada');
@@ -302,10 +508,7 @@ router.put('/:id/fees/bulk', async (req, res) => {
           company_id, payment_method_id, installments, fee_percentage,
           fee_fixed, days_to_receive, description, is_active
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [
-        companyId, id, fee.installments, fee.fee_percentage || 0,
-        fee.fee_fixed || 0, fee.days_to_receive || 0, fee.description, fee.is_active !== false
-      ]);
+      `, [companyId, id, fee.installments, fee.fee_percentage || 0, fee.fee_fixed || 0, fee.days_to_receive || 0, fee.description, fee.is_active !== false]);
     }
     
     await client.query('COMMIT');
@@ -330,19 +533,20 @@ router.put('/:id/fees/bulk', async (req, res) => {
 // CÁLCULO DE LUCRO LÍQUIDO
 // ═══════════════════════════════════════════════════════
 
-// Calcular lucro líquido de uma venda considerando taxas
+// Calcular lucro líquido de uma venda
 router.post('/calculate-net', async (req, res) => {
   try {
-    const companyId = req.companyId;
     const { payment_method_code, installments, gross_amount } = req.body;
     
-    // Buscar forma de pagamento e taxa
+    const hasCode = await columnExists('payment_methods', 'code');
+    const codeCol = hasCode ? 'code' : 'codigo';
+    
     const feeResult = await pool.query(`
       SELECT pf.fee_percentage, pf.fee_fixed, pf.days_to_receive
       FROM payment_methods pm
       JOIN payment_fees pf ON pf.payment_method_id = pm.id
-      WHERE pm.company_id = $1 AND pm.code = $2 AND pf.installments = $3
-    `, [companyId, payment_method_code, installments || 1]);
+      WHERE pm.${codeCol} = $1 AND pf.installments = $2
+    `, [payment_method_code, installments || 1]);
     
     let fee_percentage = 0;
     let fee_fixed = 0;
@@ -380,9 +584,14 @@ router.get('/report/fees', async (req, res) => {
     const companyId = req.companyId;
     const { start_date, end_date } = req.query;
     
+    const hasCode = await columnExists('payment_methods', 'code');
+    const codeCol = hasCode ? 'code' : 'codigo';
+    const hasName = await columnExists('payment_methods', 'name');
+    const nameCol = hasName ? 'name' : 'nome';
+    
     const result = await pool.query(`
       SELECT 
-        pm.name as payment_method,
+        pm.${nameCol} as payment_method,
         p.parcelas as installments,
         COUNT(*) as total_transactions,
         SUM(p.valor) as gross_total,
@@ -390,16 +599,14 @@ router.get('/report/fees', async (req, res) => {
         SUM(p.valor - COALESCE(p.taxa_cartao, 0)) as net_total
       FROM payments p
       JOIN vendas v ON p.sale_id = v.id
-      LEFT JOIN payment_methods pm ON pm.code = p.forma_pagamento AND pm.company_id = $1
-      WHERE v.company_id = $1
-        AND v.created_at >= $2
-        AND v.created_at <= $3
+      LEFT JOIN payment_methods pm ON pm.${codeCol} = p.forma_pagamento
+      WHERE v.created_at >= $1
+        AND v.created_at <= $2
         AND p.status = 'confirmed'
-      GROUP BY pm.name, p.parcelas
+      GROUP BY pm.${nameCol}, p.parcelas
       ORDER BY gross_total DESC
-    `, [companyId, start_date, end_date]);
+    `, [start_date, end_date]);
     
-    // Totais gerais
     const totalsResult = await pool.query(`
       SELECT 
         COUNT(*) as total_transactions,
@@ -408,11 +615,10 @@ router.get('/report/fees', async (req, res) => {
         SUM(p.valor - COALESCE(p.taxa_cartao, 0)) as net_total
       FROM payments p
       JOIN vendas v ON p.sale_id = v.id
-      WHERE v.company_id = $1
-        AND v.created_at >= $2
-        AND v.created_at <= $3
+      WHERE v.created_at >= $1
+        AND v.created_at <= $2
         AND p.status = 'confirmed'
-    `, [companyId, start_date, end_date]);
+    `, [start_date, end_date]);
     
     res.json({
       success: true,
@@ -428,4 +634,3 @@ router.get('/report/fees', async (req, res) => {
 });
 
 export default router;
-
