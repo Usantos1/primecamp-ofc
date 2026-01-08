@@ -19,11 +19,40 @@ import { useDepartments } from '@/hooks/useDepartments';
 import { UserPermissionsManager } from '@/components/UserPermissionsManager';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Tipos de função disponíveis
+type UserRoleType = 'admin' | 'gerente' | 'supervisor' | 'vendedor' | 'caixa' | 'estoquista' | 'financeiro' | 'atendente' | 'member';
+
+// Labels das funções em português
+const USER_ROLE_LABELS: Record<UserRoleType, string> = {
+  admin: 'Administrador',
+  gerente: 'Gerente',
+  supervisor: 'Supervisor',
+  vendedor: 'Vendedor',
+  caixa: 'Operador de Caixa',
+  estoquista: 'Estoquista',
+  financeiro: 'Financeiro',
+  atendente: 'Atendente',
+  member: 'Membro'
+};
+
+// Descrições das funções
+const USER_ROLE_DESCRIPTIONS: Record<UserRoleType, string> = {
+  admin: 'Acesso total ao sistema',
+  gerente: 'Gerencia equipes, vendas, estoque e relatórios',
+  supervisor: 'Supervisiona equipe e operações diárias',
+  vendedor: 'Realiza vendas e atendimento ao cliente',
+  caixa: 'Opera o caixa e recebe pagamentos',
+  estoquista: 'Gerencia entradas e saídas de estoque',
+  financeiro: 'Acessa relatórios financeiros e contas',
+  atendente: 'Atendimento básico ao cliente',
+  member: 'Acesso básico ao sistema'
+};
+
 interface UserProfile {
   id: string;
   user_id: string;
   display_name: string | null;
-  role: 'admin' | 'member';
+  role: UserRoleType;
   department: string | null;
   approved: boolean;
   approved_at: string | null;
@@ -711,8 +740,8 @@ export const UserManagementNew = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                      {user.role === 'admin' ? 'Administrador' : 'Membro'}
+                    <Badge variant={user.role === 'admin' ? 'default' : user.role === 'gerente' ? 'default' : 'secondary'}>
+                      {USER_ROLE_LABELS[user.role as UserRoleType] || user.role}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -861,14 +890,112 @@ export const UserManagementNew = () => {
                 <Label htmlFor="edit_role">Função *</Label>
                 <Select 
                   value={editFormData.role} 
-                  onValueChange={(value: 'admin' | 'member') => setEditFormData({ ...editFormData, role: value })}
+                  onValueChange={(value: UserRoleType) => setEditFormData({ ...editFormData, role: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione a função" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="member">Membro</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
+                    {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {editFormData.role && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {USER_ROLE_DESCRIPTIONS[editFormData.role as UserRoleType]}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </DialogContent>
+      <DialogFooter className="px-6 pb-6">
+        <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+          Cancelar
+        </Button>
+        <Button onClick={handleUpdateUser} disabled={loading}>
+          {loading ? 'Salvando...' : 'Salvar Alterações'}
+        </Button>
+      </DialogFooter>
+    </Dialog>
+
+    {/* Dialog Criar Novo Usuário - DUPLICADO CORRIGIDO */}
+    <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Criar Novo Usuário</DialogTitle>
+          <DialogDescription>
+            Preencha os dados para criar um novo usuário no sistema.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email *</Label>
+            <Input
+              id="email"
+              type="email"
+              value={newUser.email}
+              onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+              placeholder="email@empresa.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nome">Nome Completo *</Label>
+            <Input
+              id="nome"
+              value={newUser.nome}
+              onChange={(e) => setNewUser({...newUser, nome: e.target.value})}
+              placeholder="Nome do usuário"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="senha">Senha Temporária *</Label>
+            <Input
+              id="senha"
+              type="password"
+              value={newUser.senha}
+              onChange={(e) => setNewUser({...newUser, senha: e.target.value})}
+              placeholder="Mínimo 6 caracteres"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="department">Departamento *</Label>
+            <Select value={newUser.department} onValueChange={(value) => setNewUser({...newUser, department: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map(dept => (
+                  <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Função *</Label>
+            <Select value={newUser.role} onValueChange={(value: UserRoleType) => setNewUser({...newUser, role: value})}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a função" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {newUser.role && (
+              <p className="text-xs text-muted-foreground">
+                {USER_ROLE_DESCRIPTIONS[newUser.role as UserRoleType]}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
                   </SelectContent>
                 </Select>
               </div>
@@ -1012,15 +1139,23 @@ export const UserManagementNew = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Função *</Label>
-              <Select value={newUser.role} onValueChange={(value: 'admin' | 'member') => setNewUser({...newUser, role: value})}>
+              <Select value={newUser.role} onValueChange={(value: UserRoleType) => setNewUser({...newUser, role: value})}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione a função" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="member">Membro</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {newUser.role && (
+                <p className="text-xs text-muted-foreground">
+                  {USER_ROLE_DESCRIPTIONS[newUser.role as UserRoleType]}
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setNewUserDialogOpen(false)}>
