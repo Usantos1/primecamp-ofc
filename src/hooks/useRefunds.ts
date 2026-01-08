@@ -114,6 +114,12 @@ export function useRefunds() {
   const createRefund = useCallback(async (data: CreateRefundData) => {
     setLoading(true);
     try {
+      // Log detalhado dos itens
+      console.log('[useRefunds] Criando devolução com dados:', JSON.stringify(data, null, 2));
+      data.items.forEach((item, idx) => {
+        console.log(`[useRefunds] Item ${idx}: ${item.product_name}, qty=${item.quantity}, unit_price=${item.unit_price}, subtotal=${item.quantity * item.unit_price}`);
+      });
+      
       const response = await apiClient.post('/refunds', data);
       if (response.data?.success) {
         toast({

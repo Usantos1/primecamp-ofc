@@ -149,15 +149,25 @@ router.post('/', async (req, res) => {
     const refundNumber = `DEV${String(seqResult.rows[0].num).padStart(6, '0')}`;
     
     // Calcular valor total da devolução
-    // Garantir que os valores são números válidos
-    const totalRefundValue = items.reduce((sum, item) => {
-      const qty = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.unit_price) || 0;
-      console.log(`[Refund] Item: ${item.product_name}, qty: ${qty}, price: ${price}, subtotal: ${qty * price}`);
-      return sum + (qty * price);
-    }, 0);
+    console.log('[Refund] Items recebidos:', JSON.stringify(items, null, 2));
     
-    console.log(`[Refund] Total calculado: ${totalRefundValue}`);
+    let totalRefundValue = 0;
+    for (const item of items) {
+      // Converter valores garantindo que são números
+      const qty = Number(item.quantity) || 1;
+      const price = Number(item.unit_price) || 0;
+      const itemTotal = qty * price;
+      
+      console.log(`[Refund] Item: ${item.product_name}`);
+      console.log(`[Refund]   - quantity raw: ${item.quantity} (${typeof item.quantity})`);
+      console.log(`[Refund]   - unit_price raw: ${item.unit_price} (${typeof item.unit_price})`);
+      console.log(`[Refund]   - qty convertido: ${qty}, price convertido: ${price}`);
+      console.log(`[Refund]   - subtotal: ${itemTotal}`);
+      
+      totalRefundValue += itemTotal;
+    }
+    
+    console.log(`[Refund] TOTAL FINAL: R$ ${totalRefundValue}`);
     
     // Criar devolução
     const refundResult = await client.query(`
@@ -176,6 +186,10 @@ router.post('/', async (req, res) => {
     
     // Inserir itens da devolução
     for (const item of items) {
+      const itemQty = Number(item.quantity) || 1;
+      const itemPrice = Number(item.unit_price) || 0;
+      const itemTotal = itemQty * itemPrice;
+      
       await client.query(`
         INSERT INTO refund_items (
           refund_id, sale_item_id, product_id, product_name, quantity,
@@ -183,9 +197,9 @@ router.post('/', async (req, res) => {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `, [
         refund.id, item.sale_item_id, item.product_id, item.product_name,
-        item.quantity, item.unit_price, item.quantity * item.unit_price,
+        itemQty, itemPrice, itemTotal,
         item.reason || reason, item.condition || 'novo', item.return_to_stock !== false,
-        item.destination || 'stock' // 'stock', 'exchange', 'loss'
+        item.destination || 'stock'
       ]);
     }
     
