@@ -21,6 +21,107 @@ interface RolePermission {
   permission?: Permission;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// MAPEAMENTO DE PERMISSÕES POR FUNÇÃO
+// Cada função tem acesso a diferentes áreas do sistema
+// ═══════════════════════════════════════════════════════════════
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  // ADMINISTRADOR - Acesso total (tratado separadamente)
+  admin: ['*'],
+  
+  // GERENTE - Quase tudo, exceto configurações críticas
+  gerente: [
+    'dashboard.view', 'dashboard.gestao',
+    'vendas.view', 'vendas.create', 'vendas.edit', 'vendas.manage',
+    'caixa.view', 'caixa.open', 'caixa.close', 'caixa.sangria', 'caixa.suprimento',
+    'os.view', 'os.create', 'os.edit',
+    'produtos.view', 'produtos.create', 'produtos.edit',
+    'clientes.view', 'clientes.create', 'clientes.edit',
+    'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
+    'rh.view', 'rh.metas', 'rh.ponto',
+    'processos.view', 'processos.create', 'processos.edit',
+    'tarefas.view', 'tarefas.create', 'tarefas.edit',
+    'calendario.view',
+    'metricas.view',
+    'nps.view',
+    'admin.users', // Pode gerenciar usuários da equipe
+  ],
+  
+  // SUPERVISOR - Supervisão de equipe e operações
+  supervisor: [
+    'dashboard.view', 'dashboard.gestao',
+    'vendas.view', 'vendas.create', 'vendas.edit',
+    'caixa.view', 'caixa.open', 'caixa.close',
+    'os.view', 'os.create', 'os.edit',
+    'produtos.view',
+    'clientes.view', 'clientes.create', 'clientes.edit',
+    'relatorios.vendas',
+    'rh.view', 'rh.ponto',
+    'processos.view',
+    'tarefas.view', 'tarefas.create',
+    'calendario.view',
+    'metricas.view',
+  ],
+  
+  // VENDEDOR - Vendas e atendimento
+  vendedor: [
+    'dashboard.view',
+    'vendas.view', 'vendas.create',
+    'caixa.view',
+    'os.view', 'os.create',
+    'produtos.view',
+    'clientes.view', 'clientes.create',
+    'calendario.view',
+    'rh.ponto',
+  ],
+  
+  // OPERADOR DE CAIXA - Apenas caixa e PDV
+  caixa: [
+    'dashboard.view',
+    'vendas.view', 'vendas.create',
+    'caixa.view', 'caixa.open', 'caixa.close',
+    'produtos.view',
+    'clientes.view',
+    'rh.ponto',
+  ],
+  
+  // ESTOQUISTA - Gestão de estoque
+  estoquista: [
+    'dashboard.view',
+    'produtos.view', 'produtos.create', 'produtos.edit',
+    'os.view',
+    'rh.ponto',
+  ],
+  
+  // FINANCEIRO - Relatórios e contas
+  financeiro: [
+    'dashboard.view', 'dashboard.gestao',
+    'vendas.view',
+    'caixa.view',
+    'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
+    'metricas.view',
+    'clientes.view',
+    'rh.ponto',
+  ],
+  
+  // ATENDENTE - Atendimento básico
+  atendente: [
+    'dashboard.view',
+    'clientes.view', 'clientes.create',
+    'os.view',
+    'produtos.view',
+    'calendario.view',
+    'rh.ponto',
+  ],
+  
+  // MEMBRO - Acesso mínimo
+  member: [
+    'dashboard.view',
+    'rh.ponto',
+    'calendario.view',
+  ],
+};
+
 export function usePermissions() {
   const { user, profile, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
@@ -63,85 +164,75 @@ export function usePermissions() {
     try {
       setLoading(true);
 
+      const permSet = new Set<string>();
+      const userRole = profile?.role || 'member';
+
       // Se for admin, tem todas as permissões
-      if (profile?.role === 'admin') {
+      if (userRole === 'admin') {
         const { data: allPermissions } = await from('permissions')
           .select('resource, action')
           .execute();
 
-        if (allPermissions) {
-          const permSet = new Set(
-            allPermissions.map((p: any) => `${p.resource}.${p.action}`)
-          );
-          setPermissions(permSet);
-          setLoading(false);
-          return;
+        if (allPermissions && allPermissions.length > 0) {
+          allPermissions.forEach((p: any) => {
+            permSet.add(`${p.resource}.${p.action}`);
+          });
         }
+        
+        // Adicionar permissões padrão de admin mesmo se tabela permissions estiver vazia
+        const adminPerms = [
+          'dashboard.view', 'dashboard.gestao',
+          'vendas.view', 'vendas.create', 'vendas.edit', 'vendas.manage',
+          'caixa.view', 'caixa.open', 'caixa.close', 'caixa.sangria', 'caixa.suprimento',
+          'os.view', 'os.create', 'os.edit',
+          'produtos.view', 'produtos.create', 'produtos.edit',
+          'clientes.view', 'clientes.create', 'clientes.edit',
+          'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
+          'rh.view', 'rh.metas', 'rh.ponto', 'rh.treinamentos',
+          'processos.view', 'processos.create', 'processos.edit',
+          'tarefas.view', 'tarefas.create', 'tarefas.edit',
+          'calendario.view',
+          'metricas.view',
+          'nps.view',
+          'disc.view',
+          'admin.users', 'admin.positions', 'admin.departments', 
+          'admin.config', 'admin.timeclock', 'admin.nps', 
+          'admin.disc', 'admin.logs',
+        ];
+        adminPerms.forEach(p => permSet.add(p));
+        
+        setPermissions(permSet);
+        setLoading(false);
+        return;
       }
 
-      // Buscar permissões customizadas do usuário
-      const { data: userPerms, error: userPermsError } = await from('user_permissions')
-        .select('permission_id, granted')
-        .eq('user_id', user?.id)
-        .execute();
+      // ═══════════════════════════════════════════════════════════════
+      // CARREGAR PERMISSÕES BASEADO NA FUNÇÃO (ROLE)
+      // ═══════════════════════════════════════════════════════════════
+      const rolePermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['member'] || [];
+      rolePermissions.forEach(p => permSet.add(p));
 
-      if (userPermsError) {
-        console.error('Erro ao buscar permissões customizadas:', userPermsError);
+      // Buscar permissões customizadas do usuário (override)
+      try {
+        const { data: userPerms } = await from('user_permissions')
+          .select('permission_id, granted')
+          .eq('user_id', user?.id)
+          .execute();
+
+        if (userPerms && userPerms.length > 0) {
+          userPerms.forEach((up: any) => {
+            if (up.granted === false && up.permission) {
+              // Remover permissão negada
+              permSet.delete(`${up.permission.resource}.${up.permission.action}`);
+            } else if (up.granted === true && up.permission) {
+              // Adicionar permissão concedida
+              permSet.add(`${up.permission.resource}.${up.permission.action}`);
+            }
+          });
+        }
+      } catch (e) {
+        // Tabela user_permissions pode não existir
       }
-
-      // Buscar permissões via role
-      const { data: rolePerms, error: rolePermsError } = await from('user_position_departments')
-        .select('role_id')
-        .eq('user_id', user?.id)
-        .execute();
-
-      if (rolePermsError) {
-        console.error('Erro ao buscar permissões via role:', rolePermsError);
-      }
-
-      const permSet = new Set<string>();
-
-      // Adicionar permissões negadas (override)
-      if (userPerms) {
-        userPerms.forEach((up: any) => {
-          if (up.granted === false && up.permission) {
-            // Não adicionar (está negada)
-          } else if (up.granted === true && up.permission) {
-            permSet.add(`${up.permission.resource}.${up.permission.action}`);
-          }
-        });
-      }
-
-      // Adicionar permissões via role (se não foram negadas)
-      if (rolePerms && rolePerms.length > 0) {
-        rolePerms.forEach((rp: any) => {
-          if (rp.role && rp.role.role_permissions) {
-            rp.role.role_permissions.forEach((rperm: any) => {
-              if (rperm.permission) {
-                const permKey = `${rperm.permission.resource}.${rperm.permission.action}`;
-                // Só adicionar se não foi negada explicitamente
-                const wasDenied = userPerms?.some(
-                  (up: any) => 
-                    up.permission?.resource === rperm.permission.resource &&
-                    up.permission?.action === rperm.permission.action &&
-                    up.granted === false
-                );
-                if (!wasDenied) {
-                  permSet.add(permKey);
-                }
-              }
-            });
-          }
-        });
-      }
-
-      // Debug: log das permissões carregadas
-      console.log('Permissões carregadas:', {
-        userPerms: userPerms?.length || 0,
-        rolePerms: rolePerms?.length || 0,
-        totalPerms: permSet.size,
-        perms: Array.from(permSet)
-      });
 
       setPermissions(permSet);
     } catch (error) {
