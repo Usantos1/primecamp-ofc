@@ -175,7 +175,7 @@ export default function Admin() {
       title="Painel Administrativo"
       subtitle="Central de administração e configurações do sistema"
     >
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0 overflow-auto max-h-[calc(100vh-180px)] pb-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
           <Card className="border-2 border-gray-300 border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow bg-blue-50/50 md:bg-transparent">
