@@ -74,3 +74,4 @@ echo "   Se a rota de teste funcionar mas /api/api-tokens der 404,"
 echo "   o problema pode ser de autenticação. Verifique os logs:"
 echo "   pm2 logs primecamp-api --lines 100"
 
+

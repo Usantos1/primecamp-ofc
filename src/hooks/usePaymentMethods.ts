@@ -79,10 +79,21 @@ export function usePaymentMethods() {
     try {
       const params = activeOnly ? '?active_only=true' : '';
       const response = await apiClient.get(`/payment-methods${params}`);
-      if (response.success) {
-        setPaymentMethods(response.data);
+      // apiClient retorna { data: { success, data } } ou { error }
+      if (response.error) {
+        throw new Error(response.error);
       }
-      return response.data;
+      const apiData = response.data;
+      if (apiData?.success && apiData?.data) {
+        setPaymentMethods(apiData.data);
+        return apiData.data;
+      }
+      // Fallback caso a resposta venha em formato diferente
+      if (Array.isArray(apiData)) {
+        setPaymentMethods(apiData);
+        return apiData;
+      }
+      return [];
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -99,7 +110,8 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.get(`/payment-methods/${id}`);
-      return response.data;
+      if (response.error) throw new Error(response.error);
+      return response.data?.data || response.data;
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -116,14 +128,16 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.post('/payment-methods', data);
-      if (response.success) {
+      if (response.error) throw new Error(response.error);
+      const apiData = response.data;
+      if (apiData?.success) {
         toast({
           title: 'Sucesso',
           description: 'Forma de pagamento criada com sucesso'
         });
-        return response.data;
+        return apiData.data;
       }
-      throw new Error(response.error);
+      throw new Error(apiData?.error || 'Erro ao criar');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -140,14 +154,16 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.put(`/payment-methods/${id}`, data);
-      if (response.success) {
+      if (response.error) throw new Error(response.error);
+      const apiData = response.data;
+      if (apiData?.success) {
         toast({
           title: 'Sucesso',
           description: 'Forma de pagamento atualizada'
         });
-        return response.data;
+        return apiData.data;
       }
-      throw new Error(response.error);
+      throw new Error(apiData?.error || 'Erro ao atualizar');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -164,14 +180,16 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.delete(`/payment-methods/${id}`);
-      if (response.success) {
+      if (response.error) throw new Error(response.error);
+      const apiData = response.data;
+      if (apiData?.success) {
         toast({
           title: 'Sucesso',
           description: 'Forma de pagamento excluída'
         });
         return true;
       }
-      throw new Error(response.error);
+      throw new Error(apiData?.error || 'Erro ao excluir');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -191,7 +209,8 @@ export function usePaymentMethods() {
   const fetchFees = useCallback(async (methodId: string) => {
     try {
       const response = await apiClient.get(`/payment-methods/${methodId}/fees`);
-      return response.data;
+      if (response.error) return [];
+      return response.data?.data || response.data || [];
     } catch (error: any) {
       return [];
     }
@@ -201,14 +220,16 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.post(`/payment-methods/${methodId}/fees`, fee);
-      if (response.success) {
+      if (response.error) throw new Error(response.error);
+      const apiData = response.data;
+      if (apiData?.success) {
         toast({
           title: 'Sucesso',
           description: 'Taxa salva com sucesso'
         });
-        return response.data;
+        return apiData.data;
       }
-      throw new Error(response.error);
+      throw new Error(apiData?.error || 'Erro ao salvar');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -225,14 +246,16 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.put(`/payment-methods/${methodId}/fees/bulk`, { fees });
-      if (response.success) {
+      if (response.error) throw new Error(response.error);
+      const apiData = response.data;
+      if (apiData?.success) {
         toast({
           title: 'Sucesso',
           description: 'Taxas atualizadas com sucesso'
         });
-        return response.data;
+        return apiData.data;
       }
-      throw new Error(response.error);
+      throw new Error(apiData?.error || 'Erro ao salvar');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -249,14 +272,16 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.delete(`/payment-methods/${methodId}/fees/${feeId}`);
-      if (response.success) {
+      if (response.error) throw new Error(response.error);
+      const apiData = response.data;
+      if (apiData?.success) {
         toast({
           title: 'Sucesso',
           description: 'Taxa excluída'
         });
         return true;
       }
-      throw new Error(response.error);
+      throw new Error(apiData?.error || 'Erro ao excluir');
     } catch (error: any) {
       toast({
         title: 'Erro',
@@ -280,7 +305,8 @@ export function usePaymentMethods() {
         installments,
         gross_amount: grossAmount
       });
-      return response.data;
+      if (response.error) return null;
+      return response.data?.data || response.data;
     } catch (error: any) {
       return null;
     }
@@ -290,7 +316,8 @@ export function usePaymentMethods() {
     setLoading(true);
     try {
       const response = await apiClient.get(`/payment-methods/report/fees?start_date=${startDate}&end_date=${endDate}`);
-      return response.data;
+      if (response.error) throw new Error(response.error);
+      return response.data?.data || response.data;
     } catch (error: any) {
       toast({
         title: 'Erro',
