@@ -19,7 +19,9 @@ import {
   ArrowRight,
   Video,
   FileText,
-  Store
+  Store,
+  CreditCard,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -143,6 +145,20 @@ export default function Admin() {
       icon: Activity,
       path: "/admin/logs",
       color: "text-gray-600"
+    },
+    {
+      title: "Minha Empresa",
+      description: "Dashboard com métricas e limites do plano",
+      icon: BarChart3,
+      path: "/minha-empresa",
+      color: "text-cyan-600"
+    },
+    {
+      title: "Assinatura",
+      description: "Gerencie seu plano e pagamentos",
+      icon: CreditCard,
+      path: "/assinatura",
+      color: "text-green-600"
     },
     // Gestão de Revenda - apenas para empresa principal
     ...(user?.company_id === ADMIN_COMPANY_ID ? [{

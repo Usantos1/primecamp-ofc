@@ -1,24 +1,19 @@
 import { useState, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PaymentDialog } from '@/components/payments/PaymentDialog';
 import { PaymentHistory } from '@/components/payments/PaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
-import { useReseller } from '@/hooks/useReseller';
 import { useCompanyDashboard } from '@/hooks/useCompanyDashboard';
 import { 
   CreditCard, 
-  Crown, 
   Check, 
   AlertTriangle,
-  Calendar,
-  Zap
+  Calendar
 } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner';
 
 interface Plan {
   id: string;
@@ -30,20 +25,15 @@ interface Plan {
   max_users: number;
   max_products: number;
   max_orders: number;
-  features: string[];
-  is_active: boolean;
 }
 
 export default function SubscriptionPage() {
   const { user } = useAuth();
-  const { listPlans } = useReseller();
   const { getCompanyMetrics } = useCompanyDashboard();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
   const companyId = user?.company_id;
 
@@ -54,13 +44,17 @@ export default function SubscriptionPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Carregar planos disponíveis - usando a API pública
+      // Carregar planos
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('https://api.primecamp.cloud/api/query/plans', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           select: '*',
-          where: { is_active: true },
+          where: { active: true },
           orderBy: { field: 'price_monthly', ascending: true }
         })
       });
@@ -70,52 +64,40 @@ export default function SubscriptionPage() {
         setPlans(data.data || []);
       }
 
-      // Carregar métricas da empresa
+      // Carregar métricas
       if (companyId) {
         const metricsData = await getCompanyMetrics(companyId);
         if (metricsData) setMetrics(metricsData);
       }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro ao carregar:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectPlan = (plan: Plan) => {
-    setSelectedPlan(plan);
-    setPaymentDialogOpen(true);
-  };
-
-  const handlePaymentConfirmed = () => {
-    toast.success('Assinatura ativada com sucesso!');
-    setPaymentDialogOpen(false);
-    loadData();
-  };
-
-  const getSubscriptionStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'trial': return 'bg-blue-500';
-      case 'past_due': return 'bg-yellow-500';
-      case 'expired': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case 'active': return <Badge className="bg-green-600">Ativa</Badge>;
+      case 'trial': return <Badge className="bg-blue-600">Trial</Badge>;
+      case 'past_due': return <Badge className="bg-yellow-600">Vencida</Badge>;
+      case 'expired': return <Badge className="bg-red-600">Expirada</Badge>;
+      default: return <Badge variant="secondary">-</Badge>;
     }
   };
 
-  const getSubscriptionStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Ativa';
-      case 'trial': return 'Período de Teste';
-      case 'past_due': return 'Vencida';
-      case 'expired': return 'Expirada';
-      default: return 'Sem assinatura';
-    }
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (!isValid(date)) return '-';
+    return format(date, "dd/MM/yyyy", { locale: ptBR });
   };
 
   const getDaysUntilExpiration = () => {
     if (!metrics?.subscription?.expires_at) return null;
-    return differenceInDays(new Date(metrics.subscription.expires_at), new Date());
+    const expiresAt = new Date(metrics.subscription.expires_at);
+    if (!isValid(expiresAt)) return null;
+    return differenceInDays(expiresAt, new Date());
   };
 
   const daysUntilExpiration = getDaysUntilExpiration();
@@ -124,7 +106,7 @@ export default function SubscriptionPage() {
     return (
       <ModernLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </ModernLayout>
     );
@@ -132,48 +114,43 @@ export default function SubscriptionPage() {
 
   return (
     <ModernLayout>
-      <div className="p-6 space-y-8">
-        {/* Header */}
+      <div className="p-6 space-y-6 max-w-5xl mx-auto overflow-auto">
         <div>
-          <h1 className="text-2xl font-bold text-white">Assinatura</h1>
-          <p className="text-gray-400">Gerencie seu plano e pagamentos</p>
+          <h1 className="text-2xl font-semibold">Assinatura</h1>
+          <p className="text-muted-foreground text-sm">Gerencie seu plano e pagamentos</p>
         </div>
 
-        {/* Status atual da assinatura */}
+        {/* Status atual */}
         {metrics && (
-          <Card className="bg-card/50 backdrop-blur border-border/50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Crown className="w-5 h-5 text-yellow-500" />
+              <CardTitle className="text-base flex items-center gap-2">
+                <CreditCard className="w-4 h-4" />
                 Sua Assinatura
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
-                  <p className="text-gray-400 text-sm">Plano Atual</p>
-                  <p className="text-white font-semibold text-lg">
-                    {metrics.subscription.plan || 'Sem plano'}
-                  </p>
+                  <p className="text-muted-foreground text-sm">Plano</p>
+                  <p className="font-semibold">{metrics.subscription.plan || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Status</p>
-                  <Badge className={getSubscriptionStatusColor(metrics.subscription.status)}>
-                    {getSubscriptionStatusText(metrics.subscription.status)}
-                  </Badge>
+                  <p className="text-muted-foreground text-sm">Status</p>
+                  <div className="mt-1">{getStatusBadge(metrics.subscription.status)}</div>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Expira em</p>
-                  <p className="text-white font-semibold">
-                    {metrics.subscription.expires_at 
-                      ? format(new Date(metrics.subscription.expires_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-                      : '-'
-                    }
-                  </p>
+                  <p className="text-muted-foreground text-sm">Validade</p>
+                  <p className="font-semibold">{formatDate(metrics.subscription.expires_at)}</p>
+                  {daysUntilExpiration !== null && daysUntilExpiration > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ({daysUntilExpiration} dias restantes)
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Valor</p>
-                  <p className="text-green-400 font-semibold text-lg">
+                  <p className="text-muted-foreground text-sm">Valor</p>
+                  <p className="font-semibold text-green-600">
                     {metrics.subscription.price_monthly 
                       ? `R$ ${metrics.subscription.price_monthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês`
                       : '-'
@@ -184,153 +161,98 @@ export default function SubscriptionPage() {
 
               {/* Alerta de vencimento */}
               {daysUntilExpiration !== null && daysUntilExpiration <= 7 && (
-                <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-4">
-                  <AlertTriangle className="w-8 h-8 text-yellow-500 flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-yellow-500">
-                      {daysUntilExpiration > 0 
-                        ? `Sua assinatura expira em ${daysUntilExpiration} dias`
-                        : 'Sua assinatura está vencida'
-                      }
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      Renove agora para continuar usando todas as funcionalidades.
-                    </p>
-                  </div>
-                  <Button className="bg-yellow-500 hover:bg-yellow-600 text-black">
-                    Renovar Agora
-                  </Button>
+                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  <p className="text-sm flex-1">
+                    {daysUntilExpiration > 0 
+                      ? `Sua assinatura expira em ${daysUntilExpiration} dias.`
+                      : 'Sua assinatura está vencida.'
+                    }
+                  </p>
+                  <Button size="sm">Renovar</Button>
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Seletor de ciclo de cobrança */}
-        <div className="flex justify-center">
-          <div className="bg-background/50 p-1 rounded-lg inline-flex">
-            <Button
-              variant={billingCycle === 'monthly' ? 'default' : 'ghost'}
-              onClick={() => setBillingCycle('monthly')}
-            >
-              Mensal
-            </Button>
-            <Button
-              variant={billingCycle === 'yearly' ? 'default' : 'ghost'}
-              onClick={() => setBillingCycle('yearly')}
-              className="relative"
-            >
-              Anual
-              <Badge className="absolute -top-2 -right-2 bg-green-500 text-xs">
-                -20%
-              </Badge>
-            </Button>
-          </div>
+        {/* Seletor de ciclo */}
+        <div className="flex justify-center gap-2">
+          <Button
+            variant={billingCycle === 'monthly' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setBillingCycle('monthly')}
+          >
+            Mensal
+          </Button>
+          <Button
+            variant={billingCycle === 'yearly' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setBillingCycle('yearly')}
+            className="relative"
+          >
+            Anual
+            <Badge className="absolute -top-2 -right-2 bg-green-600 text-xs px-1">
+              -20%
+            </Badge>
+          </Button>
         </div>
 
-        {/* Planos disponíveis */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan, index) => {
-            const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
-            const isCurrentPlan = metrics?.subscription?.plan === plan.name;
-            const isPopular = index === 1; // Plano do meio é o popular
+        {/* Planos */}
+        {plans.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {plans.map((plan) => {
+              const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+              const isCurrentPlan = metrics?.subscription?.plan === plan.name;
 
-            return (
-              <Card 
-                key={plan.id}
-                className={`relative bg-card/50 backdrop-blur border-border/50 ${
-                  isPopular ? 'border-primary ring-2 ring-primary/20' : ''
-                } ${isCurrentPlan ? 'border-green-500/50' : ''}`}
-              >
-                {isPopular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">
-                      <Zap className="w-3 h-3 mr-1" />
-                      Mais Popular
-                    </Badge>
-                  </div>
-                )}
-
-                {isCurrentPlan && (
-                  <div className="absolute -top-3 right-4">
-                    <Badge className="bg-green-500">
-                      <Check className="w-3 h-3 mr-1" />
-                      Plano Atual
-                    </Badge>
-                  </div>
-                )}
-
-                <CardHeader className="text-center pt-8">
-                  <CardTitle className="text-white text-xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-white">
-                      R$ {price?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
-                    <span className="text-gray-400">/{billingCycle === 'yearly' ? 'ano' : 'mês'}</span>
-                  </div>
-                  {billingCycle === 'yearly' && (
-                    <p className="text-sm text-green-400">
-                      Economia de R$ {((plan.price_monthly * 12) - plan.price_yearly).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/ano
-                    </p>
-                  )}
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-2 text-gray-300">
-                      <Check className="w-4 h-4 text-green-500" />
-                      Até {plan.max_users} usuários
-                    </li>
-                    <li className="flex items-center gap-2 text-gray-300">
-                      <Check className="w-4 h-4 text-green-500" />
-                      Até {plan.max_products?.toLocaleString()} produtos
-                    </li>
-                    <li className="flex items-center gap-2 text-gray-300">
-                      <Check className="w-4 h-4 text-green-500" />
-                      Até {plan.max_orders?.toLocaleString()} OS/mês
-                    </li>
-                    {plan.features && Array.isArray(plan.features) && plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-gray-300">
+              return (
+                <Card key={plan.id} className={isCurrentPlan ? 'border-primary' : ''}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{plan.name}</CardTitle>
+                      {isCurrentPlan && <Badge>Atual</Badge>}
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-2xl font-bold">
+                        R$ {price?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        /{billingCycle === 'yearly' ? 'ano' : 'mês'}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-green-500" />
-                        {feature}
+                        Até {plan.max_users} usuários
                       </li>
-                    ))}
-                  </ul>
-
-                  <Button 
-                    className={`w-full ${isCurrentPlan ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                    variant={isPopular ? 'default' : 'outline'}
-                    onClick={() => handleSelectPlan(plan)}
-                    disabled={isCurrentPlan}
-                  >
-                    {isCurrentPlan ? 'Plano Atual' : 'Assinar Agora'}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Histórico de pagamentos */}
-        <PaymentHistory companyId={companyId} />
-
-        {/* Dialog de pagamento */}
-        {selectedPlan && companyId && (
-          <PaymentDialog
-            open={paymentDialogOpen}
-            onClose={() => {
-              setPaymentDialogOpen(false);
-              setSelectedPlan(null);
-            }}
-            companyId={companyId}
-            amount={billingCycle === 'yearly' ? selectedPlan.price_yearly : selectedPlan.price_monthly}
-            planName={selectedPlan.name}
-            onPaymentConfirmed={handlePaymentConfirmed}
-          />
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-500" />
+                        Até {plan.max_products?.toLocaleString()} produtos
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-500" />
+                        Até {plan.max_orders?.toLocaleString()} OS/mês
+                      </li>
+                    </ul>
+                    <Button 
+                      className="w-full mt-4" 
+                      variant={isCurrentPlan ? 'outline' : 'default'}
+                      disabled={isCurrentPlan}
+                    >
+                      {isCurrentPlan ? 'Plano Atual' : 'Assinar'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
+
+        {/* Histórico */}
+        <PaymentHistory companyId={companyId} />
       </div>
     </ModernLayout>
   );
 }
-
