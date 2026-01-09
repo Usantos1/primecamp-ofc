@@ -4125,13 +4125,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé com tabs e ações - DENTRO do Tabs */}
-          <div className="p-1 sm:p-2 flex-shrink-0 mt-auto safe-area-bottom sticky bottom-0 bg-gray-50/95 backdrop-blur-sm">
-            <Card className="border border-gray-200 shadow-sm rounded-lg sm:rounded-xl bg-white">
-              <CardContent className="p-1.5 sm:p-3">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2">
-                  {/* Tabs no rodapé - scroll horizontal no mobile */}
-                  <div className="flex-1 overflow-x-auto scrollbar-none -mx-1 px-1">
-                    <TabsList className="inline-flex bg-gray-100 h-auto p-0.5 sm:p-1 gap-0 rounded-lg min-w-max">
+          <div className="flex-shrink-0 mt-auto sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 pb-[env(safe-area-inset-bottom)]">
+            <div className="p-1.5 sm:p-2">
+              {/* Tabs no rodapé - scroll horizontal no mobile */}
+              <div className="overflow-x-auto scrollbar-none mb-1.5 sm:mb-2">
+                <TabsList className="inline-flex bg-gray-100 h-auto p-0.5 sm:p-1 gap-0 rounded-lg min-w-max w-full justify-start sm:justify-center">
                       <TabsTrigger 
                         value="dados" 
                         className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
@@ -4204,73 +4202,72 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </TabsList>
                   </div>
 
-                  {/* Status e Ações - em nova linha no mobile */}
-                  <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
-                    {isEditing && currentOS && (
-                      <>
-                        <span className="text-xs font-medium text-gray-500 hidden sm:inline">Status:</span>
-                        <Select value={currentOS.status} onValueChange={handleChangeStatus}>
-                          <SelectTrigger className={cn('w-[130px] h-8 text-white border-0 rounded-lg text-xs', (() => {
+              </div>
+              
+              {/* Status e Ações */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-between">
+                {isEditing && currentOS && (
+                  <>
+                    <Select value={currentOS.status} onValueChange={handleChangeStatus}>
+                      <SelectTrigger className={cn('w-[90px] sm:w-[120px] h-7 sm:h-8 text-white border-0 rounded-lg text-[10px] sm:text-xs', (() => {
+                        const config = getConfigByStatus(currentOS.status);
+                        return config?.cor || STATUS_OS_COLORS[currentOS.status as StatusOS] || 'bg-gray-500';
+                      })())}>
+                        <SelectValue placeholder="Status">
+                          {(() => {
                             const config = getConfigByStatus(currentOS.status);
-                            return config?.cor || STATUS_OS_COLORS[currentOS.status as StatusOS] || 'bg-gray-500';
-                          })())}>
-                            <SelectValue placeholder="Status">
-                              {(() => {
-                                const config = getConfigByStatus(currentOS.status);
-                                return config?.label || STATUS_OS_LABELS[currentOS.status as StatusOS] || currentOS.status;
-                              })()}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {configuracoes
-                              .filter(c => c.ativo)
-                              .sort((a, b) => a.ordem - b.ordem)
-                              .map((config) => (
-                                <SelectItem key={config.status} value={config.status}>
-                                  {config.label}
-                                </SelectItem>
-                              ))}
-                            {Object.entries(STATUS_OS_LABELS)
-                              .filter(([value]) => !configuracoes.some(c => c.status === value))
-                              .map(([value, label]) => (
-                                <SelectItem key={value} value={value}>{label}</SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleWhatsApp()}
-                          disabled={whatsappLoading}
-                          className="rounded-lg h-8 px-3 gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300"
-                        >
-                          <Phone className="h-4 w-4" />
-                          <span className="hidden sm:inline text-xs">WhatsApp</span>
-                        </Button>
-                        
-                        <Select onValueChange={(v) => handlePrint(v as 'termica' | 'a4' | 'pdf')}>
-                          <SelectTrigger className="w-[110px] h-8 rounded-lg text-xs font-semibold border-2 border-gray-300 text-gray-900 bg-white hover:bg-gray-50">
-                            <Printer className="h-4 w-4 mr-1" />
-                            <span>Imprimir</span>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="termica">Térmica</SelectItem>
-                            <SelectItem value="a4">A4</SelectItem>
-                            <SelectItem value="pdf">Salvar PDF</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </>
-                    )}
+                            return config?.label || STATUS_OS_LABELS[currentOS.status as StatusOS] || currentOS.status;
+                          })()}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {configuracoes
+                          .filter(c => c.ativo)
+                          .sort((a, b) => a.ordem - b.ordem)
+                          .map((config) => (
+                            <SelectItem key={config.status} value={config.status}>
+                              {config.label}
+                            </SelectItem>
+                          ))}
+                        {Object.entries(STATUS_OS_LABELS)
+                          .filter(([value]) => !configuracoes.some(c => c.status === value))
+                          .map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                     
-                    <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg h-8 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90">
-                      <Save className="h-4 w-4 mr-1" />
-                      <span>{isEditing ? 'Atualizar' : 'Salvar'}</span>
-                    </LoadingButton>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleWhatsApp()}
+                      disabled={whatsappLoading}
+                      className="rounded-lg h-7 sm:h-8 px-2 sm:px-3 text-green-600 border-green-200 hover:bg-green-50"
+                    >
+                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </Button>
+                    
+                    <Select onValueChange={(v) => handlePrint(v as 'termica' | 'a4' | 'pdf')}>
+                      <SelectTrigger className="w-[80px] sm:w-[100px] h-7 sm:h-8 rounded-lg text-[10px] sm:text-xs font-medium border border-gray-200 text-gray-700 bg-white">
+                        <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                        <span className="hidden sm:inline">Imprimir</span>
+                        <span className="sm:hidden">Print</span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="termica">Térmica</SelectItem>
+                        <SelectItem value="a4">A4</SelectItem>
+                        <SelectItem value="pdf">Salvar PDF</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
+                    
+                <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg h-7 sm:h-8 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90 text-xs sm:text-sm">
+                  <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                  <span>{isEditing ? 'Atualizar' : 'Salvar'}</span>
+                </LoadingButton>
+              </div>
+            </div>
           </div>
         </Tabs>
 
