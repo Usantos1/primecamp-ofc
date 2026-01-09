@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useQuery } from "@tanstack/react-query";
+import { from } from "@/integrations/db/client";
 import {
   Sidebar,
   SidebarContent,
@@ -73,6 +75,22 @@ export function AppSidebar() {
   
   // Usar QUALQUER indicador de admin disponível
   const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
+
+  // Buscar nome da empresa
+  const { data: companyData } = useQuery({
+    queryKey: ['company-name', user?.company_id],
+    queryFn: async () => {
+      if (!user?.company_id) return null;
+      const { data } = await from('companies')
+        .select('name')
+        .eq('id', user.company_id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.company_id,
+    staleTime: 1000 * 60 * 30, // Cache por 30 minutos
+  });
+  const companyName = companyData?.name || '';
   
   // Função para verificar permissão
   const checkPermission = (permission: string): boolean => {
@@ -261,7 +279,13 @@ export function AppSidebar() {
         </SidebarHeader>
       )}
 
-      <SidebarContent className={cn("flex flex-col gap-0", collapsed ? "p-2 pt-4" : "p-3")}>
+      <SidebarContent 
+        className={cn("flex flex-col gap-0", collapsed ? "p-2 pt-4" : "p-3")}
+        style={{ 
+          scrollbarWidth: 'thin', 
+          scrollbarColor: 'rgba(0,0,0,0.1) transparent' 
+        }}
+      >
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className={cn("space-y-0.5", collapsed && "flex flex-col items-center gap-1")}>
@@ -330,11 +354,12 @@ export function AppSidebar() {
                 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                  <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">
                     {profile?.display_name || user?.email?.split('@')[0]}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight">
                     {userIsAdmin ? "Administrador" : profile?.department || "Atendimento"}
+                    {companyName && ` · ${companyName}`}
                   </p>
                 </div>
                 
