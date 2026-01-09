@@ -139,6 +139,45 @@ export default function UserProfile() {
     fileInputRef.current?.click();
   };
 
+  // Função para comprimir imagem antes do upload
+  const compressImage = (file: File, maxWidth: number = 200, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          
+          // Redimensionar mantendo proporção
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Erro ao criar contexto do canvas'));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Converter para base64 com compressão
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = () => reject(new Error('Erro ao carregar imagem'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -149,38 +188,38 @@ export default function UserProfile() {
       return;
     }
 
-    // Validar tamanho (máximo 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('A imagem deve ter no máximo 2MB');
+    // Validar tamanho (máximo 5MB antes de comprimir)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 5MB');
       return;
     }
 
     setUploadingPhoto(true);
     try {
-      // Converter para base64 (solução simples sem servidor de upload)
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        
-        // Salvar no perfil
-        const { error } = await from('profiles')
-          .eq('user_id', user?.id)
-          .update({
-            avatar_url: base64,
-            updated_at: new Date().toISOString()
-          });
+      // Comprimir imagem para 200x200 antes de salvar
+      const compressedBase64 = await compressImage(file, 200, 0.8);
+      
+      // Verificar tamanho final (deve ficar abaixo de 100KB)
+      const sizeInKB = (compressedBase64.length * 0.75) / 1024;
+      console.log(`[Profile] Imagem comprimida: ${sizeInKB.toFixed(1)}KB`);
+      
+      // Salvar no perfil
+      const { error } = await from('profiles')
+        .eq('user_id', user?.id)
+        .update({
+          avatar_url: compressedBase64,
+          updated_at: new Date().toISOString()
+        });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        setFormData({ ...formData, avatar_url: base64 });
-        window.dispatchEvent(new CustomEvent('profile-changed'));
-        toast.success('Foto atualizada com sucesso!');
-        setUploadingPhoto(false);
-      };
-      reader.readAsDataURL(file);
+      setFormData({ ...formData, avatar_url: compressedBase64 });
+      window.dispatchEvent(new CustomEvent('profile-changed'));
+      toast.success('Foto atualizada com sucesso!');
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error('Erro ao fazer upload da foto');
+    } finally {
       setUploadingPhoto(false);
     }
   };
