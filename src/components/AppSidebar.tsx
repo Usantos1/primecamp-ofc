@@ -74,16 +74,12 @@ export function AppSidebar() {
   // Usar QUALQUER indicador de admin disponível
   const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
   
-  // SOLUÇÃO RADICAL: Enquanto não sabemos com certeza que NÃO é admin, mostrar tudo
-  // Só esconder items se tivermos CERTEZA que o usuário não tem permissão
-  const isDefinitelyNotAdmin = !permissionsLoading && profile && !isAdminDirect && !isAdmin && !isAdminAuth && !cachedIsAdmin;
-  
-  // Função para verificar permissão
-  const checkPermission = (permission: string): boolean => {
-    // Se NÃO temos certeza que não é admin, mostrar tudo
-    if (!isDefinitelyNotAdmin) return true;
-    // Para não-admins confirmados, verificar permissão específica
-    return hasPermission(permission);
+  // TEMPORÁRIO: Sempre retornar true para debug - vamos ver se os items aparecem
+  const checkPermission = (_permission: string): boolean => {
+    // Enquanto estamos debugando, sempre permitir
+    // Isso vai mostrar TODOS os items para TODOS os usuários
+    // Se ainda não aparecer, o problema é em outro lugar
+    return true;
   };
 
   const collapsed = state === "collapsed";
