@@ -262,6 +262,10 @@ export function AppSidebar() {
       )}
 
       <SidebarContent className={cn("flex flex-col gap-0", collapsed ? "p-2 pt-4" : "p-3")}>
+        {/* TESTE - REMOVER DEPOIS */}
+        <div className="bg-red-500 text-white p-2 text-center font-bold mb-2">
+          VERSÃO NOVA - SE APARECER, DEPLOY OK
+        </div>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className={cn("space-y-0.5", collapsed && "flex flex-col items-center gap-1")}>
