@@ -74,12 +74,12 @@ export function AppSidebar() {
   // Usar QUALQUER indicador de admin disponível
   const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
   
-  // TEMPORÁRIO: Sempre retornar true para debug - vamos ver se os items aparecem
-  const checkPermission = (_permission: string): boolean => {
-    // Enquanto estamos debugando, sempre permitir
-    // Isso vai mostrar TODOS os items para TODOS os usuários
-    // Se ainda não aparecer, o problema é em outro lugar
-    return true;
+  // Função para verificar permissão
+  const checkPermission = (permission: string): boolean => {
+    // Admin sempre tem todas as permissões
+    if (userIsAdmin) return true;
+    // Para não-admins, verificar permissão específica
+    return hasPermission(permission);
   };
 
   const collapsed = state === "collapsed";
@@ -262,10 +262,6 @@ export function AppSidebar() {
       )}
 
       <SidebarContent className={cn("flex flex-col gap-0", collapsed ? "p-2 pt-4" : "p-3")}>
-        {/* TESTE - REMOVER DEPOIS */}
-        <div className="bg-red-500 text-white p-2 text-center font-bold mb-2">
-          VERSÃO NOVA - SE APARECER, DEPLOY OK
-        </div>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className={cn("space-y-0.5", collapsed && "flex flex-col items-center gap-1")}>
