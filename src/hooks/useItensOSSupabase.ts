@@ -31,7 +31,11 @@ export function useItensOSSupabase(osId: string) {
   // Adicionar item
   const addItem = useMutation({
     mutationFn: async (data: Omit<ItemOS, 'id' | 'ordem_servico_id' | 'created_at'>): Promise<ItemOS> => {
+      console.log('[useItensOS] addItem chamado com osId:', osId);
+      console.log('[useItensOS] data:', data);
+      
       if (!osId || osId === 'temp') {
+        console.error('[useItensOS] ERRO: osId inválido:', osId);
         throw new Error('OS deve ser criada antes de adicionar itens');
       }
 
@@ -51,17 +55,34 @@ export function useItensOSSupabase(osId: string) {
         created_by: user?.id || null,
       };
 
+      console.log('[useItensOS] Inserindo item:', novoItem);
+
       const { data: inserted, error } = await from('os_items')
         .insert(novoItem)
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('[useItensOS] Resultado insert:', { inserted, error });
+
+      if (error) {
+        console.error('[useItensOS] ERRO no insert:', error);
+        throw new Error(error.message || error.error || 'Erro ao adicionar item');
+      }
+      
+      if (!inserted) {
+        console.error('[useItensOS] ERRO: Insert retornou null');
+        throw new Error('Erro ao adicionar item - dados não retornados');
+      }
+      
       return inserted as ItemOS;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[useItensOS] Item adicionado com sucesso:', data);
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
       queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
+    },
+    onError: (error: any) => {
+      console.error('[useItensOS] Erro na mutation addItem:', error);
     },
   });
 
