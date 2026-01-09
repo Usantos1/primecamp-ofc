@@ -8,16 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ShoppingCart, Trash2 } from 'lucide-react';
 import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, TransactionType } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface TransactionsManagerProps {
   month?: string;
@@ -32,6 +34,12 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<{ id: string; source: string; description: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: categories = [] } = useFinancialCategories();
   const { transactions, isLoading, createTransaction } = useFinancialTransactions({
@@ -231,6 +239,57 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     setIsDialogOpen(false);
   };
 
+  const handleDeleteClick = (item: { id: string; source: string; description: string }) => {
+    setDeletingItem(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingItem) return;
+    
+    setIsDeleting(true);
+    try {
+      // Extrair o ID real (remover prefixo bill- ou sale-)
+      const realId = deletingItem.id.replace('bill-', '').replace('sale-', '');
+      
+      if (deletingItem.source === 'bill') {
+        // Deletar da tabela bills_to_pay
+        const { error } = await from('bills_to_pay').eq('id', realId).delete();
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['paid-bills-transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      } else if (deletingItem.source === 'manual') {
+        // Deletar da tabela financial_transactions
+        const { error } = await from('financial_transactions').eq('id', realId).delete();
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      } else if (deletingItem.source === 'sale') {
+        toast({
+          title: "Não permitido",
+          description: "Vendas não podem ser excluídas daqui. Use a tela de vendas.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Sucesso",
+        description: "Transação excluída com sucesso!",
+      });
+    } catch (error: any) {
+      console.error('Erro ao excluir:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir transação",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setDeletingItem(null);
+    }
+  };
+
   const availableCategories = categories.filter(c => c.type === formData.type);
 
   // Calcular totais usando dados filtrados (sem paginação)
@@ -350,6 +409,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                     <TableHead className="text-right text-blue-600">Venda</TableHead>
                     <TableHead className="text-right text-orange-600">Despesa</TableHead>
                     <TableHead className="text-right text-green-600">Lucro</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -388,6 +448,22 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                       </TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
                         {transaction.lucro && transaction.lucro > 0 ? currencyFormatters.brl(transaction.lucro) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.source !== 'sale' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteClick({
+                              id: transaction.id,
+                              source: transaction.source,
+                              description: transaction.description
+                            })}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -559,6 +635,17 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir Transação"
+        description={`Tem certeza que deseja excluir "${deletingItem?.description || 'esta transação'}"? Esta ação não pode ser desfeita.`}
+        onConfirm={handleConfirmDelete}
+        variant="danger"
+        loading={isDeleting}
+      />
     </Card>
   );
 }
