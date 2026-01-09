@@ -63,21 +63,32 @@ export function AppSidebar() {
   const { user, profile, isAdmin: isAdminAuth, signOut } = useAuth();
   const { hasPermission, loading: permissionsLoading, isAdmin } = usePermissions();
   
-  // Verificar admin DIRETAMENTE do profile (mais confiável durante loading)
+  // Verificar admin de MÚLTIPLAS fontes para garantir que funcione
   const isAdminDirect = profile?.role?.toLowerCase() === 'admin' || 
                         profile?.role?.toLowerCase() === 'administrador' ||
                         profile?.role?.toLowerCase() === 'administrator';
   
-  // Usar isAdmin do hook de permissões (mais robusto)
+  // Usar QUALQUER indicador de admin disponível
   const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect;
   
-  // Função para verificar permissão que funciona MESMO durante loading para admins
+  // DEBUG: Log para entender o estado
+  console.log('[AppSidebar] Estado:', {
+    hasProfile: !!profile,
+    profileRole: profile?.role,
+    isAdmin,
+    isAdminAuth,
+    isAdminDirect,
+    userIsAdmin,
+    permissionsLoading
+  });
+  
+  // Função para verificar permissão - SIMPLIFICADA para funcionar sempre para admin
   const checkPermission = (permission: string): boolean => {
-    // Se for admin (verificação direta), sempre tem permissão
-    if (isAdminDirect) return true;
-    // Enquanto carrega e não temos certeza, mostrar tudo (melhor UX)
-    if (permissionsLoading && !profile) return true;
-    // Caso contrário, usar a função do hook
+    // Se QUALQUER indicador diz que é admin, tem permissão total
+    if (userIsAdmin) return true;
+    // Enquanto carrega permissões, mostrar tudo (evitar flash de conteúdo)
+    if (permissionsLoading) return true;
+    // Para não-admins, verificar permissão específica
     return hasPermission(permission);
   };
 
