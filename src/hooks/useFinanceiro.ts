@@ -169,9 +169,12 @@ export function useBillsToPay(filters?: {
 
   const updateBill = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<BillToPay> }) => {
+      // Remover campos que não existem na tabela (usados apenas para criar recorrentes)
+      const { recurring_start, recurring_end, ...cleanData } = data as any;
+      
       const { data: result, error } = await from('bills_to_pay')
         .eq('id', id)
-        .update(data);
+        .update(cleanData);
       if (error) throw error;
       return result as BillToPay;
     },
