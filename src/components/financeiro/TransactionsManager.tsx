@@ -68,6 +68,35 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     },
   });
 
+  // Buscar contas a pagar que foram pagas (despesas)
+  const { data: paidBills = [], isLoading: billsLoading } = useQuery({
+    queryKey: ['paid-bills-transactions', startDate, endDate],
+    queryFn: async () => {
+      try {
+        let q = from('bills_to_pay')
+          .select('id, description, amount, payment_date, payment_method, supplier, expense_type')
+          .eq('status', 'pago')
+          .order('payment_date', { ascending: false });
+        
+        // Só aplicar filtro de data se ambos estiverem definidos e não vazios
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
+          q = q.gte('payment_date', startDate).lte('payment_date', endDate);
+        }
+        
+        const { data, error } = await q.execute();
+        if (error) {
+          console.warn('Erro ao buscar contas pagas:', error);
+          return [];
+        }
+        console.log('[TransactionsManager] Contas pagas encontradas:', data?.length || 0);
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar contas pagas:', err);
+        return [];
+      }
+    },
+  });
+
   const [formData, setFormData] = useState({
     type: 'entrada' as TransactionType,
     category_id: '',
@@ -93,7 +122,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     };
   };
 
-  // Combinar transações manuais + vendas
+  // Combinar transações manuais + vendas + contas pagas
   const allTransactions = useMemo(() => {
     const items: Array<{
       id: string;
@@ -103,7 +132,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       category: string;
       method: string;
       amount: number;
-      source: 'manual' | 'sale';
+      source: 'manual' | 'sale' | 'bill';
       custo?: number;
       lucro?: number;
     }> = [];
@@ -137,7 +166,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
           id: `sale-${sale.id}`,
           date: sale.created_at?.split('T')[0] || '',
           type: 'entrada',
-          description: `Venda #${sale.numero}${sale.cliente_nome ? ` - ${sale.cliente_nome}` : ''}`,
+          description: `Venda #${sale.numero}${sale.cliente_nome ? ` - ${sale.cliente_nome}` : ''} - VENDA CONSOLIDADA`,
           category: 'Vendas',
           method: 'PDV',
           amount: Number(sale.total || 0),
@@ -147,12 +176,28 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
         });
       }
     });
+
+    // Contas pagas como saídas (despesas)
+    paidBills.forEach((bill: any) => {
+      if (typeFilter === 'all' || typeFilter === 'saida') {
+        items.push({
+          id: `bill-${bill.id}`,
+          date: bill.payment_date || '',
+          type: 'saida',
+          description: `${bill.description}${bill.supplier ? ` - ${bill.supplier}` : ''}`,
+          category: bill.expense_type === 'fixa' ? 'Despesa Fixa' : 'Despesa Variável',
+          method: bill.payment_method ? PAYMENT_METHOD_LABELS[bill.payment_method as PaymentMethod] || bill.payment_method : '-',
+          amount: Number(bill.amount || 0),
+          source: 'bill',
+        });
+      }
+    });
     
     // Ordenar por data (mais recentes primeiro)
     items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     return items;
-  }, [transactions, sales, typeFilter]);
+  }, [transactions, sales, paidBills, typeFilter]);
 
   const filteredTransactions = allTransactions.filter(t =>
     t.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -191,9 +236,11 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
   // Calcular totais usando dados filtrados (sem paginação)
   const totais = useMemo(() => {
     const vendasItems = filteredTransactions.filter(t => t.source === 'sale');
+    const despesasItems = filteredTransactions.filter(t => t.source === 'bill');
     const totalCusto = vendasItems.reduce((sum, t) => sum + (t.custo || 0), 0);
     const totalVenda = vendasItems.reduce((sum, t) => sum + t.amount, 0);
     const totalLucro = vendasItems.reduce((sum, t) => sum + (t.lucro || 0), 0);
+    const totalDespesas = despesasItems.reduce((sum, t) => sum + t.amount, 0);
     const totalEntradas = filteredTransactions
       .filter(t => t.type === 'entrada')
       .reduce((sum, t) => sum + t.amount, 0);
@@ -201,12 +248,12 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       .filter(t => t.type === 'saida')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    return { totalCusto, totalVenda, totalLucro, totalEntradas, totalSaidas };
+    return { totalCusto, totalVenda, totalLucro, totalDespesas, totalEntradas, totalSaidas };
   }, [filteredTransactions]);
 
-  const { totalCusto, totalVenda, totalLucro, totalEntradas, totalSaidas } = totais;
+  const { totalCusto, totalVenda, totalLucro, totalDespesas, totalEntradas, totalSaidas } = totais;
 
-  if (isLoading || salesLoading) {
+  if (isLoading || salesLoading || billsLoading) {
     return <LoadingSkeleton type="table" count={5} />;
   }
 
@@ -226,7 +273,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Resumo */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3 rounded-lg bg-red-50 border border-red-200">
             <p className="text-xs text-muted-foreground">Total Custo</p>
             <p className="text-lg font-bold text-red-600">{currencyFormatters.brl(totalCusto)}</p>
@@ -234,6 +281,10 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
           <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
             <p className="text-xs text-muted-foreground">Total Vendas</p>
             <p className="text-lg font-bold text-blue-600">{currencyFormatters.brl(totalVenda)}</p>
+          </div>
+          <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
+            <p className="text-xs text-muted-foreground">Total Despesas</p>
+            <p className="text-lg font-bold text-orange-600">{currencyFormatters.brl(totalDespesas)}</p>
           </div>
           <div className="p-3 rounded-lg bg-green-50 border border-green-200">
             <p className="text-xs text-muted-foreground">Total Lucro</p>
@@ -297,6 +348,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                     <TableHead>Descrição</TableHead>
                     <TableHead className="text-right text-red-600">Custo</TableHead>
                     <TableHead className="text-right text-blue-600">Venda</TableHead>
+                    <TableHead className="text-right text-orange-600">Despesa</TableHead>
                     <TableHead className="text-right text-green-600">Lucro</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -306,18 +358,22 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                       <TableCell>{dateFormatters.short(transaction.date)}</TableCell>
                       <TableCell>
                         <Badge className={cn(
-                          transaction.type === 'entrada'
-                            ? 'bg-success/10 text-success border-success/30'
-                            : 'bg-destructive/10 text-destructive border-destructive/30'
+                          transaction.source === 'bill'
+                            ? 'bg-orange-100 text-orange-700 border-orange-300'
+                            : transaction.type === 'entrada'
+                              ? 'bg-success/10 text-success border-success/30'
+                              : 'bg-destructive/10 text-destructive border-destructive/30'
                         )}>
                           {transaction.source === 'sale' ? (
                             <ShoppingCart className="h-3 w-3 mr-1" />
+                          ) : transaction.source === 'bill' ? (
+                            <TrendingDown className="h-3 w-3 mr-1" />
                           ) : transaction.type === 'entrada' ? (
                             <TrendingUp className="h-3 w-3 mr-1" />
                           ) : (
                             <TrendingDown className="h-3 w-3 mr-1" />
                           )}
-                          {transaction.source === 'sale' ? 'Venda' : TRANSACTION_TYPE_LABELS[transaction.type]}
+                          {transaction.source === 'sale' ? 'Venda' : transaction.source === 'bill' ? 'Despesa' : TRANSACTION_TYPE_LABELS[transaction.type]}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{transaction.description}</TableCell>
@@ -326,6 +382,9 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                       </TableCell>
                       <TableCell className="text-right font-semibold text-blue-600">
                         {transaction.source === 'sale' ? currencyFormatters.brl(transaction.amount) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-orange-600">
+                        {transaction.source === 'bill' ? currencyFormatters.brl(transaction.amount) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
                         {transaction.lucro && transaction.lucro > 0 ? currencyFormatters.brl(transaction.lucro) : '-'}
