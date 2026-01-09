@@ -60,8 +60,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, isAdmin, signOut } = useAuth();
-  const { hasPermission } = usePermissions();
+  const { user, profile, isAdmin: isAdminAuth, signOut } = useAuth();
+  const { hasPermission, loading: permissionsLoading, isAdmin } = usePermissions();
+  
+  // Usar isAdmin do hook de permissões (mais robusto)
+  const userIsAdmin = isAdmin || isAdminAuth;
 
   const collapsed = state === "collapsed";
   const currentPath = location.pathname;
@@ -148,7 +151,7 @@ export function AppSidebar() {
   // Só mostrar Gestão de Revenda se for admin E pertencer à empresa principal
   const userCompanyId = user?.company_id;
   const isMainCompanyAdmin = userCompanyId === ADMIN_COMPANY_ID;
-  const isAdminCompany = Boolean(isAdmin && profile?.role === 'admin' && isMainCompanyAdmin);
+  const isAdminCompany = Boolean(userIsAdmin && isMainCompanyAdmin);
   
   const adminItems = [
     // Gestão de Revenda - APENAS para admins da empresa principal
@@ -309,7 +312,7 @@ export function AppSidebar() {
                     {profile?.display_name || user?.email?.split('@')[0]}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {isAdmin ? "Administrador" : profile?.department || "Atendimento"}
+                    {userIsAdmin ? "Administrador" : profile?.department || "Atendimento"}
                   </p>
                 </div>
                 

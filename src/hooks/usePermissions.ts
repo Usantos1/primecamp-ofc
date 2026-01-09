@@ -169,10 +169,10 @@ export function usePermissions() {
       setLoading(true);
 
       const permSet = new Set<string>();
-      const userRole = profile?.role || 'member';
+      const userRole = (profile?.role || 'member').toLowerCase();
 
       // Se for admin, não precisa buscar no banco - hasPermission já retorna true para admin
-      if (userRole === 'admin') {
+      if (userRole === 'admin' || userRole === 'administrador' || userRole === 'administrator') {
         // Apenas marcar como carregado, hasPermission retorna true para qualquer permissão
         setPermissions(new Set(['*'])); // Marcador de "todas as permissões"
         setLoading(false);
@@ -215,29 +215,36 @@ export function usePermissions() {
     }
   };
 
+  // Verificar se é admin (aceita variações)
+  const isAdminRole = useMemo(() => {
+    if (!profile?.role) return false;
+    const role = profile.role.toLowerCase();
+    return role === 'admin' || role === 'administrador' || role === 'administrator';
+  }, [profile?.role]);
+
   const hasPermission = useMemo(() => {
     return (permission: string): boolean => {
       if (!user || !profile) return false;
-      if (profile.role === 'admin') return true;
+      if (isAdminRole) return true;
       return permissions.has(permission);
     };
-  }, [permissions, user, profile]);
+  }, [permissions, user, profile, isAdminRole]);
 
   const hasAnyPermission = useMemo(() => {
     return (permissionList: string[]): boolean => {
       if (!user || !profile) return false;
-      if (profile.role === 'admin') return true;
+      if (isAdminRole) return true;
       return permissionList.some(perm => permissions.has(perm));
     };
-  }, [permissions, user, profile]);
+  }, [permissions, user, profile, isAdminRole]);
 
   const hasAllPermissions = useMemo(() => {
     return (permissionList: string[]): boolean => {
       if (!user || !profile) return false;
-      if (profile.role === 'admin') return true;
+      if (isAdminRole) return true;
       return permissionList.every(perm => permissions.has(perm));
     };
-  }, [permissions, user, profile]);
+  }, [permissions, user, profile, isAdminRole]);
 
   return {
     hasPermission,
@@ -245,6 +252,7 @@ export function usePermissions() {
     hasAllPermissions,
     permissions: Array.from(permissions),
     loading,
+    isAdmin: isAdminRole,
     refresh: loadPermissions,
   };
 }
