@@ -1830,14 +1830,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full h-full flex flex-col overflow-hidden", isModal ? "" : "")}>
+    <div className={cn("w-full h-full flex flex-col overflow-hidden", isModal ? "" : "min-h-[calc(100vh-3rem)] sm:min-h-0")}>
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-          {/* Tabs movidas para o rodapé */}
 
-          {/* Resumo Fixo da OS - Compacto */}
+          {/* Resumo Fixo da OS - Oculto no mobile, compacto no desktop */}
           {isEditing && currentOS && (
-            <div className="flex-shrink-0 mb-2 px-2">
+            <div className="flex-shrink-0 mb-2 px-2 hidden sm:block">
               <OSSummaryHeader
                 numeroOS={currentOS.numero}
                 clienteNome={selectedCliente?.nome || getClienteById(currentOS.cliente_id)?.nome}
@@ -4126,13 +4125,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé com tabs e ações - DENTRO do Tabs */}
-          <div className="p-2 flex-shrink-0 mt-auto safe-area-bottom">
-            <Card className="border border-gray-200 shadow-sm rounded-xl bg-white">
-              <CardContent className="p-2 sm:p-3">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+          <div className="p-1 sm:p-2 flex-shrink-0 mt-auto safe-area-bottom sticky bottom-0 bg-gray-50/95 backdrop-blur-sm">
+            <Card className="border border-gray-200 shadow-sm rounded-lg sm:rounded-xl bg-white">
+              <CardContent className="p-1.5 sm:p-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 sm:gap-2">
                   {/* Tabs no rodapé - scroll horizontal no mobile */}
-                  <div className="flex-1 overflow-x-auto scrollbar-none -mx-2 px-2 pb-1">
-                    <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-0.5 sm:gap-1 rounded-lg min-w-max">
+                  <div className="flex-1 overflow-x-auto scrollbar-none -mx-1 px-1">
+                    <TabsList className="inline-flex bg-gray-100 h-auto p-0.5 sm:p-1 gap-0 rounded-lg min-w-max">
                       <TabsTrigger 
                         value="dados" 
                         className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"

@@ -93,14 +93,15 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out">
-          {/* Mobile Header */}
-          <header className="h-16 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40 md:hidden flex items-center px-4">
-            <SidebarTrigger className="h-8 w-8" />
+          {/* Mobile Header - Mínimo */}
+          <header className="h-10 bg-background/95 backdrop-blur-sm sticky top-0 z-40 md:hidden flex items-center px-2 border-b border-gray-100">
+            <SidebarTrigger className="h-8 w-8 p-1" />
             {title && (
-              <div className="ml-4 min-w-0 flex-1">
-                <h1 className="font-semibold text-lg truncate">{title}</h1>
+              <div className="ml-2 min-w-0 flex-1">
+                <h1 className="font-medium text-sm truncate text-gray-700">{title}</h1>
               </div>
             )}
+            <ThemeToggle variant="button" size="sm" />
           </header>
 
           {/* Desktop Header */}
@@ -161,10 +162,10 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
             </div>
           </header>
 
-          {/* Main Content - altura calculada: viewport - header (64px) */}
+          {/* Main Content - usa todo o espaço disponível */}
           <main className="flex-1 flex flex-col overflow-hidden min-h-0">
             <div 
-              className="flex-1 overflow-y-auto min-h-0 p-2 md:p-4 pt-4 md:pt-6"
+              className="flex-1 overflow-y-auto min-h-0 p-1 sm:p-2 md:p-4 pt-1 sm:pt-2 md:pt-4"
               style={{ 
                 scrollbarWidth: 'thin', 
                 scrollbarColor: 'rgba(0,0,0,0.15) transparent' 
