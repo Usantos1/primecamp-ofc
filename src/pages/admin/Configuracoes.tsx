@@ -1,6 +1,8 @@
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -8,18 +10,58 @@ import {
   Wrench,
   Settings,
   FileText,
-  Monitor,
-  RefreshCw,
+  Hash,
 } from 'lucide-react';
 import { DashboardConfigModal } from '@/components/dashboard/DashboardConfigModal';
-import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PermissionGate } from '@/components/PermissionGate';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { toast } from 'sonner';
 
 export default function Configuracoes() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [showDashboardConfig, setShowDashboardConfig] = useState(false);
+  const [showOSConfig, setShowOSConfig] = useState(false);
+  const [osNumeroInicial, setOsNumeroInicial] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { settings, loading: settingsLoading, saveSettings } = useSystemSettings();
+
+  // Carregar configuração atual quando abrir o modal
+  useEffect(() => {
+    if (showOSConfig) {
+      setOsNumeroInicial(String(settings.os_numero_inicial || 1));
+    }
+  }, [showOSConfig, settings.os_numero_inicial]);
+
+  const handleSaveOSConfig = async () => {
+    const numero = parseInt(osNumeroInicial);
+    if (isNaN(numero) || numero < 1) {
+      toast.error('Digite um número válido maior que 0');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await saveSettings({ os_numero_inicial: numero });
+      toast.success('Configuração salva com sucesso!');
+      setShowOSConfig(false);
+    } catch (err) {
+      toast.error('Erro ao salvar configuração');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const configSections = [
     {
@@ -48,6 +90,15 @@ export default function Configuracoes() {
       hoverColor: 'hover:from-purple-600 hover:to-pink-600',
       path: '/pdv/configuracao-status',
       permission: 'os.config.status',
+    },
+    {
+      title: 'Ajustes da OS',
+      description: 'Configure número inicial das ordens de serviço',
+      icon: Hash,
+      color: 'from-orange-500 to-amber-500',
+      hoverColor: 'hover:from-orange-600 hover:to-amber-600',
+      action: () => setShowOSConfig(true),
+      permission: 'admin.view',
     },
   ];
 
@@ -145,6 +196,60 @@ export default function Configuracoes() {
         open={showDashboardConfig}
         onOpenChange={setShowDashboardConfig}
       />
+
+      {/* Modal de Configuração da OS */}
+      <Dialog open={showOSConfig} onOpenChange={setShowOSConfig}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Hash className="h-5 w-5 text-orange-500" />
+              Ajustes da Ordem de Serviço
+            </DialogTitle>
+            <DialogDescription>
+              Configure o número inicial das ordens de serviço. 
+              Novas OS serão numeradas a partir deste valor (se maior que a última OS criada).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="os-numero">Número Inicial da OS</Label>
+              <Input
+                id="os-numero"
+                type="number"
+                min="1"
+                value={osNumeroInicial}
+                onChange={(e) => setOsNumeroInicial(e.target.value)}
+                placeholder="Ex: 7070"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se você tinha 7015 OS no sistema anterior e quer começar a partir de 7070, 
+                digite 7070 aqui. O sistema usará sempre o maior entre este valor e a última OS existente + 1.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <p className="text-xs text-amber-800">
+                <strong>Atenção:</strong> Esta configuração define o número mínimo para novas OS. 
+                Se já existirem OS com números maiores, o sistema continuará a sequência normalmente.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOSConfig(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSaveOSConfig} 
+              disabled={isSaving}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ModernLayout>
   );
 }

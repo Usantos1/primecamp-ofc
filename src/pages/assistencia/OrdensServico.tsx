@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  Plus, Search, Edit, Phone, Calendar, X, FileText, Trash2,
+  Plus, Search, Edit, Phone, Calendar, X, Trash2,
   CheckCircle2, RotateCcw, Package, ChevronLeft, ChevronRight, XCircle, Download, Zap
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -40,7 +40,6 @@ import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { PermissionGate } from '@/components/PermissionGate';
-import { ImportarOS } from '@/components/assistencia/ImportarOS';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -243,7 +242,6 @@ export default function OrdensServico() {
   const [searchField, setSearchField] = useState<OSSearchFieldType>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
-  const [showImportarOS, setShowImportarOS] = useState(false);
   const [osToDelete, setOsToDelete] = useState<string | null>(null);
   const [osToReabrir, setOsToReabrir] = useState<{ id: string; motivo: string } | null>(null);
   const [page, setPage] = useState(1);
@@ -689,10 +687,6 @@ export default function OrdensServico() {
                 <span className="hidden sm:inline">Exportar</span>
               </Button>
               <PermissionGate permission="os.create">
-                <Button onClick={() => setShowImportarOS(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Importar</span>
-                </Button>
                 <Button onClick={() => navigate('/os/nova')} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                   <Plus className="h-4 w-4" />
                   <span>Nova OS</span>
@@ -902,9 +896,6 @@ export default function OrdensServico() {
         </div>
       </div>
 
-      {/* Modais */}
-      <ImportarOS open={showImportarOS} onOpenChange={setShowImportarOS} onSuccess={() => setShowImportarOS(false)} />
-      
       {/* Modal de Exportação */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

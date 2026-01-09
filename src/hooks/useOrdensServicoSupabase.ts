@@ -30,17 +30,35 @@ export function useOrdensServicoSupabase() {
       // Usar número fornecido ou buscar próximo número
       let numero: number;
       if (data.numero) {
-        // Usar o número fornecido diretamente (permite números específicos para importação)
+        // Usar o número fornecido diretamente
         numero = data.numero;
       } else {
-        // Buscar próximo número apenas se não foi fornecido
+        // Buscar configuração do número inicial
+        let numeroInicial = 1;
+        try {
+          const { data: settingsData } = await from('kv_store_2c4defad')
+            .select('value')
+            .eq('key', 'system_settings')
+            .single();
+          
+          if (settingsData?.value?.os_numero_inicial) {
+            numeroInicial = settingsData.value.os_numero_inicial;
+          }
+        } catch (err) {
+          // Se não encontrar configuração, usa 1
+        }
+
+        // Buscar último número de OS existente
         const { data: lastOS } = await from('ordens_servico')
           .select('numero')
           .order('numero', { ascending: false })
           .limit(1)
           .single();
         
-        numero = lastOS?.numero ? lastOS.numero + 1 : 1;
+        const ultimoNumero = lastOS?.numero || 0;
+        
+        // Usar o maior entre (último número + 1) e o número inicial configurado
+        numero = Math.max(ultimoNumero + 1, numeroInicial);
       }
 
       const novaOS: any = {
