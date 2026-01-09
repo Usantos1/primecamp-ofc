@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
@@ -17,14 +18,30 @@ export function PermissionRoute({
   requireAll = false,
   redirectTo
 }: PermissionRouteProps) {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, loading } = usePermissions();
+  const { hasPermission, hasAnyPermission, hasAllPermissions, loading, isAdmin } = usePermissions();
+  const { profile, isAdmin: isAdminAuth, loading: authLoading } = useAuth();
 
-  if (loading) {
+  // Verificar admin DIRETAMENTE do profile (mais confiável durante loading)
+  const isAdminDirect = profile?.role?.toLowerCase() === 'admin' || 
+                        profile?.role?.toLowerCase() === 'administrador' ||
+                        profile?.role?.toLowerCase() === 'administrator';
+
+  // Se QUALQUER indicador diz que é admin, tem acesso total
+  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect;
+
+  // Mostrar loading enquanto auth ou permissões estão carregando
+  // MAS se já sabemos que é admin, liberar imediatamente
+  if ((loading || authLoading) && !userIsAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
+  }
+
+  // Admin tem acesso a tudo
+  if (userIsAdmin) {
+    return <ProtectedRoute>{children}</ProtectedRoute>;
   }
 
   const hasAccess = Array.isArray(permission)
