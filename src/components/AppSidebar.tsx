@@ -104,55 +104,54 @@ export function AppSidebar() {
 
   // ═══════════════════════════════════════════════════════════════
   // OPERAÇÃO - Atividades do dia a dia
-  // SEM FILTRO - TEMPORÁRIO PARA DEBUG
   // ═══════════════════════════════════════════════════════════════
   const operacaoItems = [
     { label: "Dashboard", path: "/", icon: Home, exact: true },
-    { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true },
-    { label: "Ordem de Serviço", path: "/os", icon: Wrench },
-    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true },
-    { label: "Clientes", path: "/clientes", icon: UserCircle, exact: true },
-  ];
+    { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true, permission: "vendas.view" },
+    { label: "Ordem de Serviço", path: "/os", icon: Wrench, permission: "os.view" },
+    { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
+    { label: "Clientes", path: "/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
+  ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
   // ESTOQUE - Gestão de produtos
   // ═══════════════════════════════════════════════════════════════
   const estoqueItems = [
-    { label: "Produtos", path: "/produtos", icon: Package, exact: true },
-    { label: "Marcas e Modelos", path: "/pdv/marcas-modelos", icon: FileText },
-  ];
+    { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
+    { label: "Marcas e Modelos", path: "/pdv/marcas-modelos", icon: FileText, permission: "produtos.manage" },
+  ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
   // RELATÓRIOS - Todos os relatórios juntos
   // ═══════════════════════════════════════════════════════════════
   const relatoriosItems = [
-    { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt },
-    { label: "Relatórios Gestão", path: "/relatorios", icon: BarChart3 },
-  ];
+    { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt, permission: "relatorios.view" },
+    { label: "Relatórios Gestão", path: "/relatorios", icon: BarChart3, permission: "relatorios.view" },
+  ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
   // GESTÃO - RH, Metas, Treinamentos
   // ═══════════════════════════════════════════════════════════════
   const gestaoItems = [
-    { label: "Metas", path: "/metas", icon: Target },
-    { label: "Recursos Humanos", path: "/rh", icon: Users },
-    { label: "Ponto Eletrônico", path: "/ponto", icon: Clock },
-    { label: "Academy", path: "/treinamentos", icon: GraduationCap },
-  ];
+    { label: "Metas", path: "/metas", icon: Target, permission: "metas.view" },
+    { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
+    { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "ponto.view" },
+    { label: "Academy", path: "/treinamentos", icon: GraduationCap, permission: "treinamentos.view" },
+  ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // FINANCEIRO - Gestão Financeira
+  // FINANCEIRO - Gestão Financeira (apenas para quem tem permissão)
   // ═══════════════════════════════════════════════════════════════
   const financeiroItems = [
-    { label: "Financeiro", path: "/admin/financeiro", icon: Wallet },
-  ];
+    { label: "Financeiro", path: "/admin/financeiro", icon: Wallet, permission: "financeiro.view" },
+  ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // MARKETING - Campanhas, Leads, Métricas
+  // MARKETING - Campanhas, Leads, Métricas (apenas para quem tem permissão)
   // ═══════════════════════════════════════════════════════════════
   const marketingItems = [
-    { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone },
-  ];
+    { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone, permission: "marketing.view" },
+  ].filter(item => !item.permission || checkPermission(item.permission));
 
 
   // ═══════════════════════════════════════════════════════════════
@@ -166,7 +165,8 @@ export function AppSidebar() {
   const isMainCompanyAdmin = userCompanyId === ADMIN_COMPANY_ID;
   const isAdminCompany = Boolean(userIsAdmin && isMainCompanyAdmin);
   
-  const adminItems = [
+  // adminItems só é mostrado se o usuário for admin
+  const adminItems = userIsAdmin ? [
     // Gestão de Revenda - APENAS para admins da empresa principal
     ...(isAdminCompany ? [{ label: "Gestão de Revenda", path: "/admin/revenda", icon: Store }] : []),
     { label: "Usuários e Permissões", path: "/admin/users", icon: Users },
@@ -175,7 +175,7 @@ export function AppSidebar() {
     { label: "Integrações", path: "/integracoes", icon: Plug },
     { label: "Logs", path: "/admin/logs", icon: Activity },
     { label: "Configurações", path: "/admin/configuracoes", icon: Settings },
-  ];
+  ] : [];
 
   // Tipo genérico para itens do menu
   type MenuItem = {
