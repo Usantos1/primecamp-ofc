@@ -710,7 +710,6 @@ export const UserManagementNew = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Departamento</TableHead>
-                <TableHead>Role</TableHead>
                 <TableHead>Função</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ações</TableHead>
@@ -736,15 +735,6 @@ export const UserManagementNew = () => {
                       <Building2 className="h-3 w-3 text-muted-foreground" />
                       {user.department || '-'}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {user.currentRole?.role ? (
-                      <Badge variant="outline">
-                        {roleTranslations[user.currentRole.role.name] || user.currentRole.role.display_name}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">Sem role</span>
-                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={user.role === 'admin' ? 'default' : user.role === 'gerente' ? 'default' : 'secondary'}>
