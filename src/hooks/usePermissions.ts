@@ -128,13 +128,11 @@ export function usePermissions() {
   const { user, profile, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   useEffect(() => {
     // Enquanto auth estiver carregando, manter loading
     if (authLoading) {
       setLoading(true);
-      setPermissionsLoaded(false);
       return;
     }
 
@@ -142,7 +140,6 @@ export function usePermissions() {
     if (!user) {
       setPermissions(new Set());
       setLoading(false);
-      setPermissionsLoaded(true);
       return;
     }
 
@@ -242,10 +239,8 @@ export function usePermissions() {
       }
 
       setPermissions(permSet);
-      setPermissionsLoaded(true);
     } catch (error) {
       console.error('Erro ao carregar permissões:', error);
-      setPermissionsLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -253,31 +248,27 @@ export function usePermissions() {
 
   const hasPermission = useMemo(() => {
     return (permission: string): boolean => {
-      // Se ainda está carregando, não negar acesso prematuramente
-      if (loading || !permissionsLoaded) return false;
       if (!user || !profile) return false;
       if (profile.role === 'admin') return true;
       return permissions.has(permission);
     };
-  }, [permissions, user, profile, loading, permissionsLoaded]);
+  }, [permissions, user, profile]);
 
   const hasAnyPermission = useMemo(() => {
     return (permissionList: string[]): boolean => {
-      if (loading || !permissionsLoaded) return false;
       if (!user || !profile) return false;
       if (profile.role === 'admin') return true;
       return permissionList.some(perm => permissions.has(perm));
     };
-  }, [permissions, user, profile, loading, permissionsLoaded]);
+  }, [permissions, user, profile]);
 
   const hasAllPermissions = useMemo(() => {
     return (permissionList: string[]): boolean => {
-      if (loading || !permissionsLoaded) return false;
       if (!user || !profile) return false;
       if (profile.role === 'admin') return true;
       return permissionList.every(perm => permissions.has(perm));
     };
-  }, [permissions, user, profile, loading, permissionsLoaded]);
+  }, [permissions, user, profile]);
 
   return {
     hasPermission,
