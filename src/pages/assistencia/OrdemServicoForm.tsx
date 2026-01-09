@@ -4200,8 +4200,6 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </>
                       )}
                     </TabsList>
-                  </div>
-
               </div>
               
               {/* Status e Ações */}
