@@ -4126,87 +4126,87 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé com tabs e ações - DENTRO do Tabs */}
-          <div className="p-2 flex-shrink-0 mt-auto">
+          <div className="p-2 flex-shrink-0 mt-auto safe-area-bottom">
             <Card className="border border-gray-200 shadow-sm rounded-xl bg-white">
               <CardContent className="p-2 sm:p-3">
-                <div className="flex items-center justify-between gap-2">
-                  {/* Tabs no rodapé */}
-                  <div className="flex-1 overflow-x-auto">
-                    <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-1 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                  {/* Tabs no rodapé - scroll horizontal no mobile */}
+                  <div className="flex-1 overflow-x-auto scrollbar-none -mx-2 px-2 pb-1">
+                    <TabsList className="inline-flex bg-gray-50 h-auto p-1 gap-0.5 sm:gap-1 rounded-lg min-w-max">
                       <TabsTrigger 
                         value="dados" 
-                        className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
                       >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Dados</span>
+                        <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span>Dados</span>
                       </TabsTrigger>
                       
                       {/* Separador */}
-                      <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                      <div className="w-px h-5 sm:h-6 bg-gray-300 mx-0.5 sm:mx-1 self-center" />
                       
                       <TabsTrigger 
                         value="checklist" 
-                        className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                        className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
                       >
-                        <Check className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Check</span>
+                        <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span>Check</span>
                       </TabsTrigger>
                       
                       {isEditing && (
                         <>
                           {/* Separador */}
-                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          <div className="w-px h-5 sm:h-6 bg-gray-300 mx-0.5 sm:mx-1 self-center" />
                           
                           <TabsTrigger 
                             value="resolucao" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
                           >
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Resolução</span>
+                            <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            <span className="hidden xs:inline">Resolução</span>
+                            <span className="xs:hidden">Resol.</span>
                           </TabsTrigger>
                           
                           {/* Separador */}
-                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          <div className="w-px h-5 sm:h-6 bg-gray-300 mx-0.5 sm:mx-1 self-center" />
                           
                           <TabsTrigger 
                             value="itens" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
                           >
-                            <Package className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Peças ({itens.length})</span>
+                            <Package className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            <span>Peças</span>
+                            <span className="hidden sm:inline">({itens.length})</span>
                           </TabsTrigger>
                           
                           {/* Separador */}
-                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          <div className="w-px h-5 sm:h-6 bg-gray-300 mx-0.5 sm:mx-1 self-center" />
                           
                           <TabsTrigger 
                             value="financeiro" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
                           >
-                            <DollarSign className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Financeiro</span>
+                            <DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            <span className="hidden xs:inline">Financeiro</span>
+                            <span className="xs:hidden">$</span>
                           </TabsTrigger>
                           
                           {/* Separador */}
-                          <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+                          <div className="w-px h-5 sm:h-6 bg-gray-300 mx-0.5 sm:mx-1 self-center" />
                           
                           <TabsTrigger 
                             value="fotos" 
-                            className="gap-1 px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs hover:bg-gray-100 transition-all"
+                            className="gap-1 px-2 sm:px-2.5 py-1.5 rounded-md data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs hover:bg-gray-100 transition-all whitespace-nowrap"
                           >
-                            <Image className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Fotos</span>
+                            <Image className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            <span>Fotos</span>
                           </TabsTrigger>
                         </>
                       )}
                     </TabsList>
                   </div>
 
-                  {/* Separador */}
-                  <div className="h-8 w-px bg-gray-200 mx-2 hidden sm:block" />
-
-                  {/* Status e Ações */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Status e Ações - em nova linha no mobile */}
+                  <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-between sm:justify-end">
                     {isEditing && currentOS && (
                       <>
                         <span className="text-xs font-medium text-gray-500 hidden sm:inline">Status:</span>
