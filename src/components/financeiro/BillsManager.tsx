@@ -63,6 +63,15 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     bill.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Helper para formatar data para input type="date"
+  const formatDateForInput = (date: string | null | undefined): string => {
+    if (!date) return new Date().toISOString().split('T')[0];
+    // Se já estiver no formato yyyy-MM-dd, retorna como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    // Se for ISO completo, extrai apenas a data
+    return date.split('T')[0];
+  };
+
   const handleOpenDialog = (bill?: any) => {
     if (bill) {
       setEditingBill(bill);
@@ -71,7 +80,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         amount: bill.amount,
         category_id: bill.category_id || '',
         expense_type: bill.expense_type,
-        due_date: bill.due_date,
+        due_date: formatDateForInput(bill.due_date),
         supplier: bill.supplier || '',
         notes: bill.notes || '',
         recurring: bill.recurring,
@@ -267,15 +276,15 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
 
       {/* Dialog de criação/edição */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{editingBill ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
             <DialogDescription>
               {editingBill ? 'Atualize os dados da conta' : 'Cadastre uma nova despesa'}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.2) transparent' }}>
             <div className="space-y-2">
               <Label>Descrição *</Label>
               <Input
@@ -423,7 +432,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
             </Button>

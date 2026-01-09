@@ -215,7 +215,7 @@ export default function UserProfile() {
       title="Meu Perfil" 
       subtitle="Gerencie suas informações pessoais e configurações"
     >
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-6 pb-8" style={{ minHeight: '100%' }}>
         {/* Header com Avatar */}
         <Card>
           <CardContent className="pt-6">
