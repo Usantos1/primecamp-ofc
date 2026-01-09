@@ -160,9 +160,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.dispatchEvent(new CustomEvent('permissions-changed'));
   };
 
-  // Verificar role do user_roles (sistema seguro)
-  const isAdmin = profile?.role === 'admin';
+  // Verificar role do user_roles (aceita variações)
+  const adminRoles = ['admin', 'administrador', 'administrator'];
+  const isAdmin = profile?.role ? adminRoles.includes(profile.role.toLowerCase()) : false;
   const isApproved = profile?.approved === true;
+
+  // Cache do status de admin no localStorage para acesso rápido
+  useEffect(() => {
+    if (profile?.role) {
+      const adminStatus = adminRoles.includes(profile.role.toLowerCase());
+      localStorage.setItem('user_is_admin', adminStatus.toString());
+    }
+    if (!user && !loading) {
+      localStorage.removeItem('user_is_admin');
+    }
+  }, [profile?.role, user, loading]);
 
   const value = {
     user,

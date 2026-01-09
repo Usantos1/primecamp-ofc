@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface PermissionRouteProps {
   children: React.ReactNode;
@@ -12,6 +13,9 @@ interface PermissionRouteProps {
   redirectTo?: string;
 }
 
+// Chave para cache de admin no localStorage
+const ADMIN_CACHE_KEY = 'user_is_admin';
+
 export function PermissionRoute({ 
   children, 
   permission,
@@ -19,29 +23,43 @@ export function PermissionRoute({
   redirectTo
 }: PermissionRouteProps) {
   const { hasPermission, hasAnyPermission, hasAllPermissions, loading, isAdmin } = usePermissions();
-  const { profile, isAdmin: isAdminAuth, loading: authLoading } = useAuth();
+  const { profile, isAdmin: isAdminAuth, loading: authLoading, user } = useAuth();
 
-  // Verificar admin DIRETAMENTE do profile (mais confiável durante loading)
+  // Verificar admin DIRETAMENTE do profile
   const isAdminDirect = profile?.role?.toLowerCase() === 'admin' || 
                         profile?.role?.toLowerCase() === 'administrador' ||
                         profile?.role?.toLowerCase() === 'administrator';
 
+  // Verificar cache do localStorage (para acesso instantâneo durante loading)
+  const cachedIsAdmin = localStorage.getItem(ADMIN_CACHE_KEY) === 'true';
+
   // Se QUALQUER indicador diz que é admin, tem acesso total
-  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect;
+  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
+
+  // Atualizar cache quando descobrimos o status de admin
+  useEffect(() => {
+    if (profile?.role) {
+      const adminStatus = isAdminDirect;
+      localStorage.setItem(ADMIN_CACHE_KEY, adminStatus.toString());
+    }
+    // Limpar cache se não há usuário (logout)
+    if (!user && !authLoading) {
+      localStorage.removeItem(ADMIN_CACHE_KEY);
+    }
+  }, [profile?.role, isAdminDirect, user, authLoading]);
+
+  // Se temos cache de admin, liberar imediatamente (mesmo durante loading)
+  if (userIsAdmin) {
+    return <ProtectedRoute>{children}</ProtectedRoute>;
+  }
 
   // Mostrar loading enquanto auth ou permissões estão carregando
-  // MAS se já sabemos que é admin, liberar imediatamente
-  if ((loading || authLoading) && !userIsAdmin) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
-  }
-
-  // Admin tem acesso a tudo
-  if (userIsAdmin) {
-    return <ProtectedRoute>{children}</ProtectedRoute>;
   }
 
   const hasAccess = Array.isArray(permission)

@@ -68,19 +68,11 @@ export function AppSidebar() {
                         profile?.role?.toLowerCase() === 'administrador' ||
                         profile?.role?.toLowerCase() === 'administrator';
   
-  // Usar QUALQUER indicador de admin disponível
-  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect;
+  // Verificar cache do localStorage (para acesso instantâneo)
+  const cachedIsAdmin = localStorage.getItem('user_is_admin') === 'true';
   
-  // DEBUG: Log para entender o estado
-  console.log('[AppSidebar] Estado:', {
-    hasProfile: !!profile,
-    profileRole: profile?.role,
-    isAdmin,
-    isAdminAuth,
-    isAdminDirect,
-    userIsAdmin,
-    permissionsLoading
-  });
+  // Usar QUALQUER indicador de admin disponível
+  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
   
   // Função para verificar permissão - SIMPLIFICADA para funcionar sempre para admin
   const checkPermission = (permission: string): boolean => {
