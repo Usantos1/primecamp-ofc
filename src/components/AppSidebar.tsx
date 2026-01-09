@@ -357,9 +357,8 @@ export function AppSidebar() {
                   <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">
                     {profile?.display_name || user?.email?.split('@')[0]}
                   </p>
-                  <p className="text-[10px] text-muted-foreground truncate leading-tight">
-                    {userIsAdmin ? "Administrador" : profile?.department || "Atendimento"}
-                    {companyName && ` · ${companyName}`}
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight uppercase tracking-wide">
+                    {companyName || (userIsAdmin ? "Administrador" : profile?.department || "Atendimento")}
                   </p>
                 </div>
                 
