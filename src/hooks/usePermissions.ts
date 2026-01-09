@@ -128,26 +128,31 @@ export function usePermissions() {
   const { user, profile, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
 
   useEffect(() => {
-    // Enquanto auth estiver carregando ou perfil não chegou, manter loading
+    // Enquanto auth estiver carregando, manter loading
     if (authLoading) {
       setLoading(true);
+      setPermissionsLoaded(false);
       return;
     }
 
+    // Auth terminou mas não tem usuário - não autenticado
     if (!user) {
       setPermissions(new Set());
       setLoading(false);
+      setPermissionsLoaded(true);
       return;
     }
 
+    // Usuário existe mas perfil ainda não carregou - aguardar
     if (!profile) {
-      // Usuário autenticado mas perfil ainda não carregado
       setLoading(true);
       return;
     }
 
+    // Tudo pronto - carregar permissões
     loadPermissions();
 
     // Ouvir eventos de mudança de permissões
@@ -160,7 +165,7 @@ export function usePermissions() {
     return () => {
       window.removeEventListener('permissions-changed', handlePermissionsChange);
     };
-  }, [user, profile]);
+  }, [user, profile, authLoading]);
 
   const loadPermissions = async () => {
     try {
@@ -237,8 +242,10 @@ export function usePermissions() {
       }
 
       setPermissions(permSet);
+      setPermissionsLoaded(true);
     } catch (error) {
       console.error('Erro ao carregar permissões:', error);
+      setPermissionsLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -246,27 +253,31 @@ export function usePermissions() {
 
   const hasPermission = useMemo(() => {
     return (permission: string): boolean => {
+      // Se ainda está carregando, não negar acesso prematuramente
+      if (loading || !permissionsLoaded) return false;
       if (!user || !profile) return false;
       if (profile.role === 'admin') return true;
       return permissions.has(permission);
     };
-  }, [permissions, user, profile]);
+  }, [permissions, user, profile, loading, permissionsLoaded]);
 
   const hasAnyPermission = useMemo(() => {
     return (permissionList: string[]): boolean => {
+      if (loading || !permissionsLoaded) return false;
       if (!user || !profile) return false;
       if (profile.role === 'admin') return true;
       return permissionList.some(perm => permissions.has(perm));
     };
-  }, [permissions, user, profile]);
+  }, [permissions, user, profile, loading, permissionsLoaded]);
 
   const hasAllPermissions = useMemo(() => {
     return (permissionList: string[]): boolean => {
+      if (loading || !permissionsLoaded) return false;
       if (!user || !profile) return false;
       if (profile.role === 'admin') return true;
       return permissionList.every(perm => permissions.has(perm));
     };
-  }, [permissions, user, profile]);
+  }, [permissions, user, profile, loading, permissionsLoaded]);
 
   return {
     hasPermission,
