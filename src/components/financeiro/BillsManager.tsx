@@ -108,7 +108,9 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
 
   const handleSubmit = async () => {
     if (editingBill) {
-      await updateBill.mutateAsync({ id: editingBill.id, data: formData });
+      // Remover campos que não existem na tabela (usados apenas para criar recorrentes)
+      const { recurring_start, recurring_end, ...updateData } = formData;
+      await updateBill.mutateAsync({ id: editingBill.id, data: updateData });
     } else {
       await createBill.mutateAsync(formData);
     }
