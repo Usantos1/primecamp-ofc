@@ -74,13 +74,15 @@ export function AppSidebar() {
   // Usar QUALQUER indicador de admin disponível
   const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
   
-  // Função para verificar permissão - SIMPLIFICADA para funcionar sempre para admin
+  // SOLUÇÃO RADICAL: Enquanto não sabemos com certeza que NÃO é admin, mostrar tudo
+  // Só esconder items se tivermos CERTEZA que o usuário não tem permissão
+  const isDefinitelyNotAdmin = !permissionsLoading && profile && !isAdminDirect && !isAdmin && !isAdminAuth && !cachedIsAdmin;
+  
+  // Função para verificar permissão
   const checkPermission = (permission: string): boolean => {
-    // Se QUALQUER indicador diz que é admin, tem permissão total
-    if (userIsAdmin) return true;
-    // Enquanto carrega permissões, mostrar tudo (evitar flash de conteúdo)
-    if (permissionsLoading) return true;
-    // Para não-admins, verificar permissão específica
+    // Se NÃO temos certeza que não é admin, mostrar tudo
+    if (!isDefinitelyNotAdmin) return true;
+    // Para não-admins confirmados, verificar permissão específica
     return hasPermission(permission);
   };
 
