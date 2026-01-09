@@ -65,6 +65,18 @@ export function AppSidebar() {
   
   // Usar isAdmin do hook de permissões (mais robusto)
   const userIsAdmin = isAdmin || isAdminAuth;
+  
+  // Debug: verificar estado das permissões
+  console.log('[AppSidebar] Debug:', { 
+    userEmail: user?.email,
+    profileRole: profile?.role, 
+    isAdmin, 
+    isAdminAuth, 
+    userIsAdmin,
+    permissionsLoading,
+    hasVendasPermission: hasPermission('vendas.create'),
+    hasCaixaPermission: hasPermission('caixa.view'),
+  });
 
   const collapsed = state === "collapsed";
   const currentPath = location.pathname;
