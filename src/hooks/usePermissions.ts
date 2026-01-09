@@ -171,41 +171,10 @@ export function usePermissions() {
       const permSet = new Set<string>();
       const userRole = profile?.role || 'member';
 
-      // Se for admin, tem todas as permissões
+      // Se for admin, não precisa buscar no banco - hasPermission já retorna true para admin
       if (userRole === 'admin') {
-        const { data: allPermissions } = await from('permissions')
-          .select('resource, action')
-          .execute();
-
-        if (allPermissions && allPermissions.length > 0) {
-          allPermissions.forEach((p: any) => {
-            permSet.add(`${p.resource}.${p.action}`);
-          });
-        }
-        
-        // Adicionar permissões padrão de admin mesmo se tabela permissions estiver vazia
-        const adminPerms = [
-          'dashboard.view', 'dashboard.gestao',
-          'vendas.view', 'vendas.create', 'vendas.edit', 'vendas.manage',
-          'caixa.view', 'caixa.open', 'caixa.close', 'caixa.sangria', 'caixa.suprimento',
-          'os.view', 'os.create', 'os.edit',
-          'produtos.view', 'produtos.create', 'produtos.edit',
-          'clientes.view', 'clientes.create', 'clientes.edit',
-          'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
-          'rh.view', 'rh.metas', 'rh.ponto', 'rh.treinamentos',
-          'processos.view', 'processos.create', 'processos.edit',
-          'tarefas.view', 'tarefas.create', 'tarefas.edit',
-          'calendario.view',
-          'metricas.view',
-          'nps.view',
-          'disc.view',
-          'admin.users', 'admin.positions', 'admin.departments', 
-          'admin.config', 'admin.timeclock', 'admin.nps', 
-          'admin.disc', 'admin.logs',
-        ];
-        adminPerms.forEach(p => permSet.add(p));
-        
-        setPermissions(permSet);
+        // Apenas marcar como carregado, hasPermission retorna true para qualquer permissão
+        setPermissions(new Set(['*'])); // Marcador de "todas as permissões"
         setLoading(false);
         return;
       }
