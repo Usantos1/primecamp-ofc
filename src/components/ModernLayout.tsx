@@ -89,7 +89,7 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen min-h-[100dvh] flex w-full bg-background overflow-hidden">
+      <div className="h-screen h-[100dvh] flex w-full bg-background overflow-hidden">
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out">

@@ -1830,7 +1830,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full h-full flex flex-col overflow-hidden", isModal ? "" : "min-h-[calc(100dvh-2.5rem)] sm:min-h-0")}>
+    <div className={cn("w-full h-full flex flex-col", isModal ? "overflow-hidden" : "overflow-auto")}>
         {/* Tabs principais */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
 
@@ -4125,7 +4125,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé com tabs e ações - DENTRO do Tabs */}
-          <div className="flex-shrink-0 mt-auto sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-gray-200" style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))' }}>
+          <div className="flex-shrink-0 mt-auto sticky bottom-0 z-20 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <div className="p-1.5 sm:p-2">
               {/* Tabs no rodapé - scroll horizontal no mobile */}
               <div className="overflow-x-auto scrollbar-none mb-1.5 sm:mb-2">
