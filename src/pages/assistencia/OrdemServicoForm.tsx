@@ -126,7 +126,6 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     imei: '',
     numero_serie: '',
     cor: '',
-    operadora: '',
     senha_aparelho: '',
     senha_numerica: '', // Para iPhone
     padrao_desbloqueio: '', // Padrão de desbloqueio
@@ -2116,13 +2115,28 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Operadora</Label>
-                      <Input
-                        value={formData.operadora}
-                        onChange={(e) => setFormData(prev => ({ ...prev, operadora: e.target.value }))}
-                        placeholder="Ex: Vivo, Claro"
-                        className="h-10 text-sm border-gray-200 rounded-lg"
-                      />
+                      <Label className="text-xs font-medium text-gray-600">Deixou aparelho</Label>
+                      <Select 
+                        value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
+                        onValueChange={(v) => {
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            deixou_aparelho: v === 'sim',
+                            apenas_agendamento: v === 'agendado'
+                          }));
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
+                          <SelectValue placeholder="Selecione">
+                            {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'AGENDADO' : 'NÃO'}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[200px]">
+                          <SelectItem value="sim" className="text-sm">SIM</SelectItem>
+                          <SelectItem value="nao" className="text-sm">NÃO</SelectItem>
+                          <SelectItem value="agendado" className="text-sm">AGENDADO</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-gray-600">Previsão Entrega</Label>
@@ -2142,32 +2156,6 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
-                  </div>
-
-                  {/* Deixou Aparelho */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-gray-600">Deixou aparelho</Label>
-                    <Select 
-                      value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
-                      onValueChange={(v) => {
-                        setFormData(prev => ({ 
-                          ...prev, 
-                          deixou_aparelho: v === 'sim',
-                          apenas_agendamento: v === 'agendado'
-                        }));
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
-                        <SelectValue placeholder="Selecione">
-                          {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'HORÁRIO AGENDADO' : 'NÃO'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[200px]">
-                        <SelectItem value="sim" className="text-sm">SIM</SelectItem>
-                        <SelectItem value="nao" className="text-sm">NÃO</SelectItem>
-                        <SelectItem value="agendado" className="text-sm">HORÁRIO AGENDADO</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   {/* Descrição e Condições */}
