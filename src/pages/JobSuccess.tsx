@@ -2,20 +2,93 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, User, ExternalLink, Building2 } from 'lucide-react';
+import { CheckCircle, User, ExternalLink, Building2, Award } from 'lucide-react';
+import { from } from '@/integrations/db/client';
+import { DiscTestResults } from '@/components/DiscTestResults';
 
 export default function JobSuccess() {
   const { protocol: urlProtocol } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
+  const [discResult, setDiscResult] = useState<any>(null);
+  const [loadingDisc, setLoadingDisc] = useState(true);
   
   // Suporta protocolo tanto como parâmetro da URL quanto como query parameter
   const protocol = urlProtocol || searchParams.get('proto');
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    loadDiscResult();
+  }, [protocol]);
+
+  const loadDiscResult = async () => {
+    if (!protocol) {
+      setLoadingDisc(false);
+      return;
+    }
+
+    try {
+      setLoadingDisc(true);
+      
+      // Extrair primeira parte do UUID do protocolo
+      const uuidStart = protocol.replace('APP-', '').toLowerCase();
+      
+      // Buscar job_response pelo protocolo
+      const { data: responses, error: responsesError } = await from('job_responses')
+        .select('*')
+        .execute();
+      
+      if (responsesError) {
+        console.error('Erro ao buscar candidatura:', responsesError);
+        setLoadingDisc(false);
+        return;
+      }
+
+      const jobResponse = responses?.find((r: any) => 
+        r.id.toLowerCase().startsWith(uuidStart)
+      );
+
+      if (!jobResponse || !jobResponse.email) {
+        setLoadingDisc(false);
+        return;
+      }
+
+      // Buscar resultado do DISC pelo email do candidato
+      const { data: discResults, error: discError } = await from('candidate_responses')
+        .select('*')
+        .eq('email', jobResponse.email.toLowerCase())
+        .eq('is_completed', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .execute();
+
+      if (discError) {
+        console.error('Erro ao buscar resultado DISC:', discError);
+        setLoadingDisc(false);
+        return;
+      }
+
+      if (discResults && discResults.length > 0) {
+        const result = discResults[0];
+        const total = (result.d_score || 0) + (result.i_score || 0) + (result.s_score || 0) + (result.c_score || 0);
+        
+        setDiscResult({
+          ...result,
+          percentages: {
+            D: total > 0 ? Math.round((result.d_score || 0) / total * 100) : 0,
+            I: total > 0 ? Math.round((result.i_score || 0) / total * 100) : 0,
+            S: total > 0 ? Math.round((result.s_score || 0) / total * 100) : 0,
+            C: total > 0 ? Math.round((result.c_score || 0) / total * 100) : 0,
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar resultado DISC:', error);
+    } finally {
+      setLoadingDisc(false);
+    }
+  };
 
   if (!mounted) {
     return (
@@ -93,50 +166,44 @@ export default function JobSuccess() {
           </CardContent>
         </Card>
 
-        {/* Teste DISC Opcional */}
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 text-primary mb-2">
-              <User className="h-6 w-6" />
-            </div>
-            <CardTitle className="text-xl">Teste DISC Opcional</CardTitle>
-            <CardDescription>
-              Que tal fazer um teste de perfil comportamental? É rápido, gratuito e pode destacar sua candidatura!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                • Avalia seu perfil comportamental DISC
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • Leva apenas 5-10 minutos
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • Pode destacar sua candidatura no processo seletivo
-              </p>
-              <p className="text-sm text-muted-foreground">
-                • Resultado imediato e gratuito
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <Button 
-                onClick={() => window.open(`/candidato-disc?job_protocol=${protocol}`, '_blank')}
-                className="flex-1 flex items-center gap-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Fazer Teste DISC Agora
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/vagas')}
-                className="flex-1"
-              >
-                Ver Outras Vagas
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Resultado do Teste DISC */}
+        {!loadingDisc && discResult && (
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+            <CardHeader className="text-center">
+              <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                <Award className="h-6 w-6" />
+              </div>
+              <CardTitle className="text-xl">Seu Perfil Comportamental DISC</CardTitle>
+              <CardDescription>
+                Resultado do seu teste de perfil comportamental
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DiscTestResults
+                result={{
+                  d_score: discResult.d_score || 0,
+                  i_score: discResult.i_score || 0,
+                  s_score: discResult.s_score || 0,
+                  c_score: discResult.c_score || 0,
+                  dominant_profile: discResult.dominant_profile || 'BALANCED',
+                  percentages: discResult.percentages
+                }}
+                onRestart={() => navigate('/vagas')}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Botão Ver Outras Vagas */}
+        <div className="flex justify-center">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/vagas')}
+            className="w-full sm:w-auto"
+          >
+            Ver Outras Vagas
+          </Button>
+        </div>
 
         {/* Rodapé */}
         <div className="text-center text-muted-foreground text-sm">
