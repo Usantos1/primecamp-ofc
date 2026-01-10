@@ -6,6 +6,38 @@ import { CheckCircle, User, ExternalLink, Building2, Award } from 'lucide-react'
 import { from } from '@/integrations/db/client';
 import { DiscTestResults } from '@/components/DiscTestResults';
 
+const scrollbarCSS = `
+  .disc-result-scroll {
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+  
+  .disc-result-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .disc-result-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .disc-result-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+  
+  .disc-result-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+  
+  /* Firefox */
+  .disc-result-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+`;
+
 export default function JobSuccess() {
   const { protocol: urlProtocol } = useParams();
   const [searchParams] = useSearchParams();
@@ -114,8 +146,10 @@ export default function JobSuccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4">
-      <div className="max-w-2xl mx-auto space-y-6 pt-8">
+    <>
+      <style>{scrollbarCSS}</style>
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4">
+        <div className="max-w-2xl mx-auto space-y-6 pt-8">
         {/* Header */}
         <Card className="border-0 shadow-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
           <CardHeader className="text-center space-y-4">
@@ -178,7 +212,7 @@ export default function JobSuccess() {
                 Resultado do seu teste de perfil comportamental
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="disc-result-scroll">
               <DiscTestResults
                 result={{
                   d_score: discResult.d_score || 0,
@@ -213,5 +247,6 @@ export default function JobSuccess() {
         </div>
       </div>
     </div>
+    </>
   );
 }
