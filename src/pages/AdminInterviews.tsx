@@ -228,8 +228,7 @@ export const AdminInterviewsManager = () => {
       const { data: aiAnalysis } = await from('job_candidate_ai_analysis')
         .select('*')
         .eq('job_response_id', interview.job_response_id)
-        .single()
-        .execute();
+        .maybeSingle();
 
       const { data, error } = await apiClient.invokeFunction('generate-interview-questions', {
         body: {
