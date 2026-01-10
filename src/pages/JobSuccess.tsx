@@ -162,29 +162,17 @@ export default function JobSuccess() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-green-800 dark:text-green-200">
-              Sua candidatura foi registrada!
+              Candidatura Recebida!
             </CardTitle>
             <CardDescription>
-              Guarde o protocolo <span className="font-mono font-semibold">{protocol}</span> para acompanhar o status da sua candidatura.
+              Recebemos sua candidatura com sucesso. Você já faz parte do nosso banco de talentos!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-muted/50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Próximos Passos:</h3>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Nossa equipe analisará sua candidatura
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Entraremos em contato em até 5 dias úteis
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  Use o protocolo para acompanhar o status
-                </li>
-              </ul>
+              <p className="text-sm text-muted-foreground">
+                Nossa equipe analisará sua candidatura e entraremos em contato em breve caso haja interesse.
+              </p>
             </div>
           </CardContent>
         </Card>
