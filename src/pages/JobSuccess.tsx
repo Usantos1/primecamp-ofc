@@ -6,37 +6,6 @@ import { CheckCircle, User, ExternalLink, Building2, Award } from 'lucide-react'
 import { from } from '@/integrations/db/client';
 import { DiscTestResults } from '@/components/DiscTestResults';
 
-const scrollbarCSS = `
-  .disc-result-scroll {
-    max-height: 70vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scroll-behavior: smooth;
-  }
-  
-  .disc-result-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .disc-result-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .disc-result-scroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 3px;
-  }
-  
-  .disc-result-scroll::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
-  }
-  
-  /* Firefox */
-  .disc-result-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
-  }
-`;
 
 export default function JobSuccess() {
   const { protocol: urlProtocol } = useParams();
@@ -147,7 +116,6 @@ export default function JobSuccess() {
 
   return (
     <>
-      <style>{scrollbarCSS}</style>
       <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4">
         <div className="max-w-2xl mx-auto space-y-6 pt-8">
         {/* Header */}
@@ -212,7 +180,7 @@ export default function JobSuccess() {
                 Resultado do seu teste de perfil comportamental
               </CardDescription>
             </CardHeader>
-            <CardContent className="disc-result-scroll">
+            <CardContent>
               <DiscTestResults
                 result={{
                   d_score: discResult.d_score || 0,
