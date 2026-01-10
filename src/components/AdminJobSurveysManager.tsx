@@ -1802,8 +1802,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                         .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
                                         .eq('is_completed', true)
                                         .order('created_at', { ascending: false })
-                                        .maybeSingle()
-                                        .execute();
+                                        .maybeSingle();
 
                                       // Chamar análise com OpenAI
                                       const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
