@@ -2359,28 +2359,41 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
 
     // Chamar API da OpenAI
     console.log('[Analyze Candidate] Chamando OpenAI API com modelo:', openaiModel);
+    
+    // Modelos que requerem max_completion_tokens ao invés de max_tokens
+    const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5'];
+    const requiresCompletionTokens = modelsRequiringCompletionTokens.some(m => openaiModel.includes(m));
+    
+    const requestBody = {
+      model: openaiModel,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um especialista em recrutamento e seleção. Analise candidatos de forma objetiva e profissional, fornecendo análises detalhadas em formato JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    };
+    
+    // Usar max_completion_tokens para modelos mais novos, max_tokens para modelos antigos
+    if (requiresCompletionTokens) {
+      requestBody.max_completion_tokens = 2000;
+    } else {
+      requestBody.max_tokens = 2000;
+    }
+    
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${openaiApiKey}`,
       },
-      body: JSON.stringify({
-        model: openaiModel,
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um especialista em recrutamento e seleção. Analise candidatos de forma objetiva e profissional, fornecendo análises detalhadas em formato JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-        max_tokens: 2000
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!openaiResponse.ok) {
