@@ -503,14 +503,28 @@ app.get('/api/public/vagas', async (req, res) => {
   }
 });
 
+// Listar slugs de vagas ativas (para debug)
+app.get('/api/public/vagas/slugs', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, slug, title, is_active FROM job_surveys WHERE is_active = true ORDER BY created_at DESC'
+    );
+    res.json({ data: result.rows });
+  } catch (error) {
+    console.error('[Public] Erro ao listar slugs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Buscar vaga por slug ou ID (pública)
 app.get('/api/public/vaga/:slugOrId', async (req, res) => {
   try {
     const { slugOrId } = req.params;
+    console.log('[Public] Buscando vaga por slug/id:', slugOrId);
     
-    // Tentar buscar por slug primeiro
+    // Tentar buscar por slug (case-insensitive)
     let result = await pool.query(
-      'SELECT * FROM job_surveys WHERE slug = $1 AND is_active = true',
+      'SELECT * FROM job_surveys WHERE LOWER(slug) = LOWER($1) AND is_active = true',
       [slugOrId]
     );
     
@@ -522,10 +536,20 @@ app.get('/api/public/vaga/:slugOrId', async (req, res) => {
       );
     }
     
+    // Se ainda não encontrar, tentar busca parcial no slug
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Vaga não encontrada' });
+      result = await pool.query(
+        'SELECT * FROM job_surveys WHERE LOWER(slug) LIKE LOWER($1) AND is_active = true',
+        [`%${slugOrId}%`]
+      );
     }
     
+    if (result.rows.length === 0) {
+      console.log('[Public] Vaga não encontrada:', slugOrId);
+      return res.status(404).json({ error: 'Vaga não encontrada', slug: slugOrId });
+    }
+    
+    console.log('[Public] Vaga encontrada:', result.rows[0].title);
     res.json({ data: result.rows[0] });
   } catch (error) {
     console.error('[Public] Erro ao buscar vaga:', error);
