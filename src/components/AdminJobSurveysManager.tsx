@@ -1794,14 +1794,12 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                       const { data: jobResponse } = await from('job_responses')
                                         .select('*')
                                         .eq('id', response.id)
-                                        .single()
-                                        .execute();
+                                        .single();
 
                                       const { data: jobSurvey } = await from('job_surveys')
                                         .select('*')
                                         .eq('id', response.survey_id)
-                                        .single()
-                                        .execute();
+                                        .single();
 
                                       if (!jobResponse || !jobSurvey) {
                                         toast({
