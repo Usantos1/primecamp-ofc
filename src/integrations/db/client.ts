@@ -174,6 +174,35 @@ class UpdateBuilder {
   }
 }
 
+// Builder para maybeSingle() - permite encadeamento com .execute()
+class MaybeSingleBuilder {
+  private queryBuilder: DatabaseClient;
+
+  constructor(queryBuilder: DatabaseClient) {
+    this.queryBuilder = queryBuilder;
+  }
+
+  async execute(): Promise<{ data: any | null; error: any | null }> {
+    const result = await this.queryBuilder.execute();
+    if (result.error) return result;
+    return { data: result.data?.[0] || null, error: null };
+  }
+
+  // Permite usar como Promise diretamente (await sem .execute())
+  then<TResult1 = { data: any | null; error: any | null }, TResult2 = never>(
+    onfulfilled?: ((value: { data: any | null; error: any | null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null
+  ): Promise<{ data: any | null; error: any | null } | TResult> {
+    return this.execute().catch(onrejected);
+  }
+}
+
 class DatabaseClient {
   private tableName: string;
   private options: QueryOptions = {};
@@ -324,11 +353,9 @@ class DatabaseClient {
     return { data: result.data[0], error: null };
   }
 
-  async maybeSingle(): Promise<{ data: any | null; error: any | null }> {
+  maybeSingle(): MaybeSingleBuilder {
     this.options.limit = 1;
-    const result = await this.execute();
-    if (result.error) return result;
-    return { data: result.data?.[0] || null, error: null };
+    return new MaybeSingleBuilder(this);
   }
 
   insert(data: any): InsertBuilder {
