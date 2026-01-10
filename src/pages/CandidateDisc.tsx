@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -131,6 +131,12 @@ const CandidateDisc = () => {
 
       if (error) {
         console.error('❌ Erro ao buscar candidatura:', error);
+        // Se for erro 429, não mostrar toast (evitar spam) e parar tentativas
+        if (error.code === 429 || error.message?.includes('429')) {
+          console.error('⚠️ Muitas requisições. Aguarde antes de tentar novamente.');
+          setLoadingCandidateData(false);
+          return;
+        }
         toast.error('Erro ao carregar dados da candidatura. Preencha manualmente.');
         setLoadingCandidateData(false);
         return;
@@ -181,15 +187,37 @@ const CandidateDisc = () => {
     }
   };
 
+  // Flag para prevenir múltiplas execuções
+  const hasLoadedDataRef = useRef(false);
+  const isLoadingRef = useRef(false);
+
   // Carregar dados da candidatura quando job_protocol ou job_response_id estiver presente
   useEffect(() => {
-    if (jobProtocol) {
-      loadCandidateDataFromJob(jobProtocol);
-    } else if (jobResponseId) {
-      loadCandidateDataFromJobResponseId(jobResponseId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobProtocol, jobResponseId, startTest]);
+    // Prevenir múltiplas execuções
+    if (hasLoadedDataRef.current || isLoadingRef.current) return;
+    if (!jobProtocol && !jobResponseId) return;
+
+    isLoadingRef.current = true;
+    hasLoadedDataRef.current = true;
+
+    const loadData = async () => {
+      try {
+        if (jobProtocol) {
+          await loadCandidateDataFromJob(jobProtocol);
+        } else if (jobResponseId) {
+          await loadCandidateDataFromJobResponseId(jobResponseId);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        // Reset flag em caso de erro para permitir retry manual
+        hasLoadedDataRef.current = false;
+      } finally {
+        isLoadingRef.current = false;
+      }
+    };
+
+    loadData();
+  }, [jobProtocol, jobResponseId]); // Removido startTest das dependências
 
   const handleStartTest = async () => {
     if (!candidateInfo.name.trim()) {
