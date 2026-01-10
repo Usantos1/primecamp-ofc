@@ -118,6 +118,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const [iaApiKey, setIaApiKey] = useState<string>('');
   const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');
   const [aiApprovingId, setAiApprovingId] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   // carrega API key e modelo de integrações (kv_store)
   useEffect(() => {
@@ -1444,8 +1445,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                               const { data: checkData, error: checkError } = await from('job_application_drafts')
                                 .select('id')
                                 .eq('id', draft.id)
-                                .single()
-                                .execute();
+                                .single();
 
                               if (checkError || !checkData) {
                                 console.error('Draft não encontrado:', checkError);
@@ -1458,31 +1458,19 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                               }
 
                               // Tentar excluir
-                              const { data, error } = await from('job_application_drafts')
-                                .delete()
+                              const { error } = await from('job_application_drafts')
                                 .eq('id', draft.id)
-                                .execute();
+                                .delete();
 
                               if (error) {
                                 console.error('Erro ao excluir draft:', error);
                                 throw error;
                               }
 
-                              // Verificar se realmente deletou
-                              if (!data || data.length === 0) {
-                                console.error('Nenhum registro foi deletado. Verifique as políticas RLS.');
-                                toast({
-                                  title: "Aviso",
-                                  description: "A exclusão pode ter falhado. Verifique se a política RLS foi aplicada no Supabase.",
-                                  variant: "destructive",
-                                });
-                                // Mesmo assim, tentar invalidar e refetch
-                                await queryClient.invalidateQueries({ queryKey: ['job-drafts'] });
-                                await queryClient.refetchQueries({ queryKey: ['job-drafts', selectedSurvey?.id] });
-                                return;
+                              if (error) {
+                                console.error('Erro ao excluir draft:', error);
+                                throw error;
                               }
-
-                              console.log('Draft excluído com sucesso:', data);
 
                               toast({
                                 title: "Sucesso!",
