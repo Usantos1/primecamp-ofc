@@ -2447,27 +2447,18 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
     
     const companyId = jobResponseResult.rows[0]?.company_id || '00000000-0000-0000-0000-000000000001';
 
-    // Verificar se já existe análise para este candidato
-    const existingAnalysis = await pool.query(
-      'SELECT id FROM job_candidate_ai_analysis WHERE job_response_id = $1 AND company_id = $2',
-      [job_response_id, companyId]
+    // Usar UPSERT (INSERT ... ON CONFLICT ... DO UPDATE) para lidar com a constraint UNIQUE em job_response_id
+    await pool.query(
+      `INSERT INTO job_candidate_ai_analysis (job_response_id, survey_id, company_id, analysis_data, raw_analysis)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (job_response_id) 
+       DO UPDATE SET 
+         analysis_data = EXCLUDED.analysis_data,
+         raw_analysis = EXCLUDED.raw_analysis,
+         company_id = EXCLUDED.company_id,
+         updated_at = NOW()`,
+      [job_response_id, survey_id, companyId, JSON.stringify(analysisData), rawAnalysis]
     );
-
-    // Salvar ou atualizar análise no banco
-    if (existingAnalysis.rows.length > 0) {
-      await pool.query(
-        `UPDATE job_candidate_ai_analysis 
-         SET analysis_data = $1, raw_analysis = $2, updated_at = NOW()
-         WHERE job_response_id = $3 AND company_id = $4`,
-        [JSON.stringify(analysisData), rawAnalysis, job_response_id, companyId]
-      );
-    } else {
-      await pool.query(
-        `INSERT INTO job_candidate_ai_analysis (job_response_id, survey_id, company_id, analysis_data, raw_analysis)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [job_response_id, survey_id, companyId, JSON.stringify(analysisData), rawAnalysis]
-      );
-    }
 
     console.log('[Analyze Candidate] Análise salva com sucesso para:', job_response_id);
 
