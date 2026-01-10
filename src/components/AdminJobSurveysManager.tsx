@@ -26,6 +26,8 @@ import { DraftPreviewModal } from '@/components/DraftPreviewModal';
 import { AIAnalysisModal } from '@/components/AIAnalysisModal';
 import { useCandidateEvaluations } from '@/hooks/useCandidateEvaluations';
 import { useJobSurveyStats } from '@/hooks/useJobSurveys';
+import { DiscTestResults } from '@/components/DiscTestResults';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface JobSurvey {
   id: string;
@@ -236,6 +238,48 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
     },
     enabled: !!selectedSurvey?.id
   });
+
+  // Fetch DISC results for all candidates
+  const { data: discResults = [] } = useQuery({
+    queryKey: ['disc-results', selectedSurvey?.id],
+    queryFn: async () => {
+      if (!selectedSurvey?.id || !responses || responses.length === 0) return [];
+      
+      // Buscar todos os emails dos candidatos
+      const emails = responses.map(r => r.email?.toLowerCase()).filter(Boolean);
+      if (emails.length === 0) return [];
+      
+      // Buscar resultados DISC completos para estes emails
+      const { data, error } = await from('candidate_responses')
+        .select('*')
+        .in('email', emails)
+        .eq('is_completed', true)
+        .execute();
+      
+      if (error) {
+        console.error('Erro ao buscar resultados DISC:', error);
+        return [];
+      }
+      
+      // Mapear por email para acesso rápido
+      const discMap: Record<string, any> = {};
+      (data || []).forEach((result: any) => {
+        const email = result.email?.toLowerCase();
+        if (email && (!discMap[email] || new Date(result.created_at) > new Date(discMap[email].created_at))) {
+          discMap[email] = result;
+        }
+      });
+      
+      return discMap;
+    },
+    enabled: !!selectedSurvey?.id && responses.length > 0
+  });
+  
+  // Helper para obter resultado DISC de um candidato
+  const getDiscResult = (email: string) => {
+    if (!discResults || !email) return null;
+    return discResults[email?.toLowerCase()] || null;
+  };
 
   // Fetch drafts (leads parciais) for selected survey
   const { data: drafts = [], isLoading: loadingDrafts } = useQuery({
