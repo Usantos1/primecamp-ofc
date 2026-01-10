@@ -613,10 +613,6 @@ export default function JobApplicationSteps() {
       const responseData = response.data;
       if (response.error) throw new Error(response.error.message);
 
-      setSubmitted(true);
-      setShowDiscPrompt(true);
-      toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Você pode fazer o teste comportamental agora ou depois." });
-      
       const jobResponseId = responseData?.submissionId || responseData?.job_response_id;
       const candidateInfo = {
         name: formData.name.trim(),
@@ -629,6 +625,14 @@ export default function JobApplicationSteps() {
       setJobResponseId(jobResponseId || null);
       
       sessionStorage.setItem('candidate_disc_info', JSON.stringify(candidateInfo));
+      
+      setSubmitted(true);
+      toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Redirecionando para o teste DISC..." });
+      
+      // Redirecionar automaticamente para o teste DISC após 2 segundos
+      setTimeout(() => {
+        navigate(`/disc-externo?job_response_id=${jobResponseId || ''}&survey_id=${survey.id}`);
+      }, 2000);
 
       // Rodar análise de IA das respostas
       try {
