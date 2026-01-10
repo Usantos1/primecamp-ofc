@@ -1764,7 +1764,9 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                 <Button 
                                   variant="outline" 
                                   size="sm"
+                                  disabled={analyzingId === response.id}
                                   onClick={async () => {
+                                    setAnalyzingId(response.id);
                                     try {
                                       toast({
                                         title: "Gerando análise...",
@@ -1854,12 +1856,23 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                         description: error.message || "Erro ao gerar análise.",
                                         variant: "destructive",
                                       });
+                                    } finally {
+                                      setAnalyzingId(null);
                                     }
                                   }}
                                   className="hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-900/20"
                                 >
-                                  <Brain className="h-4 w-4 mr-1" />
-                                  Analisar IA
+                                  {analyzingId === response.id ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                      Analisando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Brain className="h-4 w-4 mr-1" />
+                                      Analisar IA
+                                    </>
+                                  )}
                                 </Button>
                               )}
 

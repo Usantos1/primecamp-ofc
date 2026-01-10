@@ -2449,8 +2449,8 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
 
     // Verificar se já existe análise para este candidato
     const existingAnalysis = await pool.query(
-      'SELECT id FROM job_candidate_ai_analysis WHERE job_response_id = $1',
-      [job_response_id]
+      'SELECT id FROM job_candidate_ai_analysis WHERE job_response_id = $1 AND company_id = $2',
+      [job_response_id, companyId]
     );
 
     // Salvar ou atualizar análise no banco
@@ -2458,8 +2458,8 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
       await pool.query(
         `UPDATE job_candidate_ai_analysis 
          SET analysis_data = $1, raw_analysis = $2, updated_at = NOW()
-         WHERE job_response_id = $3`,
-        [JSON.stringify(analysisData), rawAnalysis, job_response_id]
+         WHERE job_response_id = $3 AND company_id = $4`,
+        [JSON.stringify(analysisData), rawAnalysis, job_response_id, companyId]
       );
     } else {
       await pool.query(
