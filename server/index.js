@@ -360,9 +360,11 @@ app.use((req, res, next) => {
   // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads, webhook/test e API pública v1
   // Também pular para rota de teste de api-tokens
   // IMPORTANTE: Pular também para /api/admin/revenda/* pois já tem autenticação própria
+  // IMPORTANTE: Pular também para /api/public/* (portal de vagas e candidaturas públicas)
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
       req.path === '/health' ||
+      req.path.startsWith('/api/public/') ||  // Rotas públicas (vagas, candidaturas)
       req.path.startsWith('/api/functions/') ||
       req.path.startsWith('/api/storage/') ||
       req.path.startsWith('/api/whatsapp/') ||
@@ -388,6 +390,7 @@ if (requireCompanyAccess) {
     if (req.path.startsWith('/api/auth/') || 
         req.path === '/api/health' || 
         req.path === '/health' ||
+        req.path.startsWith('/api/public/') ||  // Rotas públicas (vagas, candidaturas)
         req.path.startsWith('/api/functions/') ||
         req.path.startsWith('/api/storage/') ||
         req.path.startsWith('/api/whatsapp/') ||
