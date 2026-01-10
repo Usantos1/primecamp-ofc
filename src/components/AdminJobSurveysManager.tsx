@@ -16,7 +16,7 @@ import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles, Award } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles, Award, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ModernSwitch } from '@/components/ui/modern-switch';
@@ -27,6 +27,7 @@ import { AIAnalysisModal } from '@/components/AIAnalysisModal';
 import { useCandidateEvaluations } from '@/hooks/useCandidateEvaluations';
 import { useJobSurveyStats } from '@/hooks/useJobSurveys';
 import { DiscTestResults } from '@/components/DiscTestResults';
+import { DiscResponsesModal } from '@/components/DiscResponsesModal';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface JobSurvey {
@@ -108,6 +109,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const [draftSearchTerm, setDraftSearchTerm] = useState('');
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false);
   const [showDiscModal, setShowDiscModal] = useState(false);
+  const [showDiscResponsesModal, setShowDiscResponsesModal] = useState(false);
   const [selectedDiscResult, setSelectedDiscResult] = useState<any>(null);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [iaProvider, setIaProvider] = useState<'openai'>('openai');
