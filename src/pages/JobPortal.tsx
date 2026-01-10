@@ -67,13 +67,29 @@ const themeCSS = `
     --job-gradient-end: 340 70% 50%;
   }
   
-  html, body {
+  html {
     overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+  }
+  
+  body {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+  
+  #root {
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
   }
   
   .job-portal-scroll {
     min-height: 100vh;
-    overflow-y: auto;
+    height: auto;
+    overflow: visible;
     scroll-behavior: smooth;
   }
   
