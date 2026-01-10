@@ -257,78 +257,97 @@ const CandidateDisc = () => {
       try {
         toast.loading('Analisando seu perfil com inteligência artificial...', { id: 'analyzing' });
         
-        // Buscar dados completos da candidatura
-        const { data: jobResponse } = await supabase
-          .from('job_responses')
+        // Buscar dados completos da candidatura usando API PostgreSQL
+        const { data: jobResponse, error: jobResponseError } = await from('job_responses')
           .select('*')
           .eq('id', jobResponseId)
           .single();
 
-        const { data: jobSurvey } = await supabase
-          .from('job_surveys')
+        if (jobResponseError) {
+          console.error('Erro ao buscar candidatura:', jobResponseError);
+          throw jobResponseError;
+        }
+
+        const { data: jobSurvey, error: jobSurveyError } = await from('job_surveys')
           .select('*')
           .eq('id', surveyId)
           .single();
 
+        if (jobSurveyError) {
+          console.error('Erro ao buscar vaga:', jobSurveyError);
+          throw jobSurveyError;
+        }
+
         if (jobResponse && jobSurvey) {
           // Buscar resultado do DISC
-          const { data: discResult } = await supabase
-            .from('candidate_responses')
+          const { data: discResult, error: discError } = await from('candidate_responses')
             .select('*')
             .eq('id', candidateId)
             .single();
 
-          // Chamar análise com OpenAI
-          const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
-            job_response_id: jobResponseId,
-            survey_id: surveyId,
-            candidate_data: {
-              name: jobResponse.name,
-              email: jobResponse.email,
-              age: jobResponse.age,
-              phone: jobResponse.phone,
-              responses: jobResponse.responses,
-              disc_profile: discResult ? {
-                d_score: discResult.d_score || 0,
-                i_score: discResult.i_score || 0,
-                s_score: discResult.s_score || 0,
-                c_score: discResult.c_score || 0,
-                dominant_profile: discResult.dominant_profile || ''
-              } : undefined
-            },
-            job_data: {
-              title: jobSurvey.title,
-              position_title: jobSurvey.position_title,
-              description: jobSurvey.description,
-              requirements: jobSurvey.requirements,
-              work_modality: jobSurvey.work_modality,
-              contract_type: jobSurvey.contract_type
-            }
-          });
-
-          if (analysisError) {
-            console.error('Erro na análise:', analysisError);
-            toast.dismiss('analyzing');
-            toast.error('Erro ao analisar perfil, mas sua candidatura foi enviada!');
-          } else {
-            toast.dismiss('analyzing');
-            toast.success('Análise completa! Redirecionando...');
+          if (discError) {
+            console.error('Erro ao buscar resultado DISC:', discError);
+            // Continuar mesmo sem resultado DISC
           }
+
+          // Chamar análise com OpenAI (não bloquear se falhar)
+          try {
+            const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
+              job_response_id: jobResponseId,
+              survey_id: surveyId,
+              candidate_data: {
+                name: jobResponse.name,
+                email: jobResponse.email,
+                age: jobResponse.age,
+                phone: jobResponse.phone,
+                responses: jobResponse.responses,
+                disc_profile: discResult ? {
+                  d_score: discResult.d_score || 0,
+                  i_score: discResult.i_score || 0,
+                  s_score: discResult.s_score || 0,
+                  c_score: discResult.c_score || 0,
+                  dominant_profile: discResult.dominant_profile || ''
+                } : undefined
+              },
+              job_data: {
+                title: jobSurvey.title,
+                position_title: jobSurvey.position_title,
+                description: jobSurvey.description,
+                requirements: jobSurvey.requirements,
+                work_modality: jobSurvey.work_modality,
+                contract_type: jobSurvey.contract_type
+              }
+            });
+
+            if (analysisError) {
+              console.error('Erro na análise:', analysisError);
+              // Não bloquear se a análise falhar
+            }
+          } catch (analysisErr: any) {
+            console.error('Erro ao chamar análise:', analysisErr);
+            // Não bloquear se a análise falhar
+          }
+
+          toast.dismiss('analyzing');
+          toast.success('Teste concluído! Redirecionando...');
+        } else {
+          toast.dismiss('analyzing');
+          toast.error('Dados não encontrados');
         }
 
         // Redirecionar para página de sucesso
         setTimeout(() => {
           const protocol = jobResponse?.id ? `APP-${jobResponse.id.split('-')[0].toUpperCase()}` : 'TEMP';
           navigate(`/vaga/sucesso/${protocol}`);
-        }, 2000);
-      } catch (error) {
+        }, 1500);
+      } catch (error: any) {
         console.error('Erro ao processar análise:', error);
         toast.dismiss('analyzing');
-        toast.error('Erro ao processar análise, mas sua candidatura foi enviada!');
+        toast.error('Erro ao processar, mas sua candidatura foi enviada!');
         // Redirecionar mesmo assim
         setTimeout(() => {
           navigate(`/vaga/sucesso/TEMP`);
-        }, 2000);
+        }, 1500);
       }
     } else {
       // Se não veio de candidatura, apenas mostrar resultado
