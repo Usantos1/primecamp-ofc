@@ -75,7 +75,7 @@ app.use(helmet({
 app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Idempotency-Key');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.sendStatus(200);
 });
@@ -110,7 +110,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key'],
   exposedHeaders: ['Content-Range', 'X-Total-Count'],
   preflightContinue: false,
   optionsSuccessStatus: 200,
@@ -623,6 +623,141 @@ app.get('/api/public/candidatura/:protocol', async (req, res) => {
     res.json({ data: result.rows[0] });
   } catch (error) {
     console.error('[Public] Erro ao consultar candidatura:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// ENDPOINTS DE CANDIDATURA (Functions - Público)
+// ============================================
+
+// POST /api/functions/job-application-save-draft - Salvar rascunho de candidatura
+app.post('/api/functions/job-application-save-draft', async (req, res) => {
+  try {
+    const { survey_id, email, name, phone, age, cep, address, whatsapp, instagram, linkedin, responses, current_step, form_data } = req.body;
+    
+    if (!survey_id) {
+      return res.status(400).json({ error: 'survey_id é obrigatório' });
+    }
+    
+    // Buscar a vaga para pegar o company_id
+    const surveyResult = await pool.query(
+      'SELECT id, company_id FROM job_surveys WHERE id = $1',
+      [survey_id]
+    );
+    
+    if (surveyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Vaga não encontrada' });
+    }
+    
+    const companyId = surveyResult.rows[0].company_id;
+    const emailLower = email?.toLowerCase() || null;
+    
+    // Verificar se já existe um rascunho para este email/survey
+    const existingDraft = await pool.query(
+      'SELECT id FROM job_application_drafts WHERE survey_id = $1 AND email = $2',
+      [survey_id, emailLower]
+    );
+    
+    let result;
+    if (existingDraft.rows.length > 0) {
+      // Atualizar rascunho existente
+      result = await pool.query(`
+        UPDATE job_application_drafts 
+        SET name = $1, phone = $2, age = $3, cep = $4, address = $5, 
+            whatsapp = $6, instagram = $7, linkedin = $8, responses = $9,
+            current_step = $10, form_data = $11, updated_at = NOW()
+        WHERE id = $12
+        RETURNING *
+      `, [name, phone, age, cep, address, whatsapp, instagram, linkedin, 
+          JSON.stringify(responses || {}), current_step, JSON.stringify(form_data || {}),
+          existingDraft.rows[0].id]);
+    } else {
+      // Criar novo rascunho
+      result = await pool.query(`
+        INSERT INTO job_application_drafts (
+          survey_id, email, name, phone, age, cep, address, whatsapp, instagram, linkedin,
+          responses, current_step, form_data, company_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING *
+      `, [survey_id, emailLower, name, phone, age, cep, address, whatsapp, instagram, linkedin,
+          JSON.stringify(responses || {}), current_step, JSON.stringify(form_data || {}), companyId]);
+    }
+    
+    res.json({ 
+      success: true, 
+      draft_id: result.rows[0].id 
+    });
+  } catch (error) {
+    console.error('[Functions] Erro ao salvar rascunho:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/functions/job-application-submit - Submeter candidatura final
+app.post('/api/functions/job-application-submit', async (req, res) => {
+  try {
+    const { survey_id, name, email, phone, age, cep, address, whatsapp, instagram, linkedin, responses } = req.body;
+    
+    if (!survey_id || !name || !email) {
+      return res.status(400).json({ error: 'survey_id, name e email são obrigatórios' });
+    }
+    
+    // Buscar a vaga para pegar o company_id
+    const surveyResult = await pool.query(
+      'SELECT id, company_id, title, position_title FROM job_surveys WHERE id = $1',
+      [survey_id]
+    );
+    
+    if (surveyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Vaga não encontrada' });
+    }
+    
+    const survey = surveyResult.rows[0];
+    const companyId = survey.company_id;
+    const emailLower = email.toLowerCase().trim();
+    
+    // Verificar se já existe candidatura deste email para esta vaga
+    const existingResponse = await pool.query(
+      'SELECT id FROM job_responses WHERE survey_id = $1 AND email = $2',
+      [survey_id, emailLower]
+    );
+    
+    if (existingResponse.rows.length > 0) {
+      return res.status(409).json({ 
+        error: 'Você já se candidatou para esta vaga',
+        job_response_id: existingResponse.rows[0].id 
+      });
+    }
+    
+    // Inserir candidatura
+    const insertResult = await pool.query(`
+      INSERT INTO job_responses (
+        survey_id, name, email, phone, age, cep, address, whatsapp, instagram, linkedin,
+        responses, company_id, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'received')
+      RETURNING *
+    `, [survey_id, name.trim(), emailLower, phone, age, cep, address, whatsapp, instagram, linkedin,
+        JSON.stringify(responses || {}), companyId]);
+    
+    const response = insertResult.rows[0];
+    
+    // Deletar rascunho se existir
+    await pool.query(
+      'DELETE FROM job_application_drafts WHERE survey_id = $1 AND email = $2',
+      [survey_id, emailLower]
+    );
+    
+    console.log(`[Functions] Nova candidatura: ${name} para ${survey.title}`);
+    
+    res.json({ 
+      success: true, 
+      submissionId: response.id,
+      job_response_id: response.id,
+      data: response
+    });
+  } catch (error) {
+    console.error('[Functions] Erro ao submeter candidatura:', error);
     res.status(500).json({ error: error.message });
   }
 });
