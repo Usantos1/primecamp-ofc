@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface User {
   id: string;
@@ -13,12 +14,43 @@ export interface User {
 }
 
 export const useUsers = () => {
+  const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Obter company_id do usuário logado
+  const currentCompanyId = user?.company_id;
 
   const fetchUsers = async () => {
+    if (!currentCompanyId) {
+      console.log('[useUsers] ⚠️ Sem company_id, aguardando...');
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
+      
+      // 1) Primeiro buscar user_ids da tabela users que pertencem à mesma empresa
+      console.log('[useUsers] 📡 Buscando usuários da empresa:', currentCompanyId);
+      
+      const { data: usersData, error: usersError } = await from('users')
+        .select('id')
+        .eq('company_id', currentCompanyId)
+        .execute();
+      
+      if (usersError || !usersData || usersData.length === 0) {
+        console.warn('[useUsers] ⚠️ Nenhum usuário encontrado na empresa');
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+      
+      const companyUserIds = usersData.map((u: any) => u.id).filter(Boolean);
+      console.log('[useUsers] ✅ Usuários da empresa:', companyUserIds.length);
+      
+      // 2) Buscar perfis apenas dos usuários da mesma empresa
       const { data, error } = await from('profiles')
         .select(`
           id, 
@@ -30,6 +62,7 @@ export const useUsers = () => {
           phone, 
           avatar_url
         `)
+        .in('user_id', companyUserIds)
         .order('display_name')
         .execute();
 
@@ -49,6 +82,7 @@ export const useUsers = () => {
         avatar_url: profile.avatar_url
       }));
 
+      console.log('[useUsers] ✅ Usuários carregados:', formattedUsers.length);
       setUsers(formattedUsers);
     } catch (error) {
       console.error('Error in fetchUsers:', error);
@@ -59,7 +93,7 @@ export const useUsers = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentCompanyId]);
 
   return {
     users,

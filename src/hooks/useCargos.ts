@@ -20,31 +20,62 @@ const STORAGE_KEY = 'assistencia_colaboradores';
 const COLABORADORES_PADRAO: Colaborador[] = [];
 
 export function useCargos() {
+  const { user } = useAuth();
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Obter company_id do usuário logado
+  const currentCompanyId = user?.company_id;
 
   // Carregar colaboradores
   useEffect(() => {
     const load = async () => {
+      if (!currentCompanyId) {
+        console.log('[useCargos] ⚠️ Sem company_id, aguardando...');
+        setColaboradores([]);
+        setIsLoading(false);
+        return;
+      }
+      
       setIsLoading(true);
-      console.log('[useCargos] 🔄 Iniciando carregamento de colaboradores...');
+      console.log('[useCargos] 🔄 Iniciando carregamento de colaboradores da empresa:', currentCompanyId);
       
       try {
-        // 1) Buscar perfis (nome/email) via PostgreSQL API
+        // 1) Primeiro buscar user_ids da tabela users que pertencem à mesma empresa
+        console.log('[useCargos] 📡 Buscando usuários da empresa...');
+        
+        const { data: usersData, error: usersError } = await from('users')
+          .select('id')
+          .eq('company_id', currentCompanyId)
+          .execute();
+        
+        if (usersError || !usersData || usersData.length === 0) {
+          console.warn('[useCargos] ⚠️ Nenhum usuário encontrado na empresa');
+          setColaboradores([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        const companyUserIds = usersData.map((u: any) => u.id).filter(Boolean);
+        console.log('[useCargos] ✅ Usuários da empresa:', companyUserIds.length);
+        
+        // 2) Buscar perfis apenas dos usuários da mesma empresa
         console.log('[useCargos] 📡 Buscando profiles via PostgreSQL API...');
         
         const { data: profilesData, error: profilesError } = await from('profiles')
           .select('*')
+          .in('user_id', companyUserIds)
           .order('display_name', { ascending: true })
           .execute();
         
         if (profilesError) {
           console.error('[useCargos] ❌ ERRO ao carregar profiles:', profilesError);
           
-          // Tentar query simplificada
+          // Tentar query simplificada ainda com filtro de empresa
           console.warn('[useCargos] ⚠️ Tentando query simplificada...');
           const { data: profilesData2, error: profilesError2 } = await from('profiles')
             .select('*')
+            .in('user_id', companyUserIds)
             .limit(100)
             .execute();
           
@@ -61,26 +92,10 @@ export function useCargos() {
             
             console.log('[useCargos] ✅ Colaboradores criados:', todosColaboradores.length);
             setColaboradores(todosColaboradores);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(todosColaboradores));
             setIsLoading(false);
             return;
           }
           
-          // Tentar usar localStorage como fallback
-          const stored = localStorage.getItem(STORAGE_KEY);
-          if (stored) {
-            try {
-              const storedData = JSON.parse(stored);
-              if (Array.isArray(storedData) && storedData.length > 0) {
-                console.log('[useCargos] ⚠️ Usando dados do localStorage devido a erro:', storedData.length);
-                setColaboradores(storedData);
-                setIsLoading(false);
-                return;
-              }
-            } catch (e) {
-              console.warn('[useCargos] Erro ao ler localStorage:', e);
-            }
-          }
           setColaboradores([]);
           setIsLoading(false);
           return;
@@ -169,7 +184,7 @@ export function useCargos() {
     };
 
     load();
-  }, []);
+  }, [currentCompanyId]);
 
   // Salvar colaboradores
   const saveColaboradores = useCallback((newColaboradores: Colaborador[]) => {
