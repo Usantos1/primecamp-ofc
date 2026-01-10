@@ -163,13 +163,9 @@ export function ModernLayout({ children, title, subtitle, headerActions, onSearc
           </header>
 
           {/* Main Content - usa todo o espaço disponível */}
-          <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <div 
-              className="flex-1 overflow-y-auto min-h-0 p-1 sm:p-2 md:p-4 pt-1 sm:pt-2 md:pt-4"
-              style={{ 
-                scrollbarWidth: 'thin', 
-                scrollbarColor: 'rgba(0,0,0,0.15) transparent' 
-              }}
+              className="flex-1 min-h-0 overflow-y-auto p-1 sm:p-2 md:p-4 pt-1 sm:pt-2 md:pt-4 scrollbar-thin"
             >
               {children}
             </div>

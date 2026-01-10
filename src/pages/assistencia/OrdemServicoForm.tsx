@@ -1830,9 +1830,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full h-full flex flex-col", isModal ? "overflow-hidden" : "overflow-auto")}>
+    <div className={cn("w-full h-full flex flex-col overflow-hidden")}>
         {/* Tabs principais */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
 
           {/* Resumo Fixo da OS - Oculto no mobile, compacto no desktop */}
           {isEditing && currentOS && (
