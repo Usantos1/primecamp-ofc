@@ -2273,6 +2273,183 @@ app.post('/api/functions/disc-session-status', authenticateToken, async (req, re
   }
 });
 
+// POST /api/functions/analyze-candidate - Analisar candidato com IA
+app.post('/api/functions/analyze-candidate', authenticateToken, async (req, res) => {
+  try {
+    const { job_response_id, survey_id, candidate_data, job_data } = req.body;
+
+    if (!job_response_id || !survey_id || !candidate_data || !job_data) {
+      return res.status(400).json({ error: 'job_response_id, survey_id, candidate_data e job_data são obrigatórios' });
+    }
+
+    // Buscar API key da OpenAI do banco de dados
+    const tokenResult = await pool.query(`
+      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
+    `);
+
+    let openaiApiKey = null;
+    let openaiModel = 'gpt-4o-mini';
+    if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
+      const settings = tokenResult.rows[0].value;
+      openaiApiKey = settings.aiApiKey;
+      openaiModel = settings.aiModel || 'gpt-4o-mini';
+    }
+
+    if (!openaiApiKey) {
+      return res.status(400).json({ 
+        error: 'API Key da OpenAI não configurada',
+        message: 'Configure a API Key em Integrações > OpenAI'
+      });
+    }
+
+    // Construir prompt para análise
+    const discInfo = candidate_data.disc_profile ? `
+Perfil DISC:
+- Dominante (D): ${candidate_data.disc_profile.d_score || 0}/20
+- Influente (I): ${candidate_data.disc_profile.i_score || 0}/20
+- Estável (S): ${candidate_data.disc_profile.s_score || 0}/20
+- Cauteloso (C): ${candidate_data.disc_profile.c_score || 0}/20
+- Perfil Dominante: ${candidate_data.disc_profile.dominant_profile || 'BALANCED'}
+` : '';
+
+    const responsesText = candidate_data.responses && typeof candidate_data.responses === 'object' 
+      ? Object.entries(candidate_data.responses)
+          .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+          .join('\n')
+      : String(candidate_data.responses || '');
+
+    const prompt = `Analise o seguinte candidato para a vaga "${job_data.position_title || job_data.title}" e forneça uma análise detalhada em formato JSON.
+
+DADOS DA VAGA:
+Título: ${job_data.title || job_data.position_title}
+Descrição: ${job_data.description || 'Não informado'}
+Requisitos: ${Array.isArray(job_data.requirements) ? job_data.requirements.join(', ') : job_data.requirements || 'Não informado'}
+Modalidade: ${job_data.work_modality || 'Não informado'}
+Tipo de Contrato: ${job_data.contract_type || 'Não informado'}
+
+DADOS DO CANDIDATO:
+Nome: ${candidate_data.name || 'Não informado'}
+Idade: ${candidate_data.age || 'Não informado'}
+Email: ${candidate_data.email || 'Não informado'}
+Telefone: ${candidate_data.phone || 'Não informado'}
+${discInfo}
+Respostas do Questionário:
+${responsesText}
+
+INSTRUÇÕES:
+Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguinte estrutura:
+{
+  "score_geral": número de 0 a 100,
+  "recomendacao": "APROVADO" ou "REPROVADO" ou "ANÁLISE_MANUAL",
+  "justificativa": "texto explicando a recomendação",
+  "chances_sucesso": número de 0 a 100 (porcentagem),
+  "comprometimento": número de 0 a 100 (porcentagem),
+  "area_recomendada": "nome da área/função recomendada",
+  "perfil_comportamental": "análise detalhada do perfil comportamental baseado no DISC e respostas",
+  "experiencia": "análise da experiência e qualificações",
+  "pontos_fortes": ["ponto 1", "ponto 2", "ponto 3"],
+  "pontos_fracos": ["ponto 1", "ponto 2"],
+  "recomendacoes": "recomendações específicas para este candidato"
+}`;
+
+    // Chamar API da OpenAI
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: openaiModel,
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em recrutamento e seleção. Analise candidatos de forma objetiva e profissional, fornecendo análises detalhadas em formato JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.json().catch(() => ({}));
+      console.error('[OpenAI] Erro na API:', openaiResponse.status, errorData);
+      return res.status(500).json({ 
+        error: 'Erro ao chamar API da OpenAI',
+        details: errorData.error?.message || 'Erro desconhecido'
+      });
+    }
+
+    const openaiData = await openaiResponse.json();
+    const rawAnalysis = openaiData.choices[0]?.message?.content || '';
+
+    // Tentar parsear o JSON da resposta
+    let analysisData = {};
+    try {
+      // Remover markdown code blocks se existirem
+      const jsonText = rawAnalysis.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      analysisData = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('[OpenAI] Erro ao parsear JSON:', parseError);
+      // Se não conseguir parsear, criar análise básica
+      analysisData = {
+        score_geral: 50,
+        recomendacao: 'ANÁLISE_MANUAL',
+        justificativa: 'Erro ao processar análise da IA. Análise manual necessária.',
+        chances_sucesso: 50,
+        comprometimento: 50,
+        area_recomendada: 'Não definida',
+        perfil_comportamental: rawAnalysis.substring(0, 500),
+        experiencia: 'Análise não disponível',
+        pontos_fortes: [],
+        pontos_fracos: [],
+        recomendacoes: ''
+      };
+    }
+
+    // Verificar se já existe análise para este candidato
+    const existingAnalysis = await pool.query(
+      'SELECT id FROM job_candidate_ai_analysis WHERE job_response_id = $1',
+      [job_response_id]
+    );
+
+    // Salvar ou atualizar análise no banco
+    if (existingAnalysis.rows.length > 0) {
+      await pool.query(
+        `UPDATE job_candidate_ai_analysis 
+         SET analysis_data = $1, raw_analysis = $2, updated_at = NOW()
+         WHERE job_response_id = $3`,
+        [JSON.stringify(analysisData), rawAnalysis, job_response_id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO job_candidate_ai_analysis (job_response_id, survey_id, analysis_data, raw_analysis)
+         VALUES ($1, $2, $3, $4)`,
+        [job_response_id, survey_id, JSON.stringify(analysisData), rawAnalysis]
+      );
+    }
+
+    console.log('[Analyze Candidate] Análise salva com sucesso para:', job_response_id);
+
+    // Retornar dados no formato esperado pelo frontend
+    res.json({
+      data: {
+        score: analysisData.score_geral || 0,
+        recommendation: analysisData.recomendacao || 'ANÁLISE_MANUAL',
+        analysis: analysisData
+      }
+    });
+  } catch (error) {
+    console.error('[Analyze Candidate] Erro:', error);
+    res.status(500).json({ error: error.message || 'Erro ao analisar candidato' });
+  }
+});
+
 // POST /api/functions/import-produtos - Importar produtos em lote
 app.post('/api/functions/import-produtos', authenticateToken, async (req, res) => {
   try {
