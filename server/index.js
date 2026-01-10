@@ -71,15 +71,6 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Handler explícito para requisições OPTIONS (preflight)
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Idempotency-Key');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
-
 app.use(cors({
   origin: function (origin, callback) {
     // Permitir requisições sem origin (mobile apps, Postman, etc)
@@ -666,7 +657,7 @@ app.post('/api/functions/job-application-save-draft', async (req, res) => {
         UPDATE job_application_drafts 
         SET name = $1, phone = $2, age = $3, cep = $4, address = $5, 
             whatsapp = $6, instagram = $7, linkedin = $8, responses = $9,
-            current_step = $10, form_data = $11, updated_at = NOW()
+            current_step = $10, form_data = $11, updated_at = NOW(), last_saved_at = NOW()
         WHERE id = $12
         RETURNING *
       `, [name, phone, age, cep, address, whatsapp, instagram, linkedin, 

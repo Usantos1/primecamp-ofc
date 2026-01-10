@@ -1,0 +1,22 @@
+# COMANDOS PARA REINICIAR API NA VPS (CORREÇÃO CORS)
+# ===================================================
+
+# 1. Atualizar código do repositório
+cd /root/primecamp-ofc
+git pull origin main
+
+# 2. Reiniciar servidor API (aplicar mudanças no CORS)
+pm2 restart primecamp-api
+
+# 3. Verificar se está funcionando
+pm2 logs primecamp-api --lines 30
+
+# 4. Testar endpoint
+curl -X OPTIONS https://api.primecamp.cloud/api/functions/job-application-submit \
+  -H "Origin: https://primecamp.cloud" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: idempotency-key" \
+  -v
+
+# Ou usar o script automatizado:
+# bash DEPLOY_VPS.sh
