@@ -1017,14 +1017,12 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       const { data: jobResponse, error: responseError } = await from('job_responses')
         .select('*')
         .eq('id', response.id)
-        .single()
-        .execute();
+        .single();
 
       const { data: jobSurvey, error: surveyError } = await from('job_surveys')
         .select('*')
         .eq('id', response.survey_id)
-        .single()
-        .execute();
+        .single();
 
       if (responseError || surveyError || !jobResponse || !jobSurvey) {
         throw responseError || surveyError || new Error("Dados do candidato ou vaga não encontrados.");
