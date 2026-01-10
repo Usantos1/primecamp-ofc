@@ -2295,6 +2295,9 @@ app.post('/api/functions/analyze-candidate', authenticateToken, async (req, res)
       const settings = typeof value === 'string' ? JSON.parse(value) : value;
       openaiApiKey = settings.aiApiKey;
       openaiModel = settings.aiModel || 'gpt-4o-mini';
+      console.log('[Analyze Candidate] Configurações carregadas:', { hasApiKey: !!openaiApiKey, model: openaiModel });
+    } else {
+      console.log('[Analyze Candidate] Nenhuma configuração encontrada no banco');
     }
 
     if (!openaiApiKey) {
@@ -2355,6 +2358,7 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
 }`;
 
     // Chamar API da OpenAI
+    console.log('[Analyze Candidate] Chamando OpenAI API com modelo:', openaiModel);
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -2373,6 +2377,7 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
             content: prompt
           }
         ],
+        response_format: { type: 'json_object' },
         temperature: 0.7,
         max_tokens: 2000
       }),
