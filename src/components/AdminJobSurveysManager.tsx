@@ -1467,11 +1467,6 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                 throw error;
                               }
 
-                              if (error) {
-                                console.error('Erro ao excluir draft:', error);
-                                throw error;
-                              }
-
                               toast({
                                 title: "Sucesso!",
                                 description: "Lead parcial excluído.",
