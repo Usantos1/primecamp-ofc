@@ -1830,9 +1830,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   */
 
   const content = (
-    <div className={cn("w-full h-full flex flex-col overflow-hidden")}>
+    <div className={cn("w-full h-full flex flex-col")}>
         {/* Tabs principais */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
           {/* Resumo Fixo da OS - Oculto no mobile, compacto no desktop */}
           {isEditing && currentOS && (
@@ -1851,7 +1851,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Tab Dados - com scroll interno */}
-          <TabsContent value="dados" className="flex-1 overflow-auto scrollbar-thin p-2 md:p-3">
+          <TabsContent value="dados" className="flex-1 min-h-0 overflow-auto scrollbar-thin p-2 md:p-3">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
               {/* Widget 1: Dados do Cliente e Aparelho */}
               <Card className="border border-gray-200/80 shadow-sm rounded-xl bg-white">
@@ -2345,7 +2345,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           </TabsContent>
 
           {/* Tab Checklist */}
-          <TabsContent value="checklist" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
+          <TabsContent value="checklist" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
             <Tabs defaultValue="entrada" className="w-full">
               <TabsList className="w-full justify-start mb-4">
                 <TabsTrigger value="entrada">Checklist de Entrada</TabsTrigger>
@@ -2595,7 +2595,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Resolução e Info. Técnicas (mesclado) */}
           {isEditing && (
-            <TabsContent value="resolucao" className="flex-1 overflow-auto scrollbar-thin space-y-3 mt-2 p-2">
+            <TabsContent value="resolucao" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-3 mt-2 p-2">
               {/* Card Resolução do Problema */}
               <Card className="border border-gray-200/80 shadow-sm rounded-xl">
                 <CardHeader className="pb-2 pt-3 border-b border-gray-200">
@@ -2688,7 +2688,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           
           {/* Tab Fotos */}
           {isEditing && (
-            <TabsContent value="fotos" className="flex-1 overflow-auto scrollbar-thin space-y-4 p-2">
+            <TabsContent value="fotos" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-4 p-2">
               <Card className="border-2 border-gray-300 shadow-lg">
                 <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b-2 border-gray-300">
                   <CardTitle className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -3858,7 +3858,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Itens (Peças/Serviços) */}
           {isEditing && (
-            <TabsContent value="itens" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
+            <TabsContent value="itens" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
               <Card className="border-2">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0">
                   <div className="flex items-center justify-between">
@@ -3971,7 +3971,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Financeiro */}
           {isEditing && (
-            <TabsContent value="financeiro" className="flex-1 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
+            <TabsContent value="financeiro" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
 
               {/* Saldo Pendente em Destaque */}
               {total - totalPago > 0 && (
@@ -4125,7 +4125,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé com tabs e ações - DENTRO do Tabs */}
-          <div className="flex-shrink-0 mt-auto sticky bottom-0 z-20 bg-white border-t border-gray-200 pb-10 sm:pb-2">
+          <div className="flex-shrink-0 z-20 bg-white border-t border-gray-200 pb-4 sm:pb-1">
             <div className="px-1 py-1 sm:p-2">
               {/* Tabs no rodapé - scroll horizontal no mobile */}
               <div className="overflow-x-auto scrollbar-none mb-1 sm:mb-2">
