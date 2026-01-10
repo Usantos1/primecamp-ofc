@@ -46,16 +46,16 @@ export const useCandidateEvaluations = (surveyId?: string) => {
   const deleteCandidate = async (candidateId: string) => {
     try {
       // First delete any evaluations
-      await from('job_candidate_evaluations')
-        .delete()
+      const { error: evalError } = await from('job_candidate_evaluations')
         .eq('job_response_id', candidateId)
-        .execute();
+        .delete();
+
+      if (evalError) throw evalError;
 
       // Then delete the candidate response
       const { error } = await from('job_responses')
-        .delete()
         .eq('id', candidateId)
-        .execute();
+        .delete();
 
       if (error) throw error;
 
