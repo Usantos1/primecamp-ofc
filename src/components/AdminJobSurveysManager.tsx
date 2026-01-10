@@ -2025,13 +2025,35 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                   onRestart={() => setShowDiscModal(false)}
                 />
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowDiscResponsesModal(true);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Ver Respostas
+                </Button>
                 <Button variant="outline" onClick={() => setShowDiscModal(false)}>
                   Fechar
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        )}
+
+        {showDiscResponsesModal && selectedDiscResult && (
+          <DiscResponsesModal
+            open={showDiscResponsesModal}
+            onOpenChange={setShowDiscResponsesModal}
+            responses={Array.isArray(selectedDiscResult.responses) 
+              ? selectedDiscResult.responses 
+              : (typeof selectedDiscResult.responses === 'string' 
+                ? JSON.parse(selectedDiscResult.responses) 
+                : [])}
+          />
         )}
       </div>
     );
