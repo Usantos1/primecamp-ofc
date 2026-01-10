@@ -128,10 +128,9 @@ export const AdminInterviewsManager = () => {
         }));
       }
 
-      const { data: existingInterviews } = await supabase
-        .from('job_interviews')
+      const { data: existingInterviews } = await from('job_interviews')
         .select('job_response_id, interview_type, status')
-       .execute() .in('job_response_id', responseIds);
+        .execute();
 
       const interviewsMap = new Map();
       (existingInterviews || []).forEach(interview => {
@@ -175,17 +174,33 @@ export const AdminInterviewsManager = () => {
   const { data: interviews = [], isLoading } = useQuery({
     queryKey: ['admin-interviews'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('job_interviews')
-        .select(`
-          *,
-          job_response:job_responses(id, name, email, phone).execute(),
-          job_survey:job_surveys(id, title, position_title)
-        `)
-        .order('created_at', { ascending: false });
+      const { data: interviewsData, error } = await from('job_interviews')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .execute();
 
       if (error) throw error;
-      return (data || []) as Interview[];
+
+      // Buscar dados relacionados
+      const enrichedInterviews = await Promise.all((interviewsData || []).map(async (interview: any) => {
+        const { data: jobResponse } = await from('job_responses')
+          .select('id, name, email, phone')
+          .eq('id', interview.job_response_id)
+          .maybeSingle();
+
+        const { data: jobSurvey } = await from('job_surveys')
+          .select('id, title, position_title')
+          .eq('id', interview.survey_id)
+          .maybeSingle();
+
+        return {
+          ...interview,
+          job_response: jobResponse,
+          job_survey: jobSurvey
+        };
+      }));
+
+      return enrichedInterviews as Interview[];
     }
   });
 
@@ -228,13 +243,13 @@ export const AdminInterviewsManager = () => {
       if (error) throw error;
 
       // Atualizar entrevista com perguntas geradas
-      const { error: updateError } = await supabase
-        .from('job_interviews')
+      const { error: updateError } = await from('job_interviews')
         .update({
           questions: data.questions || [],
           status: 'scheduled'
         })
-        .eq('id', interview.id);
+        .eq('id', interview.id)
+        .execute();
 
       if (updateError) throw updateError;
 
@@ -361,10 +376,10 @@ export const AdminInterviewsManager = () => {
 
     setDeletingInterviewId(interviewToDelete.id);
     try {
-      const { error } = await supabase
-        .from('job_interviews')
+      const { error } = await from('job_interviews')
         .delete()
-        .eq('id', interviewToDelete.id);
+        .eq('id', interviewToDelete.id)
+        .execute();
 
       if (error) throw error;
 
@@ -518,8 +533,7 @@ export const AdminInterviewsManager = () => {
                                           description: "Aguarde um momento.",
                                         });
 
-                                        const { data: newInterview, error } = await supabase
-                                          .from('job_interviews')
+                                        const { data: newInterview, error } = await from('job_interviews')
                                           .insert({
                                             job_response_id: candidate.job_response_id,
                                             survey_id: candidate.survey_id,
@@ -532,7 +546,7 @@ export const AdminInterviewsManager = () => {
 
                                         if (error) {
                                           // Se já existe, buscar a existente
-                                          if (error.code === '23505') { // Unique violation
+                                          if (error.code === '23505' || error.message?.includes('duplicate')) { // Unique violation
                                             const { data: existing } = await from('job_interviews')
                                               .select('*')
                                               .eq('job_response_id', candidate.job_response_id)
@@ -600,8 +614,7 @@ export const AdminInterviewsManager = () => {
                                           description: "Aguarde um momento.",
                                         });
 
-                                        const { data: newInterview, error } = await supabase
-                                          .from('job_interviews')
+                                        const { data: newInterview, error } = await from('job_interviews')
                                           .insert({
                                             job_response_id: candidate.job_response_id,
                                             survey_id: candidate.survey_id,
@@ -614,7 +627,7 @@ export const AdminInterviewsManager = () => {
 
                                         if (error) {
                                           // Se já existe, buscar a existente
-                                          if (error.code === '23505' || error.message?.includes('unique')) {
+                                          if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
                                             const { data: existing } = await from('job_interviews')
                                               .select('*')
                                               .eq('job_response_id', candidate.job_response_id)
@@ -1226,8 +1239,7 @@ export const AdminInterviewsManager = () => {
                     throw new Error('Candidato não encontrado');
                   }
 
-                  const { data: newInterview, error } = await supabase
-                    .from('job_interviews')
+                  const { data: newInterview, error } = await from('job_interviews')
                     .insert({
                       job_response_id: selectedJobResponseId,
                       survey_id: jobResponse.survey_id,
