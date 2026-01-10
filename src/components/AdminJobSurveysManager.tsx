@@ -107,6 +107,8 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
   const [draftSearchTerm, setDraftSearchTerm] = useState('');
   const [showAIAnalysisModal, setShowAIAnalysisModal] = useState(false);
+  const [showDiscModal, setShowDiscModal] = useState(false);
+  const [selectedDiscResult, setSelectedDiscResult] = useState<any>(null);
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const [iaProvider, setIaProvider] = useState<'openai'>('openai');
   const [iaApiKey, setIaApiKey] = useState<string>('');
@@ -1630,7 +1632,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                           </TableCell>
                           
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {getStatusBadge(status)}
                               {getAIAnalysis(response.id) && (
                                 <Badge 
@@ -1645,6 +1647,45 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                                   IA
                                 </Badge>
                               )}
+                              {getDiscResult(response.email) && (() => {
+                                const disc = getDiscResult(response.email);
+                                const profileColors: Record<string, string> = {
+                                  'D': 'bg-red-50 border-red-300 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400',
+                                  'I': 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400',
+                                  'S': 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400',
+                                  'C': 'bg-yellow-50 border-yellow-300 text-yellow-700 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400'
+                                };
+                                const profileNames: Record<string, string> = {
+                                  'D': 'Dominante',
+                                  'I': 'Influente',
+                                  'S': 'Estável',
+                                  'C': 'Cauteloso'
+                                };
+                                const profile = disc.dominant_profile || 'BALANCED';
+                                const colorClass = profileColors[profile] || 'bg-gray-50 border-gray-300 text-gray-700';
+                                return (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`cursor-pointer hover:opacity-80 ${colorClass}`}
+                                    onClick={() => {
+                                      const total = (disc.d_score || 0) + (disc.i_score || 0) + (disc.s_score || 0) + (disc.c_score || 0);
+                                      setSelectedDiscResult({
+                                        ...disc,
+                                        percentages: {
+                                          D: total > 0 ? Math.round((disc.d_score || 0) / total * 100) : 0,
+                                          I: total > 0 ? Math.round((disc.i_score || 0) / total * 100) : 0,
+                                          S: total > 0 ? Math.round((disc.s_score || 0) / total * 100) : 0,
+                                          C: total > 0 ? Math.round((disc.c_score || 0) / total * 100) : 0,
+                                        }
+                                      });
+                                      setShowDiscModal(true);
+                                    }}
+                                  >
+                                    <Award className="h-3 w-3 mr-1" />
+                                    DISC: {profileNames[profile] || profile}
+                                  </Badge>
+                                );
+                              })()}
                             </div>
                           </TableCell>
                           
@@ -1955,6 +1996,40 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
           analysis={selectedResponse ? getAIAnalysis(selectedResponse.id) : null}
           candidateName={selectedResponse?.name}
         />
+
+        {showDiscModal && selectedDiscResult && (
+          <Dialog open={showDiscModal} onOpenChange={setShowDiscModal}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Resultado do Teste DISC
+                </DialogTitle>
+                <DialogDescription>
+                  Perfil comportamental do candidato
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <DiscTestResults
+                  result={{
+                    d_score: selectedDiscResult.d_score || 0,
+                    i_score: selectedDiscResult.i_score || 0,
+                    s_score: selectedDiscResult.s_score || 0,
+                    c_score: selectedDiscResult.c_score || 0,
+                    dominant_profile: selectedDiscResult.dominant_profile || 'BALANCED',
+                    percentages: selectedDiscResult.percentages
+                  }}
+                  onRestart={() => setShowDiscModal(false)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDiscModal(false)}>
+                  Fechar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     );
   }
