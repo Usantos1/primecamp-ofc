@@ -81,128 +81,128 @@ const DISC_QUESTIONS = [
     options: {
       D: "Ir direto à prática e aprender fazendo",
       I: "Aprender em grupo e trocar experiências",
-      S: "Seguir um método estruturado e gradual",
-      C: "Estudar teoria e detalhes antes de praticar"
+      S: "Seguir um processo estruturado e gradual",
+      C: "Estudar teoria e fundamentos profundamente"
     }
   },
   {
     id: 9,
-    question: "Em projetos, eu me concentro principalmente em:",
+    question: "Em projetos, eu tendo a:",
     options: {
-      D: "Entregar resultados no prazo estabelecido",
-      I: "Criar sinergia e engajamento da equipe",
-      S: "Garantir que todos se sintam incluídos",
-      C: "Assegurar qualidade e precisão em cada etapa"
+      D: "Focar nos resultados e prazos",
+      I: "Valorizar a criatividade e inovação",
+      S: "Garantir que todos estejam confortáveis e incluídos",
+      C: "Assegurar qualidade e precisão nos detalhes"
     }
   },
   {
     id: 10,
-    question: "Minha reação a feedback crítico é:",
+    question: "Minha motivação principal no trabalho é:",
     options: {
-      D: "Aceito e uso para melhorar rapidamente",
-      I: "Preciso que seja dado de forma construtiva",
-      S: "Prefiro receber de forma privada e cuidadosa",
-      C: "Analiso em detalhes antes de aplicar"
+      D: "Alcançar metas desafiadoras e superar obstáculos",
+      I: "Ter reconhecimento e trabalhar com pessoas",
+      S: "Contribuir para um ambiente estável e harmonioso",
+      C: "Realizar trabalho de alta qualidade e precisão"
     }
   },
   {
     id: 11,
-    question: "Quando preciso tomar uma decisão importante:",
+    question: "Quando tomo decisões, eu:",
     options: {
-      D: "Decido rapidamente baseado em minha experiência",
-      I: "Consulto outras pessoas para validar ideias",
-      S: "Preciso de tempo para considerar todas as implicações",
-      C: "Coleto todos os dados possíveis antes de decidir"
+      D: "Decido rapidamente baseado na minha experiência",
+      I: "Considero o impacto nas pessoas envolvidas",
+      S: "Busco consenso e evito decisões que causem conflito",
+      C: "Analiso todas as informações disponíveis primeiro"
     }
   },
   {
     id: 12,
-    question: "No ambiente de trabalho, valorizo mais:",
+    question: "Em situações de mudança, eu:",
     options: {
-      D: "Autonomia e liberdade para agir",
-      I: "Relacionamentos e reconhecimento",
-      S: "Estabilidade e previsibilidade",
-      C: "Precisão e qualidade nos processos"
+      D: "Adapto-me rapidamente e vejo oportunidades",
+      I: "Mantenho otimismo e ajudo outros a se adaptarem",
+      S: "Prefiro mudanças graduais e bem planejadas",
+      C: "Preciso de tempo para analisar e compreender as implicações"
     }
   },
   {
     id: 13,
-    question: "Quando recebo uma nova tarefa:",
+    question: "Meu estilo de liderança é:",
     options: {
-      D: "Vou direto à ação e começo imediatamente",
-      I: "Compartilho com a equipe e crio entusiasmo",
-      S: "Planejo cuidadosamente antes de iniciar",
-      C: "Analiso todos os requisitos em detalhes"
+      D: "Autoritário e orientado para resultados",
+      I: "Inspirador e orientado para pessoas",
+      S: "Participativo e orientado para o grupo",
+      C: "Técnico e orientado para processos"
     }
   },
   {
     id: 14,
-    question: "Minha motivação principal no trabalho é:",
+    question: "Quando enfrento críticas, eu:",
     options: {
-      D: "Alcançar resultados e superar desafios",
-      I: "Trabalhar com pessoas e criar impacto positivo",
-      S: "Manter estabilidade e contribuir consistentemente",
-      C: "Realizar trabalhos de alta qualidade e precisão"
+      D: "Defendo meu ponto de vista com firmeza",
+      I: "Busco compreender e manter relacionamentos",
+      S: "Aceito pacificamente para evitar conflitos",
+      C: "Analiso objetivamente se há fundamento"
     }
   },
   {
     id: 15,
-    question: "Em situações de mudança, eu:",
+    question: "No planejamento de tarefas, eu:",
     options: {
-      D: "Me adapto rapidamente e busco oportunidades",
-      I: "Vejo o lado positivo e ajudo outros a se adaptarem",
-      S: "Preciso de tempo para processar e me ajustar",
-      C: "Analiso cuidadosamente os impactos antes de aceitar"
+      D: "Foco nos objetivos principais e delego detalhes",
+      I: "Planejo de forma flexível para permitir criatividade",
+      S: "Planejo cuidadosamente para evitar imprevistos",
+      C: "Crio planos detalhados com etapas bem definidas"
     }
   },
   {
     id: 16,
-    question: "Quando trabalho em equipe, contribuo principalmente com:",
+    question: "Em networking e relacionamentos profissionais, eu:",
     options: {
-      D: "Liderança e direcionamento claro",
-      I: "Energia e motivação para o grupo",
-      S: "Apoio e colaboração constante",
-      C: "Análise cuidadosa e atenção aos detalhes"
+      D: "Foco em contatos que podem gerar oportunidades",
+      I: "Construo relacionamentos genuínos e amplos",
+      S: "Mantenho relacionamentos próximos e duradouros",
+      C: "Prefiro relacionamentos baseados em competência técnica"
     }
   },
   {
     id: 17,
-    question: "Minha abordagem para atingir metas é:",
+    question: "Minha abordagem para dar feedback é:",
     options: {
-      D: "Foco intenso e ação direta",
-      I: "Criar sinergia e engajar a equipe",
-      S: "Progresso constante e consistente",
-      C: "Planejamento detalhado e execução precisa"
+      D: "Direto e focado em resultados",
+      I: "Positivo e encorajador",
+      S: "Gentil e construtivo",
+      C: "Específico e baseado em fatos"
     }
   },
   {
     id: 18,
-    question: "Em situações de incerteza, eu:",
+    question: "Em apresentações, eu:",
     options: {
-      D: "Ajo com confiança mesmo sem todas as informações",
-      I: "Busco apoio e perspectiva de outros",
-      S: "Preciso de mais informações antes de agir",
-      C: "Pesquiso exaustivamente antes de decidir"
+      D: "Vou direto ao ponto com confiança",
+      I: "Uso entusiasmo para engajar a audiência",
+      S: "Preparo-me bem e apresento de forma organizada",
+      C: "Incluo dados detalhados e informações precisas"
     }
   },
   {
     id: 19,
-    question: "Minha forma preferida de receber instruções é:",
+    question: "Quando trabalho em equipe, eu:",
     options: {
-      D: "Diretas e objetivas, com liberdade para executar",
-      I: "Com contexto e explicação do propósito",
-      S: "Claras e detalhadas, com suporte disponível",
-      C: "Completas e precisas, com todos os detalhes"
+      D: "Assumo responsabilidades e coordeno ações",
+      I: "Contribuo com energia e ideias criativas",
+      S: "Apoio os membros e mantenho a união do grupo",
+      C: "Garanto que padrões de qualidade sejam mantidos"
     }
   },
   {
     id: 20,
-    question: "No ambiente profissional, busco principalmente:",
+    question: "Minha maior força no ambiente profissional é:",
     options: {
-      D: "Desafios e oportunidades de crescimento",
-      I: "Conexões significativas e reconhecimento",
-      S: "Estabilidade e relacionamentos duradouros",
-      C: "Excelência técnica e qualidade nos resultados"
+      D: "Capacidade de liderança e tomada de decisão",
+      I: "Habilidade de comunicação e influência",
+      S: "Cooperação e manutenção da harmonia",
+      C: "Atenção aos detalhes e precisão"
     }
   }
 ];
