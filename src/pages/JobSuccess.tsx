@@ -151,9 +151,6 @@ export default function JobSuccess() {
               <CardTitle className="text-3xl font-bold text-green-800 dark:text-green-200">
                 Candidatura Enviada com Sucesso!
               </CardTitle>
-              <CardDescription className="text-lg mt-2 text-green-700 dark:text-green-300">
-                Protocolo: <span className="font-mono font-bold">{protocol}</span>
-              </CardDescription>
             </div>
           </CardHeader>
         </Card>
