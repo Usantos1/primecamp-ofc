@@ -725,8 +725,8 @@ app.post('/api/functions/job-application-submit', async (req, res) => {
     const insertResult = await pool.query(`
       INSERT INTO job_responses (
         survey_id, name, email, phone, age, cep, address, whatsapp, instagram, linkedin,
-        responses, company_id, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'received')
+        responses, company_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `, [survey_id, name.trim(), emailLower, phone, age, cep, address, whatsapp, instagram, linkedin,
         JSON.stringify(responses || {}), companyId]);
