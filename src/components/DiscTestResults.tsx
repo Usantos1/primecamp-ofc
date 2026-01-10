@@ -8,8 +8,9 @@ import { DiscResult } from "@/hooks/useDiscTest";
 
 interface DiscTestResultsProps {
   result: DiscResult;
-  onRestart: () => void;
+  onRestart?: () => void;
   onExportPDF?: () => void;
+  hideRestartButton?: boolean;
 }
 
 const PROFILE_DESCRIPTIONS = {
@@ -216,10 +217,12 @@ export const DiscTestResults = ({ result, onRestart, onExportPDF }: DiscTestResu
             Exportar PDF
           </Button>
         )}
-        <Button onClick={onRestart} className="flex items-center gap-2">
-          <RotateCcw className="h-4 w-4" />
-          Fazer Novo Teste
-        </Button>
+        {!hideRestartButton && onRestart && (
+          <Button onClick={onRestart} className="flex items-center gap-2">
+            <RotateCcw className="h-4 w-4" />
+            Fazer Novo Teste
+          </Button>
+        )}
       </div>
     </div>
   );

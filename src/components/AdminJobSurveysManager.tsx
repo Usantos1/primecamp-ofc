@@ -2022,7 +2022,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                     dominant_profile: selectedDiscResult.dominant_profile || 'BALANCED',
                     percentages: selectedDiscResult.percentages
                   }}
-                  onRestart={() => setShowDiscModal(false)}
+                  hideRestartButton={true}
                 />
               </div>
               <DialogFooter className="gap-2">
