@@ -4125,7 +4125,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé com tabs e ações - DENTRO do Tabs */}
-          <div className="flex-shrink-0 mt-auto sticky bottom-0 z-20 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className="flex-shrink-0 mt-auto sticky bottom-0 z-20 bg-white border-t border-gray-200 pb-4 sm:pb-2">
             <div className="p-1.5 sm:p-2">
               {/* Tabs no rodapé - scroll horizontal no mobile */}
               <div className="overflow-x-auto scrollbar-none mb-1.5 sm:mb-2">
