@@ -6,6 +6,26 @@ import { CheckCircle, User, ExternalLink, Building2, Award } from 'lucide-react'
 import { from } from '@/integrations/db/client';
 import { DiscTestResults } from '@/components/DiscTestResults';
 
+const scrollCSS = `
+  html {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+  }
+  
+  body {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+  
+  #root {
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+  }
+`;
 
 export default function JobSuccess() {
   const { protocol: urlProtocol } = useParams();
@@ -116,7 +136,8 @@ export default function JobSuccess() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4">
+      <style>{scrollCSS}</style>
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4 pb-8">
         <div className="max-w-2xl mx-auto space-y-6 pt-8">
         {/* Header */}
         <Card className="border-0 shadow-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
