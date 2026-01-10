@@ -328,14 +328,20 @@ export default function JobApplicationSteps() {
 
   const fetchSurvey = async () => {
     try {
-      const { data, error } = await from("job_surveys")
-        .select("*")
-        .eq("slug", slug)
-        .eq("is_active", true)
-        .single()
-        .execute();
+      // Usar API pública para buscar vaga por slug (não precisa de autenticação)
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const response = await fetch(`${API_URL}/public/vaga/${slug}`);
+      
+      if (!response.ok) {
+        console.error("Vaga não encontrada:", slug);
+        navigate("/404");
+        return;
+      }
+      
+      const result = await response.json();
+      const data = result.data;
 
-      if (error || !data) {
+      if (!data) {
         navigate("/404");
         return;
       }
