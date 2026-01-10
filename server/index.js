@@ -2439,6 +2439,14 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
       };
     }
 
+    // Buscar company_id do job_response
+    const jobResponseResult = await pool.query(
+      'SELECT company_id FROM job_responses WHERE id = $1',
+      [job_response_id]
+    );
+    
+    const companyId = jobResponseResult.rows[0]?.company_id || '00000000-0000-0000-0000-000000000001';
+
     // Verificar se já existe análise para este candidato
     const existingAnalysis = await pool.query(
       'SELECT id FROM job_candidate_ai_analysis WHERE job_response_id = $1',
@@ -2455,9 +2463,9 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
       );
     } else {
       await pool.query(
-        `INSERT INTO job_candidate_ai_analysis (job_response_id, survey_id, analysis_data, raw_analysis)
-         VALUES ($1, $2, $3, $4)`,
-        [job_response_id, survey_id, JSON.stringify(analysisData), rawAnalysis]
+        `INSERT INTO job_candidate_ai_analysis (job_response_id, survey_id, company_id, analysis_data, raw_analysis)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [job_response_id, survey_id, companyId, JSON.stringify(analysisData), rawAnalysis]
       );
     }
 
