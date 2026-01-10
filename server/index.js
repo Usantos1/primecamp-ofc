@@ -2479,8 +2479,9 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
 // POST /api/functions/generate-interview-questions - Gerar perguntas de entrevista com IA
 app.post('/api/functions/generate-interview-questions', authenticateToken, async (req, res) => {
   try {
-    const { body } = req.body;
-    const { job_response_id, survey_id, interview_type, ai_analysis } = body || req.body;
+    // Pode vir como body.body (se chamado com { body: {...} }) ou diretamente no req.body
+    const requestData = req.body.body || req.body;
+    const { job_response_id, survey_id, interview_type, ai_analysis } = requestData;
 
     if (!job_response_id || !survey_id) {
       return res.status(400).json({ error: 'job_response_id e survey_id são obrigatórios' });
