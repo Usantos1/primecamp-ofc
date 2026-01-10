@@ -23,26 +23,111 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 /* =======================
-   Tema consistente (Claro/Escuro)
+   Tema consistente (Claro/Escuro) - Design Profissional
    ======================= */
 const themeCSS = `
   :root {
-    --job-application: 0 0% 99%;
+    --job-bg: 220 20% 97%;
     --job-card: 0 0% 100%;
     --job-card-border: 220 13% 91%;
     --job-text: 222 47% 11%;
     --job-text-muted: 215 16% 47%;
     --job-primary: 358 75% 52%;
+    --job-primary-hover: 358 75% 45%;
     --job-badge: 210 40% 96%;
+    --job-gradient-start: 358 75% 52%;
+    --job-gradient-end: 340 65% 47%;
   }
   .dark {
-    --job-application: 222 22% 10%;
-    --job-card: 220 13% 18%;
-    --job-card-border: 220 13% 28%;
+    --job-bg: 222 22% 8%;
+    --job-card: 220 15% 13%;
+    --job-card-border: 220 13% 22%;
     --job-text: 210 40% 98%;
-    --job-text-muted: 215 20% 70%;
+    --job-text-muted: 215 20% 65%;
     --job-primary: 358 82% 56%;
-    --job-badge: 220 13% 22%;
+    --job-primary-hover: 358 82% 50%;
+    --job-badge: 220 15% 18%;
+    --job-gradient-start: 358 82% 56%;
+    --job-gradient-end: 340 70% 50%;
+  }
+  
+  html {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+  }
+  
+  body {
+    overflow-x: hidden;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+  
+  #root {
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+  }
+  
+  .job-form-scroll {
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+    scroll-behavior: smooth;
+  }
+  
+  /* Scrollbar fino e discreto */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--job-text-muted) / 0.3);
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--job-text-muted) / 0.5);
+  }
+  
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--job-text-muted) / 0.3) transparent;
+  }
+  
+  .hero-pattern {
+    background-image: radial-gradient(circle at 1px 1px, hsl(var(--job-text-muted) / 0.15) 1px, transparent 0);
+    background-size: 40px 40px;
+  }
+  
+  /* Animação suave nos cards */
+  .form-card {
+    transition: all 0.3s ease;
+  }
+  
+  .form-card:hover {
+    box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+  
+  /* Input focus animation */
+  .form-input:focus {
+    transform: translateY(-1px);
+  }
+  
+  /* Step indicator animation */
+  .step-indicator {
+    transition: all 0.3s ease;
+  }
+  
+  .step-indicator.active {
+    transform: scale(1.1);
   }
 `;
 
@@ -751,7 +836,7 @@ export default function JobApplicationSteps() {
 
   /* ---------- página principal ---------- */
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--job-application))' }}>
+    <div className="job-form-scroll" style={{ backgroundColor: 'hsl(var(--job-bg))' }}>
       <Helmet>
         <title>{survey ? `${survey.title} - Candidatura | Prime Camp` : 'Candidatura - Prime Camp'}</title>
         <meta
@@ -815,85 +900,127 @@ export default function JobApplicationSteps() {
         <style>{themeCSS}</style>
       </Helmet>
 
-      {/* Header da vaga - tema consistente */}
-      <header className="border-b shadow-sm" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
-        <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6">
-          <div className="flex items-start justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              {survey.company_logo && (
-                <img src={survey.company_logo} alt="Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-xl border p-2" style={{ borderColor: 'hsl(var(--job-card-border))', backgroundColor: 'white' }} />
-              )}
-              <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight" style={{ color: 'hsl(var(--job-text))' }}>{survey.position_title}</h1>
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2 text-xs sm:text-sm">
-                  <Badge variant="secondary" className="gap-1" style={{ backgroundColor: 'hsl(var(--job-badge))', color: 'hsl(var(--job-text))' }}>
-                    <Building className="w-4 h-4" />
-                    {survey.company_name || survey.department}
-                  </Badge>
-                  {survey.location && (
-                    <Badge variant="secondary" className="gap-1" style={{ backgroundColor: 'hsl(var(--job-badge))', color: 'hsl(var(--job-text))' }}>
-                      <MapPin className="w-4 h-4" />
-                      {survey.location}
-                    </Badge>
-                  )}
-                  {(survey.salary_min || survey.salary_max || survey.salary_range) && (
-                    <Badge variant="secondary" className="gap-1" style={{ backgroundColor: 'hsl(var(--job-badge))', color: 'hsl(var(--job-text))' }}>
-                      <DollarSign className="w-4 h-4" />
-                      {survey.salary_min && survey.salary_max
-                        ? `R$ ${survey.salary_min.toLocaleString()} - R$ ${survey.salary_max.toLocaleString()}`
-                        : survey.salary_range}
-                    </Badge>
-                  )}
-                  {survey.work_schedule && (
-                    <Badge variant="secondary" className="gap-1" style={{ backgroundColor: 'hsl(var(--job-badge))', color: 'hsl(var(--job-text))' }}>
-                      <Clock className="w-4 h-4" />
-                      {survey.work_schedule}
-                    </Badge>
-                  )}
-                  {survey.work_modality && (
-                    <Badge className="gap-1 text-white" style={{ backgroundColor: 'hsl(var(--job-primary))' }}>
-                      <Users className="w-4 h-4" />
-                      <span className="capitalize">{survey.work_modality}</span>
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-            <ThemeToggle />
+      {/* Header da vaga - Design Profissional com Gradiente */}
+      <header 
+        className="relative overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, hsl(var(--job-gradient-start)) 0%, hsl(var(--job-gradient-end)) 100%)`,
+        }}
+      >
+        {/* Pattern overlay */}
+        <div className="absolute inset-0 hero-pattern opacity-20" />
+        
+        <div className="relative max-w-4xl mx-auto px-4 py-6 sm:py-8 md:py-10">
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+            <ThemeToggle variant="button" className="bg-white/20 hover:bg-white/30 text-white border-0" />
           </div>
+          
+          {/* Logo */}
+          <div className="flex items-center justify-center mb-4">
+            <a href="/vagas" className="bg-white rounded-xl p-2 sm:p-3 shadow-lg hover:shadow-xl transition-shadow">
+              <img
+                src="https://api.ativacrm.com/public/logoBanner-1744208731220-626790695.png"
+                alt="Prime Camp"
+                className="h-8 sm:h-10 md:h-12 w-auto object-contain"
+              />
+            </a>
+          </div>
+          
+          {/* Título da vaga */}
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white text-center drop-shadow-md mb-3">
+            {survey.title || survey.position_title}
+          </h1>
+          
+          {/* Badges informativos */}
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            <Badge className="gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm px-2 sm:px-3 py-1">
+              <Building className="w-3 h-3 sm:w-4 sm:h-4" />
+              {survey.company_name || survey.department}
+            </Badge>
+            {survey.location && (
+              <Badge className="gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm px-2 sm:px-3 py-1">
+                <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">{survey.location}</span>
+                <span className="sm:hidden">{survey.location.split(',')[0]}</span>
+              </Badge>
+            )}
+            {(survey.salary_min || survey.salary_max || survey.salary_range) && (
+              <Badge className="gap-1.5 bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm px-2 sm:px-3 py-1">
+                <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
+                {survey.salary_min && survey.salary_max
+                  ? `R$ ${survey.salary_min.toLocaleString()} - R$ ${survey.salary_max.toLocaleString()}`
+                  : survey.salary_range || 'A combinar'}
+              </Badge>
+            )}
+            {survey.work_modality && (
+              <Badge className="gap-1.5 bg-white text-[hsl(var(--job-primary))] border-0 text-xs sm:text-sm px-2 sm:px-3 py-1 font-semibold shadow-md">
+                <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="capitalize">{survey.work_modality}</span>
+              </Badge>
+            )}
+          </div>
+          
+          {/* Horário de trabalho */}
+          {survey.work_schedule && (
+            <p className="text-white/90 text-xs sm:text-sm text-center mt-3">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1.5" />
+              {survey.work_schedule}
+            </p>
+          )}
+        </div>
+        
+        {/* Curva decorativa */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-6 sm:h-10">
+            <path d="M0 60V30C240 10 480 0 720 0C960 0 1200 10 1440 30V60H0Z" fill="hsl(var(--job-bg))" />
+          </svg>
         </div>
       </header>
 
-      {/* Conteúdo */}
-      <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8">
-        <div className="max-w-3xl mx-auto">
-          {loadingDynamic && (
-            <div className="mb-3 text-sm text-center text-job-text-muted">
-              Gerando perguntas personalizadas para esta vaga...
-            </div>
-          )}
-          {!loadingDynamic && dynamicQuestions.length > 0 && (
-            <div className="mb-3 text-sm text-center text-job-text-muted">
-              Adicionamos {dynamicQuestions.length} perguntas personalizadas para esta vaga.
-            </div>
-          )}
-          <div className="min-h-[60vh] flex flex-col">
-            <Card className="flex-1" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl flex items-center justify-center gap-3" style={{ color: 'hsl(var(--job-text))' }}>
-                  {currentStep === 0 ? (
-                    <>
-                      <User className="h-6 w-6" style={{ color: 'hsl(var(--job-primary))' }} />
-                      Dados Pessoais
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-6 w-6" style={{ color: 'hsl(var(--job-primary))' }} />
-                      {steps[currentStep].title}
-                    </>
-                  )}
-                </CardTitle>
-              </CardHeader>
+      {/* Conteúdo Principal */}
+      <main className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+        {/* Mensagem de perguntas dinâmicas */}
+        {loadingDynamic && (
+          <div className="mb-4 p-3 rounded-lg text-sm text-center" style={{ backgroundColor: 'hsl(var(--job-card))', color: 'hsl(var(--job-text-muted))' }}>
+            <div className="animate-pulse">⚡ Gerando perguntas personalizadas para esta vaga...</div>
+          </div>
+        )}
+        {!loadingDynamic && dynamicQuestions.length > 0 && (
+          <div className="mb-4 p-3 rounded-lg text-sm text-center" style={{ backgroundColor: 'hsl(var(--job-badge))', color: 'hsl(var(--job-text-muted))' }}>
+            ✨ Adicionamos {dynamicQuestions.length} perguntas personalizadas para esta vaga.
+          </div>
+        )}
+        
+        {/* Card do Formulário */}
+        <Card 
+          className="form-card shadow-lg border-0 overflow-hidden"
+          style={{ backgroundColor: 'hsl(var(--job-card))' }}
+        >
+          {/* Barra colorida no topo */}
+          <div 
+            className="h-1"
+            style={{ background: `linear-gradient(90deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))` }}
+          />
+          
+          <CardHeader className="text-center pb-4 pt-6">
+            <CardTitle className="text-xl sm:text-2xl flex items-center justify-center gap-2 sm:gap-3" style={{ color: 'hsl(var(--job-text))' }}>
+              {currentStep === 0 ? (
+                <>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))` }}>
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                  <span>Dados Pessoais</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))` }}>
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <span>{steps[currentStep].title}</span>
+                </>
+              )}
+            </CardTitle>
+          </CardHeader>
 
               <CardContent className="space-y-6">
                 {currentStep === 0 ? (
@@ -1086,87 +1213,139 @@ export default function JobApplicationSteps() {
             </Card>
           )}
 
-            {/* Footer fixo com dots menores + progresso e navegação */}
-            <Card className="mt-4 sm:mt-6 sticky bottom-0 z-10 shadow-lg" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
-              <CardContent className="pt-4 sm:pt-5 pb-3 sm:pb-4 px-3 sm:px-6">
-                {/* Dots compactos no rodapé */}
-                <div className="flex items-center justify-center gap-2 mb-3">
+            {/* Footer fixo com progresso e navegação - Design Profissional */}
+            <div 
+              className="mt-6 rounded-xl shadow-lg overflow-hidden"
+              style={{ backgroundColor: 'hsl(var(--job-card))' }}
+            >
+              {/* Barra de progresso no topo do footer */}
+              <div className="h-1 bg-gray-100 dark:bg-gray-800">
+                <div 
+                  className="h-full transition-all duration-500 ease-out"
+                  style={{ 
+                    width: `${progressPercentage}%`,
+                    background: `linear-gradient(90deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))`
+                  }}
+                />
+              </div>
+              
+              <div className="p-4 sm:p-5">
+                {/* Indicadores de etapa */}
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-4 overflow-x-auto pb-1">
                   {steps.map((_, idx) => (
                     <button
                       key={idx}
                       aria-label={`Ir para etapa ${idx + 1}`}
-                      onClick={() => setCurrentStep(idx)}
-                      className={`w-2.5 h-2.5 sm:w-2 sm:h-2 rounded-full transition-all ${idx === currentStep ? 'scale-125' : 'opacity-70'}`}
-                      style={{ backgroundColor: idx <= currentStep ? 'hsl(var(--job-primary))' : 'hsl(var(--job-card-border))' }}
-                    />
+                      onClick={() => idx <= currentStep && setCurrentStep(idx)}
+                      disabled={idx > currentStep}
+                      className={`step-indicator w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                        idx === currentStep 
+                          ? 'active text-white shadow-md' 
+                          : idx < currentStep 
+                            ? 'text-white opacity-80 cursor-pointer' 
+                            : 'opacity-40 cursor-not-allowed'
+                      }`}
+                      style={{ 
+                        backgroundColor: idx <= currentStep 
+                          ? 'hsl(var(--job-primary))' 
+                          : 'hsl(var(--job-card-border))',
+                        color: idx <= currentStep ? 'white' : 'hsl(var(--job-text-muted))'
+                      }}
+                    >
+                      {idx < currentStep ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : (
+                        idx + 1
+                      )}
+                    </button>
                   ))}
                 </div>
 
-                <div className="mb-3">
-                  <div className="flex justify-between items-center text-sm mb-2 flex-wrap gap-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
-                    <span>Etapa {currentStep + 1} de {totalSteps}</span>
-                    <div className="flex items-center gap-2">
-                      {saving && (
-                        <span className="text-xs flex items-center gap-1">
-                          <div className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
-                          Salvando...
-                        </span>
-                      )}
-                      {!saving && lastSaved && (
-                        <span className="text-xs flex items-center gap-1 text-green-600 dark:text-green-400">
-                          <CheckCircle className="w-3 h-3" />
-                          Salvo {lastSaved.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                      <span>{Math.round(progressPercentage)}% concluído</span>
-                    </div>
+                {/* Info da etapa */}
+                <div className="flex justify-between items-center text-xs sm:text-sm mb-4 flex-wrap gap-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
+                  <span className="font-medium">Etapa {currentStep + 1} de {totalSteps}</span>
+                  <div className="flex items-center gap-3">
+                    {saving && (
+                      <span className="flex items-center gap-1.5">
+                        <div className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+                        Salvando...
+                      </span>
+                    )}
+                    {!saving && lastSaved && (
+                      <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                        <CheckCircle className="w-3 h-3" />
+                        Salvo
+                      </span>
+                    )}
+                    <span className="font-semibold" style={{ color: 'hsl(var(--job-primary))' }}>
+                      {Math.round(progressPercentage)}% concluído
+                    </span>
                   </div>
-                  <Progress value={progressPercentage} className="w-full h-2" />
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-between gap-2 sm:gap-0">
+                {/* Botões de navegação */}
+                <div className="flex gap-3">
                   <Button
                     variant="outline"
                     onClick={handlePrevious}
                     disabled={currentStep === 0}
-                    className="flex items-center justify-center gap-2 h-11 sm:h-12 px-4 sm:px-6 text-sm sm:text-base order-2 sm:order-1"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-11 sm:h-12 px-4 sm:px-6 text-sm font-medium border-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
+                    style={{ borderColor: 'hsl(var(--job-card-border))' }}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    <span className="hidden sm:inline">Anterior</span>
-                    <span className="sm:hidden">Voltar</span>
+                    <span>Anterior</span>
                   </Button>
 
                   <Button
                     onClick={handleNext}
                     disabled={submitting}
-                    className="flex items-center justify-center gap-2 h-11 sm:h-12 px-4 sm:px-6 text-sm sm:text-base font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed order-1 sm:order-2"
-                    style={{ backgroundColor: 'hsl(var(--job-primary))' }}
+                    className="flex-1 flex items-center justify-center gap-2 h-11 sm:h-12 px-6 sm:px-8 text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ 
+                      background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))`,
+                    }}
                     aria-busy={submitting}
                   >
-                    {submitting && (
+                    {submitting ? (
                       <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                    )}
-                    <span className="hidden sm:inline">
+                    ) : null}
+                    <span>
                       {currentStep === totalSteps - 1 ? 'Enviar Candidatura' : 'Próxima'}
-                    </span>
-                    <span className="sm:hidden">
-                      {currentStep === totalSteps - 1 ? 'Enviar' : 'Próxima'}
                     </span>
                     {!submitting && (currentStep === totalSteps - 1 ? <Send className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </Card>
+      </main>
 
-      {/* Rodapé igual ao do portal */}
-      <footer className="border-t mt-12 shadow-sm" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
-        <div className="max-w-6xl mx-auto px-4 py-8 text-center">
-          <p className="text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>
+      {/* Footer com gradiente */}
+      <footer
+        className="mt-8"
+        style={{
+          background: `linear-gradient(135deg, hsl(var(--job-gradient-start)) 0%, hsl(var(--job-gradient-end)) 100%)`,
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 text-center">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="bg-white rounded-lg p-2 shadow-md">
+              <img
+                src="https://api.ativacrm.com/public/logoBanner-1744208731220-626790695.png"
+                alt="Prime Camp"
+                className="h-5 sm:h-6 w-auto object-contain"
+              />
+            </div>
+          </div>
+          <p className="text-white/90 text-xs sm:text-sm">
             © {new Date().getFullYear()} Prime Camp. Todas as vagas são atualizadas regularmente.
           </p>
+          <a 
+            href="/vagas" 
+            className="inline-block mt-2 text-white/80 hover:text-white text-xs sm:text-sm underline transition-colors"
+          >
+            Ver todas as vagas
+          </a>
         </div>
       </footer>
     </div>
