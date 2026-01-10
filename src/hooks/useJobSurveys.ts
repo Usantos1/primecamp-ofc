@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
-import { apiClient } from '@/integrations/api/client';
 import { toast } from 'sonner';
 
 export interface JobSurvey {
@@ -67,6 +66,10 @@ interface JobSurveysOptions {
   pageSize?: number;
 }
 
+const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+  ? import.meta.env.VITE_API_URL 
+  : 'https://api.primecamp.cloud/api';
+
 export const useJobSurveys = (options: JobSurveysOptions = {}) => {
   const queryClient = useQueryClient();
   const { filters = {}, page = 1, pageSize = 12 } = options;
@@ -76,11 +79,46 @@ export const useJobSurveys = (options: JobSurveysOptions = {}) => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
-      let query = supabase
-        .from('job_surveys')
-        .select('*', { count: 'exact' }).execute();
+      // Para portal público, usar endpoint público
+      if (filters.is_active === true) {
+        const params = new URLSearchParams({
+          page: page.toString(),
+          pageSize: pageSize.toString()
+        });
+        
+        if (filters.search) params.append('search', filters.search);
+        if (filters.location) params.append('location', filters.location);
+        if (filters.modality) params.append('modality', filters.modality);
+        if (filters.contract_type) params.append('contract_type', filters.contract_type);
+        
+        const response = await fetch(`${API_URL}/public/vagas?${params.toString()}`);
+        const result = await response.json();
+        
+        if (!response.ok) throw new Error(result.error || 'Erro ao buscar vagas');
+        
+        const formattedData = (result.data || []).map((item: any) => ({
+          ...item,
+          work_days: Array.isArray(item.work_days) ? item.work_days as string[] : [],
+          daily_schedule: typeof item.daily_schedule === 'object' && item.daily_schedule !== null
+            ? item.daily_schedule as { [key: string]: { start: string; end: string } }
+            : {},
+          benefits: Array.isArray(item.benefits) ? item.benefits as string[] : [],
+          requirements: Array.isArray(item.requirements) ? item.requirements as string[] : [],
+          questions: Array.isArray(item.questions) ? item.questions : []
+        })) as JobSurvey[];
 
-      // Aplicar filtros
+        return {
+          data: formattedData,
+          total: result.total || 0,
+          page: result.page || page,
+          pageSize: result.pageSize || pageSize,
+          totalPages: result.totalPages || 0
+        };
+      }
+      
+      // Para admin, usar query autenticada
+      let query = from('job_surveys').select('*');
+
       if (filters.is_active !== undefined) {
         query = query.eq('is_active', filters.is_active);
       }
@@ -114,16 +152,15 @@ export const useJobSurveys = (options: JobSurveysOptions = {}) => {
         query = query.lte('salary_max', filters.salary_max);
       }
 
-      // Ordenação e paginação
       query = query
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
-      const { data, error, count } = await query;
+      const { data, error, count } = await query.execute();
 
       if (error) throw error;
 
-      const formattedData = (data || []).map(item => ({
+      const formattedData = (data || []).map((item: any) => ({
         ...item,
         work_days: Array.isArray(item.work_days) ? item.work_days as string[] : [],
         daily_schedule: typeof item.daily_schedule === 'object' && item.daily_schedule !== null
@@ -136,14 +173,14 @@ export const useJobSurveys = (options: JobSurveysOptions = {}) => {
 
       return {
         data: formattedData,
-        total: count || 0,
+        total: count || data?.length || 0,
         page,
         pageSize,
-        totalPages: Math.ceil((count || 0) / pageSize)
+        totalPages: Math.ceil((count || data?.length || 0) / pageSize)
       };
     },
-    staleTime: 30000, // 30 segundos
-    gcTime: 300000, // 5 minutos
+    staleTime: 30000,
+    gcTime: 300000,
   });
 
   return {
@@ -161,30 +198,13 @@ export const useJobSurvey = (slugOrId: string) => {
   return useQuery({
     queryKey: ['job-survey', slugOrId],
     queryFn: async () => {
-      // Tentar buscar por slug primeiro
-      let result = await from('job_surveys')
-        .select('*')
-        .eq('slug', slugOrId)
-        .eq('is_active', true)
-        .single()
-        .execute();
-
-      let { data, error } = result;
-
-      // Se não encontrar por slug, tentar por ID
-      if (error && slugOrId.length === 36) {
-        result = await from('job_surveys')
-          .select('*')
-          .eq('id', slugOrId)
-          .eq('is_active', true)
-          .single()
-          .execute();
-        
-        data = result.data;
-        error = result.error;
-      }
-
-      if (error) throw error;
+      // Usar endpoint público para buscar vaga
+      const response = await fetch(`${API_URL}/public/vaga/${slugOrId}`);
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.error || 'Vaga não encontrada');
+      
+      const data = result.data;
 
       return {
         ...data,
@@ -198,7 +218,7 @@ export const useJobSurvey = (slugOrId: string) => {
       } as JobSurvey;
     },
     enabled: !!slugOrId,
-    staleTime: 60000, // 1 minuto
+    staleTime: 60000,
   });
 };
 
@@ -206,97 +226,79 @@ export const useJobApplicationStatus = (protocol: string, email?: string) => {
   return useQuery({
     queryKey: ['job-application-status', protocol, email],
     queryFn: async () => {
-      // O protocolo é gerado como APP-{primeira parte do UUID}
-      // Exemplo: APP-A1B2C3D4 (onde A1B2C3D4 é o início do UUID)
-      
+      // Buscar por protocolo (primeira parte do UUID)
       if (protocol) {
-        // Tentar usar a edge function get-candidate-data que já existe
-        try {
-          const { data: functionData, error: functionError } = await apiClient.invokeFunction('get-candidate-data', {
-            protocol
-          });
+        // O protocolo é APP-XXXXXXXX onde XXXXXXXX é a primeira parte do UUID
+        const uuidStart = protocol.replace('APP-', '').toLowerCase();
+        
+        // Buscar candidaturas que começam com esse UUID
+        const { data: responses, error } = await from('job_responses')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .execute();
+        
+        if (!error && responses) {
+          // Encontrar a resposta que corresponde ao protocolo
+          const response = responses.find((r: any) => 
+            r.id.toLowerCase().startsWith(uuidStart)
+          );
           
-          if (!functionError && functionData?.success && functionData?.data) {
-            // Buscar a resposta completa usando os dados retornados
-            const { data: response, error: responseError } = await supabase
-              .from('job_responses')
-              .select(`
-                id,
-                survey_id,
-                name,
-                email,
-                created_at,
-                job_surveys (
-                  title,
-                  position_title
-                )
-              .execute()`)
-              .eq('email', functionData.data.email)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+          if (response) {
+            // Buscar dados da vaga
+            const { data: survey } = await from('job_surveys')
+              .select('title, position_title')
+              .eq('id', response.survey_id)
+              .single()
+              .execute();
             
-            if (responseError && responseError.code !== 'PGRST116') throw responseError;
-            
-            if (response) {
-              return {
-                id: response.id,
-                protocol: protocol,
-                survey_id: response.survey_id,
-                name: response.name,
-                email: response.email,
-                status: 'received' as const,
-                created_at: response.created_at,
-                updated_at: response.created_at,
-                survey: Array.isArray(response.job_surveys) 
-                  ? response.job_surveys[0] 
-                  : response.job_surveys
-              } as JobApplicationStatus;
-            }
+            return {
+              id: response.id,
+              protocol: protocol,
+              survey_id: response.survey_id,
+              name: response.name,
+              email: response.email,
+              status: response.status || 'received',
+              created_at: response.created_at,
+              updated_at: response.updated_at || response.created_at,
+              survey: survey
+            } as JobApplicationStatus;
           }
-        } catch (err) {
-          console.error('Error fetching by protocol via function:', err);
         }
       }
       
       // Fallback: buscar por email (se fornecido)
       if (email) {
-        const { data, error } = await supabase
-          .from('job_responses')
-          .select(`
-            id,
-            survey_id,
-            name,
-            email,
-            created_at,
-            job_surveys (
-              title,
-              position_title
-            )
-          .execute()`)
+        const { data, error } = await from('job_responses')
+          .select('*')
           .eq('email', email.toLowerCase().trim())
           .order('created_at', { ascending: false })
           .limit(1)
-          .maybeSingle();
+          .execute();
 
-        if (error && error.code !== 'PGRST116') throw error;
+        if (error) throw error;
         
-        if (data) {
-          // Gerar protocolo a partir do ID (mesma lógica da edge function)
-          const generatedProtocol = protocol || `APP-${data.id.split('-')[0].toUpperCase()}`;
+        const response = data?.[0];
+        if (response) {
+          // Buscar dados da vaga
+          const { data: survey } = await from('job_surveys')
+            .select('title, position_title')
+            .eq('id', response.survey_id)
+            .single()
+            .execute();
+          
+          // Gerar protocolo a partir do ID
+          const generatedProtocol = protocol || `APP-${response.id.split('-')[0].toUpperCase()}`;
           
           return {
-            id: data.id,
+            id: response.id,
             protocol: generatedProtocol,
-            survey_id: data.survey_id,
-            name: data.name,
-            email: data.email,
-            status: 'received' as const,
-            created_at: data.created_at,
-            updated_at: data.created_at,
-            survey: Array.isArray(data.job_surveys) 
-              ? data.job_surveys[0] 
-              : data.job_surveys
+            survey_id: response.survey_id,
+            name: response.name,
+            email: response.email,
+            status: response.status || 'received',
+            created_at: response.created_at,
+            updated_at: response.updated_at || response.created_at,
+            survey: survey
           } as JobApplicationStatus;
         }
       }

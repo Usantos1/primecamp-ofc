@@ -428,6 +428,179 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================
+// ENDPOINTS PÚBLICOS (sem autenticação)
+// ============================================
+
+// Listar vagas públicas (ativas)
+app.get('/api/public/vagas', async (req, res) => {
+  try {
+    const { search, location, modality, contract_type, page = 1, pageSize = 12 } = req.query;
+    
+    let whereConditions = ['is_active = true'];
+    const params = [];
+    let paramIndex = 1;
+
+    if (search) {
+      whereConditions.push(`(
+        title ILIKE $${paramIndex} OR 
+        position_title ILIKE $${paramIndex} OR 
+        description ILIKE $${paramIndex} OR 
+        department ILIKE $${paramIndex}
+      )`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (location) {
+      whereConditions.push(`location ILIKE $${paramIndex}`);
+      params.push(`%${location}%`);
+      paramIndex++;
+    }
+
+    if (modality) {
+      whereConditions.push(`work_modality = $${paramIndex}`);
+      params.push(modality);
+      paramIndex++;
+    }
+
+    if (contract_type) {
+      whereConditions.push(`contract_type = $${paramIndex}`);
+      params.push(contract_type);
+      paramIndex++;
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    
+    // Contar total
+    const countSql = `SELECT COUNT(*) FROM job_surveys WHERE ${whereConditions.join(' AND ')}`;
+    const countResult = await pool.query(countSql, params);
+    const total = parseInt(countResult.rows[0].count);
+
+    // Buscar vagas
+    const sql = `
+      SELECT * FROM job_surveys 
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+    params.push(parseInt(pageSize), offset);
+    
+    const result = await pool.query(sql, params);
+    
+    res.json({
+      data: result.rows,
+      total,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      totalPages: Math.ceil(total / parseInt(pageSize))
+    });
+  } catch (error) {
+    console.error('[Public] Erro ao buscar vagas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Buscar vaga por slug ou ID (pública)
+app.get('/api/public/vaga/:slugOrId', async (req, res) => {
+  try {
+    const { slugOrId } = req.params;
+    
+    // Tentar buscar por slug primeiro
+    let result = await pool.query(
+      'SELECT * FROM job_surveys WHERE slug = $1 AND is_active = true',
+      [slugOrId]
+    );
+    
+    // Se não encontrar por slug, tentar por ID
+    if (result.rows.length === 0 && slugOrId.length === 36) {
+      result = await pool.query(
+        'SELECT * FROM job_surveys WHERE id = $1 AND is_active = true',
+        [slugOrId]
+      );
+    }
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Vaga não encontrada' });
+    }
+    
+    res.json({ data: result.rows[0] });
+  } catch (error) {
+    console.error('[Public] Erro ao buscar vaga:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Submeter candidatura (pública)
+app.post('/api/public/candidatura', async (req, res) => {
+  try {
+    const { survey_id, name, email, phone, whatsapp, responses, ...otherData } = req.body;
+    
+    if (!survey_id || !name || !email) {
+      return res.status(400).json({ error: 'survey_id, name e email são obrigatórios' });
+    }
+    
+    // Buscar a vaga para pegar o company_id
+    const surveyResult = await pool.query(
+      'SELECT id, company_id FROM job_surveys WHERE id = $1',
+      [survey_id]
+    );
+    
+    if (surveyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Vaga não encontrada' });
+    }
+    
+    const companyId = surveyResult.rows[0].company_id;
+    
+    // Inserir candidatura
+    const insertResult = await pool.query(`
+      INSERT INTO job_responses (
+        survey_id, name, email, phone, whatsapp, responses, company_id, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'received')
+      RETURNING *
+    `, [survey_id, name, email.toLowerCase(), phone, whatsapp, JSON.stringify(responses || {}), companyId]);
+    
+    const response = insertResult.rows[0];
+    const protocol = `APP-${response.id.split('-')[0].toUpperCase()}`;
+    
+    res.json({ 
+      success: true, 
+      data: response,
+      protocol 
+    });
+  } catch (error) {
+    console.error('[Public] Erro ao submeter candidatura:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Consultar status de candidatura (pública)
+app.get('/api/public/candidatura/:protocol', async (req, res) => {
+  try {
+    const { protocol } = req.params;
+    const uuidStart = protocol.replace('APP-', '').toLowerCase();
+    
+    // Buscar candidatura pelo início do UUID
+    const result = await pool.query(`
+      SELECT jr.*, js.title as survey_title, js.position_title
+      FROM job_responses jr
+      LEFT JOIN job_surveys js ON jr.survey_id = js.id
+      WHERE LOWER(jr.id) LIKE $1 || '%'
+      ORDER BY jr.created_at DESC
+      LIMIT 1
+    `, [uuidStart]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidatura não encontrada' });
+    }
+    
+    res.json({ data: result.rows[0] });
+  } catch (error) {
+    console.error('[Public] Erro ao consultar candidatura:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // ENDPOINTS DE AUTENTICAÇÃO
 // ============================================
 
