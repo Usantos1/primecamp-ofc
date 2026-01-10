@@ -1316,7 +1316,6 @@ export default function JobApplicationSteps() {
                 </div>
               </div>
             </div>
-          </div>
         </Card>
       </main>
 
