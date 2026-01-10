@@ -399,7 +399,7 @@ export const useCandidateDiscTest = () => {
           is_completed: false
         })
         .select()
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error('❌ Error creating candidate test:', error);
