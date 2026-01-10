@@ -1154,9 +1154,9 @@ app.post('/api/update/:table', async (req, res) => {
       
       if (!hasCompanyFilter) {
         if (finalWhereClause) {
-          finalWhereClause += ` AND ${tableNameOnly}.company_id = $${params.length + 1}`;
+          finalWhereClause += ` AND company_id = $${params.length + 1}`;
         } else {
-          finalWhereClause = `WHERE ${tableNameOnly}.company_id = $${params.length + 1}`;
+          finalWhereClause = `WHERE company_id = $${params.length + 1}`;
         }
         params.push(req.companyId);
         console.log(`[Update] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
