@@ -1189,7 +1189,7 @@ export default function JobApplicationSteps() {
                   </div>
                 )}
               </CardContent>
-            </Card>
+        </Card>
 
           {showDiscPrompt && (
             <Card className="mt-4 border-dashed" style={{ backgroundColor: 'hsl(var(--job-badge))', borderColor: 'hsl(var(--job-card-border))' }}>
@@ -1316,7 +1316,6 @@ export default function JobApplicationSteps() {
                 </div>
               </div>
             </div>
-        </Card>
       </main>
 
       {/* Footer com gradiente */}
