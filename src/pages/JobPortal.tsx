@@ -42,23 +42,60 @@ import { JobSurvey } from '@/hooks/useJobSurveys';
 const themeCSS = `
   :root {
     /* Claro */
-    --job-application: 0 0% 99%;
+    --job-bg: 220 20% 97%;
     --job-card: 0 0% 100%;
     --job-card-border: 220 13% 91%;
     --job-text: 222 47% 11%;
     --job-text-muted: 215 16% 47%;
     --job-primary: 358 75% 52%; /* vermelho PrimeCamp */
+    --job-primary-hover: 358 75% 45%;
     --job-badge: 210 40% 96%;
+    --job-gradient-start: 358 75% 52%;
+    --job-gradient-end: 340 65% 47%;
   }
   .dark {
     /* Escuro */
-    --job-application: 222 22% 10%;
-    --job-card: 220 13% 18%;
-    --job-card-border: 220 13% 28%;
+    --job-bg: 222 22% 8%;
+    --job-card: 220 15% 13%;
+    --job-card-border: 220 13% 22%;
     --job-text: 210 40% 98%;
-    --job-text-muted: 215 20% 70%;
+    --job-text-muted: 215 20% 65%;
     --job-primary: 358 82% 56%;
-    --job-badge: 220 13% 22%;
+    --job-primary-hover: 358 82% 50%;
+    --job-badge: 220 15% 18%;
+    --job-gradient-start: 358 82% 56%;
+    --job-gradient-end: 340 70% 50%;
+  }
+  
+  html, body {
+    overflow-x: hidden;
+  }
+  
+  .job-portal-scroll {
+    min-height: 100vh;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+  
+  .job-card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .job-card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .hero-pattern {
+    background-image: radial-gradient(circle at 1px 1px, hsl(var(--job-text-muted) / 0.15) 1px, transparent 0);
+    background-size: 40px 40px;
   }
 `;
 
@@ -323,50 +360,71 @@ export default function JobPortal() {
       </Helmet>
 
       <div
-        className="min-h-screen"
-        style={{ backgroundColor: 'hsl(var(--job-application))' }}
+        className="job-portal-scroll"
+        style={{ backgroundColor: 'hsl(var(--job-bg))' }}
       >
-        {/* Header */}
+        {/* Header com gradiente */}
         <header
+          className="relative overflow-hidden"
           style={{
-            backgroundColor: 'hsl(var(--job-card))',
-            borderColor: 'hsl(var(--job-card-border))',
+            background: `linear-gradient(135deg, hsl(var(--job-gradient-start)) 0%, hsl(var(--job-gradient-end)) 100%)`,
           }}
-          className="border-b shadow-sm"
         >
-          <div className="mx-auto max-w-6xl px-4 py-8 sm:py-10 text-center relative">
+          {/* Pattern overlay */}
+          <div className="absolute inset-0 hero-pattern opacity-20" />
+          
+          <div className="relative mx-auto max-w-6xl px-4 py-10 sm:py-14 md:py-16 text-center">
             <div className="absolute top-4 right-4">
-              <ThemeToggle />
+              <ThemeToggle variant="button" className="bg-white/20 hover:bg-white/30 text-white border-0" />
             </div>
 
-            <div className="flex items-center justify-center gap-4 mb-3">
-              <a href="/" aria-label="Home">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <a href="/" aria-label="Home" className="bg-white rounded-xl p-3 shadow-lg hover:shadow-xl transition-shadow">
                 <img
                   src="https://api.ativacrm.com/public/logoBanner-1744208731220-626790695.png"
                   alt="Prime Camp"
-                  className="h-12 sm:h-14 md:h-16 w-auto object-contain"
+                  className="h-10 sm:h-12 md:h-14 w-auto object-contain"
                   loading="eager"
                   decoding="async"
                 />
               </a>
             </div>
-            <h1
-              className="text-3xl sm:text-4xl font-bold"
-              style={{ color: 'hsl(var(--job-text))' }}
-            >
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white drop-shadow-md">
               Portal de Vagas
             </h1>
-            <p
-              className="max-w-2xl mx-auto mt-2 text-sm sm:text-base"
-              style={{ color: 'hsl(var(--job-text-muted))' }}
-            >
+            <p className="max-w-2xl mx-auto mt-3 text-sm sm:text-base md:text-lg text-white/90">
               Encontre a oportunidade perfeita para sua carreira. Temos vagas
               em diversas áreas e modalidades de trabalho.
             </p>
+            
+            {/* Estatísticas */}
+            <div className="flex items-center justify-center gap-6 sm:gap-10 mt-6">
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{total}</div>
+                <div className="text-xs sm:text-sm text-white/80">Vagas Ativas</div>
+              </div>
+              <div className="w-px h-10 bg-white/30" />
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{uniqueLocations.length}</div>
+                <div className="text-xs sm:text-sm text-white/80">Localizações</div>
+              </div>
+              <div className="w-px h-10 bg-white/30" />
+              <div className="text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-white">{uniqueModalities.length}</div>
+                <div className="text-xs sm:text-sm text-white/80">Modalidades</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Curva decorativa */}
+          <div className="absolute bottom-0 left-0 right-0">
+            <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-8 sm:h-12">
+              <path d="M0 60V30C240 10 480 0 720 0C960 0 1200 10 1440 30V60H0Z" fill="hsl(var(--job-bg))" />
+            </svg>
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl p-4 space-y-6">
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8 space-y-6">
           {/* Filtros */}
           <Card
             className="border shadow-sm rounded-2xl"
@@ -646,33 +704,40 @@ export default function JobPortal() {
                 {jobs.map((job) => (
                 <Card
                   key={job.id}
-                  className="rounded-2xl border transition-all hover:shadow-lg hover:scale-[1.02]"
+                  className="job-card-hover rounded-2xl border overflow-hidden"
                   style={{
                     backgroundColor: 'hsl(var(--job-card))',
                     borderColor: 'hsl(var(--job-card-border))',
-                    boxShadow:
-                      '0 4px 6px -1px hsl(220 26% 14% / 0.1), 0 2px 4px -1px hsl(220 26% 14% / 0.06)',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
                   }}
                 >
+                  {/* Barra colorida no topo */}
+                  <div 
+                    className="h-1"
+                    style={{ background: `linear-gradient(90deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))` }}
+                  />
+                  
                   <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
                     <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-3">
                         <h3
-                          className="text-base md:text-lg font-semibold leading-tight"
+                          className="text-base md:text-lg font-bold leading-tight line-clamp-2"
                           style={{ color: 'hsl(var(--job-text))' }}
                         >
                           {job.title}
                         </h3>
                         <Badge
-                          className="text-white"
-                          style={{ backgroundColor: 'hsl(var(--job-primary))' }}
+                          className="text-white shrink-0 font-medium shadow-sm"
+                          style={{ 
+                            background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))`,
+                          }}
                         >
                           {job.work_modality?.charAt(0).toUpperCase() +
                             job.work_modality?.slice(1)}
                         </Badge>
                       </div>
                       <p
-                        className="text-sm"
+                        className="text-sm font-medium"
                         style={{ color: 'hsl(var(--job-text-muted))' }}
                       >
                         {job.position_title}
@@ -853,32 +918,32 @@ export default function JobPortal() {
                       )}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t" style={{ borderColor: 'hsl(var(--job-card-border))' }}>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 w-full text-xs sm:text-sm"
+                        className="flex-1 w-full text-xs sm:text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                         style={{
-                          backgroundColor: 'hsl(var(--job-card))',
-                          borderColor: 'hsl(var(--job-primary))',
-                          color: 'hsl(var(--job-primary))',
+                          backgroundColor: 'transparent',
+                          borderColor: 'hsl(var(--job-card-border))',
+                          color: 'hsl(var(--job-text))',
                         }}
                         onClick={() => setSelectedJob(job)}
                       >
-                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
                         <span className="hidden sm:inline">Ver detalhes</span>
                         <span className="sm:hidden">Detalhes</span>
                       </Button>
                       <Button
                         size="sm"
-                        className="flex-1 w-full text-xs sm:text-sm font-semibold"
+                        className="flex-1 w-full text-xs sm:text-sm font-semibold shadow-md hover:shadow-lg transition-all"
                         style={{
-                          backgroundColor: 'hsl(var(--job-primary))',
+                          background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))`,
                           color: 'white',
                         }}
                         onClick={() => handleApply(job)}
                       >
-                        <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-1.5" />
                         Candidatar-se
                       </Button>
                     </div>
@@ -995,16 +1060,27 @@ export default function JobPortal() {
 
         {/* Footer */}
         <footer
+          className="mt-12"
           style={{
-            backgroundColor: 'hsl(var(--job-card))',
-            borderColor: 'hsl(var(--job-card-border))',
+            background: `linear-gradient(135deg, hsl(var(--job-gradient-start)) 0%, hsl(var(--job-gradient-end)) 100%)`,
           }}
-          className="border-t mt-12 shadow-sm"
         >
-          <div className="max-w-6xl mx-auto px-4 py-8 text-center">
-            <p style={{ color: 'hsl(var(--job-text-muted))' }}>
+          <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 text-center">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className="bg-white rounded-lg p-2 shadow-md">
+                <img
+                  src="https://api.ativacrm.com/public/logoBanner-1744208731220-626790695.png"
+                  alt="Prime Camp"
+                  className="h-6 sm:h-8 w-auto object-contain"
+                />
+              </div>
+            </div>
+            <p className="text-white/90 text-sm sm:text-base">
               © {new Date().getFullYear()} Prime Camp. Todas as vagas são
               atualizadas regularmente.
+            </p>
+            <p className="text-white/70 text-xs mt-2">
+              Trabalhe conosco e faça parte do nosso time!
             </p>
           </div>
         </footer>
