@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +96,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedSurvey, setSelectedSurvey] = useState<JobSurvey | null>(null);
@@ -1184,17 +1186,21 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   if (selectedSurvey) {
     return (
       <div className="space-y-6 overflow-auto max-h-[calc(100vh-200px)] pb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Button 
               variant="outline" 
-              onClick={() => setSelectedSurvey(null)}
+              onClick={() => {
+                setSelectedSurvey(null);
+                navigate('/admin/job-surveys');
+              }}
+              className="w-full sm:w-auto"
             >
               ← Voltar à Lista
             </Button>
             
             {/* Status Summary */}
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="font-medium">Candidatos:</span>
               <Badge variant="outline">{statusCounts.total} Total</Badge>
               <Badge variant="secondary">{statusCounts.pending} Pendentes</Badge>
@@ -1203,11 +1209,11 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={() => copyPublicLink(selectedSurvey)}
-              className="hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-900/20"
+              className="hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-900/20 w-full sm:w-auto"
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Copiar Link Público
@@ -1216,6 +1222,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
               variant="outline"
               onClick={exportResponses}
               disabled={responses.length === 0}
+              className="w-full sm:w-auto"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar Respostas
@@ -1703,51 +1710,49 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                           </TableCell>
                           
                           <TableCell className="text-right">
-                            <div className="flex items-center gap-1 justify-end">
+                            <div className="flex items-center gap-1 justify-end flex-wrap">
                               <Button 
                                 variant="outline" 
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    // Criar entrevista online para este candidato
-                                    const insertResult = await from('job_interviews')
+                                    // Verificar se já existe entrevista
+                                    const { data: existing } = await from('job_interviews')
+                                      .select('*')
+                                      .eq('job_response_id', response.id)
+                                      .eq('interview_type', 'online')
+                                      .maybeSingle()
+                                      .execute();
+
+                                    if (existing) {
+                                      // Navegar para entrevista existente
+                                      window.location.href = `/admin/interviews?interview_id=${existing.id}`;
+                                      return;
+                                    }
+
+                                    // Criar nova entrevista online
+                                    const { data: newInterview, error: createError } = await from('job_interviews')
                                       .insert({
                                         job_response_id: response.id,
                                         survey_id: response.survey_id,
                                         interview_type: 'online',
                                         status: 'scheduled',
                                         questions: []
-                                      });
-                                    
-                                    const { data: newInterview, error: createError } = insertResult.data 
-                                      ? { data: insertResult.data, error: null }
-                                      : await from('job_interviews')
-                                          .select('*')
-                                          .eq('job_response_id', response.id)
-                                          .eq('interview_type', 'online')
-                                          .single()
-                                          .execute();
+                                      })
+                                      .select()
+                                      .single()
+                                      .execute();
 
                                     if (createError) {
-                                      // Se já existe, buscar a existente
-                                      const { data: existing } = await from('job_interviews')
-                                        .select('*')
-                                        .eq('job_response_id', response.id)
-                                        .eq('interview_type', 'online')
-                                        .maybeSingle()
-                                        .execute();
+                                      throw createError;
+                                    }
 
-                                      if (existing) {
-                                        // Navegar para página de entrevista
-                                        window.location.href = `/admin/interviews?interview_id=${existing.id}`;
-                                      } else {
-                                        throw createError;
-                                      }
-                                    } else {
+                                    if (newInterview) {
                                       // Navegar para página de entrevista
                                       window.location.href = `/admin/interviews?interview_id=${newInterview.id}`;
                                     }
                                   } catch (error: any) {
+                                    console.error('Erro ao criar entrevista:', error);
                                     toast({
                                       title: "Erro",
                                       description: error.message || "Não foi possível criar entrevista.",

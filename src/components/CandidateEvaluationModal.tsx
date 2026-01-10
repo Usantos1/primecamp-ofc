@@ -137,17 +137,17 @@ export const CandidateEvaluationModal = ({
 
       if (evaluation) {
         // Update existing evaluation
-        const { error } = await supabase
-          .from('job_candidate_evaluations')
+        const { error } = await from('job_candidate_evaluations')
           .update(evaluationData)
-          .eq('id', evaluation.id);
+          .eq('id', evaluation.id)
+          .execute();
 
         if (error) throw error;
       } else {
         // Create new evaluation
-        const { error } = await supabase
-          .from('job_candidate_evaluations')
-          .insert(evaluationData);
+        const { error } = await from('job_candidate_evaluations')
+          .insert(evaluationData)
+          .execute();
 
         if (error) throw error;
       }
