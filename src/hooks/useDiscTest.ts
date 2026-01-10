@@ -561,8 +561,7 @@ export const useDiscTest = () => {
             is_completed: true
           })
           .select()
-          .maybeSingle()
-          .execute();
+          .single();
           
         if (createError) {
           console.error(`[DISC] Erro ao criar novo registro:`, createError);
