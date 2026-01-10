@@ -2290,7 +2290,9 @@ app.post('/api/functions/analyze-candidate', authenticateToken, async (req, res)
     let openaiApiKey = null;
     let openaiModel = 'gpt-4o-mini';
     if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
-      const settings = tokenResult.rows[0].value;
+      const value = tokenResult.rows[0].value;
+      // value pode ser JSONB (objeto) ou string JSON
+      const settings = typeof value === 'string' ? JSON.parse(value) : value;
       openaiApiKey = settings.aiApiKey;
       openaiModel = settings.aiModel || 'gpt-4o-mini';
     }
@@ -2377,11 +2379,18 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
     });
 
     if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json().catch(() => ({}));
+      const errorText = await openaiResponse.text();
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
       console.error('[OpenAI] Erro na API:', openaiResponse.status, errorData);
       return res.status(500).json({ 
         error: 'Erro ao chamar API da OpenAI',
-        details: errorData.error?.message || 'Erro desconhecido'
+        details: errorData.error?.message || errorData.message || 'Erro desconhecido',
+        status: openaiResponse.status
       });
     }
 
