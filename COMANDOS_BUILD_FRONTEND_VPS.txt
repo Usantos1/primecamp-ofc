@@ -1,0 +1,27 @@
+# COMANDOS PARA FAZER BUILD DO FRONTEND NA VPS
+# ==============================================
+
+# IMPORTANTE: Após corrigir código TypeScript/JavaScript no frontend,
+# você DEVE fazer build para gerar os arquivos JavaScript compilados.
+# Os arquivos .ts/.tsx NÃO são usados diretamente no navegador!
+
+cd /root/primecamp-ofc
+
+# 1. Atualizar código do Git
+git pull origin main
+
+# 2. Instalar dependências (se necessário)
+npm install
+
+# 3. Fazer build do frontend
+npm run build
+
+# 4. Copiar arquivos compilados para o diretório do Nginx
+sudo rm -rf /var/www/primecamp.cloud/*
+sudo cp -r dist/* /var/www/primecamp.cloud/
+
+# 5. Recarregar Nginx
+sudo systemctl reload nginx
+
+# OU use o script automatizado:
+# bash DEPLOY_COMPLETO_VPS.sh
