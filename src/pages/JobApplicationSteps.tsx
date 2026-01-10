@@ -17,10 +17,18 @@ import {
   AlertCircle, CheckCircle, FileText, Send,
   Home, Building, MapPin, DollarSign, Users, Clock,
   Phone, Mail, User, ChevronLeft, ChevronRight, Zap, Award,
-  Lock, Info
+  Lock, Info, AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /* =======================
    Tema consistente (Claro/Escuro) - Design Profissional
@@ -611,7 +619,27 @@ export default function JobApplicationSteps() {
       });
 
       const responseData = response.data;
-      if (response.error) throw new Error(response.error.message);
+      
+      // Verificar se é erro 409 (já candidatou)
+      if (response.error) {
+        const errorMessage = response.error.message || response.error.error || 'Erro desconhecido';
+        const statusCode = response.error.status || response.error.code;
+        
+        if (statusCode === 409 || errorMessage.includes('já se candidatou')) {
+          console.warn('[JobApplication] Candidatura duplicada:', {
+            email: formData.email.trim().toLowerCase(),
+            survey_id: survey.id,
+            survey_title: survey.title,
+            existing_job_response_id: response.error.job_response_id || responseData?.job_response_id
+          });
+          
+          setExistingJobResponseId(response.error.job_response_id || responseData?.job_response_id || null);
+          setShowAlreadyAppliedModal(true);
+          return;
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       const jobResponseId = responseData?.submissionId || responseData?.job_response_id;
       const candidateInfo = {

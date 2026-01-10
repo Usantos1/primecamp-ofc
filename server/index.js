@@ -710,14 +710,26 @@ app.post('/api/functions/job-application-submit', async (req, res) => {
     
     // Verificar se já existe candidatura deste email para esta vaga
     const existingResponse = await pool.query(
-      'SELECT id FROM job_responses WHERE survey_id = $1 AND email = $2',
+      'SELECT id, created_at FROM job_responses WHERE survey_id = $1 AND email = $2',
       [survey_id, emailLower]
     );
     
     if (existingResponse.rows.length > 0) {
+      const existingId = existingResponse.rows[0].id;
+      const existingDate = existingResponse.rows[0].created_at;
+      console.log('[API] Candidatura duplicada detectada:', {
+        survey_id,
+        survey_title: survey.title || survey.position_title,
+        email: emailLower,
+        existing_job_response_id: existingId,
+        existing_created_at: existingDate,
+        attempted_at: new Date().toISOString()
+      });
+      
       return res.status(409).json({ 
         error: 'Você já se candidatou para esta vaga',
-        job_response_id: existingResponse.rows[0].id 
+        job_response_id: existingId,
+        created_at: existingDate
       });
     }
     
