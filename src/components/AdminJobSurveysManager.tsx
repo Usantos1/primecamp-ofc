@@ -242,16 +242,17 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   });
 
   // Fetch DISC results for all candidates
-  const { data: discResults = [] } = useQuery({
-    queryKey: ['disc-results', selectedSurvey?.id],
+  const { data: discResults = {} } = useQuery({
+    queryKey: ['disc-results', selectedSurvey?.id, responses.length],
     queryFn: async () => {
-      if (!selectedSurvey?.id || !responses || responses.length === 0) return [];
+      if (!selectedSurvey?.id || !responses || responses.length === 0) return {};
       
       // Buscar todos os emails dos candidatos
       const emails = responses.map(r => r.email?.toLowerCase()).filter(Boolean);
-      if (emails.length === 0) return [];
+      if (emails.length === 0) return {};
       
       // Buscar resultados DISC completos para estes emails
+      // Usar uma busca mais simples se houver muitos emails
       const { data, error } = await from('candidate_responses')
         .select('*')
         .in('email', emails)
@@ -260,7 +261,7 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
       
       if (error) {
         console.error('Erro ao buscar resultados DISC:', error);
-        return [];
+        return {};
       }
       
       // Mapear por email para acesso rápido
