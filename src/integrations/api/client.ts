@@ -64,6 +64,9 @@ class APIClient {
     
     if (!response.ok) {
       const errorMessage = data.error || data.message || `Erro ${response.status}: ${response.statusText}`;
+      const error: any = new Error(errorMessage);
+      error.status = response.status;
+      error.data = data;
       console.error('[API Client] Request failed:', {
         status: response.status,
         statusText: response.statusText,
@@ -71,7 +74,7 @@ class APIClient {
         error: errorMessage,
         data
       });
-      throw new Error(errorMessage);
+      throw error;
     }
 
     return data;
@@ -108,7 +111,13 @@ class APIClient {
       return { data };
     } catch (error: any) {
       console.error('[API] POST error:', error);
-      return { error: error.message };
+      return { 
+        error: {
+          message: error.message,
+          status: error.status,
+          data: error.data
+        }
+      };
     }
   }
 
