@@ -2361,7 +2361,7 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
     console.log('[Analyze Candidate] Chamando OpenAI API com modelo:', openaiModel);
     
     // Modelos que requerem max_completion_tokens ao invés de max_tokens
-    const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5'];
+    const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5', 'gpt-5.1', 'gpt-5.2'];
     const requiresCompletionTokens = modelsRequiringCompletionTokens.some(m => openaiModel.includes(m));
     
     const requestBody = {
