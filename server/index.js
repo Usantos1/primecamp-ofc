@@ -2476,6 +2476,189 @@ Analise o candidato e retorne APENAS um JSON válido (sem markdown, sem texto ad
   }
 });
 
+// POST /api/functions/generate-interview-questions - Gerar perguntas de entrevista com IA
+app.post('/api/functions/generate-interview-questions', authenticateToken, async (req, res) => {
+  try {
+    const { body } = req.body;
+    const { job_response_id, survey_id, interview_type, ai_analysis } = body || req.body;
+
+    if (!job_response_id || !survey_id) {
+      return res.status(400).json({ error: 'job_response_id e survey_id são obrigatórios' });
+    }
+
+    // Buscar API key da OpenAI do banco de dados
+    const tokenResult = await pool.query(`
+      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
+    `);
+
+    let openaiApiKey = null;
+    let openaiModel = 'gpt-4o-mini';
+    if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
+      const value = tokenResult.rows[0].value;
+      const settings = typeof value === 'string' ? JSON.parse(value) : value;
+      openaiApiKey = settings.aiApiKey;
+      openaiModel = settings.aiModel || 'gpt-4o-mini';
+      console.log('[Generate Interview Questions] Configurações carregadas:', { hasApiKey: !!openaiApiKey, model: openaiModel });
+    }
+
+    if (!openaiApiKey) {
+      return res.status(400).json({ 
+        error: 'API Key da OpenAI não configurada',
+        message: 'Configure a API Key em Integrações > OpenAI'
+      });
+    }
+
+    // Buscar dados do candidato e da vaga
+    const jobResponseResult = await pool.query(
+      'SELECT * FROM job_responses WHERE id = $1',
+      [job_response_id]
+    );
+
+    const jobSurveyResult = await pool.query(
+      'SELECT * FROM job_surveys WHERE id = $1',
+      [survey_id]
+    );
+
+    if (jobResponseResult.rows.length === 0 || jobSurveyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidato ou vaga não encontrados' });
+    }
+
+    const candidate = jobResponseResult.rows[0];
+    const jobSurvey = jobSurveyResult.rows[0];
+
+    // Construir prompt para gerar perguntas
+    const interviewTypeText = interview_type === 'online' ? 'online (remota)' : 'presencial';
+    const analysisText = ai_analysis ? `
+Análise de IA do candidato:
+- Score Geral: ${ai_analysis.score_geral || 'N/A'}/100
+- Recomendação: ${ai_analysis.recomendacao || 'N/A'}
+- Justificativa: ${ai_analysis.justificativa || 'N/A'}
+- Perfil Comportamental: ${ai_analysis.perfil_comportamental || 'N/A'}
+- Pontos Fortes: ${Array.isArray(ai_analysis.pontos_fortes) ? ai_analysis.pontos_fortes.join(', ') : 'N/A'}
+- Pontos Fracos: ${Array.isArray(ai_analysis.pontos_fracos) ? ai_analysis.pontos_fracos.join(', ') : 'N/A'}
+` : 'Análise de IA não disponível.';
+
+    const prompt = `Você é um especialista em recrutamento e seleção. Gere perguntas personalizadas de entrevista para o candidato abaixo.
+
+DADOS DA VAGA:
+Título: ${jobSurvey.position_title || jobSurvey.title}
+Descrição: ${jobSurvey.description || 'Não informado'}
+Requisitos: ${Array.isArray(jobSurvey.requirements) ? jobSurvey.requirements.join(', ') : jobSurvey.requirements || 'Não informado'}
+
+DADOS DO CANDIDATO:
+Nome: ${candidate.name || 'Não informado'}
+Idade: ${candidate.age || 'Não informado'}
+Email: ${candidate.email || 'Não informado'}
+
+${analysisText}
+
+TIPO DE ENTREVISTA: ${interviewTypeText}
+
+INSTRUÇÕES:
+Gere de 5 a 8 perguntas personalizadas e relevantes para esta entrevista, baseadas nos dados da vaga, do candidato e na análise de IA (se disponível).
+As perguntas devem ser:
+- Específicas e direcionadas ao perfil do candidato
+- Relevantes para a vaga
+- Profissionais e apropriadas para uma entrevista de emprego
+- Variadas (técnicas, comportamentais, situacionais)
+
+Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguinte estrutura:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Texto da pergunta",
+      "category": "técnica" ou "comportamental" ou "situacional"
+    },
+    ...
+  ]
+}`;
+
+    // Chamar API da OpenAI
+    console.log('[Generate Interview Questions] Chamando OpenAI API com modelo:', openaiModel);
+    
+    // Modelos que requerem max_completion_tokens ao invés de max_tokens
+    const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5', 'gpt-5.1', 'gpt-5.2'];
+    const requiresCompletionTokens = modelsRequiringCompletionTokens.some(m => openaiModel.includes(m));
+    
+    const requestBody = {
+      model: openaiModel,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um especialista em recrutamento e seleção. Gere perguntas de entrevista personalizadas e profissionais em formato JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    };
+    
+    if (requiresCompletionTokens) {
+      requestBody.max_completion_tokens = 2000;
+    } else {
+      requestBody.max_tokens = 2000;
+    }
+    
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
+      console.error('[OpenAI] Erro na API:', openaiResponse.status, errorData);
+      return res.status(500).json({ 
+        error: 'Erro ao chamar API da OpenAI',
+        details: errorData.error?.message || errorData.message || 'Erro desconhecido',
+        status: openaiResponse.status
+      });
+    }
+
+    const openaiData = await openaiResponse.json();
+    const rawResponse = openaiData.choices[0]?.message?.content || '';
+
+    let questionsData = { questions: [] };
+    try {
+      const jsonText = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      questionsData = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('[OpenAI] Erro ao parsear JSON:', parseError, 'Raw:', rawResponse);
+      return res.status(500).json({ 
+        error: 'Erro ao processar resposta da IA',
+        details: 'A IA não retornou um formato JSON válido'
+      });
+    }
+
+    // Garantir que questions seja um array
+    if (!Array.isArray(questionsData.questions)) {
+      questionsData.questions = [];
+    }
+
+    console.log('[Generate Interview Questions] Perguntas geradas:', questionsData.questions.length);
+
+    res.json({
+      questions: questionsData.questions
+    });
+  } catch (error) {
+    console.error('[Generate Interview Questions] Erro:', error);
+    res.status(500).json({ error: error.message || 'Erro ao gerar perguntas de entrevista' });
+  }
+});
+
 // POST /api/functions/import-produtos - Importar produtos em lote
 app.post('/api/functions/import-produtos', authenticateToken, async (req, res) => {
   try {
