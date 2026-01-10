@@ -4113,7 +4113,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé único - tabs e ações em uma linha */}
-          <div className="flex-shrink-0 z-20 bg-white border-t border-gray-200 pb-32 sm:pb-1">
+          <div className="flex-shrink-0 z-20 bg-white border-t border-gray-200 pb-20 sm:pb-1">
             <div className="overflow-x-auto scrollbar-none px-1 py-1.5 sm:px-2 sm:py-2">
               <div className="flex items-center gap-1 min-w-max">
                 {/* Tabs */}
