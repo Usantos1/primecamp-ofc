@@ -93,6 +93,31 @@ const themeCSS = `
     scroll-behavior: smooth;
   }
   
+  /* Scrollbar fino e discreto */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--job-text-muted) / 0.3);
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--job-text-muted) / 0.5);
+  }
+  
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--job-text-muted) / 0.3) transparent;
+  }
+  
   .job-card-hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
