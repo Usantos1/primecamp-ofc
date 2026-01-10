@@ -99,14 +99,12 @@ export const AdminInterviewsManager = () => {
         const { data: jobResponse } = await from('job_responses')
           .select('*')
           .eq('id', analysis.job_response_id)
-          .single()
-          .execute();
+          .single();
 
         const { data: jobSurvey } = await from('job_surveys')
           .select('*')
           .eq('id', analysis.survey_id)
-          .single()
-          .execute();
+          .single();
 
         return {
           ...analysis,
@@ -550,8 +548,7 @@ export const AdminInterviewsManager = () => {
                                               .select('*')
                                               .eq('job_response_id', candidate.job_response_id)
                                               .eq('interview_type', 'online')
-                                              .maybeSingle()
-                                              .execute();
+                                              .maybeSingle();
 
                                             if (existing) {
                                               toast({
@@ -631,8 +628,7 @@ export const AdminInterviewsManager = () => {
                                               .select('*')
                                               .eq('job_response_id', candidate.job_response_id)
                                               .eq('interview_type', 'presencial')
-                                              .maybeSingle()
-                                              .execute();
+                                              .maybeSingle();
 
                                             if (existing) {
                                               toast({
@@ -1231,8 +1227,7 @@ export const AdminInterviewsManager = () => {
                   const { data: jobResponse } = await from('job_responses')
                     .select('*')
                     .eq('id', selectedJobResponseId)
-                    .single()
-                    .execute();
+                    .single();
 
                   if (!jobResponse) {
                     throw new Error('Candidato não encontrado');
