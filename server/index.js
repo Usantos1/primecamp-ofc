@@ -17,6 +17,7 @@ import paymentsRoutes from './routes/payments.js';
 import dashboardRoutes from './routes/dashboard.js';
 import refundsRoutes from './routes/refunds.js';
 import paymentMethodsRoutes from './routes/paymentMethods.js';
+import financeiroRoutes from './routes/financeiro.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -306,6 +307,10 @@ try {
   // Registrar rotas de formas de pagamento (COM autenticação)
   app.use('/api/payment-methods', authenticateToken, paymentMethodsRoutes);
   console.log('[Server] ✅ Rotas de formas de pagamento registradas com sucesso');
+  
+  // Registrar rotas de financeiro/IA (COM autenticação)
+  app.use('/api/financeiro', authenticateToken, financeiroRoutes);
+  console.log('[Server] ✅ Rotas de financeiro/IA registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora
   setInterval(async () => {
