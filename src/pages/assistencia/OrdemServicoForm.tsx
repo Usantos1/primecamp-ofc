@@ -872,27 +872,51 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       return;
     }
 
-    if (!formData.cliente_id) {
-      toast({ title: 'Selecione um cliente', variant: 'destructive' });
-      return;
-    }
-    if (!formData.descricao_problema) {
-      toast({ title: 'Descreva o problema', variant: 'destructive' });
-      return;
+    // Validações de campos obrigatórios com feedback visual consolidado
+    const camposFaltando: string[] = [];
+
+    if (!selectedCliente?.id && !formData.cliente_id) {
+      camposFaltando.push('Cliente');
     }
 
-    if (!formData.telefone_contato) {
-      toast({ title: 'Telefone para contato é obrigatório', variant: 'destructive' });
-      return;
+    if (!formData.telefone_contato || formData.telefone_contato.trim() === '') {
+      camposFaltando.push('Telefone para contato');
+    }
+
+    if (!formData.marca_id) {
+      camposFaltando.push('Marca');
+    }
+
+    if (!formData.modelo_id) {
+      camposFaltando.push('Modelo');
+    }
+
+    if (!formData.descricao_problema || formData.descricao_problema.trim() === '') {
+      camposFaltando.push('Descrição do problema');
     }
 
     if (!formData.cor || formData.cor.trim() === '') {
-      toast({ title: 'Cor do equipamento é obrigatória', variant: 'destructive' });
-      return;
+      camposFaltando.push('Cor do equipamento');
     }
 
     if (!formData.condicoes_equipamento || formData.condicoes_equipamento.trim() === '') {
-      toast({ title: 'Condições do equipamento são obrigatórias', variant: 'destructive' });
+      camposFaltando.push('Condições do equipamento');
+    }
+
+    if (!formData.previsao_entrega || formData.previsao_entrega.trim() === '') {
+      camposFaltando.push('Previsão de entrega');
+    }
+
+    // Se houver campos faltando, exibir toast com lista e log no console
+    if (camposFaltando.length > 0) {
+      console.warn('[VALIDAÇÃO OS] Campos obrigatórios faltando:', camposFaltando);
+      toast({ 
+        title: 'Campos obrigatórios não preenchidos', 
+        description: `Preencha os seguintes campos: ${camposFaltando.join(', ')}`,
+        variant: 'destructive',
+        duration: 6000
+      });
+      setIsLoading(false);
       return;
     }
 
