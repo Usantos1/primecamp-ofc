@@ -2025,7 +2025,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-1.5 md:col-span-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs font-medium text-gray-600">Cliente</Label>
+                        <div className="flex items-center gap-2">
+                          <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('cliente') && "font-bold text-red-600")}>Cliente *</Label>
+                          {camposFaltandoState.has('cliente') && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                          )}
+                        </div>
                         {/* Filtro de busca */}
                         {!selectedCliente && (
                           <div className="flex gap-1">
