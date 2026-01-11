@@ -79,6 +79,13 @@ import Configuracoes from "./pages/admin/Configuracoes";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
 import DashboardExecutivo from "./pages/financeiro/DashboardExecutivo";
+import Recomendacoes from "./pages/financeiro/Recomendacoes";
+import EstoqueInteligente from "./pages/financeiro/EstoqueInteligente";
+import AnaliseVendedores from "./pages/financeiro/AnaliseVendedores";
+import AnaliseProdutos from "./pages/financeiro/AnaliseProdutos";
+import PrevisoesVendas from "./pages/financeiro/PrevisoesVendas";
+import DRE from "./pages/financeiro/DRE";
+import PlanejamentoAnual from "./pages/financeiro/PlanejamentoAnual";
 
 const queryClient = new QueryClient();
 
