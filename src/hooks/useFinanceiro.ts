@@ -95,6 +95,10 @@ export interface PrevisaoVendas {
 async function fetchFinanceiro(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('auth_token');
   
+  if (!token) {
+    throw new Error('Token de autenticação não encontrado');
+  }
+  
   const response = await fetch(`${API_URL}/financeiro${endpoint}`, {
     ...options,
     headers: {
@@ -224,11 +228,16 @@ export function useAplicarRecomendacao() {
   
   return useMutation({
     mutationFn: async (id: string) => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+      
       const response = await fetch(`${API_URL}/financeiro/recomendacoes/${id}/aplicar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
       
@@ -293,11 +302,16 @@ export function useSalvarPlanejamentoAnual() {
   
   return useMutation({
     mutationFn: async ({ ano, dados }: { ano: number; dados: any }) => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+      
       const response = await fetch(`${API_URL}/financeiro/planejamento/${ano}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(dados),
       });
