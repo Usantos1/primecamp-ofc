@@ -312,3 +312,29 @@ export function useSalvarPlanejamentoAnual() {
     },
   });
 }
+
+// Hook: Sugerir Preço
+export function useSugerirPreco() {
+  return useMutation({
+    mutationFn: async ({ produtoId, margemDesejada }: { produtoId: string; margemDesejada?: number }) => {
+      const response = await fetch(`${API_URL}/financeiro/precificacao/sugerir`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          produto_id: produtoId,
+          margem_desejada: margemDesejada,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Erro ao sugerir preço' }));
+        throw new Error(error.error || 'Erro ao sugerir preço');
+      }
+      
+      return response.json();
+    },
+  });
+}

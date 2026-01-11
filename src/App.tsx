@@ -86,6 +86,7 @@ import AnaliseProdutos from "./pages/financeiro/AnaliseProdutos";
 import PrevisoesVendas from "./pages/financeiro/PrevisoesVendas";
 import DRE from "./pages/financeiro/DRE";
 import PlanejamentoAnual from "./pages/financeiro/PlanejamentoAnual";
+import Precificacao from "./pages/financeiro/Precificacao";
 
 const queryClient = new QueryClient();
 
