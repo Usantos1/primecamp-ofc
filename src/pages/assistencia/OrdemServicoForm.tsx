@@ -2171,12 +2171,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Aparelho - Linha 2 */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Cor</Label>
+                      <Label className="text-xs font-medium text-gray-600">Cor *</Label>
                       <Input
                         value={formData.cor}
                         onChange={(e) => setFormData(prev => ({ ...prev, cor: e.target.value }))}
                         placeholder="Ex: Preto, Branco"
                         className="h-10 text-sm border-gray-200 rounded-lg"
+                        required
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -2236,13 +2237,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Condições do Equipamento</Label>
+                      <Label className="text-xs font-medium text-gray-600">Condições do Equipamento *</Label>
                       <Textarea
                         value={formData.condicoes_equipamento}
                         onChange={(e) => setFormData(prev => ({ ...prev, condicoes_equipamento: e.target.value }))}
                         placeholder="Estado físico do aparelho: riscos, trincas, amassados..."
                         rows={3}
                         className="resize-none text-sm border-gray-200 rounded-lg min-h-[80px]"
+                        required
                       />
                     </div>
                   </div>
