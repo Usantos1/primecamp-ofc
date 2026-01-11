@@ -62,16 +62,18 @@
 
 ## 🚧 PRÓXIMOS PASSOS (Pendentes)
 
+### Componentes Criados: ✅
+1. ✅ **Dashboard Executivo** (`src/pages/financeiro/DashboardExecutivo.tsx`)
+2. ✅ **Recomendações da IA** (`src/pages/financeiro/Recomendacoes.tsx`)
+3. ✅ **Gestão de Estoque Inteligente** (`src/pages/financeiro/EstoqueInteligente.tsx`)
+4. ✅ **Análise de Vendedores** (`src/pages/financeiro/AnaliseVendedores.tsx`)
+5. ✅ **Análise de Produtos** (`src/pages/financeiro/AnaliseProdutos.tsx`)
+
 ### Componentes Restantes a Criar:
 1. **Análise Preditiva de Vendas** (`src/pages/financeiro/PrevisoesVendas.tsx`)
-2. **Gestão de Estoque Inteligente** (`src/pages/financeiro/EstoqueInteligente.tsx`)
-3. **Precificação Inteligente** (`src/pages/financeiro/Precificacao.tsx`)
-4. **DRE Inteligente** (`src/pages/financeiro/DRE.tsx`)
-5. **Planejamento Anual** (`src/pages/financeiro/PlanejamentoAnual.tsx`)
-6. **Análise de Vendedores** (`src/pages/financeiro/AnaliseVendedores.tsx`)
-7. **Análise de Produtos** (`src/pages/financeiro/AnaliseProdutos.tsx`)
-8. **Relatórios Detalhados** (`src/pages/financeiro/Relatorios.tsx`)
-9. **Recomendações da IA** (`src/pages/financeiro/Recomendacoes.tsx`)
+2. **Precificação Inteligente** (`src/pages/financeiro/Precificacao.tsx`)
+3. **DRE Inteligente** (`src/pages/financeiro/DRE.tsx`)
+4. **Planejamento Anual** (`src/pages/financeiro/PlanejamentoAnual.tsx`)
 
 ### Melhorias de IA:
 1. Implementar modelos mais avançados de previsão (substituir média móvel simples)
@@ -117,13 +119,13 @@ sudo systemctl reload nginx
 
 ## 📊 STATUS ATUAL
 
-**Progresso Geral: ~40%**
+**Progresso Geral: ~55%**
 
 - ✅ Fase 1: Fundação (Tabelas) - **100%**
 - ✅ Fase 2: Backend (Endpoints) - **100%**
 - ✅ Fase 3: Jobs Agendados - **100%**
 - ✅ Fase 4: Hooks Frontend - **100%**
-- 🚧 Fase 5: Componentes Frontend - **~10%** (1 de 9 componentes)
+- 🚧 Fase 5: Componentes Frontend - **~55%** (5 de 9 componentes criados)
 - ⏳ Fase 6: IA Avançada - **0%**
 - ⏳ Fase 7: Refinamento - **0%**
 
