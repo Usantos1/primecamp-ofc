@@ -26,6 +26,7 @@
   - `GET /api/financeiro/dre/:periodo` - DRE do período
   - `GET /api/financeiro/planejamento/:ano` - Planejamento anual
   - `POST /api/financeiro/planejamento/:ano` - Salvar planejamento
+  - `POST /api/financeiro/precificacao/sugerir` - Sugerir preço inteligente
 
 ### Fase 3: Jobs Agendados ✅
 - ✅ **Jobs criados em `server/jobs/financeiroJobs.js`**:
@@ -48,6 +49,7 @@
   - `useDRE()` - DRE
   - `usePlanejamentoAnual()` - Planejamento anual
   - `useSalvarPlanejamentoAnual()` - Salvar planejamento
+  - `useSugerirPreco()` - Precificação inteligente
 
 ### Fase 5: Frontend - Componentes (Em Progresso)
 - ✅ **Dashboard Executivo criado** (`src/pages/financeiro/DashboardExecutivo.tsx`):
@@ -72,8 +74,11 @@
 7. ✅ **DRE Inteligente** (`src/pages/financeiro/DRE.tsx`)
 8. ✅ **Planejamento Anual** (`src/pages/financeiro/PlanejamentoAnual.tsx`)
 
-### Componentes Restantes a Criar:
-1. **Precificação Inteligente** (`src/pages/financeiro/Precificacao.tsx`) - Opcional/Futuro
+### Componentes Criados: ✅ (TODOS)
+8. ✅ **Precificação Inteligente** (`src/pages/financeiro/Precificacao.tsx`)
+   - Endpoint: `POST /api/financeiro/precificacao/sugerir`
+   - Análise de preços baseada em margem, histórico e rotatividade
+   - Sugestões inteligentes de aumento/redução de preço
 
 ### Melhorias de IA:
 1. Implementar modelos mais avançados de previsão (substituir média móvel simples)
@@ -125,7 +130,7 @@ sudo systemctl reload nginx
 - ✅ Fase 2: Backend (Endpoints) - **100%**
 - ✅ Fase 3: Jobs Agendados - **100%**
 - ✅ Fase 4: Hooks Frontend - **100%**
-- ✅ Fase 5: Componentes Frontend - **100%** (8 de 8 componentes principais criados, 1 opcional futuro)
+- ✅ Fase 5: Componentes Frontend - **100%** (9 de 9 componentes criados - TODOS)
 - ⏳ Fase 6: IA Avançada - **0%**
 - ⏳ Fase 7: Refinamento - **0%**
 
