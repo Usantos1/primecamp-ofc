@@ -154,6 +154,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     orcamento_autorizado: false,
   });
 
+  // Estados para checklist de entrada (modal)
+  const [showChecklistEntradaModal, setShowChecklistEntradaModal] = useState(false);
+  const [checklistEntradaModalOSId, setChecklistEntradaModalOSId] = useState<string | null>(null);
+  const [checklistEntradaModalMarcados, setChecklistEntradaModalMarcados] = useState<string[]>([]);
+  const [checklistEntradaModalObservacoes, setChecklistEntradaModalObservacoes] = useState('');
+  
   // Estados para checklist de saída
   const [showChecklistSaidaModal, setShowChecklistSaidaModal] = useState(false);
   const [checklistSaidaMarcados, setChecklistSaidaMarcados] = useState<string[]>([]);
@@ -918,51 +924,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             padrao_desbloqueio: osAtualizada.padrao_desbloqueio || prev.padrao_desbloqueio,
           }));
           
-          // Verificar se checklist de entrada foi preenchido e se precisa imprimir automaticamente
-          const checklistPreenchido = formData.checklist_entrada_realizado_por_id && 
-                                     parseJsonArray(formData.checklist_entrada).length > 0;
-          const checklistJaImpresso = osAtualizada.printed_at; // Se já foi impresso, não imprimir novamente
-          
-          if (checklistPreenchido && !checklistJaImpresso) {
-            // Checklist de entrada foi preenchido pela primeira vez - imprimir automaticamente
-            try {
-              const clienteData = getClienteById(osAtualizada.cliente_id);
-              const marcaData = marcas.find(m => m.id === osAtualizada.marca_id);
-              const modeloData = modelos.find(m => m.id === osAtualizada.modelo_id);
-              
-              // Imprimir em 2 vias automaticamente (sem nova aba, sem confirmação)
-              await printOSTermicaDirect(
-                osAtualizada,
-                clienteData,
-                marcaData,
-                modeloData,
-                checklistEntradaConfig,
-                osImageReferenceUrl
-              );
-              
-              toast({ title: 'Checklist salvo e OS impressa automaticamente!' });
-              
-              // Atualizar status para "em_andamento" se ainda estiver como "aberta"
-              if (osAtualizada.status === 'aberta' || !osAtualizada.status) {
-                try {
-                  await updateStatus(osAtualizada.id, 'em_andamento');
-                } catch (statusError) {
-                  console.warn('Erro ao atualizar status para em_andamento:', statusError);
-                  // Não bloquear se falhar
-                }
-              }
-            } catch (printError) {
-              console.error('Erro ao imprimir OS após checklist de entrada:', printError);
-              toast({ 
-                title: 'Checklist salvo, mas erro ao imprimir', 
-                description: 'Tente imprimir manualmente.',
-                variant: 'destructive' 
-              });
-              // Não bloquear salvamento se a impressão falhar
-            }
-          } else {
-            toast({ title: 'OS salva com sucesso!' });
-          }
+          toast({ title: 'OS salva com sucesso!' });
         }
         // Mostrar toast centralizado
         setShowSuccessToast(true);
@@ -1001,11 +963,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           // Se estiver no modal, fecha e deixa o usuário abrir novamente se quiser
           onClose();
         } else {
-          // Navegar para a aba checklist automaticamente após criar OS
-          // Invalidar queries antes de navegar para garantir dados atualizados
+          // Abrir modal de checklist de entrada após criar OS
           queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
-          // Navegar diretamente - o componente será remontado com o novo id
-          navigate(`/os/${novaOS.id}/checklist`, { replace: true });
+          setChecklistEntradaModalOSId(novaOS.id);
+          setChecklistEntradaModalMarcados([]);
+          setChecklistEntradaModalObservacoes('');
+          setShowChecklistEntradaModal(true);
         }
       }
     } catch (error: any) {
