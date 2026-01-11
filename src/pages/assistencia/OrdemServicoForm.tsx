@@ -864,6 +864,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     setProdutoResults([]);
   };
 
+  // Estado para campos faltando (para destacar visualmente)
+  const [camposFaltandoState, setCamposFaltandoState] = useState<Set<string>>(new Set());
+
   // Salvar OS
   const handleSubmit = async () => {
     // Prevenir múltiplos cliques
@@ -874,42 +877,52 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
     // Validações de campos obrigatórios com feedback visual consolidado
     const camposFaltando: string[] = [];
+    const camposFaltandoSet = new Set<string>();
 
     if (!selectedCliente?.id && !formData.cliente_id) {
       camposFaltando.push('Cliente');
+      camposFaltandoSet.add('cliente');
     }
 
     if (!formData.telefone_contato || formData.telefone_contato.trim() === '') {
       camposFaltando.push('Telefone para contato');
+      camposFaltandoSet.add('telefone');
     }
 
     if (!formData.marca_id) {
       camposFaltando.push('Marca');
+      camposFaltandoSet.add('marca');
     }
 
     if (!formData.modelo_id) {
       camposFaltando.push('Modelo');
+      camposFaltandoSet.add('modelo');
     }
 
     if (!formData.descricao_problema || formData.descricao_problema.trim() === '') {
       camposFaltando.push('Descrição do problema');
+      camposFaltandoSet.add('descricao_problema');
     }
 
     if (!formData.cor || formData.cor.trim() === '') {
       camposFaltando.push('Cor do equipamento');
+      camposFaltandoSet.add('cor');
     }
 
     if (!formData.condicoes_equipamento || formData.condicoes_equipamento.trim() === '') {
       camposFaltando.push('Condições do equipamento');
+      camposFaltandoSet.add('condicoes_equipamento');
     }
 
     if (!formData.previsao_entrega || formData.previsao_entrega.trim() === '') {
       camposFaltando.push('Previsão de entrega');
+      camposFaltandoSet.add('previsao_entrega');
     }
 
     // Se houver campos faltando, exibir toast com lista e log no console
     if (camposFaltando.length > 0) {
       console.warn('[VALIDAÇÃO OS] Campos obrigatórios faltando:', camposFaltando);
+      setCamposFaltandoState(camposFaltandoSet);
       toast({ 
         title: 'Campos obrigatórios não preenchidos', 
         description: `Preencha os seguintes campos: ${camposFaltando.join(', ')}`,
@@ -917,6 +930,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       });
       return;
     }
+
+    // Limpar estado de campos faltando se validação passou
+    setCamposFaltandoState(new Set());
 
     setIsLoading(true);
     try {
