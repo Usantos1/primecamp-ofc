@@ -324,6 +324,59 @@ try {
     }
   }, 60 * 60 * 1000); // 1 hora
   
+  // Jobs de financeiro/IA (assíncrono para não bloquear)
+  (async () => {
+    try {
+      const financeiroJobs = await import('./jobs/financeiroJobs.js');
+      
+      // Executar jobs uma vez ao iniciar (para popular dados iniciais)
+      console.log('[Server] Executando jobs iniciais de financeiro...');
+      await financeiroJobs.criarSnapshotDiarioVendas().catch(e => console.error('[Financeiro Jobs] Erro inicial:', e));
+      await financeiroJobs.gerarRecomendacoesEstoque().catch(e => console.error('[Financeiro Jobs] Erro inicial:', e));
+      
+      // Snapshot diário (executar às 00:00)
+      const agora = new Date();
+      const proximaMeiaNoite = new Date(agora);
+      proximaMeiaNoite.setHours(24, 0, 0, 0);
+      const msAteMeiaNoite = proximaMeiaNoite.getTime() - agora.getTime();
+      
+      setTimeout(() => {
+        financeiroJobs.criarSnapshotDiarioVendas();
+        financeiroJobs.gerarRecomendacoesEstoque();
+        
+        // Depois, executar diariamente
+        setInterval(() => {
+          financeiroJobs.criarSnapshotDiarioVendas();
+          financeiroJobs.gerarRecomendacoesEstoque();
+        }, 24 * 60 * 60 * 1000);
+      }, msAteMeiaNoite);
+      
+      // Análise mensal (dia 1 de cada mês, às 01:00)
+      const proximoDia1 = new Date(agora);
+      proximoDia1.setDate(1);
+      proximoDia1.setHours(1, 0, 0, 0);
+      if (proximoDia1 <= agora) {
+        proximoDia1.setMonth(proximoDia1.getMonth() + 1);
+      }
+      const msAteDia1 = proximoDia1.getTime() - agora.getTime();
+      
+      setTimeout(() => {
+        financeiroJobs.calcularAnaliseMensalProdutos();
+        financeiroJobs.calcularAnaliseMensalVendedores();
+        
+        // Depois, executar mensalmente (aproximado - 30 dias)
+        setInterval(() => {
+          financeiroJobs.calcularAnaliseMensalProdutos();
+          financeiroJobs.calcularAnaliseMensalVendedores();
+        }, 30 * 24 * 60 * 60 * 1000);
+      }, msAteDia1);
+      
+      console.log('[Server] ✅ Jobs de financeiro/IA agendados');
+    } catch (error) {
+      console.warn('[Server] ⚠️ Erro ao carregar jobs de financeiro:', error.message);
+    }
+  })();
+  
   // Rota de teste para verificar se está funcionando
   app.get('/api/admin/revenda/test', (req, res) => {
     res.json({ success: true, message: 'Rotas de revenda estão funcionando!' });

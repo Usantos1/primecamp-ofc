@@ -119,13 +119,13 @@ sudo systemctl reload nginx
 
 ## 📊 STATUS ATUAL
 
-**Progresso Geral: ~75%**
+**Progresso Geral: ~80%** (Fases 1-5 completas, fases 6-7 são melhorias futuras)
 
 - ✅ Fase 1: Fundação (Tabelas) - **100%**
 - ✅ Fase 2: Backend (Endpoints) - **100%**
 - ✅ Fase 3: Jobs Agendados - **100%**
 - ✅ Fase 4: Hooks Frontend - **100%**
-- ✅ Fase 5: Componentes Frontend - **~90%** (8 de 9 componentes criados)
+- ✅ Fase 5: Componentes Frontend - **100%** (8 de 8 componentes principais criados, 1 opcional futuro)
 - ⏳ Fase 6: IA Avançada - **0%**
 - ⏳ Fase 7: Refinamento - **0%**
 
