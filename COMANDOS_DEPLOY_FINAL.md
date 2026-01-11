@@ -26,8 +26,20 @@ git pull origin main
 ```
 
 ### 3. Aplicar Migração SQL (SE AINDA NÃO FOI APLICADA)
+
+**Primeiro, descubra o nome do banco:**
 ```bash
-sudo -u postgres psql -d seu_banco -f sql/CRIAR_TABELAS_IA_FINANCEIRO.sql
+sudo -u postgres psql -l
+```
+
+**Ou verifique no .env:**
+```bash
+grep DB_NAME .env
+```
+
+**Depois aplique a migração:**
+```bash
+sudo -u postgres psql -d NOME_DO_BANCO -f sql/CRIAR_TABELAS_IA_FINANCEIRO.sql
 ```
 
 **OU aplicar manualmente:**

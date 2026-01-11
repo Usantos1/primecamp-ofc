@@ -36,14 +36,40 @@ echo -e "${GREEN}✅ Código atualizado${NC}"
 # 2. APLICAR MIGRAÇÃO SQL
 # ============================================
 echo -e "${YELLOW}🗄️  Aplicando migração SQL...${NC}"
-if [ -f "$SQL_DIR/CRIAR_TABELAS_IA_FINANCEIRO.sql" ]; then
-  sudo -u postgres psql -d banco_gestao -f "$SQL_DIR/CRIAR_TABELAS_IA_FINANCEIRO.sql" || {
-    echo -e "${RED}❌ Erro ao aplicar migração SQL${NC}"
-    exit 1
-  }
-  echo -e "${GREEN}✅ Migração SQL aplicada${NC}"
+
+# Detectar nome do banco de dados do .env
+DB_NAME=""
+if [ -f "$PROJECT_DIR/.env" ]; then
+  DB_NAME=$(grep "^DB_NAME=" "$PROJECT_DIR/.env" | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+fi
+
+# Se não encontrou no .env, tentar outros nomes comuns
+if [ -z "$DB_NAME" ]; then
+  echo -e "${YELLOW}⚠️  DB_NAME não encontrado no .env. Tentando detectar...${NC}"
+  # Listar bancos disponíveis e usar o primeiro que não seja template
+  DB_NAME=$(sudo -u postgres psql -l -t | grep -v template | grep -v postgres | head -1 | awk '{print $1}' | xargs)
+fi
+
+# Se ainda não tem, pedir ao usuário
+if [ -z "$DB_NAME" ]; then
+  echo -e "${RED}❌ Não foi possível detectar o nome do banco de dados${NC}"
+  echo -e "${YELLOW}Por favor, especifique o nome do banco ou edite o script${NC}"
+  echo -e "${YELLOW}Para listar bancos disponíveis: sudo -u postgres psql -l${NC}"
+  echo -e "${YELLOW}Pulando migração SQL. Execute manualmente:${NC}"
+  echo -e "${YELLOW}  sudo -u postgres psql -d NOME_DO_BANCO -f sql/CRIAR_TABELAS_IA_FINANCEIRO.sql${NC}"
 else
-  echo -e "${YELLOW}⚠️  Arquivo de migração não encontrado, pulando...${NC}"
+  if [ -f "$SQL_DIR/CRIAR_TABELAS_IA_FINANCEIRO.sql" ]; then
+    echo -e "${YELLOW}Usando banco: $DB_NAME${NC}"
+    sudo -u postgres psql -d "$DB_NAME" -f "$SQL_DIR/CRIAR_TABELAS_IA_FINANCEIRO.sql" || {
+      echo -e "${RED}❌ Erro ao aplicar migração SQL${NC}"
+      echo -e "${YELLOW}Verifique se o banco '$DB_NAME' existe e tente novamente${NC}"
+      echo -e "${YELLOW}Para listar bancos: sudo -u postgres psql -l${NC}"
+      exit 1
+    }
+    echo -e "${GREEN}✅ Migração SQL aplicada no banco: $DB_NAME${NC}"
+  else
+    echo -e "${YELLOW}⚠️  Arquivo de migração não encontrado, pulando...${NC}"
+  fi
 fi
 
 # ============================================
