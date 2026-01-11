@@ -2262,12 +2262,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Previsão Entrega</Label>
+                      <Label className="text-xs font-medium text-gray-600">Previsão Entrega *</Label>
                       <Input
                         type="date"
                         value={formData.previsao_entrega}
                         onChange={(e) => setFormData(prev => ({ ...prev, previsao_entrega: e.target.value }))}
                         className="h-10 text-sm border-gray-200 rounded-lg"
+                        required
                       />
                     </div>
                     <div className="space-y-1.5">
