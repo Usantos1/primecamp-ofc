@@ -1366,6 +1366,65 @@ app.post('/api/insert/:table', async (req, res) => {
       return res.status(400).json({ error: 'Insert requires data' });
     }
 
+    // VALIDAÇÃO CRÍTICA: Regras de negócio para sales (sale_origin)
+    if (tableNameOnly.toLowerCase() === 'sales') {
+      for (const row of rowsToInsert) {
+        const saleOrigin = row?.sale_origin;
+        
+        // Todas as vendas devem ter sale_origin definido
+        if (!saleOrigin || (saleOrigin !== 'PDV' && saleOrigin !== 'OS')) {
+          return res.status(400).json({ 
+            error: 'sale_origin é obrigatório e deve ser "PDV" ou "OS"',
+            codigo: 'SALE_ORIGIN_REQUIRED'
+          });
+        }
+        
+        // Validações para vendas de OS
+        if (saleOrigin === 'OS') {
+          if (!row.ordem_servico_id) {
+            return res.status(400).json({ 
+              error: 'Vendas de OS devem ter ordem_servico_id',
+              codigo: 'OS_SALE_REQUIRES_ORDEM_SERVICO_ID'
+            });
+          }
+          if (!row.technician_id) {
+            return res.status(400).json({ 
+              error: 'Vendas de OS devem ter technician_id',
+              codigo: 'OS_SALE_REQUIRES_TECHNICIAN_ID'
+            });
+          }
+          if (row.cashier_user_id) {
+            return res.status(400).json({ 
+              error: 'Vendas de OS não devem ter cashier_user_id',
+              codigo: 'OS_SALE_CANNOT_HAVE_CASHIER_USER_ID'
+            });
+          }
+        }
+        
+        // Validações para vendas de PDV
+        if (saleOrigin === 'PDV') {
+          if (!row.cashier_user_id) {
+            return res.status(400).json({ 
+              error: 'Vendas de PDV devem ter cashier_user_id',
+              codigo: 'PDV_SALE_REQUIRES_CASHIER_USER_ID'
+            });
+          }
+          if (row.ordem_servico_id) {
+            return res.status(400).json({ 
+              error: 'Vendas de PDV não devem ter ordem_servico_id',
+              codigo: 'PDV_SALE_CANNOT_HAVE_ORDEM_SERVICO_ID'
+            });
+          }
+          if (row.technician_id) {
+            return res.status(400).json({ 
+              error: 'Vendas de PDV não devem ter technician_id',
+              codigo: 'PDV_SALE_CANNOT_HAVE_TECHNICIAN_ID'
+            });
+          }
+        }
+      }
+    }
+    
     // VALIDAÇÃO CRÍTICA: Verificar estoque para sale_items
     if (table === 'sale_items') {
       for (const row of rowsToInsert) {
