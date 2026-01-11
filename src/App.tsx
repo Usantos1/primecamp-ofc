@@ -78,6 +78,7 @@ import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
+import DashboardExecutivo from "./pages/financeiro/DashboardExecutivo";
 
 const queryClient = new QueryClient();
 
