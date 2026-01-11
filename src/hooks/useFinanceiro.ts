@@ -93,7 +93,7 @@ export interface PrevisaoVendas {
 
 // Helper para fazer requisições autenticadas
 async function fetchFinanceiro(endpoint: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('auth_token');
   
   const response = await fetch(`${API_URL}/financeiro${endpoint}`, {
     ...options,
@@ -228,7 +228,7 @@ export function useAplicarRecomendacao() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
       
@@ -297,7 +297,7 @@ export function useSalvarPlanejamentoAnual() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(dados),
       });
@@ -323,7 +323,7 @@ export function useSugerirPreco() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify({
           produto_id: produtoId,
