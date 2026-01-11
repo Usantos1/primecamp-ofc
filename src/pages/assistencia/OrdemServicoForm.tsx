@@ -4377,7 +4377,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           {/* Rodapé único - tabs e ações em uma linha */}
           <div className="flex-shrink-0 z-20 bg-white border-t border-gray-200 pb-20 sm:pb-1">
             <div className="overflow-x-auto scrollbar-none px-1 py-1.5 sm:px-2 sm:py-2">
-              <div className="flex items-center gap-1 min-w-max">
+              <div className="flex items-center justify-center gap-1 min-w-max">
                 {/* Tabs */}
                 <TabsList className="inline-flex bg-gray-100 h-7 sm:h-8 p-0.5 gap-0 rounded-md">
                   <TabsTrigger 
@@ -4392,7 +4392,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     className="gap-0.5 px-2 sm:px-3 h-6 sm:h-7 rounded data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs"
                   >
                     <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                    <span className="hidden sm:inline">Check</span>
+                    <span className="hidden sm:inline">Checklist</span>
                   </TabsTrigger>
                   {isEditing && (
                     <>
@@ -4401,7 +4401,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         className="gap-0.5 px-2 sm:px-3 h-6 sm:h-7 rounded data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs"
                       >
                         <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        <span className="hidden sm:inline">Resol.</span>
+                        <span className="hidden sm:inline">Resolução</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="itens" 
@@ -4415,7 +4415,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         className="gap-0.5 px-2 sm:px-3 h-6 sm:h-7 rounded data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs"
                       >
                         <DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        <span className="hidden sm:inline">$</span>
+                        <span className="hidden sm:inline">Financeiro</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="fotos" 
@@ -4487,7 +4487,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </>
                 )}
 
-                <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded h-7 sm:h-8 px-3 sm:px-4 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90 text-[10px] sm:text-sm ml-auto">
+                <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded h-7 sm:h-8 px-3 sm:px-4 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90 text-[10px] sm:text-sm">
                   <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
                   <span>Salvar</span>
                 </LoadingButton>
