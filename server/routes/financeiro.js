@@ -236,7 +236,7 @@ router.get('/produtos/analise', async (req, res) => {
         p.quantidade as estoque_atual,
         COUNT(si.id) as quantidade_vendida,
         SUM(si.valor_total) as receita_total,
-        SUM(si.quantidade * COALESCE(p.preco_custo, 0)) as custo_total,
+        SUM(si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0)) as custo_total,
         SUM(si.valor_total - (si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0))) as lucro_total,
         AVG(si.valor_unitario) as preco_medio_venda
       FROM public.sale_items si
@@ -660,8 +660,8 @@ router.post('/precificacao/sugerir', async (req, res) => {
     }
     
     const produto = produtoQuery.rows[0];
-    const custo = parseFloat(produto.preco_custo || 0);
-    const precoAtual = parseFloat(produto.preco_venda || 0);
+    const custo = parseFloat(produto.vi_custo || produto.valor_compra || 0);
+    const precoAtual = parseFloat(produto.valor_dinheiro_pix || produto.preco_venda || 0);
     
     // Calcular preço sugerido baseado em margem
     const margem = margem_desejada || 50; // Default 50%
