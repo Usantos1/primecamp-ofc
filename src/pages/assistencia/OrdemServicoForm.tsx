@@ -2156,12 +2156,26 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Telefone *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('telefone') && "font-bold text-red-600")}>Telefone *</Label>
+                        {camposFaltandoState.has('telefone') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <Input
                         value={formData.telefone_contato || selectedCliente?.telefone || selectedCliente?.whatsapp || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, telefone_contato: e.target.value }))}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, telefone_contato: e.target.value }));
+                          if (camposFaltandoState.has('telefone') && e.target.value.trim() !== '') {
+                            setCamposFaltandoState(prev => {
+                              const next = new Set(prev);
+                              next.delete('telefone');
+                              return next;
+                            });
+                          }
+                        }}
                         placeholder="(99) 99999-9999"
-                        className="h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg"
+                        className={cn("h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg", camposFaltandoState.has('telefone') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
@@ -2212,7 +2226,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Modelo *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('modelo') && "font-bold text-red-600")}>Modelo *</Label>
+                        {camposFaltandoState.has('modelo') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <div className="flex gap-1">
                         <Select 
                           value={formData.modelo_id || ''} 
@@ -2221,11 +2240,18 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               setShowNovoModeloModal(true);
                             } else {
                               setFormData(prev => ({ ...prev, modelo_id: v }));
+                              if (camposFaltandoState.has('modelo')) {
+                                setCamposFaltandoState(prev => {
+                                  const next = new Set(prev);
+                                  next.delete('modelo');
+                                  return next;
+                                });
+                              }
                             }
                           }}
                           disabled={!formData.marca_id}
                         >
-                          <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg" disabled={!formData.marca_id}>
+                          <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")} disabled={!formData.marca_id}>
                             <SelectValue placeholder="Selecione o modelo">
                               {formData.modelo_id && modelosFiltrados.length > 0
                                 ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
@@ -2278,12 +2304,26 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Aparelho - Linha 2 */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Cor *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('cor') && "font-bold text-red-600")}>Cor *</Label>
+                        {camposFaltandoState.has('cor') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <Input
                         value={formData.cor}
-                        onChange={(e) => setFormData(prev => ({ ...prev, cor: e.target.value }))}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, cor: e.target.value }));
+                          if (camposFaltandoState.has('cor') && e.target.value.trim() !== '') {
+                            setCamposFaltandoState(prev => {
+                              const next = new Set(prev);
+                              next.delete('cor');
+                              return next;
+                            });
+                          }
+                        }}
                         placeholder="Ex: Preto, Branco"
-                        className="h-10 text-sm border-gray-200 rounded-lg"
+                        className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('cor') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
@@ -2312,12 +2352,26 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Previsão Entrega *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('previsao_entrega') && "font-bold text-red-600")}>Previsão Entrega *</Label>
+                        {camposFaltandoState.has('previsao_entrega') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <Input
                         type="date"
                         value={formData.previsao_entrega}
-                        onChange={(e) => setFormData(prev => ({ ...prev, previsao_entrega: e.target.value }))}
-                        className="h-10 text-sm border-gray-200 rounded-lg"
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, previsao_entrega: e.target.value }));
+                          if (camposFaltandoState.has('previsao_entrega') && e.target.value.trim() !== '') {
+                            setCamposFaltandoState(prev => {
+                              const next = new Set(prev);
+                              next.delete('previsao_entrega');
+                              return next;
+                            });
+                          }
+                        }}
+                        className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('previsao_entrega') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
@@ -2335,23 +2389,51 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Descrição e Condições */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Descrição do Problema *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('descricao_problema') && "font-bold text-red-600")}>Descrição do Problema *</Label>
+                        {camposFaltandoState.has('descricao_problema') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <Textarea
                         value={formData.descricao_problema}
-                        onChange={(e) => setFormData(prev => ({ ...prev, descricao_problema: e.target.value }))}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, descricao_problema: e.target.value }));
+                          if (camposFaltandoState.has('descricao_problema') && e.target.value.trim() !== '') {
+                            setCamposFaltandoState(prev => {
+                              const next = new Set(prev);
+                              next.delete('descricao_problema');
+                              return next;
+                            });
+                          }
+                        }}
                         placeholder="Descreva detalhadamente o problema relatado pelo cliente..."
                         rows={3}
-                        className="resize-none text-sm border-gray-200 rounded-lg min-h-[80px]"
+                        className={cn("resize-none text-sm border-gray-200 rounded-lg min-h-[80px]", camposFaltandoState.has('descricao_problema') && "border-red-500 border-2 bg-red-50")}
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Condições do Equipamento *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('condicoes_equipamento') && "font-bold text-red-600")}>Condições do Equipamento *</Label>
+                        {camposFaltandoState.has('condicoes_equipamento') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <Textarea
                         value={formData.condicoes_equipamento}
-                        onChange={(e) => setFormData(prev => ({ ...prev, condicoes_equipamento: e.target.value }))}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, condicoes_equipamento: e.target.value }));
+                          if (camposFaltandoState.has('condicoes_equipamento') && e.target.value.trim() !== '') {
+                            setCamposFaltandoState(prev => {
+                              const next = new Set(prev);
+                              next.delete('condicoes_equipamento');
+                              return next;
+                            });
+                          }
+                        }}
                         placeholder="Estado físico do aparelho: riscos, trincas, amassados..."
                         rows={3}
-                        className="resize-none text-sm border-gray-200 rounded-lg min-h-[80px]"
+                        className={cn("resize-none text-sm border-gray-200 rounded-lg min-h-[80px]", camposFaltandoState.has('condicoes_equipamento') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
