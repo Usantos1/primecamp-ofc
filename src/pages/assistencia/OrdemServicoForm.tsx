@@ -2170,7 +2170,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Aparelho - Linha 1 */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Marca *</Label>
+                      <div className="flex items-center gap-2">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('marca') && "font-bold text-red-600")}>Marca *</Label>
+                        {camposFaltandoState.has('marca') && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                        )}
+                      </div>
                       <Select 
                         value={formData.marca_id || ''} 
                         onValueChange={(v) => {
@@ -2179,9 +2184,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             marca_id: v, 
                             modelo_id: '' 
                           }));
+                          if (camposFaltandoState.has('marca')) {
+                            setCamposFaltandoState(prev => {
+                              const next = new Set(prev);
+                              next.delete('marca');
+                              return next;
+                            });
+                          }
                         }}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
+                        <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('marca') && "border-red-500 border-2 bg-red-50")}>
                           <SelectValue placeholder="Selecione a marca">
                             {formData.marca_id && marcas.length > 0 
                               ? (marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome || '')
