@@ -219,6 +219,19 @@ const App = () => (
               <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission="vendas.manage"><ConfiguracaoCupom /></PermissionRoute>} />
               <Route path="/pdv/devolucoes" element={<PermissionRoute permission="vendas.manage"><Devolucoes /></PermissionRoute>} />
               <Route path="/cupom/:id" element={<CupomView />} />
+              
+              {/* Sistema IA-First Financeiro */}
+              <Route path="/financeiro" element={<PermissionRoute permission="relatorios.financeiro"><DashboardExecutivo /></PermissionRoute>} />
+              <Route path="/financeiro/dashboard" element={<PermissionRoute permission="relatorios.financeiro"><DashboardExecutivo /></PermissionRoute>} />
+              <Route path="/financeiro/recomendacoes" element={<PermissionRoute permission="relatorios.financeiro"><Recomendacoes /></PermissionRoute>} />
+              <Route path="/financeiro/estoque-inteligente" element={<PermissionRoute permission="relatorios.financeiro"><EstoqueInteligente /></PermissionRoute>} />
+              <Route path="/financeiro/analise-vendedores" element={<PermissionRoute permission="relatorios.financeiro"><AnaliseVendedores /></PermissionRoute>} />
+              <Route path="/financeiro/analise-produtos" element={<PermissionRoute permission="relatorios.financeiro"><AnaliseProdutos /></PermissionRoute>} />
+              <Route path="/financeiro/previsoes-vendas" element={<PermissionRoute permission="relatorios.financeiro"><PrevisoesVendas /></PermissionRoute>} />
+              <Route path="/financeiro/dre" element={<PermissionRoute permission="relatorios.financeiro"><DRE /></PermissionRoute>} />
+              <Route path="/financeiro/planejamento-anual" element={<PermissionRoute permission="relatorios.financeiro"><PlanejamentoAnual /></PermissionRoute>} />
+              <Route path="/financeiro/precificacao" element={<PermissionRoute permission="relatorios.financeiro"><Precificacao /></PermissionRoute>} />
+              
               {/* Rotas de OS - simplificadas para /os */}
               <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
               <Route path="/os/nova" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />
