@@ -1527,6 +1527,80 @@ app.post('/api/update/:table', async (req, res) => {
       return res.status(400).json({ error: 'Update requires WHERE clause' });
     }
 
+    // VALIDAÇÃO CRÍTICA: Regras de negócio para sales (sale_origin)
+    if (tableNameOnly.toLowerCase() === 'sales') {
+      const saleOrigin = data?.sale_origin;
+      
+      // Se sale_origin está sendo atualizado, validar como no INSERT
+      if (saleOrigin !== undefined) {
+        if (saleOrigin !== 'PDV' && saleOrigin !== 'OS') {
+          return res.status(400).json({ 
+            error: 'sale_origin deve ser "PDV" ou "OS"',
+            codigo: 'INVALID_SALE_ORIGIN'
+          });
+        }
+        
+        // Validações para vendas de OS
+        if (saleOrigin === 'OS') {
+          if (data.cashier_user_id !== undefined && data.cashier_user_id !== null) {
+            return res.status(400).json({ 
+              error: 'Vendas de OS não devem ter cashier_user_id',
+              codigo: 'OS_SALE_CANNOT_HAVE_CASHIER_USER_ID'
+            });
+          }
+        }
+        
+        // Validações para vendas de PDV
+        if (saleOrigin === 'PDV') {
+          if (data.ordem_servico_id !== undefined && data.ordem_servico_id !== null) {
+            return res.status(400).json({ 
+              error: 'Vendas de PDV não devem ter ordem_servico_id',
+              codigo: 'PDV_SALE_CANNOT_HAVE_ORDEM_SERVICO_ID'
+            });
+          }
+          if (data.technician_id !== undefined && data.technician_id !== null) {
+            return res.status(400).json({ 
+              error: 'Vendas de PDV não devem ter technician_id',
+              codigo: 'PDV_SALE_CANNOT_HAVE_TECHNICIAN_ID'
+            });
+          }
+        }
+      } else {
+        // Se sale_origin não está sendo atualizado, verificar consistência com sale_origin atual
+        const { clause: tempWhereClause, params: tempWhereParams } = buildWhereClause(where, 0);
+        const currentSaleResult = await pool.query(
+          `SELECT sale_origin FROM ${tableName} WHERE ${tempWhereClause}`,
+          tempWhereParams
+        );
+        
+        if (currentSaleResult.rows.length > 0) {
+          const currentSaleOrigin = currentSaleResult.rows[0].sale_origin;
+          
+          if (currentSaleOrigin === 'OS') {
+            if (data.cashier_user_id !== undefined && data.cashier_user_id !== null) {
+              return res.status(400).json({ 
+                error: 'Vendas de OS não devem ter cashier_user_id',
+                codigo: 'OS_SALE_CANNOT_HAVE_CASHIER_USER_ID'
+              });
+            }
+          } else if (currentSaleOrigin === 'PDV') {
+            if (data.ordem_servico_id !== undefined && data.ordem_servico_id !== null) {
+              return res.status(400).json({ 
+                error: 'Vendas de PDV não devem ter ordem_servico_id',
+                codigo: 'PDV_SALE_CANNOT_HAVE_ORDEM_SERVICO_ID'
+              });
+            }
+            if (data.technician_id !== undefined && data.technician_id !== null) {
+              return res.status(400).json({ 
+                error: 'Vendas de PDV não devem ter technician_id',
+                codigo: 'PDV_SALE_CANNOT_HAVE_TECHNICIAN_ID'
+              });
+            }
+          }
+        }
+      }
+    }
+
     const keys = Object.keys(data);
     // Serializar objetos/arrays como JSON para campos JSONB
     const values = Object.values(data).map(value => {
