@@ -1049,6 +1049,100 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     });
   };
 
+  // Finalizar checklist de entrada (modal)
+  const handleFinalizarChecklistEntrada = async () => {
+    if (!checklistEntradaModalOSId) {
+      toast({ 
+        title: 'Erro', 
+        description: 'OS não encontrada.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    try {
+      // Buscar OS atualizada
+      const osAtualizada = getOSById(checklistEntradaModalOSId);
+      if (!osAtualizada) {
+        toast({ 
+          title: 'Erro', 
+          description: 'OS não encontrada.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      const userId = user?.id || null;
+      const userNome = profile?.display_name || user?.email || null;
+      const agora = new Date().toISOString();
+
+      // Atualizar OS com checklist de entrada
+      await updateOS(checklistEntradaModalOSId, {
+        checklist_entrada: checklistEntradaModalMarcados,
+        observacoes_checklist: checklistEntradaModalObservacoes || null,
+        checklist_entrada_realizado_por_id: userId,
+        checklist_entrada_realizado_por_nome: userNome,
+        checklist_entrada_realizado_em: agora,
+      });
+
+      // Atualizar status para "em_andamento" se ainda estiver como "aberta"
+      if (osAtualizada.status === 'aberta' || !osAtualizada.status) {
+        try {
+          await updateStatus(checklistEntradaModalOSId, 'em_andamento');
+        } catch (statusError) {
+          console.warn('Erro ao atualizar status para em_andamento:', statusError);
+        }
+      }
+
+      // Buscar OS atualizada novamente para impressão
+      const osParaImprimir = getOSById(checklistEntradaModalOSId);
+      if (osParaImprimir) {
+        try {
+          const clienteData = getClienteById(osParaImprimir.cliente_id);
+          const marcaData = marcas.find(m => m.id === osParaImprimir.marca_id);
+          const modeloData = modelos.find(m => m.id === osParaImprimir.modelo_id);
+
+          // Imprimir em 2 vias automaticamente
+          await printOSTermicaDirect(
+            osParaImprimir,
+            clienteData,
+            marcaData,
+            modeloData,
+            checklistEntradaConfig,
+            osImageReferenceUrl
+          );
+
+          toast({ title: 'Checklist salvo e OS impressa automaticamente!' });
+        } catch (printError) {
+          console.error('Erro ao imprimir OS após checklist de entrada:', printError);
+          toast({ 
+            title: 'Checklist salvo, mas erro ao imprimir', 
+            description: 'Tente imprimir manualmente.',
+            variant: 'destructive' 
+          });
+        }
+      }
+
+      // Fechar modal e limpar estados
+      setShowChecklistEntradaModal(false);
+      const osIdParaNavegar = checklistEntradaModalOSId;
+      setChecklistEntradaModalOSId(null);
+      setChecklistEntradaModalMarcados([]);
+      setChecklistEntradaModalObservacoes('');
+
+      // Navegar para a OS editada
+      queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
+      navigate(`/os/${osIdParaNavegar}`, { replace: true });
+    } catch (error: any) {
+      console.error('Erro ao finalizar checklist de entrada:', error);
+      toast({ 
+        title: 'Erro ao salvar checklist', 
+        description: error.message || 'Ocorreu um erro inesperado',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   // Finalizar checklist de saída
   const handleFinalizarChecklistSaida = async () => {
     if (!currentOS || !pendingStatusChange) {
