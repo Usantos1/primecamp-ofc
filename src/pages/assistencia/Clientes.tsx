@@ -457,60 +457,60 @@ export default function Clientes() {
                   <table className="w-full caption-bottom text-sm border-collapse">
                     <thead className="sticky top-0 z-20 bg-background shadow-sm">
                       <tr className="border-b-[3px] border-gray-400">
-                        <TableHead 
-                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'nome' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                        <th 
+                          className={`h-12 px-4 text-left align-middle font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'nome' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
                           onClick={() => setSearchField(searchField === 'nome' ? 'all' : 'nome')}
                           title="Clique para filtrar por Nome"
                         >
                           Nome {searchField === 'nome' && <Search className="inline h-3 w-3 ml-1" />}
-                        </TableHead>
-                        <TableHead 
-                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cpf_cnpj' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                        </th>
+                        <th 
+                          className={`h-12 px-4 text-left align-middle font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cpf_cnpj' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
                           onClick={() => setSearchField(searchField === 'cpf_cnpj' ? 'all' : 'cpf_cnpj')}
                           title="Clique para filtrar por CPF/CNPJ"
                         >
                           CPF/CNPJ {searchField === 'cpf_cnpj' && <Search className="inline h-3 w-3 ml-1" />}
-                        </TableHead>
-                        <TableHead 
-                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'rg' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                        </th>
+                        <th 
+                          className={`h-12 px-4 text-left align-middle font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'rg' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
                           onClick={() => setSearchField(searchField === 'rg' ? 'all' : 'rg')}
                           title="Clique para filtrar por RG"
                         >
                           RG {searchField === 'rg' && <Search className="inline h-3 w-3 ml-1" />}
-                        </TableHead>
-                        <TableHead 
-                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'telefone' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                        </th>
+                        <th 
+                          className={`h-12 px-4 text-left align-middle font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'telefone' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
                           onClick={() => setSearchField(searchField === 'telefone' ? 'all' : 'telefone')}
                           title="Clique para filtrar por Telefone"
                         >
                           Telefone {searchField === 'telefone' && <Search className="inline h-3 w-3 ml-1" />}
-                        </TableHead>
-                        <TableHead 
-                          className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'email' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
+                        </th>
+                        <th 
+                          className={`h-12 px-4 text-left align-middle font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'email' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
                           onClick={() => setSearchField(searchField === 'email' ? 'all' : 'email')}
                           title="Clique para filtrar por Email"
                         >
                           Email {searchField === 'email' && <Search className="inline h-3 w-3 ml-1" />}
-                        </TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cidade</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                        </th>
+                        <th className="h-12 px-4 text-left align-middle font-semibold bg-muted/60 border-r border-gray-200">Cidade</th>
+                        <th className="h-12 px-4 text-right align-middle font-semibold bg-muted/60">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {filteredClientes.map((cliente, index) => (
-                        <TableRow 
+                        <tr 
                           key={cliente.id}
-                          className={`border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                          className={`border-b-2 border-gray-300 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
                         >
-                          <TableCell className="font-medium border-r border-gray-200">{cliente.nome}</TableCell>
-                          <TableCell className="border-r border-gray-200">{cliente.cpf_cnpj || '-'}</TableCell>
-                          <TableCell className="border-r border-gray-200">{cliente.rg || '-'}</TableCell>
-                          <TableCell className="border-r border-gray-200">
+                          <td className="py-3.5 px-3 align-middle font-medium border-r border-gray-200">{cliente.nome}</td>
+                          <td className="py-3.5 px-3 align-middle border-r border-gray-200">{cliente.cpf_cnpj || '-'}</td>
+                          <td className="py-3.5 px-3 align-middle border-r border-gray-200">{cliente.rg || '-'}</td>
+                          <td className="py-3.5 px-3 align-middle border-r border-gray-200">
                             {cliente.whatsapp || cliente.telefone || '-'}
-                          </TableCell>
-                          <TableCell className="border-r border-gray-200">{cliente.email || '-'}</TableCell>
-                          <TableCell className="border-r border-gray-200">{cliente.cidade || '-'}</TableCell>
-                          <TableCell>
+                          </td>
+                          <td className="py-3.5 px-3 align-middle border-r border-gray-200">{cliente.email || '-'}</td>
+                          <td className="py-3.5 px-3 align-middle border-r border-gray-200">{cliente.cidade || '-'}</td>
+                          <td className="py-3.5 px-3 align-middle">
                             <div className="flex justify-end gap-1">
                               <Button 
                                 variant="ghost" 
@@ -529,11 +529,11 @@ export default function Clientes() {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                   </div>
                 </div>
 
