@@ -453,10 +453,10 @@ export default function Clientes() {
               <>
                 {/* Desktop: Tabela com scroll interno */}
                 <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
-                  <div className="flex-1 overflow-auto scrollbar-thin">
-                  <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-background">
-                      <TableRow className="border-b-2 border-gray-300">
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+                  <table className="w-full caption-bottom text-sm border-collapse">
+                    <thead className="sticky top-0 z-20 bg-background shadow-sm">
+                      <tr className="border-b-[3px] border-gray-400">
                         <TableHead 
                           className={`font-semibold border-r border-gray-200 cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'nome' ? 'bg-blue-200 text-blue-700' : 'bg-muted/60'}`}
                           onClick={() => setSearchField(searchField === 'nome' ? 'all' : 'nome')}
