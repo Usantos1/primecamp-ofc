@@ -28,9 +28,9 @@ pm2 restart primecamp-api
 
 ```bash
 cd /root/primecamp-ofc
-sudo rm -rf /var/www/primecamp/html/*
-sudo cp -r dist/* /var/www/primecamp/html/
-sudo chown -R www-data:www-data /var/www/primecamp/html
+sudo rm -rf /var/www/html/*
+sudo cp -r dist/* /var/www/html/
+sudo chown -R www-data:www-data /var/www/html
 sudo systemctl reload nginx
 ```
 
@@ -49,9 +49,9 @@ DB_NAME=$(grep DB_NAME .env | cut -d '=' -f2)
 sudo -u postgres psql -d "$DB_NAME" -f ../sql/CRIAR_TABELAS_IA_FINANCEIRO.sql && \
 cd /root/primecamp-ofc && \
 pm2 restart all && \
-sudo rm -rf /var/www/primecamp/html/* && \
-sudo cp -r dist/* /var/www/primecamp/html/ && \
-sudo chown -R www-data:www-data /var/www/primecamp/html && \
+sudo rm -rf /var/www/html/* && \
+sudo cp -r dist/* /var/www/html/ && \
+sudo chown -R www-data:www-data /var/www/html && \
 sudo rm -rf /var/cache/nginx/* && \
 sudo systemctl reload nginx && \
 echo "✅ Deploy concluído com sucesso!"

@@ -36,12 +36,12 @@ echo -e "${GREEN}✅ Backend reiniciado${NC}"
 
 # 3. Copiar build do frontend
 echo -e "${YELLOW}📦 Copiando build do frontend...${NC}"
-sudo rm -rf /var/www/primecamp/html/* || true
-sudo cp -r dist/* /var/www/primecamp/html/ || {
+sudo rm -rf /var/www/html/* || true
+sudo cp -r dist/* /var/www/html/ || {
     echo -e "${RED}❌ Erro ao copiar arquivos do frontend${NC}"
     exit 1
 }
-sudo chown -R www-data:www-data /var/www/primecamp/html || {
+sudo chown -R www-data:www-data /var/www/html || {
     echo -e "${RED}❌ Erro ao ajustar permissões${NC}"
     exit 1
 }
