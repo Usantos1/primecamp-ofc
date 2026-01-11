@@ -913,10 +913,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       toast({ 
         title: 'Campos obrigatórios não preenchidos', 
         description: `Preencha os seguintes campos: ${camposFaltando.join(', ')}`,
-        variant: 'destructive',
-        duration: 6000
+        variant: 'destructive'
       });
-      setIsLoading(false);
       return;
     }
 
