@@ -158,10 +158,10 @@ export function AppSidebar() {
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // FINANCEIRO - Gestão Financeira (apenas para quem tem permissão)
+  // FINANCEIRO - Gestão Financeira IA-First (apenas para quem tem permissão)
   // ═══════════════════════════════════════════════════════════════
   const financeiroItems = [
-    { label: "Financeiro", path: "/admin/financeiro", icon: Wallet, permission: "financeiro.view" },
+    { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
