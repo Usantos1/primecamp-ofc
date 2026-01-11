@@ -56,7 +56,7 @@ router.get('/dashboard', async (req, res) => {
         p.nome,
         COUNT(si.id) as quantidade_vendida,
         SUM(si.valor_total) as receita_total,
-        SUM(si.valor_total - (si.quantidade * COALESCE(p.preco_custo, 0))) as lucro_total
+        SUM(si.valor_total - (si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0))) as lucro_total
       FROM public.sale_items si
       INNER JOIN public.sales s ON si.sale_id = s.id
       INNER JOIN public.produtos p ON si.produto_id = p.id
@@ -237,7 +237,7 @@ router.get('/produtos/analise', async (req, res) => {
         COUNT(si.id) as quantidade_vendida,
         SUM(si.valor_total) as receita_total,
         SUM(si.quantidade * COALESCE(p.preco_custo, 0)) as custo_total,
-        SUM(si.valor_total - (si.quantidade * COALESCE(p.preco_custo, 0))) as lucro_total,
+        SUM(si.valor_total - (si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0))) as lucro_total,
         AVG(si.valor_unitario) as preco_medio_venda
       FROM public.sale_items si
       INNER JOIN public.sales s ON si.sale_id = s.id

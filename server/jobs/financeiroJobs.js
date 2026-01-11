@@ -103,8 +103,8 @@ export async function calcularAnaliseMensalProdutos() {
         p.id as produto_id,
         SUM(si.quantidade) as quantidade_vendida,
         SUM(si.valor_total) as receita_total,
-        SUM(si.quantidade * COALESCE(p.preco_custo, 0)) as custo_total,
-        AVG((si.valor_total - (si.quantidade * COALESCE(p.preco_custo, 0))) / NULLIF(si.valor_total, 0) * 100) as margem_media
+        SUM(si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0)) as custo_total,
+        AVG((si.valor_total - (si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0))) / NULLIF(si.valor_total, 0) * 100) as margem_media
       FROM public.sale_items si
       INNER JOIN public.sales s ON si.sale_id = s.id
       INNER JOIN public.produtos p ON si.produto_id = p.id
