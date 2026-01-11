@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   DollarSign, ShoppingCart, Wrench, TrendingUp, TrendingDown,
-  AlertTriangle, Package, Users, BarChart3, Calendar
+  AlertTriangle, Package, Users, BarChart3, Calendar, Lightbulb,
+  Warehouse, FileText, Target, Sparkles, Home
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
