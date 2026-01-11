@@ -42,11 +42,11 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: categories = [] } = useFinancialCategories();
-  const { transactions, isLoading, createTransaction } = useFinancialTransactions({
-    month,
-    type: typeFilter !== 'all' ? typeFilter as any : undefined,
-  });
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const categories: any[] = [];
+  const transactions: any[] = [];
+  const isLoading = false;
+  const createTransaction = { mutateAsync: async () => {}, isPending: false };
   
   // Buscar vendas pagas do período
   const { data: sales = [], isLoading: salesLoading } = useQuery({

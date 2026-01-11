@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
-import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
+// TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
+// import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { cn } from '@/lib/utils';
@@ -23,8 +24,9 @@ const extractCusto = (observacoes: string | null): number => {
 };
 
 export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
-  const { transactions } = useFinancialTransactions({ month });
-  const { data: categories = [] } = useFinancialCategories();
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const transactions: any[] = [];
+  const categories: any[] = [];
 
   // Buscar vendas do período (incluindo observacoes para extrair custo)
   const { data: sales = [], isLoading: salesLoading } = useQuery({

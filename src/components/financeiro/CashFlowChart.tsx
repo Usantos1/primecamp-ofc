@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useFinancialTransactions, useBillsToPay } from '@/hooks/useFinanceiro';
+// TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
+// import { useFinancialTransactions, useBillsToPay } from '@/hooks/useFinanceiro';
 import { currencyFormatters } from '@/utils/formatters';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -13,8 +14,10 @@ interface CashFlowChartProps {
 }
 
 export function CashFlowChart({ month, startDate, endDate }: CashFlowChartProps) {
-  const { transactions, isLoading } = useFinancialTransactions({ month });
-  const { bills } = useBillsToPay({ startDate, endDate });
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const transactions: any[] = [];
+  const isLoading = false;
+  const bills: any[] = [];
 
   // Buscar vendas pagas
   const { data: sales = [], isLoading: salesLoading } = useQuery({

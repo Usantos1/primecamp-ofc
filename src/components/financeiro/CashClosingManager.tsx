@@ -29,7 +29,11 @@ export function CashClosingManager({ month }: CashClosingManagerProps) {
   const [viewingClosing, setViewingClosing] = useState<any>(null);
   const { user, profile, isAdmin } = useAuth();
 
-  const { cashClosings, isLoading, createCashClosing, verifyCashClosing } = useCashClosings({ month });
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const cashClosings: any[] = [];
+  const isLoading = false;
+  const createCashClosing = { mutateAsync: async () => {}, isPending: false };
+  const verifyCashClosing = { mutateAsync: async () => {} };
 
   const [formData, setFormData] = useState<CashClosingFormData>({
     closing_date: new Date().toISOString().split('T')[0],

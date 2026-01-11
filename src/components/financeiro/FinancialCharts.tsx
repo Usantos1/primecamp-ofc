@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFinancialTransactions, useBillsToPay } from '@/hooks/useFinanceiro';
+// TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
+// import { useFinancialTransactions, useBillsToPay } from '@/hooks/useFinanceiro';
 import { currencyFormatters } from '@/utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
@@ -14,8 +15,9 @@ interface FinancialChartsProps {
 const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 export function FinancialCharts({ month, startDate, endDate }: FinancialChartsProps) {
-  const { transactions } = useFinancialTransactions({ month });
-  const { bills } = useBillsToPay({ startDate, endDate });
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const transactions: any[] = [];
+  const bills: any[] = [];
   
   // Buscar vendas
   const { data: sales = [] } = useQuery({
