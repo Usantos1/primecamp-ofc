@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
+import { updatePrintStatus } from '@/utils/printUtils';
 
 export default function NovaVenda() {
   const navigate = useNavigate();
@@ -176,6 +177,8 @@ export default function NovaVenda() {
         cliente_cpf_cnpj: cliente?.cpf_cnpj || null,
         cliente_telefone: os.telefone_contato || cliente?.telefone || null,
         ordem_servico_id: os.id,
+        sale_origin: 'OS',
+        technician_id: os.tecnico_id || null,
         is_draft: true,
         observacoes: `Faturamento da OS #${os.numero}`,
       });
@@ -472,6 +475,8 @@ export default function NovaVenda() {
         cliente_cpf_cnpj: cliente?.cpf_cnpj || null,
         cliente_telefone: os.telefone_contato || cliente?.telefone || null,
         ordem_servico_id: os.id,
+        sale_origin: 'OS',
+        technician_id: os.tecnico_id || null,
         is_draft: true,
         observacoes: `Faturamento da OS #${os.numero}`,
       });
@@ -692,6 +697,8 @@ export default function NovaVenda() {
           cliente_nome: selectedCliente?.nome,
           cliente_cpf_cnpj: selectedCliente?.cpf_cnpj,
           cliente_telefone: selectedCliente?.telefone || selectedCliente?.whatsapp,
+          sale_origin: 'PDV',
+          cashier_user_id: user?.id || undefined,
           observacoes,
           is_draft: true, // Criar como rascunho primeiro
         });
@@ -813,6 +820,23 @@ export default function NovaVenda() {
         await finalizeSale(id);
         toast({ title: 'Venda finalizada com sucesso!' });
         setShowCheckout(true);
+        
+        // Aguardar um pouco para garantir que os dados estão atualizados e imprimir automaticamente
+        setTimeout(async () => {
+          await loadSale();
+          setTimeout(async () => {
+            const finalizedSale = await getSaleById(id);
+            if (finalizedSale && items && payments && payments.length > 0) {
+              try {
+                // Imprimir cupom automaticamente (sem nova aba, sem confirmação)
+                await handlePrintCupomDirect(finalizedSale);
+              } catch (printError) {
+                console.error('Erro ao imprimir após finalizar:', printError);
+                // Não bloquear a finalização se a impressão falhar
+              }
+            }
+          }, 800);
+        }, 1200);
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);
       toast({ 
@@ -1061,6 +1085,8 @@ export default function NovaVenda() {
           cliente_nome: selectedCliente?.nome,
           cliente_cpf_cnpj: selectedCliente?.cpf_cnpj,
           cliente_telefone: selectedCliente?.telefone || selectedCliente?.whatsapp,
+          sale_origin: 'PDV',
+          cashier_user_id: user?.id || undefined,
           observacoes,
           is_draft: true,
         });
@@ -1413,21 +1439,35 @@ export default function NovaVenda() {
       
       // Imprimir primeira via
       console.log('[IMPRESSÃO] Iniciando impressão da primeira via');
-      await printCupom();
-      console.log('[IMPRESSÃO] Primeira via impressa');
-      
-      // Se configurado para 2 vias, imprimir novamente após um delay
-      if (imprimir2Vias) {
-        console.log('[IMPRESSÃO] Configurado para 2 vias, aguardando 3 segundos para imprimir segunda via');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        console.log('[IMPRESSÃO] Iniciando impressão da segunda via');
+      try {
         await printCupom();
-        console.log('[IMPRESSÃO] Segunda via impressa com sucesso');
-      } else {
-        console.log('[IMPRESSÃO] Apenas 1 via configurada (imprimir_2_vias = false)');
+        console.log('[IMPRESSÃO] Primeira via impressa');
+        
+        // Se configurado para 2 vias, imprimir novamente após um delay
+        if (imprimir2Vias) {
+          console.log('[IMPRESSÃO] Configurado para 2 vias, aguardando 3 segundos para imprimir segunda via');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          console.log('[IMPRESSÃO] Iniciando impressão da segunda via');
+          await printCupom();
+          console.log('[IMPRESSÃO] Segunda via impressa com sucesso');
+        } else {
+          console.log('[IMPRESSÃO] Apenas 1 via configurada (imprimir_2_vias = false)');
+        }
+        
+        // Atualizar campos de impressão no banco (sucesso)
+        await updatePrintStatus('sales', saleToUse.id, true);
+      } catch (printError) {
+        console.error('Erro ao imprimir:', printError);
+        // Atualizar campos de impressão no banco (erro)
+        await updatePrintStatus('sales', saleToUse.id, false);
+        throw printError;
       }
     } catch (error) {
       console.error('Erro ao gerar cupom:', error);
+      // Tentar atualizar status de erro mesmo se não conseguiu imprimir
+      if (saleToUse?.id) {
+        await updatePrintStatus('sales', saleToUse.id, false).catch(() => {});
+      }
       toast({ title: 'Erro ao gerar cupom', variant: 'destructive' });
     }
   };

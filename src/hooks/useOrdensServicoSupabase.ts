@@ -118,10 +118,22 @@ export function useOrdensServicoSupabase() {
       };
 
       const { data: inserted, error } = await from('ordens_servico')
-        .insert(novaOS);
+        .insert(novaOS)
+        .select()
+        .single();
 
       if (error) throw error;
-      return (inserted?.data || inserted) as OrdemServico;
+      if (!inserted) {
+        throw new Error('Erro ao criar OS: dados não retornados');
+      }
+      
+      // Garantir que o ID está presente
+      const osCriada = (inserted?.data || inserted) as OrdemServico;
+      if (!osCriada?.id) {
+        throw new Error('Erro ao criar OS: ID não retornado');
+      }
+      
+      return osCriada;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });

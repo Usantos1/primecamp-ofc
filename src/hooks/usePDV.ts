@@ -90,23 +90,41 @@ export function useSales() {
         return uuidRegex.test(str);
       };
 
-      const buildSaleData = (num: number) => ({
-        numero: num,
-        status: 'draft' as SaleStatus,
-        cliente_id: data.cliente_id && isValidUUID(data.cliente_id) ? data.cliente_id : null,
-        cliente_nome: data.cliente_nome || null,
-        cliente_cpf_cnpj: data.cliente_cpf_cnpj || null,
-        cliente_telefone: data.cliente_telefone || null,
-        ordem_servico_id: data.ordem_servico_id && isValidUUID(data.ordem_servico_id) ? data.ordem_servico_id : null,
-        vendedor_id: user?.id || null,
-        vendedor_nome: profile?.display_name || user?.user_metadata?.name || user?.email || null,
-        observacoes: data.observacoes || null,
-        is_draft: data.is_draft ?? true,
-        subtotal: 0,
-        desconto_total: 0,
-        total: 0,
-        total_pago: 0,
-      });
+      // Determinar sale_origin e campos relacionados
+      const saleOrigin = data.sale_origin || (data.ordem_servico_id ? 'OS' : 'PDV');
+      
+      const buildSaleData = (num: number) => {
+        const baseData: any = {
+          numero: num,
+          status: 'draft' as SaleStatus,
+          cliente_id: data.cliente_id && isValidUUID(data.cliente_id) ? data.cliente_id : null,
+          cliente_nome: data.cliente_nome || null,
+          cliente_cpf_cnpj: data.cliente_cpf_cnpj || null,
+          cliente_telefone: data.cliente_telefone || null,
+          ordem_servico_id: data.ordem_servico_id && isValidUUID(data.ordem_servico_id) ? data.ordem_servico_id : null,
+          vendedor_id: user?.id || null,
+          vendedor_nome: profile?.display_name || user?.user_metadata?.name || user?.email || null,
+          observacoes: data.observacoes || null,
+          is_draft: data.is_draft ?? true,
+          subtotal: 0,
+          desconto_total: 0,
+          total: 0,
+          total_pago: 0,
+          sale_origin: saleOrigin,
+        };
+        
+        // Se for venda de OS, adicionar technician_id
+        if (saleOrigin === 'OS') {
+          baseData.technician_id = data.technician_id && isValidUUID(data.technician_id) ? data.technician_id : null;
+        }
+        
+        // Se for venda de PDV, adicionar cashier_user_id
+        if (saleOrigin === 'PDV') {
+          baseData.cashier_user_id = data.cashier_user_id && isValidUUID(data.cashier_user_id) ? data.cashier_user_id : (user?.id || null);
+        }
+        
+        return baseData;
+      };
 
       let newSale: any = null;
       let lastError: any = null;

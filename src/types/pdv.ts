@@ -91,6 +91,11 @@ export interface Sale {
   // Vínculo com OS
   ordem_servico_id?: string | null;
   
+  // Origem da venda
+  sale_origin?: 'PDV' | 'OS' | null;
+  technician_id?: string | null; // Obrigatório quando sale_origin = 'OS'
+  cashier_user_id?: string | null; // Obrigatório quando sale_origin = 'PDV'
+  
   // Valores
   subtotal: number;
   desconto_total: number;
@@ -137,6 +142,9 @@ export interface SaleFormData {
   vendedor_id?: string;
   observacoes?: string;
   is_draft?: boolean;
+  sale_origin?: 'PDV' | 'OS';
+  technician_id?: string;
+  cashier_user_id?: string;
 }
 
 // ==================== SALE ITEM (ITEM DA VENDA) ====================

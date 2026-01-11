@@ -7,22 +7,32 @@ export function useItensOSSupabase(osId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Validar se osId é um UUID válido (formato básico)
+  const isValidUUID = (id: string | undefined | null): boolean => {
+    if (!id || id === 'temp' || id === 'undefined' || id === 'null') return false;
+    // Formato básico de UUID: 8-4-4-4-12 caracteres hexadecimais
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
+  const validOsId = isValidUUID(osId) ? osId : undefined;
+
   // Buscar itens da OS
   const { data: itens = [], isLoading } = useQuery({
-    queryKey: ['os_items', osId],
+    queryKey: ['os_items', validOsId],
     queryFn: async () => {
-      if (!osId || osId === 'temp') return [];
+      if (!validOsId) return [];
       
       const { data, error } = await from('os_items')
         .select('*')
-        .eq('ordem_servico_id', osId)
+        .eq('ordem_servico_id', validOsId)
         .order('created_at', { ascending: true })
         .execute();
       
       if (error) throw error;
       return (data || []) as ItemOS[];
     },
-    enabled: !!osId && osId !== 'temp',
+    enabled: !!validOsId,
   });
 
   // Calcular total
@@ -34,7 +44,7 @@ export function useItensOSSupabase(osId: string) {
       console.log('[useItensOS] addItem chamado com osId:', osId);
       console.log('[useItensOS] data:', data);
       
-      if (!osId || osId === 'temp') {
+      if (!osId || osId === 'temp' || osId === 'undefined' || !isValidUUID(osId)) {
         console.error('[useItensOS] ERRO: osId inválido:', osId);
         throw new Error('OS deve ser criada antes de adicionar itens');
       }

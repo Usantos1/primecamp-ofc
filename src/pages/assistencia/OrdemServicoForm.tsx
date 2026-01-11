@@ -49,6 +49,8 @@ import { OSSummaryHeader } from '@/components/assistencia/OSSummaryHeader';
 import { generateOSTermica } from '@/utils/osTermicaGenerator';
 import { generateOSPDF } from '@/utils/osPDFGenerator';
 import { printTermica } from '@/utils/pdfGenerator';
+import { updatePrintStatus, printViaIframe } from '@/utils/printUtils';
+import { printOSTermicaDirect } from '@/utils/osPrintUtils';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -241,6 +243,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const osIdParaItens = id || currentOS?.id || 'temp';
   const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens } = useItensOSSupabase(osIdParaItens);
   const { pagamentos, totalPago, addPagamento } = usePagamentos(osIdParaItens);
+
+  // Resetar osLoaded quando o id mudar
+  useEffect(() => {
+    setOsLoaded(false);
+  }, [id]);
 
   // Carregar OS existente - APENAS UMA VEZ
   useEffect(() => {
@@ -873,6 +880,16 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       return;
     }
 
+    if (!formData.cor || formData.cor.trim() === '') {
+      toast({ title: 'Cor do equipamento é obrigatória', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.condicoes_equipamento || formData.condicoes_equipamento.trim() === '') {
+      toast({ title: 'Condições do equipamento são obrigatórias', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const tecnico = formData.tecnico_id ? getColaboradorById(formData.tecnico_id) : null;
@@ -882,7 +899,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         const temOrcamento = (formData.orcamento_desconto && formData.orcamento_desconto > 0) || 
                             (formData.orcamento_parcelado && formData.orcamento_parcelado > 0);
         
-        updateOS(currentOS.id, {
+        const osAtualizada = await updateOS(currentOS.id, {
           ...formData,
           cliente_nome: selectedCliente?.nome,
           cliente_empresa: selectedCliente?.nome_fantasia,
@@ -891,8 +908,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           tecnico_nome: tecnico?.nome,
           orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
         });
-        // Recarregar dados atualizados da OS
-        const osAtualizada = getOSById(currentOS.id);
+        
         if (osAtualizada) {
           setCurrentOS(osAtualizada);
           setFormData(prev => ({
@@ -901,6 +917,52 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             senha_aparelho: osAtualizada.senha_aparelho || prev.senha_aparelho,
             padrao_desbloqueio: osAtualizada.padrao_desbloqueio || prev.padrao_desbloqueio,
           }));
+          
+          // Verificar se checklist de entrada foi preenchido e se precisa imprimir automaticamente
+          const checklistPreenchido = formData.checklist_entrada_realizado_por_id && 
+                                     parseJsonArray(formData.checklist_entrada).length > 0;
+          const checklistJaImpresso = osAtualizada.printed_at; // Se já foi impresso, não imprimir novamente
+          
+          if (checklistPreenchido && !checklistJaImpresso) {
+            // Checklist de entrada foi preenchido pela primeira vez - imprimir automaticamente
+            try {
+              const clienteData = getClienteById(osAtualizada.cliente_id);
+              const marcaData = marcas.find(m => m.id === osAtualizada.marca_id);
+              const modeloData = modelos.find(m => m.id === osAtualizada.modelo_id);
+              
+              // Imprimir em 2 vias automaticamente (sem nova aba, sem confirmação)
+              await printOSTermicaDirect(
+                osAtualizada,
+                clienteData,
+                marcaData,
+                modeloData,
+                checklistEntradaConfig,
+                osImageReferenceUrl
+              );
+              
+              toast({ title: 'Checklist salvo e OS impressa automaticamente!' });
+              
+              // Atualizar status para "em_andamento" se ainda estiver como "aberta"
+              if (osAtualizada.status === 'aberta' || !osAtualizada.status) {
+                try {
+                  await updateStatus(osAtualizada.id, 'em_andamento');
+                } catch (statusError) {
+                  console.warn('Erro ao atualizar status para em_andamento:', statusError);
+                  // Não bloquear se falhar
+                }
+              }
+            } catch (printError) {
+              console.error('Erro ao imprimir OS após checklist de entrada:', printError);
+              toast({ 
+                title: 'Checklist salvo, mas erro ao imprimir', 
+                description: 'Tente imprimir manualmente.',
+                variant: 'destructive' 
+              });
+              // Não bloquear salvamento se a impressão falhar
+            }
+          } else {
+            toast({ title: 'OS salva com sucesso!' });
+          }
         }
         // Mostrar toast centralizado
         setShowSuccessToast(true);
@@ -922,25 +984,28 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
         } as any);
         
-        toast({ title: `OS #${novaOS.numero} criada!` });
-        
-        // Invalidar queries para garantir que a OS seja recarregada
-        queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
-        
-        // Aguardar um pouco para garantir que a query foi invalidada e a OS está disponível
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Recarregar a OS criada
-        const osCriada = getOSById(novaOS.id);
-        if (osCriada) {
-          setCurrentOS(osCriada);
+        // Validar se o ID foi retornado
+        if (!novaOS?.id) {
+          console.error('OS criada mas ID não retornado:', novaOS);
+          toast({ 
+            title: 'Erro ao criar OS', 
+            description: 'A OS foi criada mas o ID não foi retornado. Recarregue a página.',
+            variant: 'destructive' 
+          });
+          return;
         }
+        
+        toast({ title: `OS #${novaOS.numero} criada!` });
         
         if (isModal && onClose) {
           // Se estiver no modal, fecha e deixa o usuário abrir novamente se quiser
           onClose();
         } else {
-          navigate(`/os/${novaOS.id}`);
+          // Navegar para a aba checklist automaticamente após criar OS
+          // Invalidar queries antes de navegar para garantir dados atualizados
+          queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
+          // Navegar diretamente - o componente será remontado com o novo id
+          navigate(`/os/${novaOS.id}/checklist`, { replace: true });
         }
       }
     } catch (error: any) {
