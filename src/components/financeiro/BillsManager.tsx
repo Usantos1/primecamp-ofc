@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Trash2, Check, Search, Filter } from 'lucide-react';
-import { useBillsToPay, useFinancialCategories } from '@/hooks/useFinanceiro';
+// TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
+// import { useBillsToPay, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { BillToPayFormData, BILL_STATUS_LABELS, EXPENSE_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
@@ -36,14 +37,14 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
 
-  const { data: categories = [] } = useFinancialCategories();
-  const { bills, isLoading, createBill, updateBill, payBill, deleteBill } = useBillsToPay({
-    month,
-    startDate,
-    endDate,
-    status: statusFilter !== 'all' ? statusFilter as any : undefined,
-    expense_type: typeFilter !== 'all' ? typeFilter as any : undefined,
-  });
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const categories: any[] = [];
+  const bills: any[] = [];
+  const isLoading = false;
+  const createBill = { mutateAsync: async () => {}, isPending: false };
+  const updateBill = { mutateAsync: async () => {}, isPending: false };
+  const payBill = { mutateAsync: async () => {}, isPending: false };
+  const deleteBill = { mutateAsync: async () => {} };
 
   const [formData, setFormData] = useState<BillToPayFormData & { recurring_start?: string; recurring_end?: string }>({
     description: '',
