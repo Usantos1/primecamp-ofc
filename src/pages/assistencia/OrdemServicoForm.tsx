@@ -4588,6 +4588,125 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
     >
       {content}
 
+      {/* Modal de Checklist de Entrada */}
+      <Dialog open={showChecklistEntradaModal} onOpenChange={setShowChecklistEntradaModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Checklist de Entrada</DialogTitle>
+            <DialogDescription>
+              Marque os itens verificados ao receber o equipamento. Após finalizar, a OS será impressa automaticamente em 2 vias.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Grid de Checklist */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Problemas Encontrados */}
+              <Card>
+                <CardHeader className="pb-2 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base text-destructive">Problemas Encontrados</CardTitle>
+                    <Badge variant="destructive" className="text-xs">
+                      {checklistEntradaConfig.filter(i => i.categoria === 'fisico').filter(item => checklistEntradaModalMarcados.includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'fisico').length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2 pr-4">
+                      {checklistEntradaConfig.filter(i => i.categoria === 'fisico').map(item => (
+                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                          <Checkbox
+                            id={`modal-entrada-fisico-${item.id}`}
+                            checked={checklistEntradaModalMarcados.includes(item.item_id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setChecklistEntradaModalMarcados(prev => [...prev, item.item_id]);
+                              } else {
+                                setChecklistEntradaModalMarcados(prev => prev.filter(id => id !== item.item_id));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`modal-entrada-fisico-${item.id}`} className="text-sm cursor-pointer flex-1">
+                            {item.nome}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Funcional OK */}
+              <Card>
+                <CardHeader className="pb-2 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base text-green-600">Funcional OK</CardTitle>
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                      {checklistEntradaConfig.filter(i => i.categoria === 'funcional').filter(item => checklistEntradaModalMarcados.includes(item.item_id)).length} / {checklistEntradaConfig.filter(i => i.categoria === 'funcional').length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2 pr-4">
+                      {checklistEntradaConfig.filter(i => i.categoria === 'funcional').map(item => (
+                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                          <Checkbox
+                            id={`modal-entrada-funcional-${item.id}`}
+                            checked={checklistEntradaModalMarcados.includes(item.item_id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setChecklistEntradaModalMarcados(prev => [...prev, item.item_id]);
+                              } else {
+                                setChecklistEntradaModalMarcados(prev => prev.filter(id => id !== item.item_id));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`modal-entrada-funcional-${item.id}`} className="text-sm cursor-pointer flex-1">
+                            {item.nome}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Observações */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Observações do Checklist de Entrada</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={checklistEntradaModalObservacoes}
+                  onChange={(e) => setChecklistEntradaModalObservacoes(e.target.value)}
+                  placeholder="Adicione observações gerais sobre o checklist de entrada..."
+                  rows={3}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowChecklistEntradaModal(false);
+              setChecklistEntradaModalOSId(null);
+              setChecklistEntradaModalMarcados([]);
+              setChecklistEntradaModalObservacoes('');
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleFinalizarChecklistEntrada}>
+              <Save className="h-4 w-4 mr-2" />
+              Finalizar Checklist e Imprimir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Checklist de Saída */}
       <Dialog open={showChecklistSaidaModal} onOpenChange={setShowChecklistSaidaModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
