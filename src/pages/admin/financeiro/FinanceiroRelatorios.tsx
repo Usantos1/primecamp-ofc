@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { exportDREToCSV, exportTransactionsToCSV, printData } from '@/utils/exportFinancial';
-import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
+// TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
+// import { useFinancialTransactions, useBillsToPay, useCashClosings, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { CashFlowChart } from '@/components/financeiro/CashFlowChart';
 import { DREComplete } from '@/components/financeiro/DREComplete';
 import { FinancialCharts } from '@/components/financeiro/FinancialCharts';
@@ -31,10 +32,14 @@ export function FinanceiroRelatorios() {
   const endDate = shouldFilter ? context.endDate : undefined;
   const selectedReport = context.selectedReport || 'dre';
 
-  const { transactions, isLoading: transactionsLoading } = useFinancialTransactions({ month });
-  const { bills, isLoading: billsLoading } = useBillsToPay({ startDate, endDate });
-  const { cashClosings, isLoading: closingsLoading } = useCashClosings({ month });
-  const { data: categories = [] } = useFinancialCategories();
+  // TODO: Implementar hooks do sistema financeiro antigo
+  const transactions: any[] = [];
+  const transactionsLoading = false;
+  const bills: any[] = [];
+  const billsLoading = false;
+  const cashClosings: any[] = [];
+  const closingsLoading = false;
+  const categories: any[] = [];
 
   // Buscar vendas do período
   const { data: sales = [], isLoading: salesLoading } = useQuery({
