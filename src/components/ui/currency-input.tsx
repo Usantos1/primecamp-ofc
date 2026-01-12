@@ -1,7 +1,6 @@
 import * as React from "react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { currencyFormatters } from "@/utils/formatters"
 
 export interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
   value: number;
@@ -13,11 +12,42 @@ export interface CurrencyInputProps extends Omit<React.InputHTMLAttributes<HTMLI
 export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
   ({ value, onChange, showCurrency = false, className, ...props }, ref) => {
     const [displayValue, setDisplayValue] = React.useState<string>('');
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    // Função para formatar número com separadores de milhar
+    const formatCurrency = (num: number): string => {
+      if (num === 0 || isNaN(num)) return '0,00';
+      
+      const parts = num.toFixed(2).split('.');
+      const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return `${integerPart},${parts[1]}`;
+    };
+
+    // Função para parsear string formatada para número
+    const parseCurrency = (str: string): number => {
+      // Remover tudo exceto números e vírgula
+      let cleaned = str.replace(/[^\d,]/g, '');
+      
+      // Garantir apenas uma vírgula
+      const parts = cleaned.split(',');
+      if (parts.length > 2) {
+        cleaned = parts[0] + ',' + parts.slice(1).join('');
+      }
+      
+      // Limitar a 2 casas decimais
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleaned = parts[0] + ',' + parts[1].substring(0, 2);
+      }
+      
+      // Remover pontos (separadores de milhar) e substituir vírgula por ponto
+      const numericStr = cleaned.replace(/\./g, '').replace(',', '.');
+      return parseFloat(numericStr) || 0;
+    };
 
     React.useEffect(() => {
       // Formatar valor inicial
-      if (value !== undefined && value !== null) {
-        const formatted = value.toFixed(2).replace('.', ',');
+      if (value !== undefined && value !== null && !isNaN(value)) {
+        const formatted = formatCurrency(value);
         setDisplayValue(formatted);
       } else {
         setDisplayValue('');
@@ -26,6 +56,13 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let inputValue = e.target.value;
+      
+      // Se estiver vazio, permitir vazio temporariamente
+      if (inputValue === '') {
+        setDisplayValue('');
+        onChange(0);
+        return;
+      }
       
       // Remover tudo exceto números e vírgula
       inputValue = inputValue.replace(/[^\d,]/g, '');
@@ -43,28 +80,39 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
       
       setDisplayValue(inputValue);
       
-      // Converter para número (substituir vírgula por ponto)
-      const numericValue = parseFloat(inputValue.replace(',', '.')) || 0;
+      // Converter para número
+      const numericValue = parseCurrency(inputValue);
       onChange(numericValue);
     };
 
     const handleBlur = () => {
-      // Reformatar ao perder foco
-      if (value !== undefined && value !== null) {
-        const formatted = value.toFixed(2).replace('.', ',');
+      // Reformatar ao perder foco com separadores de milhar
+      if (value !== undefined && value !== null && !isNaN(value)) {
+        const formatted = formatCurrency(value);
         setDisplayValue(formatted);
+      } else {
+        setDisplayValue('');
       }
     };
 
     return (
       <div className={cn("relative", className)}>
         {showCurrency && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
             R$
           </span>
         )}
         <Input
-          ref={ref}
+          ref={(node) => {
+            if (ref) {
+              if (typeof ref === 'function') {
+                ref(node);
+              } else {
+                ref.current = node;
+              }
+            }
+            inputRef.current = node;
+          }}
           type="text"
           value={displayValue}
           onChange={handleChange}
