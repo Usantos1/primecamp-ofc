@@ -19,13 +19,32 @@ export default function DRE() {
   const [periodo, setPeriodo] = useState<string>(format(new Date(), 'yyyy-MM-01'));
   const [tipo, setTipo] = useState<'mensal' | 'anual'>('mensal');
   
-  const { data: dreData, isLoading } = useDRE(periodo, tipo);
+  const { data: dreData, isLoading, error } = useDRE(periodo, tipo);
   
   if (isLoading) {
     return (
       <ModernLayout title="DRE - Demonstrativo do Resultado do Exercício" subtitle="Demonstração do resultado financeiro">
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Carregando DRE...</p>
+        </div>
+      </ModernLayout>
+    );
+  }
+  
+  if (error) {
+    return (
+      <ModernLayout title="DRE - Demonstrativo do Resultado do Exercício" subtitle="Demonstração do resultado financeiro">
+        <div className="flex flex-col gap-4">
+          <FinanceiroNavMenu />
+          <Card className="flex-1 border-[3px] border-red-400 rounded-xl shadow-sm">
+            <CardContent className="p-12 text-center">
+              <FileText className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold mb-2 text-red-600">Erro ao carregar DRE</h3>
+              <p className="text-muted-foreground">
+                {error.message || 'Erro desconhecido ao calcular o DRE. Verifique os logs do servidor.'}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </ModernLayout>
     );
@@ -87,8 +106,8 @@ export default function DRE() {
               <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-bold mb-2">DRE não encontrado</h3>
               <p className="text-muted-foreground">
-                O DRE para o período selecionado ainda não foi calculado. 
-                O cálculo automático do DRE será implementado em breve.
+                Não foi possível calcular o DRE para o período selecionado. 
+                Verifique se há vendas e contas registradas no período.
               </p>
             </CardContent>
           </Card>
