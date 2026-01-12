@@ -334,32 +334,63 @@ All colors MUST be HSL.
   
   /* Scrollbar personalizada - DISCRETO MAS SEMPRE VISÍVEL */
   .scrollbar-thin {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(0, 0, 0, 0.5) rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px !important;
+    height: 8px !important;
+    -webkit-appearance: none !important;
+    display: block !important;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.08) !important;
+    border-radius: 4px !important;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:active {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+  }
+  
+  /* Garantir scrollbar em todos os elementos com overflow */
+  * {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.5) rgba(0, 0, 0, 0.1);
   }
   
-  .scrollbar-thin::-webkit-scrollbar {
+  *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
-    -webkit-appearance: none;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-track {
+  *::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.08);
     border-radius: 4px;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb {
+  *::-webkit-scrollbar-thumb {
     background-color: rgba(0, 0, 0, 0.4);
     border-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  *::-webkit-scrollbar-thumb:hover {
     background-color: rgba(0, 0, 0, 0.6);
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb:active {
+  *::-webkit-scrollbar-thumb:active {
     background-color: rgba(0, 0, 0, 0.7);
   }
   
