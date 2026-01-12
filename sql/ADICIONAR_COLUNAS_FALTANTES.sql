@@ -93,5 +93,3 @@ COMMENT ON COLUMN public.ia_recomendacoes.tipo IS 'Tipo de recomendação: estoq
 COMMENT ON COLUMN public.ia_recomendacoes.prioridade IS 'Prioridade de 1 a 10 (10 = mais alta)';
 COMMENT ON COLUMN public.ia_recomendacoes.status IS 'Status: pendente, aplicada, descartada';
 COMMENT ON COLUMN public.ia_recomendacoes.dados IS 'Dados adicionais em formato JSON';
-
-RAISE NOTICE 'Script concluído: Colunas e tabelas faltantes foram criadas/adicionadas';
