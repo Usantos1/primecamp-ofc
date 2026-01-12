@@ -3271,6 +3271,16 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
       });
     }
 
+    // Mapear recommendation para valores permitidos pela constraint CHECK
+    // Valores permitidos: 'approved', 'rejected', 'manual_review'
+    let aiRecommendation = evaluationData.recommendation || 'manual_review';
+    if (aiRecommendation === 'review') {
+      aiRecommendation = 'manual_review';
+    }
+    if (!['approved', 'rejected', 'manual_review'].includes(aiRecommendation)) {
+      aiRecommendation = 'manual_review';
+    }
+
     // Atualizar entrevista no banco com a avaliação
     await pool.query(
       `UPDATE job_interviews 
@@ -3284,7 +3294,7 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
       [
         transcription,
         evaluationData,
-        evaluationData.recommendation || 'review',
+        aiRecommendation,
         evaluationData.score || 0,
         interview_id,
         req.companyId || '00000000-0000-0000-0000-000000000001'
