@@ -884,6 +884,58 @@ export default function JobApplicationSteps() {
   /* ---------- página principal ---------- */
   return (
     <>
+      {/* Modal: Confirmação do teste DISC */}
+      <Dialog open={showDiscTestModal} onOpenChange={setShowDiscTestModal}>
+        <DialogContent className="sm:max-w-[500px]" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="rounded-full p-2" style={{ backgroundColor: 'hsl(var(--job-primary) / 0.1)' }}>
+                <Zap className="h-6 w-6" style={{ color: 'hsl(var(--job-primary))' }} />
+              </div>
+              <DialogTitle className="text-xl" style={{ color: 'hsl(var(--job-text))' }}>
+                Teste de Perfil Comportamental
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-base pt-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
+              Para completar sua candidatura, vamos fazer uma avaliação do seu perfil comportamental através do teste DISC.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <div className="p-4 rounded-lg border" style={{ backgroundColor: 'hsl(var(--job-badge))', borderColor: 'hsl(var(--job-card-border))' }}>
+              <p className="text-sm mb-2" style={{ color: 'hsl(var(--job-text))' }}>
+                <strong>O que é o teste DISC?</strong>
+              </p>
+              <p className="text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>
+                É uma avaliação rápida e simples que nos ajuda a entender melhor seu perfil profissional e como você trabalha em equipe. Leva apenas alguns minutos!
+              </p>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--job-badge))' }}>
+              <Info className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: 'hsl(var(--job-primary))' }} />
+              <div className="text-sm space-y-1" style={{ color: 'hsl(var(--job-text-muted))' }}>
+                <p>Seus dados já foram salvos com sucesso.</p>
+                <p>Clique em "Começar teste" quando estiver pronto para iniciar a avaliação.</p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDiscTestModal(false)}
+              style={{ borderColor: 'hsl(var(--job-card-border))' }}
+            >
+              Fazer depois
+            </Button>
+            <Button
+              onClick={startDiscTest}
+              style={{ backgroundColor: 'hsl(var(--job-primary))', color: 'white' }}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Começar teste
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal: Já se candidatou - Renderizado diretamente para evitar tree-shaking */}
       <Dialog open={showAlreadyAppliedModal} onOpenChange={setShowAlreadyAppliedModal}>
         <DialogContent className="sm:max-w-[500px]" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
