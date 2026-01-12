@@ -53,9 +53,10 @@ BEGIN
     END IF;
 END $$;
 
--- 2. Adicionar coluna referencia_id na tabela ia_recomendacoes
+-- 2. Adicionar colunas faltantes na tabela ia_recomendacoes
 DO $$
 BEGIN
+    -- Adicionar referencia_id
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_schema = 'public' 
@@ -70,8 +71,21 @@ BEGIN
         COMMENT ON COLUMN public.ia_recomendacoes.referencia_id IS 'ID de referência (ex: produto_id para recomendações de estoque)';
         
         RAISE NOTICE 'Coluna referencia_id adicionada à tabela ia_recomendacoes';
-    ELSE
-        RAISE NOTICE 'Coluna referencia_id já existe na tabela ia_recomendacoes';
+    END IF;
+    
+    -- Adicionar acao_sugerida
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'ia_recomendacoes' 
+        AND column_name = 'acao_sugerida'
+    ) THEN
+        ALTER TABLE public.ia_recomendacoes 
+        ADD COLUMN acao_sugerida TEXT;
+        
+        COMMENT ON COLUMN public.ia_recomendacoes.acao_sugerida IS 'Ação sugerida pela IA para esta recomendação';
+        
+        RAISE NOTICE 'Coluna acao_sugerida adicionada à tabela ia_recomendacoes';
     END IF;
 END $$;
 
