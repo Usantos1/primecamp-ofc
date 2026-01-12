@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS public.vendas_snapshot_diario (
     total_pdv NUMERIC(15,2) DEFAULT 0,
     total_os NUMERIC(15,2) DEFAULT 0,
     total_geral NUMERIC(15,2) DEFAULT 0,
-    quantidade_pdv INTEGER DEFAULT 0,
-    quantidade_os INTEGER DEFAULT 0,
+    quantidade_vendas_pdv INTEGER DEFAULT 0,
+    quantidade_vendas_os INTEGER DEFAULT 0,
     ticket_medio_pdv NUMERIC(15,2) DEFAULT 0,
     ticket_medio_os NUMERIC(15,2) DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -66,6 +66,8 @@ COMMENT ON COLUMN public.vendas_snapshot_diario.data IS 'Data do snapshot (únic
 COMMENT ON COLUMN public.vendas_snapshot_diario.total_pdv IS 'Total de vendas do PDV no dia';
 COMMENT ON COLUMN public.vendas_snapshot_diario.total_os IS 'Total de vendas de OS no dia';
 COMMENT ON COLUMN public.vendas_snapshot_diario.total_geral IS 'Total geral de vendas no dia';
+COMMENT ON COLUMN public.vendas_snapshot_diario.quantidade_vendas_pdv IS 'Quantidade de vendas do PDV no dia';
+COMMENT ON COLUMN public.vendas_snapshot_diario.quantidade_vendas_os IS 'Quantidade de vendas de OS no dia';
 
 -- 4. Criar tabela ia_recomendacoes (se não existir)
 CREATE TABLE IF NOT EXISTS public.ia_recomendacoes (
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS public.ia_recomendacoes (
 CREATE INDEX IF NOT EXISTS idx_ia_recomendacoes_status ON public.ia_recomendacoes(status);
 CREATE INDEX IF NOT EXISTS idx_ia_recomendacoes_tipo ON public.ia_recomendacoes(tipo);
 CREATE INDEX IF NOT EXISTS idx_ia_recomendacoes_prioridade ON public.ia_recomendacoes(prioridade DESC);
+CREATE INDEX IF NOT EXISTS idx_ia_recomendacoes_referencia_id ON public.ia_recomendacoes(referencia_id);
 CREATE INDEX IF NOT EXISTS idx_ia_recomendacoes_company_id ON public.ia_recomendacoes(company_id);
 CREATE INDEX IF NOT EXISTS idx_ia_recomendacoes_created_at ON public.ia_recomendacoes(created_at DESC);
 
@@ -92,4 +95,5 @@ COMMENT ON TABLE public.ia_recomendacoes IS 'Recomendações geradas por IA para
 COMMENT ON COLUMN public.ia_recomendacoes.tipo IS 'Tipo de recomendação: estoque, preco, vendas, etc.';
 COMMENT ON COLUMN public.ia_recomendacoes.prioridade IS 'Prioridade de 1 a 10 (10 = mais alta)';
 COMMENT ON COLUMN public.ia_recomendacoes.status IS 'Status: pendente, aplicada, descartada';
+COMMENT ON COLUMN public.ia_recomendacoes.referencia_id IS 'ID de referência (ex: produto_id para recomendações de estoque)';
 COMMENT ON COLUMN public.ia_recomendacoes.dados IS 'Dados adicionais em formato JSON';
