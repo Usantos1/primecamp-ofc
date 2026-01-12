@@ -2719,15 +2719,15 @@ app.post('/api/functions/generate-interview-questions', authenticateToken, async
       });
     }
 
-    // Buscar dados do candidato e da vaga
+    // Buscar dados do candidato e da vaga (com filtro de company_id para segurança)
     const jobResponseResult = await pool.query(
-      'SELECT * FROM job_responses WHERE id = $1',
-      [job_response_id]
+      'SELECT * FROM job_responses WHERE id = $1 AND company_id = $2',
+      [job_response_id, req.companyId || '00000000-0000-0000-0000-000000000001']
     );
 
     const jobSurveyResult = await pool.query(
-      'SELECT * FROM job_surveys WHERE id = $1',
-      [survey_id]
+      'SELECT * FROM job_surveys WHERE id = $1 AND company_id = $2',
+      [survey_id, req.companyId || '00000000-0000-0000-0000-000000000001']
     );
 
     if (jobResponseResult.rows.length === 0 || jobSurveyResult.rows.length === 0) {
