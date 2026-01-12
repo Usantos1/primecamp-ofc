@@ -242,8 +242,17 @@ export default function JobApplicationSteps() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
-  const [showAlreadyAppliedModal, setShowAlreadyAppliedModal] = useState(false);
+  // Estado para modal de candidatura já enviada - FORÇADO para evitar tree-shaking
+  const [showAlreadyAppliedModal, setShowAlreadyAppliedModal] = useState<boolean>(false);
   const [existingJobResponseId, setExistingJobResponseId] = useState<string | null>(null);
+
+  // Forçar referência ao estado para evitar tree-shaking do Vite
+  React.useEffect(() => {
+    if (showAlreadyAppliedModal !== undefined) {
+      // Esta linha garante que o estado seja incluído no build
+      void showAlreadyAppliedModal;
+    }
+  }, [showAlreadyAppliedModal]);
 
   const storageKey = useMemo(() => `jobapp:${slug}`, [slug]);
 
