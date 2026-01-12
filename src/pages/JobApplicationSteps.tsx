@@ -245,6 +245,8 @@ export default function JobApplicationSteps() {
   // Estado para modal de candidatura já enviada - FORÇADO para evitar tree-shaking
   const [showAlreadyAppliedModal, setShowAlreadyAppliedModal] = useState<boolean>(false);
   const [existingJobResponseId, setExistingJobResponseId] = useState<string | null>(null);
+  // Estado para modal de confirmação do teste DISC
+  const [showDiscTestModal, setShowDiscTestModal] = useState<boolean>(false);
 
   // Forçar referência ao estado para evitar tree-shaking do Vite
   React.useEffect(() => {
@@ -669,12 +671,10 @@ export default function JobApplicationSteps() {
       sessionStorage.setItem('candidate_disc_info', JSON.stringify(candidateInfo));
       
       setSubmitted(true);
-      toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Redirecionando para o teste DISC..." });
+      toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Sua candidatura foi recebida com sucesso!" });
       
-      // Redirecionar automaticamente para o teste DISC após 2 segundos
-      setTimeout(() => {
-        navigate(`/disc-externo?job_response_id=${jobResponseId || ''}&survey_id=${survey.id}`);
-      }, 2000);
+      // Mostrar modal para iniciar teste DISC
+      setShowDiscTestModal(true);
 
       // Rodar análise de IA das respostas
       try {
@@ -713,6 +713,7 @@ export default function JobApplicationSteps() {
   };
 
   const startDiscTest = () => {
+    setShowDiscTestModal(false);
     navigate(`/disc-externo?job_response_id=${jobResponseId || ''}&survey_id=${survey?.id || ''}`);
   };
 
@@ -862,7 +863,7 @@ export default function JobApplicationSteps() {
                 <CheckCircle className="w-10 h-10 text-white" />
               </div>
               <h1 className="text-3xl font-bold mb-3" style={{ color: 'hsl(var(--job-text))' }}>Candidatura enviada! 🎉</h1>
-              <p className="mb-6 text-lg" style={{ color: 'hsl(var(--job-text-muted))' }}>Em instantes você será direcionado para completar o teste DISC.</p>
+              <p className="mb-6 text-lg" style={{ color: 'hsl(var(--job-text-muted))' }}>Sua candidatura foi recebida com sucesso! Clique no botão abaixo para iniciar o teste de perfil comportamental.</p>
               <div className="flex items-center justify-center space-x-4 text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>
                 <div className="flex items-center space-x-1">
                   <Zap className="w-4 h-4" style={{ color: 'hsl(var(--job-primary))' }} />
