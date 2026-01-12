@@ -42,9 +42,26 @@ class APIClient {
 
   private async handleResponse(response: Response): Promise<any> {
     if (response.status === 401) {
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
-      throw new Error('Sessão expirada');
+      // Não redirecionar para login se estivermos em uma rota pública
+      const currentPath = window.location.pathname;
+      const isPublicRoute = currentPath.startsWith('/vaga/') || 
+                            currentPath.startsWith('/vagas') || 
+                            currentPath.startsWith('/candidatura/') ||
+                            currentPath.startsWith('/acompanhar-candidatura/') ||
+                            currentPath.startsWith('/job-application/') ||
+                            currentPath.startsWith('/acompanhar-os/') ||
+                            currentPath.startsWith('/login') ||
+                            currentPath.startsWith('/auth') ||
+                            currentPath.startsWith('/reset-password') ||
+                            currentPath.startsWith('/candidato-disc') ||
+                            currentPath.startsWith('/disc-externo');
+      
+      if (!isPublicRoute) {
+        localStorage.removeItem('auth_token');
+        window.location.href = '/login';
+        throw new Error('Sessão expirada');
+      }
+      // Para rotas públicas, apenas retornar o erro sem redirecionar
     }
 
     let data: any = {};
