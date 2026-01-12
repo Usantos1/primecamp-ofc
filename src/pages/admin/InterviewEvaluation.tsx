@@ -62,6 +62,7 @@ export default function InterviewEvaluation() {
   const [transcription, setTranscription] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isRegeneratingQuestions, setIsRegeneratingQuestions] = useState(false);
 
   // Buscar dados da entrevista
   const { data: interview, isLoading } = useQuery({
@@ -157,6 +158,61 @@ export default function InterviewEvaluation() {
         description: error.message || "Não foi possível salvar o progresso.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Regenerar perguntas da entrevista
+  const handleRegenerateQuestions = async () => {
+    if (!interview_id || !interview) return;
+
+    setIsRegeneratingQuestions(true);
+    try {
+      toast({
+        title: "Regenerando perguntas...",
+        description: "A IA está criando novas perguntas personalizadas para esta entrevista.",
+      });
+
+      const { data: aiAnalysis } = await from('job_candidate_ai_analysis')
+        .select('*')
+        .eq('job_response_id', interview.job_response_id)
+        .maybeSingle();
+
+      const { data, error } = await apiClient.invokeFunction('generate-interview-questions', {
+        body: {
+          job_response_id: interview.job_response_id,
+          survey_id: interview.survey_id,
+          interview_type: interview.interview_type,
+          ai_analysis: aiAnalysis?.analysis_data
+        }
+      });
+
+      if (error) throw error;
+
+      // Atualizar entrevista com perguntas regeneradas
+      const { error: updateError } = await from('job_interviews')
+        .update({
+          questions: data.questions || []
+        })
+        .eq('id', interview_id)
+        .execute();
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Perguntas regeneradas!",
+        description: `${data.questions?.length || 0} novas perguntas foram criadas pela IA.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['interview', interview_id] });
+    } catch (error: any) {
+      console.error('Erro ao regenerar perguntas:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível regenerar as perguntas.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegeneratingQuestions(false);
     }
   };
 
@@ -336,10 +392,30 @@ export default function InterviewEvaluation() {
                   {interview.questions.length} perguntas geradas pela IA
                 </p>
               </div>
-              <Button variant="outline" onClick={saveProgress}>
-                <Clipboard className="h-4 w-4 mr-2" />
-                Salvar Progresso
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleRegenerateQuestions}
+                  disabled={isRegeneratingQuestions}
+                  title="Regenerar perguntas da entrevista com IA"
+                >
+                  {isRegeneratingQuestions ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Regenerando...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCw className="h-4 w-4 mr-2" />
+                      Regenerar Perguntas
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={saveProgress}>
+                  <Clipboard className="h-4 w-4 mr-2" />
+                  Salvar Progresso
+                </Button>
+              </div>
             </div>
 
             {interview.questions.map((q: any, index: number) => (

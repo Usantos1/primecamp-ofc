@@ -848,7 +848,7 @@ export const AdminInterviewsManager = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center gap-1 justify-end">
-                              {interview.questions.length === 0 && interview.status !== 'completed' && (
+                              {interview.status !== 'completed' && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -857,9 +857,15 @@ export const AdminInterviewsManager = () => {
                                     handleGenerateQuestions(interview);
                                   }}
                                   disabled={generatingQuestions}
+                                  title={interview.questions.length > 0 ? "Regenerar perguntas da entrevista" : "Gerar perguntas da entrevista"}
                                 >
                                   {generatingQuestions ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : interview.questions.length > 0 ? (
+                                    <>
+                                      <RotateCw className="h-4 w-4 mr-1" />
+                                      Regenerar Perguntas
+                                    </>
                                   ) : (
                                     <>
                                       <Sparkles className="h-4 w-4 mr-1" />
