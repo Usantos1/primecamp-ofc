@@ -17,7 +17,7 @@ import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles, Award, FileText } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, ExternalLink, Download, Search, Copy, Clock, MapPin, DollarSign, Users, Briefcase, Star, Filter, UserX, Calendar, BarChart3, TrendingUp, Brain, Video, Loader2, Sparkles, Award, FileText, RotateCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ModernSwitch } from '@/components/ui/modern-switch';
