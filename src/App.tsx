@@ -65,6 +65,7 @@ import TalentBank from "./pages/admin/TalentBank";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminInterviews from "./pages/admin/AdminInterviews";
 import InterviewEvaluation from "./pages/admin/InterviewEvaluation";
+import RecruitmentManager from "./pages/admin/RecruitmentManager";
 import PaymentMethodsConfig from "./pages/admin/PaymentMethodsConfig";
 import JobApplication from "./pages/JobApplication";
 import JobApplicationSteps from "./pages/JobApplicationSteps";
