@@ -2792,6 +2792,10 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
     const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5', 'gpt-5.1', 'gpt-5.2'];
     const requiresCompletionTokens = modelsRequiringCompletionTokens.some(m => openaiModel.includes(m));
     
+    // Modelos que só aceitam temperature = 1 (o1, o3, gpt-5)
+    const modelsRequiringTemp1 = ['o1', 'o1-mini', 'o1-preview', 'o3', 'o3-mini', 'gpt-5'];
+    const requiresTemp1 = modelsRequiringTemp1.some(m => openaiModel.includes(m));
+    
     const requestBody = {
       model: openaiModel,
       messages: [
@@ -2805,7 +2809,7 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
         }
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.7
+      temperature: requiresTemp1 ? 1 : 0.7
     };
     
     if (requiresCompletionTokens) {
