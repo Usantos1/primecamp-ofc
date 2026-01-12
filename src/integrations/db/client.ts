@@ -94,6 +94,67 @@ class InsertBuilder {
   }
 }
 
+// Builder para DELETE com encadeamento .eq().execute()
+class DeleteBuilder {
+  private tableName: string;
+  private getHeaders: () => Record<string, string>;
+  private where: Record<string, any> = {};
+
+  constructor(tableName: string, getHeaders: () => Record<string, string>) {
+    this.tableName = tableName;
+    this.getHeaders = getHeaders;
+  }
+
+  eq(field: string, value: any): this {
+    this.where[field] = value;
+    return this;
+  }
+
+  neq(field: string, value: any): this {
+    this.where[`${field}__neq`] = value;
+    return this;
+  }
+
+  async execute(): Promise<{ data: any | null; error: any | null }> {
+    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+      ? import.meta.env.VITE_API_URL 
+      : 'https://api.primecamp.cloud/api';
+
+    try {
+      const response = await fetch(`${API_URL}/delete/${this.tableName}`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ where: this.where }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'Erro ao deletar' }));
+        return { data: null, error };
+      }
+
+      const result = await response.json();
+      return { data: result.data || result, error: null };
+    } catch (error: any) {
+      console.error(`[DB] Erro ao deletar de ${this.tableName}:`, error);
+      return { data: null, error: { message: error.message } };
+    }
+  }
+
+  // Permite usar como Promise diretamente
+  then<TResult1 = { data: any | null; error: any | null }, TResult2 = never>(
+    onfulfilled?: ((value: { data: any | null; error: any | null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.execute().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | null
+  ): Promise<{ data: any | null; error: any | null } | TResult> {
+    return this.execute().catch(onrejected);
+  }
+}
+
 // Builder para UPDATE com encadeamento .eq().select().single()
 class UpdateBuilder {
   private tableName: string;
@@ -398,9 +459,6 @@ class DatabaseClient {
   }
 
   delete(): DeleteBuilder {
-    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-      ? import.meta.env.VITE_API_URL 
-      : 'https://api.primecamp.cloud/api';
     return new DeleteBuilder(this.tableName, this.getHeaders.bind(this));
   }
 }
