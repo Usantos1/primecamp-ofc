@@ -767,7 +767,7 @@ export default function JobApplicationSteps() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  ), [showAlreadyAppliedModal, setShowAlreadyAppliedModal, survey, formData, existingJobResponseId, navigate]);
 
   /* ---------- renderização de perguntas dinâmicas ---------- */
   const renderQuestion = (question: Question) => {
@@ -936,7 +936,7 @@ export default function JobApplicationSteps() {
   /* ---------- página principal ---------- */
   return (
     <>
-      <AlreadyAppliedModal />
+      {AlreadyAppliedModal()}
       <div className="job-form-scroll" style={{ backgroundColor: 'hsl(var(--job-bg))' }}>
       <Helmet>
         <title>{survey ? `${survey.title} - Candidatura | Prime Camp` : 'Candidatura - Prime Camp'}</title>
