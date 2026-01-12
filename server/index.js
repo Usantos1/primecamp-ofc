@@ -2720,7 +2720,15 @@ app.post('/api/functions/generate-interview-questions', authenticateToken, async
       const value = tokenResult.rows[0].value;
       const settings = typeof value === 'string' ? JSON.parse(value) : value;
       openaiApiKey = settings.aiApiKey;
-      openaiModel = settings.aiModel || 'gpt-4o-mini';
+      const configuredModel = settings.aiModel || 'gpt-4o-mini';
+      // Validar modelo - gpt-5 não existe, usar fallback
+      const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o1-preview', 'o3-mini'];
+      if (validModels.includes(configuredModel)) {
+        openaiModel = configuredModel;
+      } else {
+        console.warn(`[Generate Interview Questions] Modelo inválido '${configuredModel}' configurado. Usando fallback 'gpt-4o-mini'.`);
+        openaiModel = 'gpt-4o-mini';
+      }
       console.log('[Generate Interview Questions] Configurações carregadas:', { hasApiKey: !!openaiApiKey, model: openaiModel });
     }
 
