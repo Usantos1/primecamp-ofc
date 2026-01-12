@@ -32,19 +32,45 @@ router.get('/dashboard', async (req, res) => {
     const end = endDate ? new Date(endDate) : new Date();
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     
-    // KPIs principais
-    const kpisQuery = `
-      SELECT 
-        COALESCE(SUM(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_pdv,
-        COALESCE(SUM(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_os,
-        COALESCE(SUM(CASE WHEN status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_geral,
-        COUNT(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN 1 END) as qtd_pdv,
-        COUNT(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN 1 END) as qtd_os,
-        COALESCE(AVG(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_pdv,
-        COALESCE(AVG(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_os
-      FROM public.sales
-      WHERE created_at >= $1 AND created_at <= $2
-    `;
+    // Verificar se a coluna sale_origin existe
+    const columnCheck = await pool.query(`
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'sales' 
+      AND column_name = 'sale_origin'
+    `);
+    const hasSaleOrigin = columnCheck.rows.length > 0;
+    
+    // KPIs principais - usar sale_origin se existir, caso contrário usar lógica alternativa
+    let kpisQuery;
+    if (hasSaleOrigin) {
+      kpisQuery = `
+        SELECT 
+          COALESCE(SUM(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_pdv,
+          COALESCE(SUM(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_os,
+          COALESCE(SUM(CASE WHEN status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_geral,
+          COUNT(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN 1 END) as qtd_pdv,
+          COUNT(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN 1 END) as qtd_os,
+          COALESCE(AVG(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_pdv,
+          COALESCE(AVG(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_os
+        FROM public.sales
+        WHERE created_at >= $1 AND created_at <= $2
+      `;
+    } else {
+      // Fallback: usar ordem_servico_id para determinar origem
+      kpisQuery = `
+        SELECT 
+          COALESCE(SUM(CASE WHEN ordem_servico_id IS NULL AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_pdv,
+          COALESCE(SUM(CASE WHEN ordem_servico_id IS NOT NULL AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_os,
+          COALESCE(SUM(CASE WHEN status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_geral,
+          COUNT(CASE WHEN ordem_servico_id IS NULL AND status IN ('paid', 'partial') THEN 1 END) as qtd_pdv,
+          COUNT(CASE WHEN ordem_servico_id IS NOT NULL AND status IN ('paid', 'partial') THEN 1 END) as qtd_os,
+          COALESCE(AVG(CASE WHEN ordem_servico_id IS NULL AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_pdv,
+          COALESCE(AVG(CASE WHEN ordem_servico_id IS NOT NULL AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_os
+        FROM public.sales
+        WHERE created_at >= $1 AND created_at <= $2
+      `;
+    }
     
     const kpisResult = await pool.query(kpisQuery, [start, end]);
     const kpis = kpisResult.rows[0];
@@ -69,52 +95,115 @@ router.get('/dashboard', async (req, res) => {
     
     const topProdutosResult = await pool.query(topProdutosQuery, [start, end]);
     
-    // Top 10 vendedores
-    const topVendedoresQuery = `
-      SELECT 
-        u.id,
-        COALESCE(pr.display_name, u.email) as nome,
-        COUNT(s.id) as total_vendas,
-        SUM(s.total) as total_vendido,
-        AVG(s.total) as ticket_medio
-      FROM public.sales s
-      INNER JOIN public.users u ON s.cashier_user_id = u.id OR s.technician_id = u.id
-      LEFT JOIN public.profiles pr ON u.id = pr.user_id
-      WHERE s.created_at >= $1 AND s.created_at <= $2
-        AND s.status IN ('paid', 'partial')
-      GROUP BY u.id, pr.display_name, u.email
-      ORDER BY total_vendido DESC
-      LIMIT 10
-    `;
+    // Top 10 vendedores - usar vendedor_id se cashier_user_id/technician_id não existirem
+    let topVendedoresQuery;
+    const hasCashierUserId = (await pool.query(`
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'cashier_user_id'
+    `)).rows.length > 0;
+    const hasTechnicianId = (await pool.query(`
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'technician_id'
+    `)).rows.length > 0;
     
-    const topVendedoresResult = await pool.query(topVendedoresQuery, [start, end]);
+    if (hasCashierUserId || hasTechnicianId) {
+      topVendedoresQuery = `
+        SELECT 
+          u.id,
+          COALESCE(pr.display_name, u.email) as nome,
+          COUNT(s.id) as total_vendas,
+          SUM(s.total) as total_vendido,
+          AVG(s.total) as ticket_medio
+        FROM public.sales s
+        INNER JOIN public.users u ON ${hasCashierUserId ? 's.cashier_user_id = u.id' : ''} ${hasCashierUserId && hasTechnicianId ? 'OR' : ''} ${hasTechnicianId ? 's.technician_id = u.id' : ''}
+        LEFT JOIN public.profiles pr ON u.id = pr.user_id
+        WHERE s.created_at >= $1 AND s.created_at <= $2
+          AND s.status IN ('paid', 'partial')
+        GROUP BY u.id, pr.display_name, u.email
+        ORDER BY total_vendido DESC
+        LIMIT 10
+      `;
+    } else {
+      // Fallback: usar vendedor_id
+      topVendedoresQuery = `
+        SELECT 
+          u.id,
+          COALESCE(pr.display_name, u.email) as nome,
+          COUNT(s.id) as total_vendas,
+          SUM(s.total) as total_vendido,
+          AVG(s.total) as ticket_medio
+        FROM public.sales s
+        INNER JOIN public.users u ON s.vendedor_id = u.id
+        LEFT JOIN public.profiles pr ON u.id = pr.user_id
+        WHERE s.created_at >= $1 AND s.created_at <= $2
+          AND s.status IN ('paid', 'partial')
+        GROUP BY u.id, pr.display_name, u.email
+        ORDER BY total_vendido DESC
+        LIMIT 10
+      `;
+    }
+    
+    let topVendedoresResult;
+    try {
+      topVendedoresResult = await pool.query(topVendedoresQuery, [start, end]);
+    } catch (err) {
+      console.warn('[Financeiro] Erro ao buscar top vendedores:', err.message);
+      topVendedoresResult = { rows: [] };
+    }
     
     // Tend├¬ncia de vendas (├║ltimos 30 dias)
-    const tendenciaQuery = `
-      SELECT 
-        DATE(created_at) as data,
-        SUM(CASE WHEN sale_origin = 'PDV' THEN total ELSE 0 END) as total_pdv,
-        SUM(CASE WHEN sale_origin = 'OS' THEN total ELSE 0 END) as total_os,
-        SUM(total) as total_geral
-      FROM public.sales
-      WHERE created_at >= $1 AND created_at <= $2
-        AND status IN ('paid', 'partial')
-      GROUP BY DATE(created_at)
-      ORDER BY data ASC
-    `;
+    let tendenciaQuery;
+    if (hasSaleOrigin) {
+      tendenciaQuery = `
+        SELECT 
+          DATE(created_at) as data,
+          SUM(CASE WHEN sale_origin = 'PDV' THEN total ELSE 0 END) as total_pdv,
+          SUM(CASE WHEN sale_origin = 'OS' THEN total ELSE 0 END) as total_os,
+          SUM(total) as total_geral
+        FROM public.sales
+        WHERE created_at >= $1 AND created_at <= $2
+          AND status IN ('paid', 'partial')
+        GROUP BY DATE(created_at)
+        ORDER BY data ASC
+      `;
+    } else {
+      tendenciaQuery = `
+        SELECT 
+          DATE(created_at) as data,
+          SUM(CASE WHEN ordem_servico_id IS NULL THEN total ELSE 0 END) as total_pdv,
+          SUM(CASE WHEN ordem_servico_id IS NOT NULL THEN total ELSE 0 END) as total_os,
+          SUM(total) as total_geral
+        FROM public.sales
+        WHERE created_at >= $1 AND created_at <= $2
+          AND status IN ('paid', 'partial')
+        GROUP BY DATE(created_at)
+        ORDER BY data ASC
+      `;
+    }
     
     const tendenciaResult = await pool.query(tendenciaQuery, [start, end]);
     
-    // Recomenda├º├╡es cr├¡ticas (├║ltimas 5)
-    const recomendacoesQuery = `
-      SELECT *
-      FROM public.ia_recomendacoes
-      WHERE status = 'pendente'
-      ORDER BY prioridade DESC, created_at DESC
-      LIMIT 5
-    `;
-    
-    const recomendacoesResult = await pool.query(recomendacoesQuery);
+    // Recomenda├º├╡es cr├¡ticas (├║ltimas 5) - opcional, não quebrar se tabela não existir
+    let recomendacoesResult = { rows: [] };
+    try {
+      const tableExists = (await pool.query(`
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'ia_recomendacoes'
+      `)).rows.length > 0;
+      
+      if (tableExists) {
+        const recomendacoesQuery = `
+          SELECT *
+          FROM public.ia_recomendacoes
+          WHERE status = 'pendente'
+          ORDER BY prioridade DESC, created_at DESC
+          LIMIT 5
+        `;
+        recomendacoesResult = await pool.query(recomendacoesQuery);
+      }
+    } catch (err) {
+      console.warn('[Financeiro] Erro ao buscar recomendações:', err.message);
+    }
     
     res.json({
       kpis: {
