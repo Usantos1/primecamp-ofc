@@ -1,12 +1,13 @@
 # Comandos VPS - Deploy Scrollbar (CORRIGIDO)
 
-## Problema:
-Script estava tentando remover arquivos do sistema. Agora está corrigido.
+## ⚠️ IMPORTANTE: Use a rota CORRETA!
+- ✅ **NOVO:** `https://primecamp.cloud/financeiro` (com filtros de data e scrollbar)
+- ❌ **ANTIGO:** `https://primecamp.cloud/admin/financeiro` (sem filtros)
 
-## ⚠️ IMPORTANTE: Primeiro vá para o diretório do projeto!
+## Deploy Completo (RECOMENDADO):
 
 ```bash
-# 1. IR PARA O DIRETÓRIO DO PROJETO (OBRIGATÓRIO!)
+# 1. IR PARA O DIRETÓRIO DO PROJETO
 cd /root/primecamp-ofc
 
 # 2. Atualizar código
@@ -15,7 +16,24 @@ git pull origin main
 # 3. Build
 npm run build
 
-# 4. Definir diretório Nginx (ajuste conforme seu servidor)
+# 4. Deploy (usando script)
+chmod +x DEPLOY_FINAL_VPS.sh
+./DEPLOY_FINAL_VPS.sh
+```
+
+## Deploy Manual (se o script não funcionar):
+
+```bash
+# 1. IR PARA O DIRETÓRIO DO PROJETO
+cd /root/primecamp-ofc
+
+# 2. Atualizar código
+git pull origin main
+
+# 3. Build
+npm run build
+
+# 4. Definir diretório Nginx
 NGINX_ROOT="/var/www/primecamp.cloud"
 
 # 5. Deploy
@@ -24,7 +42,7 @@ cp -r dist/* "$NGINX_ROOT"/
 chown -R www-data:www-data "$NGINX_ROOT"
 chmod -R 755 "$NGINX_ROOT"
 
-# 6. Limpar cache nginx (opcional)
+# 6. Limpar cache nginx
 rm -rf /var/cache/nginx/* 2>/dev/null
 systemctl reload nginx
 ```
