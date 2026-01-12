@@ -544,7 +544,7 @@ export default function InterviewEvaluation() {
             <div className="flex gap-2">
               <Button
                 onClick={handleEvaluateWithAI}
-                disabled={isEvaluating || candidateResponses.every(r => !r.answer.trim())}
+                disabled={isEvaluating || (!transcription?.trim() && candidateResponses.every(r => !r.answer.trim()))}
                 className="flex-1"
                 size="lg"
               >
