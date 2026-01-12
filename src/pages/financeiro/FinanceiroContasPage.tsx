@@ -13,7 +13,7 @@ export default function FinanceiroContasPage() {
   
   return (
     <ModernLayout title="Contas" subtitle="Contas a pagar e receber">
-      <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col gap-4">
         <FinanceiroNavMenu />
         
         <div className="space-y-3 flex-1 overflow-hidden flex flex-col">

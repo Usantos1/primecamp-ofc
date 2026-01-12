@@ -34,7 +34,7 @@ export default function DRE() {
   if (!dreData || !dreData.dre) {
     return (
       <ModernLayout title="DRE - Demonstrativo do Resultado do Exercício" subtitle="Demonstração do resultado financeiro">
-        <div className="flex flex-col h-full overflow-hidden gap-4">
+        <div className="flex flex-col gap-4">
           {/* Menu de Navegação */}
           <FinanceiroNavMenu />
           
@@ -101,7 +101,7 @@ export default function DRE() {
   
   return (
     <ModernLayout title="DRE - Demonstrativo do Resultado do Exercício" subtitle="Demonstração do resultado financeiro">
-      <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col gap-4">
         {/* Menu de Navegação */}
         <FinanceiroNavMenu />
         
@@ -159,7 +159,7 @@ export default function DRE() {
               Período: {format(new Date(periodo), "MMMM 'de' yyyy", { locale: ptBR })}
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto p-0">
+          <CardContent className="flex-1 overflow-y-auto scrollbar-thin p-0">
             <Table>
               <TableHeader className="sticky top-0 bg-white z-10 border-b-[3px] border-gray-400">
                 <TableRow>

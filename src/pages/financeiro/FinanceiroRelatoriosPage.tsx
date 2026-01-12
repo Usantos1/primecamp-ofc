@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
+import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown } from 'lucide-react';
@@ -14,8 +15,11 @@ import { useQuery } from '@tanstack/react-query';
 
 export default function FinanceiroRelatoriosPage() {
   const [selectedReport, setSelectedReport] = useState<string>('dre');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('month');
+  const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);
+  const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
+  const [startDate, setStartDate] = useState<string | undefined>(undefined);
+  const [endDate, setEndDate] = useState<string | undefined>(undefined);
 
   // Buscar vendas do período
   const { data: sales = [], isLoading: salesLoading } = useQuery({
@@ -44,7 +48,7 @@ export default function FinanceiroRelatoriosPage() {
   if (salesLoading) {
     return (
       <ModernLayout title="Relatórios" subtitle="Relatórios financeiros">
-        <div className="flex flex-col h-full overflow-hidden gap-4">
+        <div className="flex flex-col gap-4">
           <FinanceiroNavMenu />
           <LoadingSkeleton type="table" count={5} />
         </div>
@@ -54,10 +58,24 @@ export default function FinanceiroRelatoriosPage() {
 
   return (
     <ModernLayout title="Relatórios" subtitle="Relatórios financeiros">
-      <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col gap-4">
         <FinanceiroNavMenu />
         
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        {/* Filtros de Data */}
+        <DateFilterBar
+          dateFilter={dateFilter}
+          onDateFilterChange={setDateFilter}
+          customDateStart={customDateStart}
+          customDateEnd={customDateEnd}
+          onCustomDateStartChange={setCustomDateStart}
+          onCustomDateEndChange={setCustomDateEnd}
+          onDatesChange={(start, end) => {
+            setStartDate(start);
+            setEndDate(end);
+          }}
+        />
+        
+        <div className="flex flex-col gap-4">
           {/* Seleção de Relatório */}
           <Card className="flex-shrink-0">
             <CardContent className="p-4">
@@ -97,7 +115,7 @@ export default function FinanceiroRelatoriosPage() {
           </Card>
 
           {/* Conteúdo do Relatório */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1">
             {selectedReport === 'dre' && (
               <DREComplete startDate={startDate} endDate={endDate} />
             )}

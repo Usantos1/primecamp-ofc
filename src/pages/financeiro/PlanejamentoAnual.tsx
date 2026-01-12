@@ -86,7 +86,7 @@ export default function PlanejamentoAnual() {
   
   return (
     <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
-      <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col gap-4">
         {/* Menu de Navegação */}
         <FinanceiroNavMenu />
         
