@@ -706,39 +706,20 @@ router.get('/dre/:periodo', async (req, res) => {
       const margemBrutaPercentual = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
       
       // 7. Despesas Operacionais (contas pagas)
-      // Verificar qual coluna existe para data de pagamento
-      const paymentDateColumnCheck = await pool.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-          AND table_name = 'bills_to_pay' 
-          AND column_name IN ('payment_date', 'paid_at', 'paid_date', 'pago_em')
-        LIMIT 1
-      `);
-      
-      const paymentDateColumn = paymentDateColumnCheck.rows[0]?.column_name || 'payment_date';
-      
-      let despesasQuery;
-      if (paymentDateColumn === 'paid_at' || paymentDateColumn === 'paid_date' || paymentDateColumn === 'pago_em') {
-        // Usar coluna alternativa se payment_date não existir
-        despesasQuery = `
-          SELECT COALESCE(SUM(amount), 0) as despesas
-          FROM public.bills_to_pay
-          WHERE ${paymentDateColumn} >= $1 AND ${paymentDateColumn} <= $2
-            AND status = 'pago'
-        `;
-      } else {
-        // Tentar com payment_date, se não existir, usar due_date como fallback
-        despesasQuery = `
-          SELECT COALESCE(SUM(amount), 0) as despesas
-          FROM public.bills_to_pay
-          WHERE (${paymentDateColumn} >= $1 AND ${paymentDateColumn} <= $2 OR due_date >= $1 AND due_date <= $2)
-            AND status = 'pago'
-        `;
-      }
-      
+      // Usar payment_date se existir, caso contrário usar due_date como fallback
+      const despesasQuery = `
+        SELECT COALESCE(SUM(amount), 0) as despesas
+        FROM public.bills_to_pay
+        WHERE status = 'pago'
+          AND (
+            (payment_date IS NOT NULL AND payment_date >= $1 AND payment_date <= $2)
+            OR (payment_date IS NULL AND due_date >= $1 AND due_date <= $2)
+          )
+      `;
       const despesasResult = await pool.query(despesasQuery, [startDate, endDate]);
       const despesasOperacionais = parseFloat(despesasResult.rows[0]?.despesas || 0);
+      
+      console.log(`[DRE] Despesas Operacionais: R$ ${despesasOperacionais.toFixed(2)}`);
       
       // 8. EBITDA (Lucro antes de juros, impostos, depreciação e amortização)
       const ebitda = lucroBruto - despesasOperacionais;
