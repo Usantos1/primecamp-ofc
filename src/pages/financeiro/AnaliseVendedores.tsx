@@ -41,6 +41,14 @@ export default function AnaliseVendedores() {
       }));
   }, [vendedores]);
   
+  const vendedoresOrdenados = useMemo(() => {
+    return (vendedores || []).sort((a, b) => b.totalVendido - a.totalVendido);
+  }, [vendedores]);
+  
+  const totalGeral = useMemo(() => {
+    return (vendedores || []).reduce((sum, v) => sum + v.totalVendido, 0);
+  }, [vendedores]);
+  
   if (isLoading) {
     return (
       <ModernLayout title="Análise de Vendedores" subtitle="Performance e produtividade dos vendedores">
@@ -50,14 +58,6 @@ export default function AnaliseVendedores() {
       </ModernLayout>
     );
   }
-  
-  const vendedoresOrdenados = useMemo(() => {
-    return (vendedores || []).sort((a, b) => b.totalVendido - a.totalVendido);
-  }, [vendedores]);
-  
-  const totalGeral = useMemo(() => {
-    return (vendedores || []).reduce((sum, v) => sum + v.totalVendido, 0);
-  }, [vendedores]);
   
   return (
     <ModernLayout title="Análise de Vendedores" subtitle="Performance e produtividade dos vendedores">
