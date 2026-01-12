@@ -2902,6 +2902,181 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
   }
 });
 
+// POST /api/functions/generate-dynamic-questions - Gerar perguntas dinâmicas para formulários de vagas
+app.post('/api/functions/generate-dynamic-questions', authenticateToken, async (req, res) => {
+  try {
+    const { survey, base_questions, provider, apiKey, model } = req.body;
+
+    if (!survey || !survey.title) {
+      return res.status(400).json({ error: 'Dados da vaga (survey) são obrigatórios' });
+    }
+
+    // Buscar API key da OpenAI do banco de dados (se não fornecida)
+    let openaiApiKey = apiKey;
+    let openaiModel = model || 'gpt-4o-mini';
+    
+    if (!openaiApiKey) {
+      const tokenResult = await pool.query(`
+        SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
+      `);
+      
+      if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
+        const value = tokenResult.rows[0].value;
+        const settings = typeof value === 'string' ? JSON.parse(value) : value;
+        openaiApiKey = settings.aiApiKey;
+        const configuredModel = settings.aiModel || 'gpt-4o-mini';
+        // Validar modelo
+        const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o1-preview', 'o3-mini'];
+        if (validModels.includes(configuredModel)) {
+          openaiModel = configuredModel;
+        }
+      }
+    }
+
+    if (!openaiApiKey) {
+      return res.status(400).json({ 
+        error: 'API Key da OpenAI não configurada',
+        message: 'Configure a API Key em Integrações > OpenAI'
+      });
+    }
+
+    // Construir prompt
+    const baseQuestionsText = Array.isArray(base_questions) && base_questions.length > 0
+      ? base_questions.map((q, idx) => `${idx + 1}. ${q.title || q.question || q.text || ''}`).join('\n')
+      : 'Nenhuma pergunta base ainda.';
+
+    const prompt = `Você é um especialista em recrutamento e seleção. Gere perguntas personalizadas para o formulário de candidatura da seguinte vaga:
+
+TÍTULO DA VAGA: ${survey.position_title || survey.title}
+DESCRIÇÃO: ${survey.description || 'Não informado'}
+REQUISITOS: ${Array.isArray(survey.requirements) ? survey.requirements.join(', ') : survey.requirements || 'Não informado'}
+DEPARTAMENTO: ${survey.department || 'Não informado'}
+MODALIDADE: ${survey.work_modality || 'Não informado'}
+TIPO DE CONTRATO: ${survey.contract_type || 'Não informado'}
+
+PERGUNTAS JÁ EXISTENTES NO FORMULÁRIO:
+${baseQuestionsText}
+
+INSTRUÇÕES:
+Gere 3 a 5 perguntas adicionais personalizadas e relevantes para esta vaga específica. As perguntas devem:
+- Ser complementares às perguntas já existentes
+- Ser específicas para a vaga e área de atuação
+- Variar entre técnicas, comportamentais e situacionais
+- Ser adequadas para um formulário de candidatura online
+
+Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguinte estrutura:
+{
+  "dynamic_questions": [
+    {
+      "id": "q1",
+      "title": "Texto da pergunta",
+      "question": "Texto da pergunta (mesmo que title)",
+      "description": "Descrição opcional da pergunta",
+      "type": "textarea",
+      "required": true,
+      "options": []
+    },
+    ...
+  ]
+}`;
+
+    // Modelos que requerem max_completion_tokens
+    const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5', 'gpt-5.1', 'gpt-5.2'];
+    const requiresCompletionTokens = modelsRequiringCompletionTokens.some(m => openaiModel.includes(m));
+    
+    // Modelos que só aceitam temperature = 1
+    const modelsRequiringTemp1 = ['o1', 'o1-mini', 'o1-preview', 'o3', 'o3-mini', 'gpt-5'];
+    const requiresTemp1 = modelsRequiringTemp1.some(m => openaiModel.includes(m));
+    
+    const requestBody = {
+      model: openaiModel,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um especialista em recrutamento e seleção. Gere perguntas personalizadas e profissionais para formulários de candidatura em formato JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: requiresTemp1 ? 1 : 0.7
+    };
+    
+    if (requiresCompletionTokens) {
+      requestBody.max_completion_tokens = 2000;
+    } else {
+      requestBody.max_tokens = 2000;
+    }
+    
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
+      console.error('[OpenAI] Erro na API:', openaiResponse.status, errorData);
+      return res.status(500).json({ 
+        error: 'Erro ao chamar API da OpenAI',
+        details: errorData.error?.message || errorData.message || 'Erro desconhecido',
+        status: openaiResponse.status
+      });
+    }
+
+    const openaiData = await openaiResponse.json();
+    const rawResponse = openaiData.choices[0]?.message?.content || '';
+
+    if (!rawResponse || rawResponse.trim() === '') {
+      console.error('[OpenAI] Resposta vazia da API. Modelo:', openaiModel, 'Response:', JSON.stringify(openaiData));
+      return res.status(500).json({ 
+        error: 'A IA não retornou dados',
+        details: `O modelo ${openaiModel} retornou resposta vazia. Verifique se o modelo está correto.`
+      });
+    }
+
+    let questionsData = { dynamic_questions: [] };
+    try {
+      const jsonText = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      questionsData = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('[OpenAI] Erro ao parsear JSON:', parseError, 'Raw:', rawResponse.substring(0, 500));
+      return res.status(500).json({ 
+        error: 'Erro ao processar resposta da IA',
+        details: `A IA não retornou um formato JSON válido. Modelo: ${openaiModel}.`
+      });
+    }
+
+    // Garantir que dynamic_questions seja um array
+    if (!Array.isArray(questionsData.dynamic_questions)) {
+      questionsData.dynamic_questions = [];
+    }
+
+    console.log('[Generate Dynamic Questions] Perguntas geradas:', questionsData.dynamic_questions.length);
+
+    res.json({
+      dynamic_questions: questionsData.dynamic_questions
+    });
+  } catch (error) {
+    console.error('[Generate Dynamic Questions] Erro:', error);
+    res.status(500).json({ 
+      error: 'Erro ao gerar perguntas dinâmicas',
+      details: error.message || 'Erro desconhecido'
+    });
+  }
+});
+
 // POST /api/functions/import-produtos - Importar produtos em lote
 app.post('/api/functions/import-produtos', authenticateToken, async (req, res) => {
   try {
