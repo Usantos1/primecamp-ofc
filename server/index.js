@@ -3194,7 +3194,7 @@ ${profileAnalysisInstruction}
 Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguinte estrutura:
 {
   "score": 0-100,
-  "recommendation": "approved" ou "rejected" ou "review",
+  "recommendation": "approved" ou "rejected" ou "manual_review",
   "justification": "Justificativa detalhada da avaliação",
   "strengths": ["Ponto forte 1", "Ponto forte 2"],
   "weaknesses": ["Ponto fraco 1", "Ponto fraco 2"],
