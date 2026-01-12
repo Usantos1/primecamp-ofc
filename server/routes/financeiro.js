@@ -107,6 +107,12 @@ router.get('/dashboard', async (req, res) => {
     `)).rows.length > 0;
     
     if (hasCashierUserId || hasTechnicianId) {
+      const joinCondition = hasCashierUserId && hasTechnicianId
+        ? 's.cashier_user_id = u.id OR s.technician_id = u.id'
+        : hasCashierUserId
+        ? 's.cashier_user_id = u.id'
+        : 's.technician_id = u.id';
+      
       topVendedoresQuery = `
         SELECT 
           u.id,
@@ -115,7 +121,7 @@ router.get('/dashboard', async (req, res) => {
           SUM(s.total) as total_vendido,
           AVG(s.total) as ticket_medio
         FROM public.sales s
-        INNER JOIN public.users u ON ${hasCashierUserId ? 's.cashier_user_id = u.id' : ''} ${hasCashierUserId && hasTechnicianId ? 'OR' : ''} ${hasTechnicianId ? 's.technician_id = u.id' : ''}
+        INNER JOIN public.users u ON ${joinCondition}
         LEFT JOIN public.profiles pr ON u.id = pr.user_id
         WHERE s.created_at >= $1 AND s.created_at <= $2
           AND s.status IN ('paid', 'partial')
