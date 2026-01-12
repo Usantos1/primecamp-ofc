@@ -183,7 +183,7 @@ export default function DRE() {
                   <TableCell className="font-bold">(=) Receita Líquida</TableCell>
                   <TableCell className="text-right font-bold">{currencyFormatters.brl(dre.receita_liquida || 0)}</TableCell>
                   <TableCell className="text-right font-bold">
-                    {dre.receita_bruta > 0 ? ((dre.receita_liquida || 0) / dre.receita_bruta * 100).toFixed(1) : 0}%
+                    {Number(dre.receita_bruta || 0) > 0 ? (Number(dre.receita_liquida || 0) / Number(dre.receita_bruta || 1) * 100).toFixed(1) : 0}%
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b-[2px] border-gray-300">
