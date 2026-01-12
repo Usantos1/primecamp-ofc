@@ -563,13 +563,103 @@ router.get('/dre/:periodo', async (req, res) => {
     let result = await pool.query(query, [periodo, tipo]);
     
     if (result.rows.length === 0) {
-      // Calcular DRE (implementa├º├úo b├ísica)
-      // TODO: Implementar c├ílculo completo do DRE
-      res.json({ 
-        mensagem: 'DRE n├úo encontrado. C├ílculo completo ser├í implementado.',
-        periodo,
+      // Calcular DRE automaticamente
+      const periodoDate = new Date(periodo);
+      let startDate, endDate;
+      
+      if (tipo === 'mensal') {
+        startDate = new Date(periodoDate.getFullYear(), periodoDate.getMonth(), 1);
+        endDate = new Date(periodoDate.getFullYear(), periodoDate.getMonth() + 1, 0, 23, 59, 59, 999);
+      } else {
+        // Anual
+        startDate = new Date(periodoDate.getFullYear(), 0, 1);
+        endDate = new Date(periodoDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+      }
+      
+      // 1. Receita Bruta (vendas pagas/parciais)
+      const receitaQuery = `
+        SELECT COALESCE(SUM(total), 0) as receita_bruta
+        FROM public.sales
+        WHERE created_at >= $1 AND created_at <= $2
+          AND status IN ('paid', 'partial')
+      `;
+      const receitaResult = await pool.query(receitaQuery, [startDate, endDate]);
+      const receitaBruta = parseFloat(receitaResult.rows[0]?.receita_bruta || 0);
+      
+      // 2. Deduções (descontos, devoluções) - por enquanto 0
+      const deducoes = 0;
+      
+      // 3. Receita Líquida
+      const receitaLiquida = receitaBruta - deducoes;
+      
+      // 4. Custo dos Produtos Vendidos (CPV)
+      const cpvQuery = `
+        SELECT COALESCE(SUM(si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0)), 0) as cpv
+        FROM public.sale_items si
+        INNER JOIN public.sales s ON si.sale_id = s.id
+        INNER JOIN public.produtos p ON si.produto_id = p.id
+        WHERE s.created_at >= $1 AND s.created_at <= $2
+          AND s.status IN ('paid', 'partial')
+      `;
+      const cpvResult = await pool.query(cpvQuery, [startDate, endDate]);
+      const custoProdutosVendidos = parseFloat(cpvResult.rows[0]?.cpv || 0);
+      
+      // 5. Lucro Bruto
+      const lucroBruto = receitaLiquida - custoProdutosVendidos;
+      
+      // 6. Margem Bruta (%)
+      const margemBrutaPercentual = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
+      
+      // 7. Despesas Operacionais (contas pagas)
+      const despesasQuery = `
+        SELECT COALESCE(SUM(amount), 0) as despesas
+        FROM public.bills_to_pay
+        WHERE payment_date >= $1 AND payment_date <= $2
+          AND status = 'pago'
+      `;
+      const despesasResult = await pool.query(despesasQuery, [startDate, endDate]);
+      const despesasOperacionais = parseFloat(despesasResult.rows[0]?.despesas || 0);
+      
+      // 8. EBITDA (Lucro antes de juros, impostos, depreciação e amortização)
+      const ebitda = lucroBruto - despesasOperacionais;
+      
+      // 9. Resultado Financeiro (por enquanto 0 - não temos dados de juros/receitas financeiras)
+      const resultadoFinanceiro = 0;
+      
+      // 10. Lucro Líquido
+      const lucroLiquido = ebitda + resultadoFinanceiro;
+      
+      // 11. Margem Líquida (%)
+      const margemLiquidaPercentual = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
+      
+      // Inserir DRE calculado
+      const insertQuery = `
+        INSERT INTO public.dre (
+          periodo, tipo, receita_bruta, deducoes, receita_liquida,
+          custo_produtos_vendidos, lucro_bruto, margem_bruta_percentual,
+          despesas_operacionais, ebitda, resultado_financeiro,
+          lucro_liquido, margem_liquida_percentual
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `;
+      
+      const insertResult = await pool.query(insertQuery, [
+        periodoDate,
         tipo,
-      });
+        receitaBruta,
+        deducoes,
+        receitaLiquida,
+        custoProdutosVendidos,
+        lucroBruto,
+        margemBrutaPercentual,
+        despesasOperacionais,
+        ebitda,
+        resultadoFinanceiro,
+        lucroLiquido,
+        margemLiquidaPercentual,
+      ]);
+      
+      res.json({ dre: insertResult.rows[0] });
       return;
     }
     
