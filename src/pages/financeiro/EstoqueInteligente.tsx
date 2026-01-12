@@ -1,4 +1,5 @@
 import { ModernLayout } from '@/components/ModernLayout';
+import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Package, TrendingDown, TrendingUp, CheckCircle } from 'lucide-react';

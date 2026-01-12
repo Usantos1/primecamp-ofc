@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
+import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
