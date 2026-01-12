@@ -78,7 +78,7 @@ router.get('/dashboard', async (req, res) => {
         SUM(s.total) as total_vendido,
         AVG(s.total) as ticket_medio
       FROM public.sales s
-      INNER JOIN auth.users u ON s.cashier_user_id = u.id OR s.technician_id = u.id
+      INNER JOIN public.users u ON s.cashier_user_id = u.id OR s.technician_id = u.id
       LEFT JOIN public.profiles pr ON u.id = pr.user_id
       WHERE s.created_at >= $1 AND s.created_at <= $2
         AND s.status IN ('paid', 'partial')
@@ -178,7 +178,7 @@ router.get('/vendedores/analise', async (req, res) => {
         MIN(s.created_at) as primeira_venda,
         MAX(s.created_at) as ultima_venda
       FROM public.sales s
-      INNER JOIN auth.users u ON s.cashier_user_id = u.id OR s.technician_id = u.id
+      INNER JOIN public.users u ON s.cashier_user_id = u.id OR s.technician_id = u.id
       LEFT JOIN public.profiles pr ON u.id = pr.user_id
       WHERE s.created_at >= $1 AND s.created_at <= $2
         AND s.status IN ('paid', 'partial')
