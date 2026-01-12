@@ -567,6 +567,118 @@ export default function InterviewEvaluation() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Resultados da Análise com IA */}
+        {interview.status === 'completed' && interview.ai_evaluation && (
+          <Card className="border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-primary" />
+                Resultados da Análise com IA
+              </CardTitle>
+              <CardDescription>
+                Avaliação completa da entrevista realizada pela inteligência artificial
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Score e Recomendação
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {interview.ai_score !== null && (
+                      <div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold">{interview.ai_score}</span>
+                          <span className="text-sm text-muted-foreground">/ 100</span>
+                        </div>
+                      </div>
+                    )}
+                    {interview.ai_recommendation && (
+                      <div>
+                        {interview.ai_recommendation === 'approved' && (
+                          <Badge variant="default" className="bg-green-500 flex items-center gap-1 w-fit">
+                            <CheckCircle className="h-3 w-3" />
+                            Aprovado
+                          </Badge>
+                        )}
+                        {interview.ai_recommendation === 'rejected' && (
+                          <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                            <XCircle className="h-3 w-3" />
+                            Reprovado
+                          </Badge>
+                        )}
+                        {interview.ai_recommendation === 'manual_review' && (
+                          <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                            <AlertCircle className="h-3 w-3" />
+                            Revisão Manual
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Justificativa</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      {interview.ai_evaluation.justification || interview.ai_evaluation.summary || 'Não disponível'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {interview.ai_evaluation.strengths && interview.ai_evaluation.strengths.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Pontos Fortes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc list-inside space-y-1">
+                      {interview.ai_evaluation.strengths.map((strength: string, idx: number) => (
+                        <li key={idx} className="text-sm text-muted-foreground">{strength}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {interview.ai_evaluation.weaknesses && interview.ai_evaluation.weaknesses.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Pontos de Atenção</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="list-disc list-inside space-y-1">
+                      {interview.ai_evaluation.weaknesses.map((weakness: string, idx: number) => (
+                        <li key={idx} className="text-sm text-muted-foreground">{weakness}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              {interview.ai_evaluation.candidate_profile && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Perfil Comportamental (DISC)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant="outline" className="text-base px-3 py-1">
+                      {interview.ai_evaluation.candidate_profile}
+                    </Badge>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ModernLayout>
   );
