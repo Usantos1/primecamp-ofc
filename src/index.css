@@ -333,65 +333,46 @@ All colors MUST be HSL.
   }
   
   /* Scrollbar personalizada - DISCRETO MAS SEMPRE VISÍVEL */
-  .scrollbar-thin {
+  .scrollbar-thin,
+  [class*="overflow-y-auto"],
+  [class*="overflow-auto"] {
     scrollbar-width: thin !important;
     scrollbar-color: rgba(0, 0, 0, 0.5) rgba(0, 0, 0, 0.1) !important;
   }
   
-  .scrollbar-thin::-webkit-scrollbar {
+  .scrollbar-thin::-webkit-scrollbar,
+  [class*="overflow-y-auto"]::-webkit-scrollbar,
+  [class*="overflow-auto"]::-webkit-scrollbar {
     width: 8px !important;
     height: 8px !important;
     -webkit-appearance: none !important;
-    display: block !important;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-track {
+  .scrollbar-thin::-webkit-scrollbar-track,
+  [class*="overflow-y-auto"]::-webkit-scrollbar-track,
+  [class*="overflow-auto"]::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.08) !important;
     border-radius: 4px !important;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb {
+  .scrollbar-thin::-webkit-scrollbar-thumb,
+  [class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
+  [class*="overflow-auto"]::-webkit-scrollbar-thumb {
     background-color: rgba(0, 0, 0, 0.4) !important;
     border-radius: 4px !important;
     border: 1px solid rgba(0, 0, 0, 0.1) !important;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover,
+  [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
+  [class*="overflow-auto"]::-webkit-scrollbar-thumb:hover {
     background-color: rgba(0, 0, 0, 0.6) !important;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb:active {
+  .scrollbar-thin::-webkit-scrollbar-thumb:active,
+  [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:active,
+  [class*="overflow-auto"]::-webkit-scrollbar-thumb:active {
     background-color: rgba(0, 0, 0, 0.7) !important;
-  }
-  
-  /* Garantir scrollbar em todos os elementos com overflow */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.5) rgba(0, 0, 0, 0.1);
-  }
-  
-  *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  *::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 4px;
-  }
-  
-  *::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.4);
-    border-radius: 4px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
-  
-  *::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.6);
-  }
-  
-  *::-webkit-scrollbar-thumb:active {
-    background-color: rgba(0, 0, 0, 0.7);
   }
   
   /* Container de conteúdo com scroll interno */
