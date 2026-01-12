@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { 
   Brain, FileText, User, Calendar, Video, MapPin, 
   CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft,
-  Sparkles, MessageSquare, Clipboard, Copy
+  Sparkles, MessageSquare, Clipboard, Copy, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ModernLayout } from '@/components/ModernLayout';
@@ -406,7 +406,7 @@ export default function InterviewEvaluation() {
                     </>
                   ) : (
                     <>
-                      <RotateCw className="h-4 w-4 mr-2" />
+                      <RefreshCw className="h-4 w-4 mr-2" />
                       Regenerar Perguntas
                     </>
                   )}

@@ -168,10 +168,10 @@ const App = () => (
                 <Route path="metricas" element={<MarketingMetricas />} />
                 <Route path="metas" element={<MarketingMetas />} />
               </Route>
-              <Route path="/admin/job-surveys" element={<ProtectedRoute><AdminJobSurveys /></ProtectedRoute>} />
+              <Route path="/admin/job-surveys" element={<ProtectedRoute><RecruitmentManager /></ProtectedRoute>} />
               <Route path="/admin/job-surveys/:id" element={<ProtectedRoute><JobSurveyDetail /></ProtectedRoute>} />
               <Route path="/admin/talent-bank" element={<ProtectedRoute><TalentBank /></ProtectedRoute>} />
-              <Route path="/admin/interviews" element={<ProtectedRoute><AdminInterviews /></ProtectedRoute>} />
+              <Route path="/admin/interviews" element={<ProtectedRoute><RecruitmentManager /></ProtectedRoute>} />
               <Route path="/admin/interviews/evaluate/:interview_id" element={<ProtectedRoute><InterviewEvaluation /></ProtectedRoute>} />
               <Route path="/admin/logs" element={<PermissionRoute permission="admin.logs"><AdminLogs /></PermissionRoute>} />
               <Route path="/admin/estrutura" element={<ProtectedRoute><EstruturaOrganizacional /></ProtectedRoute>} />
