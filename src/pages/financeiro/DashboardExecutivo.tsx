@@ -65,7 +65,8 @@ export default function DashboardExecutivo() {
   
   return (
     <ModernLayout title="Dashboard Executivo" subtitle="Visão geral financeira e operacional com IA">
-      <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col h-full overflow-hidden gap-4 px-1 md:px-0">
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
         {/* Menu de Navegação */}
         <FinanceiroNavMenu />
         
