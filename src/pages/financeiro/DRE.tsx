@@ -195,7 +195,7 @@ export default function DRE() {
                   <TableCell className="font-bold">(=) Lucro Bruto</TableCell>
                   <TableCell className="text-right font-bold">{currencyFormatters.brl(dre.lucro_bruto || 0)}</TableCell>
                   <TableCell className="text-right font-bold">
-                    {dre.receita_liquida > 0 ? ((dre.lucro_bruto || 0) / dre.receita_liquida * 100).toFixed(1) : 0}%
+                    {Number(dre.receita_liquida || 0) > 0 ? (Number(dre.lucro_bruto || 0) / Number(dre.receita_liquida || 1) * 100).toFixed(1) : 0}%
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b-[2px] border-gray-300">
@@ -207,7 +207,7 @@ export default function DRE() {
                   <TableCell className="font-semibold">(=) EBITDA</TableCell>
                   <TableCell className="text-right font-semibold">{currencyFormatters.brl(dre.ebitda || 0)}</TableCell>
                   <TableCell className="text-right font-semibold">
-                    {dre.receita_liquida > 0 ? ((dre.ebitda || 0) / dre.receita_liquida * 100).toFixed(1) : 0}%
+                    {Number(dre.receita_liquida || 0) > 0 ? (Number(dre.ebitda || 0) / Number(dre.receita_liquida || 1) * 100).toFixed(1) : 0}%
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b-[2px] border-gray-300">
@@ -221,7 +221,7 @@ export default function DRE() {
                     {currencyFormatters.brl(dre.lucro_liquido || 0)}
                   </TableCell>
                   <TableCell className="text-right font-bold text-lg">
-                    {dre.receita_liquida > 0 ? ((dre.lucro_liquido || 0) / dre.receita_liquida * 100).toFixed(1) : 0}%
+                    {Number(dre.receita_liquida || 0) > 0 ? (Number(dre.lucro_liquido || 0) / Number(dre.receita_liquida || 1) * 100).toFixed(1) : 0}%
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -240,7 +240,7 @@ export default function DRE() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {dre.margem_bruta_percentual?.toFixed(1) || 0}%
+                {Number(dre.margem_bruta_percentual || 0).toFixed(1)}%
               </div>
             </CardContent>
           </Card>
@@ -254,7 +254,7 @@ export default function DRE() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {dre.margem_liquida_percentual?.toFixed(1) || 0}%
+                {Number(dre.margem_liquida_percentual || 0).toFixed(1)}%
               </div>
             </CardContent>
           </Card>
