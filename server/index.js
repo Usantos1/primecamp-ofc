@@ -2850,15 +2850,23 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
     const openaiData = await openaiResponse.json();
     const rawResponse = openaiData.choices[0]?.message?.content || '';
 
+    if (!rawResponse || rawResponse.trim() === '') {
+      console.error('[OpenAI] Resposta vazia da API. Modelo:', openaiModel, 'Response:', JSON.stringify(openaiData));
+      return res.status(500).json({ 
+        error: 'A IA não retornou dados',
+        details: `O modelo ${openaiModel} retornou resposta vazia. Verifique se o modelo está correto ou tente usar 'gpt-4o' ou 'gpt-4o-mini'.`
+      });
+    }
+
     let questionsData = { questions: [] };
     try {
       const jsonText = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       questionsData = JSON.parse(jsonText);
     } catch (parseError) {
-      console.error('[OpenAI] Erro ao parsear JSON:', parseError, 'Raw:', rawResponse);
+      console.error('[OpenAI] Erro ao parsear JSON:', parseError, 'Raw:', rawResponse.substring(0, 500));
       return res.status(500).json({ 
         error: 'Erro ao processar resposta da IA',
-        details: 'A IA não retornou um formato JSON válido'
+        details: `A IA não retornou um formato JSON válido. Modelo: ${openaiModel}. Verifique se o modelo está correto.`
       });
     }
 
