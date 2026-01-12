@@ -6,15 +6,10 @@
  */
 
 // Configurar URL da API
-// SEMPRE usar api.primecamp.cloud em produção
-// Detectar ambiente pelo hostname (não confiar em import.meta.env.DEV)
-const isLocalhost = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-const API_URL = import.meta.env.VITE_API_URL || 
-  (isLocalhost 
-    ? 'http://localhost:3000/api' 
-    : 'https://api.primecamp.cloud/api');
+// SEMPRE usar api.primecamp.cloud (mesmo em desenvolvimento local)
+const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+  ? import.meta.env.VITE_API_URL 
+  : 'https://api.primecamp.cloud/api';
 
 // Validação de segurança
 if (API_URL.includes('.supabase.co')) {
