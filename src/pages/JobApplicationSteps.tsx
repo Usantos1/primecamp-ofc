@@ -242,6 +242,8 @@ export default function JobApplicationSteps() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [showAlreadyAppliedModal, setShowAlreadyAppliedModal] = useState(false);
+  const [existingJobResponseId, setExistingJobResponseId] = useState<string | null>(null);
 
   const storageKey = useMemo(() => `jobapp:${slug}`, [slug]);
 
