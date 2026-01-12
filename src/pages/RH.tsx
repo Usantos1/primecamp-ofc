@@ -1,5 +1,8 @@
+import { useState, useMemo } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   GraduationCap,
   TrendingUp,
@@ -14,34 +17,62 @@ import {
   BadgeCheck,
   CalendarCheck,
   Briefcase,
-  MessageCircle
+  MessageCircle,
+  Search,
+  UserCog,
+  UserPlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+interface RHSection {
+  title: string;
+  description: string;
+  icon: any;
+  path: string;
+  color: string;
+  category: 'recrutamento' | 'desenvolvimento' | 'gestao' | 'avaliacao' | 'compliance';
+  badge?: string;
+}
+
 export default function RH() {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const rhSections = [
+  const rhSections: RHSection[] = [
+    // Recrutamento
+    {
+      title: 'Recrutamento e Seleção',
+      description: 'Formulários de vagas, entrevistas e banco de talentos',
+      icon: Briefcase,
+      path: '/admin/job-surveys',
+      color: 'text-emerald-700',
+      category: 'recrutamento',
+    },
+    {
+      title: 'Entrevistas',
+      description: 'Agendar e avaliar entrevistas com IA',
+      icon: CalendarCheck,
+      path: '/admin/interviews',
+      color: 'text-indigo-700',
+      category: 'recrutamento',
+    },
+    {
+      title: 'Banco de Talentos',
+      description: 'Candidatos e currículos',
+      icon: UserPlus,
+      path: '/admin/talent-bank',
+      color: 'text-blue-700',
+      category: 'recrutamento',
+    },
+    
+    // Desenvolvimento
     {
       title: 'Academy',
       description: 'Gerencie cursos, aulas e progresso dos colaboradores',
       icon: GraduationCap,
       path: '/treinamentos',
       color: 'text-blue-600',
-    },
-    {
-      title: 'NPS',
-      description: 'Pesquisas de satisfação e feedback interno',
-      icon: TrendingUp,
-      path: '/nps',
-      color: 'text-green-600',
-    },
-    {
-      title: 'Teste DISC',
-      description: 'Avaliações comportamentais e perfis DISC',
-      icon: Brain,
-      path: '/teste-disc',
-      color: 'text-purple-600',
+      category: 'desenvolvimento',
     },
     {
       title: 'Metas',
@@ -49,6 +80,52 @@ export default function RH() {
       icon: Target,
       path: '/metas',
       color: 'text-orange-600',
+      category: 'desenvolvimento',
+    },
+    {
+      title: 'Feedback 1:1',
+      description: 'Registro de conversas e planos de desenvolvimento',
+      icon: MessageCircle,
+      path: '/tarefas',
+      color: 'text-cyan-700',
+      category: 'desenvolvimento',
+      badge: 'Em breve',
+    },
+    
+    // Avaliação
+    {
+      title: 'Teste DISC',
+      description: 'Avaliações comportamentais e perfis DISC',
+      icon: Brain,
+      path: '/teste-disc',
+      color: 'text-purple-600',
+      category: 'avaliacao',
+    },
+    {
+      title: 'NPS',
+      description: 'Pesquisas de satisfação e feedback interno',
+      icon: TrendingUp,
+      path: '/nps',
+      color: 'text-green-600',
+      category: 'avaliacao',
+    },
+    {
+      title: 'Avaliações DISC / NPS (Admin)',
+      description: 'Ferramentas administrativas de avaliação e clima',
+      icon: FileText,
+      path: '/admin/disc',
+      color: 'text-orange-600',
+      category: 'avaliacao',
+    },
+    
+    // Gestão
+    {
+      title: 'Colaboradores',
+      description: 'Dados dos colaboradores e usuários do sistema',
+      icon: Users,
+      path: '/admin/users',
+      color: 'text-slate-700',
+      category: 'gestao',
     },
     {
       title: 'Ponto Eletrônico',
@@ -56,6 +133,7 @@ export default function RH() {
       icon: Clock,
       path: '/ponto',
       color: 'text-indigo-600',
+      category: 'gestao',
     },
     {
       title: 'Gestão de Ponto (Admin)',
@@ -63,101 +141,223 @@ export default function RH() {
       icon: Clock,
       path: '/admin/timeclock',
       color: 'text-indigo-700',
-    },
-    {
-      title: 'Colaboradores',
-      description: 'Dados dos colaboradores (via Usuários)',
-      icon: Users,
-      path: '/admin/users',
-      color: 'text-slate-700',
-    },
-    {
-      title: 'Recrutamento',
-      description: 'Banco de talentos e entrevistas',
-      icon: Briefcase,
-      path: '/admin/talent-bank',
-      color: 'text-emerald-700',
-    },
-    {
-      title: 'Formulários de Vagas',
-      description: 'Cadastro de vagas e candidaturas',
-      icon: ClipboardCheck,
-      path: '/admin/job-surveys',
-      color: 'text-amber-700',
-    },
-    {
-      title: 'Entrevistas',
-      description: 'Agendar e avaliar entrevistas',
-      icon: CalendarCheck,
-      path: '/admin/interviews',
-      color: 'text-indigo-700',
-    },
-    {
-      title: 'Avaliações DISC / NPS',
-      description: 'Ferramentas de avaliação e clima',
-      icon: FileText,
-      path: '/admin/disc',
-      color: 'text-orange-600',
-    },
-    {
-      title: 'Compliance / Documentos',
-      description: 'Políticas internas e assinaturas',
-      icon: ShieldCheck,
-      path: '/admin/estrutura',
-      color: 'text-slate-800',
+      category: 'gestao',
     },
     {
       title: 'Benefícios',
       description: 'Gestão de benefícios e bem-estar',
       icon: HeartPulse,
-      path: '/relatorios', // placeholder para definir rota final
+      path: '/relatorios',
       color: 'text-rose-600',
+      category: 'gestao',
+      badge: 'Em breve',
     },
+    
+    // Compliance
     {
-      title: 'Feedback 1:1',
-      description: 'Registro de conversas e planos',
-      icon: MessageCircle,
-      path: '/tarefas', // placeholder para fluxo de 1:1 em tarefas
-      color: 'text-cyan-700',
+      title: 'Compliance / Documentos',
+      description: 'Políticas internas, documentos e estrutura organizacional',
+      icon: ShieldCheck,
+      path: '/admin/estrutura',
+      color: 'text-slate-800',
+      category: 'compliance',
     },
     {
       title: 'Checklists de Onboarding',
       description: 'Passos para entrada de novos colaboradores',
       icon: BadgeCheck,
-      path: '/processos', // placeholder para checklists via processos
+      path: '/processos',
       color: 'text-green-700',
+      category: 'compliance',
+      badge: 'Em breve',
     },
   ];
 
+  const categories = [
+    { id: 'recrutamento', label: 'Recrutamento', icon: Briefcase, color: 'text-emerald-700' },
+    { id: 'desenvolvimento', label: 'Desenvolvimento', icon: GraduationCap, color: 'text-blue-600' },
+    { id: 'avaliacao', label: 'Avaliação', icon: Brain, color: 'text-purple-600' },
+    { id: 'gestao', label: 'Gestão', icon: UserCog, color: 'text-slate-700' },
+    { id: 'compliance', label: 'Compliance', icon: ShieldCheck, color: 'text-slate-800' },
+  ] as const;
+
+  const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
+
+  // Filtrar seções
+  const filteredSections = useMemo(() => {
+    return rhSections.filter(section => {
+      const matchesSearch = !searchTerm || 
+        section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        section.description.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = selectedCategory === 'all' || section.category === selectedCategory;
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchTerm, selectedCategory]);
+
+  // Agrupar por categoria
+  const groupedSections = useMemo(() => {
+    const groups: Record<string, RHSection[]> = {};
+    filteredSections.forEach(section => {
+      if (!groups[section.category]) {
+        groups[section.category] = [];
+      }
+      groups[section.category].push(section);
+    });
+    return groups;
+  }, [filteredSections]);
+
   return (
-    <ModernLayout title="Recursos Humanos" subtitle="Gestão de pessoas e desenvolvimento">
+    <ModernLayout title="Recursos Humanos" subtitle="Gestão completa de pessoas e desenvolvimento">
       <div className="space-y-4 md:space-y-6 px-1 md:px-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
-          {rhSections.map((section) => {
-            const Icon = section.icon;
+        {/* Busca e Filtros */}
+        <Card className="border-2">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Campo de Busca */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar módulo ou funcionalidade..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              
+              {/* Filtros de Categoria */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  Todos
+                </button>
+                {categories.map(category => {
+                  const Icon = category.icon;
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm transition-all flex items-center gap-2 ${
+                        selectedCategory === category.id
+                          ? `bg-primary text-primary-foreground border-primary`
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {category.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Seções Agrupadas */}
+        {selectedCategory === 'all' ? (
+          // Exibir agrupado por categoria
+          categories.map(category => {
+            const sectionsInCategory = groupedSections[category.id] || [];
+            if (sectionsInCategory.length === 0) return null;
+            
+            const CategoryIcon = category.icon;
+            
             return (
-              <Card
-                key={section.path}
-                className="border-2 border-gray-300 shadow-sm hover:shadow-md hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group"
-                onClick={() => navigate(section.path)}
-              >
-                <CardHeader className="pb-3 pt-3 md:pt-6 px-3 md:px-6">
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 md:p-2.5 rounded-lg bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm`}>
-                      <Icon className={`h-5 w-5 md:h-6 md:w-6 ${section.color}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-sm md:text-lg font-semibold mb-1 md:mb-2">{section.title}</CardTitle>
-                      <CardDescription className="text-xs md:text-sm line-clamp-2">{section.description}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+              <div key={category.id} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <CategoryIcon className={`h-5 w-5 ${category.color}`} />
+                  <h2 className="text-lg font-bold">{category.label}</h2>
+                  <Badge variant="secondary" className="ml-2">
+                    {sectionsInCategory.length}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                  {sectionsInCategory.map((section) => {
+                    const Icon = section.icon;
+                    return (
+                      <Card
+                        key={section.path}
+                        className="border-2 border-gray-300 shadow-sm hover:shadow-lg hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group"
+                        onClick={() => navigate(section.path)}
+                      >
+                        <CardHeader className="pb-3 pt-4 px-4">
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2.5 rounded-lg bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm group-hover:scale-110 transition-transform`}>
+                              <Icon className={`h-5 w-5 ${section.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <CardTitle className="text-base font-semibold">{section.title}</CardTitle>
+                                {section.badge && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {section.badge}
+                                  </Badge>
+                                )}
+                              </div>
+                              <CardDescription className="text-sm line-clamp-2">{section.description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             );
-          })}
-        </div>
+          })
+        ) : (
+          // Exibir apenas categoria selecionada
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {filteredSections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <Card
+                  key={section.path}
+                  className="border-2 border-gray-300 shadow-sm hover:shadow-lg hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group"
+                  onClick={() => navigate(section.path)}
+                >
+                  <CardHeader className="pb-3 pt-4 px-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2.5 rounded-lg bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm group-hover:scale-110 transition-transform`}>
+                        <Icon className={`h-5 w-5 ${section.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <CardTitle className="text-base font-semibold">{section.title}</CardTitle>
+                          {section.badge && (
+                            <Badge variant="outline" className="text-xs">
+                              {section.badge}
+                            </Badge>
+                          )}
+                        </div>
+                        <CardDescription className="text-sm line-clamp-2">{section.description}</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Mensagem quando não há resultados */}
+        {filteredSections.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">
+                Nenhum módulo encontrado com os filtros selecionados.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ModernLayout>
   );
 }
-
