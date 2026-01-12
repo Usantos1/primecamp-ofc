@@ -1748,18 +1748,134 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
                               </Button>
 
                               {getAIAnalysis(response.id) ? (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedResponse(response);
-                                    setShowAIAnalysisModal(true);
-                                  }}
-                                  className="hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-900/20 bg-purple-50/50 border-purple-200 dark:bg-purple-950/20 dark:border-purple-800"
-                                >
-                                  <Brain className="h-4 w-4 mr-1" />
-                                  Ver IA
-                                </Button>
+                                <>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedResponse(response);
+                                      setShowAIAnalysisModal(true);
+                                    }}
+                                    className="hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-900/20 bg-purple-50/50 border-purple-200 dark:bg-purple-950/20 dark:border-purple-800"
+                                  >
+                                    <Brain className="h-4 w-4 mr-1" />
+                                    Ver IA
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={analyzingId === response.id}
+                                    onClick={async () => {
+                                      setAnalyzingId(response.id);
+                                      try {
+                                        toast({
+                                          title: "Regenerando análise...",
+                                          description: "Aguarde enquanto analisamos o candidato novamente com IA.",
+                                        });
+                                        
+                                        // Buscar dados completos do candidato
+                                        const { data: jobResponse } = await from('job_responses')
+                                          .select('*')
+                                          .eq('id', response.id)
+                                          .single();
+
+                                        const { data: jobSurvey } = await from('job_surveys')
+                                          .select('*')
+                                          .eq('id', response.survey_id)
+                                          .single();
+
+                                        if (!jobResponse || !jobSurvey) {
+                                          toast({
+                                            title: "Erro",
+                                            description: "Dados do candidato ou vaga não encontrados.",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+
+                                        // Buscar resultado do DISC se existir
+                                        const { data: discResult } = await from('candidate_responses')
+                                          .select('*')
+                                          .eq('whatsapp', jobResponse.whatsapp || jobResponse.phone || '')
+                                          .eq('is_completed', true)
+                                          .order('created_at', { ascending: false })
+                                          .maybeSingle();
+
+                                        // Chamar análise com OpenAI
+                                        const { data: analysisData, error: analysisError } = await apiClient.invokeFunction('analyze-candidate', {
+                                          job_response_id: response.id,
+                                          survey_id: response.survey_id,
+                                          candidate_data: {
+                                            name: jobResponse.name,
+                                            email: jobResponse.email,
+                                            age: jobResponse.age,
+                                            phone: jobResponse.phone || jobResponse.whatsapp,
+                                            responses: jobResponse.responses,
+                                            disc_profile: discResult ? {
+                                              d_score: discResult.d_score || 0,
+                                              i_score: discResult.i_score || 0,
+                                              s_score: discResult.s_score || 0,
+                                              c_score: discResult.c_score || 0,
+                                              dominant_profile: discResult.dominant_profile || ''
+                                            } : undefined
+                                          },
+                                          job_data: {
+                                            title: jobSurvey.title,
+                                            position_title: jobSurvey.position_title,
+                                            description: jobSurvey.description,
+                                            requirements: jobSurvey.requirements,
+                                            work_modality: jobSurvey.work_modality,
+                                            contract_type: jobSurvey.contract_type
+                                          }
+                                        });
+
+                                        if (analysisError) {
+                                          console.error('Erro na análise:', analysisError);
+                                          toast({
+                                            title: "Erro ao regenerar análise",
+                                            description: analysisError.message || "Não foi possível regenerar a análise.",
+                                            variant: "destructive",
+                                          });
+                                        } else {
+                                          toast({
+                                            title: "Análise regenerada!",
+                                            description: "A análise de IA foi atualizada com sucesso.",
+                                          });
+                                          // Recarregar análises
+                                          queryClient.invalidateQueries({ queryKey: ['aiAnalyses', selectedSurvey?.id] });
+                                          // Abrir modal com a análise
+                                          setSelectedResponse(response);
+                                          setTimeout(() => {
+                                            setShowAIAnalysisModal(true);
+                                          }, 500);
+                                        }
+                                      } catch (error: any) {
+                                        console.error('Erro ao processar análise:', error);
+                                        toast({
+                                          title: "Erro",
+                                          description: error.message || "Erro ao regenerar análise.",
+                                          variant: "destructive",
+                                        });
+                                      } finally {
+                                        setAnalyzingId(null);
+                                      }
+                                    }}
+                                    className="hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-900/20"
+                                    title="Regenerar análise de IA"
+                                  >
+                                    {analyzingId === response.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                        Regenerando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <RotateCw className="h-4 w-4 mr-1" />
+                                        Regenerar IA
+                                      </>
+                                    )}
+                                  </Button>
+                                </>
                               ) : (
                                 <Button 
                                   variant="outline" 
