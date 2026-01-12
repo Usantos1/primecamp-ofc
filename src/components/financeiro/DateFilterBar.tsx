@@ -68,15 +68,11 @@ export function DateFilterBar({
     return { startDate, endDate };
   };
 
-  // Calcular datas sempre que mudar
-  useState(() => {
-    getDateRange();
-  });
-
   const handleFilterChange = (filter: DateFilterType) => {
     onDateFilterChange(filter);
-    if (filter !== 'custom') {
-      getDateRange();
+    const range = getDateRange();
+    if (onDatesChange) {
+      onDatesChange(range.startDate, range.endDate);
     }
   };
 
