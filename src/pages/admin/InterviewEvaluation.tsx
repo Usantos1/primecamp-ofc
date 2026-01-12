@@ -220,17 +220,22 @@ export default function InterviewEvaluation() {
   const handleEvaluateWithAI = async () => {
     if (!interview_id || !interview) return;
 
-    const fullTranscription = candidateResponses
+    // Construir transcrição completa: respostas preenchidas + transcrição manual
+    const responsesText = candidateResponses
+      .filter(r => r.answer.trim()) // Apenas respostas preenchidas
       .map((r, idx) => {
         const q = interview.questions[idx];
         return `Pergunta ${idx + 1}: ${q?.question || q?.text || ''}\nResposta: ${r.answer}\n${r.observations ? `Observações: ${r.observations}\n` : ''}`;
       })
-      .join('\n\n') + (transcription ? `\n\nTranscrição Completa:\n${transcription}` : '');
+      .join('\n\n');
+    
+    // Usar transcrição se disponível, caso contrário usar respostas preenchidas
+    const fullTranscription = transcription?.trim() || responsesText;
 
     if (!fullTranscription.trim()) {
       toast({
         title: "Erro",
-        description: "Adicione pelo menos uma resposta do candidato antes de avaliar.",
+        description: "Adicione a transcrição da entrevista ou preencha as respostas antes de avaliar.",
         variant: "destructive",
       });
       return;
