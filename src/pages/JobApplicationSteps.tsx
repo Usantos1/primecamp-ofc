@@ -707,6 +707,67 @@ export default function JobApplicationSteps() {
     navigate(`/disc-externo?job_response_id=${jobResponseId || ''}&survey_id=${survey?.id || ''}`);
   };
 
+  /* ---------- Modal: Já se candidatou ---------- */
+  const AlreadyAppliedModal = () => (
+    <Dialog open={showAlreadyAppliedModal} onOpenChange={setShowAlreadyAppliedModal}>
+      <DialogContent className="sm:max-w-[500px]" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
+        <DialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="rounded-full p-2" style={{ backgroundColor: 'hsl(var(--job-primary) / 0.1)' }}>
+              <AlertTriangle className="h-6 w-6" style={{ color: 'hsl(var(--job-primary))' }} />
+            </div>
+            <DialogTitle className="text-xl" style={{ color: 'hsl(var(--job-text))' }}>
+              Candidatura Já Enviada
+            </DialogTitle>
+          </div>
+          <DialogDescription className="text-base pt-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
+            Você já se candidatou para esta vaga anteriormente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 space-y-3">
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: 'hsl(var(--job-badge))', borderColor: 'hsl(var(--job-card-border))' }}>
+            <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--job-text))' }}>
+              <strong>Vaga:</strong> {survey?.title || survey?.position_title}
+            </p>
+            <p className="text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>
+              <strong>Email:</strong> {formData.email.trim()}
+            </p>
+            {existingJobResponseId && (
+              <p className="text-xs mt-2 opacity-70" style={{ color: 'hsl(var(--job-text-muted))' }}>
+                ID: {existingJobResponseId.substring(0, 8)}...
+              </p>
+            )}
+          </div>
+          <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--job-badge))' }}>
+            <Info className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: 'hsl(var(--job-primary))' }} />
+            <div className="text-sm space-y-1" style={{ color: 'hsl(var(--job-text-muted))' }}>
+              <p>Nossa equipe já está analisando sua candidatura.</p>
+              <p>Entraremos em contato em até 5 dias úteis através do email informado.</p>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setShowAlreadyAppliedModal(false)}
+            style={{ borderColor: 'hsl(var(--job-card-border))' }}
+          >
+            Fechar
+          </Button>
+          <Button
+            onClick={() => {
+              setShowAlreadyAppliedModal(false);
+              navigate('/vagas');
+            }}
+            style={{ backgroundColor: 'hsl(var(--job-primary))', color: 'white' }}
+          >
+            Ver Outras Vagas
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   /* ---------- renderização de perguntas dinâmicas ---------- */
   const renderQuestion = (question: Question) => {
     const value = formData.responses[question.id];
@@ -870,67 +931,6 @@ export default function JobApplicationSteps() {
       </div>
     );
   }
-
-  /* ---------- Modal: Já se candidatou ---------- */
-  const AlreadyAppliedModal = () => (
-    <Dialog open={showAlreadyAppliedModal} onOpenChange={setShowAlreadyAppliedModal}>
-      <DialogContent className="sm:max-w-[500px]" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="rounded-full p-2" style={{ backgroundColor: 'hsl(var(--job-primary) / 0.1)' }}>
-              <AlertTriangle className="h-6 w-6" style={{ color: 'hsl(var(--job-primary))' }} />
-            </div>
-            <DialogTitle className="text-xl" style={{ color: 'hsl(var(--job-text))' }}>
-              Candidatura Já Enviada
-            </DialogTitle>
-          </div>
-          <DialogDescription className="text-base pt-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
-            Você já se candidatou para esta vaga anteriormente.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="py-4 space-y-3">
-          <div className="p-4 rounded-lg border" style={{ backgroundColor: 'hsl(var(--job-badge))', borderColor: 'hsl(var(--job-card-border))' }}>
-            <p className="text-sm font-medium mb-2" style={{ color: 'hsl(var(--job-text))' }}>
-              <strong>Vaga:</strong> {survey?.title || survey?.position_title}
-            </p>
-            <p className="text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>
-              <strong>Email:</strong> {formData.email.trim()}
-            </p>
-            {existingJobResponseId && (
-              <p className="text-xs mt-2 opacity-70" style={{ color: 'hsl(var(--job-text-muted))' }}>
-                ID: {existingJobResponseId.substring(0, 8)}...
-              </p>
-            )}
-          </div>
-          <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--job-badge))' }}>
-            <Info className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: 'hsl(var(--job-primary))' }} />
-            <div className="text-sm space-y-1" style={{ color: 'hsl(var(--job-text-muted))' }}>
-              <p>Nossa equipe já está analisando sua candidatura.</p>
-              <p>Entraremos em contato em até 5 dias úteis através do email informado.</p>
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setShowAlreadyAppliedModal(false)}
-            style={{ borderColor: 'hsl(var(--job-card-border))' }}
-          >
-            Fechar
-          </Button>
-          <Button
-            onClick={() => {
-              setShowAlreadyAppliedModal(false);
-              navigate('/vagas');
-            }}
-            style={{ backgroundColor: 'hsl(var(--job-primary))', color: 'white' }}
-          >
-            Ver Outras Vagas
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 
   /* ---------- página principal ---------- */
   return (
