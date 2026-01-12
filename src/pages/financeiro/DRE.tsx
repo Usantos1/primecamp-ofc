@@ -206,9 +206,11 @@ export default function DRE() {
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b-[2px] border-gray-300">
-                  <TableCell className="pl-6">(-) Custo dos Produtos Vendidos (CPV)</TableCell>
+                  <TableCell className="pl-6">(-) CMV - Custo das Mercadorias/Peças Vendidas</TableCell>
                   <TableCell className="text-right">{currencyFormatters.brl(dre.custo_produtos_vendidos || 0)}</TableCell>
-                  <TableCell className="text-right">-</TableCell>
+                  <TableCell className="text-right">
+                    {Number(dre.receita_liquida || 0) > 0 ? (Number(dre.custo_produtos_vendidos || 0) / Number(dre.receita_liquida || 1) * 100).toFixed(1) : 0}%
+                  </TableCell>
                 </TableRow>
                 <TableRow className="border-b-[3px] border-gray-400 bg-yellow-50">
                   <TableCell className="font-bold">(=) Lucro Bruto</TableCell>
