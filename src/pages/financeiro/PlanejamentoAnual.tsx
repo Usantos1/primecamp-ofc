@@ -87,6 +87,9 @@ export default function PlanejamentoAnual() {
   return (
     <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
       <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Menu de Navegação */}
+        <FinanceiroNavMenu />
+        
         {/* Controles */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="flex items-end gap-3">

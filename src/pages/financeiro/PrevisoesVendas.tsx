@@ -67,6 +67,9 @@ export default function PrevisoesVendas() {
   return (
     <ModernLayout title="Previsões de Vendas" subtitle="Análise preditiva com IA">
       <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Menu de Navegação */}
+        <FinanceiroNavMenu />
+        
         {/* Controles */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="flex items-end gap-3">

@@ -98,6 +98,9 @@ export default function AnaliseProdutos() {
   return (
     <ModernLayout title="Análise de Produtos" subtitle="Performance e rentabilidade dos produtos">
       <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Menu de Navegação */}
+        <FinanceiroNavMenu />
+        
         {/* Filtros */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

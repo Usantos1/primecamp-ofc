@@ -54,6 +54,9 @@ export default function Precificacao() {
   return (
     <ModernLayout title="Precificação Inteligente" subtitle="Sugestões de preços baseadas em IA e análise de dados">
       <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Menu de Navegação */}
+        <FinanceiroNavMenu />
+        
         {/* Controles */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
