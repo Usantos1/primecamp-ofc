@@ -48,7 +48,10 @@ import AdminGoals from "./pages/admin/AdminGoals";
 import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
 import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
-import { FinanceiroLayout, FinanceiroDashboard as FinanceiroDashboardOld, FinanceiroCaixa, FinanceiroContas, FinanceiroTransacoes, FinanceiroRelatorios } from "./pages/admin/financeiro";
+import FinanceiroCaixaPage from "./pages/financeiro/FinanceiroCaixaPage";
+import FinanceiroContasPage from "./pages/financeiro/FinanceiroContasPage";
+import FinanceiroTransacoesPage from "./pages/financeiro/FinanceiroTransacoesPage";
+import FinanceiroRelatoriosPage from "./pages/financeiro/FinanceiroRelatoriosPage";
 import AdminReseller from "./pages/admin/AdminReseller";
 import CompanyDashboardPage from "./pages/CompanyDashboardPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
@@ -232,10 +235,10 @@ const App = () => (
               <Route path="/financeiro/dre" element={<PermissionRoute permission="relatorios.financeiro"><DRE /></PermissionRoute>} />
               <Route path="/financeiro/planejamento-anual" element={<PermissionRoute permission="relatorios.financeiro"><PlanejamentoAnual /></PermissionRoute>} />
               <Route path="/financeiro/precificacao" element={<PermissionRoute permission="relatorios.financeiro"><Precificacao /></PermissionRoute>} />
-              <Route path="/financeiro/caixa" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroCaixa /></PermissionRoute>} />
-              <Route path="/financeiro/contas" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroContas /></PermissionRoute>} />
-              <Route path="/financeiro/transacoes" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroTransacoes /></PermissionRoute>} />
-              <Route path="/financeiro/relatorios" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroRelatorios /></PermissionRoute>} />
+              <Route path="/financeiro/caixa" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroCaixaPage /></PermissionRoute>} />
+              <Route path="/financeiro/contas" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroContasPage /></PermissionRoute>} />
+              <Route path="/financeiro/transacoes" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroTransacoesPage /></PermissionRoute>} />
+              <Route path="/financeiro/relatorios" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroRelatoriosPage /></PermissionRoute>} />
               
               {/* Rotas de OS - simplificadas para /os */}
               <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
