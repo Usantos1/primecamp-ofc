@@ -708,7 +708,8 @@ export default function JobApplicationSteps() {
   };
 
   /* ---------- Modal: Já se candidatou ---------- */
-  const AlreadyAppliedModal = () => (
+  // Usar useMemo para garantir que o componente seja incluído no build
+  const AlreadyAppliedModal = useMemo(() => () => (
     <Dialog open={showAlreadyAppliedModal} onOpenChange={setShowAlreadyAppliedModal}>
       <DialogContent className="sm:max-w-[500px]" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
         <DialogHeader>
