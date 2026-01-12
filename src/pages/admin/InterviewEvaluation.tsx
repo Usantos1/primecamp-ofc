@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { 
   Brain, FileText, User, Calendar, Video, MapPin, 
   CheckCircle, XCircle, AlertCircle, Loader2, ArrowLeft,
-  Sparkles, MessageSquare, Clipboard, Copy, RefreshCw
+  Sparkles, MessageSquare, Clipboard, Copy, RefreshCw, Target
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ModernLayout } from '@/components/ModernLayout';
@@ -273,13 +273,9 @@ export default function InterviewEvaluation() {
         description: `Perfil identificado: ${data.evaluation?.candidate_profile || 'Análise completa'}. Recomendação: ${data.evaluation?.recommendation === 'approved' ? 'Aprovado' : data.evaluation?.recommendation === 'rejected' ? 'Reprovado' : 'Revisão Manual'}`,
       });
 
+      // Recarregar dados da entrevista para mostrar os resultados
       queryClient.invalidateQueries({ queryKey: ['interview', interview_id] });
       queryClient.invalidateQueries({ queryKey: ['admin-interviews'] });
-      
-      // Redirecionar após 2 segundos
-      setTimeout(() => {
-        navigate('/admin/interviews');
-      }, 2000);
     } catch (error: any) {
       toast({
         title: "❌ Erro",
