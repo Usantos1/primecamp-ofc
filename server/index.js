@@ -2504,7 +2504,15 @@ app.post('/api/functions/analyze-candidate', authenticateToken, async (req, res)
       // value pode ser JSONB (objeto) ou string JSON
       const settings = typeof value === 'string' ? JSON.parse(value) : value;
       openaiApiKey = settings.aiApiKey;
-      openaiModel = settings.aiModel || 'gpt-4o-mini';
+      const configuredModel = settings.aiModel || 'gpt-4o-mini';
+      // Validar modelo - gpt-5 não existe, usar fallback
+      const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o1-preview', 'o3-mini'];
+      if (validModels.includes(configuredModel)) {
+        openaiModel = configuredModel;
+      } else {
+        console.warn(`[Analyze Candidate] Modelo inválido '${configuredModel}' configurado. Usando fallback 'gpt-4o-mini'.`);
+        openaiModel = 'gpt-4o-mini';
+      }
       console.log('[Analyze Candidate] Configurações carregadas:', { hasApiKey: !!openaiApiKey, model: openaiModel });
     } else {
       console.log('[Analyze Candidate] Nenhuma configuração encontrada no banco');
