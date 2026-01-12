@@ -29,7 +29,6 @@ import { useCandidateEvaluations } from '@/hooks/useCandidateEvaluations';
 import { useJobSurveyStats } from '@/hooks/useJobSurveys';
 import { DiscTestResults } from '@/components/DiscTestResults';
 import { DiscResponsesModal } from '@/components/DiscResponsesModal';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface JobSurvey {
   id: string;
