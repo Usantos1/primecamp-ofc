@@ -335,26 +335,31 @@ All colors MUST be HSL.
   /* Scrollbar personalizada para containers internos */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
+    scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1);
   }
   
   .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    border: 2px solid rgba(0, 0, 0, 0.05);
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:active {
+    background-color: rgba(0, 0, 0, 0.5);
   }
   
   /* Container de conteúdo com scroll interno */
