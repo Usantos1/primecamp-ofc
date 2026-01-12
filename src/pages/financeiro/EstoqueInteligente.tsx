@@ -113,6 +113,9 @@ export default function EstoqueInteligente() {
   return (
     <ModernLayout title="Estoque Inteligente" subtitle="Recomendações de reposição baseadas em IA">
       <div className="flex flex-col h-full overflow-hidden gap-4">
+        {/* Menu de Navegação */}
+        <FinanceiroNavMenu />
+        
         {/* Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-[3px] border-red-400 rounded-xl shadow-sm">
