@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Calendar, Save, TrendingUp, Target } from 'lucide-react';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { DollarSign, Calendar, Save, TrendingUp, Target, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { usePlanejamentoAnual, useSalvarPlanejamentoAnual } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
@@ -30,7 +31,7 @@ export default function PlanejamentoAnual() {
   const [observacoes, setObservacoes] = useState<string>('');
   
   // Carregar dados quando planejamento carregar
-  useMemo(() => {
+  useEffect(() => {
     if (planejamento) {
       setReceitaPlanejada(parseFloat(planejamento.receita_planejada || 0));
       setDespesasPlanejadas(parseFloat(planejamento.despesas_planejadas || 0));
@@ -41,6 +42,12 @@ export default function PlanejamentoAnual() {
           : planejamento.meta_mensal;
         setMetaMensal(metas || {});
       }
+    } else {
+      // Resetar quando não há planejamento
+      setReceitaPlanejada(0);
+      setDespesasPlanejadas(0);
+      setMetaMensal({});
+      setObservacoes('');
     }
   }, [planejamento]);
   
@@ -125,12 +132,12 @@ export default function PlanejamentoAnual() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Input
-                type="number"
-                value={receitaPlanejada || ''}
-                onChange={(e) => setReceitaPlanejada(parseFloat(e.target.value) || 0)}
-                className="text-2xl font-bold border-0 p-0 h-auto"
-                placeholder="0.00"
+              <CurrencyInput
+                value={receitaPlanejada}
+                onChange={setReceitaPlanejada}
+                showCurrency
+                className="text-2xl font-bold border-2 border-gray-300 focus:border-primary h-12"
+                placeholder="0,00"
               />
             </CardContent>
           </Card>
@@ -143,12 +150,12 @@ export default function PlanejamentoAnual() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Input
-                type="number"
-                value={despesasPlanejadas || ''}
-                onChange={(e) => setDespesasPlanejadas(parseFloat(e.target.value) || 0)}
-                className="text-2xl font-bold border-0 p-0 h-auto"
-                placeholder="0.00"
+              <CurrencyInput
+                value={despesasPlanejadas}
+                onChange={setDespesasPlanejadas}
+                showCurrency
+                className="text-2xl font-bold border-2 border-gray-300 focus:border-primary h-12"
+                placeholder="0,00"
               />
             </CardContent>
           </Card>
@@ -209,12 +216,12 @@ export default function PlanejamentoAnual() {
                     <TableRow key={mesNum} className="border-b-[2px] border-gray-300">
                       <TableCell className="font-semibold">{mes}</TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          value={valor || ''}
-                          onChange={(e) => updateMetaMensal(mesNum, parseFloat(e.target.value) || 0)}
-                          className="text-right border-[2px] border-gray-300 w-32 ml-auto"
-                          placeholder="0.00"
+                        <CurrencyInput
+                          value={valor}
+                          onChange={(val) => updateMetaMensal(mesNum, val)}
+                          showCurrency
+                          className="text-right border-[2px] border-gray-300 w-40 ml-auto h-9"
+                          placeholder="0,00"
                         />
                       </TableCell>
                       <TableCell className="text-right font-semibold">

@@ -13,7 +13,7 @@ export default function FinanceiroTransacoesPage() {
 
   return (
     <ModernLayout title="Transações" subtitle="Transações financeiras">
-      <div className="flex flex-col h-full overflow-hidden gap-4">
+      <div className="flex flex-col gap-4">
         <FinanceiroNavMenu />
         
         {/* Filtros de Data */}
