@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { 
   Home, Lightbulb, Warehouse, Users, Package, 
-  TrendingUp, FileText, Target, Sparkles
+  TrendingUp, FileText, Target, Sparkles,
+  DollarSign, Wallet, BarChart3
 } from 'lucide-react';
 
 const menuItems = [
@@ -17,6 +18,10 @@ const menuItems = [
   { path: '/financeiro/dre', label: 'DRE', icon: FileText },
   { path: '/financeiro/planejamento-anual', label: 'Planejamento', icon: Target },
   { path: '/financeiro/precificacao', label: 'Precificação', icon: Sparkles },
+  { path: '/financeiro/caixa', label: 'Caixa', icon: DollarSign },
+  { path: '/financeiro/contas', label: 'Contas', icon: FileText },
+  { path: '/financeiro/transacoes', label: 'Transações', icon: TrendingUp },
+  { path: '/financeiro/relatorios', label: 'Relatórios', icon: BarChart3 },
 ];
 
 export function FinanceiroNavMenu() {
