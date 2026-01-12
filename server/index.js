@@ -172,14 +172,32 @@ const authenticateToken = async (req, res, next) => {
     
     // CRÍTICO: Buscar company_id do banco para garantir isolamento de dados
     // Mesmo que o token tenha company_id, buscar do banco para garantir dados atualizados
-    const userResult = await pool.query(
-      'SELECT company_id FROM users WHERE id = $1',
-      [decoded.id]
-    );
-    
-    if (userResult.rows.length > 0) {
-      req.companyId = userResult.rows[0].company_id;
-      req.user.company_id = userResult.rows[0].company_id;
+    // Se a coluna company_id não existir, usar o valor do token ou null
+    try {
+      const userResult = await pool.query(
+        'SELECT company_id FROM users WHERE id = $1',
+        [decoded.id]
+      );
+      
+      if (userResult.rows.length > 0 && userResult.rows[0].company_id) {
+        req.companyId = userResult.rows[0].company_id;
+        req.user.company_id = userResult.rows[0].company_id;
+      } else if (decoded.company_id) {
+        // Se não encontrar no banco mas tem no token, usar do token
+        req.companyId = decoded.company_id;
+        req.user.company_id = decoded.company_id;
+      }
+    } catch (dbError) {
+      // Se a coluna company_id não existir, usar do token ou continuar sem
+      if (dbError.message && dbError.message.includes('company_id')) {
+        console.warn('[Auth] Coluna company_id não existe na tabela users, usando valor do token');
+        if (decoded.company_id) {
+          req.companyId = decoded.company_id;
+          req.user.company_id = decoded.company_id;
+        }
+      } else {
+        throw dbError;
+      }
     }
     
     next();
