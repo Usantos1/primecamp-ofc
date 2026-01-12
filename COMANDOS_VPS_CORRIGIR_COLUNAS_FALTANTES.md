@@ -14,6 +14,7 @@ Execute no VPS:
 cd /root/primecamp-ofc
 git pull origin main
 PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -U postgres -d postgres -f sql/ADICIONAR_COLUNAS_FALTANTES.sql
+PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -U postgres -d postgres -f sql/CORRIGIR_COLUNAS_VENDAS_SNAPSHOT_E_IA.sql
 ```
 
 ## O que o Script Faz
@@ -48,5 +49,5 @@ Após executar o script:
 ## Comando Completo (Copiar e Colar)
 
 ```bash
-cd /root/primecamp-ofc && git pull origin main && PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -U postgres -d postgres -f sql/ADICIONAR_COLUNAS_FALTANTES.sql && pm2 restart primecamp-api && echo "✅ Colunas e tabelas criadas! Verifique os logs: pm2 logs primecamp-api --lines 50"
+cd /root/primecamp-ofc && git pull origin main && PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -U postgres -d postgres -f sql/ADICIONAR_COLUNAS_FALTANTES.sql && PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -U postgres -d postgres -f sql/CORRIGIR_COLUNAS_VENDAS_SNAPSHOT_E_IA.sql && pm2 restart primecamp-api && echo "✅ Colunas e tabelas criadas! Verifique os logs: pm2 logs primecamp-api --lines 50"
 ```
