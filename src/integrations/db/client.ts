@@ -397,25 +397,11 @@ class DatabaseClient {
     }
   }
 
-  async delete(): Promise<{ data: any | null; error: any | null }> {
-    try {
-      const response = await fetch(`${API_URL}/delete/${this.tableName}`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({ where: this.options.where }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erro ao deletar' }));
-        return { data: null, error };
-      }
-
-      const result = await response.json();
-      return { data: result.data || result, error: null };
-    } catch (error: any) {
-      console.error(`[DB] Erro ao deletar de ${this.tableName}:`, error);
-      return { data: null, error: { message: error.message } };
-    }
+  delete(): DeleteBuilder {
+    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
+      ? import.meta.env.VITE_API_URL 
+      : 'https://api.primecamp.cloud/api';
+    return new DeleteBuilder(this.tableName, this.getHeaders.bind(this));
   }
 }
 
