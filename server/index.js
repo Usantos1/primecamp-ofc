@@ -3077,6 +3077,239 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
   }
 });
 
+// POST /api/functions/evaluate-interview-transcription - Avaliar transcrição de entrevista com IA
+app.post('/api/functions/evaluate-interview-transcription', authenticateToken, async (req, res) => {
+  try {
+    // Pode vir como body.body (se chamado com { body: {...} }) ou diretamente no req.body
+    const requestData = req.body.body || req.body;
+    const { interview_id, transcription, interview_type, job_response_id, survey_id, include_profile_analysis } = requestData;
+
+    if (!interview_id || !transcription || !job_response_id || !survey_id) {
+      return res.status(400).json({ error: 'interview_id, transcription, job_response_id e survey_id são obrigatórios' });
+    }
+
+    // Buscar API key da OpenAI do banco de dados
+    const tokenResult = await pool.query(`
+      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
+    `);
+
+    let openaiApiKey = null;
+    let openaiModel = 'gpt-4o-mini';
+    if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
+      const value = tokenResult.rows[0].value;
+      const settings = typeof value === 'string' ? JSON.parse(value) : value;
+      openaiApiKey = settings.aiApiKey;
+      const configuredModel = settings.aiModel || 'gpt-4o-mini';
+      const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o1-preview', 'o3-mini'];
+      if (validModels.includes(configuredModel)) {
+        openaiModel = configuredModel;
+      } else {
+        console.warn(`[Evaluate Interview] Modelo inválido '${configuredModel}' configurado. Usando fallback 'gpt-4o-mini'.`);
+        openaiModel = 'gpt-4o-mini';
+      }
+      console.log('[Evaluate Interview] Configurações carregadas:', { hasApiKey: !!openaiApiKey, model: openaiModel });
+    }
+
+    if (!openaiApiKey) {
+      return res.status(400).json({ 
+        error: 'API Key da OpenAI não configurada',
+        message: 'Configure a API Key em Integrações > OpenAI'
+      });
+    }
+
+    // Buscar dados da entrevista, candidato e vaga (com filtro de company_id para segurança)
+    const interviewResult = await pool.query(
+      'SELECT * FROM job_interviews WHERE id = $1 AND company_id = $2',
+      [interview_id, req.companyId || '00000000-0000-0000-0000-000000000001']
+    );
+
+    const jobResponseResult = await pool.query(
+      'SELECT * FROM job_responses WHERE id = $1 AND company_id = $2',
+      [job_response_id, req.companyId || '00000000-0000-0000-0000-000000000001']
+    );
+
+    const jobSurveyResult = await pool.query(
+      'SELECT * FROM job_surveys WHERE id = $1 AND company_id = $2',
+      [survey_id, req.companyId || '00000000-0000-0000-0000-000000000001']
+    );
+
+    if (interviewResult.rows.length === 0 || jobResponseResult.rows.length === 0 || jobSurveyResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Entrevista, candidato ou vaga não encontrados' });
+    }
+
+    const interview = interviewResult.rows[0];
+    const candidate = jobResponseResult.rows[0];
+    const jobSurvey = jobSurveyResult.rows[0];
+
+    // Buscar análise de IA do candidato (se disponível)
+    const aiAnalysisResult = await pool.query(
+      'SELECT * FROM job_candidate_ai_analysis WHERE job_response_id = $1 AND company_id = $2 ORDER BY created_at DESC LIMIT 1',
+      [job_response_id, req.companyId || '00000000-0000-0000-0000-000000000001']
+    );
+    const aiAnalysis = aiAnalysisResult.rows.length > 0 ? aiAnalysisResult.rows[0].analysis_data : null;
+
+    // Construir prompt para avaliação
+    const analysisText = aiAnalysis ? `
+Análise de IA do candidato:
+- Score Geral: ${aiAnalysis.score_geral || 'N/A'}/100
+- Recomendação: ${aiAnalysis.recomendacao || 'N/A'}
+- Justificativa: ${aiAnalysis.justificativa || 'N/A'}
+- Perfil Comportamental: ${aiAnalysis.perfil_comportamental || 'N/A'}
+- Pontos Fortes: ${Array.isArray(aiAnalysis.pontos_fortes) ? aiAnalysis.pontos_fortes.join(', ') : 'N/A'}
+- Pontos Fracos: ${Array.isArray(aiAnalysis.pontos_fracos) ? aiAnalysis.pontos_fracos.join(', ') : 'N/A'}
+` : 'Análise de IA não disponível.';
+
+    const profileAnalysisInstruction = include_profile_analysis 
+      ? 'Além disso, identifique o perfil comportamental do candidato (DISC: Dominante, Influente, Estável ou Consciente).'
+      : '';
+
+    const prompt = `Você é um especialista em recrutamento e seleção. Avalie a transcrição da entrevista abaixo e forneça uma análise completa.
+
+DADOS DA VAGA:
+Título: ${jobSurvey.position_title || jobSurvey.title}
+Descrição: ${jobSurvey.description || 'Não informado'}
+Requisitos: ${Array.isArray(jobSurvey.requirements) ? jobSurvey.requirements.join(', ') : jobSurvey.requirements || 'Não informado'}
+
+DADOS DO CANDIDATO:
+Nome: ${candidate.name || 'Não informado'}
+Idade: ${candidate.age || 'Não informado'}
+Email: ${candidate.email || 'Não informado'}
+
+${analysisText}
+
+TRANSCRIÇÃO DA ENTREVISTA:
+${transcription}
+
+TIPO DE ENTREVISTA: ${interview_type === 'online' ? 'Online (remota)' : 'Presencial'}
+
+INSTRUÇÕES:
+Avalie a transcrição da entrevista considerando:
+- Adequação do candidato à vaga
+- Qualidade das respostas
+- Clareza de comunicação
+- Experiência e conhecimento demonstrados
+- Potencial de contribuição para a empresa
+${profileAnalysisInstruction}
+
+Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguinte estrutura:
+{
+  "score": 0-100,
+  "recommendation": "approved" ou "rejected" ou "review",
+  "justification": "Justificativa detalhada da avaliação",
+  "strengths": ["Ponto forte 1", "Ponto forte 2"],
+  "weaknesses": ["Ponto fraco 1", "Ponto fraco 2"],
+  "candidate_profile": "DISC profile (D, I, S ou C) - apenas se include_profile_analysis for true",
+  "summary": "Resumo executivo da avaliação"
+}`;
+
+    console.log('[Evaluate Interview] Chamando OpenAI API com modelo:', openaiModel);
+
+    const modelsRequiringTemp1 = ['o1', 'o1-mini', 'o1-preview', 'o3', 'o3-mini', 'gpt-5'];
+    const requiresTemp1 = modelsRequiringTemp1.some(m => openaiModel.includes(m));
+
+    const requestBody = {
+      model: openaiModel,
+      messages: [
+        {
+          role: 'system',
+          content: 'Você é um especialista em recrutamento e seleção. Avalie entrevistas e forneça análises profissionais em formato JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: requiresTemp1 ? 1 : 0.7
+    };
+
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      let errorData = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { message: errorText };
+      }
+      console.error('[OpenAI] Erro na API (evaluate-interview):', openaiResponse.status, errorData);
+      return res.status(500).json({ 
+        error: 'Erro ao chamar API da OpenAI',
+        details: errorData.error?.message || errorData.message || 'Erro desconhecido',
+        status: openaiResponse.status
+      });
+    }
+
+    const openaiData = await openaiResponse.json();
+    const rawResponse = openaiData.choices[0]?.message?.content || '';
+
+    if (!rawResponse || rawResponse.trim() === '') {
+      console.error('[OpenAI] Resposta vazia da API (evaluate-interview). Modelo:', openaiModel);
+      return res.status(500).json({ 
+        error: 'A IA não retornou dados',
+        details: `O modelo ${openaiModel} retornou resposta vazia. Verifique se o modelo está correto.`
+      });
+    }
+
+    let evaluationData = {};
+    try {
+      const jsonText = rawResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      evaluationData = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('[OpenAI] Erro ao parsear JSON (evaluate-interview):', parseError, 'Raw:', rawResponse.substring(0, 500));
+      return res.status(500).json({ 
+        error: 'Erro ao processar resposta da IA',
+        details: `A IA não retornou um formato JSON válido. Modelo: ${openaiModel}.`
+      });
+    }
+
+    // Atualizar entrevista no banco com a avaliação
+    await pool.query(
+      `UPDATE job_interviews 
+       SET transcription = $1, 
+           ai_evaluation = $2, 
+           ai_recommendation = $3, 
+           ai_score = $4,
+           status = 'completed',
+           completed_at = NOW()
+       WHERE id = $5 AND company_id = $6`,
+      [
+        transcription,
+        evaluationData,
+        evaluationData.recommendation || 'review',
+        evaluationData.score || 0,
+        interview_id,
+        req.companyId || '00000000-0000-0000-0000-000000000001'
+      ]
+    );
+
+    console.log('[Evaluate Interview] Avaliação concluída:', evaluationData.recommendation);
+
+    res.json({
+      evaluation: {
+        score: evaluationData.score || 0,
+        recommendation: evaluationData.recommendation || 'review',
+        justification: evaluationData.justification || '',
+        strengths: evaluationData.strengths || [],
+        weaknesses: evaluationData.weaknesses || [],
+        candidate_profile: evaluationData.candidate_profile || null,
+        summary: evaluationData.summary || ''
+      }
+    });
+  } catch (error) {
+    console.error('[Evaluate Interview] Erro:', error);
+    res.status(500).json({ error: error.message || 'Erro ao avaliar transcrição da entrevista' });
+  }
+});
+
 // POST /api/functions/import-produtos - Importar produtos em lote
 app.post('/api/functions/import-produtos', authenticateToken, async (req, res) => {
   try {
