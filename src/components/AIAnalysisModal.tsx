@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, XCircle, AlertCircle, TrendingUp, Target, User, Brain, Zap } from "lucide-react";
+import { parseJsonObject } from "@/utils/formatters";
 
 interface AIAnalysisModalProps {
   isOpen: boolean;
@@ -14,7 +15,8 @@ interface AIAnalysisModalProps {
 export const AIAnalysisModal = ({ isOpen, onClose, analysis, candidateName }: AIAnalysisModalProps) => {
   if (!analysis || !analysis.analysis_data) return null;
 
-  const data = analysis.analysis_data;
+  // Garantir que analysis_data seja parseado corretamente (pode vir como string do JSONB)
+  const data = parseJsonObject(analysis.analysis_data, {});
 
   const getRecommendationColor = (rec: string) => {
     switch (rec) {
