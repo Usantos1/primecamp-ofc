@@ -226,7 +226,7 @@ export function useDashboardData() {
         // Vendas do dia (buscar total para mostrar faturamento)
         const { data: vendas } = await from('sales')
           .select('id, total, total_pago')
-          .eq('status', 'paid')
+          .in('status', ['paid', 'partial'])
           .gte('created_at', inicioDia.toISOString())
           .lte('created_at', fimDia.toISOString())
           .execute();
