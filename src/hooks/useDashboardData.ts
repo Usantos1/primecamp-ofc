@@ -75,18 +75,18 @@ export function useDashboardData() {
       const inicioMes = startOfMonth(hoje);
       const fimMes = endOfMonth(hoje);
 
-      // Vendas do dia
+      // Vendas do dia - usar status 'paid' ou 'pago' dependendo do que existe no banco
       const { data: vendasDia } = await from('sales')
-        .select('total, total_pago')
-        .eq('status', 'paid')
+        .select('total, total_pago, status')
+        .in('status', ['paid', 'pago', 'partial'])
         .gte('created_at', inicioDia.toISOString())
         .lte('created_at', fimDia.toISOString())
         .execute();
 
       // Vendas do mês
       const { data: vendasMes } = await from('sales')
-        .select('total, total_pago')
-        .eq('status', 'paid')
+        .select('total, total_pago, status')
+        .in('status', ['paid', 'pago', 'partial'])
         .gte('created_at', inicioMes.toISOString())
         .lte('created_at', fimMes.toISOString())
         .execute();
