@@ -1731,13 +1731,13 @@ app.post('/api/update/:table', async (req, res) => {
       }
     }
 
-    // Garantir que finalWhereClause seja válido ou vazio
-    const wherePart = finalWhereClause ? ` ${finalWhereClause}` : '';
-    const sql = `
-      UPDATE ${tableName}
-      SET ${setClause}${wherePart}
-      RETURNING *
-    `;
+    // Garantir que finalWhereClause seja válido - buildWhereClause retorna "WHERE ..." ou ""
+    // Se estiver vazio e não houver filtro de company_id, não adicionar WHERE
+    let sql = `UPDATE ${tableName} SET ${setClause}`;
+    if (finalWhereClause) {
+      sql += ` ${finalWhereClause}`;
+    }
+    sql += ` RETURNING *`;
 
     console.log(`[Update] ${tableName}:`, keys, 'WHERE:', finalWhereClause, 'Params:', params.length);
     const result = await pool.query(sql, params);
