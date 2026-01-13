@@ -36,6 +36,7 @@ router.get('/', async (req, res) => {
     const hasCompanyId = await columnExists('payment_methods', 'company_id');
     const hasName = await columnExists('payment_methods', 'name');
     const hasCode = await columnExists('payment_methods', 'code');
+    const hasDescription = await columnExists('payment_methods', 'description');
     const hasIsActive = await columnExists('payment_methods', 'is_active');
     const hasAcceptsInstallments = await columnExists('payment_methods', 'accepts_installments');
     const hasSortOrder = await columnExists('payment_methods', 'sort_order');
@@ -43,12 +44,13 @@ router.get('/', async (req, res) => {
     const nameCol = hasName ? 'name' : 'nome';
     const codeCol = hasCode ? 'code' : 'codigo';
     const activeCol = hasIsActive ? 'is_active' : 'ativo';
+    const descriptionCol = hasDescription ? 'pm.description' : 'NULL as description';
     
     let query = `
       SELECT pm.id, 
              pm.${nameCol} as name,
              pm.${codeCol} as code,
-             pm.description,
+             ${descriptionCol},
              COALESCE(pm.${activeCol}, true) as is_active,
              COALESCE(pm.${hasAcceptsInstallments ? 'accepts_installments' : 'permite_parcelamento'}, false) as accepts_installments,
              COALESCE(pm.${hasAcceptsInstallments ? 'max_installments' : 'max_parcelas'}, 1) as max_installments,
@@ -93,6 +95,7 @@ router.get('/:id', async (req, res) => {
     
     const hasName = await columnExists('payment_methods', 'name');
     const hasCode = await columnExists('payment_methods', 'code');
+    const hasDescription = await columnExists('payment_methods', 'description');
     const hasIsActive = await columnExists('payment_methods', 'is_active');
     const hasAcceptsInstallments = await columnExists('payment_methods', 'accepts_installments');
     const hasSortOrder = await columnExists('payment_methods', 'sort_order');
@@ -100,12 +103,13 @@ router.get('/:id', async (req, res) => {
     const nameCol = hasName ? 'name' : 'nome';
     const codeCol = hasCode ? 'code' : 'codigo';
     const activeCol = hasIsActive ? 'is_active' : 'ativo';
+    const descriptionCol = hasDescription ? 'pm.description' : 'NULL as description';
     
     const methodResult = await pool.query(`
       SELECT pm.id, 
              pm.${nameCol} as name,
              pm.${codeCol} as code,
-             pm.description,
+             ${descriptionCol},
              COALESCE(pm.${activeCol}, true) as is_active,
              COALESCE(pm.${hasAcceptsInstallments ? 'accepts_installments' : 'permite_parcelamento'}, false) as accepts_installments,
              COALESCE(pm.${hasAcceptsInstallments ? 'max_installments' : 'max_parcelas'}, 1) as max_installments,
