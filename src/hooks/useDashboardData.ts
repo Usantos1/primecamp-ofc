@@ -86,27 +86,52 @@ export function useDashboardData() {
       if (errorDia) {
         console.error('[Dashboard] Erro ao buscar vendas do dia:', errorDia);
       } else {
-        console.log('[Dashboard] Vendas do dia encontradas:', vendasDia?.length || 0, 'Período:', inicioDia.toISOString(), 'até', fimDia.toISOString(), vendasDia);
+        console.log('[Dashboard] Vendas do dia encontradas:', vendasDia?.length || 0, 'Período:', inicioDia.toISOString(), 'até', fimDia.toISOString());
       }
 
-      // Vendas do mês
-      const { data: vendasMes, error: errorMes } = await from('sales')
+      // Vendas do mês - se não houver vendas no mês atual, buscar dos últimos 30 dias como fallback
+      let vendasMes = null;
+      let errorMes = null;
+      
+      const { data: vendasMesAtual, error: errorMesAtual } = await from('sales')
         .select('total, total_pago, status, created_at, company_id')
         .in('status', ['paid', 'partial'])
         .gte('created_at', inicioMes.toISOString())
         .lte('created_at', fimMes.toISOString())
         .execute();
 
-      if (errorMes) {
-        console.error('[Dashboard] Erro ao buscar vendas do mês:', errorMes);
+      if (errorMesAtual) {
+        console.error('[Dashboard] Erro ao buscar vendas do mês:', errorMesAtual);
+        errorMes = errorMesAtual;
       } else {
-        console.log('[Dashboard] Vendas do mês encontradas:', vendasMes?.length || 0, 'Período:', inicioMes.toISOString(), 'até', fimMes.toISOString(), vendasMes);
+        console.log('[Dashboard] Vendas do mês atual encontradas:', vendasMesAtual?.length || 0, 'Período:', inicioMes.toISOString(), 'até', fimMes.toISOString());
+        
+        // Se não há vendas no mês atual, buscar dos últimos 30 dias
+        if (!vendasMesAtual || vendasMesAtual.length === 0) {
+          const inicio30Dias = startOfDay(subDays(hoje, 30));
+          const { data: vendas30Dias, error: error30Dias } = await from('sales')
+            .select('total, total_pago, status, created_at, company_id')
+            .in('status', ['paid', 'partial'])
+            .gte('created_at', inicio30Dias.toISOString())
+            .lte('created_at', fimMes.toISOString())
+            .execute();
+          
+          if (error30Dias) {
+            console.error('[Dashboard] Erro ao buscar vendas dos últimos 30 dias:', error30Dias);
+            vendasMes = vendasMesAtual; // Usar resultado vazio
+          } else {
+            console.log('[Dashboard] Vendas dos últimos 30 dias encontradas:', vendas30Dias?.length || 0, 'Período:', inicio30Dias.toISOString(), 'até', fimMes.toISOString());
+            vendasMes = vendas30Dias;
+          }
+        } else {
+          vendasMes = vendasMesAtual;
+        }
       }
 
       const faturamentoDia = vendasDia?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
       const faturamentoMes = vendasMes?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
       
-      console.log('[Dashboard] Faturamento calculado - Dia:', faturamentoDia, 'Mês:', faturamentoMes);
+      console.log('[Dashboard] Faturamento calculado - Dia:', faturamentoDia, 'Mês/30d:', faturamentoMes);
       const vendasHoje = vendasDia?.length || 0;
       const vendasMesCount = vendasMes?.length || 0;
       // Ticket médio baseado no mês (mais representativo)
