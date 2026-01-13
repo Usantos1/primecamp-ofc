@@ -1740,6 +1740,8 @@ app.post('/api/update/:table', async (req, res) => {
     sql += ` RETURNING *`;
 
     console.log(`[Update] ${tableName}:`, keys, 'WHERE:', finalWhereClause, 'Params:', params.length);
+    console.log(`[Update] SQL completo:`, sql);
+    console.log(`[Update] Parâmetros:`, params);
     const result = await pool.query(sql, params);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
