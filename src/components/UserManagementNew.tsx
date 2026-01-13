@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Shield, User, Trash2, Edit, Search, Filter, Lock, Unlock, Mail, Phone, Building2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -903,6 +902,29 @@ export const UserManagementNew = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit_role">Função *</Label>
+                <Select 
+                  value={editFormData.role} 
+                  onValueChange={(value: UserRoleType) => setEditFormData({ ...editFormData, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a função" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {editFormData.role && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {USER_ROLE_DESCRIPTIONS[editFormData.role as UserRoleType]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit_password">Nova Senha</Label>
                 <Input
                   id="edit_password"
@@ -915,9 +937,6 @@ export const UserManagementNew = () => {
                   Deixe em branco se não quiser alterar a senha
                 </p>
               </div>
-            </TabsContent>
-
-            <TabsContent value="acesso" className="space-y-4">
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-0.5">
                   <Label htmlFor="edit_approved">Status do Usuário</Label>
@@ -931,8 +950,7 @@ export const UserManagementNew = () => {
                   onCheckedChange={(checked) => setEditFormData({ ...editFormData, approved: checked })}
                 />
               </div>
-            </TabsContent>
-          </Tabs>
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => {
               setEditDialogOpen(false);
