@@ -157,7 +157,7 @@ export default function Admin() {
       title: "Formas de Pagamento",
       description: "Configure meios de pagamento e taxas",
       icon: CreditCard,
-      path: "/admin/formas-pagamento",
+      path: "/admin/configuracoes/pagamentos",
       color: "text-emerald-600"
     },
     {
