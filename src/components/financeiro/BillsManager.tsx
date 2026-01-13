@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Trash2, Check, Search, Filter } from 'lucide-react';
-// TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
-// import { useBillsToPay, useFinancialCategories } from '@/hooks/useFinanceiro';
-import { BillToPayFormData, BILL_STATUS_LABELS, EXPENSE_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod } from '@/types/financial';
+import { BillToPayFormData, BILL_STATUS_LABELS, EXPENSE_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, FinancialCategory, BillToPay } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -26,6 +28,9 @@ interface BillsManagerProps {
 }
 
 export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,14 +42,192 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
 
-  // TODO: Implementar hooks do sistema financeiro antigo
-  const categories: any[] = [];
-  const bills: any[] = [];
-  const isLoading = false;
-  const createBill = { mutateAsync: async () => {}, isPending: false };
-  const updateBill = { mutateAsync: async () => {}, isPending: false };
-  const payBill = { mutateAsync: async () => {}, isPending: false };
-  const deleteBill = { mutateAsync: async () => {} };
+  // Buscar categorias financeiras (apenas tipo 'saida')
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['financial-categories', 'saida'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await from('financial_categories')
+          .select('*')
+          .eq('type', 'saida')
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+          .execute();
+        if (error) throw error;
+        return (data || []) as FinancialCategory[];
+      } catch (err) {
+        console.error('Erro ao buscar categorias:', err);
+        return [];
+      }
+    },
+  });
+
+  // Buscar contas a pagar
+  const { data: bills = [], isLoading: billsLoading } = useQuery({
+    queryKey: ['bills-to-pay', startDate, endDate],
+    queryFn: async () => {
+      try {
+        let q = from('bills_to_pay')
+          .select('*')
+          .order('due_date', { ascending: false });
+
+        if (startDate && endDate && startDate !== '' && endDate !== '') {
+          q = q.gte('due_date', startDate).lte('due_date', endDate);
+        }
+
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        return (data || []) as BillToPay[];
+      } catch (err) {
+        console.error('Erro ao buscar contas a pagar:', err);
+        return [];
+      }
+    },
+  });
+
+  const isLoading = categoriesLoading || billsLoading;
+
+  // Mutation: Criar conta
+  const createBill = useMutation({
+    mutationFn: async (data: BillToPayFormData & { recurring_start?: string; recurring_end?: string }) => {
+      const { recurring_start, recurring_end, recurring, recurring_day, ...billData } = data;
+      
+      // Se for recorrente, criar múltiplas contas
+      if (recurring && recurring_start && recurring_end && recurring_day) {
+        const start = new Date(recurring_start + '-01');
+        const end = new Date(recurring_end + '-01');
+        const billsToCreate = [];
+        
+        let current = new Date(start);
+        while (current <= end) {
+          const year = current.getFullYear();
+          const month = current.getMonth() + 1;
+          const day = Math.min(recurring_day, new Date(year, month, 0).getDate());
+          const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          
+          billsToCreate.push({
+            ...billData,
+            due_date: dueDate,
+            recurring: true,
+            recurring_day: recurring_day,
+            created_by: user?.id,
+          });
+          
+          current.setMonth(current.getMonth() + 1);
+        }
+        
+        const { data, error } = await from('bills_to_pay').insert(billsToCreate).select().execute();
+        if (error) throw error;
+        return data;
+      } else {
+        // Criar conta única
+        const { data, error } = await from('bills_to_pay')
+          .insert({
+            ...billData,
+            created_by: user?.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      toast({
+        title: 'Sucesso!',
+        description: 'Conta cadastrada com sucesso.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao cadastrar conta.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation: Atualizar conta
+  const updateBill = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<BillToPayFormData> }) => {
+      const { error } = await from('bills_to_pay')
+        .update(data)
+        .eq('id', id)
+        .execute();
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      toast({
+        title: 'Sucesso!',
+        description: 'Conta atualizada com sucesso.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao atualizar conta.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation: Pagar conta
+  const payBill = useMutation({
+    mutationFn: async ({ id, payment_method }: { id: string; payment_method: PaymentMethod }) => {
+      const { error } = await from('bills_to_pay')
+        .update({
+          status: 'pago',
+          payment_date: new Date().toISOString().split('T')[0],
+          payment_method: payment_method,
+          paid_by: user?.id,
+        })
+        .eq('id', id)
+        .execute();
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      queryClient.invalidateQueries({ queryKey: ['paid-bills-transactions'] });
+      toast({
+        title: 'Sucesso!',
+        description: 'Pagamento registrado com sucesso.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao registrar pagamento.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutation: Deletar conta
+  const deleteBill = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await from('bills_to_pay')
+        .delete()
+        .eq('id', id)
+        .execute();
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      toast({
+        title: 'Sucesso!',
+        description: 'Conta excluída com sucesso.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao excluir conta.',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const [formData, setFormData] = useState<BillToPayFormData & { recurring_start?: string; recurring_end?: string }>({
     description: '',
@@ -59,10 +242,13 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     recurring_end: new Date().toISOString().slice(0, 7),
   });
 
-  const filteredBills = bills.filter(bill =>
-    bill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bill.supplier?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBills = bills.filter(bill => {
+    const matchesSearch = bill.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bill.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || bill.status === statusFilter;
+    const matchesType = typeFilter === 'all' || bill.expense_type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
   // Helper para formatar data para input type="date"
   const formatDateForInput = (date: string | null | undefined): string => {
@@ -140,8 +326,6 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     if (new Date(dueDate) < new Date()) return 'bg-destructive/10 text-destructive border-destructive/30';
     return 'bg-warning/10 text-warning border-warning/30';
   };
-
-  const expenseCategories = categories.filter(c => c.type === 'saida');
 
   if (isLoading) {
     return <LoadingSkeleton type="table" count={5} />;
@@ -326,20 +510,20 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
                   onValueChange={(value) => setFormData({ ...formData, category_id: value === 'none' ? '' : value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={expenseCategories.length === 0 ? "Nenhuma categoria disponível" : "Selecione"} />
+                    <SelectValue placeholder={categories.length === 0 ? "Nenhuma categoria disponível" : "Selecione"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
-                    {expenseCategories.length === 0 ? (
+                    {categoriesLoading ? (
                       <SelectItem value="loading" disabled>Carregando categorias...</SelectItem>
                     ) : (
-                      expenseCategories.map((cat) => (
+                      categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
-                {expenseCategories.length === 0 && (
+                {categories.length === 0 && !categoriesLoading && (
                   <p className="text-xs text-muted-foreground">
                     Categorias serão carregadas automaticamente após aplicar as migrations do banco de dados.
                   </p>
