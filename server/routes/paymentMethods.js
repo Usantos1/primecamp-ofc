@@ -116,7 +116,7 @@ router.get('/', async (req, res) => {
       // Se ainda assim der erro na query (por algum motivo a tabela foi referenciada), 
       // tentar novamente sem a subquery de fees_count
       if (queryError.message && queryError.message.includes('payment_fees')) {
-        query = query.replace(/,\s*\$\{feesCountExpr\}\s*as fees_count/, ', 0 as fees_count');
+        query = query.replace(/,\s*\(SELECT COUNT\(\*\) FROM payment_fees[^)]+\)\s*as fees_count/, ', 0 as fees_count');
         result = await pool.query(query, params);
       } else {
         throw queryError;
