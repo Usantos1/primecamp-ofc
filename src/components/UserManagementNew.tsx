@@ -396,9 +396,10 @@ export const UserManagementNew = () => {
       fetchUsers();
     } catch (error: any) {
       console.error('Erro ao atualizar usuário:', error);
+      console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
       toast({
         title: "Erro",
-        description: error.message || "Erro ao atualizar usuário",
+        description: error?.message || error?.error?.message || "Erro ao atualizar usuário",
         variant: "destructive"
       });
     } finally {
