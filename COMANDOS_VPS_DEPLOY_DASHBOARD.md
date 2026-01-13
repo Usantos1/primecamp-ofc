@@ -88,16 +88,13 @@ sudo journalctl -u <nome-do-servico> -f
 
 ---
 
-## Comando Único (Após ajustar NGINX_ROOT):
-
-**⚠️ AJUSTE O CAMINHO DO NGINX_ROOT ANTES DE EXECUTAR**
+## Comando Único:
 
 ```bash
-cd /home/primecamp && \
+cd /root/primecamp-ofc && \
 git pull origin main && \
-npm install && \
 npm run build && \
-NGINX_ROOT="/var/www/html" && \
+NGINX_ROOT="/var/www/primecamp.cloud" && \
 sudo rm -rf "$NGINX_ROOT"/* && \
 sudo rm -rf /var/cache/nginx/* 2>/dev/null || true && \
 sudo rm -rf /var/lib/nginx/cache/* 2>/dev/null || true && \
