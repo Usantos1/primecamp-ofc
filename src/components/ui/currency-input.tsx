@@ -64,24 +64,22 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
         return;
       }
       
-      // Remover tudo exceto números e vírgula
-      inputValue = inputValue.replace(/[^\d,]/g, '');
+      // Remover tudo exceto números (não permitir vírgula durante digitação)
+      const numbersOnly = inputValue.replace(/[^\d]/g, '');
       
-      // Garantir apenas uma vírgula
-      const parts = inputValue.split(',');
-      if (parts.length > 2) {
-        inputValue = parts[0] + ',' + parts.slice(1).join('');
+      if (numbersOnly === '') {
+        setDisplayValue('');
+        onChange(0);
+        return;
       }
       
-      // Limitar a 2 casas decimais
-      if (parts.length === 2 && parts[1].length > 2) {
-        inputValue = parts[0] + ',' + parts[1].substring(0, 2);
-      }
+      // Converter para número (dividir por 100 para ter centavos)
+      const numericValue = parseFloat(numbersOnly) / 100;
       
-      setDisplayValue(inputValue);
+      // Formatar com separadores de milhar durante a digitação
+      const formatted = formatCurrency(numericValue);
+      setDisplayValue(formatted);
       
-      // Converter para número
-      const numericValue = parseCurrency(inputValue);
       onChange(numericValue);
     };
 
