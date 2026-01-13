@@ -4,7 +4,17 @@ echo "🔍 VERIFICANDO INDEX.HTML E ARQUIVO JS NO SERVIDOR"
 echo "==================================================="
 echo ""
 
-NGINX_ROOT="/var/www/primecamp.cloud"
+# Detectar diretório do Nginx automaticamente
+NGINX_ROOT=$(sudo grep -A 5 "server_name primecamp.cloud" /etc/nginx/sites-available/primecamp.cloud 2>/dev/null | grep "root" | awk '{print $2}' | sed 's/;//' || echo "")
+if [ -z "$NGINX_ROOT" ]; then
+    NGINX_ROOT=$(sudo grep -A 5 "server_name primecamp.cloud" /etc/nginx/sites-enabled/primecamp.cloud* 2>/dev/null | grep "root" | head -1 | awk '{print $2}' | sed 's/;//' || echo "")
+fi
+if [ -z "$NGINX_ROOT" ]; then
+    NGINX_ROOT="/var/www/primecamp.cloud"
+fi
+
+echo "📁 Diretório root do Nginx: $NGINX_ROOT"
+echo ""
 
 echo "1️⃣ Verificando qual JS o index.html referencia..."
 echo ""
