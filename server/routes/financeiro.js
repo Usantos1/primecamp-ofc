@@ -799,31 +799,84 @@ router.post('/planejamento/:ano', async (req, res) => {
     const { receita_planejada, meta_mensal, despesas_planejadas, observacoes } = req.body;
     const userId = req.user?.id;
     
-    const query = `
-      INSERT INTO public.planejamento_anual (ano, receita_planejada, meta_mensal, despesas_planejadas, observacoes, criado_por)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (ano) 
-      DO UPDATE SET
-        receita_planejada = EXCLUDED.receita_planejada,
-        meta_mensal = EXCLUDED.meta_mensal,
-        despesas_planejadas = EXCLUDED.despesas_planejadas,
-        observacoes = EXCLUDED.observacoes,
-        updated_at = NOW()
-      RETURNING *
-    `;
+    // Verificar se a tabela existe e quais colunas tem
+    const tableCheck = await pool.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'planejamento_anual'
+      ORDER BY ordinal_position
+    `);
     
-    const result = await pool.query(query, [
-      parseInt(ano),
-      receita_planejada || 0,
-      meta_mensal ? JSON.stringify(meta_mensal) : null,
-      despesas_planejadas || 0,
-      observacoes || null,
-      userId,
-    ]);
+    if (tableCheck.rows.length === 0) {
+      return res.status(500).json({ error: 'Tabela planejamento_anual não encontrada' });
+    }
+    
+    const columns = tableCheck.rows.map(r => r.column_name);
+    const hasCriadoPor = columns.includes('criado_por');
+    const hasUpdatedAt = columns.includes('updated_at');
+    
+    // Construir query dinamicamente baseado nas colunas disponíveis
+    let insertColumns = ['ano', 'receita_planejada', 'meta_mensal', 'despesas_planejadas'];
+    let values = [parseInt(ano), receita_planejada || 0, meta_mensal ? JSON.stringify(meta_mensal) : null, despesas_planejadas || 0];
+    let placeholders = ['$1', '$2', '$3', '$4'];
+    let paramIndex = 5;
+    
+    if (columns.includes('observacoes')) {
+      insertColumns.push('observacoes');
+      values.push(observacoes || null);
+      placeholders.push(`$${paramIndex}`);
+      paramIndex++;
+    }
+    
+    if (hasCriadoPor && userId) {
+      insertColumns.push('criado_por');
+      values.push(userId);
+      placeholders.push(`$${paramIndex}`);
+      paramIndex++;
+    }
+    
+    // Verificar se existe constraint UNIQUE em ano
+    const constraintCheck = await pool.query(`
+      SELECT constraint_name
+      FROM information_schema.table_constraints
+      WHERE table_schema = 'public'
+        AND table_name = 'planejamento_anual'
+        AND constraint_type = 'UNIQUE'
+    `);
+    
+    const hasUniqueConstraint = constraintCheck.rows.length > 0;
+    
+    let query;
+    if (hasUniqueConstraint) {
+      // Se tem constraint UNIQUE, usar ON CONFLICT
+      query = `
+        INSERT INTO public.planejamento_anual (${insertColumns.join(', ')})
+        VALUES (${placeholders.join(', ')})
+        ON CONFLICT (ano) 
+        DO UPDATE SET
+          receita_planejada = EXCLUDED.receita_planejada,
+          meta_mensal = EXCLUDED.meta_mensal,
+          despesas_planejadas = EXCLUDED.despesas_planejadas
+          ${columns.includes('observacoes') ? ', observacoes = EXCLUDED.observacoes' : ''}
+          ${hasUpdatedAt ? ', updated_at = NOW()' : ''}
+        RETURNING *
+      `;
+    } else {
+      // Se não tem constraint, primeiro deletar se existir, depois inserir
+      await pool.query('DELETE FROM public.planejamento_anual WHERE ano = $1', [parseInt(ano)]);
+      query = `
+        INSERT INTO public.planejamento_anual (${insertColumns.join(', ')})
+        VALUES (${placeholders.join(', ')})
+        RETURNING *
+      `;
+    }
+    
+    const result = await pool.query(query, values);
     
     res.json({ planejamento: result.rows[0] });
   } catch (error) {
     console.error('[Financeiro] Erro ao salvar planejamento:', error);
+    console.error('[Financeiro] Stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
