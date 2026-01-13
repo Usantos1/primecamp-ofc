@@ -799,12 +799,23 @@ router.post('/planejamento/:ano', async (req, res) => {
     const { receita_planejada, meta_mensal, despesas_planejadas, observacoes } = req.body;
     const userId = req.user?.id;
     
-    // Converter meta_mensal para JSONB se for objeto
-    const metaMensalJson = meta_mensal ? (typeof meta_mensal === 'string' ? meta_mensal : JSON.stringify(meta_mensal)) : null;
+    // Converter meta_mensal para objeto JSON válido
+    let metaMensalJson = null;
+    if (meta_mensal) {
+      if (typeof meta_mensal === 'string') {
+        try {
+          metaMensalJson = JSON.parse(meta_mensal);
+        } catch (e) {
+          metaMensalJson = meta_mensal;
+        }
+      } else {
+        metaMensalJson = meta_mensal;
+      }
+    }
     
     const query = `
       INSERT INTO public.planejamento_anual (ano, receita_planejada, meta_mensal, despesas_planejadas, observacoes, criado_por)
-      VALUES ($1, $2, $3::jsonb, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (ano) 
       DO UPDATE SET
         receita_planejada = EXCLUDED.receita_planejada,
@@ -828,7 +839,8 @@ router.post('/planejamento/:ano', async (req, res) => {
   } catch (error) {
     console.error('[Financeiro] Erro ao salvar planejamento:', error);
     console.error('[Financeiro] Stack:', error.stack);
-    console.error('[Financeiro] Body recebido:', req.body);
+    console.error('[Financeiro] Body recebido:', JSON.stringify(req.body, null, 2));
+    console.error('[Financeiro] Ano:', req.params.ano);
     res.status(500).json({ error: error.message });
   }
 });
