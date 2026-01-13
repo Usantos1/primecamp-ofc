@@ -937,28 +937,26 @@ export const UserManagementNew = () => {
             </TabsContent>
 
             <TabsContent value="acesso" className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit_role">Função *</Label>
-                <Select 
-                  value={editFormData.role} 
-                  onValueChange={(value: UserRoleType) => setEditFormData({ ...editFormData, role: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a função" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {editFormData.role && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {USER_ROLE_DESCRIPTIONS[editFormData.role as UserRoleType]}
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-2">
+                  <Label>Gerenciar Permissões e Roles</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Use o botão "Permissões" na tabela de usuários para configurar roles e permissões detalhadas deste usuário.
+                    O sistema de permissões permite definir roles customizados e permissões granulares por recurso.
                   </p>
-                )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditDialogOpen(false);
+                      setSelectedUser(user);
+                      setPermissionsDialogOpen(true);
+                    }}
+                    className="mt-2"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Abrir Gerenciador de Permissões
+                  </Button>
+                </div>
               </div>
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-0.5">
