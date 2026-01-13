@@ -937,27 +937,6 @@ export const UserManagementNew = () => {
             </TabsContent>
 
             <TabsContent value="acesso" className="space-y-4">
-              <div className="p-4 border rounded-lg bg-muted/50">
-                <div className="space-y-2">
-                  <Label>Gerenciar Permissões e Roles</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Use o botão "Permissões" na tabela de usuários para configurar roles e permissões detalhadas deste usuário.
-                    O sistema de permissões permite definir roles customizados e permissões granulares por recurso.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEditDialogOpen(false);
-                      setSelectedUser(user);
-                      setPermissionsDialogOpen(true);
-                    }}
-                    className="mt-2"
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    Abrir Gerenciador de Permissões
-                  </Button>
-                </div>
-              </div>
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-0.5">
                   <Label htmlFor="edit_approved">Status do Usuário</Label>
