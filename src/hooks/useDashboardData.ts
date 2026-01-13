@@ -76,23 +76,37 @@ export function useDashboardData() {
       const fimMes = endOfMonth(hoje);
 
       // Vendas do dia - apenas status 'paid' e 'partial' são válidos
-      const { data: vendasDia } = await from('sales')
-        .select('total, total_pago, status')
+      const { data: vendasDia, error: errorDia } = await from('sales')
+        .select('total, total_pago, status, created_at, company_id')
         .in('status', ['paid', 'partial'])
         .gte('created_at', inicioDia.toISOString())
         .lte('created_at', fimDia.toISOString())
         .execute();
 
+      if (errorDia) {
+        console.error('[Dashboard] Erro ao buscar vendas do dia:', errorDia);
+      } else {
+        console.log('[Dashboard] Vendas do dia encontradas:', vendasDia?.length || 0, 'Período:', inicioDia.toISOString(), 'até', fimDia.toISOString(), vendasDia);
+      }
+
       // Vendas do mês
-      const { data: vendasMes } = await from('sales')
-        .select('total, total_pago, status')
+      const { data: vendasMes, error: errorMes } = await from('sales')
+        .select('total, total_pago, status, created_at, company_id')
         .in('status', ['paid', 'partial'])
         .gte('created_at', inicioMes.toISOString())
         .lte('created_at', fimMes.toISOString())
         .execute();
 
+      if (errorMes) {
+        console.error('[Dashboard] Erro ao buscar vendas do mês:', errorMes);
+      } else {
+        console.log('[Dashboard] Vendas do mês encontradas:', vendasMes?.length || 0, 'Período:', inicioMes.toISOString(), 'até', fimMes.toISOString(), vendasMes);
+      }
+
       const faturamentoDia = vendasDia?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
       const faturamentoMes = vendasMes?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
+      
+      console.log('[Dashboard] Faturamento calculado - Dia:', faturamentoDia, 'Mês:', faturamentoMes);
       const vendasHoje = vendasDia?.length || 0;
       const vendasMesCount = vendasMes?.length || 0;
       // Ticket médio baseado no mês (mais representativo)
