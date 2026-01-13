@@ -197,7 +197,7 @@ export default function PlanejamentoAnual() {
               Distribua a receita planejada pelos meses do ano
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto p-0">
+          <CardContent className="flex-1 overflow-y-auto p-0 scrollbar-thin">
             <Table>
               <TableHeader className="sticky top-0 bg-white z-10 border-b-[3px] border-gray-400">
                 <TableRow>
