@@ -619,8 +619,9 @@ export function useSales() {
       console.log('Deletando itens da venda:', id);
       // Deletar itens primeiro (cascade)
       const { error: itemsError } = await from('sale_items')
+        .delete()
         .eq('sale_id', id)
-        .delete();
+        .execute();
       
       if (itemsError) {
         console.error('Erro ao deletar itens:', itemsError);
@@ -630,8 +631,9 @@ export function useSales() {
       console.log('Deletando pagamentos da venda:', id);
       // Deletar pagamentos
       const { error: paymentsError } = await from('payments')
+        .delete()
         .eq('sale_id', id)
-        .delete();
+        .execute();
       
       if (paymentsError) {
         console.error('Erro ao deletar pagamentos:', paymentsError);
@@ -641,8 +643,9 @@ export function useSales() {
       console.log('Deletando a venda:', id);
       // Deletar a venda
       const { error } = await from('sales')
+        .delete()
         .eq('id', id)
-        .delete();
+        .execute();
 
       if (error) {
         console.error('Erro ao deletar venda:', error);

@@ -134,6 +134,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
           .insert({
             numero: numeroAtual,
             status: 'paid',
+            sale_origin: 'PDV', // Obrigatório: origem da venda
             cliente_nome: 'VENDA CONSOLIDADA',
             subtotal: venda.venda,
             desconto_total: 0,
