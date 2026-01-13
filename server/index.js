@@ -1490,12 +1490,22 @@ app.post('/api/insert/:table', async (req, res) => {
         
         // Validações para vendas de PDV
         if (saleOrigin === 'PDV') {
-          if (!row.cashier_user_id) {
-            return res.status(400).json({ 
-              error: 'Vendas de PDV devem ter cashier_user_id',
-              codigo: 'PDV_SALE_REQUIRES_CASHIER_USER_ID'
-            });
+          // Vendas consolidadas (retroativas) não precisam de cashier_user_id
+          const isConsolidada = row.cliente_nome && (
+            row.cliente_nome.includes('CONSOLIDADA') || 
+            row.cliente_nome.includes('CONSOLIDADO')
+          );
+          
+          if (!isConsolidada) {
+            // Apenas vendas normais de PDV precisam de cashier_user_id
+            if (!row.cashier_user_id) {
+              return res.status(400).json({ 
+                error: 'Vendas de PDV devem ter cashier_user_id',
+                codigo: 'PDV_SALE_REQUIRES_CASHIER_USER_ID'
+              });
+            }
           }
+          
           if (row.ordem_servico_id) {
             return res.status(400).json({ 
               error: 'Vendas de PDV não devem ter ordem_servico_id',
