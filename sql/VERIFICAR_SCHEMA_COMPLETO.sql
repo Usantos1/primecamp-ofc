@@ -93,7 +93,7 @@ FROM (VALUES
     ('dre'),
     ('planejamento_anual'),
     ('ia_recomendacoes')
-) AS expected_tables(table_name) t
+) AS t(table_name)
 LEFT JOIN information_schema.columns c 
     ON c.table_schema = 'public' 
     AND c.table_name = t.table_name 
