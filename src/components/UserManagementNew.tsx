@@ -1037,32 +1037,6 @@ export const UserManagementNew = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Permissões */}
-      <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Gerenciar Permissões - {selectedUser?.display_name}</DialogTitle>
-            <DialogDescription>
-              Configure as permissões de acesso deste usuário. Você pode selecionar uma função predefinida ou definir permissões customizadas.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <UserPermissionsManager
-              userId={selectedUser.user_id}
-              onClose={() => {
-                setPermissionsDialogOpen(false);
-                setSelectedUser(null);
-              }}
-              onSave={() => {
-                // Atualiza a lista sem forçar refresh ou redirect
-                fetchUsers();
-                setPermissionsDialogOpen(false);
-                setSelectedUser(null);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
