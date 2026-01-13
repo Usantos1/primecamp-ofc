@@ -9,7 +9,7 @@
 
 ### 1. Acessar o diretório do projeto
 ```bash
-cd /home/primecamp
+cd /root/primecamp-ofc
 ```
 
 ### 2. Atualizar código do repositório
@@ -41,7 +41,7 @@ cat /etc/nginx/nginx.conf | grep root
 
 ### 6. Copiar arquivos build para Nginx
 ```bash
-NGINX_ROOT="/var/www/html"
+NGINX_ROOT="/var/www/primecamp.cloud"
 
 # Limpar diretório antigo
 sudo rm -rf $NGINX_ROOT/*
@@ -98,10 +98,12 @@ git pull origin main && \
 npm install && \
 npm run build && \
 NGINX_ROOT="/var/www/html" && \
-sudo rm -rf $NGINX_ROOT/* && \
-sudo cp -r dist/* $NGINX_ROOT/ && \
-sudo chown -R www-data:www-data $NGINX_ROOT && \
-sudo chmod -R 755 $NGINX_ROOT && \
+sudo rm -rf "$NGINX_ROOT"/* && \
+sudo rm -rf /var/cache/nginx/* 2>/dev/null || true && \
+sudo rm -rf /var/lib/nginx/cache/* 2>/dev/null || true && \
+sudo cp -r dist/* "$NGINX_ROOT/" && \
+sudo chown -R www-data:www-data "$NGINX_ROOT" && \
+sudo chmod -R 755 "$NGINX_ROOT" && \
 sudo systemctl reload nginx && \
 pm2 restart all && \
 echo "✅ Deploy concluído!"
