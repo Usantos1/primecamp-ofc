@@ -16,7 +16,6 @@ import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Shield, User, Trash2, Edit, Search, Filter, Lock, Unlock, Mail, Phone, Building2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDepartments } from '@/hooks/useDepartments';
-import { UserPermissionsManager } from '@/components/UserPermissionsManager';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Tipos de função disponíveis
@@ -101,7 +100,6 @@ export const UserManagementNew = () => {
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
-  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [newUserDialogOpen, setNewUserDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -809,17 +807,6 @@ export const UserManagementNew = () => {
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setPermissionsDialogOpen(true);
-                        }}
-                      >
-                        <Shield className="h-4 w-4 mr-1" />
-                        Permissões
                       </Button>
                       <Button
                         size="sm"
