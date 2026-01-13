@@ -855,13 +855,7 @@ export const UserManagementNew = () => {
               Edite as informações do usuário. Deixe a senha em branco para não alterá-la.
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="dados" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="dados">Dados Pessoais</TabsTrigger>
-              <TabsTrigger value="acesso">Acesso e Permissões</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="dados" className="space-y-4">
+          <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="edit_display_name">Nome Completo *</Label>
                 <Input
