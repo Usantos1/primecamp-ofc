@@ -640,7 +640,7 @@ export const UserManagementNew = () => {
                 Gestão de Usuários e Permissões
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Gerencie usuários, roles e permissões do sistema
+                Gerencie usuários, funções e permissões do sistema
               </p>
             </div>
             <Button onClick={() => setNewUserDialogOpen(true)}>
@@ -1056,7 +1056,7 @@ export const UserManagementNew = () => {
           <DialogHeader>
             <DialogTitle>Gerenciar Permissões - {selectedUser?.display_name}</DialogTitle>
             <DialogDescription>
-              Configure as permissões de acesso deste usuário. Você pode selecionar um role predefinido ou definir permissões customizadas.
+              Configure as permissões de acesso deste usuário. Você pode selecionar uma função predefinida ou definir permissões customizadas.
             </DialogDescription>
           </DialogHeader>
           {selectedUser && (
