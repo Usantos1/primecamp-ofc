@@ -108,24 +108,30 @@ router.get('/:id', async (req, res) => {
     const hasDescription = await columnExists('payment_methods', 'description');
     const hasIsActive = await columnExists('payment_methods', 'is_active');
     const hasAcceptsInstallments = await columnExists('payment_methods', 'accepts_installments');
+    const hasMinValueForInstallments = await columnExists('payment_methods', 'min_value_for_installments');
+    const hasIcon = await columnExists('payment_methods', 'icon');
+    const hasColor = await columnExists('payment_methods', 'color');
     const hasSortOrder = await columnExists('payment_methods', 'sort_order');
     
     const nameCol = hasName ? 'name' : 'nome';
     const codeCol = hasCode ? 'code' : 'codigo';
     const activeCol = hasIsActive ? 'is_active' : 'ativo';
     const descriptionCol = hasDescription ? 'pm.description' : 'NULL as description';
+    const minValueCol = hasMinValueForInstallments ? 'COALESCE(pm.min_value_for_installments, 0)' : '0';
+    const iconCol = hasIcon ? 'pm.icon' : 'NULL';
+    const colorCol = hasColor ? 'pm.color' : 'NULL';
     
     const methodResult = await pool.query(`
       SELECT pm.id, 
              pm.${nameCol} as name,
              pm.${codeCol} as code,
-             ${descriptionCol},
+             ${descriptionCol} as description,
              COALESCE(pm.${activeCol}, true) as is_active,
              COALESCE(pm.${hasAcceptsInstallments ? 'accepts_installments' : 'permite_parcelamento'}, false) as accepts_installments,
              COALESCE(pm.${hasAcceptsInstallments ? 'max_installments' : 'max_parcelas'}, 1) as max_installments,
-             COALESCE(pm.min_value_for_installments, 0) as min_value_for_installments,
-             pm.icon,
-             pm.color,
+             ${minValueCol} as min_value_for_installments,
+             ${iconCol} as icon,
+             ${colorCol} as color,
              COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0) as sort_order
       FROM payment_methods pm
       WHERE pm.id = $1
