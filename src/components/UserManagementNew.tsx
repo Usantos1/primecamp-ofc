@@ -118,7 +118,7 @@ export const UserManagementNew = () => {
     email: '',
     phone: '',
     department: '',
-    role: 'member' as 'admin' | 'member',
+    role: 'member' as UserRoleType,
     approved: true,
     password: '',
   });
