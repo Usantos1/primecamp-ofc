@@ -334,20 +334,20 @@ export const UserManagementNew = () => {
             display_name: editFormData.display_name,
             phone: editFormData.phone || null,
             department: editFormData.department || null,
-            role: editFormData.role,
+            role: 'member', // Valor padrão - roles são gerenciados via user_position_departments.role_id
             approved: editFormData.approved,
             approved_at: editFormData.approved ? new Date().toISOString() : null,
           });
 
         if (createError) throw createError;
       } else {
-        // Se existe, atualizar
+        // Se existe, atualizar (NÃO atualizar role aqui - é gerenciado via user_position_departments.role_id)
         const { error: profileError } = await from('profiles')
           .update({
             display_name: editFormData.display_name,
             phone: editFormData.phone || null,
             department: editFormData.department || null,
-            role: editFormData.role,
+            // role não é atualizado aqui - use o gerenciador de permissões
             approved: editFormData.approved,
             approved_at: editFormData.approved && !selectedUser.approved ? new Date().toISOString() : selectedUser.approved_at,
           })
