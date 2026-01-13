@@ -10,87 +10,56 @@ Key (cashier_user_id)=(483dec5a-7709-4a6a-b71f-b5231d33a2fc) is not present in t
 
 ## Causa
 
-O usuário está autenticado (existe em `auth.users` do Supabase Auth), mas não existe na tabela `public.users` do PostgreSQL. A foreign key constraint `sales_cashier_user_id_fkey` exige que o `cashier_user_id` aponte para um registro válido em `public.users`.
+**A foreign key constraint `sales_cashier_user_id_fkey` está apontando para a tabela errada!**
+
+A constraint atual está definida como:
+```sql
+FOREIGN KEY (cashier_user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+```
+
+Mas o sistema usa autenticação customizada e os usuários estão em `public.users`, não em `auth.users`. Por isso, mesmo que o usuário exista em `public.users`, a constraint falha porque está procurando em `auth.users`.
 
 ## Solução
 
-Execute o script SQL `sql/VERIFICAR_E_CORRIGIR_CASHIER_USER_ID.sql` para:
+**Execute o script SQL `sql/CORRIGIR_FOREIGN_KEY_CASHIER_USER_ID.sql`** para corrigir a constraint.
 
-1. **Verificar** se o usuário existe em `public.users`
-2. **Listar** usuários existentes
-3. **Verificar** a constraint de foreign key
-4. **Criar** o usuário em `public.users` se não existir
+Este script:
+1. **Remove** a constraint antiga (que aponta para `auth.users`)
+2. **Cria** uma nova constraint apontando para `public.users`
 
-## Passos para Correção
+### Passos para Correção
 
-### 1. Verificar o problema
+#### 1. Executar o script de correção
 
 Execute no banco de dados:
 ```sql
-SELECT 
-    id,
-    email,
-    CASE 
-        WHEN EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE id = '483dec5a-7709-4a6a-b71f-b5231d33a2fc'
-        ) THEN '✅ EXISTE'
-        ELSE '❌ NÃO EXISTE'
-    END as status
-FROM auth.users
-WHERE id = '483dec5a-7709-4a6a-b71f-b5231d33a2fc';
+-- Dropar constraint antiga
+ALTER TABLE public.sales 
+DROP CONSTRAINT IF EXISTS sales_cashier_user_id_fkey;
+
+-- Criar nova constraint apontando para public.users
+ALTER TABLE public.sales
+ADD CONSTRAINT sales_cashier_user_id_fkey 
+FOREIGN KEY (cashier_user_id) 
+REFERENCES public.users(id) 
+ON DELETE SET NULL;
 ```
 
-### 2. Criar o usuário em public.users
+Ou execute o script completo: `sql/CORRIGIR_FOREIGN_KEY_CASHIER_USER_ID.sql`
 
-Se o usuário não existir em `public.users`, execute:
-```sql
-DO $$ 
-DECLARE
-    user_id UUID := '483dec5a-7709-4a6a-b71f-b5231d33a2fc';
-    user_email TEXT;
-    user_role TEXT;
-    admin_company_id UUID := '00000000-0000-0000-0000-000000000001';
-BEGIN
-    -- Buscar dados do usuário em auth.users
-    SELECT email, raw_user_meta_data->>'role' INTO user_email, user_role
-    FROM auth.users 
-    WHERE id = user_id;
-    
-    IF user_email IS NULL THEN
-        RAISE EXCEPTION 'Usuário com ID % não existe em auth.users.', user_id;
-    END IF;
-    
-    -- Criar usuário em public.users se não existir
-    INSERT INTO public.users (id, email, company_id, created_at)
-    VALUES (user_id, user_email, admin_company_id, NOW())
-    ON CONFLICT (id) DO UPDATE SET
-        email = EXCLUDED.email,
-        updated_at = NOW();
-    
-    RAISE NOTICE '✅ Usuário % criado/atualizado em public.users', user_id;
-END $$;
-```
+#### 2. Verificar a correção
 
-### 3. Verificar outras vendas com problema
-
-Execute para encontrar outras vendas com o mesmo problema:
+Execute para confirmar:
 ```sql
 SELECT 
-    s.id,
-    s.numero,
-    s.cashier_user_id,
-    s.created_at,
-    CASE 
-        WHEN u.id IS NOT NULL THEN '✅ OK'
-        ELSE '❌ PROBLEMA'
-    END as status
-FROM public.sales s
-LEFT JOIN public.users u ON s.cashier_user_id = u.id
-WHERE s.cashier_user_id IS NOT NULL
-    AND u.id IS NULL
-ORDER BY s.created_at DESC;
+    conname as constraint_name,
+    pg_get_constraintdef(oid) as constraint_definition
+FROM pg_constraint
+WHERE conrelid = 'public.sales'::regclass
+    AND conname = 'sales_cashier_user_id_fkey';
 ```
+
+A constraint deve mostrar: `FOREIGN KEY (cashier_user_id) REFERENCES public.users(id) ON DELETE SET NULL`
 
 ## Prevenção
 
