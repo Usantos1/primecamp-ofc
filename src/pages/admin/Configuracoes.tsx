@@ -11,6 +11,7 @@ import {
   Settings,
   FileText,
   Hash,
+  CreditCard,
 } from 'lucide-react';
 import { DashboardConfigModal } from '@/components/dashboard/DashboardConfigModal';
 import {
