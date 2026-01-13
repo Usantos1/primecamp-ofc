@@ -9,7 +9,7 @@
 
 ### 1. Acessar o diretório do projeto
 ```bash
-cd /caminho/do/projeto/primecamp
+cd /home/primecamp
 ```
 
 ### 2. Atualizar código do repositório
@@ -39,9 +39,8 @@ cat /etc/nginx/sites-available/default | grep root
 cat /etc/nginx/nginx.conf | grep root
 ```
 
-### 6. Copiar arquivos build para Nginx (AJUSTAR CAMINHO DO ROOT)
+### 6. Copiar arquivos build para Nginx
 ```bash
-# EXEMPLO - Substitua /var/www/html pelo root real do seu Nginx
 NGINX_ROOT="/var/www/html"
 
 # Limpar diretório antigo
@@ -94,7 +93,7 @@ sudo journalctl -u <nome-do-servico> -f
 **⚠️ AJUSTE O CAMINHO DO NGINX_ROOT ANTES DE EXECUTAR**
 
 ```bash
-cd /caminho/do/projeto/primecamp && \
+cd /home/primecamp && \
 git pull origin main && \
 npm install && \
 npm run build && \
