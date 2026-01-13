@@ -56,6 +56,22 @@ export const AdminTimeClockManager = () => {
   const { users } = useUsers();
   const { isAdmin } = useAuth();
 
+  const formatTotalHours = (totalHours: unknown): string => {
+    if (!totalHours) return '-';
+    if (typeof totalHours === 'string') return totalHours;
+    if (typeof totalHours === 'number') return String(totalHours);
+    if (typeof totalHours === 'object' && totalHours !== null) {
+      // Se for objeto com hours e minutes
+      if ('hours' in totalHours && 'minutes' in totalHours) {
+        const hours = Number(totalHours.hours) || 0;
+        const minutes = Number(totalHours.minutes) || 0;
+        return `${hours}:${String(minutes).padStart(2, '0')}`;
+      }
+      return '--:--';
+    }
+    return String(totalHours);
+  };
+
   const fetchRecords = async () => {
     try {
       setLoading(true);
@@ -88,7 +104,7 @@ export const AdminTimeClockManager = () => {
         break_end: record.break_end,
         lunch_start: record.lunch_start,
         lunch_end: record.lunch_end,
-        total_hours: record.total_hours as string,
+        total_hours: formatTotalHours(record.total_hours),
         status: record.status as 'pending' | 'approved' | 'rejected',
         notes: record.notes,
         location: record.location,
@@ -205,7 +221,7 @@ export const AdminTimeClockManager = () => {
         'Saída': formatDateSafe(record.clock_out),
         'Início Almoço': formatDateSafe(record.lunch_start),
         'Fim Almoço': formatDateSafe(record.lunch_end),
-        'Total de Horas': record.total_hours || '-',
+        'Total de Horas': formatTotalHours(record.total_hours),
         'Localização': record.location || '-',
         'IP': record.ip_address || '-',
         'Status': record.status === 'pending' ? 'Pendente' : 
@@ -433,7 +449,7 @@ export const AdminTimeClockManager = () => {
                           }
                         })() : '-'}
                       </TableCell>
-                      <TableCell>{record.total_hours || '-'}</TableCell>
+                      <TableCell>{formatTotalHours(record.total_hours)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           {record.location && <MapPin className="h-3 w-3" />}
