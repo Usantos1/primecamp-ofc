@@ -54,7 +54,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
     },
   });
   
-  // Buscar contas pagas no período (filtrar por due_date)
+  // Buscar contas pagas no período (filtrar por payment_date se existir, caso contrário due_date)
   const { data: billsPaid = [], isLoading: billsLoading } = useQuery({
     queryKey: ['bills-paid-dre', startDate, endDate],
     queryFn: async () => {
@@ -64,7 +64,25 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           .eq('status', 'pago');
         
         if (startDate && endDate && startDate !== '' && endDate !== '') {
-          q = q.gte('due_date', startDate).lte('due_date', endDate);
+          // CORRIGIDO: Usar payment_date ao invés de due_date para contas pagas
+          // payment_date é a data quando a conta foi realmente paga
+          // Se payment_date não existir, o backend/query vai retornar erro, então usamos due_date como fallback
+          try {
+            q = q.gte('payment_date', startDate).lte('payment_date', endDate);
+            const { data, error } = await q.execute();
+            if (error) throw error;
+            return data || [];
+          } catch (paymentDateError) {
+            // Fallback: se payment_date não existir, usar due_date
+            console.warn('payment_date não disponível, usando due_date como fallback:', paymentDateError);
+            q = from('bills_to_pay')
+              .select('*')
+              .eq('status', 'pago')
+              .gte('due_date', startDate).lte('due_date', endDate);
+            const { data, error } = await q.execute();
+            if (error) throw error;
+            return data || [];
+          }
         }
         
         const { data, error } = await q.execute();
