@@ -1731,10 +1731,11 @@ app.post('/api/update/:table', async (req, res) => {
       }
     }
 
+    // Garantir que finalWhereClause seja válido ou vazio
+    const wherePart = finalWhereClause ? ` ${finalWhereClause}` : '';
     const sql = `
       UPDATE ${tableName}
-      SET ${setClause}
-      ${finalWhereClause}
+      SET ${setClause}${wherePart}
       RETURNING *
     `;
 

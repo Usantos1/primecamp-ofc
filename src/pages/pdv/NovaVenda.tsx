@@ -58,25 +58,32 @@ export default function NovaVenda() {
   const { data: cupomConfig } = useCupomConfig();
   
   // Função de busca de produtos
-  const searchProdutos = (term: string, codigo: string = '', descricao: string = '', referencia: string = '') => {
-    // Se há filtros específicos, usar eles
-    if (codigo || descricao || referencia) {
-      return produtos.filter(p => {
-        const matchCodigo = !codigo || p.codigo?.toString().includes(codigo) || p.codigo_barras?.includes(codigo);
-        const matchDescricao = !descricao || p.descricao?.toLowerCase().includes(descricao.toLowerCase());
-        const matchReferencia = !referencia || p.referencia?.toLowerCase().includes(referencia.toLowerCase());
-        return matchCodigo && matchDescricao && matchReferencia;
-      });
-    }
-    // Caso contrário, usar busca geral
-    if (!term) return [];
+  const searchProdutos = (term: string, field: 'all' | 'codigo' | 'descricao' | 'referencia' = 'all') => {
+    if (!term || term.length < 2) return [];
     const search = term.toLowerCase();
-    return produtos.filter(p => 
-      p.descricao?.toLowerCase().includes(search) ||
-      p.codigo?.toString().includes(search) ||
-      p.codigo_barras?.includes(search) ||
-      p.referencia?.toLowerCase().includes(search)
-    );
+    
+    if (field === 'codigo') {
+      return produtos.filter(p => 
+        p.codigo?.toString().includes(term) || 
+        p.codigo_barras?.includes(term)
+      );
+    } else if (field === 'descricao') {
+      return produtos.filter(p => 
+        p.descricao?.toLowerCase().includes(search)
+      );
+    } else if (field === 'referencia') {
+      return produtos.filter(p => 
+        p.referencia?.toLowerCase().includes(search)
+      );
+    } else {
+      // Busca geral (all)
+      return produtos.filter(p => 
+        p.descricao?.toLowerCase().includes(search) ||
+        p.codigo?.toString().includes(term) ||
+        p.codigo_barras?.includes(term) ||
+        p.referencia?.toLowerCase().includes(search)
+      );
+    }
   };
   const { clientes, searchClientes, createCliente } = useClientes();
   const { ordens, getOSById } = useOrdensServico();
@@ -89,16 +96,12 @@ export default function NovaVenda() {
   const [sale, setSale] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
-  const [productFilterCodigo, setProductFilterCodigo] = useState('');
-  const [productFilterDescricao, setProductFilterDescricao] = useState('');
-  const [productFilterReferencia, setProductFilterReferencia] = useState('');
+  const [productSearchField, setProductSearchField] = useState<'all' | 'codigo' | 'descricao' | 'referencia'>('all');
   const [productResults, setProductResults] = useState<any[]>([]);
   const [showProductSearch, setShowProductSearch] = useState(false);
   
   const [clienteSearch, setClienteSearch] = useState('');
-  const [clienteFilterNome, setClienteFilterNome] = useState('');
-  const [clienteFilterCPF, setClienteFilterCPF] = useState('');
-  const [clienteFilterTelefone, setClienteFilterTelefone] = useState('');
+  const [clienteSearchField, setClienteSearchField] = useState<'all' | 'nome' | 'cpf_cnpj' | 'telefone'>('all');
   const [clienteResults, setClienteResults] = useState<any[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [showClienteSearch, setShowClienteSearch] = useState(false);
@@ -591,40 +594,33 @@ export default function NovaVenda() {
 
   // Buscar produtos
   useEffect(() => {
-    const hasFilters = productFilterCodigo || productFilterDescricao || productFilterReferencia;
-    const hasGeneralSearch = productSearch.length >= 2;
-    
-    if (hasFilters || hasGeneralSearch) {
-      const results = searchProdutos(productSearch, productFilterCodigo, productFilterDescricao, productFilterReferencia);
+    if (productSearch.length >= 2) {
+      const results = searchProdutos(productSearch, productSearchField);
       setProductResults(results.slice(0, 10));
       setShowProductSearch(true);
     } else {
       setProductResults([]);
       setShowProductSearch(false);
     }
-  }, [productSearch, productFilterCodigo, productFilterDescricao, productFilterReferencia, produtos]);
+  }, [productSearch, productSearchField, produtos]);
 
   // Buscar clientes
   useEffect(() => {
-    const hasFilters = clienteFilterNome || clienteFilterCPF || clienteFilterTelefone;
-    const hasGeneralSearch = clienteSearch.length >= 2;
-    
-    if (hasFilters || hasGeneralSearch) {
+    if (clienteSearch.length >= 2) {
       let results: any[] = [];
       
-      if (hasFilters) {
-        // Busca com filtros específicos
-        const qNome = clienteFilterNome.toLowerCase();
-        const qCPF = clienteFilterCPF;
-        const qTelefone = clienteFilterTelefone;
-        results = clientes.filter(c => {
-          const matchNome = !clienteFilterNome || c.nome.toLowerCase().includes(qNome);
-          const matchCPF = !clienteFilterCPF || c.cpf_cnpj?.includes(qCPF);
-          const matchTelefone = !clienteFilterTelefone || c.telefone?.includes(qTelefone) || c.whatsapp?.includes(qTelefone);
-          return matchNome && matchCPF && matchTelefone;
-        });
+      if (clienteSearchField === 'nome') {
+        const q = clienteSearch.toLowerCase();
+        results = clientes.filter(c => c.nome.toLowerCase().includes(q));
+      } else if (clienteSearchField === 'cpf_cnpj') {
+        results = clientes.filter(c => c.cpf_cnpj?.includes(clienteSearch));
+      } else if (clienteSearchField === 'telefone') {
+        results = clientes.filter(c => 
+          c.telefone?.includes(clienteSearch) || 
+          c.whatsapp?.includes(clienteSearch)
+        );
       } else {
-        // Busca geral
+        // Busca geral (all)
         results = searchClientes(clienteSearch);
       }
       
@@ -634,7 +630,7 @@ export default function NovaVenda() {
       setClienteResults([]);
       setShowClienteSearch(false);
     }
-  }, [clienteSearch, clienteFilterNome, clienteFilterCPF, clienteFilterTelefone, clientes, searchClientes]);
+  }, [clienteSearch, clienteSearchField, clientes, searchClientes]);
 
   // Focar no campo de busca ao montar
   useEffect(() => {
@@ -1824,10 +1820,18 @@ _PrimeCamp Assistência Técnica_`;
                   <span className="text-sm text-gray-700 dark:text-gray-300 font-semibold">Buscar Produto</span>
                   <kbd className="ml-auto px-2 py-1 text-[10px] bg-emerald-100 dark:bg-emerald-900 rounded text-emerald-700 dark:text-emerald-300 font-mono border border-emerald-200 dark:border-emerald-800">F2</kbd>
                 </div>
-                <div className="space-y-2">
+                <div className="flex gap-2">
                   <Input
                     ref={searchInputRef}
-                    placeholder="Busca geral (nome, código, código de barras, referência)..."
+                    placeholder={
+                      productSearchField === 'all' 
+                        ? "Buscar por código, descrição, referência..." 
+                        : productSearchField === 'codigo'
+                        ? "Buscar por código..."
+                        : productSearchField === 'descricao'
+                        ? "Buscar por descrição..."
+                        : "Buscar por referência..."
+                    }
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     onKeyDown={(e) => {
@@ -1835,28 +1839,19 @@ _PrimeCamp Assistência Técnica_`;
                         handleAddProduct(productResults[0]);
                       }
                     }}
-                    className="h-12 text-base font-medium border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500"
+                    className="h-12 text-base font-medium border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500 flex-1"
                   />
-                  <div className="grid grid-cols-3 gap-2">
-                    <Input
-                      placeholder="Código"
-                      value={productFilterCodigo}
-                      onChange={(e) => setProductFilterCodigo(e.target.value)}
-                      className="h-10 text-sm border border-gray-200 dark:border-gray-700 focus:border-emerald-500"
-                    />
-                    <Input
-                      placeholder="Descrição"
-                      value={productFilterDescricao}
-                      onChange={(e) => setProductFilterDescricao(e.target.value)}
-                      className="h-10 text-sm border border-gray-200 dark:border-gray-700 focus:border-emerald-500"
-                    />
-                    <Input
-                      placeholder="Referência"
-                      value={productFilterReferencia}
-                      onChange={(e) => setProductFilterReferencia(e.target.value)}
-                      className="h-10 text-sm border border-gray-200 dark:border-gray-700 focus:border-emerald-500"
-                    />
-                  </div>
+                  <Select value={productSearchField} onValueChange={(value: any) => setProductSearchField(value)}>
+                    <SelectTrigger className="h-12 w-[140px] border-2 border-gray-200 dark:border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="codigo">Código</SelectItem>
+                      <SelectItem value="descricao">Descrição</SelectItem>
+                      <SelectItem value="referencia">Referência</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="relative">
                   {showProductSearch && productResults.length > 0 && (
@@ -1960,12 +1955,20 @@ _PrimeCamp Assistência Técnica_`;
                 {/* Busca Cliente expandida */}
                 {clienteExpanded && !selectedCliente && (
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <div className="space-y-2">
-                      <div className="relative">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                           id="cliente-search-input"
-                          placeholder="Busca geral (nome, CPF, telefone)..."
+                          placeholder={
+                            clienteSearchField === 'all'
+                              ? "Buscar por nome, CPF, telefone..."
+                              : clienteSearchField === 'nome'
+                              ? "Buscar por nome..."
+                              : clienteSearchField === 'cpf_cnpj'
+                              ? "Buscar por CPF/CNPJ..."
+                              : "Buscar por telefone..."
+                          }
                           value={clienteSearch}
                           onChange={(e) => setClienteSearch(e.target.value)}
                           onFocus={() => setShowClienteSearch(true)}
@@ -1973,29 +1976,17 @@ _PrimeCamp Assistência Técnica_`;
                           autoFocus
                         />
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          placeholder="Nome"
-                          value={clienteFilterNome}
-                          onChange={(e) => setClienteFilterNome(e.target.value)}
-                          onFocus={() => setShowClienteSearch(true)}
-                          className="h-10 text-sm border border-gray-200 dark:border-gray-700 focus:border-blue-500"
-                        />
-                        <Input
-                          placeholder="CPF/CNPJ"
-                          value={clienteFilterCPF}
-                          onChange={(e) => setClienteFilterCPF(e.target.value)}
-                          onFocus={() => setShowClienteSearch(true)}
-                          className="h-10 text-sm border border-gray-200 dark:border-gray-700 focus:border-blue-500"
-                        />
-                        <Input
-                          placeholder="Telefone"
-                          value={clienteFilterTelefone}
-                          onChange={(e) => setClienteFilterTelefone(e.target.value)}
-                          onFocus={() => setShowClienteSearch(true)}
-                          className="h-10 text-sm border border-gray-200 dark:border-gray-700 focus:border-blue-500"
-                        />
-                      </div>
+                      <Select value={clienteSearchField} onValueChange={(value: any) => setClienteSearchField(value)}>
+                        <SelectTrigger className="h-10 w-[140px] border-2 border-gray-200 dark:border-gray-700">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="nome">Nome</SelectItem>
+                          <SelectItem value="cpf_cnpj">CPF/CNPJ</SelectItem>
+                          <SelectItem value="telefone">Telefone</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     {showClienteSearch && clienteResults.length > 0 && (
                       <div className="mt-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg max-h-40 overflow-auto">
