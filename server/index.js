@@ -1736,13 +1736,21 @@ app.post('/api/update/:table', async (req, res) => {
     let sql = `UPDATE ${tableName} SET ${setClause}`;
     if (finalWhereClause) {
       sql += ` ${finalWhereClause}`;
+    } else {
+      // Se não há WHERE clause, isso é um erro
+      console.error(`[Update] ERRO: finalWhereClause está vazio para ${tableName}`);
+      console.error(`[Update] where recebido:`, JSON.stringify(where, null, 2));
+      console.error(`[Update] whereClause retornado:`, whereClause);
+      return res.status(400).json({ error: 'Update requires WHERE clause' });
     }
     sql += ` RETURNING *`;
 
     console.log(`[Update] ${tableName}:`, keys, 'WHERE:', finalWhereClause, 'Params:', params.length);
     console.log(`[Update] SQL completo:`, sql);
-    console.log(`[Update] Parâmetros:`, params);
+    console.log(`[Update] Parâmetros:`, JSON.stringify(params));
+    console.log(`[Update] Executando query...`);
     const result = await pool.query(sql, params);
+    console.log(`[Update] Query executada com sucesso, ${result.rowCount} linhas afetadas`);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
     console.error('Erro ao atualizar:', error);
