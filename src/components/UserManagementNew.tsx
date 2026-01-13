@@ -196,17 +196,46 @@ export const UserManagementNew = () => {
       const roleById = new Map<string, any>();
       (rolesCatalog || []).forEach((r: any) => roleById.set(r.id, r));
 
+      // Mapear profiles por user_id
+      const profileByUserId = new Map<string, any>();
+      (profilesData || []).forEach((p: any) => {
+        if (p?.user_id) profileByUserId.set(p.user_id, p);
+      });
+
       // Mapear emails pelos usuários já buscados
       const emailById = new Map<string, string>();
       (usersData || []).forEach((u: any) => {
         if (u?.id && u?.email) emailById.set(u.id, u.email);
       });
 
-      const usersWithRolesAndEmails: UserWithRole[] = (profilesData || []).map((profile: any) => {
-        const roleRow = (updRolesData || []).find((r: any) => r.user_id === profile.user_id);
+      // Mapear TODOS os usuários, incluindo os sem profile
+      const usersWithRolesAndEmails: UserWithRole[] = (usersData || []).map((user: any) => {
+        const profile = profileByUserId.get(user.id);
+        const roleRow = (updRolesData || []).find((r: any) => r.user_id === user.id);
         const role = roleRow?.role_id ? roleById.get(roleRow.role_id) : undefined;
-        const authEmail = emailById.get(profile.user_id) || '';
+        const authEmail = emailById.get(user.id) || '';
 
+        // Se não tem profile, criar objeto básico
+        if (!profile) {
+          return {
+            user_id: user.id,
+            id: user.id, // Alguns componentes podem usar id ao invés de user_id
+            display_name: authEmail.split('@')[0] || 'Sem nome',
+            email: authEmail,
+            authEmail,
+            phone: null,
+            department: null,
+            role: null,
+            approved: false,
+            currentRole: roleRow
+              ? ({ role_id: roleRow.role_id, role } as any)
+              : undefined,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+          } as UserWithRole;
+        }
+
+        // Se tem profile, usar dados do profile
         return {
           ...profile,
           currentRole: roleRow
