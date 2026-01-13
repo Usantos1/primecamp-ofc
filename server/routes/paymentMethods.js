@@ -56,6 +56,19 @@ router.get('/', async (req, res) => {
     const createdAtCol = hasCreatedAt ? 'pm.created_at' : 'NOW()';
     const updatedAtCol = hasUpdatedAt ? 'pm.updated_at' : 'NOW()';
     
+    // Verificar se a tabela payment_fees existe
+    const hasPaymentFeesTable = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'payment_fees'
+      )
+    `).then(r => r.rows[0]?.exists || false).catch(() => false);
+    
+    const feesCountExpr = hasPaymentFeesTable 
+      ? `(SELECT COUNT(*) FROM payment_fees pf WHERE pf.payment_method_id = pm.id)`
+      : '0';
+    
     let query = `
       SELECT pm.id, 
              pm.${nameCol} as name,
@@ -70,7 +83,7 @@ router.get('/', async (req, res) => {
              COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0) as sort_order,
              ${createdAtCol} as created_at,
              ${updatedAtCol} as updated_at,
-             (SELECT COUNT(*) FROM payment_fees pf WHERE pf.payment_method_id = pm.id) as fees_count
+             ${feesCountExpr} as fees_count
       FROM payment_methods pm
       WHERE 1=1
     `;
