@@ -63,9 +63,10 @@ export default function NovaVenda() {
     const search = term.toLowerCase();
     
     if (field === 'codigo') {
+      // Buscar apenas por código (não incluir código de barras)
       return produtos.filter(p => 
-        p.codigo?.toString().includes(term) || 
-        p.codigo_barras?.includes(term)
+        p.codigo?.toString() === term || 
+        p.codigo?.toString().includes(term)
       );
     } else if (field === 'descricao') {
       return produtos.filter(p => 
@@ -76,7 +77,7 @@ export default function NovaVenda() {
         p.referencia?.toLowerCase().includes(search)
       );
     } else {
-      // Busca geral (all)
+      // Busca geral (all) - busca em todos os campos
       return produtos.filter(p => 
         p.descricao?.toLowerCase().includes(search) ||
         p.codigo?.toString().includes(term) ||
