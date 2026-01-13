@@ -60,7 +60,15 @@ WHERE EXISTS (
     WHERE table_schema = 'public' AND table_name = t.table_name
 )
 ORDER BY 
-    CASE WHEN status LIKE '❌%' THEN 0 ELSE 1 END,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = t.table_name
+              AND column_name = 'company_id'
+        ) THEN 1
+        ELSE 0
+    END,
     tabela;
 
 -- ============================================
