@@ -100,6 +100,15 @@ export default function Configuracoes() {
       action: () => setShowOSConfig(true),
       permission: 'admin.view',
     },
+    {
+      title: 'Formas de Pagamento e Taxas',
+      description: 'Configure formas de pagamento, taxas e parcelamentos',
+      icon: CreditCard,
+      color: 'from-teal-500 to-cyan-500',
+      hoverColor: 'hover:from-teal-600 hover:to-cyan-600',
+      path: '/admin/configuracoes/pagamentos',
+      permission: 'relatorios.financeiro',
+    },
   ];
 
   return (
