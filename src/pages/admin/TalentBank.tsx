@@ -63,6 +63,13 @@ export default function TalentBank() {
 
       const { data: responses, error: responsesError } = await query.execute();
 
+      console.log('[TalentBank] Resposta da query job_responses:', {
+        dataLength: responses?.length,
+        hasError: !!responsesError,
+        error: responsesError,
+        firstItem: responses?.[0]
+      });
+
       if (responsesError) {
         console.error('Erro ao carregar candidatos do banco de talentos:', responsesError);
         toast({
@@ -74,9 +81,11 @@ export default function TalentBank() {
       }
 
       if (!responses || responses.length === 0) {
-        console.log('Nenhum candidato encontrado na tabela job_responses');
+        console.log('[TalentBank] Nenhum candidato encontrado na tabela job_responses');
         return [];
       }
+
+      console.log(`[TalentBank] ${responses.length} candidatos encontrados, processando...`);
 
       // Buscar informações das vagas separadamente
       const surveyIds = [...new Set(responses.map((r: any) => r.survey_id).filter(Boolean))];
