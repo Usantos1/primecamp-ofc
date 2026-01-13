@@ -1458,18 +1458,28 @@ app.post('/api/insert/:table', async (req, res) => {
         
         // Validações para vendas de OS
         if (saleOrigin === 'OS') {
-          if (!row.ordem_servico_id) {
-            return res.status(400).json({ 
-              error: 'Vendas de OS devem ter ordem_servico_id',
-              codigo: 'OS_SALE_REQUIRES_ORDEM_SERVICO_ID'
-            });
+          // Vendas consolidadas (retroativas) não precisam de ordem_servico_id e technician_id
+          const isConsolidada = row.cliente_nome && (
+            row.cliente_nome.includes('CONSOLIDADA') || 
+            row.cliente_nome.includes('CONSOLIDADO')
+          );
+          
+          if (!isConsolidada) {
+            // Apenas vendas normais de OS precisam de ordem_servico_id e technician_id
+            if (!row.ordem_servico_id) {
+              return res.status(400).json({ 
+                error: 'Vendas de OS devem ter ordem_servico_id',
+                codigo: 'OS_SALE_REQUIRES_ORDEM_SERVICO_ID'
+              });
+            }
+            if (!row.technician_id) {
+              return res.status(400).json({ 
+                error: 'Vendas de OS devem ter technician_id',
+                codigo: 'OS_SALE_REQUIRES_TECHNICIAN_ID'
+              });
+            }
           }
-          if (!row.technician_id) {
-            return res.status(400).json({ 
-              error: 'Vendas de OS devem ter technician_id',
-              codigo: 'OS_SALE_REQUIRES_TECHNICIAN_ID'
-            });
-          }
+          
           if (row.cashier_user_id) {
             return res.status(400).json({ 
               error: 'Vendas de OS não devem ter cashier_user_id',
