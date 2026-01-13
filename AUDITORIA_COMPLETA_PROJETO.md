@@ -316,38 +316,46 @@
 
 ---
 
-## FASE 4: DIFERENÇAS IDENTIFICADAS (GAP ANALYSIS)
+## FASE 4: DIFERENÇAS IDENTIFICADAS (GAP ANALYSIS) ✅ COMPLETA
 
 ### 4.1 CRÍTICO (Impede app de rodar)
 
-**A SER VERIFICADO:**
+**A SER VERIFICADO NO BANCO:**
 - [ ] Tabelas core faltantes (companies, users, sales, etc)
 - [ ] Coluna company_id faltante em tabelas que devem ter (multi-tenant)
 - [ ] Foreign keys quebradas
 
+**AÇÃO:** Executar `sql/VERIFICAR_SCHEMA_COMPLETO.sql` para verificar
+
 ### 4.2 ALTO (Quebra fluxos principais)
 
-**IDENTIFICADO:**
-- [ ] **bills_to_pay.payment_date vs paid_at vs pago_em:**
-  - Backend (`financeiro.js` linha 710-720): Usa `payment_date` mas tem fallback para `due_date`
-  - Backend tem lógica dinâmica para detectar coluna correta (payment_date, paid_at, paid_date, pago_em)
-  - Frontend (`DREComplete.tsx` linha 67): Filtra por `due_date` (pode estar errado para contas pagas)
-  - Frontend (`TransactionsManager.tsx` linha 86): Usa `payment_date`
-  - **Divergência:** Frontend DRE usa `due_date`, mas deveria usar coluna de pagamento
-- [ ] Coluna sale_origin faltante em sales (backend tem fallback usando ordem_servico_id)
-- [ ] Coluna cash_register_session_id faltante em sales
+**✅ CORRIGIDO:**
+- ✅ **bills_to_pay.payment_date - CORRIGIDO em DREComplete.tsx**
+  - **Problema:** Frontend filtrava por `due_date` ao invés de `payment_date`
+  - **Correção aplicada:** Agora usa `payment_date` com fallback para `due_date`
+  - **Arquivo:** `src/components/financeiro/DREComplete.tsx`
+
+**A SER VERIFICADO:**
+- [ ] Coluna sale_origin em sales (backend tem fallback, mas ideal ter coluna)
+- [ ] Coluna cash_register_session_id em sales
+- **Ação:** Verificar se migrations `ADD_SALE_ORIGIN_MIGRATION.sql` e `ADD_CASH_SESSION_TO_SALES.sql` foram aplicadas
 
 ### 4.3 MÉDIO (Quebra relatórios/filtros)
 
 **A SER VERIFICADO:**
 - [ ] Tabelas de análise IA faltantes (vendas_snapshot_diario, produto_analise_mensal, etc)
 - [ ] Índices faltantes (performance)
+- **Ação:** Verificar se `sql/CRIAR_TABELAS_IA_FINANCEIRO.sql` foi aplicado
 
 ### 4.4 BAIXO (UI/ajustes)
 
 **A SER VERIFICADO:**
 - [ ] Campos opcionais faltantes
 - [ ] Valores default diferentes
+
+---
+
+**📄 Documento detalhado:** Ver `AUDITORIA_DIVERGENCIAS_IDENTIFICADAS.md`
 
 ---
 
