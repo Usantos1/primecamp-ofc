@@ -12,6 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, FileText, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { from } from '@/integrations/db/client';
@@ -40,6 +41,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [observacao, setObservacao] = useState('Importação retroativa do sistema anterior');
+  const [saleOrigin, setSaleOrigin] = useState<'PDV' | 'OS'>('PDV');
 
   // Função para parsear valor brasileiro (1.234,56 -> 1234.56)
   const parseValorBR = (valor: string): number => {
@@ -134,13 +136,13 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
           .insert({
             numero: numeroAtual,
             status: 'paid',
-            sale_origin: 'PDV', // Obrigatório: origem da venda
-            cliente_nome: 'VENDA CONSOLIDADA',
+            sale_origin: saleOrigin, // Origem selecionada: PDV ou OS
+            cliente_nome: saleOrigin === 'PDV' ? 'VENDA CONSOLIDADA' : 'OS CONSOLIDADA',
             subtotal: venda.venda,
             desconto_total: 0,
             total: venda.venda,
             total_pago: venda.venda,
-            observacoes: `${observacao}\nData original: ${venda.dataFormatada}\nCusto: ${currencyFormatters.brl(venda.custo)}\nLucro: ${currencyFormatters.brl(venda.lucro)}`,
+            observacoes: `${observacao}\nOrigem: ${saleOrigin}\nData original: ${venda.dataFormatada}\nCusto: ${currencyFormatters.brl(venda.custo)}\nLucro: ${currencyFormatters.brl(venda.lucro)}`,
             is_draft: false,
             created_at: `${venda.data}T12:00:00Z`,
             finalized_at: `${venda.data}T12:00:00Z`,
@@ -156,7 +158,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
         // Criar item genérico
         await from('sale_items').insert({
           sale_id: newSale.id,
-          produto_nome: `Vendas do dia ${venda.dataFormatada}`,
+          produto_nome: saleOrigin === 'PDV' ? `Vendas do dia ${venda.dataFormatada}` : `OS do dia ${venda.dataFormatada}`,
           produto_tipo: 'produto',
           quantidade: 1,
           valor_unitario: venda.venda,
@@ -233,6 +235,22 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
         {step === 'input' && (
           <div className="space-y-4 flex-1 overflow-auto">
             <div className="space-y-2">
+              <Label>Origem das Vendas</Label>
+              <Select value={saleOrigin} onValueChange={(value: 'PDV' | 'OS') => setSaleOrigin(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PDV">PDV - Ponto de Venda</SelectItem>
+                  <SelectItem value="OS">OS - Ordem de Serviço</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecione se as vendas são do PDV ou de Ordens de Serviço
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label>Observação da Importação</Label>
               <Input
                 value={observacao}
@@ -270,9 +288,14 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
         {step === 'preview' && (
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {vendasParsed.length} vendas encontradas
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-muted-foreground">
+                  {vendasParsed.length} vendas encontradas
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Origem: <strong>{saleOrigin === 'PDV' ? 'Ponto de Venda (PDV)' : 'Ordem de Serviço (OS)'}</strong>
+                </span>
+              </div>
               <div className="flex gap-4 text-sm">
                 <span>Custo: <strong className="text-red-600">{currencyFormatters.brl(totais.custo)}</strong></span>
                 <span>Venda: <strong className="text-blue-600">{currencyFormatters.brl(totais.venda)}</strong></span>
