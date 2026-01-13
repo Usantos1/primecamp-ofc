@@ -276,6 +276,44 @@
 - PUT /:id/approve, /:id/complete, /:id/cancel
 - GET /vouchers/*
 
+### 3.3 Backend - Filtro por company_id (Multi-tenant)
+
+**server/index.js:**
+- **Middleware authenticateToken:** Busca `company_id` do banco (users.company_id) e adiciona em `req.companyId`
+- **Endpoint /api/query/:table:** Adiciona filtro automático de `company_id` para tabelas na lista `tablesWithCompanyId`:
+  - produtos, vendas, sales, clientes, ordens_servico, sale_items, os_items, users, etc
+- **Endpoint /api/delete/:table:** Também adiciona filtro automático de `company_id`
+- **Fallback:** Se coluna `company_id` não existir, usa valor do token ou continua sem filtro (com warning)
+
+**Lista tablesWithCompanyId:**
+```javascript
+['produtos', 'vendas', 'sales', 'clientes', 'ordens_servico', 'sale_items', 'os_items',
+ 'time_clock', 'users', 'nps_surveys', 'job_surveys', 'payments', 'marcas', 'modelos', etc]
+```
+
+### 3.4 Frontend - Hooks Principais
+
+**Hooks que fazem queries diretas (sem filtro explícito de company_id):**
+- `useOrdensServicoSupabase` - Query direta em `ordens_servico`
+- `useClientesSupabase` - Query direta em `clientes`
+- `useProdutosSupabase` - Query direta em `produtos`
+- `usePDV` (useSales) - Query direta em `sales`
+- `useDashboardData` - Queries em `sales`, `ordens_servico`, `produtos`, `cash_register_sessions`
+
+**Nota Importante:** O backend (`/api/query/:table`) adiciona automaticamente o filtro `company_id` para essas tabelas, então os hooks do frontend não precisam filtrar manualmente. O isolamento é feito no backend.
+
+### 3.5 Frontend - Componentes Financeiro
+
+**DREComplete.tsx:**
+- Busca `sales` com filtro `status = 'paid'`
+- Busca `bills_to_pay` com filtro `status = 'pago'`
+- Filtra por `due_date` (não `payment_date` ou `paid_at`)
+- Extrai custo de `observacoes` field (regex: "Custo: R$ X,XX")
+
+**BillsManager.tsx:**
+- Busca `bills_to_pay` com vários filtros
+- Usa `payment_date` field
+
 ---
 
 ## FASE 4: DIFERENÇAS IDENTIFICADAS (GAP ANALYSIS)
@@ -289,10 +327,15 @@
 
 ### 4.2 ALTO (Quebra fluxos principais)
 
-**A SER VERIFICADO:**
-- [ ] Coluna sale_origin faltante em sales (backend tem fallback, mas ideal ter)
+**IDENTIFICADO:**
+- [ ] **bills_to_pay.payment_date vs paid_at vs pago_em:**
+  - Backend (`financeiro.js` linha 710-720): Usa `payment_date` mas tem fallback para `due_date`
+  - Backend tem lógica dinâmica para detectar coluna correta (payment_date, paid_at, paid_date, pago_em)
+  - Frontend (`DREComplete.tsx` linha 67): Filtra por `due_date` (pode estar errado para contas pagas)
+  - Frontend (`TransactionsManager.tsx` linha 86): Usa `payment_date`
+  - **Divergência:** Frontend DRE usa `due_date`, mas deveria usar coluna de pagamento
+- [ ] Coluna sale_origin faltante em sales (backend tem fallback usando ordem_servico_id)
 - [ ] Coluna cash_register_session_id faltante em sales
-- [ ] Colunas de pagamento em bills_to_pay (payment_date vs paid_at vs pago_em)
 
 ### 4.3 MÉDIO (Quebra relatórios/filtros)
 
