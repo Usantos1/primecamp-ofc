@@ -7,8 +7,8 @@ import { Users, Shield } from "lucide-react";
 export default function AdminUsers() {
   return (
     <ModernLayout
-      title="Gestão de Usuários e Roles"
-      subtitle="Gerencie usuários, roles e permissões do sistema"
+      title="Gestão de Usuários e Funções"
+      subtitle="Gerencie usuários, funções e permissões do sistema"
     >
       <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full grid-cols-2">

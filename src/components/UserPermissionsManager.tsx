@@ -536,7 +536,7 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
     <div className="space-y-4">
       <Tabs defaultValue="role" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="role">Role Predefinido</TabsTrigger>
+          <TabsTrigger value="role">Função Predefinida</TabsTrigger>
           <TabsTrigger value="custom">Permissões Customizadas</TabsTrigger>
           <TabsTrigger value="history">Histórico</TabsTrigger>
         </TabsList>
