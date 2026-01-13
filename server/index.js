@@ -1666,7 +1666,7 @@ app.post('/api/update/:table', async (req, res) => {
         // Se sale_origin não está sendo atualizado, verificar consistência com sale_origin atual
         const { clause: tempWhereClause, params: tempWhereParams } = buildWhereClause(where, 0);
         const currentSaleResult = await pool.query(
-          `SELECT sale_origin FROM ${tableName} WHERE ${tempWhereClause}`,
+          `SELECT sale_origin FROM ${tableName} ${tempWhereClause}`,
           tempWhereParams
         );
         
