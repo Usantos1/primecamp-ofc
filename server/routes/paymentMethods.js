@@ -57,13 +57,19 @@ router.get('/', async (req, res) => {
     const updatedAtCol = hasUpdatedAt ? 'pm.updated_at' : 'NOW()';
     
     // Verificar se a tabela payment_fees existe
-    const hasPaymentFeesTable = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'payment_fees'
-      )
-    `).then(r => r.rows[0]?.exists || false).catch(() => false);
+    let hasPaymentFeesTable = false;
+    try {
+      const tableCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'payment_fees'
+        )
+      `);
+      hasPaymentFeesTable = tableCheck.rows[0]?.exists || false;
+    } catch (e) {
+      hasPaymentFeesTable = false;
+    }
     
     const feesCountExpr = hasPaymentFeesTable 
       ? `(SELECT COUNT(*) FROM payment_fees pf WHERE pf.payment_method_id = pm.id)`
@@ -103,7 +109,19 @@ router.get('/', async (req, res) => {
     
     query += ` ORDER BY COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0), pm.${nameCol}`;
     
-    const result = await pool.query(query, params);
+    let result;
+    try {
+      result = await pool.query(query, params);
+    } catch (queryError) {
+      // Se ainda assim der erro na query (por algum motivo a tabela foi referenciada), 
+      // tentar novamente sem a subquery de fees_count
+      if (queryError.message && queryError.message.includes('payment_fees')) {
+        query = query.replace(/,\s*\$\{feesCountExpr\}\s*as fees_count/, ', 0 as fees_count');
+        result = await pool.query(query, params);
+      } else {
+        throw queryError;
+      }
+    }
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao listar:', error);
