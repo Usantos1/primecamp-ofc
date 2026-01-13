@@ -54,7 +54,8 @@ export default function TalentBank() {
       // Primeiro, buscar todos os candidatos
       let query = from('job_responses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10000); // Limite alto para buscar todos os candidatos
 
       if (selectedSurvey !== 'all') {
         query = query.eq('survey_id', selectedSurvey);
@@ -82,10 +83,10 @@ export default function TalentBank() {
       let surveysMap: Record<string, any> = {};
       
       if (surveyIds.length > 0) {
-        const { data: surveys, error: surveysError } = await supabase
-          .from('job_surveys')
+        const { data: surveys, error: surveysError } = await from('job_surveys')
           .select('id, title, position_title, department')
-         .execute() .in('id', surveyIds);
+          .in('id', surveyIds)
+          .execute();
 
         if (!surveysError && surveys) {
           surveysMap = surveys.reduce((acc: any, survey: any) => {
@@ -99,10 +100,10 @@ export default function TalentBank() {
       const candidateIds = responses.map((c: any) => c.id);
       let aiAnalyses: any[] = [];
       if (candidateIds.length > 0) {
-        const { data: analyses, error: aiError } = await (supabase as any)
-          .from('job_candidate_ai_analysis')
+        const { data: analyses, error: aiError } = await from('job_candidate_ai_analysis')
           .select('*')
-         .execute() .in('job_response_id', candidateIds);
+          .in('job_response_id', candidateIds)
+          .execute();
 
         if (aiError) {
           console.error('Erro ao carregar análises de IA:', aiError);
@@ -322,15 +323,15 @@ export default function TalentBank() {
       };
 
       if (existingEvaluation) {
-        const { error } = await supabase
-          .from('job_candidate_evaluations')
+        const { error } = await from('job_candidate_evaluations')
           .update(evaluationData)
-          .eq('id', existingEvaluation.id);
+          .eq('id', existingEvaluation.id)
+          .execute();
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('job_candidate_evaluations')
-          .insert(evaluationData);
+        const { error } = await from('job_candidate_evaluations')
+          .insert(evaluationData)
+          .execute();
         if (error) throw error;
       }
 
@@ -353,8 +354,7 @@ export default function TalentBank() {
 
   const handleCreateInterview = async (candidate: Candidate) => {
     try {
-      const { data: newInterview, error: createError } = await supabase
-        .from('job_interviews')
+      const { data: newInterview, error: createError } = await from('job_interviews')
         .insert({
           job_response_id: candidate.id,
           survey_id: candidate.survey_id,
@@ -363,7 +363,8 @@ export default function TalentBank() {
           questions: []
         })
         .select()
-        .single();
+        .single()
+        .execute();
 
       if (createError) {
         const { data: existing } = await from('job_interviews')
