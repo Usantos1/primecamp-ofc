@@ -97,7 +97,7 @@ export default function NovaVenda() {
   const [sale, setSale] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
-  const [productSearchField, setProductSearchField] = useState<'all' | 'codigo' | 'descricao' | 'referencia'>('all');
+  const [productSearchField, setProductSearchField] = useState<'all' | 'codigo' | 'descricao' | 'referencia'>('codigo');
   const [productResults, setProductResults] = useState<any[]>([]);
   const [showProductSearch, setShowProductSearch] = useState(false);
   
@@ -1847,10 +1847,10 @@ _PrimeCamp Assistência Técnica_`;
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="codigo">Código</SelectItem>
                       <SelectItem value="descricao">Descrição</SelectItem>
                       <SelectItem value="referencia">Referência</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
