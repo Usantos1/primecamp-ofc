@@ -93,7 +93,15 @@ FROM (VALUES
     ('cashier_user_id')
 ) AS c(column_name)
 ORDER BY 
-    CASE WHEN status LIKE '❌%' THEN 0 ELSE 1 END,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'sales'
+              AND column_name = c.column_name
+        ) THEN 1
+        ELSE 0
+    END,
     coluna;
 
 -- ============================================
@@ -135,7 +143,14 @@ FROM (VALUES
     ('ia_previsoes')
 ) AS t(table_name)
 ORDER BY 
-    CASE WHEN status LIKE '❌%' THEN 0 ELSE 1 END,
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = t.table_name
+        ) THEN 1
+        ELSE 0
+    END,
     tabela;
 
 -- ============================================
