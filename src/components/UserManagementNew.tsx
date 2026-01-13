@@ -318,18 +318,43 @@ export const UserManagementNew = () => {
     try {
       setLoading(true);
 
-      // Atualizar perfil
-      const { error: profileError } = await from('profiles')
-        .update({
-          display_name: editFormData.display_name,
-          phone: editFormData.phone,
-          department: editFormData.department,
-          role: editFormData.role,
-          approved: editFormData.approved,
-        })
-        .eq('user_id', selectedUser.user_id);
+      // Verificar se o profile existe antes de atualizar
+      const { data: existingProfile, error: checkError } = await from('profiles')
+        .select('user_id')
+        .eq('user_id', selectedUser.user_id)
+        .maybeSingle();
 
-      if (profileError) throw profileError;
+      if (checkError) throw checkError;
+
+      // Se não existe profile, criar um novo
+      if (!existingProfile) {
+        const { error: createError } = await from('profiles')
+          .insert({
+            user_id: selectedUser.user_id,
+            display_name: editFormData.display_name,
+            phone: editFormData.phone || null,
+            department: editFormData.department || null,
+            role: editFormData.role,
+            approved: editFormData.approved,
+            approved_at: editFormData.approved ? new Date().toISOString() : null,
+          });
+
+        if (createError) throw createError;
+      } else {
+        // Se existe, atualizar
+        const { error: profileError } = await from('profiles')
+          .update({
+            display_name: editFormData.display_name,
+            phone: editFormData.phone || null,
+            department: editFormData.department || null,
+            role: editFormData.role,
+            approved: editFormData.approved,
+            approved_at: editFormData.approved && !selectedUser.approved ? new Date().toISOString() : selectedUser.approved_at,
+          })
+          .eq('user_id', selectedUser.user_id);
+
+        if (profileError) throw profileError;
+      }
 
       // Atualizar email e/ou senha via edge function
       const needsAuthUpdate = editFormData.email !== (selectedUser.authEmail || '') || editFormData.password.trim() !== '';
