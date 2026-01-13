@@ -1458,8 +1458,8 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
 
                               // Tentar excluir
                               const { error } = await from('job_application_drafts')
-                                .eq('id', draft.id)
-                                .delete();
+                                .delete()
+                                .eq('id', draft.id);
 
                               if (error) {
                                 console.error('Erro ao excluir draft:', error);

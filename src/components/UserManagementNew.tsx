@@ -419,7 +419,7 @@ export const UserManagementNew = () => {
 
       for (const table of tablesToClean) {
         try {
-          await from(table).eq('user_id', userId).delete();
+          await from(table).delete().eq('user_id', userId);
         } catch (e) {
           // Ignorar erros
         }
@@ -427,14 +427,14 @@ export const UserManagementNew = () => {
 
       // Deletar profile
       try {
-        await from('profiles').eq('user_id', userId).delete();
+        await from('profiles').delete().eq('user_id', userId);
       } catch (e) {
         console.warn('Erro ao deletar profile:', e);
       }
 
       // Tentar deletar user
       try {
-        await from('users').eq('id', userId).delete();
+        await from('users').delete().eq('id', userId);
       } catch (e) {
         console.warn('Erro ao deletar user:', e);
       }

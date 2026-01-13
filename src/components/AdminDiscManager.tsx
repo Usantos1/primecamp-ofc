@@ -247,8 +247,8 @@ export const AdminDiscManager = () => {
       console.log('Registro encontrado:', existingRecord);
       
       const { error, data } = await from('candidate_responses')
-        .eq('id', resultId)
-        .delete();
+        .delete()
+        .eq('id', resultId);
 
       console.log('Resultado da exclusão:', { error, data });
 
@@ -268,8 +268,8 @@ export const AdminDiscManager = () => {
   const deletePartialCandidates = async () => {
     try {
       const { error, data } = await from('candidate_responses')
-        .eq('is_completed', false)
-        .delete();
+        .delete()
+        .eq('is_completed', false);
 
       if (error) throw error;
       const count = Array.isArray(data) ? data.length : 0;

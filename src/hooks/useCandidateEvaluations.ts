@@ -47,15 +47,15 @@ export const useCandidateEvaluations = (surveyId?: string) => {
     try {
       // First delete any evaluations
       const { error: evalError } = await from('job_candidate_evaluations')
-        .eq('job_response_id', candidateId)
-        .delete();
+        .delete()
+        .eq('job_response_id', candidateId);
 
       if (evalError) throw evalError;
 
       // Then delete the candidate response
       const { error } = await from('job_responses')
-        .eq('id', candidateId)
-        .delete();
+        .delete()
+        .eq('id', candidateId);
 
       if (error) throw error;
 

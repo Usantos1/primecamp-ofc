@@ -255,13 +255,13 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
       
       if (deletingItem.source === 'bill') {
         // Deletar da tabela bills_to_pay
-        const { error } = await from('bills_to_pay').eq('id', realId).delete();
+        const { error } = await from('bills_to_pay').delete().eq('id', realId);
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ['paid-bills-transactions'] });
         queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
       } else if (deletingItem.source === 'manual') {
         // Deletar da tabela financial_transactions
-        const { error } = await from('financial_transactions').eq('id', realId).delete();
+        const { error } = await from('financial_transactions').delete().eq('id', realId);
         if (error) throw error;
         queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
       } else if (deletingItem.source === 'sale') {
