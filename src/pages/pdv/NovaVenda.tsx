@@ -33,6 +33,7 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
 import { updatePrintStatus } from '@/utils/printUtils';
+import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
 
 export default function NovaVenda() {
   const navigate = useNavigate();
@@ -56,6 +57,13 @@ export default function NovaVenda() {
   
   const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
   const { data: cupomConfig } = useCupomConfig();
+  
+  // Buscar formas de pagamento configuradas
+  const { paymentMethods, fetchPaymentMethods } = usePaymentMethodsHook();
+  
+  useEffect(() => {
+    fetchPaymentMethods(true); // Buscar apenas as ativas
+  }, [fetchPaymentMethods]);
   
   // Função de busca de produtos
   const searchProdutos = (term: string, field: 'all' | 'codigo' | 'descricao' | 'referencia' = 'all') => {
@@ -2486,12 +2494,14 @@ _PrimeCamp Assistência Técnica_`;
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                    <SelectItem value="pix">PIX</SelectItem>
-                    <SelectItem value="debito">Débito</SelectItem>
-                    <SelectItem value="credito">Crédito</SelectItem>
-                    <SelectItem value="link_pagamento">Link de Pagamento</SelectItem>
-                    <SelectItem value="carteira_digital">Carteira Digital</SelectItem>
+                    {paymentMethods
+                      .filter(pm => pm.is_active)
+                      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                      .map((pm) => (
+                        <SelectItem key={pm.id} value={pm.code}>
+                          {pm.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
