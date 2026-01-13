@@ -36,6 +36,11 @@ q = q.gte('payment_date', startDate).lte('payment_date', endDate);
 **Arquivo a corrigir:**
 - `src/components/financeiro/DREComplete.tsx` (linha ~67)
 
+**Status:** ✅ **CORRIGIDO**
+- Commit: "fix: corrigir filtro de data em DREComplete - usar payment_date ao invés de due_date para contas pagas com fallback"
+- Implementado com fallback para `due_date` caso `payment_date` não exista no banco
+- Código agora tenta usar `payment_date` primeiro, e se falhar, usa `due_date`
+
 ---
 
 ### 2. sales.sale_origin (Potencial)
