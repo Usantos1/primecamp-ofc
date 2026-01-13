@@ -7,25 +7,42 @@
 
 ## ✅ O QUE FOI FEITO
 
-### FASE 1: INVENTÁRIO DE DOCUMENTAÇÃO
-- ✅ Mapeados todos arquivos .sql principais
+### FASE 1: INVENTÁRIO DE DOCUMENTAÇÃO ✅ COMPLETA
+- ✅ Mapeados todos arquivos .sql principais (20+ arquivos)
 - ✅ Mapeados arquivos .md relevantes
-- ✅ Schema esperado documentado
+- ✅ Schema esperado documentado completamente
 
-### FASE 2: SCHEMA ESPERADO
-- ✅ Documentadas 20+ tabelas principais
+### FASE 2: SCHEMA ESPERADO ✅ COMPLETA
+- ✅ Documentadas 20+ tabelas principais com todas as colunas
 - ✅ Documentadas colunas essenciais de cada tabela
 - ✅ Identificadas dependências e relacionamentos
+- ✅ Mapeadas tabelas Core, PDV, Financeiro IA
 
-### FASE 3: ESTADO ATUAL DO CÓDIGO
-- ✅ Mapeadas páginas frontend principais
-- ✅ Mapeadas rotas backend principais
-- ✅ Identificados hooks e serviços
+### FASE 3: ESTADO ATUAL DO CÓDIGO ✅ COMPLETA
+- ✅ Mapeadas páginas frontend principais (40+ páginas)
+- ✅ Mapeadas rotas backend principais (4 arquivos de rotas)
+- ✅ Identificados hooks principais (60+ hooks)
+- ✅ **Mapeado sistema de filtro multi-tenant (company_id) no backend**
+- ✅ Identificado como backend adiciona filtro automático de company_id
 
 ### ARQUIVOS CRIADOS
 1. ✅ `AUDITORIA_COMPLETA_PROJETO.md` - Documentação completa
 2. ✅ `AUDITORIA_RESUMO_INICIAL.md` - Resumo inicial
 3. ✅ `sql/VERIFICAR_SCHEMA_COMPLETO.sql` - Script de verificação
+
+---
+
+## 🔍 DIVERGÊNCIAS IDENTIFICADAS (Parcial)
+
+### ALTO - bills_to_pay payment_date
+- **Problema:** Frontend `DREComplete.tsx` filtra contas pagas por `due_date`, mas deveria usar coluna de pagamento
+- **Backend:** Já tem lógica dinâmica para detectar coluna correta (payment_date, paid_at, pago_em)
+- **Ação:** Corrigir frontend para usar coluna de pagamento (ou backend retornar dados já filtrados)
+
+### BACKEND TEM FALLBACKS
+- ✅ Backend verifica dinamicamente se colunas existem (hasSaleOrigin, hasCashierUserId, etc)
+- ✅ Backend adiciona filtro company_id automaticamente via `/api/query/:table`
+- ✅ Sistema é resiliente a colunas faltantes (usa fallbacks)
 
 ---
 
