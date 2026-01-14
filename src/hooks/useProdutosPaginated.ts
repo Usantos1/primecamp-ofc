@@ -83,8 +83,21 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   const [searchField, setSearchField] = useState<SearchField>(initialSearchField);
   const [grupo, setGrupo] = useState(initialGrupo);
   const [localizacao, setLocalizacao] = useState(initialLocalizacao);
-  const [orderBy, setOrderBy] = useState<'nome' | 'codigo'>(initialOrderBy);
-  const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>(initialOrderDirection);
+  const [orderBy, setOrderByState] = useState<'nome' | 'codigo'>(initialOrderBy);
+  const [orderDirection, setOrderDirectionState] = useState<'asc' | 'desc'>(initialOrderDirection);
+
+  // Wrappers que invalidam cache e resetam página
+  const setOrderBy = useCallback((field: 'nome' | 'codigo') => {
+    setOrderByState(field);
+    setPage(1);
+    queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+  }, [queryClient, setPage]);
+
+  const setOrderDirection = useCallback((direction: 'asc' | 'desc') => {
+    setOrderDirectionState(direction);
+    setPage(1);
+    queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+  }, [queryClient, setPage]);
 
   // Debounce na busca (300ms)
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -110,8 +123,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       
       // Aplicar ordenação
       if (orderBy === 'codigo') {
-        // Para código, precisamos tratar NULLs (produtos sem código vão para o final)
-        query = query.order('codigo', { ascending: orderDirection === 'asc', nullsFirst: false });
+        query = query.order('codigo', { ascending: orderDirection === 'asc' });
       } else {
         query = query.order('nome', { ascending: orderDirection === 'asc' });
       }
@@ -221,6 +233,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     staleTime: 0, // Sempre buscar dados frescos
     enabled: true, // Sempre habilitado
     refetchOnWindowFocus: false, // Não refetch ao focar janela
+    gcTime: 0, // Não manter em cache (anteriormente cacheTime)
   });
 
   const produtos = produtosData?.produtos || [];
@@ -243,13 +256,19 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       const nextTo = nextFrom + pageSize - 1;
       
       queryClient.prefetchQuery({
-        queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, grupo, localizacao],
+        queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
         queryFn: async () => {
           const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
           
           let query = dbFrom('produtos')
             .select(selectFields);
-          query = query.order(orderBy === 'codigo' ? 'codigo' : 'nome', { ascending: orderDirection === 'asc', nullsFirst: orderBy === 'codigo' ? false : true });
+          
+          // Aplicar ordenação (mesma lógica da query principal)
+          if (orderBy === 'codigo') {
+            query = query.order('codigo', { ascending: orderDirection === 'asc', nullsFirst: false });
+          } else {
+            query = query.order('nome', { ascending: orderDirection === 'asc' });
+          }
 
           if (grupo && grupo.trim() !== '') {
             query = query.eq('grupo', grupo);
@@ -262,46 +281,69 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
           if (debouncedSearchTerm.trim()) {
             const search = debouncedSearchTerm.trim();
             const codigoNum = parseInt(search);
-            if (!isNaN(codigoNum)) {
-              query = query.or(
-                `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
-              );
+            
+            // Aplicar busca com mesmo campo que a query principal
+            if (searchField === 'codigo') {
+              if (!isNaN(codigoNum)) {
+                query = query.eq('codigo', codigoNum);
+              } else {
+                query = query.ilike('codigo', `%${search}%`);
+              }
+            } else if (searchField === 'referencia') {
+              query = query.ilike('referencia', `%${search}%`);
+            } else if (searchField === 'codigo_barras') {
+              query = query.ilike('codigo_barras', `%${search}%`);
+            } else if (searchField === 'descricao') {
+              query = query.ilike('nome', `%${search}%`);
+            } else if (searchField === 'localizacao') {
+              query = query.ilike('localizacao', `%${search}%`);
             } else {
-              query = query.or(
-                `nome.ilike.%${search}%,codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
-              );
+              // Busca em todos os campos
+              if (!isNaN(codigoNum)) {
+                query = query.or(
+                  `nome.ilike.%${search}%,codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
+                );
+              } else {
+                query = query.or(
+                  `nome.ilike.%${search}%,codigo_barras.ilike.%${search}%,referencia.ilike.%${search}%`
+                );
+              }
             }
           }
 
           query = query.range(nextFrom, nextTo);
-          const { data, error } = await query.execute();
+          const { data, error, count } = await query.execute();
           if (error) throw error;
           return {
             produtos: ((data || []) as any[]).map(mapSupabaseToAssistencia),
-            totalCount: 0,
+            totalCount: count || 0,
           };
         },
-        staleTime: 30000,
+        staleTime: 0, // Sempre buscar dados frescos para manter consistência
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, produtos.length, totalPages, debouncedSearchTerm, grupo, localizacao]);
+  }, [page, pageSize, produtos.length, totalPages, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection]);
 
-  // Resetar para página 1 quando filtros mudarem
+  // Resetar para página 1 quando filtros mudarem e invalidar cache
   const handleSearchChange = useCallback((value: string) => {
     setSearchTerm(value);
     setPage(1);
-  }, []);
+    // Invalidar cache para forçar busca fresca
+    queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+  }, [queryClient]);
 
   const handleGrupoChange = useCallback((value: string) => {
     setGrupo(value);
     setPage(1);
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+  }, [queryClient]);
 
   const handleLocalizacaoChange = useCallback((value: string) => {
     setLocalizacao(value);
     setPage(1);
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+  }, [queryClient]);
 
   // Funções de paginação
   const goToPage = useCallback((newPage: number) => {
