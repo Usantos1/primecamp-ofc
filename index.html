@@ -128,6 +128,47 @@ fbq('track', 'PageView');
     
     <div id="root"></div>
 
+    <!-- 🧹 FORÇAR LIMPEZA DE CACHE E SERVICE WORKERS -->
+    <script>
+      (function() {
+        // Desregistrar TODOS os Service Workers
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.unregister().then(function(success) {
+                if (success) {
+                  console.log('✅ Service Worker desregistrado:', registration.scope);
+                }
+              });
+            }
+          });
+          
+          // Limpar cache de Service Workers
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              for (let name of names) {
+                caches.delete(name).then(function(success) {
+                  if (success) {
+                    console.log('✅ Cache deletado:', name);
+                  }
+                });
+              }
+            });
+          }
+        }
+        
+        // Limpar localStorage e sessionStorage de versões antigas
+        try {
+          const version = 'v' + Date.now();
+          localStorage.setItem('app_version', version);
+          sessionStorage.setItem('app_version', version);
+          console.log('✅ Versão da aplicação atualizada:', version);
+        } catch (e) {
+          console.warn('Erro ao atualizar versão:', e);
+        }
+      })();
+    </script>
+
     <!-- Script principal do Vite/React -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
