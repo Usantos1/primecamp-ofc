@@ -4,48 +4,60 @@ echo "🔍 VERIFICANDO CONFIGURAÇÃO DO NGINX"
 echo "====================================="
 echo ""
 
-# Verificar qual é o root configurado no Nginx
-echo "1️⃣ Verificando configuração do Nginx..."
-if [ -f "/etc/nginx/sites-available/default" ]; then
-    echo "  📄 Arquivo: /etc/nginx/sites-available/default"
-    echo ""
-    echo "  📍 Diretório root configurado:"
-    sudo grep -n "root" /etc/nginx/sites-available/default | grep -v "#" | head -5
-    echo ""
-    echo "  📍 Configuração completa do server block:"
-    sudo grep -A 20 "server {" /etc/nginx/sites-available/default | head -25
-elif [ -f "/etc/nginx/nginx.conf" ]; then
-    echo "  📄 Verificando nginx.conf..."
-    sudo grep -n "root" /etc/nginx/nginx.conf | grep -v "#" | head -5
-else
-    echo "  ❌ Arquivo de configuração não encontrado"
-fi
+echo "1️⃣ Verificando arquivos de configuração..."
+NGINX_SITES="/etc/nginx/sites-enabled"
+echo "   Arquivos em sites-enabled:"
+ls -la "$NGINX_SITES" | grep primecamp
 
 echo ""
-echo "2️⃣ Verificando arquivos em /var/www/html..."
-if [ -d "/var/www/html" ]; then
-    echo "  ✅ Diretório existe"
-    echo "  📁 Arquivos:"
-    ls -lah /var/www/html/ | head -10
+echo "2️⃣ Verificando configuração do primecamp.cloud..."
+NGINX_CONFIG="/etc/nginx/sites-available/primecamp.cloud"
+if [ -f "$NGINX_CONFIG" ]; then
+    echo "   ✅ Arquivo encontrado: $NGINX_CONFIG"
     echo ""
-    if [ -f "/var/www/html/index.html" ]; then
-        echo "  ✅ index.html existe"
+    echo "   Conteúdo da configuração:"
+    cat "$NGINX_CONFIG"
+else
+    echo "   ❌ Arquivo não encontrado!"
+    echo "   Procurando em sites-enabled..."
+    NGINX_CONFIG_ENABLED="/etc/nginx/sites-enabled/primecamp.cloud"
+    if [ -f "$NGINX_CONFIG_ENABLED" ]; then
+        echo "   ✅ Encontrado em sites-enabled"
+        echo ""
+        echo "   Conteúdo da configuração:"
+        cat "$NGINX_CONFIG_ENABLED"
     else
-        echo "  ❌ index.html NÃO existe!"
+        echo "   ❌ Não encontrado em sites-enabled também!"
+        echo "   Listando todos os arquivos de configuração:"
+        ls -la /etc/nginx/sites-available/ | grep primecamp
+        ls -la /etc/nginx/sites-enabled/ | grep primecamp
     fi
-else
-    echo "  ❌ Diretório /var/www/html não existe!"
 fi
 
 echo ""
-echo "3️⃣ Testando acesso via localhost..."
-echo "  Testando: curl -s -o /dev/null -w '%{http_code}' http://localhost/"
-HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/ 2>/dev/null || echo "000")
-echo "  Código HTTP: $HTTP_CODE"
+echo "3️⃣ Verificando se há location /assets configurado..."
+if [ -f "$NGINX_CONFIG" ]; then
+    if grep -q "location /assets" "$NGINX_CONFIG"; then
+        echo "   ✅ Location /assets encontrado"
+        echo "   Configuração:"
+        grep -A 10 "location /assets" "$NGINX_CONFIG"
+    else
+        echo "   ⚠️ Location /assets NÃO encontrado"
+        echo "   Verificando location /..."
+        grep -A 15 "location /" "$NGINX_CONFIG" | head -20
+    fi
+fi
 
 echo ""
-echo "4️⃣ Verificando processos do Nginx..."
-sudo systemctl status nginx --no-pager | head -15
+echo "4️⃣ Verificando root do servidor..."
+if [ -f "$NGINX_CONFIG" ]; then
+    echo "   Root configurado:"
+    grep "root " "$NGINX_CONFIG" | head -3
+fi
+
+echo ""
+echo "5️⃣ Testando acesso HTTPS direto..."
+curl -I https://primecamp.cloud/assets/index-B2StyxFt.js 2>&1 | head -10
 
 echo ""
 echo "✅ Verificação concluída!"
