@@ -51,12 +51,13 @@ interface FormData {
 interface EstoqueMovimentacao {
   id: string;
   data: string;
-  ref_tipo: 'OS' | 'Venda' | 'Cancelamento' | 'Devolução' | 'Ajuste' | 'Inventário' | 'Troca' | 'Perda';
+  ref_tipo: 'OS' | 'Venda' | 'Cancelamento' | 'Devolução' | 'Ajuste' | 'Inventário' | 'Troca' | 'Perda' | 'Devolução OS';
   ref_id?: string;
   ref_numero: number;
   quantidade_delta: number; // negativo = saída, positivo = entrada
   descricao: string;
   vendedor_nome?: string | null;
+  hora?: string; // Hora completa formatada
 }
 
 /**
@@ -248,7 +249,7 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
       }
     }
 
-    // 3. Movimentações internas (ajustes manuais / inventário)
+    // 3. Movimentações internas (ajustes manuais / inventário / devoluções OS)
     const { data: internalMovs } = await from('produto_movimentacoes')
       .select('id, tipo, motivo, quantidade_antes, quantidade_depois, quantidade_delta, valor_venda_antes, valor_venda_depois, valor_custo_antes, valor_custo_depois, inventario_id, user_nome, created_at')
       .eq('produto_id', produtoId)
@@ -258,7 +259,9 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
 
     if (internalMovs && internalMovs.length > 0) {
       (internalMovs as any[]).forEach((m) => {
-        const isInventario = String(m.tipo || '').includes('inventario');
+        const tipoMov = String(m.tipo || '').toLowerCase();
+        const isInventario = tipoMov.includes('inventario');
+        const isDevolucaoOS = tipoMov.includes('devolucao_os') || tipoMov.includes('devolução_os');
         const qtdDelta = Number(m.quantidade_delta || 0);
 
         const parts: string[] = [];
@@ -272,10 +275,28 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
           parts.push(`Custo: ${formatBRL(Number(m.valor_custo_antes || 0))} → ${formatBRL(Number(m.valor_custo_depois || 0))}`);
         }
 
+        // Determinar tipo de referência
+        let refTipo: EstoqueMovimentacao['ref_tipo'] = 'Ajuste';
+        if (isInventario) {
+          refTipo = 'Inventário';
+        } else if (isDevolucaoOS) {
+          refTipo = 'Devolução OS';
+        } else if (tipoMov.includes('cancelamento_venda') || tipoMov.includes('cancelamento')) {
+          refTipo = 'Cancelamento';
+        } else if (tipoMov.includes('baixa_os') || tipoMov.includes('baixa os')) {
+          refTipo = 'OS';
+        } else if (tipoMov.includes('venda') && !tipoMov.includes('cancelamento')) {
+          refTipo = 'Venda';
+        } else if (tipoMov.includes('ajuste_estoque')) {
+          refTipo = 'Ajuste';
+        } else if (tipoMov.includes('ajuste_preco_venda') || tipoMov.includes('ajuste_preco_custo')) {
+          refTipo = 'Ajuste';
+        }
+
         movimentacoes.push({
           id: `internal-${m.id}`,
           data: m.created_at,
-          ref_tipo: isInventario ? 'Inventário' : 'Ajuste',
+          ref_tipo: refTipo,
           ref_id: m.inventario_id || undefined,
           ref_numero: 0,
           quantidade_delta: Number.isFinite(qtdDelta) ? qtdDelta : 0,
@@ -1384,21 +1405,28 @@ export function ProductFormOptimized({
                         {movimentacoes.map((mov) => {
                           // Cores por tipo de movimentação
                           const tipoBadgeColors: Record<string, string> = {
-                            'Venda': 'bg-blue-100 text-blue-700',
-                            'OS': 'bg-purple-100 text-purple-700',
-                            'Cancelamento': 'bg-orange-100 text-orange-700',
-                            'Devolução': 'bg-green-100 text-green-700',
-                            'Troca': 'bg-yellow-100 text-yellow-700',
-                            'Perda': 'bg-red-100 text-red-700',
-                            'Ajuste': 'bg-gray-100 text-gray-700',
-                            'Inventário': 'bg-indigo-100 text-indigo-700',
+                            'Venda': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                            'OS': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+                            'Cancelamento': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+                            'Devolução': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                            'Devolução OS': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+                            'Troca': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+                            'Perda': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+                            'Ajuste': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+                            'Inventário': 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
                           };
                           const badgeColor = tipoBadgeColors[mov.ref_tipo] || 'bg-muted';
                           
+                          const dataFormatada = format(new Date(mov.data), "dd/MM/yyyy");
+                          const horaFormatada = format(new Date(mov.data), "HH:mm:ss");
+                          
                           return (
-                            <TableRow key={mov.id}>
+                            <TableRow key={mov.id} className="hover:bg-muted/50">
                               <TableCell className="text-sm">
-                                {format(new Date(mov.data), "dd/MM/yy HH:mm")}
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{dataFormatada}</span>
+                                  <span className="text-xs text-muted-foreground">{horaFormatada}</span>
+                                </div>
                               </TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${badgeColor}`}>

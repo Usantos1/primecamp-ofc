@@ -180,6 +180,7 @@ function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
 
 export function useProdutosSupabase() {
   const queryClient = useQueryClient();
+  const { user, profile } = useAuth();
 
   // Buscar produtos do Supabase
   const { data: produtosData, isLoading, error } = useQuery({
@@ -254,6 +255,16 @@ export function useProdutosSupabase() {
 
   // Atualizar produto
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
+    // Buscar estado anterior para auditoria e movimentações
+    const { data: oldRow, error: oldErr } = await from('produtos')
+      .select('id, nome, quantidade, valor_dinheiro_pix, valor_venda, vi_custo, valor_compra')
+      .eq('id', id)
+      .single();
+
+    if (oldErr && oldErr.code !== 'PGRST116') {
+      console.warn('[updateProduto] Erro ao buscar estado anterior:', oldErr);
+    }
+
     const produtoSupabase = mapAssistenciaToSupabase(data);
     
     // Remover campos que não existem na tabela
@@ -274,12 +285,81 @@ export function useProdutosSupabase() {
     }
 
     queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
+    queryClient.invalidateQueries({ queryKey: ['produto_movimentacoes'] });
+    
+    // Registrar movimentações internas (estoque/preço/custo)
+    try {
+      if (oldRow) {
+        const beforeQtd = Number((oldRow as any)?.quantidade ?? 0);
+        const afterQtd = data.quantidade !== undefined ? Number(data.quantidade ?? 0) : beforeQtd;
+        const beforeVenda = Number((oldRow as any)?.valor_dinheiro_pix ?? (oldRow as any)?.valor_venda ?? 0);
+        const afterVenda = data.valor_venda !== undefined ? Number(data.valor_venda ?? 0) : beforeVenda;
+        const beforeCusto = Number((oldRow as any)?.vi_custo ?? (oldRow as any)?.valor_compra ?? 0);
+        const afterCusto =
+          (data as any).preco_custo !== undefined
+            ? Number((data as any).preco_custo ?? 0)
+            : (data as any).valor_compra !== undefined
+              ? Number((data as any).valor_compra ?? 0)
+              : beforeCusto;
+
+        const userNome = profile?.display_name || user?.email || 'Usuário';
+        const movements: any[] = [];
+
+        if (afterQtd !== beforeQtd) {
+          movements.push({
+            produto_id: id,
+            tipo: 'ajuste_estoque',
+            motivo: 'Edição manual do produto',
+            quantidade_antes: beforeQtd,
+            quantidade_depois: afterQtd,
+            quantidade_delta: afterQtd - beforeQtd,
+            user_id: user?.id || null,
+            user_nome: userNome,
+          });
+        }
+
+        if (afterVenda !== beforeVenda) {
+          movements.push({
+            produto_id: id,
+            tipo: 'ajuste_preco_venda',
+            motivo: 'Edição manual do produto',
+            valor_venda_antes: beforeVenda,
+            valor_venda_depois: afterVenda,
+            user_id: user?.id || null,
+            user_nome: userNome,
+          });
+        }
+
+        if (afterCusto !== beforeCusto) {
+          movements.push({
+            produto_id: id,
+            tipo: 'ajuste_preco_custo',
+            motivo: 'Edição manual do produto',
+            valor_custo_antes: beforeCusto,
+            valor_custo_depois: afterCusto,
+            user_id: user?.id || null,
+            user_nome: userNome,
+          });
+        }
+
+        if (movements.length > 0) {
+          const { error: movErr } = await from('produto_movimentacoes')
+            .insert(movements)
+            .execute();
+          if (movErr) {
+            console.error('[updateProduto] Falha ao registrar movimentação:', movErr);
+          }
+        }
+      }
+    } catch (auditErr) {
+      console.error('[updateProduto] Falha ao registrar movimentação interna:', auditErr);
+    }
     
     toast({
       title: 'Sucesso',
       description: 'Produto atualizado com sucesso!',
     });
-  }, [queryClient]);
+  }, [queryClient, user, profile]);
 
   // Deletar produto (soft delete - marcar como inativo)
   const deleteProduto = useCallback(async (id: string) => {

@@ -331,8 +331,11 @@ export function useSales() {
       // Log de auditoria
       await logAudit('update', 'sale', id, sale, updatedSale, 'Venda finalizada', user);
 
-      // Baixar estoque dos produtos vendidos
+      // Baixar estoque dos produtos vendidos e registrar movimentações
       if (items) {
+        const userNome = profile?.display_name || user?.email || 'Sistema';
+        const saleNumero = updatedSale.numero || 0;
+        
         for (const item of items) {
           if (item.produto_id && item.produto_tipo === 'produto') {
             try {
@@ -362,6 +365,25 @@ export function useSales() {
                 console.error(`Erro ao baixar estoque do produto ${item.produto_id}:`, stockError);
               } else {
                 console.log(`✅ Estoque baixado: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (-${quantidadeVendida})`);
+                
+                // Registrar movimentação de venda
+                try {
+                  await from('produto_movimentacoes')
+                    .insert({
+                      produto_id: item.produto_id,
+                      tipo: 'venda',
+                      motivo: `Venda #${saleNumero} finalizada`,
+                      quantidade_antes: quantidadeAtual,
+                      quantidade_depois: novaQuantidade,
+                      quantidade_delta: -quantidadeVendida,
+                      user_id: user?.id || null,
+                      user_nome: userNome,
+                    })
+                    .execute();
+                } catch (movError) {
+                  console.error(`Erro ao registrar movimentação de venda para produto ${item.produto_id}:`, movError);
+                  // Não falhar a venda se o registro de movimentação falhar
+                }
               }
             } catch (error) {
               console.error(`Erro ao baixar estoque do produto ${item.produto_id}:`, error);
@@ -473,6 +495,9 @@ export function useSales() {
               .execute();
 
             if (saleItems) {
+              const userNome = profile?.display_name || user?.email || 'Sistema';
+              const saleNumero = saleAtual.numero || 0;
+              
               for (const item of saleItems) {
                 if (item.produto_id && item.produto_tipo === 'produto') {
                   const { data: produto } = await from('produtos')
@@ -485,12 +510,31 @@ export function useSales() {
                     const quantidadeVendida = Number(item.quantidade || 0);
                     const novaQuantidade = quantidadeAtual + quantidadeVendida;
 
+                    // Atualizar estoque (já registra movimentação automaticamente)
                     await from('produtos')
                       .update({ quantidade: novaQuantidade })
                       .eq('id', item.produto_id)
                       .execute();
 
                     console.log(`✅ Estoque revertido: produto ${item.produto_id}, ${quantidadeAtual} -> ${novaQuantidade} (+${quantidadeVendida})`);
+                    
+                    // Registrar movimentação específica de cancelamento
+                    try {
+                      await from('produto_movimentacoes')
+                        .insert({
+                          produto_id: item.produto_id,
+                          tipo: 'cancelamento_venda',
+                          motivo: `Cancelamento da venda #${saleNumero || '?'}${reason ? ` - ${reason}` : ''}`,
+                          quantidade_antes: quantidadeAtual,
+                          quantidade_depois: novaQuantidade,
+                          quantidade_delta: quantidadeVendida,
+                          user_id: user?.id || null,
+                          user_nome: userNome,
+                        })
+                        .execute();
+                    } catch (movError) {
+                      console.error(`Erro ao registrar movimentação de cancelamento para produto ${item.produto_id}:`, movError);
+                    }
                   }
                 }
               }

@@ -27,6 +27,7 @@ import {
 import { useItensOSSupabase } from '@/hooks/useItensOSSupabase';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useOrdensServicoSupabase } from '@/hooks/useOrdensServicoSupabase';
+import { from } from '@/integrations/db/client';
 import { useClientesSupabase } from '@/hooks/useClientesSupabase';
 import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { useCargos } from '@/hooks/useCargos';
@@ -712,6 +713,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       }
       
       // Gerenciar estoque para peças (ANTES de criar itemData para validar)
+      // Buscar número da OS para registrar movimentação
+      let osNumero = 0;
+      if (isEditing && id) {
+        const os = getOSById(id);
+        osNumero = os?.numero || 0;
+      }
+      
       if (itemForm.tipo === 'peca' && itemForm.produto_id) {
         const produto = produtos.find(p => p.id === itemForm.produto_id);
         if (produto) {
@@ -735,13 +743,54 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
                 return;
               }
               
-              updateProduto(produto.id, { quantidade: novoEstoque });
+              // Atualizar estoque (já registra movimentação automaticamente)
+              await updateProduto(produto.id, { quantidade: novoEstoque });
+              
+              // Registrar movimentação específica da OS
+              if (diferenca !== 0) {
+                try {
+                  await from('produto_movimentacoes')
+                    .insert({
+                      produto_id: produto.id,
+                      tipo: diferenca < 0 ? 'baixa_os' : 'ajuste_estoque',
+                      motivo: `Edição de item na OS #${osNumero || '?'}`,
+                      quantidade_antes: estoqueAtual,
+                      quantidade_depois: novoEstoque,
+                      quantidade_delta: diferenca,
+                      user_id: user?.id || null,
+                      user_nome: currentUserNome,
+                    })
+                    .execute();
+                } catch (movError) {
+                  console.error('Erro ao registrar movimentação de edição OS:', movError);
+                }
+              }
             }
           } else {
             // Ao adicionar: decrementar estoque
             const estoqueAtual = produto.quantidade || 0;
             const novoEstoque = Math.max(0, estoqueAtual - itemForm.quantidade);
-            updateProduto(produto.id, { quantidade: novoEstoque });
+            
+            // Atualizar estoque (já registra movimentação automaticamente)
+            await updateProduto(produto.id, { quantidade: novoEstoque });
+            
+            // Registrar movimentação específica da OS
+            try {
+              await from('produto_movimentacoes')
+                .insert({
+                  produto_id: produto.id,
+                  tipo: 'baixa_os',
+                  motivo: `Item adicionado na OS #${osNumero || '?'}`,
+                  quantidade_antes: estoqueAtual,
+                  quantidade_depois: novoEstoque,
+                  quantidade_delta: -itemForm.quantidade,
+                  user_id: user?.id || null,
+                  user_nome: currentUserNome,
+                })
+                .execute();
+            } catch (movError) {
+              console.error('Erro ao registrar movimentação de adição OS:', movError);
+            }
           }
         }
       }
@@ -828,6 +877,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     const item = itens.find(i => i.id === itemId);
     if (!item) return;
 
+    // Buscar número da OS para registrar movimentação
+    let osNumero = 0;
+    if (isEditing && id) {
+      const os = getOSById(id);
+      osNumero = os?.numero || 0;
+    }
+
     // Reverter estoque se for peça com produto_id
     if (item.tipo === 'peca' && item.produto_id) {
       const produto = produtos.find(p => p.id === item.produto_id);
@@ -835,7 +891,27 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         const quantidadeRemovida = item.quantidade || 0;
         const estoqueAtual = produto.quantidade || 0;
         const novoEstoque = estoqueAtual + quantidadeRemovida;
-        updateProduto(produto.id, { quantidade: novoEstoque });
+        
+        // Atualizar estoque (já registra movimentação automaticamente)
+        await updateProduto(produto.id, { quantidade: novoEstoque });
+        
+        // Registrar movimentação específica de devolução OS
+        try {
+          await from('produto_movimentacoes')
+            .insert({
+              produto_id: produto.id,
+              tipo: 'devolucao_os',
+              motivo: `Item removido da OS #${osNumero || '?'}`,
+              quantidade_antes: estoqueAtual,
+              quantidade_depois: novoEstoque,
+              quantidade_delta: quantidadeRemovida,
+              user_id: user?.id || null,
+              user_nome: currentUserNome,
+            })
+            .execute();
+        } catch (movError) {
+          console.error('Erro ao registrar movimentação de remoção OS:', movError);
+        }
       }
     }
 

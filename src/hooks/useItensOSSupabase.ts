@@ -117,6 +117,71 @@ export function useItensOSSupabase(osId: string) {
   // Remover item
   const removeItem = useMutation({
     mutationFn: async (id: string): Promise<void> => {
+      // Buscar o item antes de deletar para devolver estoque
+      const { data: item, error: fetchError } = await from('os_items')
+        .select('id, produto_id, quantidade, tipo, ordem_servico_id')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!item) throw new Error('Item não encontrado');
+
+      // Se for peça e tiver produto_id, devolver ao estoque
+      if (item.tipo === 'peca' && item.produto_id) {
+        try {
+          // Buscar produto atual
+          const { data: produto, error: produtoError } = await from('produtos')
+            .select('id, quantidade')
+            .eq('id', item.produto_id)
+            .single();
+
+          if (!produtoError && produto) {
+            const quantidadeAtual = Number(produto.quantidade || 0);
+            const quantidadeDevolver = Number(item.quantidade || 0);
+            const novaQuantidade = quantidadeAtual + quantidadeDevolver;
+
+            // Atualizar estoque
+            await from('produtos')
+              .update({ quantidade: novaQuantidade })
+              .eq('id', item.produto_id)
+              .execute();
+
+            // Buscar número da OS para registrar movimentação
+            let osNumero = 0;
+            try {
+              const { data: os } = await from('ordens_servico')
+                .select('numero')
+                .eq('id', item.ordem_servico_id)
+                .single();
+              osNumero = os?.numero || 0;
+            } catch (e) {
+              console.warn('Erro ao buscar número da OS:', e);
+            }
+
+            // Registrar movimentação de devolução
+            const userNome = user?.user_metadata?.name || user?.email || 'Sistema';
+            await from('produto_movimentacoes')
+              .insert({
+                produto_id: item.produto_id,
+                tipo: 'devolucao_os',
+                motivo: `Item removido da OS #${osNumero || '?'}`,
+                quantidade_antes: quantidadeAtual,
+                quantidade_depois: novaQuantidade,
+                quantidade_delta: quantidadeDevolver,
+                user_id: user?.id || null,
+                user_nome: userNome,
+              })
+              .execute();
+
+            console.log(`✅ Estoque devolvido: produto ${item.produto_id}, ${quantidadeAtual} → ${novaQuantidade} (+${quantidadeDevolver})`);
+          }
+        } catch (estoqueError) {
+          console.error('Erro ao devolver estoque:', estoqueError);
+          // Não falhar a remoção se a devolução de estoque falhar
+        }
+      }
+
+      // Deletar o item
       const { error } = await from('os_items')
         .eq('id', id)
         .delete();
@@ -126,6 +191,7 @@ export function useItensOSSupabase(osId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['os_items', osId] });
       queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
+      queryClient.invalidateQueries({ queryKey: ['produto_movimentacoes'] });
     },
   });
 
