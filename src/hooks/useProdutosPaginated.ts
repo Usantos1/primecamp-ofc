@@ -620,8 +620,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   // Deletar produto (deletar fisicamente)
   const deleteProduto = useCallback(async (id: string) => {
     const { error } = await dbFrom('produtos')
-      .eq('id', id)
-      .delete();
+      .delete()
+      .eq('id', id);
 
     if (error) {
       toast({

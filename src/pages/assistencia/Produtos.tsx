@@ -27,6 +27,7 @@ import {
   Barcode,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Download,
   Edit,
   FileSpreadsheet,
@@ -73,6 +74,7 @@ const ProdutoTableRow = memo(({
   onEdit,
   onDelete,
   onInativar,
+  onClone,
   index = 0
 }: { 
   produto: Produto; 
@@ -81,6 +83,7 @@ const ProdutoTableRow = memo(({
   onEdit: () => void;
   onDelete: () => void;
   onInativar: () => void;
+  onClone: () => void;
   index?: number;
 }) => {
   const valorVenda = useMemo(() => 
@@ -185,6 +188,11 @@ const ProdutoTableRow = memo(({
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
               <ExternalLink className="h-4 w-4 mr-2" />
               Abrir
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClone(); }}>
+              <Copy className="h-4 w-4 mr-2" />
+              Clonar
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
@@ -467,6 +475,21 @@ export default function Produtos() {
     setShowForm(true);
   };
 
+  const handleClone = (produto: Produto) => {
+    // Criar uma cópia do produto removendo apenas campos únicos
+    // O formulário vai tratar como novo produto (código gerado) mas preencher os dados
+    const { id, codigo, codigo_barras, created_at, updated_at, quantidade, ...produtoData } = produto;
+    const produtoClonado: Partial<Produto> = {
+      ...produtoData,
+      // Remover apenas campos únicos (id, codigo, codigo_barras já removidos no destructuring)
+      // quantidade removida para ser zerada pelo formulário
+    };
+    
+    setEditingProduto(produtoClonado as Produto);
+    setSelectedProduto(null);
+    setShowForm(true);
+  };
+
   // Abrir diálogo de inativar
   const handleInativarClick = (produto: Produto) => {
     setProdutoToInativar(produto);
@@ -585,7 +608,7 @@ export default function Produtos() {
 
   const handleSave = async (produtoData: Partial<Produto>) => {
     try {
-      if (editingProduto) {
+      if (editingProduto && editingProduto.id) {
         await updateProduto(editingProduto.id, produtoData);
         toast({ title: 'Produto atualizado com sucesso!' });
       } else {
@@ -903,6 +926,7 @@ export default function Produtos() {
                                 onEdit={() => handleEdit(produto)}
                                 onDelete={() => handleDeleteClick(produto)}
                                 onInativar={() => handleInativarClick(produto)}
+                                onClone={() => handleClone(produto)}
                                 index={index}
                               />
                             ))

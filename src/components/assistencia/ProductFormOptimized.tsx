@@ -419,6 +419,7 @@ export function ProductFormOptimized({
   }, [grupos, gruposLocais]);
   
   const isEditing = Boolean(produto?.id);
+  const isCloning = Boolean(produto && !produto.id); // Produto sem ID = clonagem
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -461,8 +462,8 @@ export function ProductFormOptimized({
   // Carrega dados do produto quando editar ou abrir modal
   useEffect(() => {
     if (open) {
-      if (produto) {
-        // Modo edição
+      if (produto && produto.id) {
+        // Modo edição (produto com ID)
         const precoCusto = Number(produto.preco_custo || produto.valor_compra || 0);
         const valorVenda = Number(produto.valor_venda || produto.preco_venda || 0);
         const valorParcelado = produto.valor_parcelado_6x ? Number(produto.valor_parcelado_6x) : undefined;
@@ -491,6 +492,38 @@ export function ProductFormOptimized({
         setValorParceladoRaw(valorParcelado && valorParcelado > 0 ? valorParcelado.toFixed(2).replace('.', ',') : '');
         
         setActiveTab('dados');
+      } else if (isCloning) {
+        // Modo clonagem - buscar próximo código mas preencher dados do produto
+        setIsLoadingCodigo(true);
+        buscarProximoCodigo().then((proximoCodigo) => {
+          const precoCusto = Number(produto.preco_custo || produto.valor_compra || 0);
+          const valorVenda = Number(produto.valor_venda || produto.preco_venda || 0);
+          const valorParcelado = produto.valor_parcelado_6x ? Number(produto.valor_parcelado_6x) : undefined;
+          
+          reset({
+            nome: produto.nome || produto.descricao || '',
+            codigo: proximoCodigo, // Gerar novo código
+            codigo_barras: '', // Deixar vazio para gerar depois
+            referencia: produto.referencia || '',
+            marca: produto.marca || '',
+            modelo: produto.modelo || produto.modelo_compativel || '',
+            grupo: produto.grupo || produto.categoria || '',
+            qualidade: (produto as any).qualidade || '',
+            preco_custo: precoCusto,
+            valor_venda: valorVenda,
+            valor_parcelado_6x: valorParcelado,
+            margem_percentual: produto.margem_percentual || produto.margem_lucro,
+            quantidade: 0, // Zerar estoque na clonagem
+            estoque_minimo: produto.estoque_minimo || 0,
+            localizacao: produto.localizacao || '',
+          });
+          // Inicializar valores brutos formatados para exibição
+          setPrecoCustoRaw(precoCusto > 0 ? precoCusto.toFixed(2).replace('.', ',') : '');
+          setValorVendaRaw(valorVenda > 0 ? valorVenda.toFixed(2).replace('.', ',') : '');
+          setValorParceladoRaw(valorParcelado && valorParcelado > 0 ? valorParcelado.toFixed(2).replace('.', ',') : '');
+          setIsLoadingCodigo(false);
+          setActiveTab('dados');
+        });
       } else {
         // Modo criação - buscar próximo código
         setIsLoadingCodigo(true);
@@ -520,7 +553,7 @@ export function ProductFormOptimized({
         });
       }
     }
-  }, [produto, open, reset]);
+  }, [produto, open, reset, isCloning]);
 
   // Gerar código de barras EAN-13
   const handleGerarCodigoBarras = () => {

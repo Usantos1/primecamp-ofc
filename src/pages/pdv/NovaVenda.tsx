@@ -33,6 +33,8 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
 import { updatePrintStatus } from '@/utils/printUtils';
+import { VoucherPayment } from '@/components/pdv/VoucherPayment';
+import { useRefunds } from '@/hooks/useRefunds';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
 
 export default function NovaVenda() {
@@ -95,7 +97,7 @@ export default function NovaVenda() {
     }
   };
   const { clientes, searchClientes, createCliente } = useClientes();
-  const { ordens, getOSById } = useOrdensServico();
+  const { ordens, getOSById, updateStatus: updateOSStatus } = useOrdensServico();
   
   // Buscar todos os itens do localStorage
   // Removido: não precisa mais carregar itens do localStorage
@@ -120,6 +122,7 @@ export default function NovaVenda() {
   const [vendedorId, setVendedorId] = useState('');
   
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showVoucherPayment, setShowVoucherPayment] = useState(false);
   const [checkoutPayment, setCheckoutPayment] = useState<PaymentFormData>({
     forma_pagamento: 'dinheiro',
     valor: undefined,
@@ -396,11 +399,11 @@ export default function NovaVenda() {
   const loadOSParaFaturar = async () => {
     setIsLoadingOS(true);
     try {
-      console.log('Carregando OSs para faturar do localStorage...');
+      console.log('Carregando OSs para faturar...');
       
-      // Buscar apenas do localStorage (sistema atual - sem banco ainda)
+      // Buscar OSs finalizadas
       const ordensFromStorage = ordens.filter(os => os.status === 'finalizada');
-      console.log(`Encontradas ${ordensFromStorage.length} OSs finalizadas no localStorage`);
+      console.log(`Encontradas ${ordensFromStorage.length} OSs finalizadas`);
 
       // Verificar quais OSs já foram faturadas (verificando se há venda vinculada)
       let osFaturadas = new Set<string>();
@@ -418,40 +421,46 @@ export default function NovaVenda() {
         console.warn('Não foi possível verificar OSs faturadas:', error);
       }
 
-      // Para cada OS, buscar seus itens do localStorage
-      const ordensComProdutos = ordensFromStorage
-        .filter(os => {
-          // Verificar se já foi faturada
-          if (osFaturadas.has(os.id)) {
-            console.log(`OS #${os.numero} já foi faturada, ignorando...`);
-            return false;
-          }
-          return true;
-        })
-        .map(os => {
-          // Buscar itens do localStorage
-          const itens = todosItensOS.filter(item => 
-            (item.ordem_servico_id === os.id || item.os_id === os.id) &&
-            (item.tipo === 'peca' || item.tipo === 'produto')
-          );
-          
-          console.log(`OS #${os.numero}: ${itens.length} produtos encontrados`);
-          return { ...os, itens };
-        })
-        .filter(os => {
-          // Filtrar apenas OSs que tenham produtos
-          const itens = os.itens || [];
-          const temProdutos = itens.some((item: any) => 
-            item.tipo === 'peca' || item.tipo === 'produto'
-          );
-          if (!temProdutos) {
-            console.log(`OS #${os.numero} não tem produtos, ignorando...`);
-          }
-          return temProdutos;
-        });
+      // Para cada OS, buscar TODOS os seus itens do banco
+      const ordensComProdutos = await Promise.all(
+        ordensFromStorage
+          .filter(os => {
+            // Verificar se já foi faturada
+            if (osFaturadas.has(os.id)) {
+              console.log(`OS #${os.numero} já foi faturada, ignorando...`);
+              return false;
+            }
+            return true;
+          })
+          .map(async (os) => {
+            // Buscar TODOS os itens da OS do banco (sem filtrar por tipo)
+            const { data: itens, error: itensError } = await from('os_items')
+              .select('*')
+              .eq('ordem_servico_id', os.id)
+              .execute();
+            
+            if (itensError) {
+              console.error(`Erro ao buscar itens da OS #${os.numero}:`, itensError);
+              return { ...os, itens: [] };
+            }
+            
+            console.log(`OS #${os.numero}: ${itens?.length || 0} itens encontrados`);
+            return { ...os, itens: itens || [] };
+          })
+      );
 
-      console.log(`Total de OSs com produtos para faturar: ${ordensComProdutos.length}`);
-      setOsList(ordensComProdutos);
+      // Filtrar apenas OSs que tenham itens
+      const ordensComProdutosFiltradas = ordensComProdutos.filter(os => {
+        const itens = os.itens || [];
+        const temItens = itens.length > 0;
+        if (!temItens) {
+          console.log(`OS #${os.numero} não tem itens, ignorando...`);
+        }
+        return temItens;
+      });
+
+      console.log(`Total de OSs com produtos para faturar: ${ordensComProdutosFiltradas.length}`);
+      setOsList(ordensComProdutosFiltradas);
     } catch (error: any) {
       console.error('Erro ao carregar OSs:', error);
       toast({
@@ -475,19 +484,29 @@ export default function NovaVenda() {
     try {
       setIsLoadingOS(true);
 
-      // Buscar itens da OS apenas do localStorage (sistema atual - sem banco ainda)
-      console.log(`Buscando itens da OS #${os.numero} do localStorage...`);
-      const itensOS = todosItensOS.filter(item => 
-        (item.ordem_servico_id === os.id || item.os_id === os.id) &&
-        (item.tipo === 'peca' || item.tipo === 'produto')
-      );
+      // Buscar TODOS os itens da OS do banco
+      console.log(`Buscando todos os itens da OS #${os.numero} do banco...`);
+      const { data: itensOS, error: itensError } = await from('os_items')
+        .select('*')
+        .eq('ordem_servico_id', os.id)
+        .execute();
+
+      if (itensError) {
+        console.error('Erro ao buscar itens da OS:', itensError);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao buscar itens da OS.',
+          variant: 'destructive',
+        });
+        return;
+      }
       
-      console.log(`Encontrados ${itensOS.length} itens para a OS #${os.numero}`);
+      console.log(`Encontrados ${itensOS?.length || 0} itens para a OS #${os.numero}`);
 
       if (!itensOS || itensOS.length === 0) {
         toast({
-          title: 'OS sem produtos',
-          description: 'Esta OS não possui produtos para faturar.',
+          title: 'OS sem itens',
+          description: 'Esta OS não possui itens para faturar.',
           variant: 'destructive',
         });
         return;
@@ -495,6 +514,10 @@ export default function NovaVenda() {
 
       // Buscar cliente do localStorage (sistema atual)
       const cliente = clientes.find(c => c.id === os.cliente_id);
+
+      // Validar technician_id antes de passar (deve ser UUID válido)
+      // Se não for válido, passa null para evitar erro de foreign key
+      const tecnicoId = os.tecnico_id && isValidUUID(os.tecnico_id) ? os.tecnico_id : null;
 
       // Criar venda vinculada à OS
       const novaVenda = await createSale({
@@ -504,7 +527,7 @@ export default function NovaVenda() {
         cliente_telefone: os.telefone_contato || cliente?.telefone || null,
         ordem_servico_id: os.id,
         sale_origin: 'OS',
-        technician_id: os.tecnico_id || null,
+        technician_id: tecnicoId,
         is_draft: true,
         observacoes: `Faturamento da OS #${os.numero}`,
       });
@@ -862,6 +885,19 @@ export default function NovaVenda() {
 
         // Finalizar
         await finalizeSale(id);
+        
+        // Finalizar a OS se houver vínculo
+        const saleData = await getSaleById(id);
+        if (saleData?.ordem_servico_id) {
+          try {
+            await updateOSStatus(saleData.ordem_servico_id, 'finalizada');
+            console.log(`OS #${saleData.ordem_servico_id} finalizada automaticamente após finalização da venda`);
+          } catch (osError: any) {
+            console.error('Erro ao finalizar OS:', osError);
+            // Não bloquear a venda se houver erro ao finalizar a OS
+          }
+        }
+        
         toast({ title: 'Venda finalizada com sucesso!' });
         setShowCheckout(true);
         
@@ -891,7 +927,7 @@ export default function NovaVenda() {
     } finally {
       setIsSaving(false);
     }
-  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession]);
+  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -1218,6 +1254,18 @@ export default function NovaVenda() {
         // Finalizar a venda automaticamente
         try {
           await finalizeSale(id);
+          
+          // Finalizar a OS se houver vínculo
+          if (updatedSale.ordem_servico_id) {
+            try {
+              await updateOSStatus(updatedSale.ordem_servico_id, 'finalizada');
+              console.log(`OS #${updatedSale.ordem_servico_id} finalizada automaticamente após pagamento`);
+            } catch (osError: any) {
+              console.error('Erro ao finalizar OS:', osError);
+              // Não bloquear a venda se houver erro ao finalizar a OS
+            }
+          }
+          
           toast({ title: 'Venda finalizada com sucesso!' });
           setShowCheckout(false);
           
@@ -2480,6 +2528,22 @@ _PrimeCamp Assistência Técnica_`;
                 <Select
                   value={checkoutPayment.forma_pagamento}
                   onValueChange={(v: PaymentMethod) => {
+                    // Verificar se é voucher/vale - procurar no nome ou código da forma de pagamento
+                    const selectedPM = paymentMethods.find(pm => pm.code === v);
+                    const isVoucher = selectedPM && (
+                      selectedPM.name.toLowerCase().includes('vale') ||
+                      selectedPM.name.toLowerCase().includes('voucher') ||
+                      selectedPM.code.toLowerCase().includes('vale') ||
+                      selectedPM.code.toLowerCase().includes('voucher')
+                    );
+                    
+                    if (isVoucher) {
+                      // Abrir modal de voucher
+                      setShowCheckout(false);
+                      setShowVoucherPayment(true);
+                      return;
+                    }
+                    
                     const isDinheiro = v === 'dinheiro';
                     setCheckoutPayment({
                       ...checkoutPayment,
@@ -2596,6 +2660,85 @@ _PrimeCamp Assistência Técnica_`;
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Pagamento com Voucher */}
+      <VoucherPayment
+        open={showVoucherPayment}
+        onOpenChange={setShowVoucherPayment}
+        saleTotal={saldoRestante}
+        saleId={id}
+        onVoucherApplied={async (voucherId, amount, voucherCode) => {
+          if (!id) return;
+          
+          try {
+            // Criar pagamento usando voucher
+            // Encontrar o código da forma de pagamento voucher
+            const voucherPM = paymentMethods.find(pm => 
+              pm.name.toLowerCase().includes('vale') || 
+              pm.name.toLowerCase().includes('voucher') ||
+              pm.code.toLowerCase().includes('vale') ||
+              pm.code.toLowerCase().includes('voucher')
+            );
+            
+            const paymentData: PaymentFormData = {
+              forma_pagamento: (voucherPM?.code || 'carteira_digital') as PaymentMethod,
+              valor: amount,
+              troco: 0,
+            };
+            
+            const payment = await addPayment(paymentData);
+            await confirmPayment(payment.id);
+            
+            toast({ 
+              title: 'Voucher aplicado com sucesso!', 
+              description: `Voucher ${voucherCode} aplicado no valor de ${currencyFormatters.brl(amount)}`
+            });
+            
+            // Recarregar dados
+            await loadSale();
+            
+            // Fechar modal de voucher
+            setShowVoucherPayment(false);
+            
+            // Verificar se está totalmente pago e finalizar automaticamente
+            const updatedSale = await getSaleById(id);
+            if (updatedSale && Number(updatedSale.total_pago) >= Number(updatedSale.total)) {
+              await finalizeSale(id);
+              
+              // Finalizar a OS se houver vínculo
+              if (updatedSale.ordem_servico_id) {
+                try {
+                  await updateOSStatus(updatedSale.ordem_servico_id, 'finalizada');
+                  console.log(`OS #${updatedSale.ordem_servico_id} finalizada automaticamente após pagamento via voucher`);
+                } catch (osError: any) {
+                  console.error('Erro ao finalizar OS:', osError);
+                  // Não bloquear a venda se houver erro ao finalizar a OS
+                }
+              }
+              
+              toast({ title: 'Venda finalizada com sucesso!' });
+              
+              // Preparar para impressão
+              setPendingSaleForCupom(updatedSale);
+              setTimeout(async () => {
+                await loadSale();
+                setTimeout(async () => {
+                  const finalSale = await getSaleById(id);
+                  if (finalSale) {
+                    await handlePrintCupom(finalSale);
+                  }
+                }, 500);
+              }, 500);
+            }
+          } catch (error: any) {
+            console.error('Erro ao aplicar voucher:', error);
+            toast({
+              title: 'Erro ao aplicar voucher',
+              description: error.message || 'Não foi possível aplicar o voucher',
+              variant: 'destructive'
+            });
+          }
+        }}
+      />
 
       {/* Modal de Faturar OS */}
       <Dialog open={showFaturarOSModal} onOpenChange={setShowFaturarOSModal}>

@@ -168,8 +168,9 @@ export function useOrdensServicoSupabase() {
   const deleteOS = useMutation({
     mutationFn: async (id: string): Promise<void> => {
       const { error } = await from('ordens_servico')
+        .delete()
         .eq('id', id)
-        .delete();
+        .execute();
 
       if (error) throw error;
     },
