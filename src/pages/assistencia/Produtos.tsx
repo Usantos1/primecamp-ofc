@@ -938,9 +938,22 @@ export default function Produtos() {
                     {/* Paginação Desktop */}
                     <div className="shrink-0 border-t border-gray-200 bg-gray-50/50 px-4 py-3 flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
-                        Mostrando <span className="font-medium">{produtos.length > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0}</span> a{' '}
-                        <span className="font-medium">{Math.min(page * (hookResult?.pageSize || 50), totalCount)}</span> de{' '}
-                        <span className="font-medium">{totalCount}</span> produtos
+                        {isLoading ? (
+                          <span>Carregando...</span>
+                        ) : totalCount > 0 ? (
+                          <>
+                            Mostrando <span className="font-medium">{(page - 1) * (hookResult?.pageSize || 50) + 1}</span> a{' '}
+                            <span className="font-medium">{Math.min(page * (hookResult?.pageSize || 50), totalCount)}</span> de{' '}
+                            <span className="font-medium">{totalCount}</span> produtos
+                          </>
+                        ) : produtos.length > 0 ? (
+                          <>
+                            Mostrando <span className="font-medium">{(page - 1) * (hookResult?.pageSize || 50) + 1}</span> a{' '}
+                            <span className="font-medium">{(page - 1) * (hookResult?.pageSize || 50) + produtos.length}</span> produtos
+                          </>
+                        ) : (
+                          <span>Nenhum produto encontrado</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -1028,7 +1041,15 @@ export default function Produtos() {
           {/* Mobile: Paginação */}
           <div className="md:hidden shrink-0 bg-gray-50/50 mt-3 px-4 py-3 flex items-center justify-between rounded-xl border border-gray-200">
             <div className="text-xs text-muted-foreground">
-              {produtos.length > 0 ? (page - 1) * (hookResult?.pageSize || 50) + 1 : 0} - {Math.min(page * (hookResult?.pageSize || 50), totalCount)} de {totalCount}
+              {isLoading ? (
+                <span>Carregando...</span>
+              ) : totalCount > 0 ? (
+                <>{(page - 1) * (hookResult?.pageSize || 50) + 1} - {Math.min(page * (hookResult?.pageSize || 50), totalCount)} de {totalCount}</>
+              ) : produtos.length > 0 ? (
+                <>{(page - 1) * (hookResult?.pageSize || 50) + 1} - {(page - 1) * (hookResult?.pageSize || 50) + produtos.length}</>
+              ) : (
+                <span>Nenhum produto</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={goToPreviousPage} disabled={page === 1 || isFetching} className="h-8 w-8 p-0">

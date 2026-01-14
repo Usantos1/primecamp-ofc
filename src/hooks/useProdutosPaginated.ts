@@ -215,15 +215,27 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       }
 
       const rows = data || [];
+      
+      // Garantir que count seja um número válido
+      // Se count for undefined, null, 0 ou NaN, manter o valor anterior ou usar um valor seguro
+      let finalCount = count;
+      if (finalCount === undefined || finalCount === null || isNaN(finalCount) || finalCount < 0) {
+        // Se não temos count válido, não podemos usar rows.length pois não é o total real
+        // Vamos usar 0 temporariamente e deixar que a próxima query traga o count correto
+        finalCount = 0;
+        console.warn('[useProdutosPaginated] Count inválido recebido:', count, '- usando 0 temporariamente');
+      }
+      
       const result = {
         produtos: rows.map(mapSupabaseToAssistencia),
-        totalCount: count || rows.length,
+        totalCount: finalCount,
       };
       
       console.log('[useProdutosPaginated] Resultado:', {
         page,
         produtosCount: result.produtos.length,
         totalCount: result.totalCount,
+        countRecebido: count,
         from,
         to,
       });
@@ -237,8 +249,33 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
   });
 
   const produtos = produtosData?.produtos || [];
-  const totalCount = produtosData?.totalCount || 0;
+  // Só usar totalCount se for um número válido maior que 0
+  // Se for 0 e temos produtos, pode ser que o count ainda não foi carregado
+  const totalCount = useMemo(() => {
+    const count = produtosData?.totalCount;
+    // Se temos produtos mas count é 0, pode ser que ainda está carregando
+    // Nesse caso, manter 0 para não mostrar paginação errada
+    if (count !== undefined && count !== null && !isNaN(count) && count >= 0) {
+      return count;
+    }
+    return 0;
+  }, [produtosData?.totalCount]);
+  
   const totalPages = useMemo(() => {
+    // Se totalCount for 0 mas temos produtos, pode ser que ainda está carregando o count
+    // Nesse caso, calcular baseado nos produtos retornados como estimativa mínima
+    if (totalCount === 0 && produtos.length > 0) {
+      // Se temos produtos mas count é 0, estimar pelo menos uma página
+      const estimatedPages = Math.max(1, Math.ceil(produtos.length / pageSize));
+      console.log('[useProdutosPaginated] Calculando totalPages (estimado):', {
+        totalCount,
+        produtosCount: produtos.length,
+        pageSize,
+        totalPages: estimatedPages,
+      });
+      return estimatedPages;
+    }
+    
     const pages = totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1;
     console.log('[useProdutosPaginated] Calculando totalPages:', {
       totalCount,
@@ -246,7 +283,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       totalPages: pages,
     });
     return pages;
-  }, [totalCount, pageSize]);
+  }, [totalCount, pageSize, produtos.length]);
 
   // Prefetch da próxima página para navegação mais rápida (opcional)
   useEffect(() => {
