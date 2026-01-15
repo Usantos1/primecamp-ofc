@@ -52,25 +52,34 @@ BEGIN
     END IF;
 
     -- Garantir que rh.ponto está associado ao vendedor
+    -- Buscar ou criar permissão rh.ponto
     SELECT id INTO v_permission_id
     FROM permissions
     WHERE resource = 'rh' AND action = 'ponto'
     LIMIT 1;
 
-    IF v_permission_id IS NOT NULL THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM role_permissions
-            WHERE role_id = v_role_id AND permission_id = v_permission_id
-        ) THEN
-            INSERT INTO role_permissions (role_id, permission_id)
-            VALUES (v_role_id, v_permission_id);
-            
-            RAISE NOTICE 'Permissão rh.ponto adicionada ao role vendedor';
-        ELSE
-            RAISE NOTICE 'Permissão rh.ponto já está associada ao role vendedor';
-        END IF;
+    IF v_permission_id IS NULL THEN
+        -- Criar permissão rh.ponto se não existir
+        INSERT INTO permissions (resource, action, description, category)
+        VALUES ('rh', 'ponto', 'Acessar ponto eletrônico', 'gestao')
+        RETURNING id INTO v_permission_id;
+        
+        RAISE NOTICE 'Permissão rh.ponto criada com ID: %', v_permission_id;
     ELSE
-        RAISE NOTICE 'Permissão rh.ponto não encontrada!';
+        RAISE NOTICE 'Permissão rh.ponto já existe com ID: %', v_permission_id;
+    END IF;
+
+    -- Associar permissão rh.ponto ao role vendedor
+    IF NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id = v_role_id AND permission_id = v_permission_id
+    ) THEN
+        INSERT INTO role_permissions (role_id, permission_id)
+        VALUES (v_role_id, v_permission_id);
+        
+        RAISE NOTICE 'Permissão rh.ponto adicionada ao role vendedor';
+    ELSE
+        RAISE NOTICE 'Permissão rh.ponto já está associada ao role vendedor';
     END IF;
 
 END $$;
