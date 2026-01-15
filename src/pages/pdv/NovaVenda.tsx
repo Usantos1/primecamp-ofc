@@ -2765,7 +2765,7 @@ _PrimeCamp Assistência Técnica_`;
               // Finalizar a OS se houver vínculo
               if (updatedSale.ordem_servico_id) {
                 try {
-                  await updateOSStatus(updatedSale.ordem_servico_id, 'finalizada');
+                  await updateOSStatus(updatedSale.ordem_servico_id, 'entregue_faturada');
                   console.log(`OS #${updatedSale.ordem_servico_id} finalizada automaticamente após pagamento via voucher`);
                 } catch (osError: any) {
                   console.error('Erro ao finalizar OS:', osError);
