@@ -1268,21 +1268,26 @@ export default function NovaVenda() {
                 
                 // Enviar mensagem configurada do status (se houver)
                 try {
-                  // Buscar configuração do status
-                  const { data: configStatus } = await from('configuracao_status')
-                    .select('*')
-                    .eq('status', novoStatus)
-                    .eq('ativo', true)
-                    .single();
-                  
-                  if (configStatus?.notificar_whatsapp && configStatus.mensagem_whatsapp) {
-                    const telefone = os.telefone_contato;
-                    if (telefone) {
+                  const telefone = os.telefone_contato;
+                  if (telefone) {
+                    // Buscar configuração do status do localStorage
+                    const configStatusStr = localStorage.getItem('config_status');
+                    let configStatus: any = null;
+                    if (configStatusStr) {
+                      try {
+                        const configuracoes = JSON.parse(configStatusStr);
+                        configStatus = configuracoes.find((c: any) => c.status === novoStatus || c.status === 'entregue');
+                      } catch (e) {
+                        console.warn('Erro ao ler configurações do localStorage:', e);
+                      }
+                    }
+                    
+                    if (configStatus?.notificar_whatsapp && configStatus.mensagem_whatsapp) {
                       // Substituir variáveis na mensagem
                       let mensagem = configStatus.mensagem_whatsapp
                         .replace(/{cliente}/g, os.cliente_nome || 'Cliente')
                         .replace(/{numero}/g, os.numero?.toString() || '')
-                        .replace(/{status}/g, configStatus.label)
+                        .replace(/{status}/g, configStatus.label || 'Entregue Faturada')
                         .replace(/{marca}/g, os.marca_nome || '')
                         .replace(/{modelo}/g, os.modelo_nome || '');
                       
@@ -1299,17 +1304,7 @@ export default function NovaVenda() {
                       }
                       
                       if (numero.length >= 12 && numero.length <= 13) {
-                        // Usar hook de WhatsApp se disponível
-                        const { sendMessage } = await import('@/hooks/useWhatsApp');
-                        const { useWhatsApp } = await import('@/hooks/useWhatsApp');
-                        // Nota: precisa ser chamado dentro de componente React
-                        // Por enquanto, vamos fazer via API direta
-                        const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
-                        await fetch(`${API_URL}/whatsapp/send`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ number: numero, body: mensagem }),
-                        });
+                        await sendWhatsAppMessage({ number: numero, body: mensagem });
                       }
                     }
                   }
