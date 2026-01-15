@@ -172,6 +172,8 @@ export function usePermissions() {
       const permSet = new Set<string>();
       const userRole = (profile?.role || 'member').toLowerCase();
 
+      console.log('[usePermissions] Carregando permissões para role:', userRole);
+
       // Se for admin, não precisa buscar no banco - hasPermission já retorna true para admin
       if (userRole === 'admin' || userRole === 'administrador' || userRole === 'administrator') {
         // Apenas marcar como carregado, hasPermission retorna true para qualquer permissão
@@ -186,23 +188,30 @@ export function usePermissions() {
       try {
         // Mapear role do código para role do banco (pode haver diferenças)
         const roleMapping: Record<string, string[]> = {
-          'vendedor': ['vendedor', 'sales', 'vendas', 'vendedores'],
+          'vendedor': ['sales', 'vendedor', 'vendas', 'vendedores'], // sales primeiro pois é o que está no banco
           'sales': ['sales', 'vendedor', 'vendas', 'vendedores'],
-          'vendas': ['vendas', 'vendedor', 'sales', 'vendedores'],
+          'vendas': ['sales', 'vendas', 'vendedor', 'vendedores'],
         };
         
         const rolesToTry = roleMapping[userRole] || [userRole];
+        console.log('[usePermissions] Tentando buscar role com variações:', rolesToTry);
         
         // Buscar o role no banco de dados (tentar variações)
         let roleData = null;
         for (const roleName of rolesToTry) {
-          const { data } = await from('roles')
+          const { data, error } = await from('roles')
             .select('id, name')
             .ilike('name', roleName)
             .maybeSingle();
           
+          if (error) {
+            console.warn(`[usePermissions] Erro ao buscar role "${roleName}":`, error);
+            continue;
+          }
+          
           if (data) {
             roleData = data;
+            console.log(`[usePermissions] ✅ Role encontrado: ${data.name} (ID: ${data.id})`);
             break;
           }
         }
@@ -215,8 +224,10 @@ export function usePermissions() {
             .execute();
 
           if (rolePermsError) {
-            console.warn('Erro ao buscar role_permissions:', rolePermsError);
+            console.warn('[usePermissions] Erro ao buscar role_permissions:', rolePermsError);
           } else if (rolePermsData && rolePermsData.length > 0) {
+            console.log(`[usePermissions] Encontradas ${rolePermsData.length} permissões associadas ao role`);
+            
             // Buscar detalhes das permissões
             const permissionIds = rolePermsData.map((rp: any) => rp.permission_id);
             const { data: permsData, error: permsError } = await from('permissions')
@@ -225,13 +236,20 @@ export function usePermissions() {
               .execute();
 
             if (permsError) {
-              console.warn('Erro ao buscar detalhes das permissões:', permsError);
+              console.warn('[usePermissions] Erro ao buscar detalhes das permissões:', permsError);
             } else if (permsData) {
               permsData.forEach((perm: any) => {
-                permSet.add(`${perm.resource}.${perm.action}`);
+                const permKey = `${perm.resource}.${perm.action}`;
+                permSet.add(permKey);
+                console.log(`[usePermissions] ✅ Permissão adicionada: ${permKey}`);
               });
+              console.log(`[usePermissions] Total de permissões carregadas do banco: ${permSet.size}`);
             }
+          } else {
+            console.warn('[usePermissions] Nenhuma permissão encontrada no banco para o role:', roleData.name);
           }
+        } else {
+          console.warn('[usePermissions] Role não encontrado no banco. Role do profile:', userRole);
         }
       } catch (e) {
         console.warn('Erro ao buscar permissões do role no banco:', e);
@@ -241,8 +259,10 @@ export function usePermissions() {
       // FALLBACK: Se não encontrou permissões no banco, usar objeto hardcoded
       // ═══════════════════════════════════════════════════════════════
       if (permSet.size === 0) {
+        console.warn('[usePermissions] Nenhuma permissão encontrada no banco, usando fallback hardcoded');
         const rolePermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['member'] || [];
         rolePermissions.forEach(p => permSet.add(p));
+        console.log(`[usePermissions] Permissões do fallback (${rolePermissions.length}):`, rolePermissions);
       }
 
       // Buscar permissões customizadas do usuário (override)
@@ -288,9 +308,10 @@ export function usePermissions() {
         console.warn('Erro ao buscar permissões customizadas do usuário:', e);
       }
 
+      console.log(`[usePermissions] ✅ Permissões finais carregadas (${permSet.size}):`, Array.from(permSet));
       setPermissions(permSet);
     } catch (error) {
-      console.error('Erro ao carregar permissões:', error);
+      console.error('[usePermissions] ❌ Erro ao carregar permissões:', error);
     } finally {
       setLoading(false);
     }
