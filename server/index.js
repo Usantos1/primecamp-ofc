@@ -1699,13 +1699,57 @@ app.post('/api/update/:table', async (req, res) => {
     }
 
     const keys = Object.keys(data);
-    // Serializar objetos/arrays como JSON para campos JSONB
-    const values = Object.values(data).map(value => {
-      if (value !== null && typeof value === 'object') {
+    
+    // Verificar tipos de colunas para tratar arrays UUID[] corretamente
+    let columnTypes = {};
+    try {
+      const typeResult = await pool.query(`
+        SELECT column_name, data_type, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' 
+        AND table_name = $1
+      `, [tableNameOnly]);
+      
+      typeResult.rows.forEach(row => {
+        columnTypes[row.column_name] = {
+          dataType: row.data_type,
+          udtName: row.udt_name
+        };
+      });
+    } catch (typeError) {
+      console.warn(`[Update] Erro ao verificar tipos de colunas:`, typeError.message);
+    }
+    
+    // Serializar valores: arrays UUID[] devem ser passados como arrays, JSONB como JSON string
+    const values = Object.values(data).map((value, index) => {
+      const key = keys[index];
+      const columnType = columnTypes[key];
+      
+      // Se for array e a coluna for UUID[] (array), passar como array nativo
+      if (Array.isArray(value) && columnType && columnType.dataType === 'ARRAY') {
+        return value; // Deixar o driver PostgreSQL converter automaticamente
+      }
+      
+      // Se for objeto/array e a coluna for JSONB, serializar como JSON
+      if (value !== null && typeof value === 'object' && columnType && columnType.udtName === 'jsonb') {
         return JSON.stringify(value);
       }
+      
+      // Se for objeto/array mas não sabemos o tipo, tentar detectar:
+      // Se for array de strings que parecem UUIDs, provavelmente é UUID[]
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value[0])) {
+        // Provavelmente é UUID[], passar como array
+        return value;
+      }
+      
+      // Para outros objetos, serializar como JSON (pode ser JSONB)
+      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        return JSON.stringify(value);
+      }
+      
       return value;
     });
+    
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     
     // Passar o número de valores do SET como offset para buildWhereClause
