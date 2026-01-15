@@ -11,15 +11,23 @@ async function logAuditOS(
   dadosAnteriores: any,
   dadosNovos: any,
   descricao: string,
-  user: any
+  user: any,
+  profile?: any
 ) {
   try {
     if (!user) return;
     
+    // Buscar nome do usuário do profile ou user_metadata
+    const userNome = profile?.display_name || 
+                     user.user_metadata?.name || 
+                     user.user_metadata?.display_name ||
+                     user.email || 
+                     'Usuário';
+    
     await from('audit_logs')
       .insert({
         user_id: user.id,
-        user_nome: user.user_metadata?.name || user.email || 'Usuário',
+        user_nome: userNome,
         user_email: user.email,
         acao,
         entidade: 'ordem_servico',
@@ -36,7 +44,7 @@ async function logAuditOS(
 }
 
 export function useOrdensServicoSupabase() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
 
   // Buscar todas as OS
@@ -171,7 +179,8 @@ export function useOrdensServicoSupabase() {
         null,
         osCriada,
         `Ordem de Serviço #${osCriada.numero} criada`,
-        user
+        user,
+        profile
       );
       
       return osCriada;
@@ -214,7 +223,8 @@ export function useOrdensServicoSupabase() {
         osAntiga,
         osAtualizada,
         `Ordem de Serviço #${osAtualizada.numero || id} atualizada`,
-        user
+        user,
+        profile
       );
       
       return osAtualizada;

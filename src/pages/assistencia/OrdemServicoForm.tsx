@@ -169,33 +169,41 @@ function OSMovimentacoesTab({ osId }: { osId: string }) {
         console.error('Erro ao buscar itens da OS:', error);
       }
 
-      // 3. Buscar histórico da própria OS (created_at, updated_at)
+      // 3. Buscar histórico da própria OS (apenas criação - atualizações vêm dos audit_logs)
       try {
         const { data: os } = await from('ordens_servico')
-          .select('id, numero, created_at, updated_at, created_by, vendedor_nome, atendente_nome')
+          .select('id, numero, created_at, created_by, vendedor_nome, atendente_nome')
           .eq('id', osId)
           .single();
 
         if (os) {
-          // Log de criação da OS
-          logs.push({
-            id: `os-create-${os.id}`,
-            data: os.created_at,
-            tipo: 'OS',
-            acao: 'Criada',
-            usuario: os.vendedor_nome || os.atendente_nome || 'Sistema',
-            descricao: `Ordem de Serviço #${os.numero} criada`,
-          });
+          // Buscar nome do usuário que criou a OS
+          let criadorNome = os.vendedor_nome || os.atendente_nome || 'Sistema';
+          if (os.created_by) {
+            try {
+              const { data: criador } = await from('users')
+                .select('id, display_name, email')
+                .eq('id', os.created_by)
+                .single();
+              
+              if (criador) {
+                criadorNome = criador.display_name || criador.email || criadorNome;
+              }
+            } catch (e) {
+              console.warn('Erro ao buscar criador da OS:', e);
+            }
+          }
 
-          // Se foi atualizada, log de edição
-          if (os.updated_at && os.updated_at !== os.created_at) {
+          // Log de criação da OS (apenas se não houver log de auditoria de criação)
+          const temLogCriacao = logs.some(l => l.tipo === 'OS' && l.acao === 'Criada');
+          if (!temLogCriacao) {
             logs.push({
-              id: `os-update-${os.id}`,
-              data: os.updated_at,
+              id: `os-create-${os.id}`,
+              data: os.created_at,
               tipo: 'OS',
-              acao: 'Atualizada',
-              usuario: os.vendedor_nome || os.atendente_nome || 'Sistema',
-              descricao: `Ordem de Serviço #${os.numero} atualizada`,
+              acao: 'Criada',
+              usuario: criadorNome,
+              descricao: `Ordem de Serviço #${os.numero} criada`,
             });
           }
         }
