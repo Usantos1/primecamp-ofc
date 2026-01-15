@@ -4452,7 +4452,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
           {/* Tab Logs */}
           {isEditing && id && (
-            <TabsContent value="movimentacoes" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-4 p-2">
+            <TabsContent value="logs" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-4 p-2">
               <OSMovimentacoesTab osId={id} />
             </TabsContent>
           )}
@@ -4776,7 +4776,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <span className="hidden sm:inline">Fotos</span>
                       </TabsTrigger>
                       <TabsTrigger 
-                        value="movimentacoes" 
+                        value="logs" 
                         className="gap-0.5 px-2 sm:px-3 h-6 sm:h-7 rounded data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs"
                       >
                         <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
