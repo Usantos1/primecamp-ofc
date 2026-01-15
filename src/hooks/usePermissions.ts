@@ -73,6 +73,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'clientes.view', 'clientes.create',
     'calendario.view',
     'rh.ponto',
+    'nps.view',
   ],
   
   // OPERADOR DE CAIXA - Apenas caixa e PDV

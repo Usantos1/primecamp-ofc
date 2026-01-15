@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -29,6 +29,7 @@ import {
   Megaphone,
   Store,
   RefreshCw,
+  Star,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -155,7 +156,8 @@ export function AppSidebar() {
   const gestaoItems = [
     { label: "Metas", path: "/metas", icon: Target, permission: "metas.view" },
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
-    { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "ponto.view" },
+    { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
+    { label: "NPS", path: "/nps", icon: Star, permission: "nps.view" },
     { label: "Academy", path: "/treinamentos", icon: GraduationCap, permission: "treinamentos.view" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
