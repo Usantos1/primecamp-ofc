@@ -193,6 +193,16 @@ export function RolesManager() {
         if (error) throw error;
         roleId = data.id;
       } else {
+        // Verificar se já existe um role com o mesmo nome
+        const { data: existingRole } = await from('roles')
+          .select('id, name')
+          .eq('name', formData.name)
+          .maybeSingle();
+
+        if (existingRole) {
+          throw new Error(`Já existe uma função com o nome "${formData.name}". Por favor, escolha outro nome.`);
+        }
+
         // Criar role
         const { data, error } = await from('roles')
           .insert({
@@ -247,34 +257,74 @@ export function RolesManager() {
     if (!roleToDelete) return;
 
     try {
-      // Verificar se há usuários usando este role
-      const { data: usersWithRole } = await from('user_position_departments')
+      // Verificar se há usuários usando este role (verificar na tabela profiles)
+      const { data: usersWithRole, error: usersError } = await from('profiles')
         .select('user_id')
-        .eq('role_id', roleToDelete.id)
-        .limit(1)
+        .eq('role', roleToDelete.name)
         .execute();
 
-      if (usersWithRole && usersWithRole.length > 0) {
-        toast({
-          title: 'Erro',
-          description: 'Não é possível excluir um role que está sendo usado por usuários',
-          variant: 'destructive',
-        });
-        setDeleteDialogOpen(false);
-        setRoleToDelete(null);
-        return;
+      if (usersError) {
+        console.warn('Erro ao verificar usuários com role:', usersError);
       }
 
-      // Excluir role (as permissões serão excluídas automaticamente por CASCADE)
+      const userCount = usersWithRole?.length || 0;
+      
+      if (userCount > 0) {
+        // Avisar mas permitir continuar
+        const confirmed = window.confirm(
+          `ATENÇÃO: Há ${userCount} usuário(s) usando a função "${roleToDelete.display_name}".\n\n` +
+          `Ao remover esta função, os usuários ficarão sem função definida.\n\n` +
+          `Deseja continuar mesmo assim?`
+        );
+        
+        if (!confirmed) {
+          setDeleteDialogOpen(false);
+          setRoleToDelete(null);
+          return;
+        }
+      }
+
+      // Limpar referências em user_position_departments (setar role_id para NULL)
+      const { error: updError } = await from('user_position_departments')
+        .update({ role_id: null })
+        .eq('role_id', roleToDelete.id)
+        .execute();
+
+      if (updError) {
+        console.warn('Erro ao limpar referências em user_position_departments:', updError);
+        // Tentar deletar diretamente se update falhar
+        try {
+          await from('user_position_departments')
+            .delete()
+            .eq('role_id', roleToDelete.id)
+            .execute();
+        } catch (delError) {
+          console.warn('Erro ao deletar referências em user_position_departments:', delError);
+        }
+      }
+
+      // Deletar permissões associadas
+      const { error: permError } = await from('role_permissions')
+        .delete()
+        .eq('role_id', roleToDelete.id)
+        .execute();
+
+      if (permError) {
+        console.warn('Erro ao deletar permissões do role:', permError);
+        // Continuar mesmo assim
+      }
+
+      // Excluir role
       const { error } = await from('roles')
+        .delete()
         .eq('id', roleToDelete.id)
-        .delete();
+        .execute();
 
       if (error) throw error;
 
       toast({
         title: 'Sucesso',
-        description: 'Role excluído com sucesso',
+        description: `Função "${roleToDelete.display_name}" removida com sucesso`,
       });
 
       setDeleteDialogOpen(false);
@@ -282,19 +332,57 @@ export function RolesManager() {
       loadData();
     } catch (error: any) {
       console.error('Erro ao excluir role:', error);
+      console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
+      
+      let errorMessage = 'Erro ao excluir função';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Verificar se é erro de constraint (usuários usando)
+      if (errorMessage.includes('foreign key') || errorMessage.includes('constraint') || errorMessage.includes('violates')) {
+        if (errorMessage.includes('user_position_departments')) {
+          errorMessage = `Erro: há referências na tabela user_position_departments. Tente novamente - o sistema tentará limpar automaticamente.`;
+        } else {
+          errorMessage = `Não é possível excluir: há dados relacionados usando esta função.`;
+        }
+      }
+
       toast({
         title: 'Erro',
-        description: error.message || 'Erro ao excluir role',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
   };
 
+  // Agrupar permissões por categoria, removendo duplicatas visuais
+  // (mesmo resource.action ou descrição idêntica)
   const permissionsByCategory = permissions.reduce((acc, perm) => {
     if (!acc[perm.category]) {
       acc[perm.category] = [];
     }
-    acc[perm.category].push(perm);
+    
+    // Verificar se já existe uma permissão com mesmo resource.action nesta categoria
+    const isDuplicate = acc[perm.category].some(existing => 
+      existing.resource === perm.resource && existing.action === perm.action
+    );
+    
+    // Verificar se já existe uma permissão com mesma descrição nesta categoria
+    const isDescriptionDuplicate = perm.description && acc[perm.category].some(existing => 
+      existing.description && 
+      existing.description.toLowerCase().trim() === perm.description.toLowerCase().trim()
+    );
+    
+    // Só adicionar se não for duplicata
+    if (!isDuplicate && !isDescriptionDuplicate) {
+      acc[perm.category].push(perm);
+    }
+    
     return acc;
   }, {} as Record<string, Permission[]>);
 
@@ -374,21 +462,22 @@ export function RolesManager() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenDialog(role)}
+                          title="Editar função"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {!role.is_system && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setRoleToDelete(role);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setRoleToDelete(role);
+                            setDeleteDialogOpen(true);
+                          }}
+                          title="Remover função"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -450,44 +539,60 @@ export function RolesManager() {
             <Separator />
 
             <div className="space-y-4">
-              <div>
-                <Label className="text-base font-semibold">Permissões</Label>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Selecione as permissões que este role terá
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">Permissões</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione as permissões que este role terá
+                  </p>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-primary">
+                    {Array.from(rolePermissions.values()).filter(Boolean).length}
+                  </span>
+                  {' / '}
+                  {permissions.length} selecionadas
+                </div>
               </div>
 
-              <ScrollArea className="h-[400px] border rounded-md p-4">
+              <ScrollArea className="h-[500px] border rounded-md p-4">
                 <div className="space-y-6">
-                  {Object.entries(permissionsByCategory).map(([category, perms]) => (
-                    <div key={category}>
-                      <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                        <Shield className="h-4 w-4" />
-                        {categoryLabels[category] || category}
-                      </h4>
-                      <div className="space-y-2 pl-6">
-                        {perms.map((perm) => {
-                          const isChecked = rolePermissions.get(perm.id) || false;
-                          return (
-                            <div key={perm.id} className="flex items-center gap-2 py-1">
-                              <Checkbox
-                                id={`role-perm-${perm.id}`}
-                                checked={isChecked}
-                                onCheckedChange={() => handleTogglePermission(perm.id)}
-                              />
-                              <Label
-                                htmlFor={`role-perm-${perm.id}`}
-                                className="text-sm cursor-pointer flex-1"
-                              >
-                                {perm.description}
-                              </Label>
-                            </div>
-                          );
-                        })}
+                  {Object.entries(permissionsByCategory).map(([category, perms]) => {
+                    const selectedCount = perms.filter(p => rolePermissions.get(p.id)).length;
+                    return (
+                      <div key={category} className="border-l-2 border-primary/20 pl-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-sm flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            {categoryLabels[category] || category}
+                          </h4>
+                          <Badge variant="secondary" className="text-xs">
+                            {selectedCount} / {perms.length}
+                          </Badge>
+                        </div>
+                        <div className="space-y-2 pl-2">
+                          {perms.map((perm) => {
+                            const isChecked = rolePermissions.get(perm.id) || false;
+                            return (
+                              <div key={perm.id} className="flex items-center gap-2 py-1 hover:bg-muted/50 rounded px-2 -mx-2">
+                                <Checkbox
+                                  id={`role-perm-${perm.id}`}
+                                  checked={isChecked}
+                                  onCheckedChange={() => handleTogglePermission(perm.id)}
+                                />
+                                <Label
+                                  htmlFor={`role-perm-${perm.id}`}
+                                  className="text-sm cursor-pointer flex-1"
+                                >
+                                  {perm.description}
+                                </Label>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <Separator className="mt-4" />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
@@ -510,8 +615,13 @@ export function RolesManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o role "{roleToDelete?.display_name}"?
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja remover a função "{roleToDelete?.display_name}"?
+              {roleToDelete?.is_system && (
+                <span className="block mt-2 font-semibold text-amber-600 dark:text-amber-400">
+                  Esta é uma função do sistema. Certifique-se de que nenhum usuário está usando esta função.
+                </span>
+              )}
+              <span className="block mt-2">Esta ação não pode ser desfeita.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

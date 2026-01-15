@@ -28,6 +28,7 @@ import {
   UserCog,
   Megaphone,
   Store,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -126,6 +127,7 @@ export function AppSidebar() {
   const operacaoItems = [
     { label: "Dashboard", path: "/", icon: Home, exact: true },
     { label: "Vendas", path: "/pdv", icon: ShoppingCart, exact: true, permission: "vendas.view" },
+    { label: "Devoluções", path: "/pdv/devolucoes", icon: RefreshCw, permission: "vendas.manage" },
     { label: "Ordem de Serviço", path: "/os", icon: Wrench, permission: "os.view" },
     { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
     { label: "Clientes", path: "/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },

@@ -180,31 +180,94 @@ export function usePermissions() {
       }
 
       // ═══════════════════════════════════════════════════════════════
-      // CARREGAR PERMISSÕES BASEADO NA FUNÇÃO (ROLE)
+      // CARREGAR PERMISSÕES DA TABELA role_permissions (DO BANCO DE DADOS)
       // ═══════════════════════════════════════════════════════════════
-      const rolePermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['member'] || [];
-      rolePermissions.forEach(p => permSet.add(p));
+      try {
+        // Buscar o role no banco de dados
+        const { data: roleData } = await from('roles')
+          .select('id, name')
+          .eq('name', userRole)
+          .maybeSingle();
+
+        if (roleData?.id) {
+          // Buscar permissões associadas ao role
+          const { data: rolePermsData, error: rolePermsError } = await from('role_permissions')
+            .select('permission_id')
+            .eq('role_id', roleData.id)
+            .execute();
+
+          if (rolePermsError) {
+            console.warn('Erro ao buscar role_permissions:', rolePermsError);
+          } else if (rolePermsData && rolePermsData.length > 0) {
+            // Buscar detalhes das permissões
+            const permissionIds = rolePermsData.map((rp: any) => rp.permission_id);
+            const { data: permsData, error: permsError } = await from('permissions')
+              .select('resource, action')
+              .in('id', permissionIds)
+              .execute();
+
+            if (permsError) {
+              console.warn('Erro ao buscar detalhes das permissões:', permsError);
+            } else if (permsData) {
+              permsData.forEach((perm: any) => {
+                permSet.add(`${perm.resource}.${perm.action}`);
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao buscar permissões do role no banco:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // FALLBACK: Se não encontrou permissões no banco, usar objeto hardcoded
+      // ═══════════════════════════════════════════════════════════════
+      if (permSet.size === 0) {
+        const rolePermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['member'] || [];
+        rolePermissions.forEach(p => permSet.add(p));
+      }
 
       // Buscar permissões customizadas do usuário (override)
       try {
-        const { data: userPerms } = await from('user_permissions')
+        const { data: userPerms, error: userPermsError } = await from('user_permissions')
           .select('permission_id, granted')
           .eq('user_id', user?.id)
           .execute();
 
-        if (userPerms && userPerms.length > 0) {
-          userPerms.forEach((up: any) => {
-            if (up.granted === false && up.permission) {
-              // Remover permissão negada
-              permSet.delete(`${up.permission.resource}.${up.permission.action}`);
-            } else if (up.granted === true && up.permission) {
-              // Adicionar permissão concedida
-              permSet.add(`${up.permission.resource}.${up.permission.action}`);
-            }
-          });
+        if (userPermsError) {
+          console.warn('Erro ao buscar user_permissions:', userPermsError);
+        } else if (userPerms && userPerms.length > 0) {
+          // Buscar detalhes das permissões
+          const permissionIds = userPerms.map((up: any) => up.permission_id);
+          const { data: permsData, error: permsError } = await from('permissions')
+            .select('resource, action')
+            .in('id', permissionIds)
+            .execute();
+
+          if (permsError) {
+            console.warn('Erro ao buscar detalhes das permissões do usuário:', permsError);
+          } else if (permsData) {
+            // Criar mapa de permission_id para permissão
+            const permMap = new Map(permsData.map((p: any) => [p.id, p]));
+            
+            userPerms.forEach((up: any) => {
+              const perm = permMap.get(up.permission_id);
+              if (perm) {
+                const permKey = `${perm.resource}.${perm.action}`;
+                if (up.granted === false) {
+                  // Remover permissão negada
+                  permSet.delete(permKey);
+                } else if (up.granted === true) {
+                  // Adicionar permissão concedida
+                  permSet.add(permKey);
+                }
+              }
+            });
+          }
         }
       } catch (e) {
         // Tabela user_permissions pode não existir
+        console.warn('Erro ao buscar permissões customizadas do usuário:', e);
       }
 
       setPermissions(permSet);

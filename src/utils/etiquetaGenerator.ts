@@ -89,38 +89,54 @@ function makeBarcodeDataUrl(value: string, targetWmm: number, targetHmm: number,
 
 function drawEtiqueta(doc: jsPDF, x: number, y: number, w: number, h: number, data: EtiquetaData) {
   const pad = 1;
+  const marginTop = 7.5; // Margem superior maior para evitar corte do preço
 
   // Fundo
   doc.setFillColor(255, 255, 255);
   doc.rect(x, y, w, h, 'F');
 
-  // ====== TOPO (nome + preço) ocupa a largura toda ======
-  const topH = 7.5; // altura do cabeçalho
-
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'bold');
-
-  // Nome
-  doc.setFontSize(7.2);
-  const title = (data.descricao_abreviada || data.descricao || '').toUpperCase();
-  const topPadY = y + 2.8;
-  doc.text(title, x + pad, topPadY, { maxWidth: w - pad * 2 } as any);
-
-  // Preço
-  doc.setFontSize(7.0);
-  const price = `R$ ${data.preco_venda.toFixed(2).replace('.', ',')}`;
-  doc.text(price, x + pad, topPadY + 3.6);
-
-  // ====== PARTE DE BAIXO ======
-  const bottomY = y + topH;
-  const bottomH = h - topH;
-
-  // ====== LOGO (quadrado vermelho) ======
-  // Área do logo (quadrado)
+  // ====== DEFINIÇÕES DE ÁREAS ======
   const logoSize = 12;
   const logoX = x + pad;
+  const codeColW = 5;
+  const codeX = logoX + logoSize + 2;
+  const barcodeX = codeX + codeColW + 2.5;
+  const barcodeW = x + w - pad - barcodeX;
+
+  // Área inferior (onde ficam logo, código e barcode)
   const logoY = y + h - pad - logoSize;
 
+  // ====== PREÇO centralizado acima do logo PRIME CAMP (quase colado) ======
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11.5); // Fonte maior para o preço
+  const price = `R$ ${data.preco_venda.toFixed(2).replace('.', ',')}`;
+  // Calcula largura do texto para garantir margens adequadas
+  const priceWidth = doc.getTextWidth(price);
+  const marginLeft = pad + 2; // Margem maior à esquerda para não cortar o "R"
+  const maxRightX = x + w - pad; // Borda direita da etiqueta
+  // Posição inicial: centralizado no logo, mas deslocado para a direita
+  const logoCenterX = logoX + logoSize / 2;
+  // Desloca o preço para a direita para garantir margem à esquerda
+  const priceCenterX = logoCenterX + 3; // Desloca 3mm para a direita
+  // Verifica se não ultrapassa a borda direita
+  const priceRightX = priceCenterX + priceWidth / 2;
+  const priceLeftX = priceCenterX - priceWidth / 2;
+  // Ajusta se necessário
+  let finalPriceX = priceCenterX;
+  if (priceLeftX < x + marginLeft) {
+    // Se ultrapassar à esquerda, ajusta para ter margem
+    finalPriceX = x + marginLeft + priceWidth / 2;
+  } else if (priceRightX > maxRightX) {
+    // Se ultrapassar à direita, ajusta
+    finalPriceX = maxRightX - priceWidth / 2;
+  }
+  // Logo está em logoY = y + 25 - 1 - 12 = y + 12
+  // Preço deve estar acima do logo, quase colado, mas com espaço suficiente
+  const priceY = logoY - 1.2; // Quase colado no logo, com espaço suficiente
+  doc.text(price, finalPriceX, priceY, { align: 'center' } as any);
+
+  // ====== LOGO (quadrado vermelho) - parte esquerda inferior ======
   // Fundo vermelho do logo
   doc.setFillColor(220, 38, 38);
   doc.rect(logoX, logoY, logoSize, logoSize, 'F');
@@ -147,9 +163,7 @@ function drawEtiqueta(doc: jsPDF, x: number, y: number, w: number, h: number, da
   if (!logoOk) {
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-
-    // ajuste fino pra caber no quadrado 12x12
-    doc.setFontSize(6.2);
+    doc.setFontSize(6.8);
 
     const cx = logoX + logoSize / 2;
     const cy = logoY + logoSize / 2;
@@ -158,35 +172,24 @@ function drawEtiqueta(doc: jsPDF, x: number, y: number, w: number, h: number, da
     doc.text('CAMP',  cx, cy + 2.4, { align: 'center' } as any);
   }
 
-  // Código do produto vertical (2515) entre logo e barcode
-  const codeColW = 5;                 // "faixa" do código vertical
-  const codeX = logoX + logoSize + 2; // logo + espaçamento
+  // ====== CÓDIGO DO PRODUTO (vertical) entre logo e barcode ======
   if (data.codigo !== undefined && data.codigo !== null) {
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.0);
-    // desenha de baixo pra cima (igual seu modelo) - alinhado com número do barcode
+    doc.setFontSize(11.5); // Fonte bem maior para o código
     doc.text(String(data.codigo), codeX + (codeColW / 2), y + h - 2.0, { angle: 90 } as any);
   }
 
-  // Barcode à direita (com quiet zone - respiro lateral)
-  const barcodeX = codeX + codeColW + 2.5; // +0.5mm de respiro (quiet zone)
-  const barcodeW = x + w - pad - barcodeX;
-
-  // valor do barcode
+  // ====== BARCODE (parte direita inferior) ======
   let barcodeValueToUse = data.codigo_barras ? onlyDigits(data.codigo_barras) : '';
   if (!barcodeValueToUse && data.codigo !== undefined && data.codigo !== null) {
     barcodeValueToUse = buildEan13FromCodigo(data.codigo);
   }
   if (!barcodeValueToUse) barcodeValueToUse = '7890000000000';
 
-  // reserva área do barcode (barras) + área do número (texto) abaixo
   const barcodeTextH = 3.2;
   const barcodeBarsH = 11.5;
-
-  // DPI padrão: 203 (maioria das impressoras térmicas) ou 300 (alta resolução)
-  // Ajuste conforme sua impressora: 203 para impressoras térmicas comuns, 300 para alta resolução
-  const barcodeDpi = 203; // Altere para 300 se sua impressora for 300 DPI
+  const barcodeDpi = 300;
 
   const { dataUrl: barcodePng, barcodeValue } = makeBarcodeDataUrl(
     barcodeValueToUse,
@@ -196,16 +199,46 @@ function drawEtiqueta(doc: jsPDF, x: number, y: number, w: number, h: number, da
   );
 
   const barcodeBottom = y + h - pad;
-  const barcodeTextY = barcodeBottom - 0.6;                 // linha do número
-  const barcodeBarsY = barcodeBottom - barcodeTextH - barcodeBarsH; // barras acima do número
+  const barcodeTextY = barcodeBottom - 0.6;
+  const barcodeBarsY = barcodeBottom - barcodeTextH - barcodeBarsH;
 
   doc.addImage(barcodePng, 'PNG', barcodeX, barcodeBarsY, barcodeW, barcodeBarsH);
 
-  // número do barcode desenhado pelo PDF (fica perfeito na impressão)
+  // número do barcode
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5); // Fonte um pouco maior para melhor leitura em balcão
+  doc.setFontSize(8.5);
   doc.text(barcodeValue, barcodeX + barcodeW / 2, barcodeTextY, { align: 'center' } as any);
+
+  // ====== NOME DO PRODUTO centralizado na etiqueta, quase colado no código de barras ======
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  const title = (data.descricao_abreviada || data.descricao || '').toUpperCase();
+  
+  // Área disponível para o título (da margem superior até acima do barcode)
+  const titleTopY = y + marginTop; // Começa da margem superior
+  const titleBottomY = barcodeBarsY - 2.0; // Para 2mm antes do barcode
+  const titleMaxWidth = w - (pad * 2); // Largura total da etiqueta menos margens laterais
+  
+  // Quebra o texto em linhas
+  const titleLines = doc.splitTextToSize(title, titleMaxWidth);
+  
+  // Centraliza na etiqueta: X é o centro da etiqueta
+  const titleCenterX = x + w / 2;
+  
+  // Desenha de cima para baixo, começando da margem superior
+  let currentY = titleTopY;
+  const lineHeight = 3.5;
+  
+  // Limita o número de linhas para não sobrepor o barcode
+  const maxLines = Math.floor((titleBottomY - titleTopY) / lineHeight);
+  const linesToDraw = titleLines.slice(0, Math.max(1, maxLines));
+  
+  for (const line of linesToDraw) {
+    doc.text(line, titleCenterX, currentY, { align: 'center' } as any);
+    currentY += lineHeight;
+  }
 }
 
 /**
