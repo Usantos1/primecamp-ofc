@@ -4,6 +4,37 @@ import { useAuth } from '@/contexts/AuthContext';
 import { OrdemServico, StatusOS } from '@/types/assistencia';
 import { useCallback } from 'react';
 
+// Função auxiliar para registrar logs de auditoria
+async function logAuditOS(
+  acao: string,
+  osId: string | null,
+  dadosAnteriores: any,
+  dadosNovos: any,
+  descricao: string,
+  user: any
+) {
+  try {
+    if (!user) return;
+    
+    await from('audit_logs')
+      .insert({
+        user_id: user.id,
+        user_nome: user.user_metadata?.name || user.email || 'Usuário',
+        user_email: user.email,
+        acao,
+        entidade: 'ordem_servico',
+        entidade_id: osId,
+        dados_anteriores: dadosAnteriores,
+        dados_novos: dadosNovos,
+        descricao,
+        user_agent: navigator.userAgent,
+      })
+      .execute();
+  } catch (error) {
+    console.error('Erro ao registrar log de auditoria da OS:', error);
+  }
+}
+
 export function useOrdensServicoSupabase() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -133,6 +164,16 @@ export function useOrdensServicoSupabase() {
         throw new Error('Erro ao criar OS: ID não retornado');
       }
       
+      // Registrar log de auditoria
+      await logAuditOS(
+        'create',
+        osCriada.id,
+        null,
+        osCriada,
+        `Ordem de Serviço #${osCriada.numero} criada`,
+        user
+      );
+      
       return osCriada;
     },
     onSuccess: () => {
@@ -143,6 +184,12 @@ export function useOrdensServicoSupabase() {
   // Atualizar OS
   const updateOS = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<OrdemServico> }): Promise<OrdemServico> => {
+      // Buscar OS antes de atualizar para log
+      const { data: osAntiga } = await from('ordens_servico')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
       // Primeiro definir o WHERE, depois chamar update
       const { data: updated, error } = await from('ordens_servico')
         .eq('id', id)
@@ -157,7 +204,20 @@ export function useOrdensServicoSupabase() {
         .single();
       
       if (fetchError) throw fetchError;
-      return (osData?.data || osData) as OrdemServico;
+      
+      const osAtualizada = (osData?.data || osData) as OrdemServico;
+      
+      // Registrar log de auditoria
+      await logAuditOS(
+        'update',
+        id,
+        osAntiga,
+        osAtualizada,
+        `Ordem de Serviço #${osAtualizada.numero || id} atualizada`,
+        user
+      );
+      
+      return osAtualizada;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });

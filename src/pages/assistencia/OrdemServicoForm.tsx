@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Save, X, Plus, Search, Phone, Printer, Send, Trash2, Edit,
   User, Smartphone, FileText, Check, AlertTriangle, Package, DollarSign, Download, ArrowLeft, Image, Upload, Settings, ChevronDown, ChevronUp,
-  CreditCard, Wallet, QrCode, Banknote
+  CreditCard, Wallet, QrCode, Banknote, History
 } from 'lucide-react';
 import { 
   useOrdensServico, useClientes, useMarcasModelos, 
@@ -41,6 +41,8 @@ import { useOSImageReference } from '@/hooks/useOSImageReference';
 import { OSImageReferenceViewer } from '@/components/assistencia/OSImageReferenceViewer';
 import { CameraCapture } from '@/components/assistencia/CameraCapture';
 import { currencyFormatters, dateFormatters, parseJsonArray } from '@/utils/formatters';
+import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -59,6 +61,272 @@ interface OrdemServicoFormProps {
   osId?: string;
   onClose?: () => void;
   isModal?: boolean;
+}
+
+interface OSMovimentacao {
+  id: string;
+  data: string;
+  tipo: string;
+  acao: string;
+  usuario: string;
+  descricao: string;
+  dados_anteriores?: any;
+  dados_novos?: any;
+}
+
+// Componente para exibir movimentações da OS
+function OSMovimentacoesTab({ osId }: { osId: string }) {
+  const { data: movimentacoes = [], isLoading } = useQuery({
+    queryKey: ['os_movimentacoes', osId],
+    queryFn: async () => {
+      const logs: OSMovimentacao[] = [];
+
+      // 1. Buscar logs de auditoria da OS
+      try {
+        const { data: auditLogs } = await from('audit_logs')
+          .select('id, acao, entidade, user_nome, descricao, dados_anteriores, dados_novos, created_at')
+          .eq('entidade', 'ordem_servico')
+          .eq('entidade_id', osId)
+          .order('created_at', { ascending: false })
+          .limit(500)
+          .execute();
+
+        if (auditLogs) {
+          auditLogs.forEach((log: any) => {
+            logs.push({
+              id: `audit-${log.id}`,
+              data: log.created_at,
+              tipo: 'Auditoria',
+              acao: log.acao,
+              usuario: log.user_nome || 'Sistema',
+              descricao: log.descricao || `${log.acao} em ordem de serviço`,
+              dados_anteriores: log.dados_anteriores,
+              dados_novos: log.dados_novos,
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar audit logs:', error);
+      }
+
+      // 2. Buscar histórico de itens da OS (os_items com created_at e updated_at)
+      try {
+        const { data: osItens } = await from('os_items')
+          .select('id, descricao, tipo, quantidade, valor_total, created_at, updated_at, colaborador_nome, created_by')
+          .eq('ordem_servico_id', osId)
+          .order('created_at', { ascending: false })
+          .execute();
+
+        if (osItens) {
+          // Buscar nomes dos usuários que criaram os itens
+          const userIds = [...new Set(osItens.map((item: any) => item.created_by).filter(Boolean))];
+          const userMap = new Map();
+          
+          if (userIds.length > 0) {
+            try {
+              const { data: users } = await from('users')
+                .select('id, display_name, email')
+                .in('id', userIds)
+                .execute();
+              
+              if (users) {
+                users.forEach((u: any) => {
+                  userMap.set(u.id, u.display_name || u.email || 'Usuário');
+                });
+              }
+            } catch (e) {
+              console.warn('Erro ao buscar usuários:', e);
+            }
+          }
+
+          osItens.forEach((item: any) => {
+            const usuarioNome = item.colaborador_nome || userMap.get(item.created_by) || 'Sistema';
+            
+            // Log de criação do item
+            logs.push({
+              id: `item-create-${item.id}`,
+              data: item.created_at,
+              tipo: 'Item',
+              acao: 'Adicionado',
+              usuario: usuarioNome,
+              descricao: `${item.tipo === 'peca' ? 'Peça' : item.tipo === 'servico' ? 'Serviço' : 'Mão de Obra'}: ${item.descricao} - Qtd: ${item.quantidade}, Valor: ${currencyFormatters.brl(item.valor_total || 0)}`,
+            });
+
+            // Se foi atualizado, log de edição
+            if (item.updated_at && item.updated_at !== item.created_at) {
+              logs.push({
+                id: `item-update-${item.id}`,
+                data: item.updated_at,
+                tipo: 'Item',
+                acao: 'Editado',
+                usuario: usuarioNome,
+                descricao: `Item editado: ${item.descricao}`,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao buscar itens da OS:', error);
+      }
+
+      // 3. Buscar histórico da própria OS (created_at, updated_at)
+      try {
+        const { data: os } = await from('ordens_servico')
+          .select('id, numero, created_at, updated_at, created_by, vendedor_nome, atendente_nome')
+          .eq('id', osId)
+          .single();
+
+        if (os) {
+          // Log de criação da OS
+          logs.push({
+            id: `os-create-${os.id}`,
+            data: os.created_at,
+            tipo: 'OS',
+            acao: 'Criada',
+            usuario: os.vendedor_nome || os.atendente_nome || 'Sistema',
+            descricao: `Ordem de Serviço #${os.numero} criada`,
+          });
+
+          // Se foi atualizada, log de edição
+          if (os.updated_at && os.updated_at !== os.created_at) {
+            logs.push({
+              id: `os-update-${os.id}`,
+              data: os.updated_at,
+              tipo: 'OS',
+              acao: 'Atualizada',
+              usuario: os.vendedor_nome || os.atendente_nome || 'Sistema',
+              descricao: `Ordem de Serviço #${os.numero} atualizada`,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar OS:', error);
+      }
+
+      // Ordenar por data decrescente
+      logs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+      return logs;
+    },
+    enabled: !!osId,
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Movimentações e Logs da OS
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            Carregando histórico...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (movimentacoes.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Movimentações e Logs da OS
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Nenhuma movimentação registrada ainda</p>
+            <p className="text-sm mt-2">Todas as edições, adições e exclusões aparecerão aqui</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const tipoBadgeColors: Record<string, string> = {
+    'OS': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    'Item': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    'Auditoria': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  };
+
+  const acaoBadgeColors: Record<string, string> = {
+    'Criada': 'bg-green-100 text-green-700',
+    'Atualizada': 'bg-blue-100 text-blue-700',
+    'Adicionado': 'bg-emerald-100 text-emerald-700',
+    'Editado': 'bg-yellow-100 text-yellow-700',
+    'Removido': 'bg-red-100 text-red-700',
+    'create': 'bg-green-100 text-green-700',
+    'update': 'bg-blue-100 text-blue-700',
+    'delete': 'bg-red-100 text-red-700',
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <History className="h-5 w-5" />
+          Movimentações e Logs da OS
+        </CardTitle>
+        <CardDescription>
+          Histórico completo de todas as ações e edições ({movimentacoes.length} registros)
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="border rounded-lg overflow-hidden max-h-[600px] overflow-y-auto">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background">
+              <TableRow>
+                <TableHead className="w-[140px]">Data/Hora</TableHead>
+                <TableHead className="w-[100px]">Tipo</TableHead>
+                <TableHead className="w-[100px]">Ação</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="w-[150px]">Usuário</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {movimentacoes.map((mov) => {
+                const dataFormatada = format(new Date(mov.data), "dd/MM/yyyy");
+                const horaFormatada = format(new Date(mov.data), "HH:mm:ss");
+                const tipoColor = tipoBadgeColors[mov.tipo] || 'bg-muted';
+                const acaoColor = acaoBadgeColors[mov.acao] || acaoBadgeColors[mov.acao.toLowerCase()] || 'bg-gray-100 text-gray-700';
+
+                return (
+                  <TableRow key={mov.id} className="hover:bg-muted/50">
+                    <TableCell className="text-sm">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{dataFormatada}</span>
+                        <span className="text-xs text-muted-foreground">{horaFormatada}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${tipoColor}`}>
+                        {mov.tipo}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${acaoColor}`}>
+                        {mov.acao}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">{mov.descricao}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {mov.usuario}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function OrdemServicoForm({ osId, onClose, isModal = false }: OrdemServicoFormProps = {} as OrdemServicoFormProps) {
@@ -4182,6 +4450,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </TabsContent>
           )}
 
+          {/* Tab Movimentações */}
+          {isEditing && id && (
+            <TabsContent value="movimentacoes" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-4 p-2">
+              <OSMovimentacoesTab osId={id} />
+            </TabsContent>
+          )}
+
           {/* Tab Itens (Peças/Serviços) */}
           {isEditing && (
             <TabsContent value="itens" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
@@ -4499,6 +4774,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       >
                         <Image className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         <span className="hidden sm:inline">Fotos</span>
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="movimentacoes" 
+                        className="gap-0.5 px-2 sm:px-3 h-6 sm:h-7 rounded data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs"
+                      >
+                        <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        <span className="hidden sm:inline">Movimentações</span>
                       </TabsTrigger>
                     </>
                   )}
