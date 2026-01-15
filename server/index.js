@@ -1714,6 +1714,7 @@ app.post('/api/update/:table', async (req, res) => {
     let finalWhereClause = whereClause;
     
     // Adicionar filtro de company_id se necessário
+    // IMPORTANTE: Só adicionar se a coluna company_id existe na tabela
     if (needsCompanyFilter && req.user && req.companyId) {
       const hasCompanyFilter = where && (
         (typeof where === 'object' && 'company_id' in where) ||
@@ -1721,13 +1722,32 @@ app.post('/api/update/:table', async (req, res) => {
       );
       
       if (!hasCompanyFilter) {
-        if (finalWhereClause) {
-          finalWhereClause += ` AND company_id = $${params.length + 1}`;
-        } else {
-          finalWhereClause = `WHERE company_id = $${params.length + 1}`;
+        // Verificar se a coluna company_id existe na tabela antes de adicionar o filtro
+        try {
+          const columnCheck = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = $1 
+            AND column_name = 'company_id'
+          `, [tableNameOnly]);
+          
+          if (columnCheck.rows.length > 0) {
+            // Coluna existe, adicionar filtro
+            if (finalWhereClause) {
+              finalWhereClause += ` AND company_id = $${params.length + 1}`;
+            } else {
+              finalWhereClause = `WHERE company_id = $${params.length + 1}`;
+            }
+            params.push(req.companyId);
+            console.log(`[Update] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
+          } else {
+            console.log(`[Update] Tabela ${tableNameOnly} não tem coluna company_id, pulando filtro`);
+          }
+        } catch (checkError) {
+          console.warn(`[Update] Erro ao verificar coluna company_id em ${tableNameOnly}:`, checkError.message);
+          // Em caso de erro na verificação, não adicionar o filtro para evitar quebrar o UPDATE
         }
-        params.push(req.companyId);
-        console.log(`[Update] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
       }
     }
 
