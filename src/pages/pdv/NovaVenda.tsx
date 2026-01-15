@@ -1271,7 +1271,7 @@ export default function NovaVenda() {
                   const telefone = os.telefone_contato;
                   if (telefone) {
                     // Buscar configuração do status do localStorage
-                    const configStatusStr = localStorage.getItem('config_status');
+                    const configStatusStr = localStorage.getItem('assistencia_config_status');
                     let configStatus: any = null;
                     if (configStatusStr) {
                       try {
@@ -2757,11 +2757,57 @@ _PrimeCamp Assistência Técnica_`;
             if (updatedSale && Number(updatedSale.total_pago) >= Number(updatedSale.total)) {
               await finalizeSale(id);
               
-              // Finalizar a OS se houver vínculo
+              // Mudar status da OS para "entregue_faturada" se houver vínculo
               if (updatedSale.ordem_servico_id) {
                 try {
-                  await updateOSStatus(updatedSale.ordem_servico_id, 'entregue_faturada');
-                  console.log(`OS #${updatedSale.ordem_servico_id} finalizada automaticamente após pagamento via voucher`);
+                  const os = getOSById(updatedSale.ordem_servico_id);
+                  if (os) {
+                    await updateOSStatus(updatedSale.ordem_servico_id, 'entregue_faturada');
+                    console.log(`OS #${os.numero} mudada para entregue_faturada automaticamente após pagamento via voucher`);
+                    
+                    // Enviar mensagem configurada (mesma lógica do finalizeSale)
+                    try {
+                      const telefone = os.telefone_contato;
+                      if (telefone) {
+                        const configStatusStr = localStorage.getItem('assistencia_config_status');
+                        let configStatus: any = null;
+                        if (configStatusStr) {
+                          try {
+                            const configuracoes = JSON.parse(configStatusStr);
+                            configStatus = configuracoes.find((c: any) => c.status === 'entregue_faturada' || c.status === 'entregue');
+                          } catch (e) {
+                            console.warn('Erro ao ler configurações:', e);
+                          }
+                        }
+                        
+                        if (configStatus?.notificar_whatsapp && configStatus.mensagem_whatsapp) {
+                          let mensagem = configStatus.mensagem_whatsapp
+                            .replace(/{cliente}/g, os.cliente_nome || 'Cliente')
+                            .replace(/{numero}/g, os.numero?.toString() || '')
+                            .replace(/{status}/g, configStatus.label || 'Entregue Faturada')
+                            .replace(/{marca}/g, os.marca_nome || '')
+                            .replace(/{modelo}/g, os.modelo_nome || '');
+                          
+                          let numero = telefone.replace(/\D/g, '');
+                          numero = numero.replace(/^0+/, '');
+                          if (!numero.startsWith('55')) {
+                            if (numero.startsWith('0')) {
+                              numero = numero.substring(1);
+                            }
+                            if (numero.length === 10 || numero.length === 11) {
+                              numero = '55' + numero;
+                            }
+                          }
+                          
+                          if (numero.length >= 12 && numero.length <= 13) {
+                            await sendWhatsAppMessage({ number: numero, body: mensagem });
+                          }
+                        }
+                      }
+                    } catch (msgError) {
+                      console.error('Erro ao enviar mensagem:', msgError);
+                    }
+                  }
                 } catch (osError: any) {
                   console.error('Erro ao finalizar OS:', osError);
                   // Não bloquear a venda se houver erro ao finalizar a OS
