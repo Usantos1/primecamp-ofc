@@ -178,22 +178,39 @@ export const useNPS = () => {
       if (updates.description !== undefined) updateData.description = updates.description;
       if (updates.questions) updateData.questions = updates.questions as any;
       if (updates.is_active !== undefined) updateData.is_active = updates.is_active;
-      if (updates.allowed_respondents !== undefined) updateData.allowed_respondents = updates.allowed_respondents;
-      if (updates.target_employees !== undefined) updateData.target_employees = updates.target_employees;
+      
+      // Garantir que arrays sejam arrays válidos (não undefined/null)
+      if (updates.allowed_respondents !== undefined) {
+        updateData.allowed_respondents = Array.isArray(updates.allowed_respondents) 
+          ? updates.allowed_respondents 
+          : [];
+      }
+      if (updates.target_employees !== undefined) {
+        updateData.target_employees = Array.isArray(updates.target_employees) 
+          ? updates.target_employees 
+          : [];
+      }
 
-      const { error } = await from('nps_surveys')
+      console.log('[NPS] Atualizando pesquisa:', surveyId, updateData);
+
+      const { data, error } = await from('nps_surveys')
         .eq('id', surveyId)
         .update(updateData)
-        .execute();
+        .select()
+        .single();
 
       if (error) {
+        console.error('[NPS] Erro ao atualizar:', error);
+        const errorMessage = error.message || error.error || "Erro ao atualizar pesquisa NPS";
         toast({
           title: "Erro",
-          description: "Erro ao atualizar pesquisa NPS",
+          description: errorMessage,
           variant: "destructive"
         });
         return;
       }
+
+      console.log('[NPS] Pesquisa atualizada com sucesso:', data);
 
       toast({
         title: "Sucesso",
@@ -201,8 +218,14 @@ export const useNPS = () => {
       });
 
       fetchSurveys();
-    } catch (error) {
-      console.error('Error updating NPS survey:', error);
+    } catch (error: any) {
+      console.error('[NPS] Erro ao atualizar pesquisa NPS:', error);
+      const errorMessage = error?.message || error?.error || "Erro inesperado ao atualizar pesquisa NPS";
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
