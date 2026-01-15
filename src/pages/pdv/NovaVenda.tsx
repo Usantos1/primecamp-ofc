@@ -890,7 +890,7 @@ export default function NovaVenda() {
         const saleData = await getSaleById(id);
         if (saleData?.ordem_servico_id) {
           try {
-            await updateOSStatus(saleData.ordem_servico_id, 'finalizada');
+            await updateOSStatus(saleData.ordem_servico_id, 'entregue_faturada');
             console.log(`OS #${saleData.ordem_servico_id} finalizada automaticamente após finalização da venda`);
           } catch (osError: any) {
             console.error('Erro ao finalizar OS:', osError);
@@ -1255,14 +1255,72 @@ export default function NovaVenda() {
         try {
           await finalizeSale(id);
           
-          // Finalizar a OS se houver vínculo
+          // Mudar status da OS para "entregue Faturada" se houver vínculo
           if (updatedSale.ordem_servico_id) {
             try {
-              await updateOSStatus(updatedSale.ordem_servico_id, 'finalizada');
-              console.log(`OS #${updatedSale.ordem_servico_id} finalizada automaticamente após pagamento`);
+              // Buscar OS para pegar dados
+              const os = getOSById(updatedSale.ordem_servico_id);
+              if (os) {
+                // Mudar para "entregue Faturada" (ou "entregue" se não existir o status customizado)
+                const novoStatus = 'entregue_faturada'; // Status customizado
+                await updateOSStatus(updatedSale.ordem_servico_id, novoStatus);
+                console.log(`OS #${os.numero} mudada para ${novoStatus} automaticamente após faturamento`);
+                
+                // Enviar mensagem configurada do status (se houver)
+                try {
+                  // Buscar configuração do status
+                  const { data: configStatus } = await from('configuracao_status')
+                    .select('*')
+                    .eq('status', novoStatus)
+                    .eq('ativo', true)
+                    .single();
+                  
+                  if (configStatus?.notificar_whatsapp && configStatus.mensagem_whatsapp) {
+                    const telefone = os.telefone_contato;
+                    if (telefone) {
+                      // Substituir variáveis na mensagem
+                      let mensagem = configStatus.mensagem_whatsapp
+                        .replace(/{cliente}/g, os.cliente_nome || 'Cliente')
+                        .replace(/{numero}/g, os.numero?.toString() || '')
+                        .replace(/{status}/g, configStatus.label)
+                        .replace(/{marca}/g, os.marca_nome || '')
+                        .replace(/{modelo}/g, os.modelo_nome || '');
+                      
+                      // Formatar número
+                      let numero = telefone.replace(/\D/g, '');
+                      numero = numero.replace(/^0+/, '');
+                      if (!numero.startsWith('55')) {
+                        if (numero.startsWith('0')) {
+                          numero = numero.substring(1);
+                        }
+                        if (numero.length === 10 || numero.length === 11) {
+                          numero = '55' + numero;
+                        }
+                      }
+                      
+                      if (numero.length >= 12 && numero.length <= 13) {
+                        // Usar hook de WhatsApp se disponível
+                        const { sendMessage } = await import('@/hooks/useWhatsApp');
+                        const { useWhatsApp } = await import('@/hooks/useWhatsApp');
+                        // Nota: precisa ser chamado dentro de componente React
+                        // Por enquanto, vamos fazer via API direta
+                        const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+                        await fetch(`${API_URL}/whatsapp/send`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ number: numero, body: mensagem }),
+                        });
+                      }
+                    }
+                  }
+                } catch (msgError) {
+                  console.error('Erro ao enviar mensagem de faturamento:', msgError);
+                  // Não bloquear se falhar
+                }
+              }
             } catch (osError: any) {
-              console.error('Erro ao finalizar OS:', osError);
-              // Não bloquear a venda se houver erro ao finalizar a OS
+              console.error('Erro ao atualizar status da OS:', osError);
+              // Não bloquear a venda se houver erro
             }
           }
           

@@ -1349,6 +1349,44 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         
         toast({ title: `OS #${novaOS.numero} criada!` });
         
+        // Enviar mensagem de "em andamento" se configurado
+        try {
+          const configEmAndamento = getConfigByStatus('em_andamento');
+          if (configEmAndamento?.notificar_whatsapp && configEmAndamento.mensagem_whatsapp) {
+            const telefone = formData.telefone_contato || selectedCliente?.whatsapp || selectedCliente?.telefone;
+            if (telefone) {
+              const marca = marcas.find(m => m.id === formData.marca_id);
+              const modelo = modelos.find(m => m.id === formData.modelo_id);
+              
+              let mensagem = configEmAndamento.mensagem_whatsapp
+                .replace(/{cliente}/g, selectedCliente?.nome || novaOS.cliente_nome || 'Cliente')
+                .replace(/{numero}/g, novaOS.numero?.toString() || '')
+                .replace(/{status}/g, configEmAndamento.label)
+                .replace(/{marca}/g, marca?.nome || novaOS.marca_nome || '')
+                .replace(/{modelo}/g, modelo?.nome || novaOS.modelo_nome || '');
+              
+              // Formatar número
+              let numero = telefone.replace(/\D/g, '');
+              numero = numero.replace(/^0+/, '');
+              if (!numero.startsWith('55')) {
+                if (numero.startsWith('0')) {
+                  numero = numero.substring(1);
+                }
+                if (numero.length === 10 || numero.length === 11) {
+                  numero = '55' + numero;
+                }
+              }
+              
+              if (numero.length >= 12 && numero.length <= 13) {
+                await sendMessage({ number: numero, body: mensagem });
+              }
+            }
+          }
+        } catch (error: any) {
+          console.error('Erro ao enviar notificação de abertura:', error);
+          // Não bloquear a criação se o envio falhar
+        }
+        
         if (isModal && onClose) {
           // Se estiver no modal, fecha e deixa o usuário abrir novamente se quiser
           onClose();
@@ -1579,8 +1617,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const telefone = currentOS.telefone_contato || cliente?.whatsapp || cliente?.telefone;
 
       if (telefone && checklistSaidaAprovado) {
-        // Aprovado - enviar mensagem padrão
+        // Aprovado - usar mensagem configurada no status
         try {
+          const config = getConfigByStatus(pendingStatusChange);
           const marca = marcas.find(m => m.id === currentOS.marca_id);
           const modelo = modelos.find(m => m.id === currentOS.modelo_id);
           
@@ -1596,8 +1635,23 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           }
           
           if (numero.length >= 12 && numero.length <= 13) {
-            const mensagem = `Olá ${cliente?.nome || currentOS.cliente_nome || 'Cliente'}! Sua OS #${currentOS.numero} do ${marca?.nome || currentOS.marca_nome || ''} ${modelo?.nome || currentOS.modelo_nome || ''} está pronta para retirada. O aparelho foi aprovado no checklist de saída.`;
-            await sendMessage({ number: numero, body: mensagem });
+            // Usar mensagem configurada no status, se houver
+            let mensagem = '';
+            if (config?.notificar_whatsapp && config.mensagem_whatsapp) {
+              mensagem = config.mensagem_whatsapp
+                .replace(/{cliente}/g, cliente?.nome || currentOS.cliente_nome || 'Cliente')
+                .replace(/{numero}/g, currentOS.numero?.toString() || '')
+                .replace(/{status}/g, config.label)
+                .replace(/{marca}/g, marca?.nome || currentOS.marca_nome || '')
+                .replace(/{modelo}/g, modelo?.nome || currentOS.modelo_nome || '');
+            } else {
+              // Fallback apenas se não houver mensagem configurada
+              mensagem = `Olá ${cliente?.nome || currentOS.cliente_nome || 'Cliente'}! Sua OS #${currentOS.numero} do ${marca?.nome || currentOS.marca_nome || ''} ${modelo?.nome || currentOS.modelo_nome || ''} está pronta para retirada.`;
+            }
+            
+            if (mensagem) {
+              await sendMessage({ number: numero, body: mensagem });
+            }
           }
         } catch (error: any) {
           console.error('Erro ao enviar notificação de aprovação:', error);
