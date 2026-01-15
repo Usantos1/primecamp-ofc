@@ -17,7 +17,7 @@ export interface OSTermicaData {
 }
 
 export async function generateOSTermica(data: OSTermicaData): Promise<string> {
-  const { os, clienteNome, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, fotoEntradaUrl, imagemReferenciaUrl, areasDefeito, via } = data;
+  const { os, clienteNome, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, imagemReferenciaUrl, areasDefeito, via } = data;
 
   // Gerar QR Code com URL da OS
   let qrCodeImg = '';
@@ -39,14 +39,9 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
     console.error('Erro ao gerar QR Code:', error);
   }
 
-  // Formatar checklist de entrada
+  // Formatar checklist de entrada - APENAS PROBLEMAS ENCONTRADOS (físicos)
   const checklistFisico = checklistEntrada
     .filter(item => item.categoria === 'fisico' && checklistEntradaMarcados.includes(item.item_id))
-    .map(item => item.nome)
-    .join(', ');
-
-  const checklistFuncional = checklistEntrada
-    .filter(item => item.categoria === 'funcional' && checklistEntradaMarcados.includes(item.item_id))
     .map(item => item.nome)
     .join(', ');
 
@@ -55,17 +50,6 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
   const horaEntrada = os.hora_entrada || '-';
   const previsaoEntrega = os.previsao_entrega ? dateFormatters.short(os.previsao_entrega) : '-';
   const valorTotal = os.valor_total ? currencyFormatters.brl(os.valor_total) : '-';
-
-  // Foto de entrada (se houver)
-  let fotoEntradaHtml = '';
-  if (fotoEntradaUrl) {
-    fotoEntradaHtml = `
-      <div style="margin: 5px 0; text-align: center;">
-        <img src="${fotoEntradaUrl}" style="max-width: 100%; max-height: 200px; object-fit: contain; border: 1px solid #000;" alt="Foto de Entrada" />
-        <p style="font-size: 8px; margin-top: 2px;">Foto de Entrada</p>
-      </div>
-    `;
-  }
 
   // Imagem de referência com pontos de defeito (se houver)
   let imagemReferenciaHtml = '';
@@ -329,8 +313,6 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
       
       ${imagemReferenciaHtml}
       
-      ${fotoEntradaHtml}
-      
       <div class="section-title">CHECKLIST DE ENTRADA</div>
       
       ${checklistFisico ? `
@@ -340,16 +322,7 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
             ${checklistFisico.split(', ').map(item => `<div class="checklist-item">${item}</div>`).join('')}
           </div>
         </div>
-      ` : ''}
-      
-      ${checklistFuncional ? `
-        <div style="font-size: 9px; margin: 2px 0;">
-          <div class="bold">Funcional OK:</div>
-          <div style="padding-left: 4px; font-size: 8px;">
-            ${checklistFuncional.split(', ').map(item => `<div class="checklist-item">${item}</div>`).join('')}
-          </div>
-        </div>
-      ` : ''}
+      ` : '<div style="font-size: 8px; margin: 2px 0; color: #999;">Nenhum problema encontrado</div>'}
       
       ${os.observacoes_checklist ? `
         <div style="font-size: 8px; margin: 2px 0; padding: 2px; border: 1px solid #000;">

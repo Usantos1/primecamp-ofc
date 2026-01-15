@@ -19,7 +19,7 @@ export interface OSPDFData {
 }
 
 export async function generateOSPDF(data: OSPDFData): Promise<string> {
-  const { os, clienteNome, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, fotoEntradaUrl, imagemReferenciaUrl, areasDefeito } = data;
+  const { os, clienteNome, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, imagemReferenciaUrl, areasDefeito } = data;
 
   // Gerar QR Code
   let qrCodeImg = '';
@@ -41,13 +41,9 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
     console.error('Erro ao gerar QR Code:', error);
   }
 
-  // Formatar checklist de entrada
+  // Formatar checklist de entrada - APENAS PROBLEMAS ENCONTRADOS (físicos)
   const checklistFisico = checklistEntrada
     .filter(item => item.categoria === 'fisico' && checklistEntradaMarcados.includes(item.item_id))
-    .map(item => item.nome);
-
-  const checklistFuncional = checklistEntrada
-    .filter(item => item.categoria === 'funcional' && checklistEntradaMarcados.includes(item.item_id))
     .map(item => item.nome);
 
   // Dados formatados
@@ -55,17 +51,6 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
   const horaEntrada = os.hora_entrada || '-';
   const previsaoEntrega = os.previsao_entrega ? dateFormatters.short(os.previsao_entrega) : '-';
   const valorTotal = os.valor_total ? currencyFormatters.brl(os.valor_total) : '-';
-
-  // Foto de entrada
-  let fotoEntradaHtml = '';
-  if (fotoEntradaUrl) {
-    fotoEntradaHtml = `
-      <div style="text-align: center;">
-        <div style="font-weight: bold; font-size: 8px; margin-bottom: 1px;">Foto Entrada</div>
-        <img src="${fotoEntradaUrl}" style="max-width: 100%; max-height: 80px; object-fit: contain; border: 1px solid #000;" alt="Foto" />
-      </div>
-    `;
-  }
 
   // Imagem de referência com defeitos
   let imagemReferenciaHtml = '';
@@ -187,7 +172,7 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
         </tr>
       </table>
 
-      <!-- Checklist em duas colunas -->
+      <!-- Checklist - APENAS PROBLEMAS ENCONTRADOS -->
       <table style="width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 1.5mm;">
         <tr>
           <td style="padding: 2px 3px; border: 1px solid #000; width: 50%; vertical-align: top;">
@@ -196,26 +181,14 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
               <div style="font-size: 8px; line-height: 1.2;">
                 ${checklistFisico.map(item => `<div>✓ ${item}</div>`).join('')}
               </div>
-            ` : '<div style="font-size: 8px; color: #999;">Nenhum problema</div>'}
+            ` : '<div style="font-size: 8px; color: #999;">Nenhum problema encontrado</div>'}
           </td>
           <td style="padding: 2px 3px; border: 1px solid #000; width: 50%; vertical-align: top;">
-            ${checklistFuncional.length > 0 ? `
-              <div style="font-weight: bold; font-size: 10px; color: #16a34a; margin-bottom: 1px;">FUNCIONAL OK</div>
-              <div style="font-size: 8px; line-height: 1.2;">
-                ${checklistFuncional.map(item => `<div>✓ ${item}</div>`).join('')}
-              </div>
-            ` : ''}
             ${imagemReferenciaHtml ? `
-              <div style="margin-top: 2px;">
+              <div>
                 ${imagemReferenciaHtml}
               </div>
-            ` : ''}
-            ${fotoEntradaHtml ? `
-              <div style="margin-top: 2px;">
-                ${fotoEntradaHtml}
-              </div>
-            ` : ''}
-            ${!checklistFuncional.length && !imagemReferenciaHtml && !fotoEntradaHtml ? '<div style="font-size: 8px; color: #999;">Nenhum item verificado</div>' : ''}
+            ` : '<div style="font-size: 8px; color: #999;">-</div>'}
           </td>
         </tr>
         ${os.observacoes_checklist ? `
