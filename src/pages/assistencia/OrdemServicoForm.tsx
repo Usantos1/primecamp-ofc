@@ -217,7 +217,7 @@ function OSMovimentacoesTab({ osId }: { osId: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Movimentações e Logs da OS
+            Logs da OS
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -235,13 +235,13 @@ function OSMovimentacoesTab({ osId }: { osId: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Movimentações e Logs da OS
+            Logs da OS
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma movimentação registrada ainda</p>
+            <p>Nenhum log registrado ainda</p>
             <p className="text-sm mt-2">Todas as edições, adições e exclusões aparecerão aqui</p>
           </div>
         </CardContent>
@@ -271,7 +271,7 @@ function OSMovimentacoesTab({ osId }: { osId: string }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <History className="h-5 w-5" />
-          Movimentações e Logs da OS
+          Logs da OS
         </CardTitle>
         <CardDescription>
           Histórico completo de todas as ações e edições ({movimentacoes.length} registros)
@@ -4450,7 +4450,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </TabsContent>
           )}
 
-          {/* Tab Movimentações */}
+          {/* Tab Logs */}
           {isEditing && id && (
             <TabsContent value="movimentacoes" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-4 p-2">
               <OSMovimentacoesTab osId={id} />
@@ -4780,7 +4780,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         className="gap-0.5 px-2 sm:px-3 h-6 sm:h-7 rounded data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-[10px] sm:text-xs"
                       >
                         <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        <span className="hidden sm:inline">Movimentações</span>
+                        <span className="hidden sm:inline">Logs</span>
                       </TabsTrigger>
                     </>
                   )}
