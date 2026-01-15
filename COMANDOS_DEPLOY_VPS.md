@@ -1,39 +1,50 @@
-# 🚀 Comandos para Deploy no VPS
+# Comandos para Deploy na VPS
 
-## Deploy Rápido (Recomendado)
+## ⚡ Deploy Rápido (Uma Linha)
 
 ```bash
+cd /root/primecamp-ofc && git pull origin main && npm run build && sudo rm -rf /var/www/primecamp.cloud/* && sudo cp -r dist/* /var/www/primecamp.cloud/ && sudo chown -R www-data:www-data /var/www/primecamp.cloud && sudo chmod -R 755 /var/www/primecamp.cloud && sudo rm -rf /var/cache/nginx/* && sudo systemctl reload nginx && echo "✅ Deploy concluído!"
+```
+
+## 📝 Deploy Manual (Passo a Passo)
+
+```bash
+# 1. Conectar na VPS
+ssh usuario@seu-servidor
+
+# 2. Navegar até o diretório do projeto
 cd /root/primecamp-ofc
+
+# 3. Buscar alterações
+git fetch origin
 git pull origin main
+
+# 4. Instalar dependências (se necessário)
+npm install
+
+# 5. Limpar build anterior
+rm -rf dist
+
+# 6. Build do frontend
 npm run build
-sudo rm -rf /var/www/html/*
-sudo cp -r dist/* /var/www/html/
-sudo chown -R www-data:www-data /var/www/html
-sudo chmod -R 755 /var/www/html
+
+# 7. Limpar diretório de deploy
+sudo rm -rf /var/www/primecamp.cloud/*
+
+# 8. Copiar arquivos buildados
+sudo cp -r dist/* /var/www/primecamp.cloud/
+
+# 9. Ajustar permissões
+sudo chown -R www-data:www-data /var/www/primecamp.cloud
+sudo chmod -R 755 /var/www/primecamp.cloud
+
+# 10. Limpar cache do Nginx
 sudo rm -rf /var/cache/nginx/*
-sudo rm -rf /var/lib/nginx/cache/*
+sudo find /var/cache/nginx -type f -delete
+
+# 11. Recarregar Nginx
 sudo systemctl reload nginx
-echo "✅ Deploy concluído!"
+
+# 12. Verificar status
+sudo systemctl status nginx
 ```
-
-## Script Automatizado
-
-```bash
-cd /root/primecamp-ofc
-git pull origin main
-chmod +x DEPLOY_MENU_FINANCEIRO.sh
-./DEPLOY_MENU_FINANCEIRO.sh
-```
-
-## Uma Linha (Copy & Paste)
-
-```bash
-cd /root/primecamp-ofc && git pull origin main && npm run build && sudo rm -rf /var/www/html/* && sudo cp -r dist/* /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo chmod -R 755 /var/www/html && sudo rm -rf /var/cache/nginx/* && sudo rm -rf /var/lib/nginx/cache/* && sudo systemctl reload nginx && echo "✅ Deploy concluído!"
-```
-
-## O que será deployado:
-
-✅ Menu de navegação no topo das páginas do financeiro
-✅ Scrollbar mais visível e discreto
-✅ Componente FinanceiroNavMenu compartilhado
-✅ Ajustes no CSS do scrollbar
