@@ -1725,8 +1725,18 @@ app.post('/api/update/:table', async (req, res) => {
       const key = keys[index];
       const columnType = columnTypes[key];
       
-      // Se for array e a coluna for UUID[] (array), passar como array nativo
+      // Colunas conhecidas que são arrays UUID[] (não JSONB)
+      const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
+      
+      // Se for uma coluna conhecida de array UUID[], passar como array nativo
+      if (Array.isArray(value) && uuidArrayColumns.includes(key)) {
+        console.log(`[Update] Detectado array UUID[] para coluna ${key}, passando como array nativo`);
+        return value; // Deixar o driver PostgreSQL converter automaticamente
+      }
+      
+      // Se for array e a coluna for ARRAY (detectado pelo tipo), passar como array nativo
       if (Array.isArray(value) && columnType && columnType.dataType === 'ARRAY') {
+        console.log(`[Update] Detectado tipo ARRAY para coluna ${key}, passando como array nativo`);
         return value; // Deixar o driver PostgreSQL converter automaticamente
       }
       
@@ -1739,6 +1749,7 @@ app.post('/api/update/:table', async (req, res) => {
       // Se for array de strings que parecem UUIDs, provavelmente é UUID[]
       if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value[0])) {
         // Provavelmente é UUID[], passar como array
+        console.log(`[Update] Detectado array de UUIDs para coluna ${key}, passando como array nativo`);
         return value;
       }
       
@@ -1811,7 +1822,7 @@ app.post('/api/update/:table', async (req, res) => {
 
     console.log(`[Update] ${tableName}:`, keys, 'WHERE:', finalWhereClause, 'Params:', params.length);
     console.log(`[Update] SQL completo:`, sql);
-    console.log(`[Update] Parâmetros:`, JSON.stringify(params));
+    console.log(`[Update] Parâmetros (primeiros 3):`, params.slice(0, 3).map((p, i) => `${keys[i]}=${Array.isArray(p) ? `[ARRAY:${p.length} items]` : typeof p === 'string' && p.length > 50 ? p.substring(0, 50) + '...' : p}`));
     console.log(`[Update] Executando query...`);
     const result = await pool.query(sql, params);
     console.log(`[Update] Query executada com sucesso, ${result.rowCount} linhas afetadas`);
