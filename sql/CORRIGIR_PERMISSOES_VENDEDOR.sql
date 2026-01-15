@@ -86,14 +86,11 @@ BEGIN
         RAISE NOTICE 'ℹ️ Permissão rh.ponto já está associada ao role %', v_role_name;
     END IF;
 
-    -- Commit explícito
-    COMMIT;
-
     RAISE NOTICE '✅ Processo concluído com sucesso!';
 
 EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE '❌ Erro: %', SQLERRM;
-    ROLLBACK;
+    RAISE;
 END $$;
 
 -- 2. Verificar permissões atuais do vendedor

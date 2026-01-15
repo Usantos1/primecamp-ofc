@@ -184,11 +184,28 @@ export function usePermissions() {
       // CARREGAR PERMISSÕES DA TABELA role_permissions (DO BANCO DE DADOS)
       // ═══════════════════════════════════════════════════════════════
       try {
-        // Buscar o role no banco de dados
-        const { data: roleData } = await from('roles')
-          .select('id, name')
-          .eq('name', userRole)
-          .maybeSingle();
+        // Mapear role do código para role do banco (pode haver diferenças)
+        const roleMapping: Record<string, string[]> = {
+          'vendedor': ['vendedor', 'sales', 'vendas', 'vendedores'],
+          'sales': ['sales', 'vendedor', 'vendas', 'vendedores'],
+          'vendas': ['vendas', 'vendedor', 'sales', 'vendedores'],
+        };
+        
+        const rolesToTry = roleMapping[userRole] || [userRole];
+        
+        // Buscar o role no banco de dados (tentar variações)
+        let roleData = null;
+        for (const roleName of rolesToTry) {
+          const { data } = await from('roles')
+            .select('id, name')
+            .ilike('name', roleName)
+            .maybeSingle();
+          
+          if (data) {
+            roleData = data;
+            break;
+          }
+        }
 
         if (roleData?.id) {
           // Buscar permissões associadas ao role
