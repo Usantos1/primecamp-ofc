@@ -22,7 +22,7 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
   // Gerar QR Code com URL da OS
   let qrCodeImg = '';
   try {
-    const publicDomain = 'https://primecelular.com';
+    const publicDomain = 'https://primecamp.cloud';
     const qrCodeUrl = await QRCode.toDataURL(`${publicDomain}/acompanhar-os/${os.id}`, {
       width: 120,
       margin: 2,
