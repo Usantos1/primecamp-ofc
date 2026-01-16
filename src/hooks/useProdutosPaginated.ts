@@ -242,10 +242,12 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       
       return result;
     },
-    staleTime: 0, // Sempre buscar dados frescos
+    staleTime: Infinity, // Dados nunca ficam stale - não refetch automático
     enabled: true, // Sempre habilitado
     refetchOnWindowFocus: false, // Não refetch ao focar janela
-    gcTime: 0, // Não manter em cache (anteriormente cacheTime)
+    refetchOnMount: false, // Não refetch ao montar componente
+    refetchOnReconnect: false, // Não refetch ao reconectar
+    gcTime: 1000 * 60 * 60, // Manter em cache por 1 hora (anteriormente cacheTime)
   });
 
   const produtos = produtosData?.produtos || [];
@@ -356,7 +358,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
             totalCount: count || 0,
           };
         },
-        staleTime: 0, // Sempre buscar dados frescos para manter consistência
+        staleTime: Infinity, // Dados nunca ficam stale - não refetch automático
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
