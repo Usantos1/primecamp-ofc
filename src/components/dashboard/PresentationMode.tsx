@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FinancialCards } from './FinancialCards';
@@ -9,7 +9,8 @@ import { DashboardFinancialData, DashboardOSData, DashboardAlerts, DashboardTren
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Monitor } from 'lucide-react';
+import { X, Monitor, Eye, EyeOff } from 'lucide-react';
+import { getStoredValuesVisible, setStoredValuesVisible } from './FinancialCards';
 
 interface PresentationModeProps {
   financialData: DashboardFinancialData;
@@ -19,7 +20,8 @@ interface PresentationModeProps {
 }
 
 export function PresentationMode({ financialData, osData, alerts, trendData }: PresentationModeProps) {
-  const { togglePresentationMode, config } = useDashboardConfig();
+  const { togglePresentationMode } = useDashboardConfig();
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
 
   const handleExit = useCallback(async () => {
     await togglePresentationMode();
@@ -70,7 +72,23 @@ export function PresentationMode({ financialData, osData, alerts, trendData }: P
         </div>
 
         {/* Cards Financeiros */}
-        <FinancialCards data={financialData} />
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span className="text-sm font-medium text-gray-600">Indicadores Financeiros</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              const next = !valuesVisible;
+              setStoredValuesVisible(next);
+              setValuesVisible(next);
+            }}
+            title={valuesVisible ? 'Ocultar valores' : 'Exibir valores'}
+          >
+            {valuesVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </Button>
+        </div>
+        <FinancialCards data={financialData} valuesVisible={valuesVisible} />
 
         {/* Status de OS */}
         <Card className="border-2 border-gray-300 shadow-sm">
@@ -86,7 +104,7 @@ export function PresentationMode({ financialData, osData, alerts, trendData }: P
         )}
 
         {/* Gráficos de Tendência */}
-        {trendData.length > 0 && <TrendCharts data={trendData} />}
+        {trendData.length > 0 && <TrendCharts data={trendData} valuesVisible={valuesVisible} />}
       </div>
     </div>
   );

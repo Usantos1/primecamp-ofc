@@ -147,7 +147,7 @@ export default function RH() {
       title: 'Benefícios',
       description: 'Gestão de benefícios e bem-estar',
       icon: HeartPulse,
-      path: '/relatorios',
+      path: '/metricas',
       color: 'text-rose-600',
       category: 'gestao',
       badge: 'Em breve',

@@ -9,11 +9,13 @@ import { format } from 'date-fns';
 
 export default function NPS() {
   const { isAdmin } = useAuth();
-  const { surveys, responses } = useNPS();
+  const { surveys, responses, loading: npsLoading } = useNPS();
   const [activeTab, setActiveTab] = useState<'surveys' | 'personal' | 'management'>('surveys');
   
   const activeSurveys = surveys.filter(s => s.is_active);
-  const todayResponses = responses.filter(r => r.date === format(new Date(), 'yyyy-MM-dd'));
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayResponses = responses.filter(r => (r.date || '').toString().split('T')[0] === todayStr);
+  const showCount = (n: number) => npsLoading ? '...' : n;
   
   return (
     <ModernLayout
@@ -30,7 +32,7 @@ export default function NPS() {
           </div>
           <div className="flex items-center gap-1 ml-auto">
             <span className="px-1.5 py-0.5 text-[10px] bg-green-100 text-green-700 rounded">{activeSurveys.length} ativas</span>
-            <span className="px-1.5 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded">{responses.length} resp.</span>
+            <span className="px-1.5 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded">{showCount(responses.length)} resp.</span>
           </div>
         </div>
 
@@ -49,11 +51,11 @@ export default function NPS() {
               </div>
               <div className="h-9 flex flex-col items-center justify-center px-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 min-w-[90px]">
                 <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium leading-none">Respostas Hoje</span>
-                <span className="text-sm font-bold text-blue-700 dark:text-blue-300 leading-none">{todayResponses.length}</span>
+                <span className="text-sm font-bold text-blue-700 dark:text-blue-300 leading-none">{showCount(todayResponses.length)}</span>
               </div>
               <div className="h-9 flex flex-col items-center justify-center px-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800 min-w-[100px]">
                 <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium leading-none">Total Respostas</span>
-                <span className="text-sm font-bold text-purple-700 dark:text-purple-300 leading-none">{responses.length}</span>
+                <span className="text-sm font-bold text-purple-700 dark:text-purple-300 leading-none">{showCount(responses.length)}</span>
               </div>
             </div>
           </CardContent>

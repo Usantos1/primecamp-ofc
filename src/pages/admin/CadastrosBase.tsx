@@ -249,10 +249,10 @@ export default function CadastrosBase() {
       color: 'text-amber-800',
     },
     {
-      title: 'Relatórios Gerais',
-      description: 'Relatórios administrativos',
+      title: 'Métricas / Relatórios',
+      description: 'Métricas e relatórios administrativos',
       icon: FileBarChart,
-      path: '/relatorios',
+      path: '/metricas',
       color: 'text-blue-600',
     },
     {

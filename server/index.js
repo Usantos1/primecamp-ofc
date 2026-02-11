@@ -1564,15 +1564,84 @@ app.post('/api/insert/:table', async (req, res) => {
       }
     }
 
+    // Verificar tipos de colunas para tratar arrays UUID[] corretamente
+    let columnTypes = {};
+    try {
+      const typeResult = await pool.query(`
+        SELECT column_name, data_type, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public' 
+        AND table_name = $1
+      `, [tableNameOnly]);
+      
+      typeResult.rows.forEach(row => {
+        columnTypes[row.column_name] = {
+          dataType: row.data_type,
+          udtName: row.udt_name
+        };
+      });
+    } catch (typeError) {
+      console.warn(`[Insert] Erro ao verificar tipos de colunas:`, typeError.message);
+    }
+
+    // Colunas conhecidas que são arrays UUID[] (não JSONB)
+    const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
+
     const values = [];
     const rowsPlaceholders = rowsToInsert.map((row, rowIndex) => {
       const base = rowIndex * keys.length;
       keys.forEach((k, i) => {
-        // Serializar objetos/arrays como JSON para campos JSONB
         let value = row[k];
-        if (value !== null && typeof value === 'object') {
-          value = JSON.stringify(value);
+        const columnType = columnTypes[k];
+        
+        // CORREÇÃO: Se o valor for uma string que parece um array JSON, deserializar primeiro
+        if (typeof value === 'string' && uuidArrayColumns.includes(k)) {
+          try {
+            const parsed = JSON.parse(value);
+            if (Array.isArray(parsed)) {
+              console.log(`[Insert] Deserializado array UUID[] da string JSON para coluna ${k}`);
+              value = parsed;
+            }
+          } catch (e) {
+            // Não é JSON válido, continuar com o valor original
+            console.warn(`[Insert] Valor da coluna ${k} não é JSON válido, mantendo como string`);
+          }
         }
+        
+        // Se for uma coluna conhecida de array UUID[], passar como array nativo
+        if (Array.isArray(value) && uuidArrayColumns.includes(k)) {
+          // Deixar o driver PostgreSQL converter automaticamente
+          values.push(value);
+          return;
+        }
+        
+        // Se for array e a coluna for ARRAY (detectado pelo tipo), passar como array nativo
+        if (Array.isArray(value) && columnType && columnType.dataType === 'ARRAY') {
+          values.push(value);
+          return;
+        }
+        
+        // Se for objeto/array e a coluna for JSONB, serializar como JSON
+        if (value !== null && typeof value === 'object' && columnType && columnType.udtName === 'jsonb') {
+          values.push(JSON.stringify(value));
+          return;
+        }
+        
+        // Se for objeto/array mas não sabemos o tipo, tentar detectar:
+        // Se for array de strings que parecem UUIDs, provavelmente é UUID[]
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value[0])) {
+          // Provavelmente é UUID[], passar como array
+          values.push(value);
+          return;
+        }
+        
+        // Para outros objetos, serializar como JSON (pode ser JSONB)
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          values.push(JSON.stringify(value));
+          return;
+        }
+        
+        // Valor primitivo ou null
         values.push(value);
       });
       const placeholders = keys.map((_, i) => `$${base + i + 1}`).join(', ');
@@ -1599,6 +1668,46 @@ app.post('/api/update/:table', async (req, res) => {
   try {
     const { table } = req.params;
     const { data, where } = req.body;
+    
+    // CORREÇÃO IMEDIATA: Deserializar arrays UUID[] que chegaram como strings JSON
+    // Isso DEVE ser feito ANTES de qualquer outro processamento
+    if (data) {
+      const fixArrayField = (fieldName) => {
+        if (data[fieldName] !== undefined && typeof data[fieldName] === 'string') {
+          try {
+            let str = data[fieldName].trim();
+            // Remover todas as aspas externas
+            while (str.startsWith('"') && str.endsWith('"') && str.length >= 2) {
+              str = str.slice(1, -1);
+            }
+            // Se parece um array JSON, deserializar
+            if (str.startsWith('[') && str.endsWith(']')) {
+              const parsed = JSON.parse(str);
+              if (Array.isArray(parsed)) {
+                console.log(`[Update] 🔧 CORREÇÃO IMEDIATA: ${fieldName} deserializado de string para array (${parsed.length} itens)`);
+                data[fieldName] = parsed;
+              }
+            }
+          } catch (e) {
+            console.error(`[Update] ❌ Erro ao deserializar ${fieldName}:`, e.message);
+          }
+        }
+      };
+      
+      fixArrayField('allowed_respondents');
+      fixArrayField('target_employees');
+    }
+    
+    // LOG para debug: verificar arrays UUID[] após correção
+    if (data && (data.allowed_respondents || data.target_employees)) {
+      console.log(`[Update] 📥 Dados recebidos para ${table} (APÓS CORREÇÃO):`);
+      if (data.allowed_respondents) {
+        console.log(`[Update]   allowed_respondents: tipo=${typeof data.allowed_respondents}, isArray=${Array.isArray(data.allowed_respondents)}, tamanho=${Array.isArray(data.allowed_respondents) ? data.allowed_respondents.length : 'N/A'}`);
+      }
+      if (data.target_employees) {
+        console.log(`[Update]   target_employees: tipo=${typeof data.target_employees}, isArray=${Array.isArray(data.target_employees)}, tamanho=${Array.isArray(data.target_employees) ? data.target_employees.length : 'N/A'}`);
+      }
+    }
 
     // Usar schema public explicitamente
     const tableName = table.includes('.') ? table : `public.${table}`;
@@ -1698,6 +1807,51 @@ app.post('/api/update/:table', async (req, res) => {
       }
     }
 
+    // FUNÇÃO HELPER: Força deserialização de arrays UUID[] que chegaram como strings
+    const forceDeserializeArray = (value, key) => {
+      if (value === null || value === undefined) return value;
+      if (Array.isArray(value)) return value; // Já é array, retornar como está
+      if (typeof value !== 'string') return value; // Não é string, retornar como está
+      
+      try {
+        let str = String(value).trim();
+        
+        // Remover todas as aspas externas (pode ter sido serializado múltiplas vezes)
+        while (str.length >= 2 && str.startsWith('"') && str.endsWith('"')) {
+          str = str.slice(1, -1);
+        }
+        
+        // Verificar se parece um array JSON
+        if (!str.startsWith('[') || !str.endsWith(']')) {
+          return value; // Não parece array, retornar original
+        }
+        
+        // Tentar deserializar
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed)) {
+          console.log(`[Update] 🔧 FORÇA DESERIALIZAÇÃO: ${key} convertido de string para array (${parsed.length} itens)`);
+          return parsed;
+        }
+        
+        return value;
+      } catch (e) {
+        console.warn(`[Update] ⚠️ Erro ao forçar deserialização de ${key}:`, e.message);
+        return value; // Em caso de erro, retornar original
+      }
+    };
+    
+    // CORREÇÃO CRÍTICA: Aplicar deserialização forçada em arrays UUID[] ANTES de qualquer processamento
+    const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
+    for (const key of uuidArrayColumns) {
+      if (data[key] !== undefined) {
+        const originalValue = data[key];
+        const fixedValue = forceDeserializeArray(originalValue, key);
+        if (fixedValue !== originalValue) {
+          data[key] = fixedValue;
+        }
+      }
+    }
+    
     const keys = Object.keys(data);
     
     // Verificar tipos de colunas para tratar arrays UUID[] corretamente
@@ -1728,16 +1882,53 @@ app.post('/api/update/:table', async (req, res) => {
       // Colunas conhecidas que são arrays UUID[] (não JSONB)
       const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
       
+      // LOG para debug
+      if (uuidArrayColumns.includes(key)) {
+        console.log(`[Update] Processando coluna ${key}:`, {
+          tipo: typeof value,
+          isArray: Array.isArray(value),
+          valor: typeof value === 'string' ? value.substring(0, 100) : value,
+          columnType: columnType
+        });
+      }
+      
+      // CORREÇÃO CRÍTICA: Usar função helper para forçar deserialização se necessário
+      if (uuidArrayColumns.includes(key)) {
+        const fixedValue = forceDeserializeArray(value, key);
+        if (fixedValue !== value) {
+          value = fixedValue;
+        }
+      }
+      
       // Se for uma coluna conhecida de array UUID[], passar como array nativo
       if (Array.isArray(value) && uuidArrayColumns.includes(key)) {
-        console.log(`[Update] Detectado array UUID[] para coluna ${key}, passando como array nativo`);
+        console.log(`[Update] ✅ Detectado array UUID[] nativo para coluna ${key}, tamanho: ${value.length}`);
         return value; // Deixar o driver PostgreSQL converter automaticamente
       }
       
       // Se for array e a coluna for ARRAY (detectado pelo tipo), passar como array nativo
       if (Array.isArray(value) && columnType && columnType.dataType === 'ARRAY') {
-        console.log(`[Update] Detectado tipo ARRAY para coluna ${key}, passando como array nativo`);
+        console.log(`[Update] ✅ Detectado tipo ARRAY para coluna ${key}, passando como array nativo`);
         return value; // Deixar o driver PostgreSQL converter automaticamente
+      }
+      
+      // CORREÇÃO: Se for string que parece array JSON e a coluna é ARRAY, tentar deserializar
+      if (typeof value === 'string' && columnType && columnType.dataType === 'ARRAY') {
+        try {
+          let parsed = value;
+          // Se começa com '"', remover aspas externas primeiro
+          if (value.trim().startsWith('"') && value.trim().endsWith('"')) {
+            parsed = value.trim().slice(1, -1);
+          }
+          const parsedArray = JSON.parse(parsed);
+          if (Array.isArray(parsedArray)) {
+            console.log(`[Update] ✅ Deserializado array da string JSON para coluna ${key} (tipo ARRAY)`);
+            return parsedArray;
+          }
+        } catch (e) {
+          // Não é JSON válido, continuar
+          console.warn(`[Update] ⚠️ Erro ao deserializar array para coluna ${key}:`, e.message);
+        }
       }
       
       // Se for objeto/array e a coluna for JSONB, serializar como JSON
@@ -1749,7 +1940,7 @@ app.post('/api/update/:table', async (req, res) => {
       // Se for array de strings que parecem UUIDs, provavelmente é UUID[]
       if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value[0])) {
         // Provavelmente é UUID[], passar como array
-        console.log(`[Update] Detectado array de UUIDs para coluna ${key}, passando como array nativo`);
+        console.log(`[Update] ✅ Detectado array de UUIDs para coluna ${key}, passando como array nativo`);
         return value;
       }
       
@@ -1758,10 +1949,40 @@ app.post('/api/update/:table', async (req, res) => {
         return JSON.stringify(value);
       }
       
+      // ÚLTIMA VERIFICAÇÃO: Se for string e a coluna é do tipo ARRAY, tentar deserializar
+      // Isso cobre casos onde a coluna é ARRAY mas não está na lista de colunas conhecidas
+      if (typeof value === 'string' && columnType && columnType.dataType === 'ARRAY') {
+        try {
+          let parsed = value.trim();
+          // Remover aspas externas se existirem
+          if (parsed.startsWith('"') && parsed.endsWith('"')) {
+            parsed = parsed.slice(1, -1);
+          }
+          // Verificar se parece um array JSON
+          if (parsed.startsWith('[') && parsed.endsWith(']')) {
+            const parsedArray = JSON.parse(parsed);
+            if (Array.isArray(parsedArray)) {
+              console.log(`[Update] ✅ Última verificação: Deserializado array para coluna ${key} (tipo ARRAY detectado)`);
+              return parsedArray;
+            }
+          }
+        } catch (e) {
+          // Não é JSON válido, continuar com valor original
+        }
+      }
+      
       return value;
     });
     
-    const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+    // Construir SET clause com tratamento especial para arrays UUID[]
+    const setClause = keys.map((key, i) => {
+      const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
+      // Para arrays UUID[], usar cast explícito para garantir conversão correta
+      if (uuidArrayColumns.includes(key) && Array.isArray(values[i])) {
+        return `${key} = $${i + 1}::uuid[]`;
+      }
+      return `${key} = $${i + 1}`;
+    }).join(', ');
     
     // Passar o número de valores do SET como offset para buildWhereClause
     const { clause: whereClause, params: whereParams } = buildWhereClause(where, values.length);
@@ -1822,13 +2043,58 @@ app.post('/api/update/:table', async (req, res) => {
 
     console.log(`[Update] ${tableName}:`, keys, 'WHERE:', finalWhereClause, 'Params:', params.length);
     console.log(`[Update] SQL completo:`, sql);
-    console.log(`[Update] Parâmetros (primeiros 3):`, params.slice(0, 3).map((p, i) => `${keys[i]}=${Array.isArray(p) ? `[ARRAY:${p.length} items]` : typeof p === 'string' && p.length > 50 ? p.substring(0, 50) + '...' : p}`));
+    
+    // Log detalhado dos parâmetros, especialmente arrays
+    const paramDetails = params.slice(0, keys.length).map((p, i) => {
+      const key = keys[i];
+      if (Array.isArray(p)) {
+        return `${key}=[ARRAY:${p.length} items] ${JSON.stringify(p.slice(0, 3))}...`;
+      } else if (typeof p === 'string' && (p.startsWith('[') || p.startsWith('"['))) {
+        return `${key}="[STRING QUE PARECE ARRAY: ${p.substring(0, 100)}...]"`;
+      } else {
+        return `${key}=${typeof p === 'string' && p.length > 50 ? p.substring(0, 50) + '...' : p}`;
+      }
+    });
+    console.log(`[Update] Parâmetros detalhados:`, paramDetails);
+    
     console.log(`[Update] Executando query...`);
+    
+    // Log final dos arrays antes de executar
+    params.slice(0, keys.length).forEach((param, i) => {
+      const key = keys[i];
+      if (key === 'allowed_respondents' || key === 'target_employees') {
+        console.log(`[Update] 🔍 VALOR FINAL para ${key}:`, {
+          tipo: typeof param,
+          isArray: Array.isArray(param),
+          valor: Array.isArray(param) ? `[${param.length} itens]` : String(param).substring(0, 100)
+        });
+      }
+    });
+    
     const result = await pool.query(sql, params);
     console.log(`[Update] Query executada com sucesso, ${result.rowCount} linhas afetadas`);
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
-    console.error('Erro ao atualizar:', error);
+    console.error('❌ Erro ao atualizar:', error);
+    console.error('❌ Mensagem de erro:', error.message);
+    console.error('❌ Stack:', error.stack);
+    
+    // Log detalhado do erro para arrays
+    if (error.message && error.message.includes('malformed array literal')) {
+      console.error('❌ ERRO DE ARRAY MALFORMADO DETECTADO!');
+      console.error('❌ Verificando parâmetros de array...');
+      params.slice(0, keys.length).forEach((param, i) => {
+        const key = keys[i];
+        if (key === 'allowed_respondents' || key === 'target_employees') {
+          console.error(`❌ Parâmetro ${key}:`, {
+            tipo: typeof param,
+            isArray: Array.isArray(param),
+            valor: typeof param === 'string' ? param : JSON.stringify(param).substring(0, 200)
+          });
+        }
+      });
+    }
+    
     res.status(500).json({ error: error.message });
   }
 });

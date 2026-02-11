@@ -33,7 +33,7 @@ const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
   '/admin/financeiro': [
     { label: 'Dashboard', icon: Home, path: '/' },
     { label: 'Financeiro', icon: DollarSign, path: '/admin/financeiro' },
-    { label: 'Relatórios', icon: BarChart3, path: '/relatorios' },
+    { label: 'Relatórios', icon: BarChart3, path: '/financeiro/relatorios' },
   ],
   '/': [
     { label: 'Dashboard', icon: Home, path: '/' },

@@ -9,6 +9,8 @@ cd /root/primecamp-ofc && git pull origin main && npm run build && sudo rm -rf /
 ## 📋 Alterações nesta versão:
 - ✅ Removida foto de entrada da OS
 - ✅ Checklist mostra apenas problemas encontrados (itens funcionais removidos)
+- ✅ Logs de debug adicionados para diagnosticar problema de permissões (nps.view e rh.ponto)
+- ✅ Melhorado mapeamento de roles (vendedor → sales) para buscar permissões corretamente
 
 ## 📝 Deploy Manual (Passo a Passo) - SEGURO
 

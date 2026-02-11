@@ -137,7 +137,6 @@ const App = () => (
               <Route path="/tarefas" element={<PermissionRoute permission="tarefas.view"><Tasks /></PermissionRoute>} />
               <Route path="/tarefas/*" element={<PermissionRoute permission="tarefas.view"><Tasks /></PermissionRoute>} />
               <Route path="/calendario" element={<PermissionRoute permission="calendario.view"><Calendar /></PermissionRoute>} />
-              <Route path="/relatorios" element={<PermissionRoute permission="relatorios.geral"><Reports /></PermissionRoute>} />
               <Route path="/metricas" element={<PermissionRoute permission="metricas.view"><Reports /></PermissionRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><Users /></ProtectedRoute>} />
               <Route path="/search" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />

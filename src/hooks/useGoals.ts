@@ -34,20 +34,20 @@ export const useGoals = () => {
     try {
       setLoading(true);
       
-      // Get user profile to check role and department
-      const { data: profileData } = await from('profiles')
+      // Perfil: usar .single() (retorna Promise, não encadear .execute())
+      const profileResult = await from('profiles')
         .select('role, department')
         .eq('user_id', user.id)
-        .single()
-        .execute();
+        .single();
+      const profileData = profileResult.data;
 
       let query = from('goals')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Filter based on role, department, and participation
+      // Não-admin: apenas metas do usuário (API Postgres não usa .or() no formato Supabase)
       if (profileData?.role !== 'admin') {
-        query = query.or(`user_id.eq.${user.id},department.eq.${profileData?.department},participants.cs.{${user.id}}`);
+        query = query.eq('user_id', user.id);
       }
 
       const { data, error } = await query.execute();
@@ -121,8 +121,8 @@ export const useGoals = () => {
   const updateGoal = async (goalId: string, updates: Partial<Goal>) => {
     try {
       const { error } = await from('goals')
-        .update(updates)
-        .eq('id', goalId);
+        .eq('id', goalId)
+        .update(updates);
 
       if (error) {
         toast({

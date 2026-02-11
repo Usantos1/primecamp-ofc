@@ -20,8 +20,6 @@ const DEFAULT_WIDGETS: DashboardWidgetConfig[] = [
   { id: 'os-status', enabled: true, order: 2 },
   { id: 'alerts', enabled: true, order: 3 },
   { id: 'trend-charts', enabled: true, order: 4 },
-  { id: 'quick-actions', enabled: true, order: 5 },
-  { id: 'main-sections', enabled: true, order: 6 },
 ];
 
 export function useDashboardConfig() {
@@ -57,9 +55,19 @@ export function useDashboardConfig() {
 
       if (data?.value) {
         const savedConfig = data.value as DashboardConfig;
-        // Garantir valores padrão para novas propriedades
+        const removedWidgetIds = new Set(['quick-actions', 'main-sections', 'chart-vendas', 'chart-os']);
+        const savedWidgets = (savedConfig.widgets || []).filter((w) => !removedWidgetIds.has(w.id));
+        const savedIds = new Set(savedWidgets.map((w) => w.id));
+        const mergedWidgets = [...savedWidgets];
+        DEFAULT_WIDGETS.forEach((def) => {
+          if (!savedIds.has(def.id)) {
+            mergedWidgets.push({ id: def.id, enabled: def.enabled, order: def.order });
+            savedIds.add(def.id);
+          }
+        });
         setConfig({
           ...savedConfig,
+          widgets: mergedWidgets.sort((a, b) => a.order - b.order),
           autoRefreshEnabled: savedConfig.autoRefreshEnabled ?? false,
           autoRefreshInterval: savedConfig.autoRefreshInterval ?? 60,
         });

@@ -124,6 +124,8 @@ const ProdutoTableRow = memo(({
     <tr
       className={`${isSelected ? 'bg-blue-100 dark:bg-blue-950/40 ring-1 ring-blue-400' : `${zebraClass} cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30`} border-b border-gray-200 dark:border-gray-700 transition-all duration-150`}
       onClick={onSelect}
+      onDoubleClick={(e) => { e.stopPropagation(); onEdit(); }}
+      title="Duplo clique para editar"
     >
       {/* Código */}
       <td className="font-mono text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[90px] hidden md:table-cell text-gray-700 dark:text-gray-300">
@@ -1004,6 +1006,8 @@ export default function Produtos() {
                           key={produto.id}
                           className={`${selectedProduto?.id === produto.id ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-400' : 'border-gray-300'} cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98] shadow-sm`}
                           onClick={() => setSelectedProduto(produto)}
+                          onDoubleClick={(e) => { e.stopPropagation(); handleEdit(produto); }}
+                          title="Duplo clique para editar"
                         >
                           <CardContent className="p-4 space-y-3">
                             <div className="border-b border-gray-200 pb-2">

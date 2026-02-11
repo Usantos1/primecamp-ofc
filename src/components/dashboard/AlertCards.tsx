@@ -6,14 +6,17 @@ import { useNavigate } from 'react-router-dom';
 
 interface AlertCardsProps {
   alerts: DashboardAlerts;
+  /** Ocultar Estoque Baixo e Caixa Aberto (já exibidos na linha de 6 do topo) */
+  excludeTopRow?: boolean;
 }
 
-export function AlertCards({ alerts }: AlertCardsProps) {
+export function AlertCards({ alerts, excludeTopRow = false }: AlertCardsProps) {
   const navigate = useNavigate();
 
   const alertItems = [
     {
       title: 'OS Paradas',
+      id: 'os_paradas',
       value: alerts.osParadas,
       icon: Clock,
       color: 'text-yellow-600',
@@ -24,6 +27,7 @@ export function AlertCards({ alerts }: AlertCardsProps) {
     },
     {
       title: 'Estoque Baixo',
+      id: 'estoque_baixo',
       value: alerts.estoqueBaixo,
       icon: Package,
       color: 'text-orange-600',
@@ -34,6 +38,7 @@ export function AlertCards({ alerts }: AlertCardsProps) {
     },
     {
       title: 'Caixa Aberto',
+      id: 'caixa_aberto',
       value: alerts.caixaAberto ? 'Sim' : 'Não',
       icon: Wallet,
       color: alerts.caixaAberto ? 'text-green-600' : 'text-gray-600',
@@ -44,6 +49,7 @@ export function AlertCards({ alerts }: AlertCardsProps) {
     },
     {
       title: 'OS Sem Atualização',
+      id: 'os_sem_atualizacao',
       value: alerts.osSemAtualizacao,
       icon: AlertTriangle,
       color: 'text-red-600',
@@ -52,11 +58,12 @@ export function AlertCards({ alerts }: AlertCardsProps) {
       path: '/os?filter=sem_atualizacao',
       description: 'Sem atualização há mais de 7 dias',
     },
-  ].filter(item => {
-    // Mostrar apenas alertas relevantes (com valor > 0 ou caixa aberto)
-    if (item.title === 'Caixa Aberto') return true;
-    return typeof item.value === 'number' && item.value > 0;
-  });
+  ]
+    .filter(item => {
+      if (excludeTopRow && (item.id === 'estoque_baixo' || item.id === 'caixa_aberto')) return false;
+      if (item.title === 'Caixa Aberto') return true;
+      return typeof item.value === 'number' && item.value > 0;
+    });
 
   if (alertItems.length === 0) {
     return (

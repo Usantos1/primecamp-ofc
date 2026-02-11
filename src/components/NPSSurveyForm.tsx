@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 
 interface NPSSurveyFormProps {
   survey?: NPSSurvey;
-  onSubmit: (data: Omit<NPSSurvey, 'id' | 'created_at' | 'updated_at'>) => void;
+  onSubmit: (data: Omit<NPSSurvey, 'id' | 'created_at' | 'updated_at'>) => void | Promise<void>;
   trigger: React.ReactNode;
 }
 
@@ -24,12 +24,27 @@ export const NPSSurveyForm: React.FC<NPSSurveyFormProps> = ({ survey, onSubmit, 
   const [formData, setFormData] = useState({
     title: survey?.title || '',
     description: survey?.description || '',
-    questions: survey?.questions || [] as NPSQuestion[],
+    questions: (survey?.questions || []) as NPSQuestion[],
     is_active: survey?.is_active ?? true,
     created_by: survey?.created_by || '',
     allowed_respondents: survey?.allowed_respondents || [] as string[],
     target_employees: survey?.target_employees || [] as string[]
   });
+
+  // Sincronizar formulário ao abrir o modal (criar ou editar)
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        title: survey?.title || '',
+        description: survey?.description || '',
+        questions: Array.isArray(survey?.questions) ? [...survey.questions] : [],
+        is_active: survey?.is_active ?? true,
+        created_by: survey?.created_by || '',
+        allowed_respondents: Array.isArray(survey?.allowed_respondents) ? [...survey.allowed_respondents] : [],
+        target_employees: Array.isArray(survey?.target_employees) ? [...survey.target_employees] : []
+      });
+    }
+  }, [open, survey]);
 
   const userOptions = users.map(user => ({
     label: user.display_name,
@@ -69,10 +84,16 @@ export const NPSSurveyForm: React.FC<NPSSurveyFormProps> = ({ survey, onSubmit, 
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [saving, setSaving] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
-    setOpen(false);
+    setSaving(true);
+    try {
+      await onSubmit(formData);
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -273,11 +294,11 @@ export const NPSSurveyForm: React.FC<NPSSurveyFormProps> = ({ survey, onSubmit, 
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={saving}>
               Cancelar
             </Button>
-            <Button type="submit">
-              {survey ? 'Atualizar' : 'Criar'} Pesquisa
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Salvando...' : (survey ? 'Atualizar' : 'Criar') + ' Pesquisa'}
             </Button>
           </div>
         </form>

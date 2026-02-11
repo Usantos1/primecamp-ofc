@@ -102,7 +102,8 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
 
   const renderQuestionInput = (question: NPSQuestion, surveyId: string) => {
     const rawValue = getQuestionValue(surveyId, question.id);
-    const value = rawValue !== undefined && rawValue !== '' ? Number(rawValue) : null;
+    const numericValue = rawValue !== undefined && rawValue !== '' ? Number(rawValue) : null;
+    const textValue = typeof rawValue === 'string' ? rawValue : (rawValue != null ? String(rawValue) : '');
 
     switch (question.type) {
       case 'scale':
@@ -115,15 +116,15 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
             <div className="flex gap-2">
               {Array.from({ length: (question.scale_max || 10) - (question.scale_min || 1) + 1 }, (_, i) => {
                 const val = (question.scale_min || 1) + i;
-                const isSelected = value === val;
+                const isSelected = numericValue === val;
                 return (
                   <button
                     key={val}
                     type="button"
                     onClick={() => updateResponse(surveyId, question.id, val)}
                     className={`w-10 h-10 rounded-md border text-sm font-medium transition-colors
-                      ${isSelected 
-                        ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300' 
+                      ${isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300'
                         : 'bg-white text-gray-900 border-gray-300 hover:bg-gray-100'
                       }`}
                   >
@@ -145,7 +146,7 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
                 variant="ghost"
                 size="sm"
                 onClick={() => updateResponse(surveyId, question.id, i + 1)}
-                className={`p-1 ${value !== null && value >= i + 1 ? 'text-yellow-500' : 'text-gray-300'}`}
+                className={`p-1 ${numericValue !== null && numericValue >= i + 1 ? 'text-yellow-500' : 'text-gray-300'}`}
               >
                 ⭐
               </Button>
@@ -156,7 +157,7 @@ export const NPSManager = ({ mode = 'surveys', hideTabs = false, hideStats = fal
       case 'text':
         return (
           <Textarea
-            value={value}
+            value={textValue}
             onChange={(e) => updateResponse(surveyId, question.id, e.target.value)}
             placeholder="Digite sua resposta..."
             rows={3}

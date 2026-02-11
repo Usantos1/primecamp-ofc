@@ -61,9 +61,21 @@ export function PersonalNPSReport() {
   }, [currentDate, user]);
 
   const getResponseForDay = (date: Date) => {
-    return monthlyResponses.find(response => 
-      isSameDay(new Date(response.date), date)
-    );
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return monthlyResponses.find(response => {
+      const rDate = (response.date || '').toString().split('T')[0];
+      return rDate === dateStr;
+    });
+  };
+
+  /** Nota média a partir do objeto responses (chaves = question id, valores = nota) */
+  const getScoreFromResponses = (responsesObj: Record<string, unknown> | null | undefined): number => {
+    if (!responsesObj || typeof responsesObj !== 'object') return 0;
+    const values = Object.values(responsesObj).filter(
+      v => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v)))
+    ).map(v => Number(v));
+    if (values.length === 0) return 0;
+    return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -85,29 +97,18 @@ export function PersonalNPSReport() {
   };
 
   const calculateAverageScores = () => {
-    if (monthlyResponses.length === 0) return { satisfaction: 0, recommendation: 0 };
-    
-    const totalSatisfaction = monthlyResponses.reduce((sum, response) => {
-      const satisfaction = response.responses?.satisfaction || 0;
-      return sum + satisfaction;
-    }, 0);
-    
-    const totalRecommendation = monthlyResponses.reduce((sum, response) => {
-      const recommendation = response.responses?.recommendation || 0;
-      return sum + recommendation;
-    }, 0);
-    
-    return {
-      satisfaction: Math.round((totalSatisfaction / monthlyResponses.length) * 10) / 10,
-      recommendation: Math.round((totalRecommendation / monthlyResponses.length) * 10) / 10
-    };
+    if (monthlyResponses.length === 0) return { average: 0 };
+    const total = monthlyResponses.reduce((sum, response) => sum + getScoreFromResponses(response.responses), 0);
+    return { average: Math.round((total / monthlyResponses.length) * 10) / 10 };
   };
 
-  const chartData = monthlyResponses.map(response => ({
-    date: format(new Date(response.date), 'dd/MM'),
-    satisfaction: response.responses.satisfaction,
-    recommendation: response.responses.recommendation
-  }));
+  const chartData = monthlyResponses
+    .slice()
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+    .map(response => ({
+      date: format(new Date((response.date || '').toString().split('T')[0]), 'dd/MM'),
+      nota: getScoreFromResponses(response.responses)
+    }));
 
   const averages = calculateAverageScores();
 
@@ -147,12 +148,8 @@ export function PersonalNPSReport() {
                 <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{monthlyResponses.length}</span>
               </div>
               <div className="h-10 flex flex-col items-center justify-center px-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800 min-w-[70px]">
-                <span className="text-[9px] text-green-600 dark:text-green-400 font-medium">Satisfação</span>
-                <span className="text-sm font-bold text-green-700 dark:text-green-300">{averages.satisfaction}</span>
-              </div>
-              <div className="h-10 flex flex-col items-center justify-center px-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800 min-w-[80px]">
-                <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">Recomendação</span>
-                <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{averages.recommendation}</span>
+                <span className="text-[9px] text-green-600 dark:text-green-400 font-medium">Nota média</span>
+                <span className="text-sm font-bold text-green-700 dark:text-green-300">{averages.average}</span>
               </div>
             </div>
           </div>
@@ -173,17 +170,10 @@ export function PersonalNPSReport() {
                 <Tooltip />
                 <Line 
                   type="monotone" 
-                  dataKey="satisfaction" 
+                  dataKey="nota" 
                   stroke="hsl(var(--primary))" 
                   strokeWidth={2}
-                  name="Satisfação"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="recommendation" 
-                  stroke="hsl(var(--secondary))" 
-                  strokeWidth={2}
-                  name="Recomendação"
+                  name="Nota média"
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -236,18 +226,17 @@ export function PersonalNPSReport() {
                         ))}
                       </div>
                       
-                      {response && isCurrentMonth && (
-                        <div className="space-y-1 text-xs">
-                          <div className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ${getScoreColor(response.responses.satisfaction)}`} />
-                            <span>S: {response.responses.satisfaction}</span>
+                      {response && isCurrentMonth && (() => {
+                        const score = getScoreFromResponses(response.responses);
+                        return (
+                          <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-1">
+                              <div className={`w-2 h-2 rounded-full ${getScoreColor(score)}`} />
+                              <span>Nota: {score}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ${getScoreColor(response.responses.recommendation)}`} />
-                            <span>R: {response.responses.recommendation}</span>
-                          </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   </Card>
                 );

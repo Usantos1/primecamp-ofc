@@ -132,7 +132,7 @@ export const GoalsManager = () => {
                   Nova Meta
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingGoal ? 'Editar Meta' : 'Criar Nova Meta'}
@@ -161,41 +161,41 @@ export const GoalsManager = () => {
                     />
                   </div>
 
-                   {isAdmin && (
-                     <>
-                       <div className="space-y-2">
-                         <Label htmlFor="user_id">Responsável</Label>
-                         <Select 
-                           value={formData.user_id} 
-                           onValueChange={(value) => setFormData({ ...formData, user_id: value })}
-                         >
-                           <SelectTrigger>
-                             <SelectValue placeholder="Selecione o responsável" />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {user?.id && (
-                               <SelectItem value={user.id}>Eu mesmo</SelectItem>
-                             )}
-                             {users.map((u) => (
-                               <SelectItem key={u.id} value={u.id}>
-                                 {u.display_name}
-                               </SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       </div>
+                   <div className="space-y-2">
+                        <Label htmlFor="user_id">Responsável</Label>
+                        <Select 
+                          value={formData.user_id || user?.id || ''} 
+                          onValueChange={(value) => setFormData({ ...formData, user_id: value })}
+                          disabled={!isAdmin}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o responsável" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {user?.id && (
+                              <SelectItem value={user.id}>Eu mesmo</SelectItem>
+                            )}
+                            {users.map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.display_name || 'Usuário'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!isAdmin && <p className="text-xs text-muted-foreground">A meta será atribuída a você.</p>}
+                      </div>
 
-                       <div className="space-y-2">
-                         <Label htmlFor="participants">Participantes</Label>
-                         <MultiSelect
-                           options={users.map(u => ({ value: u.id, label: u.display_name || 'Usuário' }))}
-                           selected={formData.participants}
-                           onChange={(values) => setFormData({ ...formData, participants: values })}
-                           placeholder="Selecione os participantes"
-                         />
-                       </div>
-                     </>
-                   )}
+                      {isAdmin && (
+                        <div className="space-y-2">
+                          <Label htmlFor="participants">Participantes</Label>
+                          <MultiSelect
+                            options={users.map(u => ({ value: u.id, label: u.display_name || 'Usuário' }))}
+                            selected={formData.participants}
+                            onChange={(values) => setFormData({ ...formData, participants: values })}
+                            placeholder="Selecione os participantes"
+                          />
+                        </div>
+                      )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">

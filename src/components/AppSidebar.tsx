@@ -147,7 +147,6 @@ export function AppSidebar() {
   // ═══════════════════════════════════════════════════════════════
   const relatoriosItems = [
     { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt, permission: "relatorios.view" },
-    { label: "Relatórios Gestão", path: "/relatorios", icon: BarChart3, permission: "relatorios.view" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════

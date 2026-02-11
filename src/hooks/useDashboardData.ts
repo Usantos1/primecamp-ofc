@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { from } from '@/integrations/db/client';
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subDays, subMonths, subWeeks } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { currencyFormatters } from '@/utils/formatters';
+
+export type TrendPeriod = 'day' | 'week' | 'month' | '3m' | '6m' | 'year';
 
 export interface DashboardFinancialData {
   faturamentoDia: number;
@@ -30,8 +33,30 @@ export interface DashboardAlerts {
 
 export interface DashboardTrendData {
   date: string;
+  /** Para eixo X e tooltip (yyyy-MM-dd) */
+  data?: string;
+  /** Faturamento vendas de produtos (PDV) em R$ */
   vendas: number;
+  /** Quantidade de OS criadas */
   os: number;
+  /** Faturamento de ordens de serviço em R$ (valor_total) */
+  faturamento_os: number;
+  /** PDV em R$ (igual a vendas) - mesmo formato do /financeiro */
+  totalPDV: number;
+  /** OS em R$ (igual a faturamento_os) - mesmo formato do /financeiro */
+  totalOS: number;
+  /** Total PDV + OS em R$ - mesmo formato do /financeiro */
+  totalGeral: number;
+}
+
+const DASHBOARD_PERIOD_STORAGE_KEY = 'primecamp_dashboard_trend_period';
+
+function getStoredTrendPeriod(): TrendPeriod {
+  try {
+    const v = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
+    if (v && ['day', 'week', 'month', '3m', '6m', 'year'].includes(v)) return v as TrendPeriod;
+  } catch {}
+  return 'week';
 }
 
 export function useDashboardData() {
@@ -39,33 +64,57 @@ export function useDashboardData() {
   const [osData, setOsData] = useState<DashboardOSData | null>(null);
   const [alerts, setAlerts] = useState<DashboardAlerts | null>(null);
   const [trendData, setTrendData] = useState<DashboardTrendData[]>([]);
+  const [trendPeriod, setTrendPeriodState] = useState<TrendPeriod>(getStoredTrendPeriod);
   const [loading, setLoading] = useState(true);
+  const periodChangeCount = useRef(0);
 
-  useEffect(() => {
-    loadDashboardData();
+  const setTrendPeriod = useCallback((period: TrendPeriod) => {
+    setTrendPeriodState(period);
+    try {
+      localStorage.setItem(DASHBOARD_PERIOD_STORAGE_KEY, period);
+    } catch {}
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async (period: TrendPeriod) => {
     try {
       setLoading(true);
-      
-      // Carregar dados financeiros
       await loadFinancialData();
-      
-      // Carregar dados de OS
       await loadOSData();
-      
-      // Carregar alertas
       await loadAlerts();
-      
-      // Carregar dados de tendência
-      await loadTrendData();
+      await loadTrendData(period);
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData(trendPeriod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- carregamento inicial apenas uma vez
+  }, []);
+
+  useEffect(() => {
+    if (periodChangeCount.current === 0) {
+      periodChangeCount.current = 1;
+      return;
+    }
+    loadTrendData(trendPeriod);
+  }, [trendPeriod]);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      await loadFinancialData();
+      await loadOSData();
+      await loadAlerts();
+      await loadTrendData(trendPeriod);
+    } catch (error) {
+      console.error('Erro ao atualizar dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [trendPeriod]);
 
   const loadFinancialData = async () => {
     try {
@@ -248,58 +297,106 @@ export function useDashboardData() {
     }
   };
 
-  const loadTrendData = async () => {
+  const loadTrendData = useCallback(async (period: TrendPeriod) => {
     try {
-      const ultimos7Dias = Array.from({ length: 7 }, (_, i) => {
-        const date = subDays(new Date(), 6 - i);
-        return {
-          date: format(date, 'dd/MM'),
-          dateISO: format(date, 'yyyy-MM-dd'),
-        };
-      });
+      const hoje = new Date();
+      let items: { date: string; dateISO: string }[] = [];
 
-      const trendPromises = ultimos7Dias.map(async ({ date, dateISO }) => {
-        const inicioDia = startOfDay(new Date(dateISO));
-        const fimDia = endOfDay(new Date(dateISO));
+      if (period === 'day') {
+        const d = startOfDay(hoje);
+        items = [{ date: 'Hoje', dateISO: format(d, 'yyyy-MM-dd') }];
+      } else if (period === 'week') {
+        items = Array.from({ length: 7 }, (_, i) => {
+          const date = subDays(hoje, 6 - i);
+          return { date: format(date, 'dd/MM', { locale: ptBR }), dateISO: format(date, 'yyyy-MM-dd') };
+        });
+      } else if (period === 'month') {
+        items = Array.from({ length: 30 }, (_, i) => {
+          const date = subDays(hoje, 29 - i);
+          return { date: format(date, 'dd/MM', { locale: ptBR }), dateISO: format(date, 'yyyy-MM-dd') };
+        });
+      } else if (period === '3m') {
+        items = Array.from({ length: 13 }, (_, i) => {
+          const weekStart = startOfWeek(subWeeks(hoje, 12 - i), { weekStartsOn: 1 });
+          return { date: format(weekStart, 'dd/MM', { locale: ptBR }), dateISO: format(weekStart, 'yyyy-MM-dd'), isWeek: true as const };
+        });
+      } else if (period === '6m') {
+        items = Array.from({ length: 26 }, (_, i) => {
+          const weekStart = startOfWeek(subWeeks(hoje, 25 - i), { weekStartsOn: 1 });
+          return { date: format(weekStart, 'dd/MM', { locale: ptBR }), dateISO: format(weekStart, 'yyyy-MM-dd'), isWeek: true as const };
+        });
+      } else {
+        // year: 12 meses
+        items = Array.from({ length: 12 }, (_, i) => {
+          const date = subMonths(hoje, 11 - i);
+          return { date: format(date, 'MMM/yy', { locale: ptBR }), dateISO: format(startOfMonth(date), 'yyyy-MM-dd') };
+        });
+      }
 
-        // Vendas do dia (buscar total para mostrar faturamento)
+      const fetchPoint = async (item: { date: string; dateISO: string; isWeek?: boolean }, isMonthAggregate: boolean) => {
+        let inicio: Date;
+        let fim: Date;
+        if (isMonthAggregate) {
+          inicio = startOfMonth(new Date(item.dateISO));
+          fim = endOfMonth(inicio);
+        } else if (item.isWeek) {
+          inicio = startOfWeek(new Date(item.dateISO), { weekStartsOn: 1 });
+          fim = endOfWeek(inicio, { weekStartsOn: 1 });
+        } else {
+          inicio = startOfDay(new Date(item.dateISO));
+          fim = endOfDay(inicio);
+        }
         const { data: vendas } = await from('sales')
           .select('id, total, total_pago')
           .in('status', ['paid', 'partial'])
-          .gte('created_at', inicioDia.toISOString())
-          .lte('created_at', fimDia.toISOString())
+          .gte('created_at', inicio.toISOString())
+          .lte('created_at', fim.toISOString())
           .execute();
-
-        // OS criadas no dia
-        const { data: os } = await from('ordens_servico')
+        const { data: osList } = await from('ordens_servico')
           .select('id')
-          .gte('created_at', inicioDia.toISOString())
-          .lte('created_at', fimDia.toISOString())
+          .gte('created_at', inicio.toISOString())
+          .lte('created_at', fim.toISOString())
           .execute();
-
-        // Calcular faturamento do dia
+        const osIds = (osList || []).map((o: any) => o.id).filter(Boolean);
+        let faturamentoOS = 0;
+        if (osIds.length > 0) {
+          const { data: itensOS } = await from('os_items')
+            .select('ordem_servico_id, valor_total')
+            .in('ordem_servico_id', osIds)
+            .execute();
+          faturamentoOS = (itensOS || []).reduce((acc: number, i: any) => acc + Number(i.valor_total ?? 0), 0);
+        }
         const faturamentoDia = vendas?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
-
+        const totalGeral = faturamentoDia + faturamentoOS;
         return {
-          date,
-          vendas: faturamentoDia, // Agora mostra faturamento em R$
-          os: os?.length || 0,
+          date: item.date,
+          data: item.dateISO,
+          vendas: faturamentoDia,
+          os: osIds.length,
+          faturamento_os: faturamentoOS,
+          totalPDV: faturamentoDia,
+          totalOS: faturamentoOS,
+          totalGeral,
         };
-      });
+      };
 
-      const trends = await Promise.all(trendPromises);
+      const isMonthAggregate = period === 'year';
+      const trends = await Promise.all(items.map((item) => fetchPoint(item as { date: string; dateISO: string; isWeek?: boolean }, isMonthAggregate)));
       setTrendData(trends);
     } catch (error) {
       console.error('Erro ao carregar dados de tendência:', error);
     }
-  };
+  }, []);
 
   return {
     financialData,
     osData,
     alerts,
     trendData,
+    trendPeriod,
+    setTrendPeriod,
     loading,
+    refetch,
   };
 }
 
