@@ -1587,12 +1587,24 @@ app.post('/api/insert/:table', async (req, res) => {
     // Colunas conhecidas que são arrays UUID[] (não JSONB)
     const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
 
+    // Colunas que são do tipo DATE e não devem ter conversão de timezone
+    const dateOnlyColumns = ['due_date', 'payment_date', 'data_vencimento', 'data_pagamento', 'birth_date', 'data_nascimento'];
+    
     const values = [];
     const rowsPlaceholders = rowsToInsert.map((row, rowIndex) => {
       const base = rowIndex * keys.length;
       keys.forEach((k, i) => {
         let value = row[k];
         const columnType = columnTypes[k];
+        
+        // CORREÇÃO: Para colunas de data (DATE), manter string exatamente como veio
+        // PostgreSQL vai tratar como DATE sem conversão de timezone
+        if (typeof value === 'string' && dateOnlyColumns.includes(k) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          // Log para debug
+          console.log(`[Insert] Coluna ${k} (DATE): mantendo valor exato: ${value}`);
+          values.push(value);
+          return;
+        }
         
         // CORREÇÃO: Se o valor for uma string que parece um array JSON, deserializar primeiro
         if (typeof value === 'string' && uuidArrayColumns.includes(k)) {

@@ -136,19 +136,24 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
           }
         }
         
+        console.log('[DEBUG] Enviando para o backend:', billsToCreate.slice(0, 3)); // Mostrar 3 primeiras
         const { data, error } = await from('bills_to_pay').insert(billsToCreate).select().execute();
         if (error) throw error;
+        console.log('[DEBUG] Resposta do backend:', data?.slice(0, 3));
         return data;
       } else {
         // Criar conta única
+        const payload = {
+          ...cleanData,
+          created_by: user?.id || undefined,
+        };
+        console.log('[DEBUG] Enviando conta única:', payload);
         const { data, error } = await from('bills_to_pay')
-          .insert({
-            ...cleanData,
-            created_by: user?.id || undefined,
-          })
+          .insert(payload)
           .select()
           .single();
         if (error) throw error;
+        console.log('[DEBUG] Resposta do backend (conta única):', data);
         return data;
       }
     },
