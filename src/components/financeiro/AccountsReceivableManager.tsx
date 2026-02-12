@@ -297,24 +297,35 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
           <DialogHeader>
             <DialogTitle>Confirmar Recebimento</DialogTitle>
             <DialogDescription>
-              Selecione a forma de pagamento recebida
+              Informe a data e forma de pagamento
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pix">PIX</SelectItem>
-                <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
-                <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
-                <SelectItem value="boleto">Boleto</SelectItem>
-                <SelectItem value="transferencia">Transferência</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label>Data do Recebimento *</Label>
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Forma de Pagamento</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="cartao_credito">Cartão de Crédito</SelectItem>
+                  <SelectItem value="cartao_debito">Cartão de Débito</SelectItem>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>
@@ -322,7 +333,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
               Cancelar
             </Button>
             <LoadingButton
-              onClick={() => payingAccountId && payAccount.mutateAsync({ id: payingAccountId, paymentMethod })}
+              onClick={() => payingAccountId && payAccount.mutateAsync({ id: payingAccountId, paymentMethod, paymentDate })}
               loading={payAccount.isPending}
               className="bg-success hover:bg-success/90"
             >
