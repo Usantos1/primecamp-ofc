@@ -396,6 +396,19 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
               className="pl-9"
             />
           </div>
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-[180px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos períodos</SelectItem>
+              <SelectItem value="mes_atual">Mês atual</SelectItem>
+              <SelectItem value="mes_proximo">Próximo mês</SelectItem>
+              <SelectItem value="proximos_7_dias">Próximos 7 dias</SelectItem>
+              <SelectItem value="atrasadas">Atrasadas</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Status" />
@@ -415,6 +428,19 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="fixa">Fixa</SelectItem>
               <SelectItem value="variavel">Variável</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
