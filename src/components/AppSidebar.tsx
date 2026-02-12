@@ -114,7 +114,7 @@ export function AppSidebar() {
       collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2.5 gap-3",
       active
         ? "bg-[hsl(var(--sidebar-primary,var(--primary)))] text-white font-semibold shadow-md hover:opacity-90"
-        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:scale-[1.03] hover:rounded-[14px] hover:shadow-md hover:-mx-1 hover:px-3.5"
     );
   };
 

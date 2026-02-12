@@ -1,5 +1,6 @@
 @import url('./styles/youtube-mask.css');
 @import url('./styles/youtube-player.css');
+/* CSS atualizado - versão 2.1 - hover sidebar + scrollbar customizada */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -619,56 +620,64 @@ All colors MUST be HSL.
   }
   
   /* Scrollbar do menu lateral: fina, discreta, cantos arredondados, degradê */
-  .sidebar-scroll {
-    scrollbar-width: thin;
-    scrollbar-gutter: stable;
-    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  /* Hover arredondado e levemente mais largo nos itens do sidebar */
+  [data-sidebar="menu-button"] .sidebar-item-hover,
+  .sidebar-item-hover {
+    transition: all 0.2s ease !important;
   }
-  .sidebar-scroll::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-    -webkit-appearance: none;
+  [data-sidebar="menu-button"]:hover .sidebar-item-hover,
+  .sidebar-item-hover:hover {
+    transform: scale(1.03) !important;
+    border-radius: 14px !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
   }
-  .sidebar-scroll::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
+
+  /* Scrollbar do sidebar - FORÇAR aplicação */
+  .sidebar-scroll::-webkit-scrollbar,
+  [data-sidebar="content"]::-webkit-scrollbar,
+  aside::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
   }
-  .sidebar-scroll::-webkit-scrollbar-thumb {
-    border-radius: 3px;
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.35) 0%,
-      rgba(0, 0, 0, 0.2) 50%,
-      rgba(0, 0, 0, 0.08) 100%
-    );
-    border: none;
+  
+  .sidebar-scroll::-webkit-scrollbar-track,
+  [data-sidebar="content"]::-webkit-scrollbar-track,
+  aside::-webkit-scrollbar-track {
+    background: transparent !important;
   }
-  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.45) 0%,
-      rgba(0, 0, 0, 0.28) 50%,
-      rgba(0, 0, 0, 0.12) 100%
-    );
+  
+  /* Thumb com pontas transparentes */
+  .sidebar-scroll::-webkit-scrollbar-thumb,
+  [data-sidebar="content"]::-webkit-scrollbar-thumb,
+  aside::-webkit-scrollbar-thumb {
+    border-radius: 999px !important;
+    border-top: 20px solid transparent !important;
+    border-bottom: 20px solid transparent !important;
+    background-clip: padding-box !important;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.1), transparent) !important;
   }
-  .dark .sidebar-scroll {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover,
+  [data-sidebar="content"]::-webkit-scrollbar-thumb:hover,
+  aside::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.2), transparent) !important;
   }
-  .dark .sidebar-scroll::-webkit-scrollbar-thumb {
-    background: linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.3) 0%,
-      rgba(255, 255, 255, 0.15) 50%,
-      rgba(255, 255, 255, 0.05) 100%
-    );
+  
+  /* Dark mode */
+  .dark .sidebar-scroll::-webkit-scrollbar-thumb,
+  .dark [data-sidebar="content"]::-webkit-scrollbar-thumb,
+  .dark aside::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.3), rgba(255,255,255,0.1), transparent) !important;
   }
-  .dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.4) 0%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0.08) 100%
-    );
+  
+  .dark .sidebar-scroll::-webkit-scrollbar-thumb:hover,
+  .dark [data-sidebar="content"]::-webkit-scrollbar-thumb:hover,
+  .dark aside::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, rgba(255,255,255,0.5), rgba(255,255,255,0.2), transparent) !important;
   }
 
   /* Scrollbar invisible for mobile tabs */

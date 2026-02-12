@@ -92,6 +92,11 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     mutationFn: async (data: BillToPayFormData & { recurring_start?: string; recurring_end?: string }) => {
       const { recurring_start, recurring_end, recurring, recurring_day, ...billData } = data;
       
+      // Limpar campos vazios (trocar '' por undefined para não enviar ao banco)
+      const cleanData = Object.fromEntries(
+        Object.entries(billData).filter(([_, v]) => v !== '' && v !== null).map(([k, v]) => [k, v === '' ? undefined : v])
+      );
+      
       // Se for recorrente, criar múltiplas contas
       if (recurring && recurring_start && recurring_end && recurring_day) {
         const start = new Date(recurring_start + '-01');
@@ -106,11 +111,11 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
           const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           
           billsToCreate.push({
-            ...billData,
+            ...cleanData,
             due_date: dueDate,
             recurring: true,
             recurring_day: recurring_day,
-            created_by: user?.id,
+            created_by: user?.id || undefined,
           });
           
           current.setMonth(current.getMonth() + 1);
@@ -123,8 +128,8 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         // Criar conta única
         const { data, error } = await from('bills_to_pay')
           .insert({
-            ...billData,
-            created_by: user?.id,
+            ...cleanData,
+            created_by: user?.id || undefined,
           })
           .select()
           .single();
