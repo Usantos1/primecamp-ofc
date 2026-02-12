@@ -114,10 +114,34 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
     },
   });
 
-  const filteredAccounts = accounts.filter(account =>
-    account.cliente_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    account.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAccounts = accounts.filter(account => {
+    const matchesSearch = account.cliente_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      account.id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filtro de período
+    let matchesPeriod = true;
+    if (periodFilter !== 'all' && account.data_vencimento) {
+      const dueDate = new Date(account.data_vencimento);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (periodFilter === 'mes_atual') {
+        matchesPeriod = dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
+      } else if (periodFilter === 'mes_proximo') {
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        matchesPeriod = dueDate.getMonth() === nextMonth.getMonth() && dueDate.getFullYear() === nextMonth.getFullYear();
+      } else if (periodFilter === 'atrasadas') {
+        matchesPeriod = dueDate < today && account.status !== 'pago';
+      } else if (periodFilter === 'proximos_7_dias') {
+        const em7dias = new Date(today);
+        em7dias.setDate(em7dias.getDate() + 7);
+        matchesPeriod = dueDate >= today && dueDate <= em7dias && account.status !== 'pago';
+      }
+    }
+    
+    return matchesSearch && matchesPeriod;
+  });
 
   const getStatusColor = (status: string, dueDate?: string) => {
     if (status === 'pago') return 'bg-success/10 text-success border-success/30';
