@@ -41,6 +41,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payingBillId, setPayingBillId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
 
@@ -190,11 +191,11 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
 
   // Mutation: Pagar conta
   const payBill = useMutation({
-    mutationFn: async ({ id, payment_method }: { id: string; payment_method: PaymentMethod }) => {
+    mutationFn: async ({ id, payment_method, payment_date }: { id: string; payment_method: PaymentMethod; payment_date?: string }) => {
       const { error } = await from('bills_to_pay')
         .update({
           status: 'pago',
-          payment_date: new Date().toISOString().split('T')[0],
+          payment_date: payment_date || new Date().toISOString().split('T')[0],
           payment_method: payment_method,
           paid_by: user?.id,
         })
@@ -345,9 +346,10 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
 
   const handlePayBill = async () => {
     if (payingBillId) {
-      await payBill.mutateAsync({ id: payingBillId, payment_method: paymentMethod });
+      await payBill.mutateAsync({ id: payingBillId, payment_method: paymentMethod, payment_date: paymentDate });
       setPayDialogOpen(false);
       setPayingBillId(null);
+      setPaymentDate(new Date().toISOString().split('T')[0]); // Reset para data atual
     }
   };
 
@@ -704,21 +706,32 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
           <DialogHeader>
             <DialogTitle>Confirmar Pagamento</DialogTitle>
             <DialogDescription>
-              Selecione a forma de pagamento utilizada
+              Informe a data e forma de pagamento
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <Select value={paymentMethod} onValueChange={(v: PaymentMethod) => setPaymentMethod(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label>Data do Pagamento *</Label>
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Forma de Pagamento</Label>
+              <Select value={paymentMethod} onValueChange={(v: PaymentMethod) => setPaymentMethod(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>

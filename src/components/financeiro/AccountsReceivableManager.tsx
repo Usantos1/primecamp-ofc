@@ -48,6 +48,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payingAccountId, setPayingAccountId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>('pix');
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [viewingAccount, setViewingAccount] = useState<AccountReceivable | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -88,24 +89,25 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
   });
 
   const payAccount = useMutation({
-    mutationFn: async ({ id, paymentMethod }: { id: string; paymentMethod: string }) => {
+    mutationFn: async ({ id, paymentMethod, paymentDate }: { id: string; paymentMethod: string; paymentDate?: string }) => {
       const account = accounts.find(a => a.id === id);
       if (!account) throw new Error('Conta não encontrada');
 
-      const { data: result, error } = await supabase
-        .from('accounts_receivable')
+      const dateToUse = paymentDate || new Date().toISOString().split('T')[0];
+      const { data: result, error } = await from('accounts_receivable')
         .update({
           status: 'pago',
-          data_pagamento: new Date().toISOString().split('T')[0],
+          data_pagamento: dateToUse,
           valor_pago: account.valor_total,
-          paid_at: new Date().toISOString(),
+          paid_at: new Date(dateToUse).toISOString(),
         })
         .eq('id', id)
         .select()
-        .single();
+        .single()
+        .execute();
 
       if (error) throw error;
-      return result;
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts-receivable'] });
