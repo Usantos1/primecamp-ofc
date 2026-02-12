@@ -11,8 +11,6 @@ import {
   Users,
   Target,
   Shield,
-  Building2,
-  FolderOpen,
   Settings,
   Activity,
   Receipt,
@@ -26,8 +24,6 @@ import {
   ChevronUp,
   KeyRound,
   UserCog,
-  Megaphone,
-  Store,
   RefreshCw,
   Star,
 } from "lucide-react";
@@ -139,14 +135,16 @@ export function AppSidebar() {
   // ═══════════════════════════════════════════════════════════════
   const estoqueItems = [
     { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
-    { label: "Marcas e Modelos", path: "/pdv/marcas-modelos", icon: FileText, permission: "produtos.manage" },
+    { label: "Pedidos", path: "/pedidos", icon: List, exact: true, permission: "produtos.view" },
+    { label: "Inventário", path: "/inventario", icon: Boxes, exact: true, permission: "produtos.view" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
   // RELATÓRIOS - Todos os relatórios juntos
   // ═══════════════════════════════════════════════════════════════
   const relatoriosItems = [
-    { label: "Relatórios PDV", path: "/pdv/relatorios", icon: Receipt, permission: "relatorios.view" },
+    { label: "Relatórios", path: "/relatorios", icon: Receipt, permission: "relatorios.view" },
+    { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
@@ -161,40 +159,9 @@ export function AppSidebar() {
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // FINANCEIRO - Gestão Financeira IA-First (apenas para quem tem permissão)
-  // ═══════════════════════════════════════════════════════════════
-  const financeiroItems = [
-    { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
-  ].filter(item => !item.permission || checkPermission(item.permission));
-
-  // ═══════════════════════════════════════════════════════════════
-  // MARKETING - Campanhas, Leads, Métricas (apenas para quem tem permissão)
-  // ═══════════════════════════════════════════════════════════════
-  const marketingItems = [
-    { label: "Marketing & Ads", path: "/admin/marketing", icon: Megaphone, permission: "marketing.view" },
-  ].filter(item => !item.permission || checkPermission(item.permission));
-
-
-  // ═══════════════════════════════════════════════════════════════
   // ADMINISTRAÇÃO - Apenas para admins
   // ═══════════════════════════════════════════════════════════════
-  // Verificar se é admin da empresa principal (ID: 00000000-0000-0000-0000-000000000001)
-  const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
-  
-  // Só mostrar Gestão de Revenda se for admin E pertencer à empresa principal
-  const userCompanyId = user?.company_id;
-  const isMainCompanyAdmin = userCompanyId === ADMIN_COMPANY_ID;
-  const isAdminCompany = Boolean(userIsAdmin && isMainCompanyAdmin);
-  
-  // adminItems só é mostrado se o usuário for admin
   const adminItems = userIsAdmin ? [
-    // Gestão de Revenda - APENAS para admins da empresa principal
-    ...(isAdminCompany ? [{ label: "Gestão de Revenda", path: "/admin/revenda", icon: Store }] : []),
-    { label: "Usuários e Permissões", path: "/admin/users", icon: Users },
-    { label: "Estrutura Organizacional", path: "/admin/estrutura", icon: Building2 },
-    { label: "Cadastros Base", path: "/admin/cadastros", icon: FolderOpen },
-    { label: "Integrações", path: "/integracoes", icon: Plug },
-    { label: "Logs", path: "/admin/logs", icon: Activity },
     { label: "Configurações", path: "/admin/configuracoes", icon: Settings },
   ] : [];
 
@@ -283,11 +250,7 @@ export function AppSidebar() {
       )}
 
       <SidebarContent 
-        className={cn("flex flex-col gap-0", collapsed ? "p-2 pt-4" : "p-3")}
-        style={{ 
-          scrollbarWidth: 'thin', 
-          scrollbarColor: 'rgba(0,0,0,0.1) transparent' 
-        }}
+        className={cn("flex flex-col gap-0 sidebar-scroll", collapsed ? "p-2 pt-4" : "p-3")}
       >
         <SidebarGroup>
           <SidebarGroupContent>
@@ -313,12 +276,6 @@ export function AppSidebar() {
 
               {/* ══════ GESTÃO ══════ */}
               {renderSection("Gestão", Target, gestaoItems)}
-
-              {/* ══════ FINANCEIRO ══════ */}
-              {renderSection("Financeiro", Wallet, financeiroItems)}
-
-              {/* ══════ MARKETING ══════ */}
-              {renderSection("Marketing", Megaphone, marketingItems)}
 
               {/* Separador */}
               {adminItems.length > 0 && renderSeparator()}

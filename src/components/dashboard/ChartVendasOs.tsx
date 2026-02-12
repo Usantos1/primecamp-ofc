@@ -22,10 +22,13 @@ const MASKED = '••••';
 const PERIOD_LABELS: Record<TrendPeriod, string> = {
   day: 'Dia',
   week: 'Semana',
-  month: 'Mês',
+  '30d': 'Últimos 30 dias',
+  lastMonth: 'Mês anterior',
+  month: 'Este mês',
   '3m': '3 meses',
   '6m': '6 meses',
   year: '1 ano',
+  custom: 'Personalizado',
 };
 
 interface ChartVendasOsProps {

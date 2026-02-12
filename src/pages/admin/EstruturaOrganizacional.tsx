@@ -1,6 +1,6 @@
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Briefcase, Building2, FolderOpen, Tag } from 'lucide-react';
+import { Users, Building2, FolderOpen, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function EstruturaOrganizacional() {
@@ -13,13 +13,6 @@ export default function EstruturaOrganizacional() {
       icon: Users,
       path: '/admin/users',
       color: 'text-blue-600',
-    },
-    {
-      title: 'Cargos',
-      description: 'Configure cargos e hierarquias organizacionais',
-      icon: Briefcase,
-      path: '/admin/positions',
-      color: 'text-purple-600',
     },
     {
       title: 'Departamentos',

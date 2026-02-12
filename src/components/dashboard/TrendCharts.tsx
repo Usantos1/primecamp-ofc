@@ -68,10 +68,13 @@ const CustomTooltip = ({ active, payload, label, valuesVisible }: CustomTooltipP
 const PERIOD_LABELS: Record<TrendPeriod, string> = {
   day: 'Dia',
   week: 'Semana',
-  month: 'Mês',
+  '30d': 'Últimos 30 dias',
+  lastMonth: 'Mês anterior',
+  month: 'Este mês',
   '3m': '3 meses',
   '6m': '6 meses',
   year: '1 ano',
+  custom: 'Personalizado',
 };
 
 export const TREND_PERIOD_LABELS = PERIOD_LABELS;
@@ -165,6 +168,7 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
                     tickFormatter={(value, index) => safeTickFormatter(data, value, index)}
                   />
                   <YAxis
+                    domain={[0, (dataMax: number) => Math.max(dataMax || 0, 100)]}
                     tickFormatter={(v) => (valuesVisible ? `R$ ${(v / 1000).toFixed(0)}k` : formatYAxis(v, false))}
                     tick={{ fontSize: 11 }}
                     axisLine={false}
@@ -198,7 +202,7 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
                     </defs>
                     <CartesianGrid strokeDasharray="2 2" stroke="var(--border)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} tickFormatter={(value, index) => safeTickFormatter(data, value, index)} />
-                    <YAxis tickFormatter={(v) => (valuesVisible ? `R$ ${(v / 1000).toFixed(0)}k` : formatYAxis(v, false))} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
+                    <YAxis domain={[0, (dataMax: number) => Math.max(dataMax || 0, 100)]} tickFormatter={(v) => (valuesVisible ? `R$ ${(v / 1000).toFixed(0)}k` : formatYAxis(v, false))} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
                     <Tooltip content={<CustomTooltip valuesVisible={valuesVisible} />} cursor={{ stroke: 'var(--border)' }} labelFormatter={(label, payload) => safeLabelFormatter(payload, label)} />
                     <Area type="monotone" dataKey="totalPDV" name="PDV" stroke="#10b981" strokeWidth={1.5} fill="url(#gradientPDV)" />
                   </AreaChart>
@@ -216,7 +220,7 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
                     </defs>
                     <CartesianGrid strokeDasharray="2 2" stroke="var(--border)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} tickFormatter={(value, index) => safeTickFormatter(data, value, index)} />
-                    <YAxis tickFormatter={(v) => (valuesVisible ? `R$ ${(v / 1000).toFixed(0)}k` : formatYAxis(v, false))} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
+                    <YAxis domain={[0, (dataMax: number) => Math.max(dataMax || 0, 100)]} tickFormatter={(v) => (valuesVisible ? `R$ ${(v / 1000).toFixed(0)}k` : formatYAxis(v, false))} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={36} />
                     <Tooltip content={<CustomTooltip valuesVisible={valuesVisible} />} cursor={{ stroke: 'var(--border)' }} labelFormatter={(label, payload) => safeLabelFormatter(payload, label)} />
                     <Area type="monotone" dataKey="totalOS" name="OS" stroke="#0ea5e9" strokeWidth={1.5} fill="url(#gradientOS)" />
                   </AreaChart>

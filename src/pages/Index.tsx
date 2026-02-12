@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, subMonths, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { isAdmin, profile, loading: authLoading } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
-  const { financialData, osData, alerts, trendData, trendPeriod, setTrendPeriod, loading: dataLoading, refetch } = useDashboardData();
+  const { financialData, osData, alerts, trendData, trendPeriod, setTrendPeriod, customDateRange, loading: dataLoading, refetch } = useDashboardData();
   const { config, loading: configLoading } = useDashboardConfig();
   const { getEstatisticas } = useOrdensServico();
   /** Ocultar/exibir valores em R$ (ícone de olho como em bancos) - persistido no localStorage */
@@ -37,28 +37,108 @@ const Index = () => {
   const isGestor = !permissionsLoading && (isAdmin || hasPermission('admin.view') || hasPermission('financeiro.view'));
 
   // Período do gráfico → datas para a API do financeiro (mesmos dados reais do /financeiro)
-  const { startDate: financeiroStart, endDate: financeiroEnd } = useMemo(() => {
+  const { startDate: financeiroStart, endDate: financeiroEnd, periodStartDate, periodEndDate } = useMemo(() => {
     const end = new Date();
     let start = new Date();
+    if (trendPeriod === 'custom' && customDateRange?.start && customDateRange?.end) {
+      return {
+        startDate: customDateRange.start,
+        endDate: customDateRange.end,
+        periodStartDate: customDateRange.start,
+        periodEndDate: customDateRange.end,
+      };
+    }
+    if (trendPeriod === 'custom') {
+      // Fallback: últimos 7 dias se ainda não tiver range salvo
+      const start = subDays(end, 6);
+      return {
+        startDate: format(start, 'yyyy-MM-dd'),
+        endDate: format(end, 'yyyy-MM-dd'),
+        periodStartDate: format(start, 'yyyy-MM-dd'),
+        periodEndDate: format(end, 'yyyy-MM-dd'),
+      };
+    }
     if (trendPeriod === 'day') start = end;
     else if (trendPeriod === 'week') start = subDays(end, 6);
-    else if (trendPeriod === 'month') start = subDays(end, 29);
-    else if (trendPeriod === '3m') start = subDays(end, 89);
+    else if (trendPeriod === '30d') start = subDays(end, 29);
+    else if (trendPeriod === 'lastMonth') {
+      const mesAnterior = subMonths(end, 1);
+      start = startOfMonth(mesAnterior);
+      const endLastMonth = endOfMonth(mesAnterior);
+      return {
+        startDate: format(start, 'yyyy-MM-dd'),
+        endDate: format(endLastMonth, 'yyyy-MM-dd'),
+        periodStartDate: format(start, 'yyyy-MM-dd'),
+        periodEndDate: format(endLastMonth, 'yyyy-MM-dd'),
+      };
+    } else if (trendPeriod === 'month') {
+      start = startOfMonth(end);
+    } else if (trendPeriod === '3m') start = subDays(end, 89);
     else if (trendPeriod === '6m') start = subDays(end, 179);
     else start = subDays(end, 364); // year
     return {
       startDate: format(start, 'yyyy-MM-dd'),
       endDate: format(end, 'yyyy-MM-dd'),
+      periodStartDate: format(start, 'yyyy-MM-dd'),
+      periodEndDate: format(end, 'yyyy-MM-dd'),
     };
-  }, [trendPeriod]);
+  }, [trendPeriod, customDateRange]);
 
   const { data: financeiroDashboard, isLoading: financeiroLoading, refetch: refetchFinanceiro } = useDashboardExecutivo(
     financeiroStart,
     financeiroEnd
   );
 
-  // Gráfico: usar tendência do financeiro (dados reais) quando disponível; senão fallback do useDashboardData
+  // Gráfico: usar tendência do financeiro (dados reais); filtrar pelo período e preencher dias faltantes
   const trendChartData: DashboardTrendData[] = useMemo(() => {
+    const emptyPoint = (dateStr: string, dateLabel: string): DashboardTrendData => ({
+      date: dateLabel,
+      data: dateStr,
+      vendas: 0,
+      os: 0,
+      faturamento_os: 0,
+      totalPDV: 0,
+      totalOS: 0,
+      totalGeral: 0,
+    });
+
+    if (financeiroDashboard?.tendencia?.length && periodStartDate && periodEndDate) {
+      const byDate = new Map<string, DashboardTrendData>();
+
+      financeiroDashboard.tendencia.forEach((t) => {
+        const raw = t?.data;
+        const rawStr = typeof raw === 'string' ? raw.trim() : '';
+        if (!rawStr || rawStr.length < 10) return;
+        const dateStr = rawStr.slice(0, 10);
+        if (dateStr < periodStartDate || dateStr > periodEndDate) return;
+        const d = new Date(dateStr + 'T12:00:00');
+        if (Number.isNaN(d.getTime())) return;
+        const dateLabel = format(d, 'dd/MM', { locale: ptBR });
+        byDate.set(dateStr, {
+          date: dateLabel,
+          data: dateStr,
+          vendas: t.totalPDV ?? 0,
+          os: 0,
+          faturamento_os: t.totalOS ?? 0,
+          totalPDV: t.totalPDV ?? 0,
+          totalOS: t.totalOS ?? 0,
+          totalGeral: t.totalGeral ?? 0,
+        });
+      });
+
+      const start = new Date(periodStartDate + 'T12:00:00');
+      const end = new Date(periodEndDate + 'T12:00:00');
+      const result: DashboardTrendData[] = [];
+      let cur = new Date(start);
+      while (cur <= end) {
+        const dateStr = format(cur, 'yyyy-MM-dd');
+        const dateLabel = format(cur, 'dd/MM', { locale: ptBR });
+        result.push(byDate.get(dateStr) ?? emptyPoint(dateStr, dateLabel));
+        cur = addDays(cur, 1);
+      }
+      return result;
+    }
+
     if (financeiroDashboard?.tendencia?.length) {
       return financeiroDashboard.tendencia.map((t) => {
         const raw = t?.data;
@@ -85,7 +165,7 @@ const Index = () => {
       });
     }
     return trendData;
-  }, [financeiroDashboard?.tendencia, trendData]);
+  }, [financeiroDashboard?.tendencia, trendData, periodStartDate, periodEndDate]);
 
   // Se modo apresentação está ativo e é gestor, mostrar modo apresentação
   if (config.presentationMode && isGestor && financialData && osData && alerts) {
@@ -124,7 +204,13 @@ const Index = () => {
             <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
               <h2 className="text-base md:text-lg font-semibold">Indicadores Financeiros</h2>
               <div className="flex items-center gap-2">
-                <DashboardPeriodFilter value={trendPeriod} onChange={setTrendPeriod} />
+                <DashboardPeriodFilter
+                  value={trendPeriod}
+                  onChange={setTrendPeriod}
+                  periodStartDate={periodStartDate}
+                  periodEndDate={periodEndDate}
+                  customDateRange={trendPeriod === 'custom' ? customDateRange : undefined}
+                />
                 <Button
                   variant="outline"
                   size="sm"

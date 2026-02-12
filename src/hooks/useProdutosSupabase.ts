@@ -5,8 +5,8 @@ import { Produto, ProdutoFormData } from '@/types/assistencia';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Mapear produto do Supabase para tipo assistencia.Produto
-function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
+// Mapear produto do Supabase para tipo assistencia.Produto (exportado para uso em InventarioDialog etc.)
+export function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
   return {
     id: supabaseProduto.id,
     
@@ -55,9 +55,9 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
   } as Produto;
 }
 
-// Mapear produto assistencia.Produto para Supabase
+// Mapear produto assistencia.Produto para Supabase (exportado para uso em InventarioDialog etc.)
 // Nunca enviar: id, created_at, updated_at, criado_em, atualizado_em, criado_por
-function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
+export function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
   const payload: any = {};
 
   // Identificação

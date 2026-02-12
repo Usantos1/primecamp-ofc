@@ -13,7 +13,6 @@ import {
   TrendingUp, 
   Activity,
   Building2,
-  Briefcase,
   FolderOpen,
   Tag,
   ArrowRight,
@@ -68,13 +67,6 @@ export default function Admin() {
       icon: Users,
       path: "/admin/users",
       color: "text-blue-600"
-    },
-    {
-      title: "Gestão de Cargos",
-      description: "Configure cargos e hierarquias organizacionais",
-      icon: Briefcase,
-      path: "/admin/positions",
-      color: "text-purple-600"
     },
     {
       title: "Gestão de Departamentos",

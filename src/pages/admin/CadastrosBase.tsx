@@ -144,13 +144,6 @@ export default function CadastrosBase() {
       color: 'text-sky-700',
     },
     {
-      title: 'Admin Cargos',
-      description: 'Gerenciar cargos',
-      icon: Building2,
-      path: '/admin/positions',
-      color: 'text-sky-600',
-    },
-    {
       title: 'Admin Departamentos',
       description: 'Gerenciar departamentos',
       icon: Building2,

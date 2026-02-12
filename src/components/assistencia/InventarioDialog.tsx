@@ -9,6 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
+import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized';
+import { Produto } from '@/types/assistencia';
+import { mapSupabaseToAssistencia, useProdutosSupabase } from '@/hooks/useProdutosSupabase';
+import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 
 type InventarioStatus = 'pending' | 'approved' | 'rejected';
 
@@ -48,18 +52,25 @@ interface InventarioItemRow {
 }
 
 interface InventarioDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   filtrosAtuais: { searchTerm: string; grupo: string; localizacao: string };
+  /** Quando true, renderiza o conteúdo como página (sem Dialog) */
+  standalone?: boolean;
 }
 
-export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: InventarioDialogProps) {
+export function InventarioDialog({ open = false, onOpenChange, filtrosAtuais, standalone = false }: InventarioDialogProps) {
+  const isOpen = open || standalone;
   const { toast } = useToast();
   const { user, profile, isAdmin } = useAuth();
+  const { updateProduto } = useProdutosSupabase();
+  const { marcas, modelos } = useMarcasModelosSupabase();
 
   const [activeTab, setActiveTab] = useState<'novo' | 'aprovacoes'>('novo');
   const [contagem, setContagem] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingProduto, setEditingProduto] = useState<Produto | null>(null);
+  const [loadingEditProduto, setLoadingEditProduto] = useState(false);
 
   const [page, setPage] = useState(1);
   const pageSize = 100;
@@ -211,16 +222,17 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
         query = query.eq('localizacao', filtrosAtuais.localizacao.trim());
       }
 
-      // Busca interna do inventário (prioritária): código ou código de barras
+      // Busca: Código, Referência, Cód. Barras ou Nome do produto
       const invSearch = (debouncedInventarioBusca || '').trim();
       const pageSearch = (filtrosAtuais.searchTerm || '').trim();
       const search = invSearch || pageSearch;
       if (search) {
         const codigoNum = parseInt(search);
+        const likeVal = `%${search}%`;
         if (!isNaN(codigoNum)) {
-          query = query.or(`codigo.eq.${codigoNum},codigo_barras.ilike.%${search}%`);
+          query = query.or(`codigo.eq.${codigoNum},codigo_barras.ilike.${likeVal},referencia.ilike.${likeVal},nome.ilike.${likeVal}`);
         } else {
-          query = query.or(`codigo_barras.ilike.%${search}%`);
+          query = query.or(`codigo_barras.ilike.${likeVal},referencia.ilike.${likeVal},nome.ilike.${likeVal}`);
         }
       }
 
@@ -247,7 +259,7 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
       });
 
       // Salvamento automático: garantir itens desta página no rascunho
-      if (open) {
+      if (isOpen) {
         const invId = await ensureDraftInventario();
         if (invId) {
           try {
@@ -266,15 +278,15 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     setPage(1);
-  }, [open, filtrosAtuais.grupo, filtrosAtuais.localizacao, filtrosAtuais.searchTerm, debouncedInventarioBusca]);
+  }, [isOpen, filtrosAtuais.grupo, filtrosAtuais.localizacao, filtrosAtuais.searchTerm, debouncedInventarioBusca]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     loadProdutos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, page]);
+  }, [isOpen, page]);
 
   const itensNovoInventario = useMemo(() => {
     return produtos
@@ -338,11 +350,11 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     if (isAdmin) {
       loadPendentes();
     }
-  }, [open, isAdmin]);
+  }, [isOpen, isAdmin]);
 
   const handleCriarInventario = async () => {
     if (!user?.id) {
@@ -504,17 +516,24 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+  const content = (
+    <>
+      {!standalone && (
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
             Inventário (contagem com aprovação)
           </DialogTitle>
         </DialogHeader>
+      )}
+      {standalone && (
+        <div className="flex items-center gap-2 mb-4">
+          <ClipboardList className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Inventário (contagem com aprovação)</h2>
+        </div>
+      )}
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <TabsTrigger value="novo">Novo (100 por página)</TabsTrigger>
             {isAdmin && <TabsTrigger value="aprovacoes">Aprovações</TabsTrigger>}
@@ -537,36 +556,56 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
 
             <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
               <Input
-                placeholder="Buscar no inventário por Código ou Código de Barras..."
+                placeholder="Buscar por Código, Referência, Cód. Barras ou Produto..."
                 value={inventarioBusca}
                 onChange={(e) => setInventarioBusca(e.target.value)}
                 className="h-9"
               />
             </div>
 
-            <div className="border rounded-lg overflow-auto max-h-[55vh] scrollbar-thin">
-              <Table>
+            <div className="border rounded-lg overflow-x-auto overflow-y-auto max-h-[50vh] sm:max-h-[60vh] scrollbar-thin">
+              <Table className="min-w-[640px] w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Referência</TableHead>
-                    <TableHead>Cód. Barras</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Sistema</TableHead>
-                    <TableHead className="text-right">Contado</TableHead>
+                    <TableHead className="w-20 shrink-0">Código</TableHead>
+                    <TableHead className="w-24 shrink-0">Referência</TableHead>
+                    <TableHead className="w-28 shrink-0">Cód. Barras</TableHead>
+                    <TableHead className="min-w-[180px] w-[40%]">Produto</TableHead>
+                    <TableHead className="w-20 text-right shrink-0">Sistema</TableHead>
+                    <TableHead className="w-28 text-right shrink-0">Contado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingProdutos ? (
                     <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground p-4">Carregando...</TableCell></TableRow>
                   ) : itensNovoInventario.map((i) => (
-                    <TableRow key={i.produto_id}>
-                      <TableCell className="font-mono">{i.codigo ?? '-'}</TableCell>
-                      <TableCell className="font-mono">{i.referencia ?? '-'}</TableCell>
-                      <TableCell className="font-mono text-xs">{i.codigo_barras ?? '-'}</TableCell>
-                      <TableCell className="font-medium">{i.produto_nome}</TableCell>
+                    <TableRow
+                      key={i.produto_id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onDoubleClick={async (e) => {
+                        if ((e.target as HTMLElement).closest('input')) return;
+                        setLoadingEditProduto(true);
+                        try {
+                          const { data: row, error } = await from('produtos')
+                            .select('*')
+                            .eq('id', i.produto_id)
+                            .single();
+                          if (error || !row) {
+                            toast({ title: 'Erro', description: 'Produto não encontrado.', variant: 'destructive' });
+                            return;
+                          }
+                          setEditingProduto(mapSupabaseToAssistencia(row));
+                        } finally {
+                          setLoadingEditProduto(false);
+                        }
+                      }}
+                    >
+                      <TableCell className="font-mono whitespace-nowrap">{i.codigo ?? '-'}</TableCell>
+                      <TableCell className="font-mono whitespace-nowrap">{i.referencia ?? '-'}</TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{i.codigo_barras ?? '-'}</TableCell>
+                      <TableCell className="font-medium break-words min-w-0" title={i.produto_nome ?? ''}>{i.produto_nome}</TableCell>
                       <TableCell className="text-right font-mono">{i.qtd_sistema}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Input
                           type="number"
                           value={contagem[i.produto_id] ?? i.qtd_sistema}
@@ -584,24 +623,30 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
               </Table>
             </div>
 
-            <DialogFooter className="gap-2">
-              <div className="mr-auto flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || isSubmitting}>
-                  Anterior
+            {standalone ? (
+              <div className="flex flex-wrap gap-2 items-center justify-between pt-4">
+                <div className="mr-auto flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || isSubmitting}>Anterior</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || isSubmitting}>Próxima</Button>
+                  <span className="text-xs text-muted-foreground">{totalCount > 0 ? `Total: ${totalCount}` : ''}</span>
+                </div>
+                <Button onClick={handleCriarInventario} disabled={isSubmitting || loadingProdutos}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" /> Enviar para aprovação
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || isSubmitting}>
-                  Próxima
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {totalCount > 0 ? `Total: ${totalCount}` : ''}
-                </span>
               </div>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-              <Button onClick={handleCriarInventario} disabled={isSubmitting || loadingProdutos}>
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Enviar para aprovação
-              </Button>
-            </DialogFooter>
+            ) : (
+              <DialogFooter className="gap-2">
+                <div className="mr-auto flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || isSubmitting}>Anterior</Button>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || isSubmitting}>Próxima</Button>
+                  <span className="text-xs text-muted-foreground">{totalCount > 0 ? `Total: ${totalCount}` : ''}</span>
+                </div>
+                <Button variant="outline" onClick={() => onOpenChange?.(false)}>Fechar</Button>
+                <Button onClick={handleCriarInventario} disabled={isSubmitting || loadingProdutos}>
+                  <CheckCircle2 className="h-4 w-4 mr-2" /> Enviar para aprovação
+                </Button>
+              </DialogFooter>
+            )}
           </TabsContent>
 
           {isAdmin && (
@@ -704,7 +749,33 @@ export function InventarioDialog({ open, onOpenChange, filtrosAtuais }: Inventar
               </div>
             </TabsContent>
           )}
-        </Tabs>
+      </Tabs>
+
+      <ProductFormOptimized
+        open={!!editingProduto}
+        onOpenChange={(open) => !open && setEditingProduto(null)}
+        produto={editingProduto ?? undefined}
+        marcas={marcas}
+        modelos={modelos}
+        onSave={async (payload) => {
+          if (!editingProduto?.id) return;
+          await updateProduto(editingProduto.id, payload);
+          setEditingProduto(null);
+          toast({ title: 'Produto atualizado', description: 'Alterações salvas com sucesso.' });
+          loadProdutos();
+        }}
+      />
+    </>
+  );
+
+  if (standalone) {
+    return <div className="space-y-4 w-full min-w-0">{content}</div>;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange ?? (() => {})}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        {content}
       </DialogContent>
     </Dialog>
   );

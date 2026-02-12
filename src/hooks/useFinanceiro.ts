@@ -131,7 +131,9 @@ export function useDashboardExecutivo(startDate?: string, endDate?: string) {
       return data;
     },
     enabled: !!user,
-    staleTime: 60000, // 1 minuto
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 

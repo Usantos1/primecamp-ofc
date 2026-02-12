@@ -39,7 +39,6 @@ import DiscTest from "./pages/DiscTest";
 import CandidateDisc from "./pages/CandidateDisc";
 import CandidateDiscResult from "./pages/CandidateDiscResult";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminPositions from "./pages/admin/AdminPositions";
 import AdminDepartments from "./pages/admin/AdminDepartments";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminTags from "./pages/admin/AdminTags";
@@ -55,7 +54,6 @@ import FinanceiroRelatoriosPage from "./pages/financeiro/FinanceiroRelatoriosPag
 import AdminReseller from "./pages/admin/AdminReseller";
 import CompanyDashboardPage from "./pages/CompanyDashboardPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
-import { MarketingLayout, MarketingDashboard, MarketingCampanhas, MarketingLeads, MarketingMetricas, MarketingMetas } from "./pages/admin/marketing";
 import EstruturaOrganizacional from "./pages/admin/EstruturaOrganizacional";
 import CadastrosBase from "./pages/admin/CadastrosBase";
 import RH from "./pages/RH";
@@ -77,7 +75,9 @@ import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as Assistenc
 import Vendas from "./pages/pdv/Vendas";
 import NovaVenda from "./pages/pdv/NovaVenda";
 import Caixa from "./pages/pdv/Caixa";
-import Relatorios from "./pages/pdv/Relatorios";
+import Relatorios from "./pages/Relatorios";
+import Pedidos from "./pages/Pedidos";
+import Inventario from "./pages/Inventario";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
 import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
@@ -148,7 +148,6 @@ const App = () => (
               <Route path="/processos/criar" element={<PermissionRoute permission="processos.create"><ProcessCreate /></PermissionRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/admin/users" element={<PermissionRoute permission="admin.users"><AdminUsers /></PermissionRoute>} />
-              <Route path="/admin/positions" element={<PermissionRoute permission="admin.positions"><AdminPositions /></PermissionRoute>} />
               <Route path="/admin/departments" element={<PermissionRoute permission="admin.departments"><AdminDepartments /></PermissionRoute>} />
               <Route path="/admin/categories" element={<PermissionRoute permission="admin.config"><AdminCategories /></PermissionRoute>} />
               <Route path="/admin/tags" element={<PermissionRoute permission="admin.config"><AdminTags /></PermissionRoute>} />
@@ -161,13 +160,6 @@ const App = () => (
               <Route path="/admin/configuracoes/pagamentos" element={<PermissionRoute permission="admin.view"><PaymentMethodsConfig /></PermissionRoute>} />
               <Route path="/minha-empresa" element={<ProtectedRoute><CompanyDashboardPage /></ProtectedRoute>} />
               <Route path="/assinatura" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
-              <Route path="/admin/marketing" element={<PermissionRoute permission="metricas.view"><MarketingLayout /></PermissionRoute>}>
-                <Route index element={<MarketingDashboard />} />
-                <Route path="campanhas" element={<MarketingCampanhas />} />
-                <Route path="leads" element={<MarketingLeads />} />
-                <Route path="metricas" element={<MarketingMetricas />} />
-                <Route path="metas" element={<MarketingMetas />} />
-              </Route>
               <Route path="/admin/job-surveys" element={<ProtectedRoute><RecruitmentManager /></ProtectedRoute>} />
               <Route path="/admin/job-surveys/:id" element={<ProtectedRoute><JobSurveyDetail /></ProtectedRoute>} />
               <Route path="/admin/talent-bank" element={<ProtectedRoute><TalentBank /></ProtectedRoute>} />
@@ -199,6 +191,8 @@ const App = () => (
             <Route path="/nps" element={<PermissionRoute permission="nps.view"><NPS /></PermissionRoute>} />
             <Route path="/teste-disc" element={<PermissionRoute permission="disc.view"><DiscTest /></PermissionRoute>} />
               <Route path="/produtos" element={<PermissionRoute permission="produtos.view"><AssistenciaProdutos /></PermissionRoute>} />
+              <Route path="/pedidos" element={<PermissionRoute permission="produtos.view"><Pedidos /></PermissionRoute>} />
+              <Route path="/inventario" element={<PermissionRoute permission="produtos.view"><Inventario /></PermissionRoute>} />
             <Route path="/productivity" element={<ProtectedRoute><Productivity /></ProtectedRoute>} />
             <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
               
@@ -212,14 +206,8 @@ const App = () => (
               <Route path="/pdv/venda/:id" element={<PermissionRoute permission="vendas.view"><NovaVenda /></PermissionRoute>} />
               <Route path="/pdv/venda/:id/editar" element={<PermissionRoute permission="vendas.edit"><NovaVenda /></PermissionRoute>} />
               <Route path="/pdv/caixa" element={<PermissionRoute permission="caixa.view"><Caixa /></PermissionRoute>} />
-              <Route 
-                path="/pdv/relatorios" 
-                element={
-                  <PermissionRoute permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]}>
-                    <Relatorios />
-                  </PermissionRoute>
-                } 
-              />
+              <Route path="/relatorios" element={<PermissionRoute permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]}><Relatorios /></PermissionRoute>} />
+              <Route path="/pdv/relatorios" element={<Navigate to="/relatorios" replace />} />
               <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission="vendas.manage"><ConfiguracaoCupom /></PermissionRoute>} />
               <Route path="/pdv/devolucoes" element={<PermissionRoute permission="vendas.manage"><Devolucoes /></PermissionRoute>} />
               <Route path="/cupom/:id" element={<CupomView />} />

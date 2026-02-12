@@ -4,7 +4,12 @@ import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, en
 import { ptBR } from 'date-fns/locale';
 import { currencyFormatters } from '@/utils/formatters';
 
-export type TrendPeriod = 'day' | 'week' | 'month' | '3m' | '6m' | 'year';
+export type TrendPeriod = 'day' | 'week' | '30d' | 'lastMonth' | 'month' | '3m' | '6m' | 'year' | 'custom';
+
+export interface CustomDateRange {
+  start: string; // yyyy-MM-dd
+  end: string;
+}
 
 export interface DashboardFinancialData {
   faturamentoDia: number;
@@ -50,13 +55,24 @@ export interface DashboardTrendData {
 }
 
 const DASHBOARD_PERIOD_STORAGE_KEY = 'primecamp_dashboard_trend_period';
+const DASHBOARD_CUSTOM_RANGE_KEY = 'primecamp_dashboard_custom_range';
 
 function getStoredTrendPeriod(): TrendPeriod {
   try {
     const v = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
-    if (v && ['day', 'week', 'month', '3m', '6m', 'year'].includes(v)) return v as TrendPeriod;
+    if (v && ['day', 'week', '30d', 'lastMonth', 'month', '3m', '6m', 'year', 'custom'].includes(v)) return v as TrendPeriod;
   } catch {}
   return 'week';
+}
+
+function getStoredCustomRange(): CustomDateRange | null {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_CUSTOM_RANGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { start?: string; end?: string };
+    if (parsed?.start && parsed?.end) return { start: parsed.start, end: parsed.end };
+  } catch {}
+  return null;
 }
 
 export function useDashboardData() {
@@ -65,11 +81,18 @@ export function useDashboardData() {
   const [alerts, setAlerts] = useState<DashboardAlerts | null>(null);
   const [trendData, setTrendData] = useState<DashboardTrendData[]>([]);
   const [trendPeriod, setTrendPeriodState] = useState<TrendPeriod>(getStoredTrendPeriod);
+  const [customDateRange, setCustomDateRangeState] = useState<CustomDateRange | null>(getStoredCustomRange);
   const [loading, setLoading] = useState(true);
   const periodChangeCount = useRef(0);
 
-  const setTrendPeriod = useCallback((period: TrendPeriod) => {
+  const setTrendPeriod = useCallback((period: TrendPeriod, customRange?: CustomDateRange) => {
     setTrendPeriodState(period);
+    if (period === 'custom' && customRange) {
+      setCustomDateRangeState(customRange);
+      try {
+        localStorage.setItem(DASHBOARD_CUSTOM_RANGE_KEY, JSON.stringify(customRange));
+      } catch {}
+    }
     try {
       localStorage.setItem(DASHBOARD_PERIOD_STORAGE_KEY, period);
     } catch {}
@@ -99,6 +122,7 @@ export function useDashboardData() {
       periodChangeCount.current = 1;
       return;
     }
+    if (trendPeriod === 'custom') return; // gráfico usa só API financeiro com datas customizadas
     loadTrendData(trendPeriod);
   }, [trendPeriod]);
 
@@ -298,6 +322,7 @@ export function useDashboardData() {
   };
 
   const loadTrendData = useCallback(async (period: TrendPeriod) => {
+    if (period === 'custom') return; // tendência custom vem só da API financeiro
     try {
       const hoje = new Date();
       let items: { date: string; dateISO: string }[] = [];
@@ -310,9 +335,29 @@ export function useDashboardData() {
           const date = subDays(hoje, 6 - i);
           return { date: format(date, 'dd/MM', { locale: ptBR }), dateISO: format(date, 'yyyy-MM-dd') };
         });
-      } else if (period === 'month') {
+      } else if (period === '30d') {
         items = Array.from({ length: 30 }, (_, i) => {
           const date = subDays(hoje, 29 - i);
+          return { date: format(date, 'dd/MM', { locale: ptBR }), dateISO: format(date, 'yyyy-MM-dd') };
+        });
+      } else if (period === 'lastMonth') {
+        const mesAnterior = subMonths(hoje, 1);
+        const inicio = startOfMonth(mesAnterior);
+        const fim = endOfMonth(mesAnterior);
+        const dias = fim.getDate(); // quantidade de dias no mês
+        items = Array.from({ length: dias }, (_, i) => {
+          const date = new Date(inicio);
+          date.setDate(inicio.getDate() + i);
+          return { date: format(date, 'dd/MM', { locale: ptBR }), dateISO: format(date, 'yyyy-MM-dd') };
+        });
+      } else if (period === 'month') {
+        // Mês vigente: do dia 1 até hoje
+        const inicioMes = startOfMonth(hoje);
+        const diffMs = hoje.getTime() - inicioMes.getTime();
+        const diasNoMesAteHoje = Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
+        items = Array.from({ length: diasNoMesAteHoje }, (_, i) => {
+          const date = new Date(inicioMes);
+          date.setDate(inicioMes.getDate() + i);
           return { date: format(date, 'dd/MM', { locale: ptBR }), dateISO: format(date, 'yyyy-MM-dd') };
         });
       } else if (period === '3m') {
@@ -395,6 +440,7 @@ export function useDashboardData() {
     trendData,
     trendPeriod,
     setTrendPeriod,
+    customDateRange: trendPeriod === 'custom' ? customDateRange : null,
     loading,
     refetch,
   };
