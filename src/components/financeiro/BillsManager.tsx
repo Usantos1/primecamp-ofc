@@ -36,6 +36,8 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<string>('all'); // all | mes_atual | mes_proximo | atrasadas | proximos_7_dias
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payingBillId, setPayingBillId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
@@ -99,15 +101,18 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
       
       // Se for recorrente, criar múltiplas contas
       if (recurring && recurring_start && recurring_end && recurring_day) {
-        const start = new Date(recurring_start + '-01');
-        const end = new Date(recurring_end + '-01');
+        const [startYear, startMonth] = recurring_start.split('-').map(Number);
+        const [endYear, endMonth] = recurring_end.split('-').map(Number);
         const billsToCreate = [];
         
-        let current = new Date(start);
-        while (current <= end) {
-          const year = current.getFullYear();
-          const month = current.getMonth() + 1;
-          const day = Math.min(recurring_day, new Date(year, month, 0).getDate());
+        let year = startYear;
+        let month = startMonth;
+        
+        // Loop seguro: gera de startMonth/startYear até endMonth/endYear
+        while (year < endYear || (year === endYear && month <= endMonth)) {
+          // Último dia do mês (para não ultrapassar, ex: dia 31 em fev vira 28)
+          const lastDayOfMonth = new Date(year, month, 0).getDate();
+          const day = Math.min(recurring_day, lastDayOfMonth);
           const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           
           billsToCreate.push({
@@ -118,7 +123,12 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
             created_by: user?.id || undefined,
           });
           
-          current.setMonth(current.getMonth() + 1);
+          // Avançar para o próximo mês
+          month++;
+          if (month > 12) {
+            month = 1;
+            year++;
+          }
         }
         
         const { data, error } = await from('bills_to_pay').insert(billsToCreate).select().execute();
@@ -252,7 +262,31 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
       bill.supplier?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || bill.status === statusFilter;
     const matchesType = typeFilter === 'all' || bill.expense_type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    const matchesCategory = categoryFilter === 'all' || bill.category_id === categoryFilter;
+    
+    // Filtro de período
+    let matchesPeriod = true;
+    if (periodFilter !== 'all') {
+      const dueDate = new Date(bill.due_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (periodFilter === 'mes_atual') {
+        matchesPeriod = dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
+      } else if (periodFilter === 'mes_proximo') {
+        const nextMonth = new Date(today);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        matchesPeriod = dueDate.getMonth() === nextMonth.getMonth() && dueDate.getFullYear() === nextMonth.getFullYear();
+      } else if (periodFilter === 'atrasadas') {
+        matchesPeriod = dueDate < today && bill.status !== 'pago';
+      } else if (periodFilter === 'proximos_7_dias') {
+        const em7dias = new Date(today);
+        em7dias.setDate(em7dias.getDate() + 7);
+        matchesPeriod = dueDate >= today && dueDate <= em7dias && bill.status !== 'pago';
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesType && matchesCategory && matchesPeriod;
   });
 
   // Helper para formatar data para input type="date"
