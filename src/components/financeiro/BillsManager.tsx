@@ -112,13 +112,13 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         // Loop seguro: gera de startMonth/startYear até endMonth/endYear
         while (year < endYear || (year === endYear && month <= endMonth)) {
           // Calcular último dia do mês corretamente
-          // month está em 1-12, mas Date() usa 0-11, então usamos month diretamente para pegar dia 0 do próximo mês
           const lastDayOfMonth = new Date(year, month, 0).getDate();
           const day = Math.min(recurring_day, lastDayOfMonth);
           
-          // Construir data usando UTC para evitar problemas de timezone
-          const date = new Date(Date.UTC(year, month - 1, day));
-          const dueDate = date.toISOString().split('T')[0];
+          // Construir data como string diretamente (YYYY-MM-DD) sem conversões de timezone
+          const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          
+          console.log(`[Recorrência] Criando conta para: ${dueDate} (dia ${day}/${month}/${year})`);
           
           billsToCreate.push({
             ...cleanData,
@@ -314,6 +314,12 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   };
 
   const handleOpenDialog = (bill?: any) => {
+    const today = new Date();
+    const startMonth = today.toISOString().slice(0, 7);
+    const endDate = new Date(today);
+    endDate.setMonth(endDate.getMonth() + 12);
+    const endMonth = endDate.toISOString().slice(0, 7);
+    
     if (bill) {
       setEditingBill(bill);
       setFormData({
@@ -326,8 +332,8 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         notes: bill.notes || '',
         recurring: bill.recurring,
         recurring_day: bill.recurring_day,
-        recurring_start: '2025-01',
-        recurring_end: new Date().toISOString().slice(0, 7),
+        recurring_start: startMonth,
+        recurring_end: endMonth,
       });
     } else {
       setEditingBill(null);
@@ -336,12 +342,12 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         amount: 0,
         category_id: '',
         expense_type: 'variavel',
-        due_date: new Date().toISOString().split('T')[0],
+        due_date: today.toISOString().split('T')[0],
         supplier: '',
         notes: '',
         recurring: false,
-        recurring_start: '2025-01',
-        recurring_end: new Date().toISOString().slice(0, 7),
+        recurring_start: startMonth,
+        recurring_end: endMonth,
       });
     }
     setIsDialogOpen(true);
