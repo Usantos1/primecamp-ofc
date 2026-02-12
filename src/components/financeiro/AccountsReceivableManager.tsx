@@ -44,6 +44,7 @@ interface AccountReceivable {
 export function AccountsReceivableManager({ month }: AccountsReceivableManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [payingAccountId, setPayingAccountId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>('pix');
@@ -176,6 +177,18 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
               className="pl-9"
             />
           </div>
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos períodos</SelectItem>
+              <SelectItem value="mes_atual">Mês atual</SelectItem>
+              <SelectItem value="mes_proximo">Próximo mês</SelectItem>
+              <SelectItem value="proximos_7_dias">Próximos 7 dias</SelectItem>
+              <SelectItem value="atrasadas">Atrasadas</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Status" />
