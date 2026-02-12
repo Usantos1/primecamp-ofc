@@ -1656,7 +1656,15 @@ app.post('/api/insert/:table', async (req, res) => {
         // Valor primitivo ou null
         values.push(value);
       });
-      const placeholders = keys.map((_, i) => `$${base + i + 1}`).join(', ');
+      // Criar placeholders com CAST para colunas DATE
+      const placeholders = keys.map((k, i) => {
+        const placeholder = `$${base + i + 1}`;
+        // Se for coluna de data, fazer CAST explícito para DATE
+        if (dateOnlyColumns.includes(k)) {
+          return `${placeholder}::date`;
+        }
+        return placeholder;
+      }).join(', ');
       return `(${placeholders})`;
     }).join(', ');
 
