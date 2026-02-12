@@ -2,13 +2,29 @@ import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 /**
+ * Para strings YYYY-MM-DD (sem hora), formata sem conversão de timezone.
+ * Evita que "2026-03-04" vire dia 03 no fuso Brasil.
+ */
+function formatDateOnly(dateStr: string): string | null {
+  if (typeof dateStr !== 'string') return null;
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+/**
  * Formatadores de data
  */
 export const dateFormatters = {
   /**
    * Formato curto: 10/12/2025
+   * Para datas só-dia (YYYY-MM-DD) formata sem timezone para evitar dia errado.
    */
   short: (date: string | Date) => {
+    if (typeof date === 'string') {
+      const dateOnly = formatDateOnly(date);
+      if (dateOnly) return dateOnly;
+    }
     const d = typeof date === 'string' ? parseISO(date) : date;
     return isValid(d) ? format(d, 'dd/MM/yyyy', { locale: ptBR }) : '-';
   },
