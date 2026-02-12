@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ShoppingCart, Trash2 } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ShoppingCart, Trash2, Edit } from 'lucide-react';
 // TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
 // import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, TransactionType } from '@/types/financial';
@@ -38,6 +38,9 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingItem, setDeletingItem] = useState<{ id: string; source: string; description: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editDateDialogOpen, setEditDateDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<{ id: string; source: string; description: string; date: string } | null>(null);
+  const [newDate, setNewDate] = useState<string>('');
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -245,6 +248,64 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
     setDeleteDialogOpen(true);
   };
 
+  const handleEditDateClick = (item: { id: string; source: string; description: string; date: string }) => {
+    setEditingItem(item);
+    setNewDate(item.date);
+    setEditDateDialogOpen(true);
+  };
+
+  const handleConfirmEditDate = async () => {
+    if (!editingItem || !newDate) return;
+    
+    try {
+      const realId = editingItem.id.replace('bill-', '').replace('sale-', '');
+      
+      if (editingItem.source === 'bill') {
+        // Atualizar payment_date na tabela bills_to_pay
+        const { error } = await from('bills_to_pay')
+          .update({ payment_date: newDate })
+          .eq('id', realId)
+          .execute();
+        
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['paid-bills-transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      } else if (editingItem.source === 'manual') {
+        // Atualizar transaction_date na tabela financial_transactions
+        const { error } = await from('financial_transactions')
+          .update({ transaction_date: newDate })
+          .eq('id', realId)
+          .execute();
+        
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      } else if (editingItem.source === 'sale') {
+        toast({
+          title: "Não permitido",
+          description: "A data de vendas não pode ser alterada daqui.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      toast({
+        title: "Sucesso",
+        description: "Data atualizada com sucesso!",
+      });
+    } catch (error: any) {
+      console.error('Erro ao atualizar data:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar data",
+        variant: "destructive"
+      });
+    } finally {
+      setEditDateDialogOpen(false);
+      setEditingItem(null);
+      setNewDate('');
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deletingItem) return;
     
@@ -410,7 +471,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                     <TableHead className="text-right text-blue-600">Venda</TableHead>
                     <TableHead className="text-right text-orange-600">Despesa</TableHead>
                     <TableHead className="text-right text-green-600">Lucro</TableHead>
-                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="w-20">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -451,20 +512,39 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                         {transaction.lucro && transaction.lucro > 0 ? currencyFormatters.brl(transaction.lucro) : '-'}
                       </TableCell>
                       <TableCell>
-                        {transaction.source !== 'sale' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteClick({
-                              id: transaction.id,
-                              source: transaction.source,
-                              description: transaction.description
-                            })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {transaction.source !== 'sale' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={() => handleEditDateClick({
+                                  id: transaction.id,
+                                  source: transaction.source,
+                                  description: transaction.description,
+                                  date: transaction.date
+                                })}
+                                title="Editar data"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteClick({
+                                  id: transaction.id,
+                                  source: transaction.source,
+                                  description: transaction.description
+                                })}
+                                title="Excluir"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -647,6 +727,38 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
         variant="danger"
         loading={isDeleting}
       />
+
+      {/* Dialog de edição de data */}
+      <Dialog open={editDateDialogOpen} onOpenChange={setEditDateDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Alterar Data da Transação</DialogTitle>
+            <DialogDescription>
+              {editingItem?.description}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nova Data *</Label>
+              <Input
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmEditDate}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
