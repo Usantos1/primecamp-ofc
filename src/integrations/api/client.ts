@@ -5,10 +5,8 @@
  * Todas as requisições passam por aqui.
  */
 
-// Forçar uso da API de produção
-const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-  ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
+// Usar VITE_API_URL se definida (permite localhost em dev); senão API de produção
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
 
 // Validação de segurança
 if (API_URL.includes('.supabase.co')) {

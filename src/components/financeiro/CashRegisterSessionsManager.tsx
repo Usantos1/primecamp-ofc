@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { startOfMonth, addMonths, format } from 'date-fns';
 
 type CashSession = {
   id: string;
@@ -26,6 +27,7 @@ type CashSession = {
 
 interface Props {
   month: string;
+  statusFilter?: 'all' | 'open' | 'closed';
 }
 
 function labelForma(forma: string) {
@@ -40,21 +42,30 @@ function labelForma(forma: string) {
   }
 }
 
-export function CashRegisterSessionsManager({ month }: Props) {
+export function CashRegisterSessionsManager({ month, statusFilter = 'all' }: Props) {
   const { user, profile, isAdmin } = useAuth();
   const [selected, setSelected] = useState<CashSession | null>(null);
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ['cash-register-sessions-admin', month, isAdmin, user?.id],
+    queryKey: ['cash-register-sessions-admin', month, statusFilter, isAdmin, user?.id],
     queryFn: async () => {
-      const start = `${month}-01`;
-      const end = `${month}-31`;
+      // Intervalo do mês: primeiro dia 00:00 até primeiro dia do mês seguinte (exclusive)
+      const monthDate = new Date(month + '-15');
+      const start = format(startOfMonth(monthDate), "yyyy-MM-dd'T'00:00:00.000'Z'");
+      const endExclusive = format(addMonths(startOfMonth(monthDate), 1), "yyyy-MM-dd'T'00:00:00.000'Z'");
 
       let q = from('cash_register_sessions')
         .select('*')
         .gte('opened_at', start)
-        .lte('opened_at', end)
-        .order('opened_at', { ascending: false });
+        .lt('opened_at', endExclusive);
+
+      if (statusFilter === 'open') {
+        q = q.eq('status', 'open');
+      } else if (statusFilter === 'closed') {
+        q = q.eq('status', 'closed');
+      }
+
+      q = q.order('opened_at', { ascending: false });
 
       // Não-admin vê apenas os próprios caixas
       if (!isAdmin && user?.id) {

@@ -207,7 +207,7 @@ const App = () => (
               <Route path="/pdv/caixa" element={<PermissionRoute permission="caixa.view"><Caixa /></PermissionRoute>} />
               <Route path="/relatorios" element={<PermissionRoute permission={["relatorios.vendas", "relatorios.financeiro", "relatorios.geral"]}><Relatorios /></PermissionRoute>} />
               <Route path="/pdv/relatorios" element={<Navigate to="/relatorios" replace />} />
-              <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission="vendas.manage"><ConfiguracaoCupom /></PermissionRoute>} />
+              <Route path="/pdv/configuracao-cupom" element={<PermissionRoute permission={["vendas.manage", "vendas.create"]}><ConfiguracaoCupom /></PermissionRoute>} />
               <Route path="/pdv/devolucoes" element={<PermissionRoute permission="vendas.manage"><Devolucoes /></PermissionRoute>} />
               <Route path="/cupom/:id" element={<CupomView />} />
               

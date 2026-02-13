@@ -24,7 +24,9 @@ import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensS
 import { useItensOS } from '@/hooks/useAssistencia';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { from } from '@/integrations/db/client';
+import { Link } from 'react-router-dom';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS, Quote, LIMITES_DESCONTO_PERFIL } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
@@ -42,6 +44,7 @@ export default function NovaVenda() {
   const { id } = useParams();
   const { toast } = useToast();
   const { isAdmin, user, profile } = useAuth();
+  const { hasPermission } = usePermissions();
   
   // Calcular limite máximo de desconto baseado no perfil
   const limiteDescontoMaximo = useMemo(() => {
@@ -1895,6 +1898,14 @@ _PrimeCamp Assistência Técnica_`;
     <ModernLayout 
       title={isEditing ? `Venda #${sale?.numero || ''}` : 'Nova Venda'}
       subtitle={isEditing ? 'Editar venda' : 'Criar nova venda'}
+      headerActions={!isEditing && (hasPermission('vendas.create') || hasPermission('vendas.view')) ? (
+        <Button variant="ghost" size="sm" asChild className="gap-1.5 text-muted-foreground hover:text-foreground">
+          <Link to="/pdv/configuracao-cupom">
+            <Printer className="h-4 w-4" />
+            <span className="hidden sm:inline">Configurar impressão</span>
+          </Link>
+        </Button>
+      ) : undefined}
     >
       <div className="space-y-3 md:space-y-4">
         {/* Header minimalista */}

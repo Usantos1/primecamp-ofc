@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit, Trash2, Shield, Users } from 'lucide-react';
 
 interface Role {
@@ -35,6 +36,7 @@ interface Permission {
 
 export function RolesManager() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolesPermissionsMap, setRolesPermissionsMap] = useState<Map<string, number>>(new Map());
@@ -219,21 +221,29 @@ export function RolesManager() {
       }
 
       // Atualizar permissões do role
-      // Remover todas as permissões existentes
-      await from('role_permissions')
+      // Remover todas as permissões existentes (eq no DeleteBuilder para filtrar por role_id)
+      const { error: deleteError } = await from('role_permissions')
+        .delete()
         .eq('role_id', roleId)
-        .delete();
+        .execute();
+      if (deleteError) throw deleteError;
 
-      // Adicionar novas permissões
+      // Adicionar novas permissões (deduplicar por permission_id e inserir em lotes para evitar perda)
       if (rolePermissions.size > 0) {
-        const permissionsToInsert = Array.from(rolePermissions.keys()).map(permissionId => ({
+        const uniqueIds = Array.from(new Set(rolePermissions.keys()));
+        const permissionsToInsert = uniqueIds.map(permissionId => ({
           role_id: roleId,
           permission_id: permissionId,
         }));
 
-        await from('role_permissions')
-          .insert(permissionsToInsert)
-          .execute();
+        const BATCH_SIZE = 20;
+        for (let i = 0; i < permissionsToInsert.length; i += BATCH_SIZE) {
+          const batch = permissionsToInsert.slice(i, i + BATCH_SIZE);
+          const { error: insertError } = await from('role_permissions')
+            .insert(batch)
+            .execute();
+          if (insertError) throw insertError;
+        }
       }
 
       toast({
@@ -243,6 +253,7 @@ export function RolesManager() {
 
       handleCloseDialog();
       loadData();
+      queryClient.invalidateQueries({ queryKey: ['roles-for-user-form'] });
     } catch (error: any) {
       console.error('Erro ao salvar role:', error);
       toast({
@@ -330,6 +341,7 @@ export function RolesManager() {
       setDeleteDialogOpen(false);
       setRoleToDelete(null);
       loadData();
+      queryClient.invalidateQueries({ queryKey: ['roles-for-user-form'] });
     } catch (error: any) {
       console.error('Erro ao excluir role:', error);
       console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
@@ -423,7 +435,10 @@ export function RolesManager() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Roles do Sistema</CardTitle>
+          <CardTitle>Funções do Sistema</CardTitle>
+          <CardDescription>
+            As permissões definidas aqui aplicam-se aos usuários que tiverem a função correspondente (definida ao editar o usuário).
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>

@@ -1492,7 +1492,8 @@ export function useCancelRequests() {
     try {
       if (!user) throw new Error('Usuário não autenticado');
 
-      // Atualizar solicitação
+      // Apenas marca a solicitação como aprovada. A UI deve chamar cancelSale(saleId, motivo) ANTES
+      // para executar a lógica completa (reversão de estoque, contas a receber, etc.).
       const { data: updatedRequest, error: updateError } = await from('sale_cancel_requests')
         .update({
           status: 'approved',
@@ -1506,25 +1507,9 @@ export function useCancelRequests() {
 
       if (updateError) throw updateError;
 
-      // Cancelar a venda
-      const { data: sale } = await from('sales')
-        .select('*')
-        .eq('id', saleId)
-        .single();
-
+      const { data: sale } = await from('sales').select('*').eq('id', saleId).single();
       if (sale) {
-        await from('sales')
-          .update({
-            status: 'canceled',
-            canceled_at: new Date().toISOString(),
-            canceled_by: user.id,
-            cancel_reason: updatedRequest.motivo,
-          })
-          .eq('id', saleId)
-          .execute();
-
-        // Log de auditoria
-        await logAudit('approve', 'cancel_request', requestId, sale, { ...sale, status: 'canceled' }, 'Solicitação de cancelamento aprovada e venda cancelada', user);
+        await logAudit('approve', 'cancel_request', requestId, sale, { ...sale, status: 'canceled' }, 'Solicitação de cancelamento aprovada', user);
       }
 
       setRequests(prev => prev.map(r => r.id === requestId ? (updatedRequest as CancelRequest) : r));

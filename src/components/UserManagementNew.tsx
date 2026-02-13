@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { from } from '@/integrations/db/client';
 import { authAPI } from '@/integrations/auth/api-client';
 import { apiClient } from '@/integrations/api/client';
@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Shield, User, Trash2, Edit, Search, Filter, Lock, Unlock, Mail, Phone, Building2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useQuery } from '@tanstack/react-query';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -50,7 +51,7 @@ interface UserProfile {
   id: string;
   user_id: string;
   display_name: string | null;
-  role: UserRoleType;
+  role: string;
   department: string | null;
   approved: boolean;
   approved_at: string | null;
@@ -108,17 +109,42 @@ export const UserManagementNew = () => {
     password: '',
     display_name: '',
     department: '',
-    role: 'member' as UserRoleType,
+    role: '' as string,
   });
   const [editFormData, setEditFormData] = useState({
     display_name: '',
     email: '',
     phone: '',
     department: '',
-    role: 'member' as UserRoleType,
+    role: '' as string,
     approved: true,
     password: '',
   });
+
+  // Funções vêm da mesma tabela da aba "Funções" (roles)
+  const { data: rolesFromApi = [] } = useQuery({
+    queryKey: ['roles-for-user-form'],
+    queryFn: async () => {
+      const { data, error } = await from('roles')
+        .select('id, name, display_name, description')
+        .order('display_name', { ascending: true })
+        .execute();
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; display_name: string; description?: string }[];
+    },
+  });
+
+  const roleDisplayName = useMemo(() => {
+    const map = new Map<string, string>();
+    rolesFromApi.forEach((r) => map.set(r.name, r.display_name));
+    return (roleName: string) => map.get(roleName) || roleName;
+  }, [rolesFromApi]);
+
+  const roleDescription = useMemo(() => {
+    const map = new Map<string, string>();
+    rolesFromApi.forEach((r) => { if (r.description) map.set(r.name, r.description); });
+    return (roleName: string) => map.get(roleName) || '';
+  }, [rolesFromApi]);
 
   useEffect(() => {
     if (currentCompanyId) {
@@ -382,10 +408,12 @@ export const UserManagementNew = () => {
 
       toast({
         title: "Sucesso",
-        description: "Usuário atualizado com sucesso",
+        description: selectedUser.user_id !== currentUser?.id
+          ? "Usuário atualizado. Se alterou a função, peça ao usuário para sair e entrar novamente para as permissões terem efeito."
+          : "Usuário atualizado com sucesso",
       });
 
-      // Se o admin editou o próprio usuário, atualizar o profile do contexto (sem reload)
+      // Se o admin editou o próprio usuário, atualizar o profile e permissões no contexto
       if (selectedUser.user_id === currentUser?.id) {
         window.dispatchEvent(new CustomEvent('profile-changed'));
         window.dispatchEvent(new CustomEvent('permissions-changed'));
@@ -602,7 +630,7 @@ export const UserManagementNew = () => {
         password: '',
         display_name: '',
         department: '',
-        role: 'member',
+        role: rolesFromApi[0]?.name ?? '',
       });
       setNewUserDialogOpen(false);
       fetchUsers();
@@ -641,7 +669,10 @@ export const UserManagementNew = () => {
                 Gerencie usuários, funções e permissões do sistema
               </p>
             </div>
-            <Button onClick={() => setNewUserDialogOpen(true)}>
+            <Button onClick={() => {
+              setNewUser(prev => ({ ...prev, role: rolesFromApi[0]?.name ?? prev.role ?? '' }));
+              setNewUserDialogOpen(true);
+            }}>
               <UserPlus className="h-4 w-4 mr-2" />
               Novo Usuário
             </Button>
@@ -789,8 +820,8 @@ export const UserManagementNew = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'default' : user.role === 'gerente' ? 'default' : 'secondary'}>
-                      {USER_ROLE_LABELS[user.role as UserRoleType] || user.role}
+                    <Badge variant={user.role === 'admin' || user.role === 'Administrador' ? 'default' : user.role === 'gerente' || user.role === 'Gerente' ? 'default' : 'secondary'}>
+                      {roleDisplayName(user.role)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -905,25 +936,28 @@ export const UserManagementNew = () => {
               <div className="space-y-2">
                 <Label htmlFor="edit_role">Função *</Label>
                 <Select 
-                  value={editFormData.role} 
-                  onValueChange={(value: UserRoleType) => setEditFormData({ ...editFormData, role: value })}
+                  value={editFormData.role || undefined} 
+                  onValueChange={(value: string) => setEditFormData({ ...editFormData, role: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione a função" />
+                    <SelectValue placeholder={rolesFromApi.length === 0 ? "Carregando funções..." : "Selecione a função"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
+                    {rolesFromApi.map((r) => (
+                      <SelectItem key={r.id} value={r.name}>
+                        {r.display_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {editFormData.role && (
+                {editFormData.role && roleDescription(editFormData.role) && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    {USER_ROLE_DESCRIPTIONS[editFormData.role as UserRoleType]}
+                    {roleDescription(editFormData.role)}
                   </p>
                 )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Para alterar o que cada função pode acessar, use a aba <strong>Funções</strong> nesta página.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit_password">Nova Senha</Label>
@@ -1020,21 +1054,21 @@ export const UserManagementNew = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Função *</Label>
-              <Select value={newUser.role} onValueChange={(value: UserRoleType) => setNewUser({...newUser, role: value})}>
+              <Select value={newUser.role || undefined} onValueChange={(value: string) => setNewUser({...newUser, role: value})}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione a função" />
+                  <SelectValue placeholder={rolesFromApi.length === 0 ? "Carregando funções..." : "Selecione a função"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
+                  {rolesFromApi.map((r) => (
+                    <SelectItem key={r.id} value={r.name}>
+                      {r.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {newUser.role && (
+              {newUser.role && roleDescription(newUser.role) && (
                 <p className="text-xs text-muted-foreground">
-                  {USER_ROLE_DESCRIPTIONS[newUser.role as UserRoleType]}
+                  {roleDescription(newUser.role)}
                 </p>
               )}
             </div>
@@ -1043,7 +1077,7 @@ export const UserManagementNew = () => {
             <Button variant="outline" onClick={() => setNewUserDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => createUser({ preventDefault: () => {} } as React.FormEvent)} disabled={loading}>
+            <Button onClick={() => createUser({ preventDefault: () => {} } as React.FormEvent)} disabled={loading || !newUser.role || rolesFromApi.length === 0}>
               {loading ? 'Criando...' : 'Criar Usuário'}
             </Button>
           </DialogFooter>
@@ -1135,21 +1169,21 @@ export const UserManagementNew = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Função *</Label>
-              <Select value={newUser.role} onValueChange={(value: UserRoleType) => setNewUser({...newUser, role: value})}>
+              <Select value={newUser.role || undefined} onValueChange={(value: string) => setNewUser({...newUser, role: value})}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione a função" />
+                  <SelectValue placeholder={rolesFromApi.length === 0 ? "Carregando funções..." : "Selecione a função"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
+                  {rolesFromApi.map((r) => (
+                    <SelectItem key={r.id} value={r.name}>
+                      {r.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {newUser.role && (
+              {newUser.role && roleDescription(newUser.role) && (
                 <p className="text-xs text-muted-foreground">
-                  {USER_ROLE_DESCRIPTIONS[newUser.role as UserRoleType]}
+                  {roleDescription(newUser.role)}
                 </p>
               )}
             </div>
@@ -1157,7 +1191,7 @@ export const UserManagementNew = () => {
               <Button type="button" variant="outline" onClick={() => setNewUserDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Criar Usuário</Button>
+              <Button type="submit" disabled={!newUser.role || rolesFromApi.length === 0}>Criar Usuário</Button>
             </DialogFooter>
           </form>
         </DialogContent>

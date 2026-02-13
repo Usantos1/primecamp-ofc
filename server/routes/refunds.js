@@ -131,7 +131,10 @@ router.post('/', async (req, res) => {
     const userId = req.user?.id || req.user?.userId || null;
     
     if (!companyId) {
-      throw new Error('Company ID não encontrado na sessão');
+      return res.status(401).json({
+        success: false,
+        error: 'Sessão inválida (company não identificada). Faça login novamente.'
+      });
     }
     const {
       sale_id,
@@ -144,6 +147,13 @@ router.post('/', async (req, res) => {
       customer_name,
       notes
     } = req.body;
+
+    if (!sale_id) {
+      return res.status(400).json({ success: false, error: 'sale_id é obrigatório' });
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, error: 'Informe ao menos um item para devolução' });
+    }
     
     // VERIFICAR SE JÁ EXISTE DEVOLUÇÃO PARA ESTA VENDA
     const existingRefund = await client.query(
@@ -153,11 +163,25 @@ router.post('/', async (req, res) => {
     );
     
     if (existingRefund.rows.length > 0) {
-      throw new Error(`Esta venda já possui devolução registrada (#${existingRefund.rows[0].refund_number}). Não é possível devolver novamente.`);
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        error: `Esta venda já possui devolução registrada (#${existingRefund.rows[0].refund_number}). Não é possível devolver novamente.`
+      });
     }
     
-    // Buscar próximo número de devolução
-    const seqResult = await client.query("SELECT nextval('refund_number_seq') as num");
+    // Buscar próximo número de devolução (sequência deve existir - rodar CRIAR_SEQUENCIAS_REFUNDS.sql se necessário)
+    let seqResult;
+    try {
+      seqResult = await client.query("SELECT nextval('refund_number_seq') as num");
+    } catch (seqErr) {
+      await client.query('ROLLBACK');
+      console.error('[Refunds] Sequência refund_number_seq não existe:', seqErr.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Configuração do banco incompleta. Execute o script CRIAR_SEQUENCIAS_REFUNDS.sql no PostgreSQL.'
+      });
+    }
     const refundNumber = `DEV${String(seqResult.rows[0].num).padStart(6, '0')}`;
     
     // Calcular valor total da devolução
@@ -223,9 +247,20 @@ router.post('/', async (req, res) => {
     // Se o método for vale compra, criar o vale
     let voucher = null;
     if (refund_method === 'voucher') {
-      // Usar função de código simples (V001, V002, etc.)
-      const voucherCodeResult = await client.query("SELECT generate_simple_voucher_code() as code");
-      const voucherCode = voucherCodeResult.rows[0].code;
+      // Gerar código do voucher: tentar função do banco ou fallback
+      let voucherCode;
+      try {
+        const voucherCodeResult = await client.query("SELECT generate_simple_voucher_code() as code");
+        voucherCode = voucherCodeResult.rows[0]?.code;
+      } catch (e1) {
+        try {
+          const voucherCodeResult = await client.query("SELECT generate_voucher_code() as code");
+          voucherCode = voucherCodeResult.rows[0]?.code;
+        } catch (e2) {
+          voucherCode = `V${Date.now().toString(36).toUpperCase().slice(-8)}`;
+        }
+      }
+      if (!voucherCode) voucherCode = `V${Date.now().toString(36).toUpperCase().slice(-8)}`;
       
       // Pegar documento do cliente se disponível
       let customerDocument = null;

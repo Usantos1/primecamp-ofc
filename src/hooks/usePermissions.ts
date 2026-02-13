@@ -186,17 +186,32 @@ export function usePermissions() {
       // CARREGAR PERMISSÕES DA TABELA role_permissions (DO BANCO DE DADOS)
       // ═══════════════════════════════════════════════════════════════
       try {
-        // Mapear role do código para role do banco (pode haver diferenças)
+        // Mapear role do perfil para possíveis nomes no banco (código, display name, etc.)
         const roleMapping: Record<string, string[]> = {
-          'vendedor': ['sales', 'vendedor', 'vendas', 'vendedores'], // sales primeiro pois é o que está no banco
+          'vendedor': ['sales', 'vendedor', 'vendas', 'vendedores'],
           'sales': ['sales', 'vendedor', 'vendas', 'vendedores'],
           'vendas': ['sales', 'vendas', 'vendedor', 'vendedores'],
+          'administrador': ['admin', 'administrador', 'administrator'],
+          'admin': ['admin', 'administrador', 'administrator'],
+          'gerente': ['gerente', 'manager'],
+          'financeiro': ['financeiro', 'financial'],
+          'atendente': ['atendente', 'attendant'],
+          'caixa': ['caixa', 'cashier'],
+          'estoquista': ['estoquista', 'stock'],
+          'member': ['member', 'membro'],
+          'membro': ['member', 'membro'],
         };
-        
-        const rolesToTry = roleMapping[userRole] || [userRole];
+        const exactRole = (profile?.role || '').trim();
+        const seen = new Set<string>();
+        const add = (r: string) => {
+          const k = String(r).toLowerCase();
+          if (!k || seen.has(k)) return;
+          seen.add(k);
+        };
+        [exactRole, userRole, ...(roleMapping[userRole] || [userRole])].filter(Boolean).forEach(add);
+        const rolesToTry = Array.from(seen);
         console.log('[usePermissions] Tentando buscar role com variações:', rolesToTry);
         
-        // Buscar o role no banco de dados (tentar variações)
         let roleData = null;
         for (const roleName of rolesToTry) {
           const { data, error } = await from('roles')
@@ -238,12 +253,22 @@ export function usePermissions() {
             if (permsError) {
               console.warn('[usePermissions] Erro ao buscar detalhes das permissões:', permsError);
             } else if (permsData) {
+              const permissionAliases: Record<string, string[]> = {
+                'sales.view': ['vendas.view'], 'sales.create': ['vendas.create'], 'sales.edit': ['vendas.edit'], 'sales.manage': ['vendas.manage'],
+                'sales.delete': ['vendas.delete'],
+                // OS / Assistência: app usa "os.view" no menu e rotas; banco pode ter ordens_servico ou service_orders
+                'ordens_servico.view': ['os.view'], 'ordens_servico.create': ['os.create'], 'ordens_servico.edit': ['os.edit'],
+                'ordens_servico.delete': ['os.delete'], 'ordens_servico.list': ['os.view'],
+                'ordens_servico.config.status': ['os.config.status'],
+                'service_orders.view': ['os.view'], 'service_orders.create': ['os.create'], 'service_orders.edit': ['os.edit'],
+                'os.list': ['os.view'],
+              };
               permsData.forEach((perm: any) => {
                 const permKey = `${perm.resource}.${perm.action}`;
                 permSet.add(permKey);
-                console.log(`[usePermissions] ✅ Permissão adicionada: ${permKey}`);
+                (permissionAliases[permKey] || []).forEach((alias) => permSet.add(alias));
               });
-              console.log(`[usePermissions] Total de permissões carregadas do banco: ${permSet.size}`);
+              console.log('[usePermissions] Total de permissões carregadas do banco:', permSet.size);
             }
           } else {
             console.warn('[usePermissions] Nenhuma permissão encontrada no banco para o role:', roleData.name);
@@ -328,6 +353,7 @@ export function usePermissions() {
     return (permission: string): boolean => {
       if (!user || !profile) return false;
       if (isAdminRole) return true;
+      if (permissions.has('*')) return true;
       return permissions.has(permission);
     };
   }, [permissions, user, profile, isAdminRole]);

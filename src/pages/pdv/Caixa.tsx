@@ -15,17 +15,27 @@ import {
 } from 'lucide-react';
 import { useCashRegister, useCashMovements } from '@/hooks/usePDV';
 import { useAuth } from '@/contexts/AuthContext';
+import { CashRegisterSessionsManager } from '@/components/financeiro/CashRegisterSessionsManager';
+import { usePermissions } from '@/hooks/usePermissions';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { from } from '@/integrations/db/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function Caixa() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
   const { currentSession, isLoading, openCash, closeCash } = useCashRegister();
+  const canOpenCash = hasPermission('caixa.open');
+  const canCloseCash = hasPermission('caixa.close');
+  const canMovement = hasPermission('caixa.sangria') || hasPermission('caixa.suprimento');
   const { movements, isLoading: movementsLoading, addMovement } = useCashMovements(
     currentSession?.id || ''
   );
@@ -46,6 +56,8 @@ export default function Caixa() {
   const [salePayments, setSalePayments] = useState<Record<string, any[]>>({});
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
+  const [adminMonth, setAdminMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [adminStatusFilter, setAdminStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
   useEffect(() => {
     if (currentSession?.id) {
@@ -289,9 +301,11 @@ export default function Caixa() {
                   <Badge className="bg-green-100 text-green-800 text-[10px]">
                     <Unlock className="h-3 w-3 mr-1" />Aberto
                   </Badge>
-                  <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-7 text-xs">
-                    <Lock className="h-3 w-3 mr-1" />Fechar
-                  </Button>
+                  {canCloseCash && (
+                    <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-7 text-xs">
+                      <Lock className="h-3 w-3 mr-1" />Fechar
+                    </Button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin text-[10px]">
                   <span className="whitespace-nowrap px-1.5 py-0.5 bg-gray-100 rounded">Inicial: {currencyFormatters.brl(currentSession.valor_inicial)}</span>
@@ -317,9 +331,11 @@ export default function Caixa() {
                     ))}
                   </div>
                 )}
-                <div className="flex items-center gap-2 ml-auto">
-                  <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-8"><Lock className="h-3.5 w-3.5 mr-1" />Fechar Caixa</Button>
-                </div>
+                {canCloseCash && (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-8"><Lock className="h-3.5 w-3.5 mr-1" />Fechar Caixa</Button>
+                  </div>
+                )}
                 <div className="w-full flex items-center gap-3 text-xs text-muted-foreground mt-1 pt-2 border-t">
                   <span className="flex items-center gap-1"><User className="h-3 w-3" />{currentSession.operador_nome}</span>
                   <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dateFormatters.short(currentSession.opened_at)}</span>
@@ -331,11 +347,15 @@ export default function Caixa() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 md:gap-3">
                 <Badge variant="outline" className="text-[10px] md:text-xs"><Lock className="h-3 w-3 mr-1" />Fechado</Badge>
-                <span className="text-xs md:text-sm text-muted-foreground hidden md:inline">Abra o caixa para começar a operar</span>
+                <span className="text-xs md:text-sm text-muted-foreground hidden md:inline">
+                  {canOpenCash ? 'Abra o caixa para começar a operar' : 'Sem permissão para abrir o caixa'}
+                </span>
               </div>
-              <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-7 md:h-8 text-xs md:text-sm">
-                <Unlock className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Abrir
-              </Button>
+              {canOpenCash && (
+                <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-7 md:h-8 text-xs md:text-sm">
+                  <Unlock className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Abrir
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -501,38 +521,92 @@ export default function Caixa() {
           </Card>
         )}
 
+        {/* Admin: Todos os caixas (abertos e fechados) por dia/filtros */}
+        {isAdmin && (
+          <Card className="border-2 border-gray-300 flex flex-col overflow-hidden min-h-0">
+            <CardHeader className="flex-shrink-0 pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Todos os caixas</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Sessões abertas e fechadas por mês e status</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="pdv-admin-month" className="text-muted-foreground whitespace-nowrap text-xs">Mês</Label>
+                    <Select value={adminMonth} onValueChange={setAdminMonth}>
+                      <SelectTrigger id="pdv-admin-month" className="w-[160px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, i) => {
+                          const d = new Date();
+                          d.setMonth(d.getMonth() - i);
+                          const m = format(d, 'yyyy-MM');
+                          return (
+                            <SelectItem key={m} value={m}>
+                              {format(new Date(m + '-01'), 'MMMM yyyy', { locale: ptBR })}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="pdv-admin-status" className="text-muted-foreground whitespace-nowrap text-xs">Status</Label>
+                    <Select value={adminStatusFilter} onValueChange={(v) => setAdminStatusFilter(v as 'all' | 'open' | 'closed')}>
+                      <SelectTrigger id="pdv-admin-status" className="w-[120px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="open">Abertos</SelectItem>
+                        <SelectItem value="closed">Fechados</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-4 pt-0">
+              <CashRegisterSessionsManager month={adminMonth} statusFilter={adminStatusFilter} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Movimentos */}
         {currentSession && (
           <Card className="border-2 border-gray-300">
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 md:gap-0">
                 <CardTitle className="text-base md:text-lg">Movimentos</CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMovementType('suprimento');
-                      setShowMovementDialog(true);
-                    }}
-                    className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
-                  >
-                    <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
-                    <span className="text-xs md:text-sm">Suprimento</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setMovementType('sangria');
-                      setShowMovementDialog(true);
-                    }}
-                    className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
-                  >
-                    <Minus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
-                    <span className="text-xs md:text-sm">Sangria</span>
-                  </Button>
-                </div>
+                {canMovement && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setMovementType('suprimento');
+                        setShowMovementDialog(true);
+                      }}
+                      className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
+                    >
+                      <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
+                      <span className="text-xs md:text-sm">Suprimento</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setMovementType('sangria');
+                        setShowMovementDialog(true);
+                      }}
+                      className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
+                    >
+                      <Minus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
+                      <span className="text-xs md:text-sm">Sangria</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-3 md:p-6">

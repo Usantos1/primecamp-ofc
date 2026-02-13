@@ -83,9 +83,10 @@ export function useRefunds() {
       }
       return response.data?.data || [];
     } catch (error: any) {
+      const msg = error?.data?.error || error?.message || 'Erro ao carregar devoluções';
       toast({
         title: 'Erro',
-        description: error.message || 'Erro ao carregar devoluções',
+        description: msg,
         variant: 'destructive'
       });
       return [];
@@ -130,9 +131,10 @@ export function useRefunds() {
       }
       throw new Error(response.data?.error || response.error || 'Erro desconhecido');
     } catch (error: any) {
+      const msg = error?.data?.error || error?.message || 'Erro ao criar devolução';
       toast({
-        title: 'Erro',
-        description: error.message || 'Erro ao criar devolução',
+        title: 'Erro ao criar devolução',
+        description: msg,
         variant: 'destructive'
       });
       return null;

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { from } from '@/integrations/db/client';
 import { LoadingButton } from '@/components/LoadingButton';
 import { Upload, Image as ImageIcon, Save } from 'lucide-react';
@@ -31,8 +32,11 @@ interface CupomConfig {
 }
 
 export default function ConfiguracaoCupom() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { toast } = useToast();
+  const canEditFull = isAdmin || hasPermission('vendas.manage');
+  const canEditPrintOnly = hasPermission('vendas.create') || hasPermission('vendas.view');
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [config, setConfig] = useState<CupomConfig>({
@@ -143,10 +147,10 @@ export default function ConfiguracaoCupom() {
   };
 
   const handleSave = async () => {
-    if (!isAdmin) {
+    if (!canEditFull && !canEditPrintOnly) {
       toast({
         title: 'Acesso negado',
-        description: 'Apenas administradores podem alterar configurações.',
+        description: 'Você não tem permissão para alterar estas configurações.',
         variant: 'destructive',
       });
       return;
@@ -154,55 +158,68 @@ export default function ConfiguracaoCupom() {
 
     setLoading(true);
     try {
-      // Usar upsert para inserir ou atualizar automaticamente
+      let valueToSave = config;
+
+      // Vendedor: salvar apenas opções de impressão (mesclar com config atual)
+      if (canEditPrintOnly && !canEditFull) {
+        const { data: kvData } = await from('kv_store_2c4defad')
+          .select('value')
+          .eq('key', 'cupom_config')
+          .maybeSingle();
+        const current = (kvData as any)?.value || {};
+        valueToSave = {
+          ...current,
+          imprimir_sem_dialogo: config.imprimir_sem_dialogo,
+          impressora_padrao: config.impressora_padrao ?? current.impressora_padrao,
+          imprimir_2_vias: config.imprimir_2_vias,
+        };
+      }
+
       const result = await from('kv_store_2c4defad')
         .upsert({
           key: 'cupom_config',
-          value: config,
+          value: valueToSave,
         }, {
           onConflict: 'key'
         });
 
       if (result.error) throw result.error;
 
-      // Também salvar em cupom_config para compatibilidade (se a tabela existir)
-      try {
-        const { user } = useAuth();
-        const configToSave = {
-          ...config,
-          created_by: user?.id || null,
-        };
-
-        const { data: existingCupom } = await from('cupom_config')
-          .select('id')
-          .limit(1)
-          .single()
-          .execute();
-
-        if (existingCupom?.data) {
-          await from('cupom_config')
-            .update(configToSave)
-            .eq('id', existingCupom.data.id)
+      if (canEditFull) {
+        try {
+          const configToSave = {
+            ...valueToSave,
+            created_by: user?.id || null,
+          };
+          const { data: existingCupom } = await from('cupom_config')
+            .select('id')
+            .limit(1)
+            .single()
             .execute();
-        } else {
-          await from('cupom_config')
-            .insert(configToSave)
-            .execute();
+          if (existingCupom?.data) {
+            await from('cupom_config')
+              .update(configToSave)
+              .eq('id', existingCupom.data.id)
+              .execute();
+          } else {
+            await from('cupom_config')
+              .insert(configToSave)
+              .execute();
+          }
+        } catch (oldTableError) {
+          console.warn('Tabela cupom_config não existe, usando apenas kv_store:', oldTableError);
         }
-      } catch (oldTableError) {
-        // Ignorar erro se a tabela antiga não existir
-        console.warn('Tabela cupom_config não existe, usando apenas kv_store:', oldTableError);
       }
 
       toast({
         title: 'Configurações salvas!',
-        description: 'As configurações do cupom foram atualizadas com sucesso.',
+        description: canEditFull ? 'As configurações do cupom foram atualizadas.' : 'Configuração de impressão atualizada.',
       });
     } catch (error: any) {
       console.error('Erro ao salvar configurações:', error);
       toast({
         title: 'Erro ao salvar',
-        description: error.message || 'Não foi possível salvar as configurações.',
+        description: error.message || 'Não foi possível salvar.',
         variant: 'destructive',
       });
     } finally {
@@ -210,16 +227,77 @@ export default function ConfiguracaoCupom() {
     }
   };
 
-  if (!isAdmin) {
+  if (!canEditFull && !canEditPrintOnly) {
     return (
       <ModernLayout title="Configuração do Cupom" subtitle="Personalize o cupom térmico">
         <Card className="border-2 border-gray-300">
           <CardContent className="p-6 md:p-12">
             <p className="text-center text-sm md:text-base text-muted-foreground">
-              Apenas administradores podem acessar esta página.
+              Você não tem permissão para acessar esta página.
             </p>
           </CardContent>
         </Card>
+      </ModernLayout>
+    );
+  }
+
+  // Vendedor: apenas seção de impressão
+  if (canEditPrintOnly && !canEditFull) {
+    return (
+      <ModernLayout title="Configuração de impressão" subtitle="Impressora e impressão automática do cupom">
+        <div className="space-y-4 max-w-xl">
+          <Card className="border-2 border-gray-300">
+            <CardHeader className="pb-2 pt-3 md:pt-6">
+              <CardTitle className="text-base md:text-lg">Impressão do cupom</CardTitle>
+              <CardDescription className="text-xs md:text-sm">
+                Configure a impressora e o comportamento da impressão ao finalizar uma venda.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-3 md:p-6 space-y-2 md:space-y-3">
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="imprimir_sem_dialogo_print_only"
+                  checked={config.imprimir_sem_dialogo !== false}
+                  onCheckedChange={(checked) => setConfig({ ...config, imprimir_sem_dialogo: checked === true })}
+                  className="h-4 w-4 md:h-5 md:w-5 mt-0.5"
+                />
+                <Label htmlFor="imprimir_sem_dialogo_print_only" className="cursor-pointer text-xs md:text-sm leading-tight">
+                  Imprimir automaticamente sem abrir caixa de diálogo (usar impressora padrão)
+                </Label>
+              </div>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="imprimir_2_vias_print_only"
+                  checked={config.imprimir_2_vias || false}
+                  onCheckedChange={(checked) => setConfig({ ...config, imprimir_2_vias: checked === true })}
+                  className="h-4 w-4 md:h-5 md:w-5 mt-0.5"
+                />
+                <Label htmlFor="imprimir_2_vias_print_only" className="cursor-pointer text-xs md:text-sm leading-tight">
+                  Imprimir 2 vias automaticamente
+                </Label>
+              </div>
+              <div className="pt-2 border-t-2 border-gray-200">
+                <Label htmlFor="impressora_padrao_print_only" className="text-xs md:text-sm">Impressora padrão (opcional)</Label>
+                <Input
+                  id="impressora_padrao_print_only"
+                  value={config.impressora_padrao || ''}
+                  onChange={(e) => setConfig({ ...config, impressora_padrao: e.target.value })}
+                  placeholder="Deixe em branco para usar a impressora padrão do sistema"
+                  className="h-9 md:h-10 text-sm border-2 border-gray-300 mt-1.5"
+                />
+                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
+                  Nome da impressora para impressão direta. Em branco = impressora padrão do sistema.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="flex justify-end">
+            <LoadingButton onClick={handleSave} loading={loading} className="gap-2 h-9 md:h-10">
+              <Save className="h-4 w-4" />
+              Salvar configuração de impressão
+            </LoadingButton>
+          </div>
+        </div>
       </ModernLayout>
     );
   }

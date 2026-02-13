@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +33,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   Plus, Search, Eye, Edit, Filter, Printer, Download, Send, MoreVertical, X, Trash2,
-  ShoppingCart, DollarSign, Calendar, User, Upload, CalendarDays, ReceiptText
+  ShoppingCart, DollarSign, Calendar, User, Upload, CalendarDays, ReceiptText,
+  CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
 import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
@@ -41,6 +42,8 @@ import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useCancelRequests } from '@/hooks/usePDV';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sale, SALE_STATUS_LABELS } from '@/types/pdv';
+import type { CancelRequest } from '@/types/pdv';
+import { from } from '@/integrations/db/client';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
 import { useToast } from '@/hooks/use-toast';
@@ -60,8 +63,13 @@ export default function Vendas() {
   const navigate = useNavigate();
   const { sales, isLoading, getSaleById, cancelSale, deleteSale } = useSales();
   const { isAdmin, profile } = useAuth();
-  const { createRequest } = useCancelRequests();
+  const { createRequest, requests: cancelRequests, isLoading: cancelRequestsLoading, approveRequest, rejectRequest, refreshRequests } = useCancelRequests();
   const { toast } = useToast();
+  const [saleInfoMap, setSaleInfoMap] = useState<Record<string, { numero: number; total: number }>>({});
+  const [requestToReject, setRequestToReject] = useState<CancelRequest | null>(null);
+  const [rejectMotivo, setRejectMotivo] = useState('');
+  const [isApproving, setIsApproving] = useState<string | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   // Default: mostrar histórico (últimos 30 dias) para não ficar "tudo zerado"
@@ -93,6 +101,74 @@ export default function Vendas() {
   
   // Estado do modal de importação retroativa
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  const pendingCancelRequests = useMemo(() => cancelRequests.filter(r => r.status === 'pending'), [cancelRequests]);
+
+  // Buscar número e total das vendas das solicitações pendentes
+  useEffect(() => {
+    if (pendingCancelRequests.length === 0) {
+      setSaleInfoMap({});
+      return;
+    }
+    const saleIds = [...new Set(pendingCancelRequests.map(r => r.sale_id))];
+    from('sales')
+      .select('id, numero, total')
+      .in('id', saleIds)
+      .execute()
+      .then(({ data }) => {
+        const map: Record<string, { numero: number; total: number }> = {};
+        (data || []).forEach((s: any) => {
+          map[s.id] = { numero: s.numero ?? 0, total: Number(s.total ?? 0) };
+        });
+        setSaleInfoMap(map);
+      })
+      .catch(() => setSaleInfoMap({}));
+  }, [pendingCancelRequests.length, pendingCancelRequests.map(r => r.sale_id).join(',')]);
+
+  const handleApproveRequest = async (req: CancelRequest) => {
+    setIsApproving(req.id);
+    try {
+      await cancelSale(req.sale_id, req.motivo);
+      await approveRequest(req.id, req.sale_id);
+      refreshRequests();
+      const info = saleInfoMap[req.sale_id];
+      toast({
+        title: 'Solicitação aprovada',
+        description: info ? `Venda #${info.numero} foi cancelada.` : 'Venda cancelada.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao aprovar',
+        description: err.message || 'Não foi possível cancelar a venda.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsApproving(null);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!requestToReject || !rejectMotivo.trim()) {
+      toast({ title: 'Informe o motivo da rejeição', variant: 'destructive' });
+      return;
+    }
+    setIsRejecting(true);
+    try {
+      await rejectRequest(requestToReject.id, rejectMotivo.trim());
+      setRequestToReject(null);
+      setRejectMotivo('');
+      refreshRequests();
+      toast({ title: 'Solicitação rejeitada' });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao rejeitar',
+        description: err.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRejecting(false);
+    }
+  };
 
   // Filtrar vendas
   const filteredSales = useMemo(() => {
@@ -616,6 +692,89 @@ export default function Vendas() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Solicitações de cancelamento (admin/gestão) */}
+        {canCancelDirectly && (
+          <Card className="border-2 border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  Solicitações de cancelamento
+                  {pendingCancelRequests.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">{pendingCancelRequests.length}</Badge>
+                  )}
+                </CardTitle>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {pendingCancelRequests.length > 0
+                  ? 'Vendedores solicitaram cancelamento destas vendas. Aprove ou rejeite.'
+                  : 'Quando um vendedor solicitar cancelamento de uma venda, as solicitações aparecerão aqui.'}
+              </p>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              {cancelRequestsLoading ? (
+                <p className="text-sm text-muted-foreground py-4">Carregando...</p>
+              ) : pendingCancelRequests.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-3">Nenhuma solicitação pendente.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Venda</TableHead>
+                      <TableHead className="text-xs">Solicitante</TableHead>
+                      <TableHead className="text-xs">Motivo</TableHead>
+                      <TableHead className="text-xs">Data</TableHead>
+                      <TableHead className="text-xs text-right w-[180px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingCancelRequests.map((req) => {
+                      const info = saleInfoMap[req.sale_id];
+                      return (
+                        <TableRow key={req.id}>
+                          <TableCell className="font-medium">
+                            {info ? `#${info.numero}` : `#${req.sale_id.slice(0, 8)}…`}
+                            {info != null && (
+                              <span className="text-muted-foreground text-xs ml-1">{currencyFormatters.brl(info.total)}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">{req.solicitante_nome}</TableCell>
+                          <TableCell className="text-sm max-w-[200px] truncate" title={req.motivo}>{req.motivo}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{dateFormatters.short(req.created_at)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 gap-1 bg-green-600 hover:bg-green-700"
+                                onClick={() => handleApproveRequest(req)}
+                                disabled={!!isApproving}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                Aprovar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1 text-destructive border-destructive hover:bg-destructive/10"
+                                onClick={() => { setRequestToReject(req); setRejectMotivo(''); }}
+                                disabled={!!isApproving}
+                              >
+                                <XCircle className="h-3.5 w-3.5" />
+                                Rejeitar
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Card principal - flex-1 com scroll interno */}
         <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
@@ -1564,6 +1723,46 @@ export default function Vendas() {
               ) : (
                 'Enviar Solicitação'
               )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Rejeitar solicitação de cancelamento */}
+      <AlertDialog open={!!requestToReject} onOpenChange={(open) => { if (!open) setRequestToReject(null); setRejectMotivo(''); }}>
+        <AlertDialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-md">
+          <AlertDialogHeader className="pb-2 md:pb-4">
+            <AlertDialogTitle className="text-base md:text-lg">Rejeitar solicitação de cancelamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              {requestToReject && (
+                <>
+                  Solicitação de <strong>{requestToReject.solicitante_nome}</strong> para cancelar a venda.
+                  Informe o motivo da rejeição (será registrado).
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-3">
+            <Label htmlFor="reject-motivo" className="text-xs md:text-sm">Motivo da rejeição *</Label>
+            <Textarea
+              id="reject-motivo"
+              placeholder="Ex.: Venda já entregue, cliente não autorizou..."
+              value={rejectMotivo}
+              onChange={(e) => setRejectMotivo(e.target.value)}
+              rows={3}
+              className="resize-none text-sm border-2 border-gray-300"
+            />
+          </div>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 pt-3">
+            <AlertDialogCancel disabled={isRejecting} onClick={() => { setRequestToReject(null); setRejectMotivo(''); }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRejectRequest}
+              disabled={isRejecting || !rejectMotivo.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isRejecting ? 'Rejeitando...' : 'Rejeitar solicitação'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
