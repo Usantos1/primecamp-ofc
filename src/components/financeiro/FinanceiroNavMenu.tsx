@@ -3,17 +3,12 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { 
-  Home, Warehouse, Users, Package, 
-  TrendingUp, FileText, Target,
+  Home, Users, TrendingUp, FileText, Target,
   DollarSign, ArrowLeftRight
 } from 'lucide-react';
 
 const menuItems = [
   { path: '/financeiro', label: 'Dashboard', icon: Home },
-  { path: '/financeiro/estoque-inteligente', label: 'Estoque Inteligente', icon: Warehouse },
-  { path: '/financeiro/analise-vendedores', label: 'Análise Vendedores', icon: Users },
-  { path: '/financeiro/analise-produtos', label: 'Análise Produtos', icon: Package },
-  { path: '/financeiro/previsoes-vendas', label: 'Previsões', icon: TrendingUp },
   { path: '/financeiro/dre', label: 'DRE', icon: FileText },
   { path: '/financeiro/planejamento-anual', label: 'Planejamento', icon: Target },
   { path: '/financeiro/fluxo-de-caixa', label: 'Fluxo de Caixa', icon: ArrowLeftRight },

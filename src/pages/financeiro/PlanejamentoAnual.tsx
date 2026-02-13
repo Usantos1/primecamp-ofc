@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -92,7 +91,6 @@ export default function PlanejamentoAnual() {
     return (
       <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
         <div className="flex flex-col gap-4">
-          <FinanceiroNavMenu />
           <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl p-4">
             <div className="flex items-end gap-3">
               <div className="space-y-1 flex-1 max-w-xs">
@@ -151,9 +149,6 @@ export default function PlanejamentoAnual() {
   return (
     <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
       <div className="flex flex-col gap-4">
-        {/* Menu de Navegação */}
-        <FinanceiroNavMenu />
-        
         {/* Controles */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="flex items-end gap-3">

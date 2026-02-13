@@ -99,7 +99,7 @@ export default function NovaVenda() {
       );
     }
   };
-  const { clientes, searchClientes, createCliente } = useClientes();
+  const { clientes, searchClientes, searchClientesAsync, createCliente } = useClientes();
   const { ordens, getOSById, updateStatus: updateOSStatus } = useOrdensServico();
   
   // Buscar todos os itens do localStorage
@@ -639,33 +639,31 @@ export default function NovaVenda() {
     }
   }, [productSearch, productSearchField, produtos]);
 
-  // Buscar clientes
+  // Buscar clientes (no servidor - busca em todo o cadastro)
+  const [clienteSearchLoading, setClienteSearchLoading] = useState(false);
   useEffect(() => {
-    if (clienteSearch.length >= 2) {
-      let results: any[] = [];
-      
-      if (clienteSearchField === 'nome') {
-        const q = clienteSearch.toLowerCase();
-        results = clientes.filter(c => c.nome.toLowerCase().includes(q));
-      } else if (clienteSearchField === 'cpf_cnpj') {
-        results = clientes.filter(c => c.cpf_cnpj?.includes(clienteSearch));
-      } else if (clienteSearchField === 'telefone') {
-        results = clientes.filter(c => 
-          c.telefone?.includes(clienteSearch) || 
-          c.whatsapp?.includes(clienteSearch)
-        );
-      } else {
-        // Busca geral (all)
-        results = searchClientes(clienteSearch);
-      }
-      
-      setClienteResults(results.slice(0, 10));
-      setShowClienteSearch(true);
-    } else {
+    if (clienteSearch.length < 2) {
       setClienteResults([]);
       setShowClienteSearch(false);
+      return;
     }
-  }, [clienteSearch, clienteSearchField, clientes, searchClientes]);
+    let cancelled = false;
+    setClienteSearchLoading(true);
+    setShowClienteSearch(true);
+    searchClientesAsync(clienteSearch, 15, clienteSearchField)
+      .then((results) => {
+        if (!cancelled) {
+          setClienteResults(results.slice(0, 15));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setClienteResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setClienteSearchLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [clienteSearch, clienteSearchField, searchClientesAsync]);
 
   // Focar no campo de busca ao montar
   useEffect(() => {
@@ -2109,7 +2107,10 @@ _PrimeCamp Assistência Técnica_`;
                         </SelectContent>
                       </Select>
                     </div>
-                    {showClienteSearch && clienteResults.length > 0 && (
+                    {showClienteSearch && clienteSearchLoading && (
+                      <p className="mt-2 text-xs text-muted-foreground text-center py-2">Buscando...</p>
+                    )}
+                    {showClienteSearch && !clienteSearchLoading && clienteResults.length > 0 && (
                       <div className="mt-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg max-h-40 overflow-auto">
                         {clienteResults.map(cliente => (
                           <div
@@ -2128,7 +2129,7 @@ _PrimeCamp Assistência Técnica_`;
                         ))}
                       </div>
                     )}
-                    {clienteSearch && clienteResults.length === 0 && (
+                    {clienteSearch && !clienteSearchLoading && clienteResults.length === 0 && (
                       <p className="mt-2 text-xs text-gray-500 text-center py-2">Nenhum cliente encontrado</p>
                     )}
                   </div>
@@ -2609,12 +2610,16 @@ _PrimeCamp Assistência Técnica_`;
                     }
                     
                     const isDinheiro = v === 'dinheiro';
+                    const pm = paymentMethods.find(pm => pm.code === v);
+                    const aceitaParcelas = pm?.accepts_installments ?? ['credito', 'credito_parcelado'].includes(v);
+                    const maxParcelas = pm?.max_installments ?? 12;
                     setCheckoutPayment({
                       ...checkoutPayment,
                       forma_pagamento: v,
-                      // Não preencher automaticamente - deixar usuário escolher o valor
                       valor: undefined,
                       troco: 0,
+                      parcelas: aceitaParcelas ? 1 : undefined,
+                      taxa_juros: undefined,
                     });
                   }}
                 >
@@ -2666,35 +2671,33 @@ _PrimeCamp Assistência Técnica_`;
               </div>
             )}
 
-            {checkoutPayment.forma_pagamento === 'credito' && (
-              <div className="grid grid-cols-2 gap-4">
+            {(() => {
+              const selectedPM = paymentMethods.find(pm => pm.code === checkoutPayment.forma_pagamento);
+              const ehCredito = selectedPM?.name?.toLowerCase().includes('crédito') ?? selectedPM?.name?.toLowerCase().includes('credito') ?? ['credito', 'credito_parcelado', 'cartao_credito'].includes(checkoutPayment.forma_pagamento);
+              const aceitaParcelas = selectedPM?.accepts_installments ?? ehCredito;
+              const maxParcelas = Math.max(1, selectedPM?.max_installments ?? 12);
+              if (!aceitaParcelas) return null;
+              const opcoes = Array.from({ length: maxParcelas }, (_, i) => i + 1);
+              return (
                 <div>
-                  <Label>Parcelas</Label>
+                  <Label>Número de parcelas</Label>
                   <Select
                     value={checkoutPayment.parcelas?.toString() || '1'}
-                    onValueChange={(v) => setCheckoutPayment({ ...checkoutPayment, parcelas: parseInt(v) })}
+                    onValueChange={(v) => setCheckoutPayment({ ...checkoutPayment, parcelas: parseInt(v, 10) })}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                        <SelectItem key={n} value={n.toString()}>{n}x</SelectItem>
+                      {opcoes.map(n => (
+                        <SelectItem key={n} value={n.toString()}>{n === 1 ? '1x (à vista)' : `${n}x`}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">A taxa é definida em Admin → Formas de Pagamento → Taxas.</p>
                 </div>
-                <div>
-                  <Label>Taxa de Juros (%)</Label>
-                  <Input
-                    type="number"
-                    value={checkoutPayment.taxa_juros || 0}
-                    onChange={(e) => setCheckoutPayment({ ...checkoutPayment, taxa_juros: parseFloat(e.target.value) || 0 })}
-                    step="0.01"
-                  />
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between">

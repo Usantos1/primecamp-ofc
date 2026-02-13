@@ -113,15 +113,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Verificar autenticação periodicamente (a cada 5 minutos)
+    // Verificar autenticação a cada 30 min e só quando a aba está visível (evita re-render a cada 5 min atrapalhando edição de produtos)
     const interval = setInterval(() => {
-      if (authAPI.isAuthenticated()) {
+      if (document.visibilityState === 'visible' && authAPI.isAuthenticated()) {
         checkAuth();
       }
-    }, 5 * 60 * 1000);
+    }, 30 * 60 * 1000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && authAPI.isAuthenticated()) {
+        checkAuth();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(interval);
     };
   }, []);

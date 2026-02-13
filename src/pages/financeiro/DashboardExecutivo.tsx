@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -66,9 +65,6 @@ export default function DashboardExecutivo() {
   return (
     <ModernLayout title="Dashboard Executivo" subtitle="Visão geral financeira e operacional com IA">
       <div className="flex flex-col gap-4">
-        {/* Menu de Navegação */}
-        <FinanceiroNavMenu />
-        
         {/* Filtros */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -84,10 +84,6 @@ import Configuracoes from "./pages/admin/Configuracoes";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
 import DashboardExecutivo from "./pages/financeiro/DashboardExecutivo";
-import EstoqueInteligente from "./pages/financeiro/EstoqueInteligente";
-import AnaliseVendedores from "./pages/financeiro/AnaliseVendedores";
-import AnaliseProdutos from "./pages/financeiro/AnaliseProdutos";
-import PrevisoesVendas from "./pages/financeiro/PrevisoesVendas";
 import DRE from "./pages/financeiro/DRE";
 import PlanejamentoAnual from "./pages/financeiro/PlanejamentoAnual";
 import FluxoDeCaixa from "./pages/financeiro/FluxoDeCaixa";
@@ -214,10 +210,6 @@ const App = () => (
               {/* Sistema IA-First Financeiro */}
               <Route path="/financeiro" element={<PermissionRoute permission="relatorios.financeiro"><DashboardExecutivo /></PermissionRoute>} />
               <Route path="/financeiro/dashboard" element={<PermissionRoute permission="relatorios.financeiro"><DashboardExecutivo /></PermissionRoute>} />
-              <Route path="/financeiro/estoque-inteligente" element={<PermissionRoute permission="relatorios.financeiro"><EstoqueInteligente /></PermissionRoute>} />
-              <Route path="/financeiro/analise-vendedores" element={<PermissionRoute permission="relatorios.financeiro"><AnaliseVendedores /></PermissionRoute>} />
-              <Route path="/financeiro/analise-produtos" element={<PermissionRoute permission="relatorios.financeiro"><AnaliseProdutos /></PermissionRoute>} />
-              <Route path="/financeiro/previsoes-vendas" element={<PermissionRoute permission="relatorios.financeiro"><PrevisoesVendas /></PermissionRoute>} />
               <Route path="/financeiro/dre" element={<PermissionRoute permission="relatorios.financeiro"><DRE /></PermissionRoute>} />
               <Route path="/financeiro/planejamento-anual" element={<PermissionRoute permission="relatorios.financeiro"><PlanejamentoAnual /></PermissionRoute>} />
               <Route path="/financeiro/precificacao" element={<PermissionRoute permission="relatorios.financeiro"><FluxoDeCaixa /></PermissionRoute>} />

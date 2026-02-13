@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { BillsManager } from '@/components/financeiro/BillsManager';
 import { AccountsReceivableManager } from '@/components/financeiro/AccountsReceivableManager';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,8 +13,6 @@ export default function FinanceiroContasPage() {
   return (
     <ModernLayout title="Contas" subtitle="Contas a pagar e receber">
       <div className="flex flex-col gap-4">
-        <FinanceiroNavMenu />
-        
         <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
           {/* Tabs customizadas */}
           <Card className="flex-shrink-0">

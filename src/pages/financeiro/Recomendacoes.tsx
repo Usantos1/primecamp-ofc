@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -108,9 +107,6 @@ export default function Recomendacoes() {
   return (
     <ModernLayout title="Recomendações da IA" subtitle="Recomendações inteligentes para otimizar seu negócio">
       <div className="flex flex-col h-full overflow-hidden gap-4">
-        {/* Menu de Navegação */}
-        <FinanceiroNavMenu />
-        
         {/* Filtros */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

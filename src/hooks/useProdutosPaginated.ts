@@ -243,7 +243,8 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       return result;
     },
     staleTime: Infinity, // Dados nunca ficam stale - não refetch automático
-    enabled: true, // Sempre habilitado
+    refetchInterval: false, // Nunca atualizar sozinho (evita atualizar a cada X min enquanto vendedor edita)
+    enabled: true,
     refetchOnWindowFocus: false, // Não refetch ao focar janela
     refetchOnMount: false, // Não refetch ao montar componente
     refetchOnReconnect: false, // Não refetch ao reconectar

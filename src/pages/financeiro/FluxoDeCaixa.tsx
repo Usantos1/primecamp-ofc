@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -307,8 +306,6 @@ export default function FluxoDeCaixa() {
   return (
     <ModernLayout title="Fluxo de Caixa" subtitle="Entradas, saídas e projeção de caixa">
       <div className="flex flex-col gap-4">
-        <FinanceiroNavMenu />
-
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-wrap gap-2">

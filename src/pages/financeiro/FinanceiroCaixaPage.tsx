@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { CashRegisterSessionsManager } from '@/components/financeiro/CashRegisterSessionsManager';
+import { CaixaGeral } from '@/components/financeiro/CaixaGeral';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,16 +14,19 @@ import { CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function FinanceiroCaixaPage() {
-  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('month');
+  const { isAdmin } = useAuth();
+  const [dateFilter, setDateFilter] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>(isAdmin ? 'month' : 'today');
   const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
+  const showFilters = isAdmin;
+
   return (
-    <ModernLayout title="Caixa" subtitle="Gestão de sessões de caixa">
+    <ModernLayout title="Caixa" subtitle={isAdmin ? 'Gestão de sessões de caixa' : 'Meu caixa (hoje)'}>
       <div className="flex flex-col h-full overflow-hidden gap-4">
-        <FinanceiroNavMenu />
+        {showFilters && (
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Label className="text-muted-foreground whitespace-nowrap">Período</Label>
@@ -101,7 +105,16 @@ export default function FinanceiroCaixaPage() {
             </Select>
           </div>
         </div>
-        <CashRegisterSessionsManager dateFilter={dateFilter} customDateStart={customDateStart} customDateEnd={customDateEnd} statusFilter={statusFilter} />
+        )}
+        {isAdmin && (
+          <CaixaGeral />
+        )}
+        <CashRegisterSessionsManager
+          dateFilter={isAdmin ? dateFilter : 'today'}
+          customDateStart={isAdmin ? customDateStart : undefined}
+          customDateEnd={isAdmin ? customDateEnd : undefined}
+          statusFilter={statusFilter}
+        />
       </div>
     </ModernLayout>
   );

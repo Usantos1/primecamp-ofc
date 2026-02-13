@@ -52,6 +52,8 @@ export default function PaymentMethodsConfig() {
   const [isFeesDialogOpen, setIsFeesDialogOpen] = useState(false);
   const [editingFees, setEditingFees] = useState<PaymentFee[]>([]);
   const [report, setReport] = useState<any>(null);
+  // Guarda o texto digitado nos campos de taxa enquanto o usuário digita (ex: "2," para poder completar "2,9")
+  const [feeRawInput, setFeeRawInput] = useState<{ index: number; field: 'fee_percentage' | 'fee_fixed'; value: string } | null>(null);
   const [reportPeriod, setReportPeriod] = useState({
     startDate: format(new Date(new Date().setDate(1)), 'yyyy-MM-dd'),
     endDate: format(new Date(), 'yyyy-MM-dd')
@@ -145,13 +147,29 @@ export default function PaymentMethodsConfig() {
         });
       }
       setEditingFees(fees);
+      setFeeRawInput(null);
     }
     setIsFeesDialogOpen(true);
   };
 
   const handleSaveFees = async () => {
-    if (selectedMethod) {
-      await saveFeesBulk(selectedMethod.id, editingFees);
+    if (!selectedMethod) return;
+    const result = await saveFeesBulk(selectedMethod.id, editingFees.map((f, i) => {
+      const pct = (feeRawInput?.index === i && feeRawInput?.field === 'fee_percentage') ? parseDecimal(feeRawInput.value) : (Number(f.fee_percentage) || 0);
+      const fixed = (feeRawInput?.index === i && feeRawInput?.field === 'fee_fixed') ? parseDecimal(feeRawInput.value) : (Number(f.fee_fixed) || 0);
+      return {
+        id: f.id,
+        payment_method_id: f.payment_method_id,
+        installments: Number(f.installments) || 1,
+        fee_percentage: pct,
+        fee_fixed: fixed,
+        days_to_receive: Number(f.days_to_receive) || 0,
+        description: f.description ?? (f.installments === 1 ? 'À vista' : `${f.installments}x`),
+        is_active: f.is_active !== false,
+      };
+    }));
+    if (result != null) {
+      await fetchPaymentMethods();
       setIsFeesDialogOpen(false);
     }
   };
@@ -160,6 +178,29 @@ export default function PaymentMethodsConfig() {
     const newFees = [...editingFees];
     newFees[index] = { ...newFees[index], [field]: value };
     setEditingFees(newFees);
+  };
+
+  // Aceita vírgula ou ponto como decimal (ex: 3,5 ou 3.5)
+  const parseDecimal = (raw: string): number => {
+    const normalized = String(raw || '').trim().replace(',', '.');
+    const n = parseFloat(normalized);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const formatDecimalForInput = (value: number | undefined): string => {
+    if (value == null || Number.isNaN(value)) return '';
+    return String(value).replace('.', ',');
+  };
+
+  const getFeeDecimalDisplay = (index: number, field: 'fee_percentage' | 'fee_fixed', fee: PaymentFee): string => {
+    if (feeRawInput?.index === index && feeRawInput?.field === field) return feeRawInput.value;
+    return formatDecimalForInput(field === 'fee_percentage' ? fee.fee_percentage : fee.fee_fixed);
+  };
+
+  const handleFeeDecimalBlur = (index: number, field: 'fee_percentage' | 'fee_fixed', rawValue: string) => {
+    const n = parseDecimal(rawValue);
+    handleUpdateFee(index, field, n);
+    setFeeRawInput(null);
   };
 
   const handleLoadReport = async () => {
@@ -474,12 +515,21 @@ export default function PaymentMethodsConfig() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label>Aceita Parcelamento</Label>
-                <Switch
-                  checked={methodForm.accepts_installments}
-                  onCheckedChange={(checked) => setMethodForm(prev => ({ ...prev, accepts_installments: checked }))}
-                />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Aceita Parcelamento</Label>
+                  <Switch
+                    checked={methodForm.accepts_installments}
+                    onCheckedChange={(checked) => setMethodForm(prev => ({
+                      ...prev,
+                      accepts_installments: checked,
+                      ...(checked && prev.max_installments <= 1 ? { max_installments: 12 } : {})
+                    }))}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ative para ofertar várias parcelas. Defina o máximo (ex.: 12 para 1x até 12x). Depois use o botão <strong>Taxas</strong> no card para definir a taxa % de cada parcela.
+                </p>
               </div>
 
               {methodForm.accepts_installments && (
@@ -491,15 +541,17 @@ export default function PaymentMethodsConfig() {
                       min={1}
                       max={24}
                       value={methodForm.max_installments}
-                      onChange={(e) => setMethodForm(prev => ({ ...prev, max_installments: parseInt(e.target.value) || 1 }))}
+                      onChange={(e) => setMethodForm(prev => ({ ...prev, max_installments: Math.min(24, Math.max(1, parseInt(e.target.value) || 1)) }))}
                     />
+                    <p className="text-xs text-muted-foreground">Ex.: 12 = oferta de 1x até 12x (depois configure cada taxa no botão Taxas)</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Valor Mínimo p/ Parcelar</Label>
+                    <Label>Valor Mínimo p/ Parcelar (R$)</Label>
                     <Input
                       type="number"
                       min={0}
                       step={0.01}
+                      placeholder="0"
                       value={methodForm.min_value_for_installments}
                       onChange={(e) => setMethodForm(prev => ({ ...prev, min_value_for_installments: parseFloat(e.target.value) || 0 }))}
                     />
@@ -555,22 +607,24 @@ export default function PaymentMethodsConfig() {
                     <TableCell className="font-medium">{fee.installments}x</TableCell>
                     <TableCell>
                       <Input
-                        type="number"
-                        step={0.01}
-                        min={0}
+                        type="text"
+                        inputMode="decimal"
                         className="w-24"
-                        value={fee.fee_percentage}
-                        onChange={(e) => handleUpdateFee(index, 'fee_percentage', parseFloat(e.target.value) || 0)}
+                        placeholder="Ex: 2,9"
+                        value={getFeeDecimalDisplay(index, 'fee_percentage', fee)}
+                        onChange={(e) => setFeeRawInput({ index, field: 'fee_percentage', value: e.target.value })}
+                        onBlur={(e) => handleFeeDecimalBlur(index, 'fee_percentage', e.target.value)}
                       />
                     </TableCell>
                     <TableCell>
                       <Input
-                        type="number"
-                        step={0.01}
-                        min={0}
+                        type="text"
+                        inputMode="decimal"
                         className="w-24"
-                        value={fee.fee_fixed}
-                        onChange={(e) => handleUpdateFee(index, 'fee_fixed', parseFloat(e.target.value) || 0)}
+                        placeholder="Ex: 0,50"
+                        value={getFeeDecimalDisplay(index, 'fee_fixed', fee)}
+                        onChange={(e) => setFeeRawInput({ index, field: 'fee_fixed', value: e.target.value })}
+                        onBlur={(e) => handleFeeDecimalBlur(index, 'fee_fixed', e.target.value)}
                       />
                     </TableCell>
                     <TableCell>

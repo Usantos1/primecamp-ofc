@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
-import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -49,7 +48,6 @@ export default function FinanceiroRelatoriosPage() {
     return (
       <ModernLayout title="Relatórios" subtitle="Relatórios financeiros">
         <div className="flex flex-col gap-4">
-          <FinanceiroNavMenu />
           <LoadingSkeleton type="table" count={5} />
         </div>
       </ModernLayout>
@@ -59,8 +57,6 @@ export default function FinanceiroRelatoriosPage() {
   return (
     <ModernLayout title="Relatórios" subtitle="Relatórios financeiros">
       <div className="flex flex-col gap-4">
-        <FinanceiroNavMenu />
-        
         {/* Filtros de Data */}
         <DateFilterBar
           dateFilter={dateFilter}

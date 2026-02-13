@@ -553,40 +553,104 @@ router.put('/:id/fees/bulk', async (req, res) => {
     await client.query('BEGIN');
     
     const { id } = req.params;
-    const companyId = req.companyId;
-    const { fees } = req.body;
+    let companyId = req.companyId;
+    const { fees } = req.body || {};
     
-    // Verificar se a forma de pagamento existe
-    const methodCheck = await client.query('SELECT id FROM payment_methods WHERE id = $1', [id]);
+    if (!Array.isArray(fees)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, error: 'O corpo da requisição deve conter um array "fees"' });
+    }
+    
+    // Verificar se a forma de pagamento existe e obter company_id se necessário
+    const hasCompanyIdCol = await columnExists('payment_methods', 'company_id');
+    const methodCheck = await client.query(
+      hasCompanyIdCol
+        ? 'SELECT id, company_id FROM payment_methods WHERE id = $1'
+        : 'SELECT id FROM payment_methods WHERE id = $1',
+      [id]
+    );
     
     if (methodCheck.rows.length === 0) {
-      throw new Error('Forma de pagamento não encontrada');
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, error: 'Forma de pagamento não encontrada' });
     }
+    
+    if (hasCompanyIdCol && (companyId == null || companyId === '') && methodCheck.rows[0].company_id) {
+      companyId = methodCheck.rows[0].company_id;
+    }
+    
+    // Verificar se a tabela payment_fees existe e quais colunas tem
+    const hasPaymentFeesTable = await client.query(`
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'payment_fees')
+    `).then(r => r.rows[0].exists);
+    
+    if (!hasPaymentFeesTable) {
+      await client.query('ROLLBACK');
+      return res.status(500).json({ success: false, error: 'Tabela payment_fees não existe. Execute o script SQL de criação.' });
+    }
+    
+    const hasFeeFixed = await client.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_fees' AND column_name = 'fee_fixed'
+    `).then(r => r.rows.length > 0);
+    
+    const hasCompanyIdFees = await client.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_fees' AND column_name = 'company_id'
+    `).then(r => r.rows.length > 0);
     
     // Deletar taxas existentes
     await client.query('DELETE FROM payment_fees WHERE payment_method_id = $1', [id]);
     
-    // Inserir novas taxas
+    // Inserir novas taxas (valores numéricos normalizados para evitar string no banco)
     for (const fee of fees) {
-      await client.query(`
-        INSERT INTO payment_fees (
-          company_id, payment_method_id, installments, fee_percentage,
-          fee_fixed, days_to_receive, description, is_active
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [companyId, id, fee.installments, fee.fee_percentage || 0, fee.fee_fixed || 0, fee.days_to_receive || 0, fee.description, fee.is_active !== false]);
+      const installments = parseInt(fee.installments, 10) || 1;
+      const feePercentage = parseFloat(fee.fee_percentage) || 0;
+      const feeFixed = parseFloat(fee.fee_fixed) || 0;
+      const daysToReceive = parseInt(fee.days_to_receive, 10) || 0;
+      const description = fee.description != null ? String(fee.description) : (installments === 1 ? 'À vista' : `${installments}x`);
+      const isActive = fee.is_active !== false;
+      
+      if (hasCompanyIdFees && hasFeeFixed) {
+        await client.query(`
+          INSERT INTO payment_fees (
+            company_id, payment_method_id, installments, fee_percentage,
+            fee_fixed, days_to_receive, description, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [companyId || null, id, installments, feePercentage, feeFixed, daysToReceive, description, isActive]);
+      } else if (hasCompanyIdFees) {
+        await client.query(`
+          INSERT INTO payment_fees (
+            company_id, payment_method_id, installments, fee_percentage,
+            days_to_receive, description, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [companyId || null, id, installments, feePercentage, daysToReceive, description, isActive]);
+      } else if (hasFeeFixed) {
+        await client.query(`
+          INSERT INTO payment_fees (
+            payment_method_id, installments, fee_percentage,
+            fee_fixed, days_to_receive, description, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [id, installments, feePercentage, feeFixed, daysToReceive, description, isActive]);
+      } else {
+        await client.query(`
+          INSERT INTO payment_fees (
+            payment_method_id, installments, fee_percentage,
+            days_to_receive, description, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6)
+        `, [id, installments, feePercentage, daysToReceive, description, isActive]);
+      }
     }
     
     await client.query('COMMIT');
     
     // Buscar taxas atualizadas
-    const result = await pool.query(
+    const result = await client.query(
       'SELECT * FROM payment_fees WHERE payment_method_id = $1 ORDER BY installments',
       [id]
     );
     
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     console.error('[PaymentFees] Erro ao atualizar em lote:', error);
     res.status(500).json({ success: false, error: error.message });
   } finally {

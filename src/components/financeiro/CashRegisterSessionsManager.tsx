@@ -365,7 +365,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                           <Lock className="h-4 w-4" /> Fechar caixa
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => { setMovementType('sangria'); setShowMovementForm(true); }} className="gap-1">
-                          <Minus className="h-4 w-4" /> Sangria
+                          <Minus className="h-4 w-4" /> Sangria (retirada)
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => { setMovementType('suprimento'); setShowMovementForm(true); }} className="gap-1">
                           <Plus className="h-4 w-4" /> Suprimento

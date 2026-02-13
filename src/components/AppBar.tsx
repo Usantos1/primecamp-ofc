@@ -2,7 +2,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, Users, Package, Wrench, DollarSign, 
-  Home, FileText, Calendar, CheckSquare, Target, BarChart3, Plus, Receipt
+  Home, FileText, Calendar, CheckSquare, Target, BarChart3, Plus, Receipt,
+  ArrowLeftRight, TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -24,8 +25,20 @@ const PDV_NAV_ITEMS: QuickNavItem[] = [
   { label: 'Ordem de Serviço', icon: Wrench, path: '/os' },
 ];
 
+// Navegação do módulo Financeiro (exibida no AppBar quando em /financeiro/*)
+const FINANCEIRO_NAV_ITEMS: QuickNavItem[] = [
+  { label: 'Dashboard', icon: Home, path: '/financeiro' },
+  { label: 'DRE', icon: FileText, path: '/financeiro/dre' },
+  { label: 'Planejamento', icon: Target, path: '/financeiro/planejamento-anual' },
+  { label: 'Fluxo de Caixa', icon: ArrowLeftRight, path: '/financeiro/fluxo-de-caixa' },
+  { label: 'Caixa', icon: DollarSign, path: '/financeiro/caixa' },
+  { label: 'Contas', icon: FileText, path: '/financeiro/contas' },
+  { label: 'Transações', icon: TrendingUp, path: '/financeiro/transacoes' },
+];
+
 // Configuração de navegação rápida por rota
 const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
+  '/financeiro': FINANCEIRO_NAV_ITEMS,
   '/pdv': PDV_NAV_ITEMS,
   '/pdv/vendas': PDV_NAV_ITEMS,
   '/pdv/venda': PDV_NAV_ITEMS,
