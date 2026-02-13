@@ -34,7 +34,7 @@ import { ptBR } from 'date-fns/locale';
 import { 
   Plus, Search, Eye, Edit, Filter, Printer, Download, Send, MoreVertical, X, Trash2,
   ShoppingCart, DollarSign, Calendar, User, Upload, CalendarDays, ReceiptText,
-  CheckCircle, XCircle, AlertCircle
+  CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
 import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
@@ -101,6 +101,11 @@ export default function Vendas() {
   
   // Estado do modal de importação retroativa
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  // Paginação
+  const PAGE_SIZE = 25;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
   const pendingCancelRequests = useMemo(() => cancelRequests.filter(r => r.status === 'pending'), [cancelRequests]);
 
@@ -223,6 +228,18 @@ export default function Vendas() {
 
     return result;
   }, [sales, statusFilter, dateFilter, searchTerm, customDateStart, customDateEnd]);
+
+  // Paginação: fatia da lista filtrada
+  const totalPages = Math.max(1, Math.ceil(filteredSales.length / pageSize));
+  const paginatedSales = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredSales.slice(start, start + pageSize);
+  }, [filteredSales, page, pageSize]);
+
+  // Resetar página ao mudar filtros
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, dateFilter, searchTerm, customDateStart, customDateEnd]);
 
   // Estatísticas
   const stats = useMemo(() => {
@@ -620,7 +637,7 @@ export default function Vendas() {
 
   return (
     <ModernLayout title="Vendas" subtitle="Gerenciamento de vendas do PDV">
-      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
+      <div className="flex flex-col gap-2 md:gap-3 pb-8">
         {/* Estatísticas - Mobile: linha única compacta (reflete período filtrado) */}
         <div className="md:hidden flex-shrink-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           <div className="flex items-center gap-1 px-2 py-1.5 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 text-xs whitespace-nowrap">
@@ -776,9 +793,9 @@ export default function Vendas() {
           </Card>
         )}
 
-        {/* Card principal - flex-1 com scroll interno */}
-        <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
-          <CardHeader className="flex-shrink-0 pb-2 pt-3 px-4">
+        {/* Card principal - lista de vendas (página inteira com scroll) */}
+        <Card className="border border-gray-200">
+          <CardHeader className="pb-2 pt-3 px-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold">Lista de Vendas</CardTitle>
               <PermissionGate permission="vendas.create">
@@ -814,8 +831,8 @@ export default function Vendas() {
               </PermissionGate>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-3 space-y-3">
-            {/* Filtros - fixo */}
+          <CardContent className="p-3 space-y-3">
+            {/* Filtros */}
             <div className="flex-shrink-0 flex flex-col md:flex-row gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -947,7 +964,7 @@ export default function Vendas() {
               </Popover>
             </div>
 
-            {/* Tabela de vendas - scroll interno */}
+            {/* Tabela de vendas */}
             {filteredSales.length === 0 ? (
               <EmptyState
                 variant="no-data"
@@ -957,9 +974,8 @@ export default function Vendas() {
               />
             ) : (
               <>
-                {/* Desktop: Tabela com scroll */}
-                <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
-                  <div className="flex-1 overflow-auto scrollbar-thin border border-gray-200 rounded-lg">
+                {/* Desktop: Tabela */}
+                <div className="hidden md:block border border-gray-200 rounded-lg overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
@@ -974,7 +990,7 @@ export default function Vendas() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredSales.map((sale, index) => (
+                      {paginatedSales.map((sale, index) => (
                         <TableRow 
                           key={sale.id}
                           className={`cursor-pointer hover:bg-muted/50 border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
@@ -1179,12 +1195,11 @@ export default function Vendas() {
                       ))}
                     </TableBody>
                   </Table>
-                  </div>
                 </div>
 
-                {/* Mobile: Cards com scroll */}
-                <div className="md:hidden flex-1 overflow-auto scrollbar-thin space-y-3">
-                  {filteredSales.map((sale) => (
+                {/* Mobile: Cards */}
+                <div className="md:hidden space-y-3">
+                  {paginatedSales.map((sale) => (
                     <Card 
                       key={sale.id}
                       className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
@@ -1370,6 +1385,62 @@ export default function Vendas() {
                     </Card>
                   ))}
                 </div>
+
+                {/* Paginação */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-200">
+                    <p className="text-sm text-muted-foreground order-2 sm:order-1">
+                      {filteredSales.length} venda(s) • Página {page} de {totalPages}
+                      {filteredSales.length > 0 && (
+                        <span className="ml-1">
+                          ({((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, filteredSales.length)})
+                        </span>
+                      )}
+                    </p>
+                    <div className="flex items-center gap-2 order-1 sm:order-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-1"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Anterior
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let p: number;
+                          if (totalPages <= 5) p = i + 1;
+                          else if (page <= 3) p = i + 1;
+                          else if (page >= totalPages - 2) p = totalPages - 4 + i;
+                          else p = page - 2 + i;
+                          return (
+                            <Button
+                              key={p}
+                              variant={page === p ? 'default' : 'outline'}
+                              size="sm"
+                              className="h-9 w-9 p-0"
+                              onClick={() => setPage(p)}
+                            >
+                              {p}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-1"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page >= totalPages}
+                      >
+                        Próxima
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </CardContent>

@@ -1216,6 +1216,7 @@ export function useCashRegister() {
       // Buscar profile do usuário para pegar o nome
       const operadorNome = profile?.display_name || user?.user_metadata?.name || user?.email || 'Operador';
 
+      const openedAt = new Date().toISOString();
       const { data: newSession, error } = await from('cash_register_sessions')
         .insert({
           numero,
@@ -1223,6 +1224,7 @@ export function useCashRegister() {
           operador_nome: operadorNome,
           valor_inicial: data.valor_inicial,
           status: 'open',
+          opened_at: openedAt,
         })
         .select()
         .single();
@@ -1240,31 +1242,38 @@ export function useCashRegister() {
     }
   }, [profile]);
 
-  // Fechar caixa
+  // Fechar caixa (sessionContext: use when closing another user's session as admin)
   const closeCash = useCallback(async (
     sessionId: string,
     valorFinal: number,
     divergencia?: number,
-    justificativa?: string
+    justificativa?: string,
+    sessionContext?: { opened_at?: string | null; valor_inicial?: number | null }
   ): Promise<CashRegisterSession> => {
     try {
-      // Calcular totais por forma de pagamento
-      const { data: sales } = await from('sales')
-        .select(`
-          id,
-          payments:payments!inner(forma_pagamento, valor)
-        .execute()`)
+      const openedAt = sessionContext?.opened_at ?? currentSession?.opened_at ?? new Date().toISOString();
+      const valorInicialSession = sessionContext?.valor_inicial ?? currentSession?.valor_inicial ?? 0;
+
+      let salesQuery = from('sales')
+        .select('id')
         .eq('status', 'paid')
-        .gte('finalized_at', currentSession?.opened_at || new Date().toISOString());
-
+        .gte('finalized_at', openedAt)
+        .eq('cash_register_session_id', sessionId);
+      const { data: sales } = await salesQuery.execute();
+      const saleIds = Array.isArray(sales) ? sales.map((s: any) => s.id).filter(Boolean) : [];
       const totais: Record<string, number> = {};
-      sales?.forEach(sale => {
-        sale.payments?.forEach((p: any) => {
-          totais[p.forma_pagamento] = (totais[p.forma_pagamento] || 0) + Number(p.valor);
+      if (saleIds.length > 0) {
+        const { data: payData } = await from('payments')
+          .select('forma_pagamento, valor')
+          .in('sale_id', saleIds)
+          .eq('status', 'confirmed')
+          .execute();
+        (payData || []).forEach((p: any) => {
+          totais[p.forma_pagamento] = (totais[p.forma_pagamento] || 0) + Number(p.valor || 0);
         });
-      });
+      }
 
-      const valorEsperado = currentSession?.valor_inicial || 0;
+      const valorEsperado = Number(valorInicialSession) || 0;
       const divergenciaCalculada = valorFinal - valorEsperado;
 
       const { data: updatedSession, error } = await from('cash_register_sessions')
@@ -1272,7 +1281,7 @@ export function useCashRegister() {
           status: 'closed',
           valor_final: valorFinal,
           valor_esperado: valorEsperado,
-          divergencia: divergencia || divergenciaCalculada,
+          divergencia: divergencia ?? divergenciaCalculada,
           divergencia_justificativa: justificativa || null,
           totais_forma_pagamento: totais,
           closed_at: new Date().toISOString(),
@@ -1285,10 +1294,11 @@ export function useCashRegister() {
 
       if (error) throw error;
 
-      // Log de auditoria
       await logAudit('update', 'cash_session', sessionId, currentSession, updatedSession, 'Caixa fechado', user);
 
-      setCurrentSession(null);
+      if (currentSession?.id === sessionId) {
+        setCurrentSession(null);
+      }
       return updatedSession;
     } catch (error) {
       console.error('Erro ao fechar caixa:', error);

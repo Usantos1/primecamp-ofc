@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   ShoppingCart, Users, Package, Wrench, DollarSign, 
-  Home, FileText, Calendar, CheckSquare, Target, BarChart3, Plus
+  Home, FileText, Calendar, CheckSquare, Target, BarChart3, Plus, Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -16,7 +16,8 @@ interface QuickNavItem {
 
 // Navegação rápida do PDV (atalhos globais)
 const PDV_NAV_ITEMS: QuickNavItem[] = [
-  { label: 'Vendas', icon: ShoppingCart, path: '/pdv' },
+  { label: 'PDV', icon: ShoppingCart, path: '/pdv' },
+  { label: 'Vendas', icon: Receipt, path: '/pdv/vendas' },
   { label: 'Caixa', icon: DollarSign, path: '/pdv/caixa' },
   { label: 'Clientes', icon: Users, path: '/clientes' },
   { label: 'Produtos', icon: Package, path: '/produtos' },
@@ -26,6 +27,7 @@ const PDV_NAV_ITEMS: QuickNavItem[] = [
 // Configuração de navegação rápida por rota
 const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
   '/pdv': PDV_NAV_ITEMS,
+  '/pdv/vendas': PDV_NAV_ITEMS,
   '/pdv/venda': PDV_NAV_ITEMS,
   '/os': PDV_NAV_ITEMS,
   '/clientes': PDV_NAV_ITEMS,

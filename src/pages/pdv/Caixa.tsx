@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   DollarSign, Plus, Minus, Lock, Unlock, TrendingUp, TrendingDown,
-  Calendar, Clock, User, FileText
+  Calendar, Clock, User, FileText, CalendarDays
 } from 'lucide-react';
 import { useCashRegister, useCashMovements } from '@/hooks/usePDV';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,7 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { from } from '@/integrations/db/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -55,7 +56,10 @@ export default function Caixa() {
   const [salePayments, setSalePayments] = useState<Record<string, any[]>>({});
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [showSaleDetails, setShowSaleDetails] = useState(false);
-  const [adminMonth, setAdminMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [adminDateFilter, setAdminDateFilter] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('month');
+  const [adminCustomDateStart, setAdminCustomDateStart] = useState<Date | undefined>(undefined);
+  const [adminCustomDateEnd, setAdminCustomDateEnd] = useState<Date | undefined>(undefined);
+  const [adminShowDatePicker, setAdminShowDatePicker] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
   useEffect(() => {
@@ -527,28 +531,72 @@ export default function Caixa() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base">Todos os caixas</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">Sessões abertas e fechadas por mês e status</p>
+                  <p className="text-xs text-muted-foreground mt-1">Sessões abertas e fechadas por período e status</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="pdv-admin-month" className="text-muted-foreground whitespace-nowrap text-xs">Mês</Label>
-                    <Select value={adminMonth} onValueChange={setAdminMonth}>
-                      <SelectTrigger id="pdv-admin-month" className="w-[160px] h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: 24 }, (_, i) => {
-                          const d = new Date();
-                          d.setMonth(d.getMonth() - i);
-                          const m = format(d, 'yyyy-MM');
-                          return (
-                            <SelectItem key={m} value={m}>
-                              {format(new Date(m + '-01'), 'MMMM yyyy', { locale: ptBR })}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-muted-foreground whitespace-nowrap text-xs">Período</Label>
+                    <Popover open={adminShowDatePicker} onOpenChange={setAdminShowDatePicker}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            'w-[180px] h-8 text-xs justify-start font-normal',
+                            adminDateFilter === 'custom' && adminCustomDateStart && adminCustomDateEnd && 'text-foreground'
+                          )}
+                        >
+                          <CalendarDays className="mr-2 h-3.5 w-3.5" />
+                          {adminDateFilter === 'custom' && adminCustomDateStart && adminCustomDateEnd ? (
+                            <span className="truncate">
+                              {format(adminCustomDateStart, 'dd/MM/yy', { locale: ptBR })} - {format(adminCustomDateEnd, 'dd/MM/yy', { locale: ptBR })}
+                            </span>
+                          ) : adminDateFilter === 'today' ? (
+                            'Hoje'
+                          ) : adminDateFilter === 'week' ? (
+                            'Últimos 7 dias'
+                          ) : adminDateFilter === 'month' ? (
+                            'Últimos 30 dias'
+                          ) : (
+                            'Todos os períodos'
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <div className="p-3 border-b space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button variant={adminDateFilter === 'today' ? 'default' : 'outline'} size="sm" onClick={() => { setAdminDateFilter('today'); setAdminShowDatePicker(false); }}>Hoje</Button>
+                            <Button variant={adminDateFilter === 'week' ? 'default' : 'outline'} size="sm" onClick={() => { setAdminDateFilter('week'); setAdminShowDatePicker(false); }}>7 dias</Button>
+                            <Button variant={adminDateFilter === 'month' ? 'default' : 'outline'} size="sm" onClick={() => { setAdminDateFilter('month'); setAdminShowDatePicker(false); }}>30 dias</Button>
+                            <Button variant={adminDateFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => { setAdminDateFilter('all'); setAdminShowDatePicker(false); }}>Todos</Button>
+                          </div>
+                          <div className="text-xs text-muted-foreground text-center pt-1">ou selecione um período:</div>
+                        </div>
+                        <div className="p-3 space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">Data Início</Label>
+                              <Input
+                                type="date"
+                                value={adminCustomDateStart ? format(adminCustomDateStart, 'yyyy-MM-dd') : ''}
+                                onChange={(e) => { if (e.target.value) setAdminCustomDateStart(new Date(e.target.value + 'T00:00:00')); }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Data Fim</Label>
+                              <Input
+                                type="date"
+                                value={adminCustomDateEnd ? format(adminCustomDateEnd, 'yyyy-MM-dd') : ''}
+                                onChange={(e) => { if (e.target.value) setAdminCustomDateEnd(new Date(e.target.value + 'T23:59:59')); }}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                          <Button className="w-full" size="sm" disabled={!adminCustomDateStart || !adminCustomDateEnd} onClick={() => { setAdminDateFilter('custom'); setAdminShowDatePicker(false); }}>Aplicar Período</Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="pdv-admin-status" className="text-muted-foreground whitespace-nowrap text-xs">Status</Label>
@@ -567,7 +615,7 @@ export default function Caixa() {
               </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-4 pt-0">
-              <CashRegisterSessionsManager month={adminMonth} statusFilter={adminStatusFilter} />
+              <CashRegisterSessionsManager dateFilter={adminDateFilter} customDateStart={adminCustomDateStart} customDateEnd={adminCustomDateEnd} statusFilter={adminStatusFilter} />
             </CardContent>
           </Card>
         )}

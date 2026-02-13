@@ -1313,7 +1313,7 @@ app.post('/api/query/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       // Financeiro
-      'payments', 'caixa_sessions', 'cash_register_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements',
       // Marcas e modelos (se tiver por empresa)
       'marcas', 'modelos',
       // Configurações específicas da empresa
@@ -1420,7 +1420,7 @@ app.post('/api/insert/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      'payments', 'caixa_sessions', 'cash_register_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
     ];
     
@@ -1743,7 +1743,7 @@ app.post('/api/update/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      'payments', 'caixa_sessions', 'cash_register_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
     ];
     
@@ -2249,7 +2249,7 @@ app.post('/api/delete/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      'payments', 'caixa_sessions', 'cash_register_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
     ];
     

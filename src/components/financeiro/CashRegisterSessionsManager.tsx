@@ -1,14 +1,20 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCashRegister, useCashMovements } from '@/hooks/usePDV';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
-import { startOfMonth, addMonths, format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { startOfDay, endOfDay, subDays } from 'date-fns';
+import { Lock, Plus, Minus } from 'lucide-react';
 
 type CashSession = {
   id: string;
@@ -26,7 +32,9 @@ type CashSession = {
 };
 
 interface Props {
-  month: string;
+  dateFilter: 'today' | 'week' | 'month' | 'all' | 'custom';
+  customDateStart?: Date;
+  customDateEnd?: Date;
   statusFilter?: 'all' | 'open' | 'closed';
 }
 
@@ -42,42 +50,156 @@ function labelForma(forma: string) {
   }
 }
 
-export function CashRegisterSessionsManager({ month, statusFilter = 'all' }: Props) {
+export function CashRegisterSessionsManager({ dateFilter, customDateStart, customDateEnd, statusFilter = 'all' }: Props) {
   const { user, profile, isAdmin } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { closeCash } = useCashRegister();
   const [selected, setSelected] = useState<CashSession | null>(null);
+  const [showCloseForm, setShowCloseForm] = useState(false);
+  const [valorFinal, setValorFinal] = useState('');
+  const [justificativa, setJustificativa] = useState('');
+  const [showMovementForm, setShowMovementForm] = useState(false);
+  const [movementType, setMovementType] = useState<'sangria' | 'suprimento'>('sangria');
+  const [movementValor, setMovementValor] = useState('');
+  const [movementMotivo, setMovementMotivo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedSessionId = selected?.id ?? '';
+  const { movements, addMovement } = useCashMovements(selectedSessionId);
+
+  useEffect(() => {
+    setShowCloseForm(false);
+    setShowMovementForm(false);
+  }, [selected?.id]);
+
+  const handleCloseCash = async () => {
+    if (!selected || !valorFinal.trim()) {
+      toast({ title: 'Informe o valor final', variant: 'destructive' });
+      return;
+    }
+    const v = parseFloat(valorFinal.replace(',', '.'));
+    if (isNaN(v) || v < 0) {
+      toast({ title: 'Valor final inválido', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await closeCash(selected.id, v, undefined, justificativa.trim() || undefined, {
+        opened_at: selected.opened_at,
+        valor_inicial: selected.valor_inicial,
+      });
+      toast({ title: 'Caixa fechado com sucesso.' });
+      setSelected(null);
+      setShowCloseForm(false);
+      setValorFinal('');
+      setJustificativa('');
+      queryClient.invalidateQueries({ queryKey: ['cash-register-sessions-admin'] });
+    } catch (e: any) {
+      toast({ title: e?.message || 'Erro ao fechar caixa', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddMovement = async () => {
+    if (!selected || !movementValor.trim()) {
+      toast({ title: 'Informe o valor', variant: 'destructive' });
+      return;
+    }
+    const v = parseFloat(movementValor.replace(',', '.'));
+    if (isNaN(v) || v <= 0) {
+      toast({ title: 'Valor inválido', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await addMovement({ tipo: movementType, valor: v, motivo: movementMotivo.trim() || undefined });
+      toast({ title: movementType === 'sangria' ? 'Sangria registrada.' : 'Suprimento registrado.' });
+      setShowMovementForm(false);
+      setMovementValor('');
+      setMovementMotivo('');
+      queryClient.invalidateQueries({ queryKey: ['cash-register-sessions-admin'] });
+    } catch (e: any) {
+      toast({ title: e?.message || 'Erro ao registrar', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ['cash-register-sessions-admin', month, statusFilter, isAdmin, user?.id],
+    queryKey: ['cash-register-sessions-admin', dateFilter, customDateStart?.toISOString(), customDateEnd?.toISOString(), statusFilter, isAdmin, user?.id],
     queryFn: async () => {
-      // Intervalo do mês: primeiro dia 00:00 até primeiro dia do mês seguinte (exclusive)
-      const monthDate = new Date(month + '-15');
-      const start = format(startOfMonth(monthDate), "yyyy-MM-dd'T'00:00:00.000'Z'");
-      const endExclusive = format(addMonths(startOfMonth(monthDate), 1), "yyyy-MM-dd'T'00:00:00.000'Z'");
+      const baseFilter = () => {
+        let q = from('cash_register_sessions').select('*');
+        if (!isAdmin && user?.id) q = q.eq('operador_id', user.id);
+        return q;
+      };
 
-      let q = from('cash_register_sessions')
-        .select('*')
-        .gte('opened_at', start)
-        .lt('opened_at', endExclusive);
-
+      // Sessões ABERTAS: sempre trazer todas (sem filtro de data)
       if (statusFilter === 'open') {
-        q = q.eq('status', 'open');
-      } else if (statusFilter === 'closed') {
-        q = q.eq('status', 'closed');
+        let q = baseFilter().eq('status', 'open').order('opened_at', { ascending: false });
+        const { data, error } = await q.execute();
+        if (error) { console.warn('Erro ao buscar sessões de caixa:', error); return []; }
+        return (data || []) as CashSession[];
       }
 
-      q = q.order('opened_at', { ascending: false });
-
-      // Não-admin vê apenas os próprios caixas
-      if (!isAdmin && user?.id) {
-        q = q.eq('operador_id', user.id);
+      // FECHADAS: só por período
+      if (statusFilter === 'closed') {
+        let q = baseFilter().eq('status', 'closed');
+        const now = new Date();
+        if (dateFilter === 'today') {
+          q = q.gte('opened_at', startOfDay(now).toISOString()).lte('opened_at', endOfDay(now).toISOString());
+        } else if (dateFilter === 'week') {
+          const weekAgo = subDays(now, 7);
+          q = q.gte('opened_at', startOfDay(weekAgo).toISOString()).lte('opened_at', endOfDay(now).toISOString());
+        } else if (dateFilter === 'month') {
+          const monthAgo = subDays(now, 30);
+          q = q.gte('opened_at', startOfDay(monthAgo).toISOString()).lte('opened_at', endOfDay(now).toISOString());
+        } else if (dateFilter === 'custom' && customDateStart && customDateEnd) {
+          q = q.gte('opened_at', startOfDay(customDateStart).toISOString()).lte('opened_at', endOfDay(customDateEnd).toISOString());
+        }
+        q = q.order('opened_at', { ascending: false });
+        const { data, error } = await q.execute();
+        if (error) { console.warn('Erro ao buscar sessões de caixa:', error); return []; }
+        return (data || []) as CashSession[];
       }
 
-      const { data, error } = await q.execute();
-      if (error) {
-        console.warn('Erro ao buscar sessões de caixa:', error);
-        return [];
+      // TODOS: período + sempre incluir sessões abertas (para caixas abertos aparecerem mesmo com opened_at null ou fora do período)
+      const now = new Date();
+      let qPeriod = baseFilter();
+      if (dateFilter === 'today') {
+        qPeriod = qPeriod.gte('opened_at', startOfDay(now).toISOString()).lte('opened_at', endOfDay(now).toISOString());
+      } else if (dateFilter === 'week') {
+        const weekAgo = subDays(now, 7);
+        qPeriod = qPeriod.gte('opened_at', startOfDay(weekAgo).toISOString()).lte('opened_at', endOfDay(now).toISOString());
+      } else if (dateFilter === 'month') {
+        const monthAgo = subDays(now, 30);
+        qPeriod = qPeriod.gte('opened_at', startOfDay(monthAgo).toISOString()).lte('opened_at', endOfDay(now).toISOString());
+      } else if (dateFilter === 'custom' && customDateStart && customDateEnd) {
+        qPeriod = qPeriod.gte('opened_at', startOfDay(customDateStart).toISOString()).lte('opened_at', endOfDay(customDateEnd).toISOString());
       }
-      return (data || []) as CashSession[];
+      qPeriod = qPeriod.order('opened_at', { ascending: false });
+
+      const [byPeriodRes, openRes] = await Promise.all([
+        qPeriod.execute(),
+        baseFilter().eq('status', 'open').execute(),
+      ]);
+      if (byPeriodRes.error) { console.warn('Erro ao buscar sessões de caixa:', byPeriodRes.error); return []; }
+
+      const byPeriod = (byPeriodRes.data || []) as CashSession[];
+      const openSessions = (openRes.data || []) as CashSession[];
+      const seen = new Set(byPeriod.map(s => s.id));
+      const merged = [...byPeriod];
+      for (const s of openSessions) {
+        if (!seen.has(s.id)) { seen.add(s.id); merged.push(s); }
+      }
+      merged.sort((a, b) => {
+        const aAt = a.opened_at ? new Date(a.opened_at).getTime() : 0;
+        const bAt = b.opened_at ? new Date(b.opened_at).getTime() : 0;
+        return bAt - aAt;
+      });
+      return merged;
     },
     retry: false,
   });
@@ -124,7 +246,9 @@ export function CashRegisterSessionsManager({ month, statusFilter = 'all' }: Pro
       <CardContent>
         {sessions.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            Nenhuma sessão de caixa encontrada para {month.replace('-', '/')}
+            {statusFilter === 'open'
+              ? 'Nenhuma sessão de caixa aberta no momento.'
+              : 'Nenhuma sessão de caixa encontrada no período selecionado.'}
           </div>
         ) : (
           <div className="border rounded-lg overflow-hidden">
@@ -230,6 +354,78 @@ export function CashRegisterSessionsManager({ month, statusFilter = 'all' }: Pro
                   <div className="text-sm text-muted-foreground">Sem totais registrados (caixa ainda aberto ou não conferido)</div>
                 )}
               </div>
+
+              {selected.status === 'open' && isAdmin && (
+                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                  <div className="font-semibold">Ações do administrador</div>
+                  <div className="flex flex-wrap gap-2">
+                    {!showCloseForm && !showMovementForm && (
+                      <>
+                        <Button variant="destructive" size="sm" onClick={() => setShowCloseForm(true)} className="gap-1">
+                          <Lock className="h-4 w-4" /> Fechar caixa
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setMovementType('sangria'); setShowMovementForm(true); }} className="gap-1">
+                          <Minus className="h-4 w-4" /> Sangria
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setMovementType('suprimento'); setShowMovementForm(true); }} className="gap-1">
+                          <Plus className="h-4 w-4" /> Suprimento
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  {showCloseForm && (
+                    <div className="space-y-2 p-3 border rounded-lg">
+                      <Label>Valor final no caixa (R$)</Label>
+                      <Input type="text" inputMode="decimal" placeholder="0,00" value={valorFinal} onChange={(e) => setValorFinal(e.target.value)} />
+                      <Label>Justificativa (opcional)</Label>
+                      <Textarea placeholder="Ex.: Conferido com fechamento" value={justificativa} onChange={(e) => setJustificativa(e.target.value)} rows={2} />
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={isSubmitting} onClick={handleCloseCash}>Fechar caixa</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setShowCloseForm(false); setValorFinal(''); setJustificativa(''); }}>Cancelar</Button>
+                      </div>
+                    </div>
+                  )}
+                  {showMovementForm && (
+                    <div className="space-y-2 p-3 border rounded-lg">
+                      <Label>{movementType === 'sangria' ? 'Valor da sangria (R$)' : 'Valor do suprimento (R$)'}</Label>
+                      <Input type="text" inputMode="decimal" placeholder="0,00" value={movementValor} onChange={(e) => setMovementValor(e.target.value)} />
+                      <Label>Motivo (opcional)</Label>
+                      <Input placeholder="Ex.: Troco para vendas" value={movementMotivo} onChange={(e) => setMovementMotivo(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={isSubmitting} onClick={handleAddMovement}>Registrar</Button>
+                        <Button size="sm" variant="outline" onClick={() => { setShowMovementForm(false); setMovementValor(''); setMovementMotivo(''); }}>Cancelar</Button>
+                      </div>
+                    </div>
+                  )}
+                  {movements.length > 0 && (
+                    <div>
+                      <div className="font-medium mb-2">Movimentos desta sessão</div>
+                      <div className="border rounded overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Valor</TableHead>
+                              <TableHead>Motivo</TableHead>
+                              <TableHead>Data</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {movements.map((m: any) => (
+                              <TableRow key={m.id}>
+                                <TableCell>{m.tipo === 'sangria' ? 'Sangria' : 'Suprimento'}</TableCell>
+                                <TableCell>{currencyFormatters.brl(Number(m.valor || 0))}</TableCell>
+                                <TableCell>{m.motivo || '-'}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{m.created_at ? dateFormatters.short(m.created_at) : '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

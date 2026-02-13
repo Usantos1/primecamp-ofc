@@ -393,7 +393,6 @@ export function ProductFormOptimized({
   onOpenChange,
   produto,
   onSave,
-  grupos = [],
   marcas = [],
   modelos = [],
 }: ProductFormOptimizedProps) {
@@ -403,11 +402,6 @@ export function ProductFormOptimized({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCodigo, setIsLoadingCodigo] = useState(false);
   const [activeTab, setActiveTab] = useState('dados');
-  const [grupoOpen, setGrupoOpen] = useState(false);
-  const [showNewGrupoDialog, setShowNewGrupoDialog] = useState(false);
-  const [newGrupoNome, setNewGrupoNome] = useState('');
-  const [gruposLocais, setGruposLocais] = useState<any[]>([]);
-  
   // Estados para marcas
   const [marcaOpen, setMarcaOpen] = useState(false);
   const [showNewMarcaDialog, setShowNewMarcaDialog] = useState(false);
@@ -423,21 +417,6 @@ export function ProductFormOptimized({
   // Usar marcas e modelos do hook se disponíveis, senão usar props
   const marcasList = marcasFromHook.length > 0 ? marcasFromHook : (marcas || []);
   const modelosList = modelosFromHook.length > 0 ? modelosFromHook : (modelos || []);
-  
-  // Combinar grupos das props com grupos locais criados
-  const gruposList = useMemo(() => {
-    const gruposFromProps = grupos || [];
-    const gruposCombinados = [...gruposFromProps, ...gruposLocais];
-    // Remover duplicatas baseado no nome
-    const unique = gruposCombinados.filter((g, index, self) => 
-      index === self.findIndex((gr) => (gr.nome || gr) === (g.nome || g))
-    );
-    return unique.sort((a, b) => {
-      const nomeA = (a.nome || a).toLowerCase();
-      const nomeB = (b.nome || b).toLowerCase();
-      return nomeA.localeCompare(nomeB);
-    });
-  }, [grupos, gruposLocais]);
   
   const isEditing = Boolean(produto?.id);
   const isCloning = Boolean(produto && !produto.id); // Produto sem ID = clonagem
@@ -616,30 +595,6 @@ export function ProductFormOptimized({
     }
   };
 
-  // Criar novo grupo
-  const handleCreateNewGrupo = () => {
-    if (!newGrupoNome.trim()) return;
-    
-    const novoGrupoNome = newGrupoNome.trim();
-    
-    // Adicionar à lista local de grupos
-    setGruposLocais(prev => {
-      // Verificar se já existe
-      const existe = prev.some(g => (g.nome || g) === novoGrupoNome);
-      if (existe) return prev;
-      return [...prev, { id: novoGrupoNome, nome: novoGrupoNome }];
-    });
-    
-    // Definir o valor no formulário
-    setValue('grupo', novoGrupoNome);
-    
-    // Invalidar query de grupos para atualizar a lista quando houver produtos com esse grupo
-    queryClient.invalidateQueries({ queryKey: ['produtos-grupos'] });
-    
-    setShowNewGrupoDialog(false);
-    setNewGrupoNome('');
-  };
-
   // Converter valor bruto (string com vírgula) para número
   const parseRawValue = (rawValue: string): number => {
     if (!rawValue || rawValue.trim() === '') return 0;
@@ -793,7 +748,7 @@ export function ProductFormOptimized({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Label htmlFor="nome">
-                    Nome/Descrição *
+                    Nome/Descrição <span className="text-destructive">*</span>
                     {errors.nome && <span className="text-destructive ml-2">({errors.nome.message})</span>}
                   </Label>
                   <Input
@@ -939,7 +894,7 @@ export function ProductFormOptimized({
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="new-marca-nome">Nome da Marca *</Label>
+                          <Label htmlFor="new-marca-nome">Nome da Marca <span className="text-destructive">*</span></Label>
                           <Input
                             id="new-marca-nome"
                             value={newMarcaNome}
@@ -1049,7 +1004,7 @@ export function ProductFormOptimized({
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor="new-modelo-nome">Nome do Modelo *</Label>
+                          <Label htmlFor="new-modelo-nome">Nome do Modelo <span className="text-destructive">*</span></Label>
                           <Input
                             id="new-modelo-nome"
                             value={newModeloNome}
@@ -1078,108 +1033,6 @@ export function ProductFormOptimized({
                             type="button"
                             onClick={handleCreateNewModelo}
                             disabled={!newModeloNome.trim() || !watch('marca')}
-                          >
-                            Criar e Selecionar
-                          </Button>
-                        </DialogFooter>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-
-                <div>
-                  <Label htmlFor="grupo">Grupo/Categoria</Label>
-                  <Popover open={grupoOpen} onOpenChange={setGrupoOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={grupoOpen}
-                        className="w-full justify-between text-base md:text-sm"
-                      >
-                        {watch('grupo') || 'Selecione o grupo'}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Buscar grupo..." />
-                        <CommandList>
-                          <CommandEmpty>Nenhum grupo encontrado.</CommandEmpty>
-                          <CommandGroup>
-                            {gruposList.map((grupo) => (
-                              <CommandItem
-                                key={grupo.id || grupo}
-                                value={grupo.nome || grupo}
-                                onSelect={() => {
-                                  setValue('grupo', grupo.nome || grupo);
-                                  setGrupoOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    watch('grupo') === (grupo.nome || grupo) ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {grupo.nome || grupo}
-                              </CommandItem>
-                            ))}
-                            <CommandItem
-                              value="__new__"
-                              onSelect={() => {
-                                setGrupoOpen(false);
-                                setShowNewGrupoDialog(true);
-                              }}
-                              className="text-primary font-semibold"
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Criar novo grupo
-                            </CommandItem>
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  
-                  {/* Dialog para criar novo grupo */}
-                  <Dialog open={showNewGrupoDialog} onOpenChange={setShowNewGrupoDialog}>
-                    <DialogContent className="max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Novo Grupo/Categoria</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="new-grupo-nome">Nome do Grupo *</Label>
-                          <Input
-                            id="new-grupo-nome"
-                            value={newGrupoNome}
-                            onChange={(e) => setNewGrupoNome(e.target.value)}
-                            placeholder="Ex: ACESSÓRIOS"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleCreateNewGrupo();
-                              }
-                            }}
-                            autoFocus
-                          />
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setShowNewGrupoDialog(false);
-                              setNewGrupoNome('');
-                            }}
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={handleCreateNewGrupo}
-                            disabled={!newGrupoNome.trim()}
                           >
                             Criar e Selecionar
                           </Button>
@@ -1242,7 +1095,7 @@ export function ProductFormOptimized({
 
                 <div>
                   <Label htmlFor="valor_venda">
-                    Valor de Venda (Dinheiro/PIX) *
+                    Valor de Venda (Dinheiro/PIX) <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="valor_venda"
