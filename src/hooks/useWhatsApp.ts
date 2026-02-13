@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 
+const APP_BASE_URL = import.meta.env.VITE_APP_URL || 'https://primecamp.cloud';
+
 interface SendMessageData {
   number: string;
   body: string;
@@ -163,7 +165,7 @@ export function useWhatsApp() {
       'delayed': 'Atrasada'
     };
 
-    const message = `🔔 *Nova Tarefa Atribuída*\n\n📋 *Tarefa:* ${task.name}\n📊 *Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n📊 *Prioridade:* ${task.priority || 'Normal'}\n🔗 *Link:* http://primecelular.com/tarefas\n\nAcesse o sistema para mais detalhes!`;
+    const message = `🔔 *Nova Tarefa Atribuída*\n\n📋 *Tarefa:* ${task.name}\n📊 *Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n📊 *Prioridade:* ${task.priority || 'Normal'}\n🔗 *Link:* ${APP_BASE_URL}/tarefas\n\nAcesse o sistema para mais detalhes!`;
 
     await sendMessage({
       number: userPhone,
@@ -177,7 +179,7 @@ export function useWhatsApp() {
       return;
     }
 
-    const message = `📅 *Novo Evento Agendado*\n\n📋 *Evento:* ${event.title}\n⏰ *Data/Hora:* ${new Date(event.start_time).toLocaleString('pt-BR')}\n📍 *Local:* ${event.location || 'Não informado'}\n🔗 *Link:* http://primecelular.com/calendario\n\nNão esqueça do seu compromisso!`;
+    const message = `📅 *Novo Evento Agendado*\n\n📋 *Evento:* ${event.title}\n⏰ *Data/Hora:* ${new Date(event.start_time).toLocaleString('pt-BR')}\n📍 *Local:* ${event.location || 'Não informado'}\n🔗 *Link:* ${APP_BASE_URL}/calendario\n\nNão esqueça do seu compromisso!`;
 
     await sendMessage({
       number: userPhone,
@@ -199,7 +201,7 @@ export function useWhatsApp() {
       'delayed': 'Atrasada'
     };
 
-    const message = `🔄 *Status da Tarefa Atualizado*\n\n📋 *Tarefa:* ${task.name}\n📊 *Novo Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n🔗 *Link:* http://primecelular.com/tarefas\n\nVerifique os detalhes no sistema!`;
+    const message = `🔄 *Status da Tarefa Atualizado*\n\n📋 *Tarefa:* ${task.name}\n📊 *Novo Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n🔗 *Link:* ${APP_BASE_URL}/tarefas\n\nVerifique os detalhes no sistema!`;
 
     await sendMessage({
       number: userPhone,
@@ -215,7 +217,7 @@ export function useWhatsApp() {
     }
 
     console.log('🔥 Creating message for process:', process.name);
-    const message = `📋 *Novo Processo Criado*\n\n📋 *Processo:* ${process.name}\n📝 *Objetivo:* ${process.objective}\n🏢 *Departamento:* ${process.department}\n👤 *Proprietário:* ${process.owner}\n🔗 *Link:* http://primecelular.com/processos\n\nAcesse o sistema para mais detalhes!`;
+    const message = `📋 *Novo Processo Criado*\n\n📋 *Processo:* ${process.name}\n📝 *Objetivo:* ${process.objective}\n🏢 *Departamento:* ${process.department}\n👤 *Proprietário:* ${process.owner}\n🔗 *Link:* ${APP_BASE_URL}/processos\n\nAcesse o sistema para mais detalhes!`;
 
     console.log('🔥 Sending WhatsApp message:', { number: userPhone, message });
     await sendMessage({
@@ -230,7 +232,7 @@ export function useWhatsApp() {
       return;
     }
 
-    const message = `🌟 *Lembrete NPS Diário*\n\nOlá ${userName}! 👋\n\nÉ hora de avaliar seu dia no trabalho.\n\nPor favor, acesse o sistema e responda nossa pesquisa NPS diária.\n\n🔗 *Link:* http://primecelular.com/nps\n\nSua opinião é muito importante para nós! 💙`;
+    const message = `🌟 *Lembrete NPS Diário*\n\nOlá ${userName}! 👋\n\nÉ hora de avaliar seu dia no trabalho.\n\nPor favor, acesse o sistema e responda nossa pesquisa NPS diária.\n\n🔗 *Link:* ${APP_BASE_URL}/nps\n\nSua opinião é muito importante para nós! 💙`;
 
     await sendMessage({
       number: userPhone,
@@ -251,7 +253,7 @@ export function useWhatsApp() {
       `📮 *CEP:* ${candidate.cep || 'Não informado'}\n` +
       `🔗 *Protocolo:* ${candidate.protocol}\n\n` +
       `Acesse o sistema para mais detalhes:\n` +
-      `http://primecelular.com/admin/vagas`;
+      `${APP_BASE_URL}/admin/vagas`;
 
     await sendMessage({
       number: adminPhone,
@@ -282,7 +284,7 @@ export function useWhatsApp() {
       `• C (Conformidade): ${testData.c_score || 0}\n\n` +
       `🎯 *Perfil Dominante:* ${profileLabels[testData.dominant_profile] || 'Não definido'}\n\n` +
       `Acesse o sistema para análise completa:\n` +
-      `http://primecelular.com/admin/disc`;
+      `${APP_BASE_URL}/admin/disc`;
 
     await sendMessage({
       number: adminPhone,

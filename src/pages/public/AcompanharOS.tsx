@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { from } from '@/integrations/db/client';
 import { OrdemServico } from '@/types/assistencia';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Smartphone, User, Calendar, Clock, DollarSign, CheckCircle2, XCircle, AlertCircle, Wrench, Package } from 'lucide-react';
 import { dateFormatters, currencyFormatters } from '@/utils/formatters';
 import { STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
 
 export default function AcompanharOS() {
   const { id } = useParams<{ id: string }>();
@@ -29,14 +30,15 @@ export default function AcompanharOS() {
       setLoading(true);
       setError(null);
 
-      // Buscar OS via PostgreSQL API
-      const { data: osData, error: osError } = await from('ordens_servico')
-        .select('id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, operadora, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes')
-        .eq('id', id)
-        .single()
-        .execute();
-
-      if (osError) throw osError;
+      // API pública: qualquer pessoa com o link (ex.: QR code) pode ver o status sem login
+      const res = await fetch(`${API_URL}/public/acompanhar-os/${id}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || 'Ordem de Serviço não encontrada');
+        setLoading(false);
+        return;
+      }
+      const osData = json.data;
       if (!osData) {
         setError('Ordem de Serviço não encontrada');
         setLoading(false);

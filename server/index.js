@@ -695,6 +695,27 @@ app.get('/api/public/candidatura/:protocol', async (req, res) => {
   }
 });
 
+// Acompanhamento de OS (público - usado pelo QR code no cupom/termica da OS)
+app.get('/api/public/acompanhar-os/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'ID da OS é obrigatório' });
+    const result = await pool.query(`
+      SELECT id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, operadora, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes
+      FROM ordens_servico
+      WHERE id = $1
+      LIMIT 1
+    `, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Ordem de Serviço não encontrada' });
+    }
+    res.json({ data: result.rows[0] });
+  } catch (error) {
+    console.error('[Public] Erro ao consultar OS:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // ENDPOINTS DE CANDIDATURA (Functions - Público)
 // ============================================

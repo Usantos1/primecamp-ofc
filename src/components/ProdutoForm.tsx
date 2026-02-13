@@ -22,7 +22,7 @@ const produtoSchema = z.object({
   modelo: z.string().min(1, 'Modelo é obrigatório'),
   qualidade: z.string().min(1, 'Qualidade é obrigatória'),
   valor_dinheiro_pix_display: z.string().min(1, 'Valor dinheiro/Pix é obrigatório'),
-  valor_parcelado_6x_display: z.string().min(1, 'Valor parcelado 6x é obrigatório'),
+  valor_parcelado_6x_display: z.string().optional(),
 });
 
 type ProdutoFormData = z.infer<typeof produtoSchema>;
@@ -90,7 +90,7 @@ export function ProdutoForm({ open, onOpenChange, product }: ProdutoFormProps) {
       modelo: data.modelo,
       qualidade: data.qualidade,
       valor_dinheiro_pix: parseBRLInput(data.valor_dinheiro_pix_display),
-      valor_parcelado_6x: parseBRLInput(data.valor_parcelado_6x_display),
+      valor_parcelado_6x: data.valor_parcelado_6x_display ? parseBRLInput(data.valor_parcelado_6x_display) : undefined,
     };
 
     if (isEditing && product && product.id) {
@@ -241,7 +241,7 @@ export function ProdutoForm({ open, onOpenChange, product }: ProdutoFormProps) {
                 name="valor_parcelado_6x_display"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor Parcelado 6x *</FormLabel>
+                    <FormLabel>Valor Parcelado 6x</FormLabel>
                     <FormControl>
                       <Input
                         {...field}

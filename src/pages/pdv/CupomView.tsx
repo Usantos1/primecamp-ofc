@@ -81,21 +81,45 @@ export default function CupomView() {
     if (!id) return;
     try {
       setLoading(true);
-      
-      // Carregar venda
-      const { data: saleData, error: saleError } = await from('sales')
+
+      // Tentar por ID (UUID) primeiro
+      let saleData: any = null;
+      let saleError: any = null;
+      const byId = await from('sales')
         .select('*')
         .eq('id', id)
         .single()
         .execute();
-      
+      saleData = byId.data;
+      saleError = byId.error;
+
+      // Se não encontrou e o id parece número (link compartilhado com número da venda), buscar por numero
+      const idAsNum = id ? parseInt(id, 10) : NaN;
+      if ((saleError || !saleData) && !isNaN(idAsNum) && String(idAsNum) === id) {
+        const byNumero = await from('sales')
+          .select('*')
+          .eq('numero', idAsNum)
+          .maybeSingle()
+          .execute();
+        if (byNumero.data) {
+          saleData = byNumero.data;
+          saleError = null;
+        }
+      }
+
       if (saleError) throw saleError;
       setSale(saleData);
-      
+
+      const saleId = saleData?.id;
+      if (!saleId) {
+        setLoading(false);
+        return;
+      }
+
       // Carregar items
       const { data: itemsData, error: itemsError } = await from('sale_items')
         .select('*')
-        .eq('sale_id', id)
+        .eq('sale_id', saleId)
         .execute();
       
       if (itemsError) throw itemsError;
@@ -104,7 +128,7 @@ export default function CupomView() {
       // Carregar payments
       const { data: paymentsData, error: paymentsError } = await from('payments')
         .select('*')
-        .eq('sale_id', id)
+        .eq('sale_id', saleId)
         .execute();
       
       if (paymentsError) throw paymentsError;

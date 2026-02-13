@@ -11,7 +11,7 @@ export type Produto = {
   modelo: string;
   qualidade: string;
   valor_dinheiro_pix: number;
-  valor_parcelado_6x: number;
+  valor_parcelado_6x?: number;
   criado_em: string;
   atualizado_em: string;
   criado_por: string;
