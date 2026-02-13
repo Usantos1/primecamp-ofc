@@ -359,8 +359,8 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
 
               {/* LUCRO LÍQUIDO */}
               <TableRow className={cn(
-                "border-t-2 border-b-2 bg-primary/5",
-                dreData.lucroLiquido >= 0 ? 'border-primary' : 'border-destructive'
+                "border-t-2 border-b-2",
+                dreData.lucroLiquido >= 0 ? 'bg-green-50/80 border-green-600' : 'bg-red-50/80 border-destructive'
               )}>
                 <TableCell className="font-bold text-xl flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />
@@ -368,7 +368,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
                 </TableCell>
                 <TableCell className={cn(
                   "text-right font-bold text-xl",
-                  dreData.lucroLiquido >= 0 ? 'text-primary' : 'text-destructive'
+                  dreData.lucroLiquido >= 0 ? 'text-green-700' : 'text-red-700'
                 )}>
                   {currencyFormatters.brl(dreData.lucroLiquido)}
                 </TableCell>
@@ -377,7 +377,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
                 <TableCell className="font-medium">Margem Líquida</TableCell>
                 <TableCell className={cn(
                   "text-right font-bold text-lg",
-                  dreData.margemLiquida >= 0 ? 'text-primary' : 'text-destructive'
+                  dreData.margemLiquida >= 0 ? 'text-green-700' : 'text-red-700'
                 )}>
                   {dreData.margemLiquida.toFixed(2)}%
                 </TableCell>
@@ -402,12 +402,12 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           </div>
           <div className={cn(
             "p-3 rounded-lg text-center border",
-            dreData.lucroLiquido >= 0 ? 'bg-primary/10 border-primary/30' : 'bg-destructive/10 border-destructive/30'
+            dreData.lucroLiquido >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
           )}>
             <p className="text-xs text-muted-foreground">Lucro Líquido</p>
             <p className={cn(
               "text-lg font-bold",
-              dreData.lucroLiquido >= 0 ? 'text-primary' : 'text-destructive'
+              dreData.lucroLiquido >= 0 ? 'text-green-700' : 'text-red-700'
             )}>
               {currencyFormatters.brl(dreData.lucroLiquido)}
             </p>
