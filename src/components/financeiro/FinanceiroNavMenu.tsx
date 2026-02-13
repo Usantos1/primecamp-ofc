@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { 
   Home, Warehouse, Users, Package, 
   TrendingUp, FileText, Target,
-  DollarSign, Wallet, BarChart3, ArrowLeftRight
+  DollarSign, ArrowLeftRight
 } from 'lucide-react';
 
 const menuItems = [
@@ -20,7 +20,6 @@ const menuItems = [
   { path: '/financeiro/caixa', label: 'Caixa', icon: DollarSign },
   { path: '/financeiro/contas', label: 'Contas', icon: FileText },
   { path: '/financeiro/transacoes', label: 'Transações', icon: TrendingUp },
-  { path: '/financeiro/relatorios', label: 'Relatórios', icon: BarChart3 },
 ];
 
 export function FinanceiroNavMenu() {
@@ -29,7 +28,7 @@ export function FinanceiroNavMenu() {
 
   return (
     <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 justify-center">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path || 

@@ -19,6 +19,7 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -675,7 +676,12 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Categoria</Label>
+                  <Link to="/financeiro/categorias" className="text-xs text-muted-foreground hover:underline">
+                    Gerenciar categorias
+                  </Link>
+                </div>
                 <Select
                   value={formData.category_id || undefined}
                   onValueChange={(value) => setFormData({ ...formData, category_id: value })}
@@ -687,7 +693,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                         categoriesLoading
                           ? 'Carregando...'
                           : availableCategories.length === 0
-                            ? 'Cadastre categorias em Contas'
+                            ? 'Cadastre categorias'
                             : 'Selecione a categoria'
                       }
                     />

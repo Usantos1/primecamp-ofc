@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -783,7 +784,12 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Categoria</Label>
+                  <Link to="/financeiro/categorias" className="text-xs text-muted-foreground hover:underline">
+                    Gerenciar categorias
+                  </Link>
+                </div>
                 <Select
                   value={formData.category_id || 'none'}
                   onValueChange={(value) => setFormData({ ...formData, category_id: value === 'none' ? '' : value })}

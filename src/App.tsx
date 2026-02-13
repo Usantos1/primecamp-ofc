@@ -50,7 +50,7 @@ import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
 import FinanceiroCaixaPage from "./pages/financeiro/FinanceiroCaixaPage";
 import FinanceiroContasPage from "./pages/financeiro/FinanceiroContasPage";
 import FinanceiroTransacoesPage from "./pages/financeiro/FinanceiroTransacoesPage";
-import FinanceiroRelatoriosPage from "./pages/financeiro/FinanceiroRelatoriosPage";
+import CategoriasFinanceiras from "./pages/financeiro/CategoriasFinanceiras";
 import AdminReseller from "./pages/admin/AdminReseller";
 import CompanyDashboardPage from "./pages/CompanyDashboardPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
@@ -225,7 +225,7 @@ const App = () => (
               <Route path="/financeiro/caixa" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroCaixaPage /></PermissionRoute>} />
               <Route path="/financeiro/contas" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroContasPage /></PermissionRoute>} />
               <Route path="/financeiro/transacoes" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroTransacoesPage /></PermissionRoute>} />
-              <Route path="/financeiro/relatorios" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroRelatoriosPage /></PermissionRoute>} />
+              <Route path="/financeiro/categorias" element={<PermissionRoute permission="relatorios.financeiro"><CategoriasFinanceiras /></PermissionRoute>} />
               
               {/* Rotas de OS - simplificadas para /os */}
               <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />

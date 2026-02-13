@@ -20,7 +20,6 @@ import {
   FileText,
 } from 'lucide-react';
 import { DashboardConfigModal } from '@/components/dashboard/DashboardConfigModal';
-import { FinancialCategoriesManager } from '@/components/financeiro/FinancialCategoriesManager';
 import {
   Dialog,
   DialogContent,
@@ -251,11 +250,6 @@ export default function Configuracoes() {
             return content;
           })}
         </div>
-
-        {/* Gerenciamento de Categorias Financeiras */}
-        <PermissionGate permission="admin.view">
-          <FinancialCategoriesManager />
-        </PermissionGate>
 
         {/* Informações Adicionais */}
         <Card className="border-2 border-gray-300 shadow-sm">
