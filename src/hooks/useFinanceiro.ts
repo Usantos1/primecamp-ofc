@@ -257,15 +257,21 @@ export function useAplicarRecomendacao() {
   });
 }
 
-// Hook: Recomendações de Estoque
-export function useRecomendacoesEstoque() {
+const RECOMENDACOES_PAGE_SIZE = 20;
+
+// Hook: Recomendações de Estoque (paginado, 20 por página)
+export function useRecomendacoesEstoque(page = 1) {
   const { user } = useAuth();
-  
+  const offset = (page - 1) * RECOMENDACOES_PAGE_SIZE;
+
   return useQuery({
-    queryKey: ['financeiro', 'estoque', 'recomendacoes'],
-    queryFn: async (): Promise<RecomendacaoEstoque[]> => {
-      const data = await fetchFinanceiro('/estoque/recomendacoes');
-      return data.recomendacoes || [];
+    queryKey: ['financeiro', 'estoque', 'recomendacoes', page],
+    queryFn: async (): Promise<{ recomendacoes: RecomendacaoEstoque[]; total: number }> => {
+      const data = await fetchFinanceiro(`/estoque/recomendacoes?limit=${RECOMENDACOES_PAGE_SIZE}&offset=${offset}`);
+      return {
+        recomendacoes: data.recomendacoes || [],
+        total: data.total ?? 0,
+      };
     },
     enabled: !!user,
   });
@@ -284,17 +290,17 @@ export function useDRE(periodo: string, tipo: 'mensal' | 'anual' = 'mensal') {
   });
 }
 
-// Hook: Planejamento Anual
+// Hook: Planejamento Anual (retorna null quando não há registro – backend retorna 200 + null)
 export function usePlanejamentoAnual(ano: number) {
   const { user } = useAuth();
-  
   return useQuery({
     queryKey: ['financeiro', 'planejamento', ano],
     queryFn: async () => {
       const data = await fetchFinanceiro(`/planejamento/${ano}`);
-      return data.planejamento;
+      return data.planejamento ?? null;
     },
     enabled: !!user && !!ano,
+    staleTime: 2 * 60 * 1000, // 2 min – evita refetch a cada foco na janela
   });
 }
 

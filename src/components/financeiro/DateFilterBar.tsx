@@ -35,25 +35,26 @@ export function DateFilterBar({
 }: DateFilterBarProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const getDateRange = () => {
+  const getDateRange = (filter?: DateFilterType) => {
+    const f = filter ?? dateFilter;
     const today = new Date();
     let startDate: string | undefined;
     let endDate: string | undefined;
 
-    if (dateFilter === 'today') {
+    if (f === 'today') {
       startDate = format(today, 'yyyy-MM-dd');
       endDate = format(today, 'yyyy-MM-dd');
-    } else if (dateFilter === 'week') {
+    } else if (f === 'week') {
       const weekAgo = new Date(today);
       weekAgo.setDate(weekAgo.getDate() - 7);
       startDate = format(weekAgo, 'yyyy-MM-dd');
       endDate = format(today, 'yyyy-MM-dd');
-    } else if (dateFilter === 'month') {
+    } else if (f === 'month') {
       const monthAgo = new Date(today);
       monthAgo.setDate(monthAgo.getDate() - 30);
       startDate = format(monthAgo, 'yyyy-MM-dd');
       endDate = format(today, 'yyyy-MM-dd');
-    } else if (dateFilter === 'custom' && customDateStart && customDateEnd) {
+    } else if (f === 'custom' && customDateStart && customDateEnd) {
       startDate = format(customDateStart, 'yyyy-MM-dd');
       endDate = format(customDateEnd, 'yyyy-MM-dd');
     } else {
@@ -61,16 +62,12 @@ export function DateFilterBar({
       endDate = undefined;
     }
 
-    if (onDatesChange) {
-      onDatesChange(startDate, endDate);
-    }
-
     return { startDate, endDate };
   };
 
   const handleFilterChange = (filter: DateFilterType) => {
+    const range = getDateRange(filter);
     onDateFilterChange(filter);
-    const range = getDateRange();
     if (onDatesChange) {
       onDatesChange(range.startDate, range.endDate);
     }
@@ -144,7 +141,7 @@ export function DateFilterBar({
                 </div>
               </div>
               <div className="p-3 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">Data Início</Label>
                     <Input
@@ -152,11 +149,11 @@ export function DateFilterBar({
                       value={customDateStart ? format(customDateStart, 'yyyy-MM-dd') : ''}
                       onChange={(e) => {
                         if (e.target.value) {
-                          const date = new Date(e.target.value + 'T00:00:00');
-                          onCustomDateStartChange?.(date);
+                          const newStart = e.target.value;
+                          onCustomDateStartChange?.(new Date(newStart + 'T00:00:00'));
                           if (customDateEnd) {
                             onDateFilterChange('custom');
-                            getDateRange();
+                            onDatesChange?.(newStart, format(customDateEnd, 'yyyy-MM-dd'));
                           }
                         }
                       }}
@@ -170,11 +167,11 @@ export function DateFilterBar({
                       value={customDateEnd ? format(customDateEnd, 'yyyy-MM-dd') : ''}
                       onChange={(e) => {
                         if (e.target.value) {
-                          const date = new Date(e.target.value + 'T23:59:59');
-                          onCustomDateEndChange?.(date);
+                          const newEnd = e.target.value;
+                          onCustomDateEndChange?.(new Date(newEnd + 'T23:59:59'));
                           if (customDateStart) {
                             onDateFilterChange('custom');
-                            getDateRange();
+                            onDatesChange?.(format(customDateStart, 'yyyy-MM-dd'), newEnd);
                           }
                         }
                       }}

@@ -1,4 +1,4 @@
-﻿// Rotas para sistema financeiro com IA (/api/financeiro/*)
+// Rotas para sistema financeiro com IA (/api/financeiro/*)
 import express from 'express';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
@@ -19,6 +19,27 @@ const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
 });
+
+// Cache para recomendações de estoque (TTL 5 min) - reduz carga no banco
+const estoqueRecomendacoesCache = new Map();
+const ESTOQUE_CACHE_TTL_MS = 5 * 60 * 1000;
+function getEstoqueRecomendacoesCacheKey(limit, offset) {
+  return `est:${limit}:${offset}`;
+}
+function getCachedEstoqueRecomendacoes(limit, offset) {
+  const key = getEstoqueRecomendacoesCacheKey(limit, offset);
+  const entry = estoqueRecomendacoesCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > ESTOQUE_CACHE_TTL_MS) {
+    estoqueRecomendacoesCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+function setCachedEstoqueRecomendacoes(limit, offset, data) {
+  const key = getEstoqueRecomendacoesCacheKey(limit, offset);
+  estoqueRecomendacoesCache.set(key, { data, at: Date.now() });
+}
 
 // ============================================
 // DASHBOARD EXECUTIVO
@@ -588,34 +609,55 @@ router.post('/recomendacoes/:id/aplicar', async (req, res) => {
 
 router.get('/estoque/recomendacoes', async (req, res) => {
   try {
-    // Produtos com estoque baixo (menos de 10 unidades)
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 500);
+    const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+
+    const cached = getCachedEstoqueRecomendacoes(limit, offset);
+    if (cached) {
+      return res.json(cached);
+    }
+
+    // Uma única query com CTE: evita N subconsultas correlacionadas (muito mais rápido)
     const estoqueBaixoQuery = `
+      WITH daily_sales AS (
+        SELECT 
+          si.produto_id,
+          DATE(s.created_at) AS dia,
+          SUM(si.quantidade)::float AS qty
+        FROM public.sale_items si
+        INNER JOIN public.sales s ON si.sale_id = s.id
+        WHERE s.created_at >= NOW() - INTERVAL '30 days'
+          AND s.status IN ('paid', 'partial')
+        GROUP BY si.produto_id, DATE(s.created_at)
+      ),
+      venda_media_por_produto AS (
+        SELECT produto_id, AVG(qty) AS venda_media_diaria
+        FROM daily_sales
+        GROUP BY produto_id
+      )
       SELECT 
         p.id,
         p.nome,
         p.codigo,
-        p.quantidade as estoque_atual,
-        COALESCE(p.estoque_minimo, 5) as estoque_minimo,
-        -- Calcular venda m├⌐dia di├íria (├║ltimos 30 dias)
-        COALESCE((
-          SELECT AVG(quantidade_diaria)
-          FROM (
-            SELECT DATE(s.created_at), SUM(si.quantidade) as quantidade_diaria
-            FROM public.sale_items si
-            INNER JOIN public.sales s ON si.sale_id = s.id
-            WHERE si.produto_id = p.id
-              AND s.created_at >= NOW() - INTERVAL '30 days'
-              AND s.status IN ('paid', 'partial')
-            GROUP BY DATE(s.created_at)
-          ) daily_sales
-        ), 0) as venda_media_diaria
+        p.quantidade AS estoque_atual,
+        COALESCE(p.estoque_minimo, 5) AS estoque_minimo,
+        COALESCE(v.venda_media_diaria, 0) AS venda_media_diaria
       FROM public.produtos p
+      LEFT JOIN venda_media_por_produto v ON v.produto_id = p.id
       WHERE p.quantidade <= COALESCE(p.estoque_minimo, 5)
       ORDER BY p.quantidade ASC
+      LIMIT $1 OFFSET $2
     `;
-    
-    const result = await pool.query(estoqueBaixoQuery);
-    
+
+    const countQuery = `SELECT COUNT(*) AS total FROM public.produtos p WHERE p.quantidade <= COALESCE(p.estoque_minimo, 5)`;
+
+    const [countResult, result] = await Promise.all([
+      pool.query(countQuery),
+      pool.query(estoqueBaixoQuery, [limit, offset]),
+    ]);
+
+    const total = parseInt(countResult.rows[0]?.total || 0, 10);
+
     const recomendacoes = result.rows.map(p => {
       const estoqueAtual = parseInt(p.estoque_atual || 0);
       const estoqueMinimo = parseInt(p.estoque_minimo || 5);
@@ -636,10 +678,12 @@ router.get('/estoque/recomendacoes', async (req, res) => {
         prioridade: estoqueAtual === 0 ? 10 : estoqueAtual <= estoqueMinimo ? 8 : 5,
       };
     });
-    
-    res.json({ recomendacoes });
+
+    const payload = { recomendacoes, total };
+    setCachedEstoqueRecomendacoes(limit, offset, payload);
+    res.json(payload);
   } catch (error) {
-    console.error('[Financeiro] Erro nas recomenda├º├╡es de estoque:', error);
+    console.error('[Financeiro] Erro nas recomendações de estoque:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -778,15 +822,10 @@ router.get('/dre/:periodo', async (req, res) => {
 router.get('/planejamento/:ano', async (req, res) => {
   try {
     const { ano } = req.params;
-    
-    const query = 'SELECT * FROM public.planejamento_anual WHERE ano = $1';
+    const query = 'SELECT * FROM public.planejamento_anual WHERE ano = $1 LIMIT 1';
     const result = await pool.query(query, [ano]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Planejamento n├úo encontrado' });
-    }
-    
-    res.json({ planejamento: result.rows[0] });
+    // Retorna 200 com null quando não existe – evita 404 e deixa o front carregar o formulário vazio
+    res.json({ planejamento: result.rows[0] || null });
   } catch (error) {
     console.error('[Financeiro] Erro no planejamento:', error);
     res.status(500).json({ error: error.message });

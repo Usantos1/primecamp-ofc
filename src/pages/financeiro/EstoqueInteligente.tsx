@@ -1,14 +1,25 @@
+import { useState } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Package, TrendingDown, TrendingUp, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Package, TrendingDown, TrendingUp, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { useRecomendacoesEstoque } from '@/hooks/useFinanceiro';
 
+const PAGE_SIZE = 20;
+
 export default function EstoqueInteligente() {
-  const { data: recomendacoes, isLoading } = useRecomendacoesEstoque();
-  
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useRecomendacoesEstoque(page);
+
+  const recomendacoes = data?.recomendacoes ?? [];
+  const totalFromApi = data?.total ?? 0;
+  const total = totalFromApi > 0 ? totalFromApi : recomendacoes.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const showPagination = total > PAGE_SIZE || (recomendacoes.length >= PAGE_SIZE && page === 1);
+
   if (isLoading) {
     return (
       <ModernLayout title="Estoque Inteligente" subtitle="Recomendações de reposição baseadas em IA">
@@ -18,10 +29,10 @@ export default function EstoqueInteligente() {
       </ModernLayout>
     );
   }
-  
-  const recomendacoesCriticas = (recomendacoes || []).filter((r: any) => r.prioridade >= 9);
-  const recomendacoesAltas = (recomendacoes || []).filter((r: any) => r.prioridade >= 7 && r.prioridade < 9);
-  const recomendacoesMedias = (recomendacoes || []).filter((r: any) => r.prioridade < 7);
+
+  const recomendacoesCriticas = recomendacoes.filter((r: any) => r.prioridade >= 9);
+  const recomendacoesAltas = recomendacoes.filter((r: any) => r.prioridade >= 7 && r.prioridade < 9);
+  const recomendacoesMedias = recomendacoes.filter((r: any) => r.prioridade < 7);
   
   const getPrioridadeBadge = (prioridade: number) => {
     if (prioridade >= 9) {
@@ -164,7 +175,7 @@ export default function EstoqueInteligente() {
           {recomendacoesAltas.length > 0 && renderRecomendacoes(recomendacoesAltas, 'Alta Prioridade', <TrendingDown className="h-5 w-5 text-orange-600" />)}
           {recomendacoesMedias.length > 0 && renderRecomendacoes(recomendacoesMedias, 'Monitorar', <Package className="h-5 w-5 text-yellow-600" />)}
           
-          {(recomendacoes || []).length === 0 && (
+          {recomendacoes.length === 0 && (
             <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
               <CardContent className="p-12 text-center">
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
@@ -172,6 +183,43 @@ export default function EstoqueInteligente() {
                 <p className="text-muted-foreground">
                   Todos os produtos estão com estoque adequado. Nenhuma ação necessária no momento.
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Paginação - 100 itens por página */}
+          {showPagination && (
+            <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm flex-shrink-0">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {((page - 1) * PAGE_SIZE) + 1} a {Math.min(page * PAGE_SIZE, total)} de {total} produtos
+                    <span className="text-muted-foreground/80 ml-1">(20 por página)</span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </Button>
+                    <span className="text-sm font-medium px-2">
+                      Página {page} de {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                    >
+                      Próxima
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}

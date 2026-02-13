@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Check, Search, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Check, Search, Filter, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BillToPayFormData, BILL_STATUS_LABELS, EXPENSE_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, FinancialCategory, BillToPay } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
@@ -44,6 +44,35 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
+  const [deletingRecurringBillId, setDeletingRecurringBillId] = useState<string | null>(null);
+  const [addRecurringStart, setAddRecurringStart] = useState('');
+  const [addRecurringEnd, setAddRecurringEnd] = useState('');
+  const [isAddingMonths, setIsAddingMonths] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Buscar todas as contas do mesmo grupo recorrente (quando editando uma conta recorrente)
+  const { data: recurringGroupBills = [] } = useQuery({
+    queryKey: ['bills-recurring-group', editingBill?.description, editingBill?.supplier ?? '', editingBill?.amount],
+    queryFn: async () => {
+      if (!editingBill?.recurring || !editingBill?.description) return [];
+      try {
+        const q = from('bills_to_pay')
+          .select('*')
+          .eq('description', editingBill.description)
+          .eq('recurring', true)
+          .order('due_date', { ascending: true });
+        const { data, error } = await q.execute();
+        if (error) throw error;
+        const all = (data || []) as BillToPay[];
+        const supplier = editingBill.supplier ?? '';
+        return all.filter((b: BillToPay) => (b.supplier ?? '') === supplier);
+      } catch (err) {
+        console.warn('Erro ao buscar grupo recorrente:', err);
+        return [];
+      }
+    },
+    enabled: !!editingBill?.recurring && isDialogOpen,
+  });
 
   // Buscar categorias financeiras (apenas tipo 'saida')
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
@@ -177,6 +206,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      queryClient.invalidateQueries({ queryKey: ['bills-recurring-group'] });
       toast({
         title: 'Sucesso!',
         description: 'Conta atualizada com sucesso.',
@@ -231,8 +261,10 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
         .execute();
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      queryClient.invalidateQueries({ queryKey: ['bills-recurring-group'] });
+      setDeletingRecurringBillId(null);
       toast({
         title: 'Sucesso!',
         description: 'Conta excluída com sucesso.',
@@ -302,6 +334,14 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     return matchesSearch && matchesStatus && matchesType && matchesCategory && matchesPeriod;
   });
 
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(filteredBills.length / ITEMS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const paginatedBills = filteredBills.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
+
   // Helper para formatar data para input type="date"
   const formatDateForInput = (date: string | null | undefined): string => {
     if (!date) return new Date().toISOString().split('T')[0];
@@ -363,6 +403,112 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
     setIsDialogOpen(false);
   };
 
+  // Carregar uma conta do grupo recorrente no formulário para editar
+  const handleEditRecurringBill = (bill: BillToPay) => {
+    setEditingBill(bill);
+    setFormData({
+      description: bill.description,
+      amount: bill.amount,
+      category_id: bill.category_id || '',
+      expense_type: bill.expense_type,
+      due_date: formatDateForInput(bill.due_date),
+      supplier: bill.supplier || '',
+      notes: bill.notes || '',
+      recurring: true,
+      recurring_day: bill.recurring_day,
+      recurring_start: new Date().toISOString().slice(0, 7),
+      recurring_end: new Date().toISOString().slice(0, 7),
+    });
+  };
+
+  // Adicionar novos meses à recorrência (cria contas para o período; não duplica meses existentes)
+  const addRecurringMonths = useMutation({
+    mutationFn: async ({ startMonth, endMonth }: { startMonth: string; endMonth: string }) => {
+      if (!editingBill?.recurring || !editingBill.recurring_day) throw new Error('Conta recorrente inválida');
+      const [startYear, startM] = startMonth.split('-').map(Number);
+      const [endYear, endM] = endMonth.split('-').map(Number);
+      const existingDates = new Set(
+        recurringGroupBills.map((b) => (b.due_date || '').substring(0, 7))
+      );
+      const billsToCreate: any[] = [];
+      let year = startYear;
+      let month = startM;
+      const cleanData = {
+        description: editingBill.description,
+        amount: editingBill.amount,
+        category_id: editingBill.category_id || undefined,
+        expense_type: editingBill.expense_type,
+        supplier: editingBill.supplier || undefined,
+        notes: editingBill.notes || undefined,
+        recurring: true,
+        recurring_day: editingBill.recurring_day,
+        created_by: user?.id,
+      };
+      while (year < endYear || (year === endYear && month <= endM)) {
+        const key = `${year}-${String(month).padStart(2, '0')}`;
+        if (!existingDates.has(key)) {
+          const lastDay = new Date(year, month, 0).getDate();
+          const day = Math.min(editingBill.recurring_day, lastDay);
+          const dueDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          billsToCreate.push({ ...cleanData, due_date: dueDate });
+        }
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+      }
+      if (billsToCreate.length === 0) {
+        return { added: 0 };
+      }
+      const { data, error } = await from('bills_to_pay').insert(billsToCreate).select().execute();
+      if (error) throw error;
+      return { added: Array.isArray(data) ? data.length : 0 };
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ['bills-to-pay'] });
+      queryClient.invalidateQueries({ queryKey: ['bills-recurring-group'] });
+      setAddRecurringStart('');
+      setAddRecurringEnd('');
+      const count = result?.added ?? 0;
+      if (count > 0) {
+        toast({ title: 'Meses adicionados!', description: `${count} parcela(s) criada(s).` });
+      } else {
+        toast({ title: 'Nenhum mês novo', description: 'Todos os meses desse período já existem na recorrência.', variant: 'destructive' });
+      }
+    },
+    onError: (e: any) => {
+      toast({ title: 'Erro', description: e.message || 'Erro ao adicionar meses.', variant: 'destructive' });
+    },
+  });
+
+  const handleAddRecurringMonths = () => {
+    if (!addRecurringStart || !addRecurringEnd) {
+      toast({ title: 'Preencha mês inicial e final', variant: 'destructive' });
+      return;
+    }
+    if (addRecurringStart > addRecurringEnd) {
+      toast({ title: 'Mês inicial deve ser anterior ao final', variant: 'destructive' });
+      return;
+    }
+    setIsAddingMonths(true);
+    addRecurringMonths.mutate(
+      { startMonth: addRecurringStart, endMonth: addRecurringEnd },
+      { onSettled: () => setIsAddingMonths(false) }
+    );
+  };
+
+  const handleDeleteRecurringBill = (bill: BillToPay) => {
+    setDeletingRecurringBillId(bill.id);
+  };
+
+  const handleConfirmDeleteRecurring = async () => {
+    if (deletingRecurringBillId) {
+      await deleteBill.mutateAsync(deletingRecurringBillId);
+      setDeletingRecurringBillId(null);
+    }
+  };
+
   const handlePayBill = async () => {
     if (payingBillId) {
       await payBill.mutateAsync({ id: payingBillId, payment_method: paymentMethod, payment_date: paymentDate });
@@ -407,63 +553,78 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar contas..."
+        <div className="flex flex-col sm:flex-row flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-sm">
+            <Label className="text-xs text-muted-foreground">Buscar</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Descrição ou fornecedor..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="pl-9"
+              />
+            </div>
           </div>
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos períodos</SelectItem>
-              <SelectItem value="mes_atual">Mês atual</SelectItem>
-              <SelectItem value="mes_proximo">Próximo mês</SelectItem>
-              <SelectItem value="proximos_7_dias">Próximos 7 dias</SelectItem>
-              <SelectItem value="atrasadas">Atrasadas</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="pago">Pago</SelectItem>
-              <SelectItem value="atrasado">Atrasado</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="fixa">Fixa</SelectItem>
-              <SelectItem value="variavel">Variável</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Período</Label>
+            <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos períodos</SelectItem>
+                <SelectItem value="mes_atual">Mês atual</SelectItem>
+                <SelectItem value="mes_proximo">Próximo mês</SelectItem>
+                <SelectItem value="proximos_7_dias">Próximos 7 dias</SelectItem>
+                <SelectItem value="atrasadas">Atrasadas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Status</Label>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="pago">Pago</SelectItem>
+                <SelectItem value="atrasado">Atrasado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Tipo</Label>
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="fixa">Fixa</SelectItem>
+                <SelectItem value="variavel">Variável</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Categoria</Label>
+            <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Tabela */}
@@ -489,7 +650,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBills.map((bill) => (
+                {paginatedBills.map((bill) => (
                   <TableRow key={bill.id}>
                     <TableCell className="font-medium">{bill.description}</TableCell>
                     <TableCell className="text-muted-foreground">{bill.supplier || '-'}</TableCell>
@@ -545,11 +706,43 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
             </Table>
           </div>
         )}
+
+        {/* Paginação */}
+        {filteredBills.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between gap-4 flex-wrap pt-2 border-t">
+            <p className="text-sm text-muted-foreground">
+              Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(page * ITEMS_PER_PAGE, filteredBills.length)} de {filteredBills.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Anterior
+              </Button>
+              <span className="text-sm font-medium px-2">
+                Página {page} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
 
       {/* Dialog de criação/edição */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{editingBill ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
             <DialogDescription>
@@ -703,6 +896,115 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
                 rows={3}
               />
             </div>
+
+            {/* Lista de contas do grupo recorrente (ao editar uma conta recorrente) */}
+            {editingBill?.recurring && recurringGroupBills.length > 0 && (
+              <div className="space-y-3 border-t pt-4 mt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-base font-semibold">Contas desta recorrência ({recurringGroupBills.length})</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Edite a parcela desejada, exclua meses errados ou adicione novos meses abaixo.
+                    </p>
+                  </div>
+                  {/* Adicionar meses */}
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="month"
+                        value={addRecurringStart}
+                        onChange={(e) => setAddRecurringStart(e.target.value)}
+                        placeholder="Mês inicial"
+                        className="w-[140px]"
+                      />
+                      <span className="text-muted-foreground">até</span>
+                      <Input
+                        type="month"
+                        value={addRecurringEnd}
+                        onChange={(e) => setAddRecurringEnd(e.target.value)}
+                        placeholder="Mês final"
+                        className="w-[140px]"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={handleAddRecurringMonths}
+                      disabled={isAddingMonths || !addRecurringStart || !addRecurringEnd}
+                    >
+                      <CalendarPlus className="h-4 w-4" />
+                      {addRecurringMonths.isPending ? 'Adicionando...' : 'Adicionar meses'}
+                    </Button>
+                  </div>
+                </div>
+                <div className="border rounded-lg overflow-hidden max-h-[280px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right w-32">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recurringGroupBills.map((bill) => (
+                        <TableRow
+                          key={bill.id}
+                          className={cn(editingBill?.id === bill.id && 'bg-primary/5 border-l-2 border-l-primary')}
+                        >
+                          <TableCell>{dateFormatters.short(bill.due_date)}</TableCell>
+                          <TableCell className="text-right font-medium">{currencyFormatters.brl(bill.amount)}</TableCell>
+                          <TableCell>
+                            <Badge className={cn(
+                              bill.status === 'pago' && 'bg-success/10 text-success border-success/30',
+                              bill.status === 'pendente' && 'bg-warning/10 text-warning border-warning/30',
+                              bill.status === 'atrasado' && 'bg-destructive/10 text-destructive border-destructive/30'
+                            )}>
+                              {BILL_STATUS_LABELS[bill.status as keyof typeof BILL_STATUS_LABELS] ?? bill.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1"
+                                onClick={() => handleEditRecurringBill(bill)}
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteRecurringBill(bill)}
+                                title="Excluir esta parcela"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Confirmação de exclusão de parcela */}
+                <ConfirmDialog
+                  open={deletingRecurringBillId !== null}
+                  onOpenChange={(open) => !open && setDeletingRecurringBillId(null)}
+                  title="Excluir parcela"
+                  description="Esta parcela será removida da recorrência. A ação não pode ser desfeita."
+                  onConfirm={handleConfirmDeleteRecurring}
+                  variant="danger"
+                  loading={deleteBill.isPending}
+                />
+              </div>
+            )}
           </div>
 
           <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">

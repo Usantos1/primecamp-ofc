@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Check, Search, Eye, Plus } from 'lucide-react';
+import { Check, Search, Eye, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -51,6 +51,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [viewingAccount, setViewingAccount] = useState<AccountReceivable | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     cliente_nome: '',
     valor_total: 0,
@@ -145,6 +146,14 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
     return matchesSearch && matchesPeriod;
   });
 
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(filteredAccounts.length / ITEMS_PER_PAGE));
+  const page = Math.min(currentPage, totalPages);
+  const paginatedAccounts = filteredAccounts.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
+
   const getStatusColor = (status: string, dueDate?: string) => {
     if (status === 'pago') return 'bg-success/10 text-success border-success/30';
     if (status === 'cancelado') return 'bg-muted text-muted-foreground border-muted';
@@ -193,39 +202,48 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar contas..."
+        <div className="flex flex-col sm:flex-row flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-sm">
+            <Label className="text-xs text-muted-foreground">Buscar</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cliente ou ID..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="pl-9"
+              />
+            </div>
           </div>
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos períodos</SelectItem>
-              <SelectItem value="mes_atual">Mês atual</SelectItem>
-              <SelectItem value="mes_proximo">Próximo mês</SelectItem>
-              <SelectItem value="proximos_7_dias">Próximos 7 dias</SelectItem>
-              <SelectItem value="atrasadas">Atrasadas</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="pago">Pago</SelectItem>
-              <SelectItem value="atrasado">Atrasado</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Período</Label>
+            <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos períodos</SelectItem>
+                <SelectItem value="mes_atual">Mês atual</SelectItem>
+                <SelectItem value="mes_proximo">Próximo mês</SelectItem>
+                <SelectItem value="proximos_7_dias">Próximos 7 dias</SelectItem>
+                <SelectItem value="atrasadas">Atrasadas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Status</Label>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="pago">Pago</SelectItem>
+                <SelectItem value="atrasado">Atrasado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Tabela */}
@@ -248,7 +266,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAccounts.map((account) => (
+                {paginatedAccounts.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell className="font-medium">{account.cliente_nome || '-'}</TableCell>
                     <TableCell className="font-semibold">{currencyFormatters.brl(account.valor_total)}</TableCell>
@@ -287,6 +305,38 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {/* Paginação */}
+        {filteredAccounts.length > ITEMS_PER_PAGE && (
+          <div className="flex items-center justify-between gap-4 flex-wrap pt-2 border-t">
+            <p className="text-sm text-muted-foreground">
+              Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(page * ITEMS_PER_PAGE, filteredAccounts.length)} de {filteredAccounts.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Anterior
+              </Button>
+              <span className="text-sm font-medium px-2">
+                Página {page} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Próxima
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

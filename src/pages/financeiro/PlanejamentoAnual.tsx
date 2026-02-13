@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
 import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { DollarSign, Calendar, Save, TrendingUp, Target, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { DollarSign, Save, TrendingUp, Target } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { usePlanejamentoAnual, useSalvarPlanejamentoAnual } from '@/hooks/useFinanceiro';
 import { toast } from 'sonner';
@@ -22,7 +23,7 @@ export default function PlanejamentoAnual() {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState<number>(anoAtual);
   
-  const { data: planejamento, isLoading } = usePlanejamentoAnual(ano);
+  const { data: planejamento, isLoading, isError } = usePlanejamentoAnual(ano);
   const salvarPlanejamento = useSalvarPlanejamentoAnual();
   
   const [receitaPlanejada, setReceitaPlanejada] = useState<number>(0);
@@ -81,16 +82,72 @@ export default function PlanejamentoAnual() {
     }));
   };
   
+  useEffect(() => {
+    if (isError) {
+      toast.info('Planejamento não carregado. Preencha e salve para criar.');
+    }
+  }, [isError]);
+
   if (isLoading) {
     return (
       <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Carregando planejamento...</p>
+        <div className="flex flex-col gap-4">
+          <FinanceiroNavMenu />
+          <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl p-4">
+            <div className="flex items-end gap-3">
+              <div className="space-y-1 flex-1 max-w-xs">
+                <Label className="text-xs font-semibold text-muted-foreground">Ano</Label>
+                <Skeleton className="h-10 w-full rounded-lg" />
+              </div>
+              <Skeleton className="h-10 w-40 rounded-lg" />
+            </div>
+          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="border-[3px] border-gray-400 rounded-xl">
+                <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
+                <CardContent><Skeleton className="h-12 w-full" /></CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card className="border-[3px] border-gray-400 rounded-xl flex flex-col">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold">Metas Mensais</CardTitle>
+              <CardDescription>Distribua a receita planejada pelos meses do ano</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="border-b-[3px] border-gray-400">
+                  <TableRow>
+                    <TableHead className="font-bold">Mês</TableHead>
+                    <TableHead className="font-bold text-right">Meta Mensal</TableHead>
+                    <TableHead className="font-bold text-right">% do Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {meses.map((_, i) => (
+                    <TableRow key={i} className="border-b-[2px] border-gray-300">
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-9 w-40 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-6 w-12 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          <Card className="border-[3px] border-gray-400 rounded-xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold">Observações</CardTitle>
+              <CardDescription>Anotações e observações sobre o planejamento</CardDescription>
+            </CardHeader>
+            <CardContent><Skeleton className="min-h-[120px] w-full rounded" /></CardContent>
+          </Card>
         </div>
       </ModernLayout>
     );
   }
-  
+
   return (
     <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
       <div className="flex flex-col gap-4">
