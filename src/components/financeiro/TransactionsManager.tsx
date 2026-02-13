@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, ShoppingCart, Trash2, Edit } from 'lucide-react';
 // TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
 // import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
-import { TRANSACTION_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, TransactionType } from '@/types/financial';
+import { TRANSACTION_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, TransactionType, type FinancialCategory } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
@@ -45,12 +45,29 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // TODO: Implementar hooks do sistema financeiro antigo
-  const categories: any[] = [];
+  // Categorias financeiras (entrada e saída) para Nova Transação
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['financial-categories-transactions'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await from('financial_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+          .execute();
+        if (error) throw error;
+        return (data || []) as FinancialCategory[];
+      } catch (err) {
+        console.warn('Erro ao buscar categorias financeiras:', err);
+        return [];
+      }
+    },
+  });
+
   const transactions: any[] = [];
   const isLoading = false;
   const createTransaction = { mutateAsync: async () => {}, isPending: false };
-  
+
   // Buscar vendas pagas do período
   const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['sales-transactions', startDate, endDate],
@@ -660,11 +677,20 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
               <div className="space-y-2">
                 <Label>Categoria</Label>
                 <Select
-                  value={formData.category_id}
+                  value={formData.category_id || undefined}
                   onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                  disabled={availableCategories.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <SelectValue
+                      placeholder={
+                        categoriesLoading
+                          ? 'Carregando...'
+                          : availableCategories.length === 0
+                            ? 'Cadastre categorias em Contas'
+                            : 'Selecione a categoria'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {availableCategories.map((cat) => (
