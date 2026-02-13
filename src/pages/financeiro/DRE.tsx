@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { ModernLayout } from '@/components/ModernLayout';
 import { FinanceiroNavMenu } from '@/components/financeiro/FinanceiroNavMenu';
-import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
 import { DREComplete } from '@/components/financeiro/DREComplete';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
@@ -24,26 +23,25 @@ export default function DRE() {
   return (
     <ModernLayout title="DRE - Demonstrativo do Resultado do Exercício" subtitle="Demonstração do resultado financeiro">
       <div className="flex flex-col gap-4">
-        {/* Menu de Navegação */}
+        {/* Menu de Navegação (abas Dashboard, DRE, Planejamento, etc.) */}
         <FinanceiroNavMenu />
-        
-        {/* Filtros de Data */}
-        <DateFilterBar
-          dateFilter={dateFilter}
-          onDateFilterChange={setDateFilter}
-          customDateStart={customDateStart}
-          customDateEnd={customDateEnd}
-          onCustomDateStartChange={setCustomDateStart}
-          onCustomDateEndChange={setCustomDateEnd}
-          onDatesChange={(start, end) => {
-            setStartDate(start);
-            setEndDate(end);
-          }}
-        />
-        
-        {/* DRE */}
+
+        {/* DRE (filtros dentro do card, ao lado do título) */}
         <div className="flex-1">
-          <DREComplete startDate={startDate} endDate={endDate} />
+          <DREComplete
+            startDate={startDate}
+            endDate={endDate}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+            customDateStart={customDateStart}
+            customDateEnd={customDateEnd}
+            onCustomDateStartChange={setCustomDateStart}
+            onCustomDateEndChange={setCustomDateEnd}
+            onDatesChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+          />
         </div>
       </div>
     </ModernLayout>

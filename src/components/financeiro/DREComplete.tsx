@@ -3,16 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
+import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
 // TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
 // import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { cn } from '@/lib/utils';
 
+type DateFilterType = 'today' | 'week' | 'month' | 'all' | 'custom';
+
 interface DRECompleteProps {
   month?: string;
   startDate?: string;
   endDate?: string;
+  dateFilter?: DateFilterType;
+  onDateFilterChange?: (filter: DateFilterType) => void;
+  customDateStart?: Date;
+  customDateEnd?: Date;
+  onCustomDateStartChange?: (date: Date | undefined) => void;
+  onCustomDateEndChange?: (date: Date | undefined) => void;
+  onDatesChange?: (start: string | undefined, end: string | undefined) => void;
 }
 
 // Função para extrair custo da observação
@@ -23,7 +33,18 @@ const extractCusto = (observacoes: string | null): number => {
   return parseFloat(custoMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
 };
 
-export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
+export function DREComplete({
+  month,
+  startDate,
+  endDate,
+  dateFilter,
+  onDateFilterChange,
+  customDateStart,
+  customDateEnd,
+  onCustomDateStartChange,
+  onCustomDateEndChange,
+  onDatesChange,
+}: DRECompleteProps) {
   // TODO: Implementar hooks do sistema financeiro antigo
   const transactions: any[] = [];
   const categories: any[] = [];
@@ -203,8 +224,24 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>DRE - Demonstrativo de Resultado do Exercício</CardTitle>
-        <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo o período'}</CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle>DRE - Demonstrativo de Resultado do Exercício</CardTitle>
+            <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo o período'}</CardDescription>
+          </div>
+          {dateFilter != null && onDateFilterChange && onDatesChange && (
+            <DateFilterBar
+              dateFilter={dateFilter}
+              onDateFilterChange={onDateFilterChange}
+              customDateStart={customDateStart}
+              customDateEnd={customDateEnd}
+              onCustomDateStartChange={onCustomDateStartChange}
+              onCustomDateEndChange={onCustomDateEndChange}
+              onDatesChange={onDatesChange}
+              className="border border-muted/70 rounded-lg shadow-sm flex-shrink-0"
+            />
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="border rounded-lg overflow-hidden">
@@ -387,7 +424,7 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
         </div>
 
         {/* Indicadores */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3 bg-green-50 rounded-lg text-center border border-green-200">
             <p className="text-xs text-muted-foreground">Receita Bruta</p>
             <p className="text-lg font-bold text-green-600">{currencyFormatters.brl(dreData.receitaBrutaVendas)}</p>
@@ -399,6 +436,12 @@ export function DREComplete({ month, startDate, endDate }: DRECompleteProps) {
           <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
             <p className="text-xs text-muted-foreground">Despesas</p>
             <p className="text-lg font-bold text-red-600">{currencyFormatters.brl(dreData.totalDespesasOperacionais)}</p>
+          </div>
+          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
+            <p className="text-xs text-muted-foreground">Custo total de despesas</p>
+            <p className="text-lg font-bold text-red-600">
+              {currencyFormatters.brl(dreData.impostos + dreData.cmv + dreData.totalDespesasOperacionais)}
+            </p>
           </div>
           <div className={cn(
             "p-3 rounded-lg text-center border",
