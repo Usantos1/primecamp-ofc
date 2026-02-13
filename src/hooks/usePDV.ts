@@ -1424,7 +1424,7 @@ export function useCancelRequests() {
         query = query.eq('status', status);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.execute();
 
       // Se a tabela não existir, apenas retorna array vazio
       if (error) {

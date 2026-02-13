@@ -23,7 +23,6 @@ import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { from } from '@/integrations/db/client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

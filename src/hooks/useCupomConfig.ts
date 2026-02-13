@@ -23,22 +23,30 @@ export function useCupomConfig() {
   return useQuery<CupomConfig | null>({
     queryKey: ['cupom_config'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('cupom_config')
-        .select('*')
-        .limit(1)
-        .single()
-        .execute();
+      // Mesma fonte que ConfiguracaoCupom: kv_store (key cupom_config) ou tabela cupom_config
+      try {
+        const { data: kvData, error: kvError } = await from('kv_store_2c4defad')
+          .select('value')
+          .eq('key', 'cupom_config')
+          .limit(1)
+          .execute();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // Não existe configuração, retornar null para usar valores padrão
+        if (!kvError && kvData?.[0]?.value) {
+          return { ...kvData[0].value } as CupomConfig;
+        }
+
+        const { data, error } = await from('cupom_config')
+          .select('*')
+          .limit(1)
+          .execute();
+
+        if (error || !data?.length) {
           return null;
         }
-        throw error;
+        return data[0] as CupomConfig;
+      } catch {
+        return null;
       }
-
-      return data as CupomConfig;
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
