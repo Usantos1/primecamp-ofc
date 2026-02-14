@@ -30,7 +30,7 @@ async function columnExists(tableName, columnName) {
 router.get('/', async (req, res) => {
   try {
     const companyId = req.companyId;
-    const { active_only } = req.query;
+    const { active_only, with_fees } = req.query;
     
     // Verificar estrutura da tabela
     const hasCompanyId = await columnExists('payment_methods', 'company_id');
@@ -74,6 +74,17 @@ router.get('/', async (req, res) => {
     const feesCountExpr = hasPaymentFeesTable 
       ? `(SELECT COUNT(*) FROM payment_fees pf WHERE pf.payment_method_id = pm.id)`
       : '0';
+
+    const hasWalletId = await columnExists('payment_methods', 'wallet_id');
+    const hasWalletsTable = await pool.query(`
+      SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wallets'
+    `).then(r => r.rows.length > 0);
+    const walletJoin = hasWalletId && hasWalletsTable
+      ? ' LEFT JOIN wallets w ON w.id = pm.wallet_id '
+      : ' ';
+    const walletCols = hasWalletId && hasWalletsTable
+      ? ' , pm.wallet_id, w.name as wallet_name '
+      : ' ';
     
     let query = `
       SELECT pm.id, 
@@ -90,7 +101,9 @@ router.get('/', async (req, res) => {
              ${createdAtCol} as created_at,
              ${updatedAtCol} as updated_at,
              ${feesCountExpr} as fees_count
+             ${walletCols}
       FROM payment_methods pm
+      ${walletJoin}
       WHERE 1=1
     `;
     
@@ -122,17 +135,174 @@ router.get('/', async (req, res) => {
         throw queryError;
       }
     }
-    res.json({ success: true, data: result.rows });
+    let rows = result.rows;
+    if (with_fees === 'true' && hasPaymentFeesTable && rows.length > 0) {
+      const ids = rows.map((r) => r.id).filter(Boolean);
+      try {
+        const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+        const feesResult = await pool.query(
+          `SELECT * FROM payment_fees WHERE payment_method_id IN (${placeholders}) AND COALESCE(is_active, true) = true ORDER BY payment_method_id, installments`,
+          ids
+        );
+        const feesByMethod = {};
+        (feesResult.rows || []).forEach((f) => {
+          if (!feesByMethod[f.payment_method_id]) feesByMethod[f.payment_method_id] = [];
+          feesByMethod[f.payment_method_id].push({
+            id: f.id,
+            payment_method_id: f.payment_method_id,
+            installments: f.installments,
+            fee_percentage: parseFloat(f.fee_percentage) || 0,
+            fee_fixed: parseFloat(f.fee_fixed) || 0,
+            days_to_receive: f.days_to_receive,
+            description: f.description,
+            is_active: f.is_active,
+          });
+        });
+        rows = rows.map((r) => ({ ...r, fees: feesByMethod[r.id] || [] }));
+      } catch (e) {
+        console.warn('[PaymentMethods] Erro ao carregar fees na listagem:', e.message);
+      }
+    }
+    res.json({ success: true, data: rows });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao listar:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// ═══════════════════════════════════════════════════════
+// CARTEIRAS (WALLETS) — sub-router para nunca confundir com /:id
+// ═══════════════════════════════════════════════════════
+
+const walletsRouter = express.Router({ mergeParams: true });
+
+walletsRouter.get('/', async (req, res) => {
+  try {
+    const hasWallets = await pool.query(`
+      SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wallets'
+    `).then(r => r.rows.length > 0);
+    if (!hasWallets) {
+      return res.json({ success: true, data: [] });
+    }
+    const companyId = req.companyId;
+    const hasCompanyId = await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'company_id'
+    `).then(r => r.rows.length > 0);
+    let query = 'SELECT id, name, sort_order FROM wallets WHERE 1=1';
+    const params = [];
+    if (hasCompanyId && companyId) {
+      query += ' AND (company_id = $1 OR company_id IS NULL)';
+      params.push(companyId);
+    }
+    query += ' ORDER BY sort_order, name';
+    const result = await pool.query(query, params.length ? params : undefined);
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    console.error('[PaymentMethods] Erro ao listar wallets:', error);
+    res.json({ success: true, data: [] });
+  }
+});
+
+walletsRouter.post('/', async (req, res) => {
+  try {
+    const hasWallets = await pool.query(`
+      SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wallets'
+    `).then(r => r.rows.length > 0);
+    if (!hasWallets) {
+      return res.status(400).json({ success: false, error: 'Tabela wallets não existe. Execute o script SQL.' });
+    }
+    const companyId = req.companyId;
+    const { name, sort_order } = req.body || {};
+    const hasCompanyId = await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'company_id'
+    `).then(r => r.rows.length > 0);
+    const cols = ['id', 'name', 'sort_order'];
+    const vals = ['gen_random_uuid()', '$1', '$2'];
+    const params = [String(name || '').trim() || 'Nova Carteira', parseInt(sort_order, 10) || 0];
+    if (hasCompanyId && companyId) {
+      cols.push('company_id');
+      vals.push('$3');
+      params.push(companyId);
+    }
+    const result = await pool.query(
+      `INSERT INTO wallets (${cols.join(', ')}) VALUES (${vals.join(', ')}) RETURNING id, name, sort_order`,
+      params
+    );
+    const row = result.rows[0];
+    res.json({ success: true, data: row });
+  } catch (error) {
+    console.error('[PaymentMethods] Erro ao criar wallet:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+walletsRouter.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, sort_order } = req.body || {};
+    const sets = [];
+    const params = [];
+    let idx = 1;
+    if (name !== undefined) {
+      sets.push(`name = $${idx}`);
+      params.push(String(name || '').trim() || 'Carteira');
+      idx++;
+    }
+    if (sort_order !== undefined) {
+      sets.push(`sort_order = $${idx}`);
+      params.push(parseInt(sort_order, 10) || 0);
+      idx++;
+    }
+    const hasUpdatedAt = await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'updated_at'
+    `).then(r => r.rows.length > 0);
+    if (hasUpdatedAt) sets.push('updated_at = NOW()');
+    if (sets.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    }
+    params.push(id);
+    const result = await pool.query(
+      `UPDATE wallets SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, name, sort_order`,
+      params
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[PaymentMethods] Erro ao atualizar wallet:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+walletsRouter.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('UPDATE payment_methods SET wallet_id = NULL WHERE wallet_id = $1', [id]);
+    const result = await pool.query('DELETE FROM wallets WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
+    }
+    res.json({ success: true, message: 'Carteira excluída' });
+  } catch (error) {
+    console.error('[PaymentMethods] Erro ao deletar wallet:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.use('/wallets', walletsRouter);
+
+// Reservados: não tratar como ID de forma de pagamento (evita 500 quando "wallets" vira :id)
+const RESERVED_PATHS = ['wallets', 'report', 'calculate-net'];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Buscar forma de pagamento por ID com taxas
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    if (RESERVED_PATHS.includes(id) || !UUID_REGEX.test(id)) {
+      return res.status(404).json({ success: false, error: 'Forma de pagamento não encontrada' });
+    }
     
     const hasName = await columnExists('payment_methods', 'name');
     const hasCode = await columnExists('payment_methods', 'code');
@@ -152,6 +322,13 @@ router.get('/:id', async (req, res) => {
     const iconCol = hasIcon ? 'pm.icon' : 'NULL';
     const colorCol = hasColor ? 'pm.color' : 'NULL';
     
+    const hasWalletId = await columnExists('payment_methods', 'wallet_id');
+    const hasWalletsTable = await pool.query(`
+      SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'wallets'
+    `).then(r => r.rows.length > 0);
+    const walletJoinId = hasWalletId && hasWalletsTable ? ' LEFT JOIN wallets w ON w.id = pm.wallet_id ' : ' ';
+    const walletColsId = hasWalletId && hasWalletsTable ? ' , pm.wallet_id, w.name as wallet_name ' : ' ';
+
     const methodResult = await pool.query(`
       SELECT pm.id, 
              pm.${nameCol} as name,
@@ -164,7 +341,9 @@ router.get('/:id', async (req, res) => {
              ${iconCol} as icon,
              ${colorCol} as color,
              COALESCE(pm.${hasSortOrder ? 'sort_order' : 'ordem'}, 0) as sort_order
+             ${walletColsId}
       FROM payment_methods pm
+      ${walletJoinId}
       WHERE pm.id = $1
     `, [id]);
     
@@ -202,7 +381,7 @@ router.post('/', async (req, res) => {
     const companyId = req.companyId;
     const {
       name, code, description, is_active, accepts_installments,
-      max_installments, min_value_for_installments, icon, color, sort_order
+      max_installments, min_value_for_installments, icon, color, sort_order, wallet_id
     } = req.body;
     
     // Verificar colunas existentes
@@ -281,6 +460,13 @@ router.post('/', async (req, res) => {
       params.push(sort_order || 0);
       paramIdx++;
     }
+
+    if (await columnExists('payment_methods', 'wallet_id')) {
+      cols.push('wallet_id');
+      vals.push(`$${paramIdx}`);
+      params.push(wallet_id || null);
+      paramIdx++;
+    }
     
     const query = `INSERT INTO payment_methods (${cols.join(', ')}) VALUES (${vals.join(', ')}) RETURNING *`;
     
@@ -288,22 +474,21 @@ router.post('/', async (req, res) => {
     
     // Normalizar resposta
     const row = result.rows[0];
-    res.json({ 
-      success: true, 
-      data: {
-        id: row.id,
-        name: row.name || row.nome,
-        code: row.code || row.codigo,
-        description: row.description,
-        is_active: row.is_active ?? row.ativo ?? true,
-        accepts_installments: row.accepts_installments || false,
-        max_installments: row.max_installments || 1,
-        min_value_for_installments: row.min_value_for_installments || 0,
-        icon: row.icon,
-        color: row.color,
-        sort_order: row.sort_order || 0
-      }
-    });
+    const data = {
+      id: row.id,
+      name: row.name || row.nome,
+      code: row.code || row.codigo,
+      description: row.description,
+      is_active: row.is_active ?? row.ativo ?? true,
+      accepts_installments: row.accepts_installments || false,
+      max_installments: row.max_installments || 1,
+      min_value_for_installments: row.min_value_for_installments || 0,
+      icon: row.icon,
+      color: row.color,
+      sort_order: row.sort_order || 0
+    };
+    if (row.wallet_id) data.wallet_id = row.wallet_id;
+    res.json({ success: true, data });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao criar:', error);
     if (error.code === '23505') {
@@ -391,6 +576,13 @@ router.put('/:id', async (req, res) => {
       params.push(sort_order);
       paramIdx++;
     }
+
+    if (req.body.wallet_id !== undefined && await columnExists('payment_methods', 'wallet_id')) {
+      sets.push(`wallet_id = $${paramIdx}`);
+      const wVal = req.body.wallet_id;
+      params.push(wVal != null && String(wVal).trim() !== '' ? wVal : null);
+      paramIdx++;
+    }
     
     if (await columnExists('payment_methods', 'updated_at')) {
       sets.push('updated_at = NOW()');
@@ -410,21 +602,20 @@ router.put('/:id', async (req, res) => {
     }
     
     const row = result.rows[0];
-    res.json({ 
-      success: true, 
-      data: {
-        id: row.id,
-        name: row.name || row.nome,
-        code: row.code || row.codigo,
-        description: row.description,
-        is_active: row.is_active ?? row.ativo ?? true,
-        accepts_installments: row.accepts_installments || false,
-        max_installments: row.max_installments || 1,
-        icon: row.icon,
-        color: row.color,
-        sort_order: row.sort_order || 0
-      }
-    });
+    const data = {
+      id: row.id,
+      name: row.name || row.nome,
+      code: row.code || row.codigo,
+      description: row.description,
+      is_active: row.is_active ?? row.ativo ?? true,
+      accepts_installments: row.accepts_installments || false,
+      max_installments: row.max_installments || 1,
+      icon: row.icon,
+      color: row.color,
+      sort_order: row.sort_order || 0,
+      wallet_id: row.wallet_id ?? null
+    };
+    res.json({ success: true, data });
   } catch (error) {
     console.error('[PaymentMethods] Erro ao atualizar:', error);
     res.status(500).json({ success: false, error: error.message });

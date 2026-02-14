@@ -10,12 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePaymentMethods, PaymentMethod, PaymentFee } from '@/hooks/usePaymentMethods';
+import { usePaymentMethods, PaymentMethod, PaymentFee, Wallet } from '@/hooks/usePaymentMethods';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   Plus, Edit, Trash2, Settings, CreditCard, Banknote, QrCode, Ticket,
-  Percent, Calendar, DollarSign, TrendingUp, BarChart3, Loader2, Save
+  Percent, Calendar, DollarSign, TrendingUp, BarChart3, Loader2, Save, Wallet as WalletIcon
 } from 'lucide-react';
 
 const ICONS = [
@@ -34,12 +34,24 @@ const COLORS = [
   { value: '#6b7280', label: 'Cinza' },
 ];
 
+// Carteiras padrão (mesmos IDs do SQL CRIAR_TABELA_WALLETS_CARTEIRAS.sql) — usadas quando a API não retorna nenhuma
+const DEFAULT_WALLETS = [
+  { id: 'a0000000-0000-0000-0000-000000000001', name: 'Carteira física em dinheiro', sort_order: 0 },
+  { id: 'a0000000-0000-0000-0000-000000000002', name: 'Carteira digital C6 Bank', sort_order: 1 },
+  { id: 'a0000000-0000-0000-0000-000000000003', name: 'Carteira Sumup Bank', sort_order: 2 },
+];
+
 export default function PaymentMethodsConfig() {
   const {
     loading,
     paymentMethods,
+    wallets,
     fetchPaymentMethods,
     fetchPaymentMethod,
+    fetchWallets,
+    createWallet,
+    updateWallet,
+    deleteWallet,
     createPaymentMethod,
     updatePaymentMethod,
     deletePaymentMethod,
@@ -59,6 +71,13 @@ export default function PaymentMethodsConfig() {
     endDate: format(new Date(), 'yyyy-MM-dd')
   });
 
+  const [isWalletDialogOpen, setIsWalletDialogOpen] = useState(false);
+  const [walletForm, setWalletForm] = useState<{ id: string; name: string; sort_order: number }>({
+    id: '',
+    name: '',
+    sort_order: 0
+  });
+
   const [methodForm, setMethodForm] = useState({
     id: '',
     name: '',
@@ -70,12 +89,14 @@ export default function PaymentMethodsConfig() {
     min_value_for_installments: 0,
     icon: 'CreditCard',
     color: '#3b82f6',
-    sort_order: 0
+    sort_order: 0,
+    wallet_id: '' as string | null
   });
 
   useEffect(() => {
     fetchPaymentMethods();
-  }, []);
+    fetchWallets();
+  }, [fetchPaymentMethods, fetchWallets]);
 
   const handleOpenMethodDialog = (method?: PaymentMethod) => {
     if (method) {
@@ -90,7 +111,8 @@ export default function PaymentMethodsConfig() {
         min_value_for_installments: method.min_value_for_installments,
         icon: method.icon || 'CreditCard',
         color: method.color || '#3b82f6',
-        sort_order: method.sort_order
+        sort_order: method.sort_order,
+        wallet_id: method.wallet_id ?? ''
       });
     } else {
       setMethodForm({
@@ -104,17 +126,22 @@ export default function PaymentMethodsConfig() {
         min_value_for_installments: 0,
         icon: 'CreditCard',
         color: '#3b82f6',
-        sort_order: paymentMethods.length
+        sort_order: paymentMethods.length,
+        wallet_id: ''
       });
     }
     setIsMethodDialogOpen(true);
   };
 
   const handleSaveMethod = async () => {
+    const payload = {
+      ...methodForm,
+      wallet_id: methodForm.wallet_id && methodForm.wallet_id.trim() !== '' ? methodForm.wallet_id : null
+    };
     if (methodForm.id) {
-      await updatePaymentMethod(methodForm.id, methodForm);
+      await updatePaymentMethod(methodForm.id, payload);
     } else {
-      await createPaymentMethod(methodForm);
+      await createPaymentMethod(payload);
     }
     setIsMethodDialogOpen(false);
     fetchPaymentMethods();
@@ -123,6 +150,33 @@ export default function PaymentMethodsConfig() {
   const handleDeleteMethod = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta forma de pagamento?')) {
       await deletePaymentMethod(id);
+      fetchPaymentMethods();
+    }
+  };
+
+  const handleOpenWalletDialog = (wallet?: Wallet) => {
+    if (wallet) {
+      setWalletForm({ id: wallet.id, name: wallet.name, sort_order: wallet.sort_order ?? 0 });
+    } else {
+      setWalletForm({ id: '', name: '', sort_order: (wallets.length > 0 ? wallets : DEFAULT_WALLETS).length });
+    }
+    setIsWalletDialogOpen(true);
+  };
+
+  const handleSaveWallet = async () => {
+    if (walletForm.id) {
+      await updateWallet(walletForm.id, { name: walletForm.name, sort_order: walletForm.sort_order });
+    } else {
+      await createWallet({ name: walletForm.name || 'Nova Carteira', sort_order: walletForm.sort_order });
+    }
+    setIsWalletDialogOpen(false);
+    fetchWallets();
+  };
+
+  const handleDeleteWallet = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta carteira? Formas de pagamento vinculadas ficarão sem carteira.')) {
+      await deleteWallet(id);
+      fetchWallets();
       fetchPaymentMethods();
     }
   };
@@ -229,6 +283,10 @@ export default function PaymentMethodsConfig() {
               <CreditCard className="h-4 w-4 mr-2" />
               Formas de Pagamento
             </TabsTrigger>
+            <TabsTrigger value="wallets">
+              <WalletIcon className="h-4 w-4 mr-2" />
+              Carteiras
+            </TabsTrigger>
             <TabsTrigger value="report">
               <BarChart3 className="h-4 w-4 mr-2" />
               Relatório de Taxas
@@ -290,6 +348,9 @@ export default function PaymentMethodsConfig() {
                       {method.fees_count ? (
                         <span className="ml-2">• {method.fees_count} taxas configuradas</span>
                       ) : null}
+                      {method.wallet_name ? (
+                        <div className="mt-1 text-xs">Carteira: {method.wallet_name}</div>
+                      ) : null}
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -320,6 +381,69 @@ export default function PaymentMethodsConfig() {
                   </CardContent>
                 </Card>
               )})}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="wallets" className="space-y-4 mt-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Carteiras / Contas de origem</h2>
+              <Button onClick={() => handleOpenWalletDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Carteira
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Carteiras são usadas para vincular cada forma de pagamento a uma conta (ex.: dinheiro físico, C6 Bank, Sumup). Assim você controla de qual “conta” sai o valor na tesouraria.
+            </p>
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {!loading && (wallets.length > 0 ? wallets : DEFAULT_WALLETS).length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma carteira cadastrada. Crie uma para vincular às formas de pagamento.
+              </div>
+            )}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {(wallets.length > 0 ? wallets : DEFAULT_WALLETS).map((w) => (
+                <Card key={w.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-muted">
+                          <WalletIcon className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base">{w.name}</CardTitle>
+                          <CardDescription className="text-xs">Ordem: {w.sort_order ?? 0}</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleOpenWalletDialog(w)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => handleDeleteWallet(w.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
@@ -470,6 +594,27 @@ export default function PaymentMethodsConfig() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label>Carteira / Conta de origem</Label>
+                <Select
+                  value={methodForm.wallet_id || '_none'}
+                  onValueChange={(v) => setMethodForm(prev => ({ ...prev, wallet_id: v === '_none' ? null : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a carteira ou banco" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Nenhuma (não vinculado)</SelectItem>
+                    {(wallets.length > 0 ? wallets : DEFAULT_WALLETS).map((w) => (
+                      <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Ex.: Carteira física em dinheiro, C6 Bank, Sumup Bank. Usado na tesouraria para identificar de qual conta sai o pagamento.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Ícone</Label>
@@ -573,6 +718,44 @@ export default function PaymentMethodsConfig() {
                 Cancelar
               </Button>
               <Button onClick={handleSaveMethod} disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Carteira */}
+        <Dialog open={isWalletDialogOpen} onOpenChange={setIsWalletDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{walletForm.id ? 'Editar' : 'Nova'} Carteira</DialogTitle>
+              <DialogDescription>
+                Nome e ordem de exibição. Use para identificar a conta de origem (ex.: Carteira física, C6 Bank).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome</Label>
+                <Input
+                  value={walletForm.name}
+                  onChange={(e) => setWalletForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Carteira física em dinheiro"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Ordem de exibição</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={walletForm.sort_order}
+                  onChange={(e) => setWalletForm(prev => ({ ...prev, sort_order: parseInt(e.target.value, 10) || 0 }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsWalletDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveWallet} disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Salvar
               </Button>
