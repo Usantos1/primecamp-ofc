@@ -426,9 +426,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     problema_constatado: '',
     tecnico_id: '',
     servico_executado: '',
-    // Orçamento
-    orcamento_parcelado: 0,
-    orcamento_desconto: 0,
+    // Orçamento (vazio em OS nova; 0 não deve aparecer nos campos)
+    orcamento_parcelado: undefined as number | undefined,
+    orcamento_desconto: undefined as number | undefined,
     orcamento_autorizado: false,
   });
 
@@ -1329,6 +1329,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         
         const osAtualizada = await updateOS(currentOS.id, {
           ...formData,
+          orcamento_parcelado: formData.orcamento_parcelado ?? 0,
+          orcamento_desconto: formData.orcamento_desconto ?? 0,
           cliente_nome: selectedCliente?.nome,
           cliente_empresa: selectedCliente?.nome_fantasia,
           marca_nome: marcas.find(m => m.id === formData.marca_id)?.nome,
@@ -1360,6 +1362,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         
         const novaOS = await createOS({
           ...formData,
+          orcamento_parcelado: formData.orcamento_parcelado ?? 0,
+          orcamento_desconto: formData.orcamento_desconto ?? 0,
           cliente_nome: selectedCliente?.nome,
           cliente_empresa: selectedCliente?.nome_fantasia,
           marca_nome: marcas.find(m => m.id === formData.marca_id)?.nome,
@@ -2905,7 +2909,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           inputMode="decimal"
                           step="0.01"
                           min="0"
-                          value={formData.orcamento_parcelado ?? ''}
+                          value={formData.orcamento_parcelado === 0 ? '' : (formData.orcamento_parcelado ?? '')}
                           onChange={(e) => {
                             const val = e.target.value;
                             const numValue = val === '' ? undefined : parseFloat(val);
@@ -2922,7 +2926,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           inputMode="decimal"
                           step="0.01"
                           min="0"
-                          value={formData.orcamento_desconto ?? ''}
+                          value={formData.orcamento_desconto === 0 ? '' : (formData.orcamento_desconto ?? '')}
                           onChange={(e) => {
                             const val = e.target.value;
                             const numValue = val === '' ? undefined : parseFloat(val);

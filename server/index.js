@@ -701,7 +701,7 @@ app.get('/api/public/acompanhar-os/:id', async (req, res) => {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: 'ID da OS é obrigatório' });
     const result = await pool.query(`
-      SELECT id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, operadora, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes
+      SELECT id, numero, status, cliente_nome, marca_nome, modelo_nome, cor, numero_serie, imei, descricao_problema, data_entrada, previsao_entrega, valor_total, observacoes
       FROM ordens_servico
       WHERE id = $1
       LIMIT 1
