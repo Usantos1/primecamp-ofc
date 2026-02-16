@@ -44,6 +44,19 @@ function labelForma(forma: string, paymentMethods?: { code: string; name: string
   return (PAYMENT_METHOD_LABELS as Record<string, string>)[forma] ?? forma;
 }
 
+/** Status da conta para exibir cor: atrasado, vence em breve (7 dias), pendente */
+function getBillStatus(dueDate: string | null): 'atrasado' | 'vence_breve' | 'pendente' {
+  if (!dueDate) return 'pendente';
+  const due = new Date(dueDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'atrasado';
+  if (diffDays <= 7) return 'vence_breve';
+  return 'pendente';
+}
+
 const MASKED_VALUE = 'R$ •••••••';
 
 // Carteiras padrão (mesmos IDs do SQL) — fallback quando a API não retorna
@@ -68,14 +81,14 @@ function WalletSaldoCard({
   const displaySaldo = valuesVisible ? currencyFormatters.brl(saldo) : MASKED_VALUE;
   if (compact) {
     return (
-      <Card className="overflow-hidden min-w-0 min-w-[100px] flex-1 basis-0">
+      <Card className="overflow-hidden min-w-0 min-w-[100px] flex-1 basis-0 min-h-[72px] flex flex-col">
         <CardHeader className="pb-0.5 pt-2 px-2">
           <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
             <Wallet className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{name}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-2 pb-2 pt-0">
+        <CardContent className="px-2 pb-2 pt-0 flex-1 flex flex-col justify-end min-h-[2.5rem]">
           <p className={cn('text-sm sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
             {displaySaldo}
           </p>
@@ -123,23 +136,24 @@ function SaldoCard({
   const displayTaxa = valuesVisible ? currencyFormatters.brl(taxa) : MASKED_VALUE;
   if (compact) {
     return (
-      <Card className="overflow-hidden min-w-0 min-w-[100px] flex-1 basis-0">
+      <Card className="overflow-hidden min-w-0 min-w-[100px] flex-1 basis-0 min-h-[72px] flex flex-col">
         <CardHeader className="pb-0.5 pt-2 px-2">
           <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
             <Banknote className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{labelForma(forma, paymentMethods)}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-2 pb-2 pt-0">
+        <CardContent className="px-2 pb-2 pt-0 flex-1 flex flex-col justify-end min-h-[2.5rem]">
           <p className={cn('text-sm sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
             {displaySaldo}
           </p>
-          {(bruto > 0 || taxa !== 0) && (
-            <p className="text-[10px] text-muted-foreground truncate">
-              Bruto {displayBruto}
-              {taxa > 0 && <> · −{displayTaxa}</>}
-            </p>
-          )}
+          <p className="text-[10px] text-muted-foreground truncate mt-0.5 min-h-[1rem]">
+            {(bruto > 0 || taxa !== 0) ? (
+              <>Bruto {displayBruto}{taxa > 0 && <> · −{displayTaxa}</>}</>
+            ) : (
+              <span className="invisible">—</span>
+            )}
+          </p>
         </CardContent>
       </Card>
     );
@@ -702,14 +716,32 @@ export function CaixaGeral({
                     {billsPendentes.length === 0 ? (
                       <SelectItem value="_none" disabled>Nenhuma conta pendente</SelectItem>
                     ) : (
-                      billsPendentes.map((b: any) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.description ?? 'Sem descrição'} — {currencyFormatters.brl(Number(b.amount) || 0)} (venc. {b.due_date ? format(new Date(b.due_date), 'dd/MM/yy', { locale: ptBR }) : '-'})
-                        </SelectItem>
-                      ))
+                      billsPendentes.map((b: any) => {
+                        const status = getBillStatus(b.due_date);
+                        const statusDot = cn(
+                          'shrink-0 w-2 h-2 rounded-full',
+                          status === 'atrasado' && 'bg-red-500',
+                          status === 'vence_breve' && 'bg-amber-500',
+                          status === 'pendente' && 'bg-emerald-500'
+                        );
+                        const statusLabel = status === 'atrasado' ? 'Atrasado' : status === 'vence_breve' ? 'Vence em breve' : 'Pendente';
+                        return (
+                          <SelectItem key={b.id} value={b.id}>
+                            <span className="flex items-center gap-2">
+                              <span className={statusDot} title={statusLabel} aria-hidden />
+                              <span>{b.description ?? 'Sem descrição'} — {currencyFormatters.brl(Number(b.amount) || 0)} (venc. {b.due_date ? format(new Date(b.due_date), 'dd/MM/yy', { locale: ptBR }) : '-'})</span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })
                     )}
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Atrasado</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Vence em 7 dias</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Pendente</span>
+                </p>
               </div>
             )}
 
