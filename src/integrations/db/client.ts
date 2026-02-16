@@ -100,9 +100,12 @@ class DeleteBuilder {
   private getHeaders: () => Record<string, string>;
   private where: Record<string, any> = {};
 
-  constructor(tableName: string, getHeaders: () => Record<string, string>) {
+  constructor(tableName: string, getHeaders: () => Record<string, string>, initialWhere?: Record<string, any>) {
     this.tableName = tableName;
     this.getHeaders = getHeaders;
+    if (initialWhere && Object.keys(initialWhere).length > 0) {
+      this.where = { ...initialWhere };
+    }
   }
 
   eq(field: string, value: any): this {
@@ -459,7 +462,7 @@ class DatabaseClient {
   }
 
   delete(): DeleteBuilder {
-    return new DeleteBuilder(this.tableName, this.getHeaders.bind(this));
+    return new DeleteBuilder(this.tableName, this.getHeaders.bind(this), this.options.where);
   }
 }
 

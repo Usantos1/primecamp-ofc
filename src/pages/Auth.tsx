@@ -28,6 +28,8 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("light");
+  // Bloqueio de novas tentativas após 429 (muitas tentativas) — evita enviar mais requisições e piorar o bloqueio
+  const [lockLoginUntil, setLockLoginUntil] = useState<number | null>(null);
 
   useEffect(() => {
     // Se já está autenticado, redirecionar
@@ -36,9 +38,27 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Contagem regressiva do bloqueio de login (atualiza a cada segundo)
+  const [lockSecondsLeft, setLockSecondsLeft] = useState(0);
+  useEffect(() => {
+    if (lockLoginUntil == null) {
+      setLockSecondsLeft(0);
+      return;
+    }
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((lockLoginUntil - Date.now()) / 1000));
+      setLockSecondsLeft(left);
+      if (left <= 0) setLockLoginUntil(null);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockLoginUntil]);
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (lockLoginUntil != null && Date.now() < lockLoginUntil) return;
+
     if (!email || !password) {
       toast({
         title: "Erro",
@@ -51,28 +71,29 @@ const Auth = () => {
     setLoading(true);
     try {
       console.log('[Auth] Tentando fazer login via API PostgreSQL:', { email });
-      
-      // 🚫 NÃO USAR SUPABASE - Usar apenas API PostgreSQL
+
       const response = await authAPI.login(email, password);
-      
+
       if (response.error) {
-        throw new Error(response.error.message || 'Erro ao fazer login');
+        throw new Error(response.error.message || "Erro ao fazer login");
       }
-      
-      console.log('[Auth] Login bem-sucedido:', { userId: response.data?.user?.id, email: response.data?.user?.email });
-      
+
       toast({
         title: "Login realizado",
         description: "Bem-vindo de volta!",
       });
-      
-      // Recarregar página para atualizar AuthContext
+
       window.location.href = "/";
     } catch (error: any) {
-      console.error('[Auth] Erro no login:', error);
+      console.error("[Auth] Erro no login:", error);
+      const msg = error?.message || "Email ou senha incorretos.";
+      const isTooManyRequests = typeof msg === "string" && (msg.includes("Muitas tentativas") || msg.includes("429"));
+      if (isTooManyRequests) {
+        setLockLoginUntil(Date.now() + 90 * 1000); // 90 segundos sem novas tentativas
+      }
       toast({
         title: "Erro no login",
-        description: error.message || "Email ou senha incorretos.",
+        description: msg,
         variant: "destructive",
       });
     } finally {
@@ -236,12 +257,14 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || lockSecondsLeft > 0}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Entrando...
                     </>
+                  ) : lockSecondsLeft > 0 ? (
+                    <>Aguarde {lockSecondsLeft} s para tentar de novo</>
                   ) : (
                     <>
                       <LogIn className="mr-2 h-4 w-4" />

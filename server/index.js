@@ -213,10 +213,11 @@ const limiter = rateLimit({
   max: 5000, // máximo de 5000 requisições por IP (dashboard faz muitas queries)
 });
 
+// Login/signup: limite alto para não bloquear loja. Contador é em memória — reiniciar a API zera o bloqueio.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // máximo de 100 tentativas de login por IP
-  message: { error: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+  max: 1000, // 1000 tentativas por IP (evita bloqueio em uso normal; para desbloquear agora: reinicie a API)
+  message: { error: 'Muitas tentativas de login. Aguarde alguns minutos ou reinicie o servidor da API.' },
   standardHeaders: true,
   legacyHeaders: false,
 });

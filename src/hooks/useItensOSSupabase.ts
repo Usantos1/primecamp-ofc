@@ -202,5 +202,8 @@ export function useItensOSSupabase(osId: string) {
     addItem: addItem.mutateAsync,
     updateItem: (id: string, data: Partial<ItemOS>) => updateItem.mutateAsync({ id, data }),
     removeItem: removeItem.mutateAsync,
+    isAddingItem: addItem.isPending,
+    isUpdatingItem: updateItem.isPending,
+    isRemovingItem: removeItem.isPending,
   };
 }

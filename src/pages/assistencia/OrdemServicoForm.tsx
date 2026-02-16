@@ -527,7 +527,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Itens e pagamentos (apenas para edição)
   // Usar um ID temporário se a OS ainda não foi criada
   const osIdParaItens = id || currentOS?.id || 'temp';
-  const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens } = useItensOSSupabase(osIdParaItens);
+  const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens, isAddingItem, isUpdatingItem, isRemovingItem } = useItensOSSupabase(osIdParaItens);
   const { pagamentos, totalPago, addPagamento } = usePagamentos(osIdParaItens);
 
   // Resetar osLoaded quando o id mudar
@@ -635,24 +635,30 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   }, [id, isEditing, getOSById, getClienteById, osLoaded]);
 
-  // Atualizar valor_total da OS quando itens mudarem
+  // Atualizar valor_total da OS quando itens mudarem (com debounce para evitar várias requisições ao remover/adicionar vários itens)
+  const valorTotalUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (isEditing && currentOS && total !== undefined && total >= 0 && !isLoadingItens) {
-      // Atualizar valor_total na OS quando o total dos itens mudar
-      const valorTotalAtual = Number(currentOS.valor_total || 0);
-      const novoTotal = Number(total || 0);
-      
-      // Sempre atualizar se houver diferença (mesmo que pequena) ou se o total mudou
-      if (Math.abs(novoTotal - valorTotalAtual) > 0.01 || (novoTotal > 0 && valorTotalAtual === 0)) {
-        updateOS(currentOS.id, { valor_total: novoTotal }).then(() => {
-          // Invalidar queries relacionadas para atualizar a lista
+    if (!isEditing || !currentOS || total === undefined || total < 0 || isLoadingItens) return;
+    const valorTotalAtual = Number(currentOS.valor_total || 0);
+    const novoTotal = Number(total || 0);
+    if (Math.abs(novoTotal - valorTotalAtual) <= 0.01 && !(novoTotal > 0 && valorTotalAtual === 0)) return;
+
+    if (valorTotalUpdateRef.current) clearTimeout(valorTotalUpdateRef.current);
+    valorTotalUpdateRef.current = setTimeout(() => {
+      valorTotalUpdateRef.current = null;
+      updateOS(currentOS.id, { valor_total: novoTotal })
+        .then(() => {
           queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
           queryClient.invalidateQueries({ queryKey: ['os_items_all'] });
-        }).catch(error => {
+        })
+        .catch(error => {
           console.error('[OrdemServicoForm] Erro ao atualizar valor_total:', error);
         });
-      }
-    }
+    }, 500);
+
+    return () => {
+      if (valorTotalUpdateRef.current) clearTimeout(valorTotalUpdateRef.current);
+    };
   }, [total, isEditing, currentOS, updateOS, itens.length, queryClient, isLoadingItens]);
 
   // Atualizar nomes de colaboradores que estão faltando nos itens
@@ -1174,54 +1180,28 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     setShowAddItem(true);
   };
 
-  // Remover item (com reversão de estoque)
+  // Remover item — reversão de estoque é feita no hook useItensOSSupabase (evitar dupla reversão)
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const handleRemoveItem = async (itemId: string) => {
     const item = itens.find(i => i.id === itemId);
     if (!item) return;
-
-    // Buscar número da OS para registrar movimentação
-    let osNumero = 0;
-    if (isEditing && id) {
-      const os = getOSById(id);
-      osNumero = os?.numero || 0;
+    setRemovingItemId(itemId);
+    try {
+      await removeItem(itemId);
+      toast({
+        title: 'Item removido',
+        description: 'O item foi removido da ordem de serviço e o estoque foi revertido (quando for peça).',
+      });
+    } catch (error: any) {
+      console.error('[OrdemServicoForm] Erro ao remover item:', error);
+      toast({
+        title: 'Erro ao remover item',
+        description: error?.message || 'Não foi possível remover o item. Tente novamente ou verifique permissões.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRemovingItemId(null);
     }
-
-    // Reverter estoque se for peça com produto_id
-    if (item.tipo === 'peca' && item.produto_id) {
-      const produto = produtos.find(p => p.id === item.produto_id);
-      if (produto) {
-        const quantidadeRemovida = item.quantidade || 0;
-        const estoqueAtual = produto.quantidade || 0;
-        const novoEstoque = estoqueAtual + quantidadeRemovida;
-        
-        // Atualizar estoque (já registra movimentação automaticamente)
-        await updateProduto(produto.id, { quantidade: novoEstoque });
-        
-        // Registrar movimentação específica de devolução OS
-        try {
-          await from('produto_movimentacoes')
-            .insert({
-              produto_id: produto.id,
-              tipo: 'devolucao_os',
-              motivo: `Item removido da OS #${osNumero || '?'}`,
-              quantidade_antes: estoqueAtual,
-              quantidade_depois: novoEstoque,
-              quantidade_delta: quantidadeRemovida,
-              user_id: user?.id || null,
-              user_nome: currentUserNome,
-            })
-            .execute();
-        } catch (movError) {
-          console.error('Erro ao registrar movimentação de remoção OS:', movError);
-        }
-      }
-    }
-
-    await removeItem(itemId);
-    toast({
-      title: 'Item removido',
-      description: 'O item foi removido da ordem de serviço e o estoque foi revertido.',
-    });
   };
 
   // Selecionar produto
@@ -4666,7 +4646,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditItem(item)}>
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item.id)}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item.id)} disabled={isRemovingItem || removingItemId === item.id} title="Remover item">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
@@ -5173,7 +5153,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAddItem(false)}>Cancelar</Button>
-              <Button onClick={handleSubmitItem} disabled={!itemForm.descricao}>
+              <Button onClick={handleSubmitItem} disabled={!itemForm.descricao || isAddingItem || isUpdatingItem}>
                 {editingItem ? 'Atualizar' : 'Adicionar'}
               </Button>
             </DialogFooter>
