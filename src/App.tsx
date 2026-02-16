@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeConfigProvider } from "@/contexts/ThemeConfigContext";
 import { ThemeProvider } from "next-themes";
@@ -90,6 +91,20 @@ import FluxoDeCaixa from "./pages/financeiro/FluxoDeCaixa";
 
 const queryClient = new QueryClient();
 
+/** Dispara evento para AuthContext atualizar sessão/permissões ao trocar de página (não ao alternar aba do Chrome). */
+function AuthSyncOnNavigate({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isFirst = useRef(true);
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false;
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('auth-check-on-navigate'));
+  }, [location.pathname]);
+  return <>{children}</>;
+}
+
 const App = () => (
   <ErrorBoundary>
     <HelmetProvider>
@@ -102,6 +117,7 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
+            <AuthSyncOnNavigate>
             <Routes>
             {/* Rotas públicas de autenticação */}
             <Route path="/login" element={<Auth />} />
@@ -238,6 +254,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
               </Routes>
+            </AuthSyncOnNavigate>
             </BrowserRouter>
             </TooltipProvider>
             </NotificationManager>
