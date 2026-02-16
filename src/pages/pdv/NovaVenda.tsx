@@ -987,20 +987,20 @@ export default function NovaVenda() {
         
         // Aguardar um pouco para garantir que os dados estão atualizados e imprimir automaticamente
         setTimeout(async () => {
-          await loadSale();
-          setTimeout(async () => {
-            const finalizedSale = await getSaleById(id);
-            if (finalizedSale && items && payments && payments.length > 0) {
-              try {
-                // Imprimir cupom automaticamente (sem nova aba, sem confirmação)
-                await handlePrintCupomDirect(finalizedSale);
-              } catch (printError) {
-                console.error('Erro ao imprimir após finalizar:', printError);
-                // Não bloquear a finalização se a impressão falhar
-              }
+          const finalizedSale = await getSaleById(id);
+          if (finalizedSale?.items?.length && finalizedSale?.payments?.length) {
+            try {
+              // Imprimir cupom automaticamente usando dados frescos da venda (não depende do estado)
+              await handlePrintCupomDirect(finalizedSale);
+            } catch (printError) {
+              console.error('Erro ao imprimir após finalizar:', printError);
+              // Não bloquear a finalização se a impressão falhar
             }
-          }, 800);
-        }, 1200);
+          } else {
+            console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos', { id: finalizedSale?.id });
+          }
+          await loadSale();
+        }, 800);
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);
       toast({ 
@@ -1433,36 +1433,22 @@ export default function NovaVenda() {
           toast({ title: 'Venda finalizada com sucesso!' });
           setShowCheckout(false);
           
-          // Aguardar carregar items e payments antes de imprimir
+          // Aguardar e imprimir automaticamente com dados frescos da venda
           setPendingSaleForCupom(updatedSale);
-          // Aguardar um pouco mais para garantir que items e payments estejam carregados
           setTimeout(async () => {
+            const finalSale = await getSaleById(id);
+            if (finalSale?.items?.length && finalSale?.payments?.length) {
+              console.log('[IMPRESSÃO] Iniciando impressão automática...', { saleId: finalSale.id });
+              await handlePrintCupomDirect(finalSale);
+              setTimeout(() => {
+                limparPDV();
+                toast({ title: 'PDV limpo. Pronto para nova venda!' });
+              }, 2000);
+            } else {
+              console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos');
+            }
             await loadSale();
-            setTimeout(async () => {
-              // Recarregar sale novamente para garantir dados atualizados
-              const finalSale = await getSaleById(id);
-              if (finalSale && items && payments && payments.length > 0) {
-                console.log('[IMPRESSÃO] Iniciando impressão automática...', { 
-                  saleId: finalSale.id,
-                  itemsCount: items.length,
-                  paymentsCount: payments.length
-                });
-                await handlePrintCupomDirect(finalSale);
-                setTimeout(() => {
-                  limparPDV();
-                  toast({ title: 'PDV limpo. Pronto para nova venda!' });
-                }, 2000);
-              } else {
-                console.warn('[IMPRESSÃO] Dados não carregados para impressão:', { 
-                  sale: !!finalSale, 
-                  items: !!items, 
-                  payments: !!payments,
-                  itemsCount: items?.length,
-                  paymentsCount: payments?.length
-                });
-              }
-            }, 800);
-          }, 1200);
+          }, 800);
         } catch (error: any) {
           console.error('Erro ao finalizar venda automaticamente:', error);
           toast({ 
@@ -1504,25 +1490,19 @@ export default function NovaVenda() {
   const handleConfirmEmitCupom = async () => {
     setShowEmitirCupomDialog(false);
     
-    if (pendingSaleForCupom) {
+    if (pendingSaleForCupom?.id) {
       try {
-        // Recarregar dados da venda para ter items e payments atualizados
-        await loadSale();
-        // Aguardar um pouco para garantir que os dados foram carregados
-        setTimeout(async () => {
-          if (sale && items && payments) {
-            // SEMPRE imprime direto, sem perguntar
-            await handlePrintCupomDirect(pendingSaleForCupom);
-            // Aguardar impressão e limpar PDV
-            setTimeout(() => {
-              limparPDV();
-              toast({ title: 'PDV limpo. Pronto para nova venda!' });
-            }, 1500);
-          } else {
-            // Se não tiver dados, apenas limpar
+        const saleParaCupom = await getSaleById(pendingSaleForCupom.id);
+        if (saleParaCupom?.items?.length && saleParaCupom?.payments?.length) {
+          await handlePrintCupomDirect(saleParaCupom);
+          setTimeout(() => {
             limparPDV();
-          }
-        }, 500);
+            toast({ title: 'PDV limpo. Pronto para nova venda!' });
+          }, 1500);
+        } else {
+          limparPDV();
+        }
+        await loadSale();
       } catch (error) {
         console.error('Erro ao emitir cupom:', error);
         toast({ title: 'Erro ao emitir cupom', variant: 'destructive' });
@@ -1589,11 +1569,14 @@ export default function NovaVenda() {
   };
 
   // Imprimir cupom térmico diretamente (sem abrir janela)
+  // Aceita venda com items/payments (ex.: retorno de getSaleById) para impressão automática pós-finalizar
   const handlePrintCupomDirect = async (saleData?: any) => {
     try {
       const saleToUse = saleData || sale;
-      if (!saleToUse || !items || !payments) {
-        console.error('Dados insuficientes para imprimir cupom:', { saleToUse, items, payments });
+      const itensParaCupom = (saleToUse?.items?.length ? saleToUse.items : items) ?? [];
+      const pagamentosParaCupom = (saleToUse?.payments?.length ? saleToUse.payments : payments) ?? [];
+      if (!saleToUse || !itensParaCupom.length || !pagamentosParaCupom.length) {
+        console.error('Dados insuficientes para imprimir cupom:', { saleToUse: !!saleToUse, itens: itensParaCupom.length, pagamentos: pagamentosParaCupom.length });
         return;
       }
       const cupomData = {
@@ -1611,7 +1594,7 @@ export default function NovaVenda() {
           cpf_cnpj: saleToUse.cliente_cpf_cnpj || undefined,
           telefone: saleToUse.cliente_telefone || undefined,
         } : undefined,
-        itens: items.map(item => ({
+        itens: itensParaCupom.map((item: any) => ({
           codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
           nome: item.produto_nome,
           quantidade: Number(item.quantidade),
@@ -1622,9 +1605,9 @@ export default function NovaVenda() {
         subtotal: Number(saleToUse.subtotal),
         desconto_total: Number(saleToUse.desconto_total),
         total: Number(saleToUse.total),
-        pagamentos: payments
-          .filter(p => p.status === 'confirmed')
-          .map(p => ({
+        pagamentos: pagamentosParaCupom
+          .filter((p: any) => p.status === 'confirmed')
+          .map((p: any) => ({
             forma: p.forma_pagamento,
             valor: Number(p.valor),
             troco: p.troco ? Number(p.troco) : undefined,
