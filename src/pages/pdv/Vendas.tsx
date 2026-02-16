@@ -73,7 +73,7 @@ export default function Vendas() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   // Default: mostrar histórico (últimos 30 dias) para não ficar "tudo zerado"
-  const [dateFilter, setDateFilter] = useState<string>('month');
+  const [dateFilter, setDateFilter] = useState<string>('today');
   
   // Estado do período personalizado
   const [customDateStart, setCustomDateStart] = useState<Date | undefined>(undefined);

@@ -293,22 +293,34 @@ export default function Caixa() {
 
   return (
     <ModernLayout title="Caixa" subtitle="Abertura, fechamento e movimentos de caixa">
-      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
-        {/* Status do Caixa */}
+      <div className="flex flex-col min-h-0 flex-1 overflow-y-auto gap-2 md:gap-3">
+        {/* Status do Caixa + Suprimento/Sangria ao lado de Abrir/Fechar */}
         <div className="flex-shrink-0 bg-card border border-gray-200 rounded-lg shadow-sm p-2 md:p-3">
           {currentSession ? (
             <>
               {/* Mobile: Layout compacto */}
               <div className="md:hidden space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <Badge className="bg-green-100 text-green-800 text-[10px]">
                     <Unlock className="h-3 w-3 mr-1" />Aberto
                   </Badge>
-                  {canCloseCash && (
-                    <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-7 text-xs">
-                      <Lock className="h-3 w-3 mr-1" />Fechar
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {canMovement && (
+                      <>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setMovementType('suprimento'); setShowMovementDialog(true); }}>
+                          <Plus className="h-3 w-3 mr-1" />Suprimento
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setMovementType('sangria'); setShowMovementDialog(true); }}>
+                          <Minus className="h-3 w-3 mr-1" />Sangria
+                        </Button>
+                      </>
+                    )}
+                    {canCloseCash && (
+                      <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-7 text-xs">
+                        <Lock className="h-3 w-3 mr-1" />Fechar
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-thin text-[10px]">
                   <span className="whitespace-nowrap px-1.5 py-0.5 bg-gray-100 rounded">Inicial: {currencyFormatters.brl(currentSession.valor_inicial)}</span>
@@ -334,11 +346,21 @@ export default function Caixa() {
                     ))}
                   </div>
                 )}
-                {canCloseCash && (
-                  <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 ml-auto">
+                  {canMovement && (
+                    <>
+                      <Button variant="outline" size="sm" className="h-8" onClick={() => { setMovementType('suprimento'); setShowMovementDialog(true); }}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />Suprimento
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8" onClick={() => { setMovementType('sangria'); setShowMovementDialog(true); }}>
+                        <Minus className="h-3.5 w-3.5 mr-1" />Sangria
+                      </Button>
+                    </>
+                  )}
+                  {canCloseCash && (
                     <Button onClick={() => setShowCloseDialog(true)} variant="destructive" size="sm" className="h-8"><Lock className="h-3.5 w-3.5 mr-1" />Fechar Caixa</Button>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div className="w-full flex items-center gap-3 text-xs text-muted-foreground mt-1 pt-2 border-t">
                   <span className="flex items-center gap-1"><User className="h-3 w-3" />{currentSession.operador_nome}</span>
                   <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{dateFormatters.short(currentSession.opened_at)}</span>
@@ -347,18 +369,30 @@ export default function Caixa() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 md:gap-3">
                 <Badge variant="outline" className="text-[10px] md:text-xs"><Lock className="h-3 w-3 mr-1" />Fechado</Badge>
                 <span className="text-xs md:text-sm text-muted-foreground hidden md:inline">
                   {canOpenCash ? 'Abra o caixa para começar a operar' : 'Sem permissão para abrir o caixa'}
                 </span>
               </div>
-              {canOpenCash && (
-                <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-7 md:h-8 text-xs md:text-sm">
-                  <Unlock className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Abrir
-                </Button>
-              )}
+              <div className="flex items-center gap-1 md:gap-2">
+                {canMovement && (
+                  <>
+                    <Button variant="outline" size="sm" className="h-7 md:h-8 text-xs" disabled title="Abra o caixa para registrar suprimento">
+                      <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Suprimento
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 md:h-8 text-xs" disabled title="Abra o caixa para registrar sangria">
+                      <Minus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Sangria
+                    </Button>
+                  </>
+                )}
+                {canOpenCash && (
+                  <Button onClick={() => setShowOpenDialog(true)} size="sm" className="h-7 md:h-8 text-xs md:text-sm">
+                    <Unlock className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />Abrir
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -620,49 +654,23 @@ export default function Caixa() {
           </Card>
         )}
 
-        {/* Movimentos */}
-        {currentSession && (
-          <Card className="border-2 border-gray-300">
-            <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 md:gap-0">
-                <CardTitle className="text-base md:text-lg">Movimentos</CardTitle>
-                {canMovement && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setMovementType('suprimento');
-                        setShowMovementDialog(true);
-                      }}
-                      className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
-                    >
-                      <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
-                      <span className="text-xs md:text-sm">Suprimento</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setMovementType('sangria');
-                        setShowMovementDialog(true);
-                      }}
-                      className="h-8 md:h-9 flex-1 md:flex-none border-2 border-gray-300"
-                    >
-                      <Minus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1 md:mr-2" />
-                      <span className="text-xs md:text-sm">Sangria</span>
-                    </Button>
-                  </div>
-                )}
+        {/* Movimentos — lista apenas; Suprimento/Sangria ficam ao lado de Abrir/Fechar Caixa */}
+        <Card className="border-2 border-gray-300">
+          <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
+            <CardTitle className="text-base md:text-lg">Movimentos</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 md:p-6">
+            {!currentSession ? (
+              <div className="text-center py-6 md:py-8 text-muted-foreground">
+                <FileText className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-xs md:text-sm">Abra o caixa para registrar movimentos (suprimento ou sangria).</p>
               </div>
-            </CardHeader>
-            <CardContent className="p-3 md:p-6">
-              {movements.length === 0 ? (
-                <div className="text-center py-6 md:py-8 text-muted-foreground">
-                  <FileText className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs md:text-sm">Nenhum movimento registrado</p>
-                </div>
-              ) : (
+            ) : movements.length === 0 ? (
+              <div className="text-center py-6 md:py-8 text-muted-foreground">
+                <FileText className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-xs md:text-sm">Nenhum movimento registrado</p>
+              </div>
+            ) : (
                 <>
                   {/* Desktop: Tabela */}
                   <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
@@ -758,7 +766,6 @@ export default function Caixa() {
               )}
             </CardContent>
           </Card>
-        )}
       </div>
 
       {/* Dialog: Abrir Caixa */}
