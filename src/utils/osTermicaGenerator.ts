@@ -14,10 +14,12 @@ export interface OSTermicaData {
   imagemReferenciaUrl?: string; // URL da imagem de referência do aparelho
   areasDefeito?: string[]; // Array de strings no formato "x-y" (percentuais)
   via: 'cliente' | 'loja';
+  /** Se true, não exibe a seção "CHECKLIST DE ENTRADA" na via (usado nas vias cliente e loja). */
+  omitirChecklist?: boolean;
 }
 
 export async function generateOSTermica(data: OSTermicaData): Promise<string> {
-  const { os, clienteNome, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, imagemReferenciaUrl, areasDefeito, via } = data;
+  const { os, clienteNome, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, imagemReferenciaUrl, areasDefeito, via, omitirChecklist } = data;
 
   // Gerar QR Code com URL da OS
   let qrCodeImg = '';
@@ -313,6 +315,7 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
       
       ${imagemReferenciaHtml}
       
+      ${omitirChecklist ? '' : `
       <div class="section-title">CHECKLIST DE ENTRADA</div>
       
       ${checklistFisico ? `
@@ -330,6 +333,7 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
           ${os.observacoes_checklist}
         </div>
       ` : ''}
+      `}
       
       <div class="divider-dashed"></div>
       

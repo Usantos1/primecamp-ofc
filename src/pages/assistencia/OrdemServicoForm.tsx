@@ -410,7 +410,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     senha_numerica: '', // Para iPhone
     padrao_desbloqueio: '', // Padrão de desbloqueio
     possui_senha: false,
-    possui_senha_tipo: 'nao', // Tipo de senha: 'sim', 'nao', 'deslizar', 'nao_sabe', 'nao_autorizou'
+    possui_senha_tipo: '', // Obrigatório: 'sim', 'nao', 'deslizar', 'nao_sabe', 'nao_autorizou'
     deixou_aparelho: true,
     apenas_agendamento: false,
     descricao_problema: '',
@@ -1297,6 +1297,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       camposFaltandoSet.add('previsao_entrega');
     }
 
+    const possuiSenhaValidos = ['sim', 'deslizar', 'nao', 'nao_sabe', 'nao_autorizou'];
+    if (!formData.possui_senha_tipo || !possuiSenhaValidos.includes(formData.possui_senha_tipo)) {
+      camposFaltando.push('Possui senha');
+      camposFaltandoSet.add('possui_senha');
+    }
+
     // Se houver campos faltando, exibir toast com lista e log no console
     if (camposFaltando.length > 0) {
       console.warn('[VALIDAÇÃO OS] Campos obrigatórios faltando:', camposFaltando);
@@ -1954,7 +1960,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         const imagemReferenciaUrl = osImageReferenceUrl || null;
         const areasDefeito = os.areas_defeito || [];
 
-        // Gerar via do cliente
+        // Gerar via do cliente (sem checklist na impressão)
         const htmlCliente = await generateOSTermica({
           os,
           clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
@@ -1966,9 +1972,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           imagemReferenciaUrl,
           areasDefeito,
           via: 'cliente',
+          omitirChecklist: true,
         });
 
-        // Gerar via da loja
+        // Gerar via da loja (sem checklist na impressão)
         const htmlLoja = await generateOSTermica({
           os,
           clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
@@ -1980,6 +1987,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           imagemReferenciaUrl,
           areasDefeito,
           via: 'loja',
+          omitirChecklist: true,
         });
 
         // Imprimir ambas as vias
@@ -2938,24 +2946,33 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-4">
-                  {/* Seção Senha */}
+                  {/* Seção Senha — obrigatório: perguntar ao cliente antes de salvar */}
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-gray-600">Possui senha</Label>
+                    <div className="flex items-center gap-2">
+                      <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('possui_senha') && "font-bold text-red-600")}>Possui senha *</Label>
+                      {camposFaltandoState.has('possui_senha') && (
+                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
+                      )}
+                    </div>
                     <Select 
-                      value={formData.possui_senha_tipo || 'nao'} 
+                      value={formData.possui_senha_tipo === '' ? '__vazio__' : formData.possui_senha_tipo} 
                       onValueChange={(v) => {
+                        if (v === '__vazio__') return;
                         setFormData(prev => ({ 
                           ...prev, 
                           possui_senha_tipo: v,
                           possui_senha: v !== 'nao' && v !== ''
                         }));
+                        if (camposFaltandoState.has('possui_senha')) {
+                          setCamposFaltandoState(prev => { const next = new Set(prev); next.delete('possui_senha'); return next; });
+                        }
                       }}
                     >
-                      <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
-                        <SelectValue className="truncate">
+                      <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('possui_senha') && "border-red-500 border-2 bg-red-50")}>
+                        <SelectValue placeholder="Selecione se o aparelho possui senha">
                           {formData.possui_senha_tipo === 'sim' && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && 'SIM - DESLIZAR (DESENHO)'}
-                          {(formData.possui_senha_tipo === 'nao' || !formData.possui_senha_tipo) && 'NÃO'}
+                          {formData.possui_senha_tipo === 'nao' && 'NÃO'}
                           {formData.possui_senha_tipo === 'nao_sabe' && 'NÃO SABE'}
                           {formData.possui_senha_tipo === 'nao_autorizou' && 'NÃO AUTORIZOU'}
                         </SelectValue>

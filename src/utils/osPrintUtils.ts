@@ -31,7 +31,7 @@ export async function printOSTermicaDirect(
       ? os.checklist_entrada 
       : (typeof os.checklist_entrada === 'string' ? JSON.parse(os.checklist_entrada || '[]') : []);
 
-    // Gerar via do cliente
+    // Gerar via do cliente (sem checklist na impressão)
     const htmlCliente = await generateOSTermica({
       os,
       clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
@@ -43,9 +43,10 @@ export async function printOSTermicaDirect(
       imagemReferenciaUrl,
       areasDefeito,
       via: 'cliente',
+      omitirChecklist: true,
     });
 
-    // Gerar via da loja
+    // Gerar via da loja (sem checklist na impressão)
     const htmlLoja = await generateOSTermica({
       os,
       clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
@@ -57,6 +58,7 @@ export async function printOSTermicaDirect(
       imagemReferenciaUrl,
       areasDefeito,
       via: 'loja',
+      omitirChecklist: true,
     });
 
     // Imprimir primeira via (cliente)
