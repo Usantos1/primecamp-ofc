@@ -75,10 +75,30 @@ class AuthAPIClient {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+
+      // 429 = Too Many Requests (rate limit) — servidor pode retornar texto em vez de JSON
+      if (response.status === 429) {
+        return {
+          error: {
+            message: 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.',
+          },
+        };
+      }
+
+      let data: any = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        return {
+          error: {
+            message: response.ok ? 'Resposta inválida do servidor.' : (rawText || 'Erro ao fazer login'),
+          },
+        };
+      }
 
       if (!response.ok) {
-        return { error: { message: data.error || data.message || 'Erro ao fazer login' } };
+        return { error: { message: data.error || data.message || rawText || 'Erro ao fazer login' } };
       }
 
       // Salvar token
