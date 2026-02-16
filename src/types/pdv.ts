@@ -244,6 +244,7 @@ export interface PaymentFormData {
   taxa_juros?: number;
   bandeira?: string;
   taxa_cartao?: number;
+  valor_repasse?: number | null;
   link_pagamento_url?: string;
 }
 

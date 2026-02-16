@@ -1,9 +1,57 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { apiClient } from '@/integrations/api/client';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Taxa por forma de pagamento e parcelas (fee_percentage, fee_fixed) */
+type FeeRule = { installments: number; fee_percentage: number; fee_fixed: number };
+function buildFeesByCode(methods: { code: string; fees?: FeeRule[] }[]): Record<string, FeeRule[]> {
+  const map: Record<string, FeeRule[]> = {};
+  (methods || []).forEach((m) => {
+    if (m.code && Array.isArray(m.fees) && m.fees.length > 0) {
+      map[m.code] = m.fees.map((f) => ({
+        installments: Number(f.installments) ?? 1,
+        fee_percentage: Number(f.fee_percentage) || 0,
+        fee_fixed: Number(f.fee_fixed) || 0,
+      }));
+    }
+  });
+  return map;
+}
+
+function getFeeForPayment(feesByCode: Record<string, FeeRule[]>, forma: string, parcelas: number): FeeRule | null {
+  const fees = feesByCode[forma];
+  if (!fees?.length) return null;
+  const p = parcelas || 1;
+  const exact = fees.find((f) => f.installments === p);
+  if (exact) return exact;
+  return fees.find((f) => f.installments === 1) ?? fees[0] ?? null;
+}
+
+/** Calcula taxa e líquido: taxa = valor * (fee_percentage/100) + fee_fixed; líquido = valor - taxa */
+function computeTaxaLiquido(
+  valor: number,
+  valorRepasse: number | null,
+  taxaCartaoPct: number,
+  fee: FeeRule | null
+): { taxa: number; liquido: number } {
+  if (valorRepasse != null && valorRepasse >= 0) {
+    return { liquido: valorRepasse, taxa: round2(valor - valorRepasse) };
+  }
+  if (fee && (fee.fee_percentage > 0 || fee.fee_fixed > 0)) {
+    const taxa = round2(valor * (fee.fee_percentage / 100) + fee.fee_fixed);
+    const liquido = round2(valor - taxa);
+    return { taxa, liquido };
+  }
+  if (taxaCartaoPct > 0) {
+    const liquido = round2(valor * (1 - taxaCartaoPct / 100));
+    return { taxa: round2(valor - liquido), liquido };
+  }
+  return { taxa: 0, liquido: valor };
+}
 
 export type FormaPagamento = string;
 
@@ -58,6 +106,17 @@ export interface LedgerEntry {
 
 export function useCaixaGeral(period: CaixaGeralPeriod) {
   const dateRange = useMemo(() => getDateRange(period), [period.dateFilter, period.customDateStart?.getTime(), period.customDateEnd?.getTime()]);
+
+  const feesQuery = useQuery({
+    queryKey: ['payment-methods-with-fees'],
+    queryFn: async () => {
+      const response = await apiClient.get('/payment-methods?active_only=true&with_fees=true');
+      if (response.error) return [];
+      const data = response.data?.data ?? response.data;
+      return Array.isArray(data) ? data : [];
+    },
+  });
+  const feesByCode = useMemo(() => buildFeesByCode(feesQuery.data ?? []), [feesQuery.data]);
 
   const paymentsQuery = useQuery({
     queryKey: ['caixa-geral-payments', dateRange?.start ?? 'all', dateRange?.end ?? 'all'],
@@ -132,17 +191,16 @@ export function useCaixaGeral(period: CaixaGeralPeriod) {
       const valor = Number(p.valor) || 0;
       const valorRepasse = p.valor_repasse != null ? Number(p.valor_repasse) : null;
       const taxaPct = Number(p.taxa_cartao) || 0;
-      const liquido = valorRepasse != null && valorRepasse >= 0
-        ? valorRepasse
-        : round2(valor * (1 - taxaPct / 100));
-      const taxa = round2(valor - liquido);
+      const parcelas = Math.max(1, parseInt(String(p.parcelas), 10) || 1);
+      const fee = getFeeForPayment(feesByCode, forma, parcelas);
+      const { taxa, liquido } = computeTaxaLiquido(valor, valorRepasse, taxaPct, fee);
       if (!map[forma]) map[forma] = { bruto: 0, taxa: 0, liquido: 0 };
       map[forma].bruto = round2(map[forma].bruto + valor);
       map[forma].taxa = round2(map[forma].taxa + taxa);
       map[forma].liquido = round2(map[forma].liquido + liquido);
     });
     return map;
-  }, [payments]);
+  }, [payments, feesByCode]);
 
   const sangriaTotal = useMemo(() => {
     return round2(movements.filter((m: any) => m.tipo === 'sangria').reduce((s, m) => s + Number(m.valor || 0), 0));
@@ -178,8 +236,9 @@ export function useCaixaGeral(period: CaixaGeralPeriod) {
       const valor = Number(p.valor) || 0;
       const valorRepasse = p.valor_repasse != null ? Number(p.valor_repasse) : null;
       const taxaPct = Number(p.taxa_cartao) || 0;
-      const liquido = valorRepasse != null && valorRepasse >= 0 ? valorRepasse : round2(valor * (1 - taxaPct / 100));
-      const taxa = round2(valor - liquido);
+      const parcelas = Math.max(1, parseInt(String(p.parcelas), 10) || 1);
+      const fee = getFeeForPayment(feesByCode, p.forma_pagamento || 'outro', parcelas);
+      const { taxa, liquido } = computeTaxaLiquido(valor, valorRepasse, taxaPct, fee);
       entries.push({
         id: `p-${p.id}`,
         data: p.created_at,
@@ -228,7 +287,7 @@ export function useCaixaGeral(period: CaixaGeralPeriod) {
     });
     entries.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
     return entries.slice(0, 200);
-  }, [payments, movements, salesMap, sessionsMap, treasuryMovements]);
+  }, [payments, movements, salesMap, sessionsMap, treasuryMovements, feesByCode]);
 
   return {
     totaisPorForma,
@@ -236,7 +295,7 @@ export function useCaixaGeral(period: CaixaGeralPeriod) {
     suprimentoTotal,
     saldoPorForma,
     ledger,
-    isLoading: paymentsQuery.isLoading || movementsQuery.isLoading || treasuryQuery.isLoading,
-    refetch: () => { paymentsQuery.refetch(); movementsQuery.refetch(); treasuryQuery.refetch(); },
+    isLoading: paymentsQuery.isLoading || movementsQuery.isLoading || treasuryQuery.isLoading || feesQuery.isLoading,
+    refetch: () => { paymentsQuery.refetch(); movementsQuery.refetch(); treasuryQuery.refetch(); feesQuery.refetch(); },
   };
 }

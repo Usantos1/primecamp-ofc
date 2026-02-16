@@ -1017,7 +1017,8 @@ export function usePayments(saleId: string) {
           taxa_juros: paymentData.taxa_juros || 0,
           valor_parcela: valor_parcela,
           bandeira: paymentData.bandeira || null,
-          taxa_cartao: paymentData.taxa_cartao || 0,
+          taxa_cartao: paymentData.taxa_cartao ?? 0,
+          valor_repasse: paymentData.valor_repasse ?? null,
           link_pagamento_url: paymentData.link_pagamento_url || null,
           status: 'pending',
         })

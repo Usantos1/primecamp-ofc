@@ -427,6 +427,7 @@ export function CaixaGeral({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold shrink-0">Caixa geral (tesouraria)</h2>
+        {/* Único bloco de filtros: Período + Status ao lado do olhinho e ações */}
         <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
           <div className="flex items-center gap-1.5 shrink-0">
             <Label className="text-muted-foreground whitespace-nowrap text-xs">Período</Label>

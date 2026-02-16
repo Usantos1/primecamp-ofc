@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica, generateOrcamentoPDF, generateOrcamentoHTML, OrcamentoData } from '@/utils/pdfGenerator';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
-import { useSales, useSaleItems, usePayments, useCashRegister } from '@/hooks/usePDV';
+import { useSales, useSaleItems, usePayments, useCashRegister, useCashMovements } from '@/hooks/usePDV';
 import { useQuotes } from '@/hooks/useQuotes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
@@ -56,7 +56,8 @@ export default function NovaVenda() {
   const { createSale, updateSale, finalizeSale, deleteSale, getSaleById } = useSales();
   const { items, addItem, updateItem, removeItem, isLoading: itemsLoading } = useSaleItems(id || '');
   const { payments, addPayment, confirmPayment, isLoading: paymentsLoading } = usePayments(id || '');
-  const { currentSession: cashSession } = useCashRegister();
+  const { currentSession: cashSession, openCash, closeCash } = useCashRegister();
+  const { movements: cashMovements } = useCashMovements(cashSession?.id || '');
   const { createQuote, convertToSale, markAsSentWhatsApp } = useQuotes();
   const { sendMessage: sendWhatsAppMessage, loading: sendingWhatsApp } = useWhatsApp();
   
@@ -67,7 +68,7 @@ export default function NovaVenda() {
   const { paymentMethods, fetchPaymentMethods } = usePaymentMethodsHook();
   
   useEffect(() => {
-    fetchPaymentMethods(true); // Buscar apenas as ativas
+    fetchPaymentMethods(true, true); // Ativas + taxas (para cálculo de valor líquido no Caixa Geral)
   }, [fetchPaymentMethods]);
   
   // Função de busca de produtos
@@ -150,6 +151,17 @@ export default function NovaVenda() {
   const [orcamentoGerado, setOrcamentoGerado] = useState<Quote | null>(null);
   const [isGeneratingOrcamento, setIsGeneratingOrcamento] = useState(false);
 
+  // Estados para modais Abrir/Fechar Caixa (barra inferior PDV)
+  const [showOpenCashDialog, setShowOpenCashDialog] = useState(false);
+  const [showCloseCashDialog, setShowCloseCashDialog] = useState(false);
+  const [cashValorInicial, setCashValorInicial] = useState('');
+  const [cashValorFinal, setCashValorFinal] = useState('');
+  const [cashDivergencia, setCashDivergencia] = useState('');
+  const [cashJustificativa, setCashJustificativa] = useState('');
+  const [isProcessingCash, setIsProcessingCash] = useState(false);
+  const [closeDialogValorEsperado, setCloseDialogValorEsperado] = useState(0);
+  const [closeDialogLoadingValor, setCloseDialogLoadingValor] = useState(false);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Carregar venda se estiver editando
@@ -158,6 +170,77 @@ export default function NovaVenda() {
       loadSale();
     }
   }, [isEditing, id]);
+
+  // Carregar valor esperado ao abrir o modal de Fechar Caixa
+  useEffect(() => {
+    if (!showCloseCashDialog || !cashSession?.id) return;
+    const loadValorEsperado = async () => {
+      setCloseDialogLoadingValor(true);
+      try {
+        const { data: salesData } = await from('sales')
+          .select('total')
+          .eq('cash_register_session_id', cashSession.id)
+          .eq('status', 'paid')
+          .execute();
+        const totalVendas = (salesData || []).reduce((s, r) => s + Number(r.total || 0), 0);
+        const totalSuprimentos = (cashMovements || [])
+          .filter((m: any) => m.tipo === 'suprimento')
+          .reduce((s: number, m: any) => s + Number(m.valor || 0), 0);
+        const totalSaidas = (cashMovements || [])
+          .filter((m: any) => m.tipo === 'sangria')
+          .reduce((s: number, m: any) => s + Number(m.valor || 0), 0);
+        const valorInicial = Number(cashSession.valor_inicial) || 0;
+        setCloseDialogValorEsperado(valorInicial + totalVendas + totalSuprimentos - totalSaidas);
+      } finally {
+        setCloseDialogLoadingValor(false);
+      }
+    };
+    loadValorEsperado();
+  }, [showCloseCashDialog, cashSession?.id, cashSession?.valor_inicial, cashMovements]);
+
+  const handleOpenCashPDV = async () => {
+    if (!cashValorInicial || parseFloat(cashValorInicial) < 0) {
+      toast({ title: 'Valor inicial inválido', variant: 'destructive' });
+      return;
+    }
+    try {
+      setIsProcessingCash(true);
+      await openCash({
+        valor_inicial: parseFloat(cashValorInicial),
+        operador_id: user?.id || '',
+      });
+      toast({ title: 'Caixa aberto com sucesso!' });
+      setShowOpenCashDialog(false);
+      setCashValorInicial('');
+    } catch (error: any) {
+      toast({ title: 'Erro ao abrir caixa', description: error.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setIsProcessingCash(false);
+    }
+  };
+
+  const handleCloseCashPDV = async () => {
+    if (!cashValorFinal || parseFloat(cashValorFinal) < 0) {
+      toast({ title: 'Valor final inválido', variant: 'destructive' });
+      return;
+    }
+    if (!cashSession?.id) return;
+    try {
+      setIsProcessingCash(true);
+      const valorFinalNum = parseFloat(cashValorFinal);
+      const divergenciaNum = cashDivergencia ? parseFloat(cashDivergencia) : undefined;
+      await closeCash(cashSession.id, valorFinalNum, divergenciaNum, cashJustificativa || undefined);
+      toast({ title: 'Caixa fechado com sucesso!' });
+      setShowCloseCashDialog(false);
+      setCashValorFinal('');
+      setCashDivergencia('');
+      setCashJustificativa('');
+    } catch (error: any) {
+      toast({ title: 'Erro ao fechar caixa', description: error.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setIsProcessingCash(false);
+    }
+  };
 
   // Função para importar OS automaticamente
   const handleImportarOS = useCallback(async (osId: string) => {
@@ -1229,12 +1312,39 @@ export default function NovaVenda() {
     }
   };
 
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  // Calcular taxa e valor líquido (repasse) conforme forma de pagamento e parcelas
+  const getPaymentFeeAndNet = (forma: string, parcelas: number, valor: number) => {
+    const pm = paymentMethods.find((p) => p.code === forma);
+    const n = Math.max(1, parcelas || 1);
+    const feeRow = pm?.fees?.find((f) => f.installments === n) ?? pm?.fees?.find((f) => f.installments === 1) ?? null;
+    if (!feeRow || (!feeRow.fee_percentage && !feeRow.fee_fixed)) {
+      return { taxa_cartao: 0, valor_repasse: null as number | null };
+    }
+    const feePct = Number(feeRow.fee_percentage) || 0;
+    const feeFixed = Number(feeRow.fee_fixed) || 0;
+    const feeAmount = round2((valor * feePct) / 100 + feeFixed);
+    const valor_repasse = round2(valor - feeAmount);
+    return { taxa_cartao: feePct, valor_repasse };
+  };
+
   // Adicionar pagamento
   const handleAddPayment = async () => {
     if (!id) return;
-    
+    const valor = Number(checkoutPayment.valor) || 0;
+    if (valor <= 0) return;
+    const { taxa_cartao, valor_repasse } = getPaymentFeeAndNet(
+      checkoutPayment.forma_pagamento,
+      checkoutPayment.parcelas ?? 1,
+      valor
+    );
+    const payload = {
+      ...checkoutPayment,
+      taxa_cartao,
+      valor_repasse: valor_repasse ?? undefined,
+    };
     try {
-      const payment = await addPayment(checkoutPayment);
+      const payment = await addPayment(payload);
       await confirmPayment(payment.id);
       
       toast({ title: 'Pagamento adicionado com sucesso!' });
@@ -2531,23 +2641,151 @@ _PrimeCamp Assistência Técnica_`;
                 <span>Fechar</span>
               </span>
             </div>
-            {/* Status do caixa */}
+            {/* Botão Abrir/Fechar Caixa */}
             <div className="flex items-center gap-4 text-sm">
               {cashSession && cashSession.status === 'open' ? (
-                <span className="flex items-center gap-2 text-emerald-600 font-medium">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                  Caixa Aberto
-                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950/50"
+                  onClick={() => setShowCloseCashDialog(true)}
+                >
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  Fechar Caixa
+                </Button>
               ) : (
-                <span className="flex items-center gap-2 text-orange-500 font-medium">
-                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                  Caixa Fechado
-                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 border-emerald-300 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                  onClick={() => setShowOpenCashDialog(true)}
+                >
+                  <span className="w-2 h-2 bg-orange-500 rounded-full" />
+                  Abrir Caixa
+                </Button>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Dialog: Abrir Caixa */}
+      <Dialog open={showOpenCashDialog} onOpenChange={setShowOpenCashDialog}>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-md">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">Abrir Caixa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 md:space-y-4">
+            <div>
+              <Label className="text-xs md:text-sm">Valor Inicial (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={cashValorInicial}
+                onChange={(e) => setCashValorInicial(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+                className="h-9 md:h-10 text-sm border-2 border-gray-300"
+              />
+            </div>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Informe o valor em dinheiro que está no caixa no momento da abertura.
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <Button variant="outline" onClick={() => setShowOpenCashDialog(false)} className="w-full sm:w-auto h-9 md:h-10">
+              Cancelar
+            </Button>
+            <LoadingButton onClick={handleOpenCashPDV} loading={isProcessingCash} className="w-full sm:w-auto h-9 md:h-10">
+              Abrir Caixa
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Fechar Caixa */}
+      <Dialog open={showCloseCashDialog} onOpenChange={(open) => {
+        setShowCloseCashDialog(open);
+        if (!open) {
+          setCashValorFinal('');
+          setCashDivergencia('');
+          setCashJustificativa('');
+        }
+      }}>
+        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2 md:pb-4">
+            <DialogTitle className="text-base md:text-lg">Fechar Caixa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div>
+                <Label className="text-xs md:text-sm">Valor Esperado (R$)</Label>
+                <Input
+                  type="text"
+                  value={closeDialogLoadingValor ? '...' : closeDialogValorEsperado.toFixed(2)}
+                  disabled
+                  className="bg-muted h-9 md:h-10 text-sm border-2 border-gray-300"
+                />
+                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Calculado automaticamente</p>
+              </div>
+              <div>
+                <Label className="text-xs md:text-sm">Valor Final Contado (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cashValorFinal}
+                  onChange={(e) => {
+                    setCashValorFinal(e.target.value);
+                    const final = parseFloat(e.target.value) || 0;
+                    setCashDivergencia((final - closeDialogValorEsperado).toFixed(2));
+                  }}
+                  placeholder="0.00"
+                  autoFocus
+                  className="h-9 md:h-10 text-sm border-2 border-gray-300"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs md:text-sm">Divergência (R$)</Label>
+              <Input
+                type="number"
+                value={cashDivergencia}
+                onChange={(e) => setCashDivergencia(e.target.value)}
+                className={cn(
+                  'h-9 md:h-10 text-sm border-2',
+                  parseFloat(cashDivergencia || '0') !== 0 ? 'border-orange-500' : 'border-gray-300'
+                )}
+                disabled
+              />
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
+                {parseFloat(cashDivergencia || '0') > 0 ? 'Sobra no caixa' : parseFloat(cashDivergencia || '0') < 0 ? 'Falta no caixa' : 'Sem divergência'}
+              </p>
+            </div>
+            {parseFloat(cashDivergencia || '0') !== 0 && (
+              <div>
+                <Label className="text-xs md:text-sm">Justificativa da Divergência</Label>
+                <Textarea
+                  value={cashJustificativa}
+                  onChange={(e) => setCashJustificativa(e.target.value)}
+                  placeholder="Explique a divergência encontrada..."
+                  rows={3}
+                  className="text-sm border-2 border-gray-300"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
+            <Button variant="outline" onClick={() => setShowCloseCashDialog(false)} className="w-full sm:w-auto h-9 md:h-10">
+              Cancelar
+            </Button>
+            <LoadingButton onClick={handleCloseCashPDV} loading={isProcessingCash} className="w-full sm:w-auto h-9 md:h-10">
+              Fechar Caixa
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Checkout */}
       <Dialog open={showCheckout} onOpenChange={(open) => {
