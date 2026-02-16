@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
@@ -503,6 +504,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const [isCreatingModelo, setIsCreatingModelo] = useState(false);
   const [showClienteSearch, setShowClienteSearch] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
+  const clienteSearchAnchorRef = useRef<HTMLDivElement>(null);
+  const [clienteDropdownRect, setClienteDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
   // Estados para itens da OS
   const [showAddItem, setShowAddItem] = useState(false);
@@ -701,6 +704,29 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       if (timeout) clearTimeout(timeout);
     };
   }, [clienteSearch, clienteSearchField, searchClientesAsync]);
+
+  // Posição do dropdown de clientes (para portal) — atualiza quando abre ou ao scroll/resize
+  const updateClienteDropdownRect = useCallback(() => {
+    if (!clienteSearchAnchorRef.current) return;
+    const rect = clienteSearchAnchorRef.current.getBoundingClientRect();
+    setClienteDropdownRect({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }, []);
+  useEffect(() => {
+    const shouldShow = showClienteSearch && !selectedCliente && (
+      (!isSearchingCliente && clienteResults.length > 0) ||
+      (!isSearchingCliente && clienteSearch.length >= 2 && clienteResults.length === 0)
+    );
+    if (shouldShow) {
+      updateClienteDropdownRect();
+      window.addEventListener('scroll', updateClienteDropdownRect, true);
+      window.addEventListener('resize', updateClienteDropdownRect);
+      return () => {
+        window.removeEventListener('scroll', updateClienteDropdownRect, true);
+        window.removeEventListener('resize', updateClienteDropdownRect);
+      };
+    }
+    setClienteDropdownRect(null);
+  }, [showClienteSearch, selectedCliente, isSearchingCliente, clienteResults.length, clienteSearch.length, updateClienteDropdownRect]);
 
   // Buscar produtos - SEMPRE filtrar apenas produtos com estoque disponível
   useEffect(() => {
@@ -2479,7 +2505,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </div>
                         )}
                       </div>
-                      <div className="relative">
+                      <div className="relative" ref={clienteSearchAnchorRef}>
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                           placeholder={
@@ -2523,47 +2549,57 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </Button>
                         )}
                       </div>
-                      {showClienteSearch && !isSearchingCliente && clienteResults.length > 0 && !selectedCliente && (
-                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto mt-1">
-                          {clienteResults.map(cliente => (
-                            <div
-                              key={cliente.id}
-                              className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 transition-colors"
-                              onClick={() => handleSelectCliente(cliente)}
-                            >
-                              <p className="font-semibold text-sm text-gray-800">{cliente.nome}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {cliente.cpf_cnpj && <span>{cliente.cpf_cnpj} • </span>}
-                                {cliente.telefone || cliente.whatsapp || 'Sem telefone'}
-                                {cliente.cidade && <span> • {cliente.cidade}/{cliente.estado}</span>}
-                              </p>
-                            </div>
-                          ))}
-                          {/* Botão Novo Cliente */}
-                          <div
-                            className="p-3 hover:bg-green-50 cursor-pointer border-t-2 border-gray-200 bg-gray-50 transition-colors flex items-center gap-2 text-green-700"
-                            onClick={handleOpenNovoClienteModal}
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span className="font-medium text-sm">Cadastrar Novo Cliente</span>
-                          </div>
-                        </div>
-                      )}
-                      {showClienteSearch && !isSearchingCliente && clienteSearch.length >= 2 && clienteResults.length === 0 && (
-                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1">
-                          <div className="p-4 text-center border-b border-gray-100">
-                            <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
-                            <p className="text-xs text-gray-400 mt-1">Verifique o termo ou cadastre um novo</p>
-                          </div>
-                          {/* Botão Novo Cliente quando não há resultados */}
-                          <div
-                            className="p-3 hover:bg-green-50 cursor-pointer bg-gray-50 transition-colors flex items-center justify-center gap-2 text-green-700"
-                            onClick={handleOpenNovoClienteModal}
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span className="font-medium text-sm">Cadastrar "{clienteSearch}"</span>
-                          </div>
-                        </div>
+                      {/* Dropdown de clientes em portal para não ser cortado pelo overflow do tab */}
+                      {clienteDropdownRect && createPortal(
+                        <div
+                          className="fixed z-[100] min-w-0 max-h-48 overflow-auto bg-white border border-gray-200 rounded-lg shadow-lg"
+                          style={{
+                            top: clienteDropdownRect.top,
+                            left: clienteDropdownRect.left,
+                            width: clienteDropdownRect.width,
+                          }}
+                        >
+                          {clienteResults.length > 0 ? (
+                            <>
+                              {clienteResults.map(cliente => (
+                                <div
+                                  key={cliente.id}
+                                  className="p-2.5 hover:bg-blue-50 cursor-pointer border-b-2 border-gray-200 last:border-b-0 transition-colors"
+                                  onClick={() => handleSelectCliente(cliente)}
+                                >
+                                  <p className="font-semibold text-sm text-gray-800 truncate">{cliente.nome}</p>
+                                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                    {cliente.cpf_cnpj && <span>{cliente.cpf_cnpj} • </span>}
+                                    {cliente.telefone || cliente.whatsapp || 'Sem telefone'}
+                                    {cliente.cidade && <span> • {cliente.cidade}/{cliente.estado}</span>}
+                                  </p>
+                                </div>
+                              ))}
+                              <div
+                                className="p-2.5 hover:bg-green-50 cursor-pointer border-t-2 border-gray-300 bg-gray-50 transition-colors flex items-center gap-2 text-green-700"
+                                onClick={handleOpenNovoClienteModal}
+                              >
+                                <Plus className="h-4 w-4 shrink-0" />
+                                <span className="font-medium text-sm">Cadastrar Novo Cliente</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="p-3 text-center border-b-2 border-gray-200">
+                                <p className="text-sm text-gray-500">Nenhum cliente encontrado</p>
+                                <p className="text-xs text-gray-400 mt-1">Verifique o termo ou cadastre um novo</p>
+                              </div>
+                              <div
+                                className="p-2.5 hover:bg-green-50 cursor-pointer bg-gray-50 transition-colors flex items-center justify-center gap-2 text-green-700"
+                                onClick={handleOpenNovoClienteModal}
+                              >
+                                <Plus className="h-4 w-4" />
+                                <span className="font-medium text-sm">Cadastrar "{clienteSearch}"</span>
+                              </div>
+                            </>
+                          )}
+                        </div>,
+                        document.body
                       )}
                     </div>
                     <div className="space-y-1.5">
