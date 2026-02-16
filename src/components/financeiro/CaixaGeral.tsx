@@ -425,10 +425,10 @@ export function CaixaGeral({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold shrink-0">Caixa geral (tesouraria)</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Label className="text-muted-foreground whitespace-nowrap text-xs">Período</Label>
             <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
               <PopoverTrigger asChild>
@@ -492,11 +492,16 @@ export function CaixaGeral({
               </PopoverContent>
             </Popover>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Label htmlFor="caixa-status" className="text-muted-foreground whitespace-nowrap text-xs">Status</Label>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'open' | 'closed')}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v: string) => {
+                if (v === 'all' || v === 'open' || v === 'closed') setStatusFilter(v);
+              }}
+            >
               <SelectTrigger id="caixa-status" className="h-8 w-[100px] text-xs">
-                <SelectValue />
+                <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
@@ -535,33 +540,35 @@ export function CaixaGeral({
               <Wallet className="h-4 w-4" />
               Carteiras (saldo real)
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 min-w-0">
+            <div className="flex flex-wrap justify-center gap-2 min-w-0">
               {walletList.map((w) => (
-                <WalletSaldoCard
-                  key={w.id}
-                  name={w.name}
-                  saldo={round2(saldoPorWallet[w.id] ?? 0)}
-                  valuesVisible={valuesVisible}
-                  compact
-                />
+                <div key={w.id} className="w-full sm:w-[min(100%,200px)]">
+                  <WalletSaldoCard
+                    name={w.name}
+                    saldo={round2(saldoPorWallet[w.id] ?? 0)}
+                    valuesVisible={valuesVisible}
+                    compact
+                  />
+                </div>
               ))}
             </div>
           </div>
 
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">Por forma de pagamento</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2 min-w-0">
+            <div className="flex flex-wrap justify-center gap-2 min-w-0">
               {formasComSaldo.map((forma) => (
-                <SaldoCard
-                  key={forma}
-                  forma={forma}
-                  saldo={round2(saldoPorForma[forma] ?? 0)}
-                  bruto={totaisPorForma[forma]?.bruto ?? 0}
-                  taxa={totaisPorForma[forma]?.taxa ?? 0}
-                  valuesVisible={valuesVisible}
-                  paymentMethods={paymentMethodsForLabel}
-                  compact
-                />
+                <div key={forma} className="w-[min(100%,140px)] sm:w-[min(100%,160px)]">
+                  <SaldoCard
+                    forma={forma}
+                    saldo={round2(saldoPorForma[forma] ?? 0)}
+                    bruto={totaisPorForma[forma]?.bruto ?? 0}
+                    taxa={totaisPorForma[forma]?.taxa ?? 0}
+                    valuesVisible={valuesVisible}
+                    paymentMethods={paymentMethodsForLabel}
+                    compact
+                  />
+                </div>
               ))}
             </div>
           </div>
