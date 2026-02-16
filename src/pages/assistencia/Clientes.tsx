@@ -500,7 +500,9 @@ export default function Clientes() {
                       {filteredClientes.map((cliente, index) => (
                         <tr 
                           key={cliente.id}
-                          className={`border-b-2 border-gray-300 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                          className={`border-b-2 border-gray-300 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                          onDoubleClick={() => handleEdit(cliente)}
+                          title="Duplo clique para editar"
                         >
                           <td className="py-3.5 px-3 align-middle font-medium border-r border-gray-200">{cliente.nome}</td>
                           <td className="py-3.5 px-3 align-middle border-r border-gray-200">{cliente.cpf_cnpj || '-'}</td>
@@ -543,6 +545,8 @@ export default function Clientes() {
                     <Card 
                       key={cliente.id}
                       className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
+                      onDoubleClick={() => handleEdit(cliente)}
+                      title="Duplo clique para editar"
                     >
                       <CardContent className="p-3 space-y-2">
                         {/* Header: Nome */}
