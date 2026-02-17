@@ -1,15 +1,23 @@
 # Atualizar VPS (depois do git push)
 
-Use estes passos **na VPS** (SSH no servidor).
+Use estes passos **na VPS** (SSH no servidor). Banco: **PostgreSQL na VPS** (não Supabase).
 
-## 1. Atualizar código do repositório
+## Deploy rápido (frontend)
+
+```bash
+cd ~/primecamp-ofc && git pull origin main && npm install && npm run build && sudo cp -r dist/* /var/www/primecamp.cloud/ && sudo systemctl reload nginx
+```
+
+Ou passo a passo:
+
+## 1. Atualizar código
 
 ```bash
 cd ~/primecamp-ofc
-git fetch origin
-git log -1 --oneline origin/main
-git reset --hard origin/main
+git pull origin main
 ```
+
+(Se tiver alterações locais que não quer manter: `git fetch origin && git reset --hard origin/main`)
 
 ## 2. Frontend (site estático)
 
@@ -20,7 +28,7 @@ sudo cp -r dist/* /var/www/primecamp.cloud/
 sudo systemctl reload nginx
 ```
 
-## 3. Reiniciar a API
+## 3. Reiniciar a API (se houver)
 
 **Com PM2:**
 ```bash
@@ -35,12 +43,6 @@ sudo systemctl restart primecamp-api
 
 ---
 
-## Banco de dados (Supabase) – só se precisar
+## Banco de dados (PostgreSQL na VPS)
 
-Se a tabela `os_pagamentos` ainda não existir no Supabase:
-
-1. Acesse o **Supabase** do projeto → **SQL Editor**
-2. Abra o arquivo `CRIAR_TABELA_OS_PAGAMENTOS.sql` e copie todo o conteúdo
-3. Cole no SQL Editor e execute (Run)
-
-Isso é feito no **painel do Supabase**, não na VPS.
+Scripts SQL (ex.: `CRIAR_TABELA_OS_PAGAMENTOS.sql`, `ALTER_OS_PAGAMENTOS_SALE_ID_NULLABLE.sql`) devem ser executados no **PostgreSQL da VPS** (psql ou cliente tipo DBeaver), não em Supabase.

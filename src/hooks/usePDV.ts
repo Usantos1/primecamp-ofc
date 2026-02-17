@@ -1624,7 +1624,7 @@ export function useRegisterPagamentoOS() {
       if (errOP) {
         const msg = errOP.message || String(errOP);
         if (/null|sale_id|violates.*constraint/i.test(msg)) {
-          throw new Error('Banco não permite adiantamento sem venda. Execute no Supabase o script ALTER_OS_PAGAMENTOS_SALE_ID_NULLABLE.sql e tente novamente.');
+          throw new Error('Banco não permite adiantamento sem venda. Execute no PostgreSQL o script ALTER_OS_PAGAMENTOS_SALE_ID_NULLABLE.sql e tente novamente.');
         }
         throw errOP;
       }

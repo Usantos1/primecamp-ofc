@@ -1,6 +1,6 @@
 -- ============================================
 -- Permitir sale_id NULL em os_pagamentos (adiantamentos sem venda separada)
--- Execute no Supabase SQL Editor UMA VEZ. Sem isso, registrar adiantamento pode travar/falhar.
+-- Execute no PostgreSQL da VPS UMA VEZ (psql ou cliente). Sem isso, registrar adiantamento pode falhar.
 -- ============================================
 
 ALTER TABLE public.os_pagamentos

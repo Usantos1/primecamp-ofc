@@ -261,20 +261,26 @@ export default function Caixa() {
     .filter(m => m.tipo === 'sangria')
     .reduce((sum, m) => sum + Number(m.valor), 0);
 
-  // Calcular total de vendas vinculadas ao caixa
+  // Calcular total de vendas (valor faturado) para exibição
   const totalVendas = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
-  // Total de entradas para conferência: Vendas + Suprimentos
-  const totalEntradas = totalSuprimentos + totalVendas;
+  // Entradas de vendas que de fato entram no caixa nesta sessão (exclui Adiantamento OS — esse valor já entrou quando o adiantamento foi registrado)
+  const totalEntradasVendas = Object.values(salePayments).flat().reduce((sum, p: any) => {
+    if ((p.forma_pagamento || '').toLowerCase() === 'adiantamento os') return sum;
+    return sum + Number(p.valor || 0);
+  }, 0);
+
+  // Total de entradas para conferência: só o que entrou de fato (vendas sem adiantamento OS) + Suprimentos
+  const totalEntradas = totalSuprimentos + totalEntradasVendas;
   
-  // Calcular totais por forma de pagamento (vendas)
+  // Conferência por forma: só pagamentos que de fato entram nesta sessão (exclui Adiantamento OS — já entrou quando foi registrado)
   const pagamentosPorForma: Record<string, number> = {};
   Object.values(salePayments).flat().forEach((payment: any) => {
-    const forma = payment.forma_pagamento;
-    if (!pagamentosPorForma[forma]) {
-      pagamentosPorForma[forma] = 0;
-    }
-    pagamentosPorForma[forma] += Number(payment.valor || 0);
+    const forma = (payment.forma_pagamento || '').toLowerCase();
+    if (forma === 'adiantamento os') return;
+    const f = forma || 'outro';
+    const valor = Number(payment.valor || 0);
+    pagamentosPorForma[f] = (pagamentosPorForma[f] || 0) + valor;
   });
   // Para conferência: Dinheiro = abertura + vendas em dinheiro (para contagem física)
   const valorAberturaSessao = Number(currentSession?.valor_inicial || 0);
@@ -428,7 +434,7 @@ export default function Caixa() {
               </div>
               <div className="mt-2 pt-2 border-t border-gray-200 flex justify-between items-center">
                 <span className="text-sm font-medium">Total entradas (vendas):</span>
-                <span className="text-lg font-bold">{currencyFormatters.brl(totalVendas)}</span>
+                <span className="text-lg font-bold">{currencyFormatters.brl(totalEntradasVendas)}</span>
               </div>
             </CardContent>
           </Card>
@@ -513,12 +519,12 @@ export default function Caixa() {
                       </TableBody>
                     </Table>
                     </div>
-                    {/* Rodapé fixo - Total */}
+                    {/* Rodapé fixo - Total (só valor que entrou no caixa; exclui Adiantamento OS) */}
                     <div className="flex-shrink-0 p-3 bg-muted/50 border-t border-gray-200">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm">Total de Vendas:</span>
+                        <span className="font-medium text-sm">Total de Vendas (entradas no caixa):</span>
                         <span className="text-lg font-bold text-primary">
-                          {currencyFormatters.brl(totalVendas)}
+                          {currencyFormatters.brl(totalEntradasVendas)}
                         </span>
                       </div>
                     </div>
@@ -582,9 +588,9 @@ export default function Caixa() {
                     })}
                     <div className="p-3 bg-muted/50 border-2 border-gray-300 rounded-lg">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm">Total de Vendas:</span>
+                        <span className="font-medium text-sm">Total de Vendas (entradas no caixa):</span>
                         <span className="text-lg font-bold text-primary">
-                          {currencyFormatters.brl(totalVendas)}
+                          {currencyFormatters.brl(totalEntradasVendas)}
                         </span>
                       </div>
                     </div>
@@ -880,8 +886,8 @@ export default function Caixa() {
                 </div>
                 <div className="mt-3 pt-3 border-t-2 border-gray-200 space-y-1">
                   <div className="flex justify-between text-sm font-medium">
-                    <span>Total vendas</span>
-                    <span>{currencyFormatters.brl(totalVendas)}</span>
+                    <span>Total vendas (entradas no caixa)</span>
+                    <span>{currencyFormatters.brl(totalEntradasVendas)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-bold text-primary">
                     <span>Total do caixa (abertura + vendas)</span>

@@ -1313,7 +1313,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       }
       const isTableMissing = /relation.*os_pagamentos|os_pagamentos.*does not exist|tabela.*não existe/i.test(msgStr);
       const description = isTableMissing
-        ? 'A tabela os_pagamentos não existe no banco. Execute no Supabase (SQL Editor) o arquivo CRIAR_TABELA_OS_PAGAMENTOS.sql do projeto.'
+        ? 'A tabela os_pagamentos não existe no banco. Execute no PostgreSQL o script CRIAR_TABELA_OS_PAGAMENTOS.sql do projeto.'
         : msgStr;
       toast({ title: 'Erro ao registrar pagamento', description, variant: 'destructive' });
     } finally {

@@ -180,7 +180,7 @@ export default function NovaVenda() {
       setCloseDialogLoadingValor(true);
       try {
         const { data: salesData } = await from('sales')
-          .select('id, total')
+          .select('id, total, ordem_servico_id')
           .eq('cash_register_session_id', cashSession.id)
           .eq('status', 'paid')
           .execute();
@@ -189,15 +189,20 @@ export default function NovaVenda() {
         setCloseDialogTotalVendas(totalVendas);
         const saleIds = sales.map((r: any) => r.id).filter(Boolean);
         const pagamentosPorForma: Record<string, number> = {};
+        let paymentsData: any[] | null = null;
         if (saleIds.length > 0) {
-          const { data: paymentsData } = await from('payments')
-            .select('forma_pagamento, valor')
+          const res = await from('payments')
+            .select('sale_id, forma_pagamento, valor')
             .in('sale_id', saleIds)
             .eq('status', 'confirmed')
             .execute();
+          paymentsData = res.data || null;
           (paymentsData || []).forEach((p: any) => {
-            const forma = p.forma_pagamento || 'outro';
-            pagamentosPorForma[forma] = (pagamentosPorForma[forma] || 0) + Number(p.valor || 0);
+            const forma = (p.forma_pagamento || '').toLowerCase();
+            if (forma === 'adiantamento os') return;
+            const f = forma || 'outro';
+            const valor = Number(p.valor || 0);
+            pagamentosPorForma[f] = (pagamentosPorForma[f] || 0) + valor;
           });
         }
         setCloseDialogPagamentosPorForma(pagamentosPorForma);
@@ -208,7 +213,12 @@ export default function NovaVenda() {
           .filter((m: any) => m.tipo === 'sangria')
           .reduce((s: number, m: any) => s + Number(m.valor || 0), 0);
         const valorInicial = Number(cashSession.valor_inicial) || 0;
-        setCloseDialogValorEsperado(valorInicial + totalVendas + totalSuprimentos - totalSaidas);
+        // Valor esperado: só o que entrou de fato (exclui Adiantamento OS — já entrou quando o adiantamento foi registrado)
+        const totalEntradasVendas = (paymentsData || []).reduce((s: number, p: any) => {
+          if ((p.forma_pagamento || '').toLowerCase() === 'adiantamento os') return s;
+          return s + Number(p.valor || 0);
+        }, 0);
+        setCloseDialogValorEsperado(valorInicial + totalEntradasVendas + totalSuprimentos - totalSaidas);
       } finally {
         setCloseDialogLoadingValor(false);
       }
