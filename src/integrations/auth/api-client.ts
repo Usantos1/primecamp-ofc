@@ -162,8 +162,16 @@ class AuthAPIClient {
       });
 
       if (!response.ok) {
+        // Só deslogar em 401 (token inválido/expirado). 429/5xx = erro temporário — não desconectar.
         if (response.status === 401) {
           localStorage.removeItem('auth_token');
+          return { data: { user: undefined } };
+        }
+        if (response.status === 429) {
+          return { error: { message: 'Muitas tentativas. Tente em instantes.', code: 'RATE_LIMIT' } };
+        }
+        if (response.status >= 500) {
+          return { error: { message: 'Servidor temporariamente indisponível.', code: 'SERVER_ERROR' } };
         }
         return { data: { user: undefined } };
       }
@@ -172,7 +180,8 @@ class AuthAPIClient {
       return { data: { user: data.user, profile: data.profile } };
     } catch (error: any) {
       console.error('[Auth] Erro ao obter usuário:', error);
-      return { data: { user: undefined } };
+      // Erro de rede: não limpar sessão (evita "desconectar" por falha temporária)
+      return { error: { message: error.message || 'Erro de conexão', code: 'NETWORK_ERROR' } };
     }
   }
 

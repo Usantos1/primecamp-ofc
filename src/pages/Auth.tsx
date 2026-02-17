@@ -89,7 +89,7 @@ const Auth = () => {
       const msg = error?.message || "Email ou senha incorretos.";
       const isTooManyRequests = typeof msg === "string" && (msg.includes("Muitas tentativas") || msg.includes("429"));
       if (isTooManyRequests) {
-        setLockLoginUntil(Date.now() + 90 * 1000); // 90 segundos sem novas tentativas
+        setLockLoginUntil(Date.now() + 45 * 1000); // 45 segundos (evita novo 429 ao tentar de novo)
       }
       toast({
         title: "Erro no login",

@@ -1,6 +1,6 @@
 # Como reiniciar a API na VPS
 
-Reiniciar a API **zera o contador de tentativas de login** (rate limit em memória) e libera o login de novo.
+Reiniciar a API **zera o contador de tentativas de login** (rate limit em memória) e libera o login de novo. O limite é 2500 tentativas de login por IP a cada 15 minutos.
 
 ---
 

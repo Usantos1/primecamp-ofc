@@ -71,18 +71,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authAPI.getCurrentUser();
       const authData = response?.data;
-      
+      const err = response?.error;
+
+      // Erro temporário (429, 5xx, rede): não limpar sessão se ainda temos token — evita "desconectar" à toa
+      if (err?.code === 'RATE_LIMIT' || err?.code === 'SERVER_ERROR' || err?.code === 'NETWORK_ERROR') {
+        if (authAPI.isAuthenticated()) {
+          console.warn('[Auth] Erro temporário na verificação:', err.message);
+          // Mantém user/session/profile como estão
+        } else {
+          setUser(null);
+          setSession(null);
+          setProfile(null);
+        }
+        setLoading(false);
+        return;
+      }
+
       if (authData?.user) {
         setUser(authData.user);
         const token = authAPI.getToken();
         if (token) {
           setSession({ token });
         }
-        
         if (authData.profile) {
           setProfile(authData.profile as Profile);
         } else if (authData.user?.id) {
-          // Se não tem profile, tentar buscar
           await fetchProfile(authData.user.id);
         }
       } else {
