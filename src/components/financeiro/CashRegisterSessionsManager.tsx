@@ -50,6 +50,53 @@ function labelForma(forma: string) {
   }
 }
 
+/** Calcula valor_esperado por sessão (inicial + entradas vendas excl. Adiantamento OS + suprimentos - sangrias) e anexa às sessões */
+async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSession[]> {
+  if (list.length === 0) return list;
+  const ids = list.map(s => s.id);
+  const [movsRes, salesRes] = await Promise.all([
+    from('cash_movements').select('session_id, tipo, valor').in('session_id', ids).execute(),
+    from('sales').select('id, cash_register_session_id').in('cash_register_session_id', ids).eq('status', 'paid').execute(),
+  ]);
+  const movements = (movsRes.data || []) as { session_id: string; tipo: string; valor: number }[];
+  const sales = (salesRes.data || []) as { id: string; cash_register_session_id: string }[];
+  const saleIds = sales.map(s => s.id).filter(Boolean);
+  let payments: { sale_id: string; forma_pagamento: string; valor: number }[] = [];
+  if (saleIds.length > 0) {
+    const payRes = await from('payments').select('sale_id, forma_pagamento, valor').in('sale_id', saleIds).eq('status', 'confirmed').execute();
+    payments = (payRes.data || []) as { sale_id: string; forma_pagamento: string; valor: number }[];
+  }
+  const salesBySession: Record<string, string[]> = {};
+  sales.forEach((s: any) => {
+    const sid = s.cash_register_session_id;
+    if (!salesBySession[sid]) salesBySession[sid] = [];
+    salesBySession[sid].push(s.id);
+  });
+  const suprimentoBySession: Record<string, number> = {};
+  const sangriaBySession: Record<string, number> = {};
+  movements.forEach((m: any) => {
+    const sid = m.session_id;
+    const v = Number(m.valor || 0);
+    if (m.tipo === 'suprimento') suprimentoBySession[sid] = (suprimentoBySession[sid] || 0) + v;
+    else if (m.tipo === 'sangria') sangriaBySession[sid] = (sangriaBySession[sid] || 0) + v;
+  });
+  const entradasVendasBySession: Record<string, number> = {};
+  payments.forEach((p: any) => {
+    if ((p.forma_pagamento || '').toLowerCase() === 'adiantamento os') return;
+    const saleId = p.sale_id;
+    const sessionId = sales.find((s: any) => s.id === saleId)?.cash_register_session_id;
+    if (sessionId) entradasVendasBySession[sessionId] = (entradasVendasBySession[sessionId] || 0) + Number(p.valor || 0);
+  });
+  return list.map(s => {
+    const inicial = Number(s.valor_inicial || 0);
+    const entradasVendas = entradasVendasBySession[s.id] || 0;
+    const suprimento = suprimentoBySession[s.id] || 0;
+    const sangria = sangriaBySession[s.id] || 0;
+    const valor_esperado = inicial + entradasVendas + suprimento - sangria;
+    return { ...s, valor_esperado };
+  });
+}
+
 export function CashRegisterSessionsManager({ dateFilter, customDateStart, customDateEnd, statusFilter = 'all' }: Props) {
   const { user, profile, isAdmin } = useAuth();
   const { toast } = useToast();
@@ -141,7 +188,8 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
         let q = baseFilter().eq('status', 'open').order('opened_at', { ascending: false });
         const { data, error } = await q.execute();
         if (error) { console.warn('Erro ao buscar sessões de caixa:', error); return []; }
-        return (data || []) as CashSession[];
+        const list = (data || []) as CashSession[];
+        return enrichSessionsWithEsperado(list);
       }
 
       // FECHADAS: só por período
@@ -162,7 +210,8 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
         q = q.order('opened_at', { ascending: false });
         const { data, error } = await q.execute();
         if (error) { console.warn('Erro ao buscar sessões de caixa:', error); return []; }
-        return (data || []) as CashSession[];
+        const list = (data || []) as CashSession[];
+        return enrichSessionsWithEsperado(list);
       }
 
       // TODOS: período + sempre incluir sessões abertas (para caixas abertos aparecerem mesmo com opened_at null ou fora do período)
@@ -199,7 +248,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
         const bAt = b.opened_at ? new Date(b.opened_at).getTime() : 0;
         return bAt - aAt;
       });
-      return merged;
+      return enrichSessionsWithEsperado(merged);
     },
     retry: false,
   });
@@ -336,6 +385,20 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground">Diferença</div>
                   <div className="font-bold">{currencyFormatters.brl(Number(selected.divergencia || 0))}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Inicial</div>
+                  <div className="font-semibold">{currencyFormatters.brl(Number(selected.valor_inicial || 0))}</div>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Esperado</div>
+                  <div className="font-semibold">{currencyFormatters.brl(Number(selected.valor_esperado ?? selected.valor_inicial ?? 0))}</div>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Final</div>
+                  <div className="font-semibold">{currencyFormatters.brl(Number(selected.valor_final ?? 0))}</div>
                 </div>
               </div>
 
