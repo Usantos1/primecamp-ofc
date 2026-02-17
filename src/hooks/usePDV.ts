@@ -1585,14 +1585,71 @@ export interface RegisterPagamentoOSParams {
   observacao?: string;
 }
 
-/** Registra adiantamento/pagamento da OS como venda real (rastreável, entra no caixa). Retorna a venda criada. */
+/** Registra adiantamento ou pagamento final da OS. Adiantamento: só os_pagamentos + caixa (não cria venda, evita duplicar no faturamento). Pagamento final: cria venda rastreável. */
 export function useRegisterPagamentoOS() {
   const auth = useAuth();
   const user = auth?.user || null;
   const profile = auth?.profile || null;
   const { createSale } = useSales();
 
-  const registerPagamentoOS = useCallback(async (params: RegisterPagamentoOSParams): Promise<{ sale: Sale; payment: Payment }> => {
+  const registerPagamentoOS = useCallback(async (params: RegisterPagamentoOSParams): Promise<{ sale: Sale | null; payment: Payment | null }> => {
+    let cashSessionId: string | null = null;
+    try {
+      let q: any = from('cash_register_sessions')
+        .select('id')
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false })
+        .limit(1);
+      if (user?.id) q = q.eq('operador_id', user.id);
+      const { data: sessData } = await q.execute();
+      const sess = Array.isArray(sessData) ? sessData[0] : sessData;
+      if (sess?.id) cashSessionId = sess.id;
+    } catch (_) {
+      // ignorar se não houver sessão
+    }
+
+    // Adiantamento: não criar venda separada (evita duplicar 100+200 na lista). Só os_pagamentos + entrada no caixa.
+    if (params.tipo === 'adiantamento') {
+      const { error: errOP } = await from('os_pagamentos')
+        .insert({
+          ordem_servico_id: params.ordem_servico_id,
+          sale_id: null,
+          valor: params.valor,
+          forma_pagamento: params.forma_pagamento,
+          tipo: params.tipo,
+          observacao: params.observacao || null,
+          created_by: user?.id || null,
+        })
+        .execute();
+      if (errOP) {
+        const msg = errOP.message || String(errOP);
+        if (/null|sale_id|violates.*constraint/i.test(msg)) {
+          throw new Error('Banco não permite adiantamento sem venda. Execute no Supabase o script ALTER_OS_PAGAMENTOS_SALE_ID_NULLABLE.sql e tente novamente.');
+        }
+        throw errOP;
+      }
+
+      if (cashSessionId) {
+        const operadorNome = profile?.display_name || (user as any)?.user_metadata?.name || user?.email || 'Operador';
+        try {
+          await from('cash_movements')
+            .insert({
+              session_id: cashSessionId,
+              tipo: 'suprimento',
+              valor: params.valor,
+              motivo: `Adiantamento OS #${params.numero_os}`,
+              operador_id: user?.id || null,
+              operador_nome: operadorNome,
+            })
+            .execute();
+        } catch (movErr) {
+          console.warn('Erro ao registrar movimento de caixa do adiantamento:', movErr);
+        }
+      }
+      return { sale: null, payment: null };
+    }
+
+    // Pagamento final: criar venda rastreável (comportamento anterior)
     const sale = await createSale({
       sale_origin: 'OS',
       ordem_servico_id: params.ordem_servico_id,
@@ -1601,9 +1658,7 @@ export function useRegisterPagamentoOS() {
       is_draft: true,
     });
 
-    const descricao = params.tipo === 'adiantamento'
-      ? `PAGAMENTO OS #${params.numero_os} - ADIANTAMENTO`
-      : `PAGAMENTO OS #${params.numero_os} - PAGAMENTO`;
+    const descricao = `PAGAMENTO OS #${params.numero_os} - PAGAMENTO`;
 
     const { error: errItem } = await from('sale_items')
       .insert({
@@ -1648,21 +1703,6 @@ export function useRegisterPagamentoOS() {
       .eq('id', payment.id)
       .execute();
 
-    let cashSessionId: string | null = null;
-    try {
-      let q: any = from('cash_register_sessions')
-        .select('id')
-        .eq('status', 'open')
-        .order('opened_at', { ascending: false })
-        .limit(1);
-      if (user?.id) q = q.eq('operador_id', user.id);
-      const { data: sessData } = await q.execute();
-      const sess = Array.isArray(sessData) ? sessData[0] : sessData;
-      if (sess?.id) cashSessionId = sess.id;
-    } catch (_) {
-      // ignorar se não houver sessão
-    }
-
     await from('sales')
       .update({
         total_pago: params.valor,
@@ -1688,20 +1728,22 @@ export function useRegisterPagamentoOS() {
     if (errOP) throw errOP;
 
     return { sale: { ...sale, id: sale.id }, payment };
-  }, [createSale, user?.id]);
+  }, [createSale, user?.id, profile]);
 
-  /** Cancela um pagamento OS (apenas admin). Marca os_pagamentos e invalida a venda no caixa. */
-  const cancelPagamentoOS = useCallback(async (osPagamentoId: string, saleId: string): Promise<void> => {
+  /** Cancela um pagamento OS (apenas admin). Marca os_pagamentos; se tiver sale_id, invalida a venda. */
+  const cancelPagamentoOS = useCallback(async (osPagamentoId: string, saleId: string | null): Promise<void> => {
     const now = new Date().toISOString();
     const { error: errOP } = await from('os_pagamentos')
       .update({ cancelled_at: now, cancelled_by: user?.id || null })
       .eq('id', osPagamentoId)
       .execute();
     if (errOP) throw errOP;
-    await from('sales')
-      .update({ status: 'cancelled' })
-      .eq('id', saleId)
-      .execute();
+    if (saleId) {
+      await from('sales')
+        .update({ status: 'cancelled' })
+        .eq('id', saleId)
+        .execute();
+    }
   }, [user?.id]);
 
   return { registerPagamentoOS, cancelPagamentoOS };

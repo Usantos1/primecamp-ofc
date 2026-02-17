@@ -808,6 +808,13 @@ export default function NovaVenda() {
             .update({ total_pago: valorCreditar, status: novoStatus })
             .eq('id', novaVenda.id)
             .execute();
+
+          // Vincular adiantamentos (sem venda) a esta venda de faturamento
+          await from('os_pagamentos')
+            .update({ sale_id: novaVenda.id })
+            .eq('ordem_servico_id', os.id)
+            .is('sale_id', null)
+            .execute();
         }
       }
 

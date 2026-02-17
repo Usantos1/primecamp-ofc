@@ -1256,7 +1256,15 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       await refetchPagamentosAPI();
       setShowPagamentoOSDialog(false);
       setPagamentoOSForm({ valor: '', forma_pagamento: 'dinheiro', tipo: 'adiantamento', observacao: '' });
-      toast({ title: 'Pagamento registrado', description: `${currencyFormatters.brl(valorNum)} gerou a venda #${sale?.numero ?? ''} (documento rastreável).` });
+      const isAdiantamento = pagamentoOSForm.tipo === 'adiantamento';
+      toast({
+        title: 'Pagamento registrado',
+        description: sale
+          ? `${currencyFormatters.brl(valorNum)} gerou a venda #${sale.numero} (documento rastreável).`
+          : isAdiantamento
+            ? `${currencyFormatters.brl(valorNum)} registrado como adiantamento. Será aplicado no faturamento da OS.`
+            : `${currencyFormatters.brl(valorNum)} registrado.`,
+      });
 
       if (imprimirCupomAposPagamento) {
         const cupomData = {
@@ -5418,7 +5426,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           <DialogHeader>
             <DialogTitle>Cancelar pagamento</DialogTitle>
             <DialogDescription>
-              O pagamento de {pagamentoToCancel ? currencyFormatters.brl(pagamentoToCancel.valor) : ''} será cancelado. A venda vinculada (Venda #{pagamentoToCancel?.sale_numero}) será anulada e o valor deixará de constar no caixa. Esta ação é irreversível.
+              O pagamento de {pagamentoToCancel ? currencyFormatters.brl(pagamentoToCancel.valor) : ''} será cancelado.
+              {pagamentoToCancel?.sale_id
+                ? ` A venda vinculada (Venda #${pagamentoToCancel.sale_numero ?? '?'}) será anulada e o valor deixará de constar no caixa.`
+                : ' O valor deixará de constar no caixa.'}
+              {' '}Esta ação é irreversível.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
