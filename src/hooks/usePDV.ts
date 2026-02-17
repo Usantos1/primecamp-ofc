@@ -217,8 +217,9 @@ export function useSales() {
         sale = saleData as Sale;
       }
 
-      // Verificar se a venda já foi finalizada
-      if (sale.status === 'paid' || sale.status === 'partial') {
+      // Só bloquear se a venda já não for rascunho e estiver finalizada (evita finalizar duas vezes)
+      const jaFinalizada = sale.is_draft === false && (sale.status === 'paid' || sale.status === 'partial');
+      if (jaFinalizada) {
         throw new Error('Esta venda já foi finalizada e não pode ser faturada novamente');
       }
 

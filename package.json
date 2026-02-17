@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check:db": "node scripts/verificar-db-mode.js"
+    "check:db": "node scripts/verificar-db-mode.js",
+    "server": "node server/index.js",
+    "api": "node server/index.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",

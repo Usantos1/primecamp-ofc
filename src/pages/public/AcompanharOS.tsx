@@ -65,7 +65,7 @@ export default function AcompanharOS() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+      <div className="min-h-screen max-h-[100dvh] bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4 overflow-y-auto">
         <Card className="max-w-md w-full">
           <CardContent className="p-12 text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-green-600" />
@@ -78,7 +78,7 @@ export default function AcompanharOS() {
 
   if (error || !os) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
+      <div className="min-h-screen max-h-[100dvh] bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4 overflow-y-auto">
         <Card className="max-w-md w-full border-2 border-red-300">
           <CardContent className="p-12 text-center">
             <XCircle className="h-12 w-12 mx-auto mb-4 text-red-600" />
@@ -93,8 +93,9 @@ export default function AcompanharOS() {
   const statusInfo = getStatusInfo(os.status);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen h-screen max-h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-br from-green-50 to-green-100">
+      <div className="flex-1 min-h-0 max-h-full overflow-y-auto overflow-x-hidden py-8 px-4 [-webkit-overflow-scrolling:touch] overscroll-contain">
+        <div className="max-w-4xl mx-auto space-y-6 pb-8">
         {/* Header */}
         <Card className="border-2 border-green-300 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg">
@@ -258,6 +259,7 @@ export default function AcompanharOS() {
             </p>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

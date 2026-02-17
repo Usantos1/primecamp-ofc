@@ -55,7 +55,7 @@ export default function NovaVenda() {
 
   const { createSale, updateSale, finalizeSale, deleteSale, getSaleById } = useSales();
   const { items, addItem, updateItem, removeItem, isLoading: itemsLoading } = useSaleItems(id || '');
-  const { payments, addPayment, confirmPayment, isLoading: paymentsLoading } = usePayments(id || '');
+  const { payments, addPayment, confirmPayment, refreshPayments, isLoading: paymentsLoading } = usePayments(id || '');
   const { currentSession: cashSession, openCash, closeCash } = useCashRegister();
   const { movements: cashMovements } = useCashMovements(cashSession?.id || '');
   const { createQuote, convertToSale, markAsSentWhatsApp } = useQuotes();
@@ -485,6 +485,56 @@ export default function NovaVenda() {
     const loadedSale = await getSaleById(id);
     if (loadedSale) {
       setSale(loadedSale);
+
+      // Venda faturada de OS: garantir que pagamentos (ex.: Adiantamento OS) sejam recarregados
+      if (loadedSale.ordem_servico_id) {
+        refreshPayments();
+
+        // Sincronizar adiantamento da OS quando a venda foi criada sem ele (ex.: vendas antigas ou race)
+        const totalPagoNaVenda = Number(loadedSale.total_pago ?? 0);
+        const jaTemAdiantamento = (loadedSale.payments || []).some(
+          (p: { forma_pagamento?: string }) => p.forma_pagamento === 'Adiantamento OS'
+        );
+        if (totalPagoNaVenda === 0 && !jaTemAdiantamento) {
+          try {
+            const { data: pagamentosOS } = await from('os_pagamentos')
+              .select('valor, cancelled_at')
+              .eq('ordem_servico_id', loadedSale.ordem_servico_id)
+              .execute();
+            const totalPagoOS = (pagamentosOS || [])
+              .filter((p: { cancelled_at?: string | null }) => !p.cancelled_at)
+              .reduce((s: number, p: { valor?: number }) => s + Number(p.valor || 0), 0);
+            const totalVenda = Number(loadedSale.total ?? 0);
+            const valorCreditar = totalPagoOS > 0 && totalVenda > 0 ? Math.min(totalPagoOS, totalVenda) : 0;
+
+            if (valorCreditar > 0) {
+              const now = new Date().toISOString();
+              await from('payments')
+                .insert({
+                  sale_id: id,
+                  forma_pagamento: 'Adiantamento OS',
+                  valor: valorCreditar,
+                  troco: 0,
+                  parcelas: 1,
+                  status: 'confirmed',
+                  confirmed_at: now,
+                  confirmed_by: user?.id || null,
+                })
+                .execute();
+              const novoStatus = valorCreditar >= totalVenda ? 'paid' : 'partial';
+              await from('sales')
+                .update({ total_pago: valorCreditar, status: novoStatus })
+                .eq('id', id)
+                .execute();
+              const updated = await getSaleById(id);
+              if (updated) setSale(updated);
+              refreshPayments();
+            }
+          } catch (err) {
+            console.error('Erro ao sincronizar adiantamento OS na venda:', err);
+          }
+        }
+      }
       
       // Se a venda foi cancelada, redirecionar para a lista
       if (loadedSale.status === 'canceled') {
@@ -509,19 +559,33 @@ export default function NovaVenda() {
       const ordensFromStorage = ordens.filter(os => os.status === 'finalizada');
       console.log(`Encontradas ${ordensFromStorage.length} OSs finalizadas`);
 
-      // Verificar quais OSs já foram faturadas (verificando se há venda vinculada)
+      // Verificar quais OSs já foram faturadas (venda com itens de faturamento, não só adiantamento)
       let osFaturadas = new Set<string>();
       try {
         const { data: vendasComOS } = await from('sales')
-          .select('ordem_servico_id')
+          .select('id, ordem_servico_id')
           .not('ordem_servico_id', 'is', null)
           .execute();
-        
-        if (vendasComOS) {
-          osFaturadas = new Set(vendasComOS.map((v: any) => v.ordem_servico_id));
+        if (vendasComOS && vendasComOS.length > 0) {
+          const saleIds = vendasComOS.map((v: any) => v.id).filter(Boolean);
+          const { data: itensVendas } = await from('sale_items')
+            .select('sale_id, produto_nome')
+            .in('sale_id', saleIds)
+            .execute();
+          const itensPorSale = (itensVendas || []).reduce((acc: Record<string, { produto_nome: string }[]>, row: any) => {
+            if (!acc[row.sale_id]) acc[row.sale_id] = [];
+            acc[row.sale_id].push({ produto_nome: row.produto_nome || '' });
+            return acc;
+          }, {});
+          vendasComOS.forEach((v: any) => {
+            const itens = itensPorSale[v.id] || [];
+            const soPagamento = itens.length === 1 && /^PAGAMENTO OS #\d+ - (ADIANTAMENTO|PAGAMENTO)$/i.test(itens[0].produto_nome || '');
+            if (!soPagamento) {
+              osFaturadas.add(v.ordem_servico_id);
+            }
+          });
         }
       } catch (error) {
-        // Se der erro ao buscar vendas, continuar sem filtrar
         console.warn('Não foi possível verificar OSs faturadas:', error);
       }
 
@@ -705,6 +769,47 @@ export default function NovaVenda() {
       }
       
       console.log(`=== RESUMO: ${itemsAdded} adicionados, ${itemsSkipped} pulados (já existiam) ===`);
+
+      // Total já pago na OS (adiantamentos no financeiro) — descontar na venda de faturamento
+      const { data: pagamentosOS } = await from('os_pagamentos')
+        .select('valor, cancelled_at')
+        .eq('ordem_servico_id', os.id)
+        .execute();
+      const totalPagoOS = (pagamentosOS || [])
+        .filter((p: { cancelled_at?: string | null }) => !p.cancelled_at)
+        .reduce((s: number, p: { valor: number }) => s + Number(p.valor || 0), 0);
+
+      if (totalPagoOS > 0) {
+        const { data: saleAtual } = await from('sales')
+          .select('total')
+          .eq('id', novaVenda.id)
+          .single();
+        const totalVenda = Number((saleAtual as any)?.total ?? 0);
+        const valorCreditar = Math.min(totalPagoOS, totalVenda);
+
+        if (valorCreditar > 0) {
+          const now = new Date().toISOString();
+          await from('payments')
+            .insert({
+              sale_id: novaVenda.id,
+              forma_pagamento: 'Adiantamento OS',
+              valor: valorCreditar,
+              valor_parcela: valorCreditar,
+              troco: 0,
+              parcelas: 1,
+              status: 'confirmed',
+              confirmed_at: now,
+              confirmed_by: user?.id || null,
+            })
+            .execute();
+
+          const novoStatus = valorCreditar >= totalVenda ? 'paid' : 'partial';
+          await from('sales')
+            .update({ total_pago: valorCreditar, status: novoStatus })
+            .eq('id', novaVenda.id)
+            .execute();
+        }
+      }
 
       // A OS será marcada como faturada automaticamente quando a venda for finalizada
       // através da função fatura_os_from_sale no trigger
@@ -959,9 +1064,15 @@ export default function NovaVenda() {
           total: totals.total,
         });
 
-        // Validar se há pelo menos um pagamento confirmado
+        // Validar se há pelo menos um pagamento confirmado (ou venda de OS já quitada por adiantamento)
         const confirmedPayments = payments.filter(p => p.status === 'confirmed');
-        if (confirmedPayments.length === 0) {
+        const totalPagoFromPayments = confirmedPayments.reduce((sum, p) => sum + Number(p.valor || 0), 0);
+        const totalPagoConsidered = sale?.ordem_servico_id && Number(sale?.total_pago ?? 0) > 0
+          ? Math.max(totalPagoFromPayments, Number(sale.total_pago))
+          : totalPagoFromPayments;
+        const jaPagoPorOS = Boolean(sale?.ordem_servico_id && Number(sale?.total_pago ?? 0) >= totals.total);
+
+        if (confirmedPayments.length === 0 && !jaPagoPorOS) {
           toast({ 
             title: 'Forma de pagamento obrigatória', 
             description: 'É necessário adicionar pelo menos uma forma de pagamento antes de finalizar a venda.',
@@ -972,15 +1083,26 @@ export default function NovaVenda() {
           return;
         }
 
-        // Validar se o total pago é maior que zero
-        const totalPago = confirmedPayments.reduce((sum, p) => sum + Number(p.valor || 0), 0);
-        if (totalPago <= 0) {
+        if (totalPagoConsidered <= 0 && !jaPagoPorOS) {
           toast({ 
             title: 'Valor de pagamento inválido', 
             description: 'O valor total dos pagamentos deve ser maior que zero.',
             variant: 'destructive' 
           });
           setShowCheckout(true); // Abrir modal de pagamento
+          setIsSaving(false);
+          return;
+        }
+
+        // Se ainda há saldo restante, abrir modal para o usuário registrar o pagamento (não finalizar sozinho)
+        const saldoRestanteAgora = totals.total - totalPagoConsidered;
+        if (saldoRestanteAgora > 0.01) {
+          toast({ 
+            title: 'Saldo restante', 
+            description: `Falta registrar ${currencyFormatters.brl(saldoRestanteAgora)}. Adicione a forma de pagamento do valor restante para finalizar.`,
+            variant: 'default' 
+          });
+          setShowCheckout(true);
           setIsSaving(false);
           return;
         }
@@ -1029,7 +1151,7 @@ export default function NovaVenda() {
     } finally {
       setIsSaving(false);
     }
-  }, [cart, isEditing, id, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById]);
+  }, [cart, isEditing, id, sale, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -1813,9 +1935,13 @@ export default function NovaVenda() {
     }
   };
 
-  const totalPago = payments
+  const totalPagoFromPayments = payments
     .filter(p => p.status === 'confirmed')
     .reduce((sum, p) => sum + Number(p.valor), 0);
+  // Venda faturada de OS: considerar total já pago da venda (ex.: adiantamento) mesmo antes dos pagamentos carregarem
+  const totalPago = sale?.ordem_servico_id && Number(sale?.total_pago ?? 0) > 0
+    ? Math.max(totalPagoFromPayments, Number(sale.total_pago))
+    : totalPagoFromPayments;
 
   const saldoRestante = totals.total - totalPago;
 
@@ -2540,6 +2666,20 @@ _PrimeCamp Assistência Técnica_`;
                       </div>
                     </div>
 
+                    {/* Adiantamento OS: mostrar Total Pago e Saldo no rascunho */}
+                    {totalPago > 0 && (
+                      <div className="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Total Pago</span>
+                          <span className="font-semibold text-emerald-600">{currencyFormatters.brl(totalPago)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Saldo restante</span>
+                          <span className="font-semibold text-orange-500">{currencyFormatters.brl(saldoRestante)}</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* AÇÕES PRINCIPAIS */}
                     <div className="mt-5 space-y-3">
                       {/* FINALIZAR VENDA - BOTÃO DOMINANTE */}
@@ -3170,12 +3310,15 @@ _PrimeCamp Assistência Técnica_`;
                   })
                   .map(os => {
                     const itens = os.itens || [];
-                    const produtos = itens.filter((item: any) => 
-                      item.tipo === 'peca' || item.tipo === 'produto'
+                    // Incluir peça, produto e serviço no total (evita Total R$ 0 quando OS tem só serviço)
+                    const itensComValor = itens.filter((item: any) =>
+                      item.tipo === 'peca' || item.tipo === 'produto' || item.tipo === 'servico'
                     );
-                    const totalOS = produtos.reduce((sum: number, item: any) => 
+                    const totalPorItens = itensComValor.reduce((sum: number, item: any) =>
                       sum + (Number(item.valor_total) || 0), 0
                     );
+                    // Fallback: usar valor_total da OS quando a soma dos itens for zero
+                    const totalOS = totalPorItens > 0 ? totalPorItens : (Number((os as any).valor_total) || 0);
 
                     return (
                       <Card key={os.id} className="p-4">
