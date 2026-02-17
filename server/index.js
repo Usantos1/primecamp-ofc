@@ -696,7 +696,7 @@ app.get('/api/public/candidatura/:protocol', async (req, res) => {
   }
 });
 
-// Acompanhamento de OS (público - usado pelo QR code no cupom/termica da OS)
+// Acompanhamento de OS (público - usado pelo QR code na OS). Não incluir coluna "operadora" (pode não existir na tabela).
 app.get('/api/public/acompanhar-os/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1339,7 +1339,8 @@ app.post('/api/query/:table', async (req, res) => {
       // Marcas e modelos (se tiver por empresa)
       'marcas', 'modelos',
       // Configurações específicas da empresa
-      'configuracoes_empresa', 'company_settings'
+      'configuracoes_empresa', 'company_settings',
+      'os_pagamentos'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
@@ -1443,7 +1444,8 @@ app.post('/api/insert/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
-      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
+      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
+      'os_pagamentos'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1487,17 +1489,11 @@ app.post('/api/insert/:table', async (req, res) => {
           );
           
           if (!isConsolidada) {
-            // Apenas vendas normais de OS precisam de ordem_servico_id e technician_id
+            // Vendas de OS precisam de ordem_servico_id. technician_id é opcional (adiantamento sem técnico permitido).
             if (!row.ordem_servico_id) {
               return res.status(400).json({ 
                 error: 'Vendas de OS devem ter ordem_servico_id',
                 codigo: 'OS_SALE_REQUIRES_ORDEM_SERVICO_ID'
-              });
-            }
-            if (!row.technician_id) {
-              return res.status(400).json({ 
-                error: 'Vendas de OS devem ter technician_id',
-                codigo: 'OS_SALE_REQUIRES_TECHNICIAN_ID'
               });
             }
           }
@@ -1766,7 +1762,8 @@ app.post('/api/update/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
-      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
+      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
+      'os_pagamentos'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2272,7 +2269,8 @@ app.post('/api/delete/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
-      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings'
+      'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
+      'os_pagamentos'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());

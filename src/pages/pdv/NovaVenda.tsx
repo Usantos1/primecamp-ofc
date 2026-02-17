@@ -161,6 +161,8 @@ export default function NovaVenda() {
   const [isProcessingCash, setIsProcessingCash] = useState(false);
   const [closeDialogValorEsperado, setCloseDialogValorEsperado] = useState(0);
   const [closeDialogLoadingValor, setCloseDialogLoadingValor] = useState(false);
+  const [closeDialogPagamentosPorForma, setCloseDialogPagamentosPorForma] = useState<Record<string, number>>({});
+  const [closeDialogTotalVendas, setCloseDialogTotalVendas] = useState(0);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -171,18 +173,34 @@ export default function NovaVenda() {
     }
   }, [isEditing, id]);
 
-  // Carregar valor esperado ao abrir o modal de Fechar Caixa
+  // Carregar valor esperado e conferência por forma de pagamento ao abrir o modal de Fechar Caixa
   useEffect(() => {
     if (!showCloseCashDialog || !cashSession?.id) return;
     const loadValorEsperado = async () => {
       setCloseDialogLoadingValor(true);
       try {
         const { data: salesData } = await from('sales')
-          .select('total')
+          .select('id, total')
           .eq('cash_register_session_id', cashSession.id)
           .eq('status', 'paid')
           .execute();
-        const totalVendas = (salesData || []).reduce((s, r) => s + Number(r.total || 0), 0);
+        const sales = salesData || [];
+        const totalVendas = sales.reduce((s, r) => s + Number(r.total || 0), 0);
+        setCloseDialogTotalVendas(totalVendas);
+        const saleIds = sales.map((r: any) => r.id).filter(Boolean);
+        const pagamentosPorForma: Record<string, number> = {};
+        if (saleIds.length > 0) {
+          const { data: paymentsData } = await from('payments')
+            .select('forma_pagamento, valor')
+            .in('sale_id', saleIds)
+            .eq('status', 'confirmed')
+            .execute();
+          (paymentsData || []).forEach((p: any) => {
+            const forma = p.forma_pagamento || 'outro';
+            pagamentosPorForma[forma] = (pagamentosPorForma[forma] || 0) + Number(p.valor || 0);
+          });
+        }
+        setCloseDialogPagamentosPorForma(pagamentosPorForma);
         const totalSuprimentos = (cashMovements || [])
           .filter((m: any) => m.tipo === 'suprimento')
           .reduce((s: number, m: any) => s + Number(m.valor || 0), 0);
@@ -2688,7 +2706,7 @@ _PrimeCamp Assistência Técnica_`;
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Fechar Caixa */}
+      {/* Dialog: Fechar Caixa — maior e mais visível */}
       <Dialog open={showCloseCashDialog} onOpenChange={(open) => {
         setShowCloseCashDialog(open);
         if (!open) {
@@ -2697,11 +2715,52 @@ _PrimeCamp Assistência Técnica_`;
           setCashJustificativa('');
         }
       }}>
-        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-2 md:pb-4">
-            <DialogTitle className="text-base md:text-lg">Fechar Caixa</DialogTitle>
+        <DialogContent className="p-4 md:p-6 max-w-[96vw] md:max-w-4xl max-h-[95vh] overflow-y-auto text-base">
+          <DialogHeader className="pb-3 md:pb-4">
+            <DialogTitle className="text-lg md:text-xl">Fechar Caixa</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-4 md:space-y-5">
+            {/* Conferência por forma de pagamento */}
+            {!closeDialogLoadingValor && Object.keys(closeDialogPagamentosPorForma).length > 0 && (() => {
+              const cashValorInicial = Number(cashSession?.valor_inicial || 0);
+              const cashVendasDinheiro = closeDialogPagamentosPorForma['dinheiro'] || 0;
+              const cashTotalDinheiro = cashValorInicial + cashVendasDinheiro;
+              return (
+              <div className="rounded-xl border-2 border-blue-200 bg-blue-50/30 p-4 md:p-5">
+                <p className="text-sm font-semibold text-muted-foreground mb-3">Conferência por forma de pagamento</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {Object.entries(closeDialogPagamentosPorForma)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([forma, valor]) => {
+                      const valorExibir = forma === 'dinheiro' ? cashTotalDinheiro : valor;
+                      return (
+                        <div key={forma} className="flex flex-col rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">
+                              {forma === 'dinheiro' ? 'Dinheiro (abertura + vendas)' : PAYMENT_METHOD_LABELS[forma as keyof typeof PAYMENT_METHOD_LABELS] || forma}
+                            </span>
+                            <span className="font-semibold">{currencyFormatters.brl(valorExibir)}</span>
+                          </div>
+                          {forma === 'dinheiro' && cashValorInicial > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">{currencyFormatters.brl(cashValorInicial)} abertura + {currencyFormatters.brl(cashVendasDinheiro)} vendas</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+                <div className="mt-3 pt-3 border-t-2 border-gray-200 space-y-1">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Total vendas</span>
+                    <span>{currencyFormatters.brl(closeDialogTotalVendas)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-primary">
+                    <span>Total do caixa (abertura + vendas)</span>
+                    <span>{currencyFormatters.brl(closeDialogValorEsperado)}</span>
+                  </div>
+                </div>
+              </div>
+              );
+            })()}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div>
                 <Label className="text-xs md:text-sm">Valor Esperado (R$)</Label>

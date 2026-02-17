@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { 
   useOrdensServico, useClientes, useMarcasModelos, 
-  usePagamentos, buscarCEP, useConfiguracaoStatus
+  usePagamentos, usePagamentosOSAPI, type PagamentoOSAPI, buscarCEP, useConfiguracaoStatus
 } from '@/hooks/useAssistencia';
 import { useItensOSSupabase } from '@/hooks/useItensOSSupabase';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
@@ -34,9 +34,10 @@ import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
 import { useCargos } from '@/hooks/useCargos';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
 import { 
-  OrdemServicoFormData, CHECKLIST_ITENS, ItemOS,
+  OrdemServicoFormData, CHECKLIST_ITENS, ItemOS, FormaPagamento,
   STATUS_OS_LABELS, STATUS_OS_COLORS, StatusOS, CARGOS_LABELS
 } from '@/types/assistencia';
+import { PAYMENT_METHOD_LABELS } from '@/types/pdv';
 import { PatternLock } from '@/components/assistencia/PatternLock';
 import { useOSImageReference } from '@/hooks/useOSImageReference';
 import { OSImageReferenceViewer } from '@/components/assistencia/OSImageReferenceViewer';
@@ -52,11 +53,13 @@ import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { OSSummaryHeader } from '@/components/assistencia/OSSummaryHeader';
 import { generateOSTermica } from '@/utils/osTermicaGenerator';
 import { generateOSPDF } from '@/utils/osPDFGenerator';
-import { printTermica } from '@/utils/pdfGenerator';
+import { printTermica, generateCupomTermica } from '@/utils/pdfGenerator';
 import { updatePrintStatus, printViaIframe } from '@/utils/printUtils';
 import { printOSTermicaDirect } from '@/utils/osPrintUtils';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
+import { useRegisterPagamentoOS } from '@/hooks/usePDV';
 
 interface OrdemServicoFormProps {
   osId?: string;
@@ -360,6 +363,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { sendMultiplePhotos: sendTelegramPhotos, deleteMessage: deleteTelegramMessage, loading: telegramLoading } = useTelegram();
   const { imageUrl: osImageReferenceUrl } = useOSImageReference();
   const { itemsEntrada: checklistEntradaConfig, itemsSaida: checklistSaidaConfig } = useChecklistConfig();
+  const { paymentMethods, fetchPaymentMethods } = usePaymentMethodsHook();
   
   // Configurações do Telegram do banco de dados
   const {
@@ -395,6 +399,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       setTelegramChatIdSaida(telegramChatIdSaidaFromDB);
     }
   }, [telegramChatIdSaidaFromDB]);
+
+  // Carregar formas de pagamento (mesmas do PDV / Admin → Configurações → Pagamentos)
+  useEffect(() => {
+    fetchPaymentMethods(true);
+  }, [fetchPaymentMethods]);
 
   // Estados do formulário
   const [formData, setFormData] = useState<OrdemServicoFormData>({
@@ -529,6 +538,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const osIdParaItens = id || currentOS?.id || 'temp';
   const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens, isAddingItem, isUpdatingItem, isRemovingItem } = useItensOSSupabase(osIdParaItens);
   const { pagamentos, totalPago, addPagamento } = usePagamentos(osIdParaItens);
+  const { pagamentos: pagamentosAPI, totalPago: totalPagoAPI, isLoading: isLoadingPagamentosAPI, refetch: refetchPagamentosAPI } = usePagamentosOSAPI(osIdParaItens);
+  const { registerPagamentoOS, cancelPagamentoOS } = useRegisterPagamentoOS();
+  const isAdmin = profile?.role === 'admin';
 
   // Resetar osLoaded quando o id mudar
   useEffect(() => {
@@ -1180,6 +1192,19 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     setShowAddItem(true);
   };
 
+  // Dialog Registrar Pagamento (OS Financeiro)
+  const [showPagamentoOSDialog, setShowPagamentoOSDialog] = useState(false);
+  const [pagamentoOSForm, setPagamentoOSForm] = useState({
+    valor: '' as string | number,
+    forma_pagamento: 'dinheiro' as FormaPagamento,
+    tipo: 'adiantamento' as 'adiantamento' | 'pagamento_final',
+    observacao: '',
+  });
+  const [isSavingPagamentoOS, setIsSavingPagamentoOS] = useState(false);
+  const [imprimirCupomAposPagamento, setImprimirCupomAposPagamento] = useState(true);
+  const [pagamentoToCancel, setPagamentoToCancel] = useState<PagamentoOSAPI | null>(null);
+  const [isCancellingPagamento, setIsCancellingPagamento] = useState(false);
+
   // Remover item — reversão de estoque é feita no hook useItensOSSupabase (evitar dupla reversão)
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const handleRemoveItem = async (itemId: string) => {
@@ -1201,6 +1226,105 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       });
     } finally {
       setRemovingItemId(null);
+    }
+  };
+
+  // Registrar pagamento na OS como venda (documento rastreável, soma no caixa)
+  const handleRegistrarPagamentoOS = async () => {
+    const valorNum = typeof pagamentoOSForm.valor === 'number' ? pagamentoOSForm.valor : parseFloat(String(pagamentoOSForm.valor || '0').replace(',', '.'));
+    if (!valorNum || valorNum <= 0) {
+      toast({ title: 'Valor inválido', description: 'Informe um valor maior que zero.', variant: 'destructive' });
+      return;
+    }
+    if (!currentOS?.id || !osIdParaItens) {
+      toast({ title: 'Erro', description: 'OS não identificada.', variant: 'destructive' });
+      return;
+    }
+    setIsSavingPagamentoOS(true);
+    try {
+      const clienteNome = selectedCliente?.nome || currentOS?.cliente_nome || 'Cliente';
+      const { sale } = await registerPagamentoOS({
+        ordem_servico_id: currentOS.id,
+        numero_os: currentOS.numero ?? 0,
+        tecnico_id: currentOS?.tecnico_id ?? '',
+        cliente_nome: clienteNome,
+        valor: valorNum,
+        forma_pagamento: pagamentoOSForm.forma_pagamento,
+        tipo: pagamentoOSForm.tipo,
+        observacao: pagamentoOSForm.observacao || undefined,
+      });
+      await refetchPagamentosAPI();
+      setShowPagamentoOSDialog(false);
+      setPagamentoOSForm({ valor: '', forma_pagamento: 'dinheiro', tipo: 'adiantamento', observacao: '' });
+      toast({ title: 'Pagamento registrado', description: `${currencyFormatters.brl(valorNum)} gerou a venda #${sale?.numero ?? ''} (documento rastreável).` });
+
+      if (imprimirCupomAposPagamento) {
+        const cupomData = {
+          numero: sale?.numero ?? currentOS.numero ?? 0,
+          data: new Date().toLocaleDateString('pt-BR'),
+          hora: new Date().toLocaleTimeString('pt-BR'),
+          empresa: { nome: 'PRIME CAMP', cnpj: '31.833.574/0001-74' },
+          cliente: { nome: clienteNome },
+          vendedor: currentUserNome,
+          vendedor_label: 'Registrado por',
+          itens: [{ nome: `PAGAMENTO OS #${currentOS.numero} - ${pagamentoOSForm.tipo === 'adiantamento' ? 'ADIANTAMENTO' : 'PAGAMENTO'}`, quantidade: 1, valor_unitario: valorNum, desconto: 0, valor_total: valorNum }],
+          subtotal: valorNum,
+          desconto_total: 0,
+          total: valorNum,
+          pagamentos: [{ forma: pagamentoOSForm.forma_pagamento, valor: valorNum }],
+        };
+        const html = await generateCupomTermica(cupomData);
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(html);
+          doc.close();
+          setTimeout(() => { iframe.contentWindow?.print(); setTimeout(() => iframe.parentNode?.removeChild(iframe), 2000); }, 800);
+        }
+      }
+    } catch (e: any) {
+      const err = e?.error ?? e;
+      const msg =
+        (typeof err === 'string' ? err : null) ||
+        err?.message ||
+        e?.message ||
+        err?.error_description ||
+        e?.error_description ||
+        err?.details ||
+        (err?.code && err?.details ? `[${err.code}] ${err.details}` : null) ||
+        (err?.code ? String(err.code) : null) ||
+        (err && typeof err === 'object' && typeof err.message !== 'string' ? JSON.stringify(err) : null) ||
+        String(e);
+      let msgStr = typeof msg === 'string' ? msg : (msg != null ? String(msg) : 'Tente novamente.');
+      if (msgStr === '[object Object]' && e && typeof e === 'object') {
+        const o = e?.error ?? e;
+        msgStr = (typeof o?.message === 'string' && o.message) || (typeof o?.details === 'string' && o.details) || (o?.code ? `Erro ${o.code}` : '') || 'Erro ao registrar. Verifique o console (F12) ou tente novamente.';
+      }
+      const isTableMissing = /relation.*os_pagamentos|os_pagamentos.*does not exist|tabela.*não existe/i.test(msgStr);
+      const description = isTableMissing
+        ? 'A tabela os_pagamentos não existe no banco. Execute no Supabase (SQL Editor) o arquivo CRIAR_TABELA_OS_PAGAMENTOS.sql do projeto.'
+        : msgStr;
+      toast({ title: 'Erro ao registrar pagamento', description, variant: 'destructive' });
+    } finally {
+      setIsSavingPagamentoOS(false);
+    }
+  };
+
+  const handleCancelPagamentoOS = async () => {
+    if (!pagamentoToCancel || !isAdmin) return;
+    setIsCancellingPagamento(true);
+    try {
+      await cancelPagamentoOS(pagamentoToCancel.id, pagamentoToCancel.sale_id);
+      await refetchPagamentosAPI();
+      setPagamentoToCancel(null);
+      toast({ title: 'Pagamento cancelado', description: 'O valor foi retirado do caixa e do financeiro da OS.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao cancelar', description: e?.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setIsCancellingPagamento(false);
     }
   };
 
@@ -1944,7 +2068,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         const imagemReferenciaUrl = osImageReferenceUrl || null;
         const areasDefeito = os.areas_defeito || [];
 
-        // Gerar via do cliente (sem checklist na impressão)
+        // Gerar via do cliente (com checklist nas duas vias)
         const htmlCliente = await generateOSTermica({
           os,
           clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
@@ -1956,10 +2080,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           imagemReferenciaUrl,
           areasDefeito,
           via: 'cliente',
-          omitirChecklist: true,
+          omitirChecklist: false,
         });
 
-        // Gerar via da loja (sem checklist na impressão)
+        // Gerar via da loja (com checklist nas duas vias)
         const htmlLoja = await generateOSTermica({
           os,
           clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
@@ -1971,7 +2095,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           imagemReferenciaUrl,
           areasDefeito,
           via: 'loja',
-          omitirChecklist: true,
+          omitirChecklist: false,
         });
 
         // Imprimir ambas as vias
@@ -2426,7 +2550,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 modeloNome={modelos.find(m => m.id === currentOS.modelo_id)?.nome || currentOS.modelo_nome}
                 status={currentOS.status}
                 valorTotal={total}
-                valorPago={totalPago}
+                valorPago={totalPagoAPI}
                 previsaoEntrega={currentOS.previsao_entrega}
                 tecnicoNome={currentOS.tecnico_id ? getColaboradorById(currentOS.tecnico_id)?.nome || currentOS.tecnico_nome : undefined}
               />
@@ -4673,8 +4797,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           {isEditing && (
             <TabsContent value="financeiro" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
 
-              {/* Saldo Pendente em Destaque */}
-              {total - totalPago > 0 && (
+              {/* Saldo Pendente em Destaque — usa totais da API (pagamentos rastreáveis) */}
+              {total - totalPagoAPI > 0 && (
                 <Card className="border-2 border-orange-500 bg-orange-50/50">
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
@@ -4683,26 +4807,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <div>
                           <p className="text-sm font-medium text-orange-900">Saldo Pendente</p>
                           <p className="text-2xl font-bold text-orange-600">
-                            {currencyFormatters.brl(total - totalPago)}
+                            {currencyFormatters.brl(total - totalPagoAPI)}
                           </p>
                         </div>
                       </div>
                       <Button 
-                        onClick={() => {
-                          if (!currentOS?.id) {
-                            toast({ 
-                              title: 'Erro', 
-                              description: 'OS não encontrada',
-                              variant: 'destructive'
-                            });
-                            return;
-                          }
-                          // Navegar para o PDV com a OS pré-carregada
-                          // Salvar o ID da OS no localStorage para o PDV importar
-                          localStorage.setItem('pdv_import_os_id', currentOS.id);
-                          localStorage.setItem('pdv_import_os_numero', currentOS.numero?.toString() || '');
-                          navigate('/pdv/nova');
-                        }}
+                        onClick={() => setShowPagamentoOSDialog(true)}
                         className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
                         size="lg"
                       >
@@ -4724,14 +4834,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 <Card className="m-2">
                   <CardContent className="pt-4">
                     <p className="text-sm text-muted-foreground">Valor Pago</p>
-                    <p className="text-3xl font-bold text-green-600">{currencyFormatters.brl(totalPago)}</p>
+                    <p className="text-3xl font-bold text-green-600">{currencyFormatters.brl(totalPagoAPI)}</p>
                   </CardContent>
                 </Card>
                 <Card className="m-2">
                   <CardContent className="pt-4">
                     <p className="text-sm text-muted-foreground">Saldo Restante</p>
-                    <p className={cn("text-3xl font-bold", total - totalPago > 0 ? "text-orange-600" : "text-green-600")}>
-                      {currencyFormatters.brl(total - totalPago)}
+                    <p className={cn("text-3xl font-bold", total - totalPagoAPI > 0 ? "text-orange-600" : "text-green-600")}>
+                      {currencyFormatters.brl(total - totalPagoAPI)}
                     </p>
                   </CardContent>
                 </Card>
@@ -4740,12 +4850,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               <Card className="m-2 flex flex-col flex-1 min-h-0">
                 <CardHeader className="pb-2 pt-3 flex-shrink-0">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Pagamentos</CardTitle>
+                    <CardTitle className="text-base">Pagamentos (documentos rastreáveis, somam no caixa)</CardTitle>
                     <Button 
-                      onClick={() => {
-                        // TODO: Abrir dialog de pagamento
-                        toast({ title: 'Funcionalidade em desenvolvimento', description: 'Dialog de pagamento será implementado' });
-                      }}
+                      onClick={() => setShowPagamentoOSDialog(true)}
                       size="sm"
                       className="gap-2"
                     >
@@ -4755,18 +4862,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2 flex-1 flex flex-col min-h-0">
-                  {pagamentos.length === 0 ? (
+                  {isLoadingPagamentosAPI ? (
+                    <div className="flex items-center justify-center py-12 text-muted-foreground">Carregando pagamentos...</div>
+                  ) : pagamentosAPI.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
                       <p className="text-base font-medium mb-2">Nenhum pagamento registrado</p>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Registre o primeiro pagamento para começar a controlar o financeiro desta OS
+                        Registre o primeiro pagamento para começar a controlar o financeiro desta OS. Cada pagamento gera uma venda e soma no caixa.
                       </p>
                       <Button 
-                        onClick={() => {
-                          // TODO: Abrir dialog de pagamento
-                          toast({ title: 'Funcionalidade em desenvolvimento', description: 'Dialog de pagamento será implementado' });
-                        }}
+                        onClick={() => setShowPagamentoOSDialog(true)}
                         className="gap-2"
                       >
                         <Plus className="h-4 w-4" />
@@ -4781,13 +4887,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <TableHeader>
                               <TableRow>
                                 <TableHead>Data</TableHead>
+                                <TableHead>Hora</TableHead>
+                                <TableHead>Registrado por</TableHead>
                                 <TableHead>Tipo</TableHead>
                                 <TableHead>Forma de Pagamento</TableHead>
                                 <TableHead className="text-right">Valor</TableHead>
+                                <TableHead>Venda</TableHead>
+                                {isAdmin && <TableHead className="w-[80px]">Ações</TableHead>}
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {pagamentos.map(pag => {
+                              {pagamentosAPI.map(pag => {
                                 const getPaymentIcon = (forma: string) => {
                                   const formaLower = forma?.toLowerCase() || '';
                                   if (formaLower.includes('pix')) return <QrCode className="h-4 w-4" />;
@@ -4795,9 +4905,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                   if (formaLower.includes('cartão') || formaLower.includes('cartao') || formaLower.includes('card')) return <CreditCard className="h-4 w-4" />;
                                   return <Wallet className="h-4 w-4" />;
                                 };
+                                const createdDate = pag.sale_created_at || pag.created_at;
+                                const dataStr = createdDate ? dateFormatters.short(createdDate) : '-';
+                                const horaStr = createdDate ? format(new Date(createdDate), 'HH:mm') : '-';
                                 return (
                                   <TableRow key={pag.id}>
-                                    <TableCell>{dateFormatters.short(pag.data_pagamento)}</TableCell>
+                                    <TableCell>{dataStr}</TableCell>
+                                    <TableCell>{horaStr}</TableCell>
+                                    <TableCell className="text-muted-foreground">{pag.vendedor_nome || '-'}</TableCell>
                                     <TableCell>
                                       <Badge variant="outline">
                                         {pag.tipo === 'adiantamento' ? 'Adiantamento' : 'Pagamento Final'}
@@ -4806,10 +4921,32 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                     <TableCell>
                                       <div className="flex items-center gap-2">
                                         {getPaymentIcon(pag.forma_pagamento)}
-                                        <span className="capitalize">{pag.forma_pagamento}</span>
+                                        <span>{PAYMENT_METHOD_LABELS[pag.forma_pagamento as keyof typeof PAYMENT_METHOD_LABELS] ?? pag.forma_pagamento}</span>
                                       </div>
                                     </TableCell>
                                     <TableCell className="text-right font-semibold">{currencyFormatters.brl(pag.valor)}</TableCell>
+                                    <TableCell>
+                                      {pag.sale_id && pag.sale_numero != null ? (
+                                        <Link to={`/pdv/vendas?highlight=${pag.sale_id}`} className="text-primary font-medium hover:underline">
+                                          Venda #{pag.sale_numero}
+                                        </Link>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </TableCell>
+                                    {isAdmin && (
+                                      <TableCell>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                          onClick={() => setPagamentoToCancel(pag)}
+                                          disabled={isCancellingPagamento}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TableCell>
+                                    )}
                                   </TableRow>
                                 );
                               })}
@@ -5182,6 +5319,116 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       subtitle={isEditing ? 'Editar ordem de serviço' : 'Cadastrar nova OS'}
     >
       {content}
+
+      {/* Dialog Registrar Pagamento (OS Financeiro) */}
+      <Dialog open={showPagamentoOSDialog} onOpenChange={setShowPagamentoOSDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar Pagamento</DialogTitle>
+            <DialogDescription>
+              Registre um adiantamento ou pagamento da OS. O comprovante pode ser impresso para o cliente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Valor (R$)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={pagamentoOSForm.valor}
+                onChange={(e) => setPagamentoOSForm(prev => ({ ...prev, valor: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Forma de pagamento</Label>
+              <Select
+                value={
+                  (() => {
+                    const active = paymentMethods.filter(pm => pm.is_active);
+                    if (active.length === 0) return '';
+                    const code = pagamentoOSForm.forma_pagamento;
+                    return active.some(pm => pm.code === code) ? code : (active[0]?.code ?? '');
+                  })()
+                }
+                onValueChange={(v) => setPagamentoOSForm(prev => ({ ...prev, forma_pagamento: v as FormaPagamento }))}
+                disabled={paymentMethods.filter(pm => pm.is_active).length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a forma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethods.filter(pm => pm.is_active).map((pm) => (
+                    <SelectItem key={pm.id} value={pm.code}>{pm.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {paymentMethods.filter(pm => pm.is_active).length === 0 && (
+                <p className="text-xs text-amber-600">
+                  Nenhuma forma de pagamento cadastrada. Configure em Admin → Configurações → Pagamentos.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select
+                value={pagamentoOSForm.tipo}
+                onValueChange={(v: 'adiantamento' | 'pagamento_final') => setPagamentoOSForm(prev => ({ ...prev, tipo: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="adiantamento">Adiantamento</SelectItem>
+                  <SelectItem value="pagamento_final">Pagamento final</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Observação (opcional)</Label>
+              <Input
+                placeholder="Ex.: entrada, parcela 1..."
+                value={pagamentoOSForm.observacao}
+                onChange={(e) => setPagamentoOSForm(prev => ({ ...prev, observacao: e.target.value }))}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="imprimir-cupom-pagamento"
+                checked={imprimirCupomAposPagamento}
+                onCheckedChange={(c) => setImprimirCupomAposPagamento(c === true)}
+              />
+              <Label htmlFor="imprimir-cupom-pagamento" className="text-sm font-normal cursor-pointer">Imprimir cupom para o cliente</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPagamentoOSDialog(false)}>Cancelar</Button>
+            <LoadingButton loading={isSavingPagamentoOS} onClick={handleRegistrarPagamentoOS}>
+              Registrar e {imprimirCupomAposPagamento ? 'Imprimir' : 'Salvar'}
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Confirmar cancelamento de pagamento OS (apenas admin) */}
+      <Dialog open={!!pagamentoToCancel} onOpenChange={(open) => !open && setPagamentoToCancel(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar pagamento</DialogTitle>
+            <DialogDescription>
+              O pagamento de {pagamentoToCancel ? currencyFormatters.brl(pagamentoToCancel.valor) : ''} será cancelado. A venda vinculada (Venda #{pagamentoToCancel?.sale_numero}) será anulada e o valor deixará de constar no caixa. Esta ação é irreversível.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPagamentoToCancel(null)}>Não</Button>
+            <LoadingButton variant="destructive" loading={isCancellingPagamento} onClick={handleCancelPagamentoOS}>
+              Sim, cancelar pagamento
+            </LoadingButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Checklist de Entrada */}
       <Dialog open={showChecklistEntradaModal} onOpenChange={setShowChecklistEntradaModal}>

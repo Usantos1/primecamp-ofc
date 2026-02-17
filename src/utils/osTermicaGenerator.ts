@@ -89,18 +89,19 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
     `;
   }
 
-  // Senha do aparelho
-  let senhaHtml = '';
-  if (os.possui_senha) {
-    const senhaTipo = os.possui_senha_tipo || (os.padrao_desbloqueio ? 'Padrão' : 'Senha');
-    const senhaValor = os.senha_aparelho || os.senha_numerica || os.padrao_desbloqueio || 'Sim';
-    senhaHtml = `
-      <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
-        <div class="bold">Senha do Aparelho:</div>
-        <div style="padding-left: 4px;">${senhaTipo}: ${senhaValor}</div>
-      </div>
-    `;
-  }
+  // Possui senha: sempre exibir (Sim/Não) para o técnico saber
+  const possuiSenhaLabel = os.possui_senha ? 'Sim' : 'Não';
+  let senhaHtml = `
+    <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
+      <div class="bold">Possui senha:</div>
+      <div style="padding-left: 4px;">${possuiSenhaLabel}</div>
+      ${os.possui_senha ? `
+        <div style="padding-left: 4px; font-size: 8px; margin-top: 2px;">
+          ${os.possui_senha_tipo || (os.padrao_desbloqueio ? 'Padrão' : 'Senha')}: ${os.senha_aparelho || os.senha_numerica || os.padrao_desbloqueio || 'Informado'}
+        </div>
+      ` : ''}
+    </div>
+  `;
 
   // Orçamento pré-autorizado
   let orcamentoHtml = '';
@@ -308,6 +309,14 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
       <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
         ${os.descricao_problema || '-'}
       </div>
+      
+      ${(os.condicoes_equipamento && String(os.condicoes_equipamento).trim()) ? `
+      <div class="divider-dashed"></div>
+      <div class="section-title">CONDIÇÕES DO EQUIPAMENTO</div>
+      <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
+        ${os.condicoes_equipamento}
+      </div>
+      ` : ''}
       
       <div class="divider-dashed"></div>
       

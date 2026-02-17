@@ -983,7 +983,7 @@ export default function Vendas() {
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cliente</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Vendedor</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Status</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Data</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 whitespace-nowrap">Data / Hora</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Total</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Pago</TableHead>
                         <TableHead className="font-semibold bg-muted/60 text-right">Ações</TableHead>
@@ -1031,8 +1031,8 @@ export default function Vendas() {
                               <Badge variant="outline" className="ml-2">Rascunho</Badge>
                             )}
                           </TableCell>
-                          <TableCell className="border-r border-gray-200">
-                            {dateFormatters.short(sale.created_at)}
+                          <TableCell className="border-r border-gray-200 text-sm whitespace-nowrap">
+                            {dateFormatters.withTime(sale.created_at)}
                           </TableCell>
                           <TableCell className="text-right font-semibold border-r border-gray-200">
                             {currencyFormatters.brl(sale.total)}
@@ -1246,8 +1246,8 @@ export default function Vendas() {
                             )}
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Data</p>
-                            <p className="text-sm">{dateFormatters.short(sale.created_at)}</p>
+                            <p className="text-xs text-muted-foreground">Data / Hora</p>
+                            <p className="text-sm">{dateFormatters.withTime(sale.created_at)}</p>
                           </div>
                         </div>
 

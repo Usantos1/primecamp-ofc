@@ -44,6 +44,8 @@ export interface CupomData {
     valor_parcela?: number;
   }>;
   vendedor?: string;
+  /** Label para o campo vendedor (ex.: "Registrado por" para pagamento OS) */
+  vendedor_label?: string;
   observacoes?: string;
   termos_garantia?: string;
   mostrar_logo?: boolean;
@@ -271,7 +273,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       </div>
       ${data.vendedor ? `
         <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-          <span style="font-weight: 900 !important; color: #000000 !important;">VENDEDOR:</span>
+          <span style="font-weight: 900 !important; color: #000000 !important;">${data.vendedor_label || 'VENDEDOR'}:</span>
           <span style="font-weight: 900 !important; color: #000000 !important;">${data.vendedor}</span>
         </div>
       ` : ''}

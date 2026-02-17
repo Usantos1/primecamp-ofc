@@ -1571,3 +1571,138 @@ export function useCancelRequests() {
   };
 }
 
+// ==================== REGISTRAR PAGAMENTO OS COMO VENDA (documento rastreável, soma no caixa) ====================
+
+export interface RegisterPagamentoOSParams {
+  ordem_servico_id: string;
+  numero_os: number;
+  tecnico_id: string;
+  cliente_nome: string;
+  valor: number;
+  forma_pagamento: string;
+  tipo: 'adiantamento' | 'pagamento_final';
+  observacao?: string;
+}
+
+/** Registra adiantamento/pagamento da OS como venda real (rastreável, entra no caixa). Retorna a venda criada. */
+export function useRegisterPagamentoOS() {
+  const auth = useAuth();
+  const user = auth?.user || null;
+  const profile = auth?.profile || null;
+  const { createSale } = useSales();
+
+  const registerPagamentoOS = useCallback(async (params: RegisterPagamentoOSParams): Promise<{ sale: Sale; payment: Payment }> => {
+    const sale = await createSale({
+      sale_origin: 'OS',
+      ordem_servico_id: params.ordem_servico_id,
+      technician_id: params.tecnico_id,
+      cliente_nome: params.cliente_nome,
+      is_draft: true,
+    });
+
+    const descricao = params.tipo === 'adiantamento'
+      ? `PAGAMENTO OS #${params.numero_os} - ADIANTAMENTO`
+      : `PAGAMENTO OS #${params.numero_os} - PAGAMENTO`;
+
+    const { error: errItem } = await from('sale_items')
+      .insert({
+        sale_id: sale.id,
+        produto_id: null,
+        produto_nome: descricao,
+        produto_codigo: null,
+        produto_codigo_barras: null,
+        produto_tipo: 'servico',
+        quantidade: 1,
+        valor_unitario: params.valor,
+        desconto: 0,
+        valor_total: params.valor,
+      })
+      .execute();
+    if (errItem) throw errItem;
+
+    await from('sales')
+      .update({ subtotal: params.valor, desconto_total: 0, total: params.valor })
+      .eq('id', sale.id)
+      .execute();
+
+    const { data: payment, error: errPay } = await from('payments')
+      .insert({
+        sale_id: sale.id,
+        forma_pagamento: params.forma_pagamento,
+        valor: params.valor,
+        troco: 0,
+        parcelas: 1,
+        status: 'pending',
+      })
+      .select()
+      .single();
+    if (errPay || !payment) throw errPay || new Error('Falha ao criar pagamento');
+
+    await from('payments')
+      .update({
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+        confirmed_by: user?.id || null,
+      })
+      .eq('id', payment.id)
+      .execute();
+
+    let cashSessionId: string | null = null;
+    try {
+      let q: any = from('cash_register_sessions')
+        .select('id')
+        .eq('status', 'open')
+        .order('opened_at', { ascending: false })
+        .limit(1);
+      if (user?.id) q = q.eq('operador_id', user.id);
+      const { data: sessData } = await q.execute();
+      const sess = Array.isArray(sessData) ? sessData[0] : sessData;
+      if (sess?.id) cashSessionId = sess.id;
+    } catch (_) {
+      // ignorar se não houver sessão
+    }
+
+    await from('sales')
+      .update({
+        total_pago: params.valor,
+        status: 'paid',
+        is_draft: false,
+        finalized_at: new Date().toISOString(),
+        ...(cashSessionId ? { cash_register_session_id: cashSessionId } : {}),
+      })
+      .eq('id', sale.id)
+      .execute();
+
+    const { error: errOP } = await from('os_pagamentos')
+      .insert({
+        ordem_servico_id: params.ordem_servico_id,
+        sale_id: sale.id,
+        valor: params.valor,
+        forma_pagamento: params.forma_pagamento,
+        tipo: params.tipo,
+        observacao: params.observacao || null,
+        created_by: user?.id || null,
+      })
+      .execute();
+    if (errOP) throw errOP;
+
+    return { sale: { ...sale, id: sale.id }, payment };
+  }, [createSale, user?.id]);
+
+  /** Cancela um pagamento OS (apenas admin). Marca os_pagamentos e invalida a venda no caixa. */
+  const cancelPagamentoOS = useCallback(async (osPagamentoId: string, saleId: string): Promise<void> => {
+    const now = new Date().toISOString();
+    const { error: errOP } = await from('os_pagamentos')
+      .update({ cancelled_at: now, cancelled_by: user?.id || null })
+      .eq('id', osPagamentoId)
+      .execute();
+    if (errOP) throw errOP;
+    await from('sales')
+      .update({ status: 'cancelled' })
+      .eq('id', saleId)
+      .execute();
+  }, [user?.id]);
+
+  return { registerPagamentoOS, cancelPagamentoOS };
+}
+

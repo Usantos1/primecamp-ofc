@@ -267,7 +267,7 @@ export default function Caixa() {
   // Total de entradas para conferência: Vendas + Suprimentos
   const totalEntradas = totalSuprimentos + totalVendas;
   
-  // Calcular totais por forma de pagamento
+  // Calcular totais por forma de pagamento (vendas)
   const pagamentosPorForma: Record<string, number> = {};
   Object.values(salePayments).flat().forEach((payment: any) => {
     const forma = payment.forma_pagamento;
@@ -276,6 +276,10 @@ export default function Caixa() {
     }
     pagamentosPorForma[forma] += Number(payment.valor || 0);
   });
+  // Para conferência: Dinheiro = abertura + vendas em dinheiro (para contagem física)
+  const valorAberturaSessao = Number(currentSession?.valor_inicial || 0);
+  const totalDinheiroVendas = pagamentosPorForma['dinheiro'] || 0;
+  const totalDinheiroParaConferencia = valorAberturaSessao + totalDinheiroVendas;
   
   const valorEsperado = currentSession 
     ? Number(currentSession.valor_inicial) + totalEntradas - totalSaidas
@@ -339,13 +343,6 @@ export default function Caixa() {
                   <div className="flex items-center gap-1.5"><TrendingDown className="h-3.5 w-3.5 text-red-600" /><span className="text-xs text-muted-foreground">Saídas:</span><span className="text-sm font-semibold text-red-600">{currencyFormatters.brl(totalSaidas)}</span></div>
                   <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded"><span className="text-xs text-muted-foreground">Esperado:</span><span className="text-sm font-bold text-primary">{currencyFormatters.brl(valorEsperado)}</span></div>
                 </div>
-                {Object.keys(pagamentosPorForma).length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {Object.entries(pagamentosPorForma).map(([forma, valor]) => (
-                      <Badge key={forma} variant="outline" className="text-xs">{forma === 'dinheiro' ? '💵' : forma === 'pix' ? '📱' : forma === 'debito' ? '💳' : forma === 'credito' ? '💳' : '📄'} {currencyFormatters.brl(valor)}</Badge>
-                    ))}
-                  </div>
-                )}
                 <div className="flex items-center gap-2 ml-auto">
                   {canMovement && (
                     <>
@@ -396,6 +393,46 @@ export default function Caixa() {
             </div>
           )}
         </div>
+
+        {/* Conferência por forma de pagamento (antes de fechar o caixa) */}
+        {currentSession && Object.keys(pagamentosPorForma).length > 0 && (
+          <Card className="flex-shrink-0 border-2 border-blue-200 bg-blue-50/30">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Conferência por forma de pagamento
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Confira cada valor antes de fechar o caixa.</p>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 pt-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {Object.entries(pagamentosPorForma)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([forma, valor]) => {
+                    const valorExibir = forma === 'dinheiro' ? totalDinheiroParaConferencia : valor;
+                    return (
+                      <div
+                        key={forma}
+                        className="flex flex-col rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {forma === 'dinheiro' ? 'Dinheiro (abertura + vendas)' : forma === 'pix' ? 'PIX' : forma === 'debito' ? 'Débito' : forma === 'credito' ? 'Crédito' : forma === 'credito_parcelado' ? 'Crédito parcelado' : forma}
+                        </span>
+                        <span className="text-lg font-bold text-primary">{currencyFormatters.brl(valorExibir)}</span>
+                        {forma === 'dinheiro' && valorAberturaSessao > 0 && (
+                          <span className="text-[10px] text-muted-foreground">{currencyFormatters.brl(valorAberturaSessao)} + {currencyFormatters.brl(totalDinheiroVendas)}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+              <div className="mt-2 pt-2 border-t border-gray-200 flex justify-between items-center">
+                <span className="text-sm font-medium">Total entradas (vendas):</span>
+                <span className="text-lg font-bold">{currencyFormatters.brl(totalVendas)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Vendas - Flex-1 com scroll interno */}
         {currentSession && (
@@ -810,13 +847,49 @@ export default function Caixa() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Fechar Caixa */}
+      {/* Dialog: Fechar Caixa — maior e mais visível */}
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <DialogContent className="p-3 md:p-6 max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-2 md:pb-4">
-            <DialogTitle className="text-base md:text-lg">Fechar Caixa</DialogTitle>
+        <DialogContent className="p-4 md:p-6 max-w-[96vw] md:max-w-4xl max-h-[95vh] overflow-y-auto text-base">
+          <DialogHeader className="pb-3 md:pb-4">
+            <DialogTitle className="text-lg md:text-xl">Fechar Caixa</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-4 md:space-y-5">
+            {/* Conferência por forma de pagamento */}
+            {Object.keys(pagamentosPorForma).length > 0 && (
+              <div className="rounded-xl border-2 border-blue-200 bg-blue-50/30 p-4 md:p-5">
+                <p className="text-sm font-semibold text-muted-foreground mb-3">Conferência por forma de pagamento</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {Object.entries(pagamentosPorForma)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([forma, valor]) => {
+                      const valorExibir = forma === 'dinheiro' ? totalDinheiroParaConferencia : valor;
+                      return (
+                        <div key={forma} className="flex flex-col rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">
+                              {forma === 'dinheiro' ? 'Dinheiro (abertura + vendas)' : forma === 'pix' ? 'PIX' : forma === 'debito' ? 'Débito' : forma === 'credito' ? 'Crédito' : forma === 'credito_parcelado' ? 'Crédito parcelado' : forma}
+                            </span>
+                            <span className="font-semibold">{currencyFormatters.brl(valorExibir)}</span>
+                          </div>
+                          {forma === 'dinheiro' && valorAberturaSessao > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">{currencyFormatters.brl(valorAberturaSessao)} abertura + {currencyFormatters.brl(totalDinheiroVendas)} vendas</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+                <div className="mt-3 pt-3 border-t-2 border-gray-200 space-y-1">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Total vendas</span>
+                    <span>{currencyFormatters.brl(totalVendas)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-primary">
+                    <span>Total do caixa (abertura + vendas)</span>
+                    <span>{currencyFormatters.brl(valorEsperado)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div>
                 <Label className="text-xs md:text-sm">Valor Esperado (R$)</Label>

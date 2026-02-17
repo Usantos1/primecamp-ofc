@@ -34,7 +34,11 @@ export default function AcompanharOS() {
       const res = await fetch(`${API_URL}/public/acompanhar-os/${id}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error || 'Ordem de Serviço não encontrada');
+        const rawError = json.error || 'Ordem de Serviço não encontrada';
+        const message = (typeof rawError === 'string' && (rawError.includes('operadora') || rawError.includes('column')))
+          ? 'Serviço temporariamente indisponível. Tente novamente mais tarde.'
+          : rawError;
+        setError(message);
         setLoading(false);
         return;
       }

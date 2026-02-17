@@ -3,6 +3,7 @@ import {
   OrdemServico, Cliente, Produto, Marca, Modelo, ItemOS, PagamentoOS,
   ConfiguracaoStatus, StatusOS, STATUS_OS_PADRAO, STATUS_OS_LABELS
 } from '@/types/assistencia';
+import { from } from '@/integrations/db/client';
 
 // ==================== STORAGE KEYS ====================
 const STORAGE_KEYS = {
@@ -1111,6 +1112,89 @@ export function usePagamentos(osId: string) {
   }, [osId]);
 
   return { pagamentos, totalPago, addPagamento };
+}
+
+// Tipo do registro de pagamento OS na API (rastreável, vinculado à venda)
+export interface PagamentoOSAPI {
+  id: string;
+  ordem_servico_id: string;
+  sale_id: string;
+  valor: number;
+  forma_pagamento: string;
+  tipo: string;
+  observacao?: string | null;
+  created_at: string;
+  created_by?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by?: string | null;
+  company_id?: string | null;
+  // Enriquecido com dados da venda (preenchido pelo hook)
+  sale_numero?: number;
+  sale_created_at?: string;
+  vendedor_nome?: string | null;
+}
+
+/** Carrega pagamentos da OS a partir da API (documentos rastreáveis vinculados a vendas) */
+export function usePagamentosOSAPI(osId: string) {
+  const [list, setList] = useState<PagamentoOSAPI[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!osId) {
+      setList([]);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const { data: rows, error } = await from('os_pagamentos')
+        .select('*')
+        .eq('ordem_servico_id', osId)
+        .order('created_at', { ascending: false })
+        .execute();
+
+      if (error) {
+        console.warn('[usePagamentosOSAPI]', error);
+        setList([]);
+        return;
+      }
+
+      const ativos = (rows || []).filter((r: any) => !r.cancelled_at);
+      if (ativos.length === 0) {
+        setList(ativos);
+        setIsLoading(false);
+        return;
+      }
+
+      const saleIds = [...new Set(ativos.map((r: any) => r.sale_id).filter(Boolean))];
+      const { data: salesData } = await from('sales')
+        .select('id, numero, created_at, vendedor_nome')
+        .in('id', saleIds)
+        .execute();
+
+      const salesMap = new Map((salesData || []).map((s: any) => [s.id, s]));
+      const enriquecidos: PagamentoOSAPI[] = ativos.map((r: any) => ({
+        ...r,
+        sale_numero: salesMap.get(r.sale_id)?.numero,
+        sale_created_at: salesMap.get(r.sale_id)?.created_at,
+        vendedor_nome: salesMap.get(r.sale_id)?.vendedor_nome ?? null,
+      }));
+      setList(enriquecidos);
+    } catch (e) {
+      console.warn('[usePagamentosOSAPI]', e);
+      setList([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [osId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const totalPago = useMemo(() => list.reduce((acc, p) => acc + p.valor, 0), [list]);
+
+  return { pagamentos: list, totalPago, isLoading, refetch: load };
 }
 
 // ==================== HOOK: CONFIGURAÇÃO DE STATUS ====================
