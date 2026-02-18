@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -509,6 +510,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   
   // Estados para novo modelo
   const [showNovoModeloModal, setShowNovoModeloModal] = useState(false);
+  const [modeloPopoverOpen, setModeloPopoverOpen] = useState(false);
+  const [modeloSearch, setModeloSearch] = useState('');
   const [novoModeloNome, setNovoModeloNome] = useState('');
   const [isCreatingModelo, setIsCreatingModelo] = useState(false);
   const [showClienteSearch, setShowClienteSearch] = useState(false);
@@ -773,6 +776,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     if (!formData.marca_id) return [];
     return getModelosByMarca(formData.marca_id);
   }, [formData.marca_id, getModelosByMarca]);
+
+  // Modelos filtrados por pesquisa (dropdown Modelo em os/nova)
+  const modelosFiltradosBySearch = useMemo(() => {
+    const q = (modeloSearch || '').trim().toLowerCase();
+    if (!q) return modelosFiltrados.filter(m => m.situacao === 'ativo');
+    return modelosFiltrados.filter(m => m.situacao === 'ativo' && m.nome.toLowerCase().includes(q));
+  }, [modelosFiltrados, modeloSearch]);
 
   // Garantir que marcas sejam inicializadas
   useEffect(() => {
@@ -2804,52 +2814,78 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         )}
                       </div>
                       <div className="flex gap-1">
-                        <Select 
-                          value={formData.modelo_id || ''} 
-                          onValueChange={(v) => {
-                            if (v === '__novo__') {
-                              setShowNovoModeloModal(true);
-                            } else {
-                              setFormData(prev => ({ ...prev, modelo_id: v }));
-                              if (camposFaltandoState.has('modelo')) {
-                                setCamposFaltandoState(prev => {
-                                  const next = new Set(prev);
-                                  next.delete('modelo');
-                                  return next;
-                                });
-                              }
-                            }
-                          }}
-                          disabled={!formData.marca_id}
-                        >
-                          <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")} disabled={!formData.marca_id}>
-                            <SelectValue placeholder="Selecione o modelo">
-                              {formData.modelo_id && modelosFiltrados.length > 0
-                                ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
-                                : ''}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[250px]">
-                            {/* Opção para adicionar novo modelo */}
-                            {formData.marca_id && (
-                              <SelectItem value="__novo__" className="text-sm text-green-700 font-medium border-b border-gray-100">
-                                <div className="flex items-center gap-2">
-                                  <Plus className="h-3.5 w-3.5" />
-                                  <span>Cadastrar Novo Modelo</span>
-                                </div>
-                              </SelectItem>
-                            )}
-                            {modelosFiltrados && modelosFiltrados.length > 0 ? (
-                              modelosFiltrados.filter(m => m.situacao === 'ativo').map(m => (
-                                <SelectItem key={m.id} value={m.id} className="text-sm">{m.nome}</SelectItem>
-                              ))
-                            ) : (
-                              <div className="px-3 py-2 text-sm text-gray-500">
-                                {formData.marca_id ? 'Nenhum modelo cadastrado. Clique em "+ Cadastrar"' : 'Selecione uma marca primeiro'}
+                        <Popover open={modeloPopoverOpen} onOpenChange={(open) => { setModeloPopoverOpen(open); if (!open) setModeloSearch(''); }}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn("w-full h-10 text-sm border-gray-200 rounded-lg justify-between font-normal", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")}
+                              disabled={!formData.marca_id}
+                            >
+                              <span className="truncate">
+                                {formData.modelo_id && modelosFiltrados.length > 0
+                                  ? (modelosFiltrados.find(m => m.id === formData.modelo_id)?.nome || currentOS?.modelo_nome || '')
+                                  : 'Selecione o modelo'}
+                              </span>
+                              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                            {/* 1) Caixa de pesquisa no topo */}
+                            <div className="p-2 border-b border-gray-100">
+                              <div className="relative">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                <Input
+                                  placeholder="Pesquisar modelo..."
+                                  value={modeloSearch}
+                                  onChange={(e) => setModeloSearch(e.target.value)}
+                                  className="h-9 pl-8 text-sm"
+                                  autoFocus
+                                />
                               </div>
+                            </div>
+                            {/* 2) Cadastrar novo (abaixo da pesquisa) */}
+                            {formData.marca_id && (
+                              <button
+                                type="button"
+                                onClick={() => { setShowNovoModeloModal(true); setModeloPopoverOpen(false); }}
+                                className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 font-medium hover:bg-green-50 border-b border-gray-100"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                <span>Cadastrar Novo Modelo</span>
+                              </button>
                             )}
-                          </SelectContent>
-                        </Select>
+                            {/* 3) Lista de produtos/modelos */}
+                            <ScrollArea className="max-h-[220px]">
+                              {modelosFiltradosBySearch.length > 0 ? (
+                                <div className="p-1">
+                                  {modelosFiltradosBySearch.map(m => (
+                                    <button
+                                      key={m.id}
+                                      type="button"
+                                      className="w-full flex items-center px-3 py-2 text-sm text-left rounded-md hover:bg-accent"
+                                      onClick={() => {
+                                        setFormData(prev => ({ ...prev, modelo_id: m.id }));
+                                        if (camposFaltandoState.has('modelo')) {
+                                          setCamposFaltandoState(prev => { const next = new Set(prev); next.delete('modelo'); return next; });
+                                        }
+                                        setModeloPopoverOpen(false);
+                                      }}
+                                    >
+                                      {m.nome}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                                  {formData.marca_id
+                                    ? (modeloSearch.trim() ? 'Nenhum modelo encontrado.' : 'Nenhum modelo cadastrado. Use "Cadastrar Novo Modelo" acima.')
+                                    : 'Selecione uma marca primeiro'}
+                                </div>
+                              )}
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
                     <div className="space-y-1.5">

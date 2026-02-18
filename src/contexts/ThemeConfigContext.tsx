@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface ThemeColors {
   primary: string;
@@ -17,14 +16,19 @@ interface ThemeConfig {
   companyName?: string;
 }
 
+// Cores fixas do sistema — uma vez definidas valem para todos os usuários (AppBar, Sidebar, Botões)
+const SYSTEM_PRIMARY_HSL = '0 100% 47%';
+
 const defaultConfig: ThemeConfig = {
   logo: "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png",
   logoAlt: "Prime Camp Logo",
   colors: {
-    primary: '198 100% 35%',
+    primary: SYSTEM_PRIMARY_HSL,
     primaryForeground: '0 0% 100%',
     secondary: '210 40% 95%',
-    accent: '197 71% 73%',
+    accent: SYSTEM_PRIMARY_HSL,
+    sidebar: SYSTEM_PRIMARY_HSL,
+    button: SYSTEM_PRIMARY_HSL,
   },
   companyName: 'Prime Camp',
 };
@@ -38,7 +42,7 @@ interface ThemeConfigContextType {
 const ThemeConfigContext = createContext<ThemeConfigContextType | undefined>(undefined);
 
 export function ThemeConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useLocalStorage<ThemeConfig>('theme-config', defaultConfig);
+  const [config, setConfig] = useState<ThemeConfig>(defaultConfig);
 
   const updateConfig = (newConfig: Partial<ThemeConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));

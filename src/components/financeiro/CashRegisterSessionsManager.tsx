@@ -39,14 +39,17 @@ interface Props {
 }
 
 function labelForma(forma: string) {
-  switch (forma) {
+  const f = (forma || '').toLowerCase();
+  switch (f) {
     case 'dinheiro': return 'Dinheiro';
     case 'pix': return 'PIX';
     case 'debito': return 'Débito';
     case 'credito': return 'Crédito';
+    case 'credito_parcelado': return 'Crédito parcelado';
     case 'link_pagamento': return 'Link';
     case 'carteira_digital': return 'Carteira';
-    default: return forma;
+    case 'adiantamento os': return 'Adiantamento OS';
+    default: return forma || 'Outros';
   }
 }
 
@@ -81,11 +84,18 @@ async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSess
     else if (m.tipo === 'sangria') sangriaBySession[sid] = (sangriaBySession[sid] || 0) + v;
   });
   const entradasVendasBySession: Record<string, number> = {};
+  // Totais por forma de pagamento por sessão (para exibir no detalhe do caixa)
+  const totaisFormaBySession: Record<string, Record<string, number>> = {};
   payments.forEach((p: any) => {
-    if ((p.forma_pagamento || '').toLowerCase() === 'adiantamento os') return;
-    const saleId = p.sale_id;
-    const sessionId = sales.find((s: any) => s.id === saleId)?.cash_register_session_id;
-    if (sessionId) entradasVendasBySession[sessionId] = (entradasVendasBySession[sessionId] || 0) + Number(p.valor || 0);
+    const forma = (p.forma_pagamento || '').trim() || 'outros';
+    const sessionId = sales.find((s: any) => s.id === p.sale_id)?.cash_register_session_id;
+    if (!sessionId) return;
+    const valor = Number(p.valor || 0);
+    if ((p.forma_pagamento || '').toLowerCase() !== 'adiantamento os') {
+      entradasVendasBySession[sessionId] = (entradasVendasBySession[sessionId] || 0) + valor;
+    }
+    if (!totaisFormaBySession[sessionId]) totaisFormaBySession[sessionId] = {};
+    totaisFormaBySession[sessionId][forma] = (totaisFormaBySession[sessionId][forma] || 0) + valor;
   });
   return list.map(s => {
     const inicial = Number(s.valor_inicial || 0);
@@ -93,7 +103,20 @@ async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSess
     const suprimento = suprimentoBySession[s.id] || 0;
     const sangria = sangriaBySession[s.id] || 0;
     const valor_esperado = inicial + entradasVendas + suprimento - sangria;
-    return { ...s, valor_esperado };
+    // Totais por forma: usar salvos no fechamento ou calcular dos pagamentos (caixa aberto)
+    const fromDb = s.totais_forma_pagamento && Object.keys(s.totais_forma_pagamento).length > 0;
+    let totais_forma_pagamento: Record<string, number> | null = fromDb
+      ? { ...s.totais_forma_pagamento }
+      : (totaisFormaBySession[s.id] ? { ...totaisFormaBySession[s.id] } : null);
+    // Para caixa aberto (totais calculados): incluir abertura no total "dinheiro"
+    if (!fromDb && totais_forma_pagamento && inicial > 0) {
+      const keyDinheiro = Object.keys(totais_forma_pagamento).find(k => k.toLowerCase() === 'dinheiro');
+      if (keyDinheiro) totais_forma_pagamento[keyDinheiro] = (totais_forma_pagamento[keyDinheiro] || 0) + inicial;
+      else totais_forma_pagamento['dinheiro'] = inicial;
+    } else if (!fromDb && inicial > 0) {
+      totais_forma_pagamento = { dinheiro: inicial };
+    }
+    return { ...s, valor_esperado, totais_forma_pagamento };
   });
 }
 
