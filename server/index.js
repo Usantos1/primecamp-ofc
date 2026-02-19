@@ -1963,10 +1963,21 @@ app.post('/api/update/:table', async (req, res) => {
     } catch (typeError) {
       console.warn(`[Update] Erro ao verificar tipos de colunas:`, typeError.message);
     }
+
+    // Usar apenas colunas que existem na tabela (evita erro "column does not exist")
+    const validKeys = keys.filter(k => columnTypes[k]);
+    if (validKeys.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma coluna válida para atualização nesta tabela.' });
+    }
+    const skippedKeys = keys.filter(k => !columnTypes[k]);
+    if (skippedKeys.length > 0) {
+      console.log(`[Update] ${tableNameOnly}: colunas omitidas (não existem na tabela):`, skippedKeys);
+    }
+    const keysToUse = validKeys;
     
     // Serializar valores: arrays UUID[] devem ser passados como arrays, JSONB como JSON string
-    const values = Object.values(data).map((value, index) => {
-      const key = keys[index];
+    const values = keysToUse.map((key, index) => {
+      let value = data[key];
       const columnType = columnTypes[key];
       
       // Colunas conhecidas que são arrays UUID[] (não JSONB)
@@ -2065,7 +2076,7 @@ app.post('/api/update/:table', async (req, res) => {
     });
     
     // Construir SET clause com tratamento especial para arrays UUID[]
-    const setClause = keys.map((key, i) => {
+    const setClause = keysToUse.map((key, i) => {
       const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
       // Para arrays UUID[], usar cast explícito para garantir conversão correta
       if (uuidArrayColumns.includes(key) && Array.isArray(values[i])) {

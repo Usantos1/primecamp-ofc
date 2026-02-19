@@ -1207,8 +1207,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       setProdutoSearch('');
     } catch (error: any) {
       toast({
-        title: 'Erro ao adicionar item',
-        description: error.message || 'Ocorreu um erro ao adicionar o item. Verifique o console para mais detalhes.',
+        title: editingItem ? 'Erro ao atualizar item' : 'Erro ao adicionar item',
+        description: error.message || (editingItem ? 'Ocorreu um erro ao atualizar o item.' : 'Ocorreu um erro ao adicionar o item. Verifique o console para mais detalhes.'),
         variant: 'destructive',
       });
     }
