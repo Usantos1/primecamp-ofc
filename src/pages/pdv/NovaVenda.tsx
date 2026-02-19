@@ -492,7 +492,8 @@ export default function NovaVenda() {
         }
         
         setObservacoes(sale.observacoes || '');
-        setDescontoTotal(Number(sale.desconto_total || 0));
+        // Faturamento de OS: não carregar desconto extra (total já vem dos itens)
+        setDescontoTotal(sale.ordem_servico_id ? 0 : Number(sale.desconto_total || 0));
       };
       
       loadItems();
@@ -904,21 +905,24 @@ export default function NovaVenda() {
     }
   }, [isEditing]);
 
+  // Em faturamento de OS, não aplicar desconto extra (total = subtotal - desc. itens apenas)
+  const effectiveDescontoTotal = sale?.ordem_servico_id ? 0 : descontoTotal;
+
   // Calcular totais (movido para antes de handleFinalize)
   const totals = useMemo(() => {
     const subtotal = cart.reduce((sum, item) => 
       sum + (item.valor_unitario * item.quantidade), 0
     );
     const descontoItens = cart.reduce((sum, item) => sum + (item.desconto || 0), 0);
-    const total = subtotal - descontoItens - descontoTotal;
+    const total = subtotal - descontoItens - effectiveDescontoTotal;
     
     return {
       subtotal,
       descontoItens,
-      descontoTotal,
+      descontoTotal: effectiveDescontoTotal,
       total: Math.max(0, total),
     };
-  }, [cart, descontoTotal]);
+  }, [cart, effectiveDescontoTotal]);
 
   // Função auxiliar para validar UUID
   const isValidUUID = (str: string | undefined | null): boolean => {
@@ -2687,19 +2691,22 @@ _PrimeCamp Assistência Técnica_`;
                           <span className="text-base font-semibold text-red-500 tabular-nums">-{currencyFormatters.brl(totals.descontoItens)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Desconto</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-400">R$</span>
-                          <Input
-                            type="number"
-                            value={descontoTotal}
-                            onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
-                            className="h-8 w-24 text-sm text-right font-medium"
-                            step="0.01"
-                          />
+                      {/* Desconto extra: ocultar em faturamento de OS (total já é o da OS) */}
+                      {!sale?.ordem_servico_id && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Desconto</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-400">R$</span>
+                            <Input
+                              type="number"
+                              value={descontoTotal}
+                              onChange={(e) => setDescontoTotal(parseFloat(e.target.value) || 0)}
+                              className="h-8 w-24 text-sm text-right font-medium"
+                              step="0.01"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                     
                     {/* TOTAL - DESTAQUE MÁXIMO */}
