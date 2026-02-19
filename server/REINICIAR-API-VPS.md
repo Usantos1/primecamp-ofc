@@ -4,6 +4,18 @@ Reiniciar a API **zera o contador de tentativas de login** (rate limit em memór
 
 ---
 
+## 0. Script de monitoramento (reinício automático)
+
+Para **reiniciar a API só quando der erro ou travar** (em vez de `pm2 restart all` manual):
+
+- **Uma verificação:** `./scripts/monitor-and-restart-api.sh`
+- **Loop a cada 2 min:** `./scripts/monitor-and-restart-api.sh --loop`
+- **Cron (recomendado na VPS):** adicione `*/2 * * * * /bin/bash ~/primecamp-ofc/scripts/monitor-and-restart-api.sh >> /var/log/primecamp-monitor.log 2>&1`
+
+O script verifica o status do PM2 (errored/stopped) e o endpoint `/api/health`; se falhar ou não responder em 15s, faz `pm2 restart primecamp-api` (com cooldown de 2 min entre restarts).
+
+---
+
 ## 1. Se você usa **PM2** (recomendado)
 
 Conecte na VPS por SSH e rode:
