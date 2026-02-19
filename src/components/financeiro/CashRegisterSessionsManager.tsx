@@ -59,16 +59,25 @@ async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSess
   const ids = list.map(s => s.id);
   const [movsRes, salesRes] = await Promise.all([
     from('cash_movements').select('session_id, tipo, valor').in('session_id', ids).execute(),
-    from('sales').select('id, cash_register_session_id').in('cash_register_session_id', ids).eq('status', 'paid').execute(),
+    from('sales').select('id, cash_register_session_id, total').in('cash_register_session_id', ids).eq('status', 'paid').execute(),
   ]);
   const movements = (movsRes.data || []) as { session_id: string; tipo: string; valor: number }[];
-  const sales = (salesRes.data || []) as { id: string; cash_register_session_id: string }[];
+  const sales = (salesRes.data || []) as { id: string; cash_register_session_id: string; total?: number }[];
   const saleIds = sales.map(s => s.id).filter(Boolean);
-  let payments: { sale_id: string; forma_pagamento: string; valor: number }[] = [];
+  const salesTotalById: Record<string, number> = {};
+  sales.forEach((s: any) => { salesTotalById[s.id] = Number(s.total || 0); });
+  let payments: { sale_id: string; forma_pagamento: string; valor: number; troco?: number }[] = [];
   if (saleIds.length > 0) {
-    const payRes = await from('payments').select('sale_id, forma_pagamento, valor').in('sale_id', saleIds).eq('status', 'confirmed').execute();
-    payments = (payRes.data || []) as { sale_id: string; forma_pagamento: string; valor: number }[];
+    const payRes = await from('payments').select('sale_id, forma_pagamento, valor, troco').in('sale_id', saleIds).eq('status', 'confirmed').execute();
+    payments = (payRes.data || []) as { sale_id: string; forma_pagamento: string; valor: number; troco?: number }[];
   }
+  const getValorAplicado = (p: any) => {
+    const valor = Number(p.valor || 0);
+    const troco = Number(p.troco || 0);
+    const saleTotal = salesTotalById[p.sale_id] ?? 0;
+    if ((p.forma_pagamento || '').toLowerCase() === 'dinheiro' && troco > 0 && valor > saleTotal) return valor - troco;
+    return valor;
+  };
   const salesBySession: Record<string, string[]> = {};
   sales.forEach((s: any) => {
     const sid = s.cash_register_session_id;
@@ -90,7 +99,7 @@ async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSess
     const forma = (p.forma_pagamento || '').trim() || 'outros';
     const sessionId = sales.find((s: any) => s.id === p.sale_id)?.cash_register_session_id;
     if (!sessionId) return;
-    const valor = Number(p.valor || 0);
+    const valor = getValorAplicado(p);
     if ((p.forma_pagamento || '').toLowerCase() !== 'adiantamento os') {
       entradasVendasBySession[sessionId] = (entradasVendasBySession[sessionId] || 0) + valor;
     }

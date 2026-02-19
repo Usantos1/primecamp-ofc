@@ -264,10 +264,21 @@ export default function Caixa() {
   // Calcular total de vendas (valor faturado) para exibição
   const totalVendas = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
+  // Valor aplicado à venda (para dinheiro com troco: se valor > total da venda, era "recebido" → usar valor - troco)
+  const salesTotalById: Record<string, number> = {};
+  sales.forEach((s: any) => { salesTotalById[s.id] = Number(s.total || 0); });
+  const getValorAplicado = (p: any) => {
+    const valor = Number(p.valor || 0);
+    const troco = Number(p.troco || 0);
+    const saleTotal = salesTotalById[p.sale_id] ?? 0;
+    if ((p.forma_pagamento || '').toLowerCase() === 'dinheiro' && troco > 0 && valor > saleTotal) return valor - troco;
+    return valor;
+  };
+
   // Entradas de vendas que de fato entram no caixa nesta sessão (exclui Adiantamento OS — esse valor já entrou quando o adiantamento foi registrado)
   const totalEntradasVendas = Object.values(salePayments).flat().reduce((sum, p: any) => {
     if ((p.forma_pagamento || '').toLowerCase() === 'adiantamento os') return sum;
-    return sum + Number(p.valor || 0);
+    return sum + getValorAplicado(p);
   }, 0);
 
   // Total de entradas para conferência: só o que entrou de fato (vendas sem adiantamento OS) + Suprimentos
@@ -279,7 +290,7 @@ export default function Caixa() {
     const forma = (payment.forma_pagamento || '').toLowerCase();
     if (forma === 'adiantamento os') return;
     const f = forma || 'outro';
-    const valor = Number(payment.valor || 0);
+    const valor = getValorAplicado(payment);
     pagamentosPorForma[f] = (pagamentosPorForma[f] || 0) + valor;
   });
   // Para conferência: Dinheiro = abertura + vendas em dinheiro (para contagem física)

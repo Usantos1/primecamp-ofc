@@ -188,11 +188,20 @@ export default function NovaVenda() {
         const totalVendas = sales.reduce((s, r) => s + Number(r.total || 0), 0);
         setCloseDialogTotalVendas(totalVendas);
         const saleIds = sales.map((r: any) => r.id).filter(Boolean);
+        const salesTotalById: Record<string, number> = {};
+        sales.forEach((r: any) => { salesTotalById[r.id] = Number(r.total || 0); });
+        const getValorAplicado = (p: any) => {
+          const valor = Number(p.valor || 0);
+          const troco = Number(p.troco || 0);
+          const saleTotal = salesTotalById[p.sale_id] ?? 0;
+          if ((p.forma_pagamento || '').toLowerCase() === 'dinheiro' && troco > 0 && valor > saleTotal) return valor - troco;
+          return valor;
+        };
         const pagamentosPorForma: Record<string, number> = {};
         let paymentsData: any[] | null = null;
         if (saleIds.length > 0) {
           const res = await from('payments')
-            .select('sale_id, forma_pagamento, valor')
+            .select('sale_id, forma_pagamento, valor, troco')
             .in('sale_id', saleIds)
             .eq('status', 'confirmed')
             .execute();
@@ -201,7 +210,7 @@ export default function NovaVenda() {
             const forma = (p.forma_pagamento || '').toLowerCase();
             if (forma === 'adiantamento os') return;
             const f = forma || 'outro';
-            const valor = Number(p.valor || 0);
+            const valor = getValorAplicado(p);
             pagamentosPorForma[f] = (pagamentosPorForma[f] || 0) + valor;
           });
         }
@@ -216,7 +225,7 @@ export default function NovaVenda() {
         // Valor esperado: só o que entrou de fato (exclui Adiantamento OS — já entrou quando o adiantamento foi registrado)
         const totalEntradasVendas = (paymentsData || []).reduce((s: number, p: any) => {
           if ((p.forma_pagamento || '').toLowerCase() === 'adiantamento os') return s;
-          return s + Number(p.valor || 0);
+          return s + getValorAplicado(p);
         }, 0);
         setCloseDialogValorEsperado(valorInicial + totalEntradasVendas + totalSuprimentos - totalSaidas);
       } finally {
@@ -1491,15 +1500,21 @@ export default function NovaVenda() {
   // Adicionar pagamento
   const handleAddPayment = async () => {
     if (!id) return;
-    const valor = Number(checkoutPayment.valor) || 0;
-    if (valor <= 0) return;
+    const valorRecebido = Number(checkoutPayment.valor) || 0;
+    if (valorRecebido <= 0) return;
+    // Em dinheiro com troco: gravar o valor aplicado à venda (valor que fica no caixa), não o valor recebido
+    const troco = Number(checkoutPayment.troco) || 0;
+    const valorAplicado = checkoutPayment.forma_pagamento === 'dinheiro' && troco > 0
+      ? valorRecebido - troco
+      : valorRecebido;
     const { taxa_cartao, valor_repasse } = getPaymentFeeAndNet(
       checkoutPayment.forma_pagamento,
       checkoutPayment.parcelas ?? 1,
-      valor
+      valorAplicado
     );
     const payload = {
       ...checkoutPayment,
+      valor: valorAplicado,
       taxa_cartao,
       valor_repasse: valor_repasse ?? undefined,
     };
