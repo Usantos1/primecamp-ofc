@@ -1942,7 +1942,14 @@ app.post('/api/update/:table', async (req, res) => {
       }
     }
     
-    const keys = Object.keys(data);
+    let keys = Object.keys(data);
+    
+    // os_items: só atualizar colunas que existem na base (evita "fornecedor_nome does not exist" se migração não foi aplicada)
+    const osItemsSafeKeys = ['tipo', 'produto_id', 'descricao', 'quantidade', 'valor_unitario', 'valor_minimo', 'desconto', 'valor_total', 'garantia', 'colaborador_id', 'colaborador_nome', 'com_aro'];
+    if (tableNameOnly.toLowerCase() === 'os_items') {
+      data = Object.fromEntries(Object.entries(data).filter(([k]) => osItemsSafeKeys.includes(k)));
+      keys = Object.keys(data);
+    }
     
     // Verificar tipos de colunas para tratar arrays UUID[] corretamente
     let columnTypes = {};
@@ -2076,7 +2083,7 @@ app.post('/api/update/:table', async (req, res) => {
     });
     
     // Construir SET clause com tratamento especial para arrays UUID[]
-    const setClause = keysToUse.map((key, i) => {
+    let setClause = keysToUse.map((key, i) => {
       const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
       // Para arrays UUID[], usar cast explícito para garantir conversão correta
       if (uuidArrayColumns.includes(key) && Array.isArray(values[i])) {
@@ -2090,9 +2097,16 @@ app.post('/api/update/:table', async (req, res) => {
     let params = [...values, ...whereParams];
     let finalWhereClause = whereClause;
     
+    // os_items atualizado apenas por id: não exigir company_id no WHERE e preencher company_id se null
+    const isOsItemsUpdateById = tableNameOnly.toLowerCase() === 'os_items' && where && typeof where === 'object' && Object.keys(where).length === 1 && 'id' in where;
+    if (isOsItemsUpdateById && columnTypes['company_id'] && req.companyId) {
+      setClause += `, company_id = COALESCE(company_id, $${params.length + 1})`;
+      params.push(req.companyId);
+    }
+    
     // Adicionar filtro de company_id se necessário
     // IMPORTANTE: Só adicionar se a coluna company_id existe na tabela
-    if (needsCompanyFilter && req.user && req.companyId) {
+    if (needsCompanyFilter && req.user && req.companyId && !isOsItemsUpdateById) {
       const hasCompanyFilter = where && (
         (typeof where === 'object' && 'company_id' in where) ||
         (Array.isArray(where) && where.some((w) => w.field === 'company_id' || w.company_id))

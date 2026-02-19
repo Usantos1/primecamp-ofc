@@ -993,45 +993,35 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Adicionar/Editar item
   const handleSubmitItem = async () => {
     try {
-      // Validar se é peça e tem estoque suficiente
-      // NOTA: Se o usuário digitou manualmente a descrição sem selecionar do estoque,
-      // permitir adicionar mas avisar que não terá controle de estoque
-      if (itemForm.tipo === 'peca') {
-        // Se não tem produto_id mas tem descrição, pode ser que o usuário digitou manualmente
-        // Nesse caso, apenas avisar mas permitir adicionar
-        if (!itemForm.produto_id && itemForm.descricao.trim()) {
-          // Não bloquear, apenas avisar
-        } else if (!itemForm.produto_id) {
+      // Validar produto e estoque quando há produto vinculado (peça ou serviço com produto)
+      if (itemForm.tipo === 'peca' && !itemForm.produto_id && itemForm.descricao.trim()) {
+        // Peça sem produto selecionado mas com descrição: permitir (sem controle de estoque)
+      } else if (itemForm.tipo === 'peca' && !itemForm.produto_id) {
+        toast({
+          title: 'Produto obrigatório',
+          description: 'Selecione uma peça do estoque para adicionar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (itemForm.produto_id) {
+        const produto = produtos.find(p => p.id === itemForm.produto_id);
+        if (!produto) {
           toast({
-            title: 'Produto obrigatório',
-            description: 'Selecione uma peça do estoque para adicionar.',
+            title: 'Produto não encontrado',
+            description: 'O produto selecionado não foi encontrado.',
             variant: 'destructive',
           });
           return;
         }
-        
-        // Só validar estoque se tiver produto_id selecionado
-        if (itemForm.produto_id) {
-          const produto = produtos.find(p => p.id === itemForm.produto_id);
-          if (!produto) {
-            toast({
-              title: 'Produto não encontrado',
-              description: 'O produto selecionado não foi encontrado.',
-              variant: 'destructive',
-            });
-            return;
-          }
-          
-          const estoqueDisponivel = produto.quantidade || 0;
-          
-          if (estoqueDisponivel < itemForm.quantidade) {
-            toast({
-              title: 'Estoque insuficiente',
-              description: `Estoque disponível: ${estoqueDisponivel} unidades. Quantidade solicitada: ${itemForm.quantidade}`,
-              variant: 'destructive',
-            });
-            return;
-          }
+        const estoqueDisponivel = produto.quantidade || 0;
+        if (estoqueDisponivel < itemForm.quantidade) {
+          toast({
+            title: 'Estoque insuficiente',
+            description: `Estoque disponível: ${estoqueDisponivel} unidades. Quantidade solicitada: ${itemForm.quantidade}`,
+            variant: 'destructive',
+          });
+          return;
         }
       }
       
@@ -1064,29 +1054,51 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         });
         return;
       }
-      
-      // Gerenciar estoque para peças (ANTES de criar itemData para validar)
-      // Buscar número da OS para registrar movimentação
+
       let osNumero = 0;
-      if (isEditing && id) {
+      if (id) {
         const os = getOSById(id);
-        osNumero = os?.numero || 0;
+        osNumero = os?.numero ?? 0;
       }
-      
-      if (itemForm.tipo === 'peca' && itemForm.produto_id) {
-        const produto = produtos.find(p => p.id === itemForm.produto_id);
-        if (produto) {
-          if (editingItem) {
-            // Ao editar: reverter quantidade antiga e aplicar nova
+      if (!osNumero && currentOS?.numero) osNumero = currentOS.numero;
+
+      // Calcular dados do item
+      const valorTotal = (itemForm.quantidade * itemForm.valor_unitario) - itemForm.desconto;
+      const isCreatingItem = !editingItem;
+      const resolvedColaboradorId = isCreatingItem ? (user?.id || '') : (itemForm.colaborador_id || '');
+      const colaborador = resolvedColaboradorId ? getColaboradorById(resolvedColaboradorId) : null;
+      const resolvedColaboradorNome =
+        colaborador?.nome ||
+        (isCreatingItem ? currentUserNome : (editingItem?.colaborador_nome || currentUserNome));
+      const comAroValido = (itemForm.com_aro === 'com_aro' || itemForm.com_aro === 'sem_aro') ? itemForm.com_aro : null;
+      const itemData = {
+        tipo: itemForm.tipo,
+        produto_id: itemForm.produto_id ?? null,
+        descricao: itemForm.descricao,
+        quantidade: Number(itemForm.quantidade),
+        valor_unitario: Number(itemForm.valor_unitario),
+        valor_minimo: Number(itemForm.valor_minimo || 0),
+        desconto: Number(itemForm.desconto),
+        garantia: Number(itemForm.garantia || 90),
+        colaborador_id: resolvedColaboradorId || null,
+        colaborador_nome: resolvedColaboradorNome || null,
+        fornecedor_id: itemForm.fornecedor_id || null,
+        fornecedor_nome: itemForm.fornecedor_nome?.trim() || null,
+        com_aro: comAroValido,
+        valor_total: Number(valorTotal),
+      };
+
+      if (editingItem) {
+        // Editar: ajustar estoque só se quantidade mudou e item tem produto
+        if (itemForm.produto_id) {
+          const produto = produtos.find(p => p.id === itemForm.produto_id);
+          if (produto) {
             const quantidadeAntiga = editingItem.quantidade || 0;
             const quantidadeNova = itemForm.quantidade;
             const diferenca = quantidadeNova - quantidadeAntiga;
-            
             if (diferenca !== 0) {
               const estoqueAtual = produto.quantidade || 0;
               const novoEstoque = Math.max(0, estoqueAtual - diferenca);
-              
-              // Validar se há estoque suficiente para a diferença
               if (diferenca > 0 && estoqueAtual < diferenca) {
                 toast({
                   title: 'Estoque insuficiente',
@@ -1095,39 +1107,43 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
                 });
                 return;
               }
-              
-              // Atualizar estoque (já registra movimentação automaticamente)
               await updateProduto(produto.id, { quantidade: novoEstoque });
-              
-              // Registrar movimentação específica da OS
-              if (diferenca !== 0) {
-                try {
-                  await from('produto_movimentacoes')
-                    .insert({
-                      produto_id: produto.id,
-                      tipo: diferenca < 0 ? 'baixa_os' : 'ajuste_estoque',
-                      motivo: `Edição de item na OS #${osNumero || '?'}`,
-                      quantidade_antes: estoqueAtual,
-                      quantidade_depois: novoEstoque,
-                      quantidade_delta: diferenca,
-                      user_id: user?.id || null,
-                      user_nome: currentUserNome,
-                    })
-                    .execute();
-                } catch (movError) {
-                  console.error('Erro ao registrar movimentação de edição OS:', movError);
-                }
+              try {
+                await from('produto_movimentacoes')
+                  .insert({
+                    produto_id: produto.id,
+                    tipo: diferenca < 0 ? 'baixa_os' : 'ajuste_estoque',
+                    motivo: `Edição de item na OS #${osNumero || '?'}`,
+                    quantidade_antes: estoqueAtual,
+                    quantidade_depois: novoEstoque,
+                    quantidade_delta: diferenca,
+                    user_id: user?.id || null,
+                    user_nome: currentUserNome,
+                  })
+                  .execute();
+              } catch (movError) {
+                console.error('Erro ao registrar movimentação de edição OS:', movError);
               }
+              queryClient.invalidateQueries({ queryKey: ['produto_movimentacoes'] });
+              queryClient.invalidateQueries({ queryKey: ['produtos'] });
             }
-          } else {
-            // Ao adicionar: decrementar estoque
+          }
+        }
+        await updateItem(editingItem.id, itemData);
+        setEditingItem(null);
+        toast({
+          title: 'Item atualizado',
+          description: 'O item foi atualizado com sucesso.',
+        });
+      } else {
+        // Adicionar: primeiro gravar o item; depois baixa no estoque e movimentação (evita inconsistência se addItem falhar)
+        await addItem(itemData);
+        if (itemForm.produto_id) {
+          const produto = produtos.find(p => p.id === itemForm.produto_id);
+          if (produto) {
             const estoqueAtual = produto.quantidade || 0;
             const novoEstoque = Math.max(0, estoqueAtual - itemForm.quantidade);
-            
-            // Atualizar estoque (já registra movimentação automaticamente)
             await updateProduto(produto.id, { quantidade: novoEstoque });
-            
-            // Registrar movimentação específica da OS
             try {
               await from('produto_movimentacoes')
                 .insert({
@@ -1144,45 +1160,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             } catch (movError) {
               console.error('Erro ao registrar movimentação de adição OS:', movError);
             }
+            queryClient.invalidateQueries({ queryKey: ['produto_movimentacoes'] });
+            queryClient.invalidateQueries({ queryKey: ['produtos'] });
           }
         }
-      }
-      
-      // Calcular dados do item APÓS validações de estoque
-      const valorTotal = (itemForm.quantidade * itemForm.valor_unitario) - itemForm.desconto;
-      const isCreatingItem = !editingItem;
-      const resolvedColaboradorId = isCreatingItem ? (user?.id || '') : (itemForm.colaborador_id || '');
-      const colaborador = resolvedColaboradorId ? getColaboradorById(resolvedColaboradorId) : null;
-      const resolvedColaboradorNome =
-        colaborador?.nome ||
-        (isCreatingItem ? currentUserNome : (editingItem?.colaborador_nome || currentUserNome));
-      
-      const itemData = {
-        tipo: itemForm.tipo,
-        produto_id: itemForm.produto_id,
-        descricao: itemForm.descricao,
-        quantidade: itemForm.quantidade,
-        valor_unitario: itemForm.valor_unitario,
-        valor_minimo: itemForm.valor_minimo || 0,
-        desconto: itemForm.desconto,
-        garantia: itemForm.garantia || 90,
-        colaborador_id: resolvedColaboradorId || undefined,
-        colaborador_nome: resolvedColaboradorNome || undefined,
-        fornecedor_id: itemForm.fornecedor_id || null,
-        fornecedor_nome: itemForm.fornecedor_nome?.trim() || null,
-        com_aro: (itemForm.com_aro && itemForm.com_aro !== '') ? itemForm.com_aro : null,
-        valor_total: valorTotal,
-      };
-
-      if (editingItem) {
-        await updateItem(editingItem.id, itemData);
-        setEditingItem(null);
-        toast({
-          title: 'Item atualizado',
-          description: 'O item foi atualizado com sucesso.',
-        });
-      } else {
-        await addItem(itemData);
         toast({
           title: 'Item adicionado',
           description: 'O item foi adicionado à ordem de serviço.',
@@ -1208,7 +1189,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     } catch (error: any) {
       toast({
         title: editingItem ? 'Erro ao atualizar item' : 'Erro ao adicionar item',
-        description: error.message || (editingItem ? 'Ocorreu um erro ao atualizar o item.' : 'Ocorreu um erro ao adicionar o item. Verifique o console para mais detalhes.'),
+        description: (error && ((error as any).error ?? (error as any).message)) || (editingItem ? 'Ocorreu um erro ao atualizar o item.' : 'Ocorreu um erro ao adicionar o item. Verifique o console para mais detalhes.'),
         variant: 'destructive',
       });
     }

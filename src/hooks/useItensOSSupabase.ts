@@ -125,12 +125,41 @@ export function useItensOSSupabase(osId: string) {
     },
   });
 
-  // Atualizar item
+  // UUID vazio no PostgreSQL gera 500; normalizar para null
+  const uuidKeys = ['produto_id', 'colaborador_id', 'fornecedor_id'];
+  const asUuid = (v: unknown): string | null => {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v !== 'string') return v as string;
+    const s = v.trim();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ? s : null;
+  };
+
+  // Só enviar colunas que existem na base (fornecedor_* pode não existir se a migração 005 não foi aplicada)
+  const allowedUpdateKeys = [
+    'tipo', 'produto_id', 'descricao', 'quantidade', 'valor_unitario', 'valor_minimo',
+    'desconto', 'valor_total', 'garantia', 'colaborador_id', 'colaborador_nome', 'com_aro'
+  ];
+
+  // Atualizar item (remove undefined, garante números e UUID válidos, evita colunas inexistentes)
   const updateItem = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<ItemOS> }): Promise<ItemOS> => {
+      const numericKeys = ['quantidade', 'valor_unitario', 'valor_minimo', 'desconto', 'valor_total', 'garantia'];
+      const payload: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (value === undefined) continue;
+        if (!allowedUpdateKeys.includes(key)) continue;
+        if (numericKeys.includes(key)) {
+          const n = Number(value);
+          payload[key] = Number.isFinite(n) ? n : 0;
+        } else if (uuidKeys.includes(key)) {
+          payload[key] = asUuid(value);
+        } else {
+          payload[key] = value;
+        }
+      }
       const { data: updated, error } = await from('os_items')
         .eq('id', id)
-        .update(data)
+        .update(payload)
         .select()
         .single();
 
@@ -155,8 +184,8 @@ export function useItensOSSupabase(osId: string) {
       if (fetchError) throw fetchError;
       if (!item) throw new Error('Item não encontrado');
 
-      // Se for peça e tiver produto_id, devolver ao estoque
-      if (item.tipo === 'peca' && item.produto_id) {
+      // Se tiver produto_id (peça ou serviço com produto), devolver ao estoque e registrar movimentação
+      if (item.produto_id) {
         try {
           // Buscar produto atual
           const { data: produto, error: produtoError } = await from('produtos')

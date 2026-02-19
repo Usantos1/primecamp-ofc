@@ -65,7 +65,28 @@ export function useOrdensServicoSupabase() {
   const createOS = useMutation({
     mutationFn: async (data: Partial<OrdemServico>): Promise<OrdemServico> => {
       const now = new Date();
-      
+      const dataEntrada = data.data_entrada || now.toISOString().split('T')[0];
+      const horaEntrada = data.hora_entrada || now.toTimeString().slice(0, 5);
+      const clienteId = data.cliente_id || null;
+
+      // Impedir criar 2 OS iguais para o mesmo cliente no mesmo minuto/segundo
+      if (clienteId) {
+        const { data: existente } = await from('ordens_servico')
+          .select('id, numero')
+          .eq('cliente_id', clienteId)
+          .eq('data_entrada', dataEntrada)
+          .eq('hora_entrada', horaEntrada)
+          .limit(1)
+          .execute();
+        const lista = (existente as any[]);
+        if (lista?.length > 0) {
+          const outra = lista[0];
+          throw new Error(
+            `Já existe uma OS (#${outra.numero}) para este cliente na mesma data e horário (${dataEntrada} ${horaEntrada}). Não é permitido criar duas OS iguais no mesmo minuto.`
+          );
+        }
+      }
+
       // Usar número fornecido ou buscar próximo número
       let numero: number;
       if (data.numero) {
@@ -104,8 +125,8 @@ export function useOrdensServicoSupabase() {
         numero,
         situacao: (data.status === 'entregue' || data.status === 'cancelada') ? 'fechada' : 'aberta',
         status: data.status || 'aberta',
-        data_entrada: data.data_entrada || now.toISOString().split('T')[0],
-        hora_entrada: data.hora_entrada || now.toTimeString().slice(0, 5),
+        data_entrada: dataEntrada,
+        hora_entrada: horaEntrada,
         cliente_id: data.cliente_id || null,
         cliente_nome: data.cliente_nome || null,
         cliente_empresa: data.cliente_empresa || null,
