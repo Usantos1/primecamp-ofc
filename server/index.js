@@ -1288,6 +1288,13 @@ function buildWhereClause(where, offsetOrParams = []) {
         conditions.push(`${actualField} IN (${placeholders})`);
         params.push(...value);
       }
+    } else if (field.endsWith('__is')) {
+      const actualField = field.replace('__is', '');
+      if (value === null || value === undefined) {
+        conditions.push(`${actualField} IS NULL`);
+      } else {
+        conditions.push(`${actualField} IS NOT NULL`);
+      }
     } else {
       conditions.push(`${field} = $${paramIndex}`);
       params.push(value);
@@ -1323,7 +1330,7 @@ app.post('/api/query/:table', async (req, res) => {
     const tablesWithCompanyId = [
       // Dados de negócio principais
       'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
-      'sale_items', 'os_items', 'produto_movimentacoes',
+      'sale_items', 'os_items', 'fornecedores', 'produto_movimentacoes',
       // Ponto eletrônico
       'time_clock',
       // Usuários (cada empresa só vê seus usuários)
@@ -1437,7 +1444,7 @@ app.post('/api/insert/:table', async (req, res) => {
     // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
       'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
-      'sale_items', 'os_items', 'produto_movimentacoes',
+      'sale_items', 'os_items', 'fornecedores', 'produto_movimentacoes',
       'time_clock', 'users',
       'nps_surveys', 'nps_responses',
       'job_surveys', 'job_responses', 'job_application_drafts',
@@ -1445,7 +1452,7 @@ app.post('/api/insert/:table', async (req, res) => {
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos'
+      'os_pagamentos', 'fornecedores'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1755,7 +1762,7 @@ app.post('/api/update/:table', async (req, res) => {
     // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
       'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
-      'sale_items', 'os_items', 'produto_movimentacoes',
+      'sale_items', 'os_items', 'fornecedores', 'produto_movimentacoes',
       'time_clock', 'users',
       'nps_surveys', 'nps_responses',
       'job_surveys', 'job_responses', 'job_application_drafts',
@@ -1763,7 +1770,7 @@ app.post('/api/update/:table', async (req, res) => {
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos'
+      'os_pagamentos', 'fornecedores'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2262,7 +2269,7 @@ app.post('/api/delete/:table', async (req, res) => {
     // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
       'produtos', 'vendas', 'sales', 'clientes', 'ordens_servico',
-      'sale_items', 'os_items', 'produto_movimentacoes',
+      'sale_items', 'os_items', 'fornecedores', 'produto_movimentacoes',
       'time_clock', 'users',
       'nps_surveys', 'nps_responses',
       'job_surveys', 'job_responses', 'job_application_drafts',
@@ -2270,7 +2277,7 @@ app.post('/api/delete/:table', async (req, res) => {
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos'
+      'os_pagamentos', 'fornecedores'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());

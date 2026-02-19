@@ -82,17 +82,22 @@ const OSTableRow = memo(({
       )}
       onClick={() => onNavigate(`/os/${os.id}`)}
     >
-      {/* Nº OS */}
+      {/* Nº OS — cinza quando fechada/entregue */}
       <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[100px]">
         <div className="flex flex-col items-center gap-1">
-          <span className="font-bold text-blue-600 dark:text-blue-400 text-base">{os.numero}</span>
+          <span className={cn(
+            "font-bold text-base",
+            (os.situacao === 'fechada' || ['entregue', 'entregue_faturada', 'finalizada', 'cancelada'].includes(os.status))
+              ? "text-gray-500 dark:text-gray-400"
+              : "text-blue-600 dark:text-blue-400"
+          )}>{os.numero}</span>
           <Badge 
             variant="outline" 
             className={cn(
               'text-[10px] px-1.5',
-              os.situacao === 'fechada' ? 'border-emerald-500 text-emerald-700 bg-emerald-50' :
+              os.situacao === 'fechada' ? 'border-gray-400 text-gray-700 bg-gray-100 dark:bg-gray-800 dark:text-gray-300' :
               os.situacao === 'cancelada' ? 'border-red-500 text-red-700 bg-red-50' :
-              'border-blue-500 text-blue-700 bg-blue-50'
+              'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-300'
             )}
           >
             {os.situacao === 'fechada' ? 'Fechada' : os.situacao === 'cancelada' ? 'Cancelada' : 'Aberta'}
@@ -101,7 +106,7 @@ const OSTableRow = memo(({
       </td>
       
       {/* Cliente */}
-      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700">
+      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700 w-[200px] max-w-[200px]">
         <div className="min-w-0">
           <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
           {(cliente?.telefone || os.telefone_contato) && (
@@ -124,7 +129,7 @@ const OSTableRow = memo(({
       </td>
       
       {/* Problema */}
-      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700">
+      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700 w-[180px] min-w-0 max-w-[180px]">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -138,7 +143,7 @@ const OSTableRow = memo(({
       </td>
       
       {/* Status */}
-      <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[120px]">
+      <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[160px]">
         <Badge className={cn('text-xs text-white shadow-sm', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
           {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
         </Badge>
@@ -734,7 +739,7 @@ export default function OrdensServico() {
                               Nº OS {searchField === 'numero' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
                             <th 
-                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cliente' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 w-[200px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cliente' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
                               onClick={() => setSearchField(searchField === 'cliente' ? 'all' : 'cliente')}
                               title="Clique para filtrar por Cliente"
                             >
@@ -748,13 +753,13 @@ export default function OrdensServico() {
                               Aparelho {searchField === 'aparelho' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
                             <th 
-                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'problema' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 w-[180px] min-w-0 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'problema' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
                               onClick={() => setSearchField(searchField === 'problema' ? 'all' : 'problema')}
                               title="Clique para filtrar por Problema"
                             >
                               Problema {searchField === 'problema' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
-                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[120px] text-xs uppercase tracking-wide">Status</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[160px] text-xs uppercase tracking-wide">Status</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Entrada</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Previsão</th>
                             <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] text-xs uppercase tracking-wide">Valor</th>

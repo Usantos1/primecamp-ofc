@@ -89,16 +89,21 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
     `;
   }
 
-  // Possui senha: sempre exibir (Sim/Não) para o técnico saber
+  // Possui senha: sempre exibir (Sim/Não); quando Sim, exibir senha numérica e/ou senha de desenho (padrão)
   const possuiSenhaLabel = os.possui_senha ? 'Sim' : 'Não';
+  const valorSenhaNum = os.senha_numerica || os.senha_aparelho || '';
+  const valorSenhaDesenho = os.padrao_desbloqueio || '';
+  const ehPadraoDesenho = Boolean(os.padrao_desbloqueio || os.possui_senha_tipo === 'deslizar');
+  const valorExibir = valorSenhaDesenho || valorSenhaNum || 'Informado';
   let senhaHtml = `
     <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
       <div class="bold">Possui senha:</div>
       <div style="padding-left: 4px;">${possuiSenhaLabel}</div>
       ${os.possui_senha ? `
         <div style="padding-left: 4px; font-size: 8px; margin-top: 2px;">
-          ${os.possui_senha_tipo || (os.padrao_desbloqueio ? 'Padrão' : 'Senha')}: ${os.senha_aparelho || os.senha_numerica || os.padrao_desbloqueio || 'Informado'}
+          ${os.possui_senha_tipo === 'deslizar' || os.padrao_desbloqueio ? 'Padrão (desenho)' : 'Senha'}: ${valorExibir}
         </div>
+        ${(valorSenhaDesenho || ehPadraoDesenho) ? `<div style="padding-left: 4px; font-size: 8px; margin-top: 1px;"><strong>Senha de desenho (padrão):</strong> ${os.padrao_desbloqueio || valorExibir}</div>` : ''}
       ` : ''}
     </div>
   `;

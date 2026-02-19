@@ -62,6 +62,8 @@ export function useItensOSSupabase(osId: string) {
         garantia: data.garantia || 0,
         colaborador_id: data.colaborador_id || null,
         colaborador_nome: data.colaborador_nome || null,
+        fornecedor_id: data.fornecedor_id || null,
+        fornecedor_nome: data.fornecedor_nome || null,
         created_by: user?.id || null,
       };
 

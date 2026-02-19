@@ -480,9 +480,20 @@ export interface ItemOS {
   desconto: number;
   valor_total: number;
   garantia?: number; // Garantia por item (em dias)
-  colaborador_id?: string; // ID do colaborador que lançou o item
-  colaborador_nome?: string; // Nome do colaborador que lançou o item
+  colaborador_id?: string;
+  colaborador_nome?: string;
+  /** Fornecedor da peça — apenas controle interno (não sai no cupom de faturamento) */
+  fornecedor_id?: string | null;
+  fornecedor_nome?: string | null;
   created_at: string;
+}
+
+export interface Fornecedor {
+  id: string;
+  company_id?: string | null;
+  nome: string;
+  created_at: string;
+  updated_at?: string | null;
 }
 
 // ==================== PAGAMENTOS ====================

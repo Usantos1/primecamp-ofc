@@ -32,6 +32,7 @@ import { useOrdensServicoSupabase } from '@/hooks/useOrdensServicoSupabase';
 import { from } from '@/integrations/db/client';
 import { useClientesSupabase } from '@/hooks/useClientesSupabase';
 import { useMarcasModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
+import { useFornecedores } from '@/hooks/useFornecedores';
 import { useCargos } from '@/hooks/useCargos';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
 import { 
@@ -531,8 +532,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     valor_unitario: 0,
     valor_minimo: 0,
     desconto: 0,
-    garantia: 90, // Padrão de 90 dias
+    garantia: 90,
     colaborador_id: user?.id || '',
+    fornecedor_id: '' as string,
+    fornecedor_nome: '' as string,
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
 
@@ -541,6 +544,17 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const osIdParaItens = id || currentOS?.id || 'temp';
   const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens, isAddingItem, isUpdatingItem, isRemovingItem } = useItensOSSupabase(osIdParaItens);
   const { pagamentos, totalPago, addPagamento } = usePagamentos(osIdParaItens);
+
+  const { fornecedores, createFornecedor } = useFornecedores();
+  const [fornecedorPopoverOpen, setFornecedorPopoverOpen] = useState(false);
+  const [fornecedorSearch, setFornecedorSearch] = useState('');
+  const [showNovoFornecedorDialog, setShowNovoFornecedorDialog] = useState(false);
+  const [novoFornecedorNome, setNovoFornecedorNome] = useState('');
+  const fornecedoresFiltrados = useMemo(() => {
+    const q = (fornecedorSearch || '').trim().toLowerCase();
+    if (!q) return fornecedores.slice(0, 50);
+    return fornecedores.filter(f => f.nome.toLowerCase().includes(q)).slice(0, 50);
+  }, [fornecedores, fornecedorSearch]);
   const { pagamentos: pagamentosAPI, totalPago: totalPagoAPI, isLoading: isLoadingPagamentosAPI, refetch: refetchPagamentosAPI } = usePagamentosOSAPI(osIdParaItens);
   const { registerPagamentoOS, cancelPagamentoOS } = useRegisterPagamentoOS();
   const isAdmin = profile?.role === 'admin';
@@ -577,7 +591,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           apenas_agendamento: os.apenas_agendamento || false,
           descricao_problema: os.descricao_problema,
           condicoes_equipamento: os.condicoes_equipamento || '',
-          previsao_entrega: os.previsao_entrega || '',
+          previsao_entrega: (() => {
+            const p = os.previsao_entrega;
+            if (!p) return '';
+            if (typeof p === 'string') return p.includes('T') ? p.split('T')[0] : p;
+            if (p instanceof Date) return format(p, 'yyyy-MM-dd');
+            return String(p).split('T')[0] || '';
+          })(),
           hora_previsao: os.hora_previsao || '18:00',
           observacoes: os.observacoes || '',
           observacoes_internas: os.observacoes_internas || '',
@@ -1145,6 +1165,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         garantia: itemForm.garantia || 90,
         colaborador_id: resolvedColaboradorId || undefined,
         colaborador_nome: resolvedColaboradorNome || undefined,
+        fornecedor_id: itemForm.fornecedor_id || null,
+        fornecedor_nome: itemForm.fornecedor_nome?.trim() || null,
         valor_total: valorTotal,
       };
 
@@ -1174,6 +1196,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         desconto: 0,
         garantia: 90,
         colaborador_id: user?.id || '',
+        fornecedor_id: '',
+        fornecedor_nome: '',
       });
       setProdutoSearch('');
     } catch (error: any) {
@@ -1186,6 +1210,18 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   };
 
   // Editar item
+  const handleCreateFornecedor = async () => {
+    if (!novoFornecedorNome.trim()) return;
+    try {
+      const novo = await createFornecedor(novoFornecedorNome.trim());
+      setItemForm(prev => ({ ...prev, fornecedor_id: novo.id, fornecedor_nome: novo.nome }));
+      setShowNovoFornecedorDialog(false);
+      setNovoFornecedorNome('');
+    } catch (_e) {
+      // toast já é exibido pelo hook
+    }
+  };
+
   const handleEditItem = (item: ItemOS) => {
     setEditingItem(item);
     setItemForm({
@@ -1198,6 +1234,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       desconto: item.desconto,
       garantia: item.garantia || 0,
       colaborador_id: item.colaborador_id || '',
+      fornecedor_id: item.fornecedor_id || '',
+      fornecedor_nome: item.fornecedor_nome || '',
     });
     setShowAddItem(true);
   };
@@ -4775,6 +4813,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <TableHead className="text-right">Valor Mín.</TableHead>
                             <TableHead className="text-right">Desconto</TableHead>
                             <TableHead className="text-right">Garantia</TableHead>
+                            <TableHead title="Controle interno (não sai no cupom)">Fornecedor</TableHead>
                             <TableHead>Colaborador</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -4794,6 +4833,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <TableCell className="text-right">{currencyFormatters.brl(item.valor_minimo || 0)}</TableCell>
                               <TableCell className="text-right">{currencyFormatters.brl(item.desconto)}</TableCell>
                               <TableCell className="text-right">{item.garantia ? `${item.garantia} dias` : '-'}</TableCell>
+                              <TableCell className="text-muted-foreground text-xs" title="Controle interno (não sai no cupom)">
+                                {item.tipo === 'peca' ? (item.fornecedor_nome || '-') : '-'}
+                              </TableCell>
                               <TableCell>
                                 {(() => {
                                   // Se tem colaborador_id mas não tem nome, tentar buscar
@@ -5200,8 +5242,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       setItemForm(prev => ({ 
                         ...prev, 
                         tipo: v, 
-                        produto_id: undefined, 
-                        descricao: '' 
+                        produto_id: undefined,
+                        // descricao, valor_unitario e demais campos são mantidos
                       }));
                       // Limpar busca quando mudar o tipo
                       setProdutoSearch('');
@@ -5318,6 +5360,67 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </p>
                 </div>
                 <div className="space-y-2">
+                  <Label>Fornecedor</Label>
+                  <Popover open={fornecedorPopoverOpen} onOpenChange={(open) => { setFornecedorPopoverOpen(open); if (!open) setFornecedorSearch(''); }}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between font-normal h-10"
+                      >
+                        <span className="truncate">{itemForm.fornecedor_nome || 'Selecione o fornecedor'}</span>
+                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            placeholder="Pesquisar fornecedor..."
+                            value={fornecedorSearch}
+                            onChange={(e) => setFornecedorSearch(e.target.value)}
+                            className="h-9 pl-8 text-sm"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNovoFornecedorDialog(true); setFornecedorPopoverOpen(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 font-medium hover:bg-green-50 border-b"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Cadastrar novo fornecedor
+                      </button>
+                      <ScrollArea className="max-h-[200px]">
+                        {fornecedoresFiltrados.length > 0 ? (
+                          <div className="p-1">
+                            {fornecedoresFiltrados.map(f => (
+                              <button
+                                key={f.id}
+                                type="button"
+                                className="w-full flex items-center px-3 py-2 text-sm text-left rounded-md hover:bg-accent"
+                                onClick={() => {
+                                  setItemForm(prev => ({ ...prev, fornecedor_id: f.id, fornecedor_nome: f.nome }));
+                                  setFornecedorPopoverOpen(false);
+                                }}
+                              >
+                                {f.nome}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                            {fornecedorSearch.trim() ? 'Nenhum fornecedor encontrado.' : 'Nenhum fornecedor cadastrado. Use "+ Cadastrar novo".'}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-xs text-muted-foreground">Não sai no cupom. Útil para garantia/retorno.</p>
+                </div>
+                <div className="space-y-2">
                   <Label>Colaborador que lançou</Label>
                   <Input value={currentUserNome} readOnly className="bg-muted" />
                   <p className="text-xs text-muted-foreground">Preenchido automaticamente pelo usuário logado</p>
@@ -5338,6 +5441,30 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 {editingItem ? 'Atualizar' : 'Adicionar'}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Novo Fornecedor */}
+        <Dialog open={showNovoFornecedorDialog} onOpenChange={setShowNovoFornecedorDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Novo fornecedor</DialogTitle>
+              <DialogDescription>Nome do fornecedor da peça (controle interno)</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Ex: Loja de Peças XYZ"
+                value={novoFornecedorNome}
+                onChange={(e) => setNovoFornecedorNome(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateFornecedor(); } }}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setShowNovoFornecedorDialog(false); setNovoFornecedorNome(''); }}>Cancelar</Button>
+                <Button onClick={handleCreateFornecedor} disabled={!novoFornecedorNome.trim()}>
+                  Cadastrar e selecionar
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
         

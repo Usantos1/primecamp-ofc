@@ -979,10 +979,10 @@ export default function Vendas() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-2 border-gray-300">
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 w-[80px]">Nº</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cliente</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Vendedor</TableHead>
-                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Status</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 w-[72px]">Nº</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 min-w-[120px] max-w-[180px]">Cliente</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 w-[100px]">Vendedor</TableHead>
+                        <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 w-[140px]">Status</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 whitespace-nowrap">Data / Hora</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Total</TableHead>
                         <TableHead className="font-semibold bg-muted/60 border-r border-gray-200 text-right">Pago</TableHead>
@@ -996,10 +996,13 @@ export default function Vendas() {
                           className={`cursor-pointer hover:bg-muted/50 border-b border-gray-200 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
                           onClick={() => navigate(`/pdv/venda/${sale.id}`)}
                         >
-                          <TableCell className="font-bold text-primary border-r border-gray-200">
+                          <TableCell className="border-r border-gray-200">
                             <button
                               type="button"
-                              className="underline underline-offset-2 hover:text-blue-600"
+                              className={cn(
+                                "underline underline-offset-2 hover:text-blue-600",
+                                sale.status === 'paid' && !sale.is_draft ? "font-semibold text-muted-foreground" : "font-bold text-primary"
+                              )}
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 await handleViewSale(sale);
@@ -1009,9 +1012,9 @@ export default function Vendas() {
                               #{sale.numero}
                             </button>
                           </TableCell>
-                          <TableCell className="border-r border-gray-200">
-                            <div>
-                              <p className="font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
+                          <TableCell className="border-r border-gray-200 min-w-[120px] max-w-[180px]">
+                            <div className="truncate">
+                              <p className="font-medium truncate" title={sale.cliente_nome || 'Consumidor Final'}>{sale.cliente_nome || 'Consumidor Final'}</p>
                               {sale.cliente_cpf_cnpj && (
                                 <p className="text-xs text-muted-foreground">{sale.cliente_cpf_cnpj}</p>
                               )}
@@ -1023,13 +1026,15 @@ export default function Vendas() {
                               <span className="text-sm">{sale.vendedor_nome || '-'}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="border-r border-gray-200">
-                            <Badge className={cn(SALE_STATUS_COLORS[sale.status])}>
-                              {SALE_STATUS_LABELS[sale.status]}
-                            </Badge>
-                            {sale.is_draft && (
-                              <Badge variant="outline" className="ml-2">Rascunho</Badge>
-                            )}
+                          <TableCell className="border-r border-gray-200 w-[140px]">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Badge className={cn(SALE_STATUS_COLORS[sale.status], "whitespace-nowrap")}>
+                                {SALE_STATUS_LABELS[sale.status]}
+                              </Badge>
+                              {sale.is_draft && (
+                                <Badge variant="outline" className="whitespace-nowrap">Rascunho</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="border-r border-gray-200 text-sm whitespace-nowrap">
                             {dateFormatters.withTime(sale.created_at)}
