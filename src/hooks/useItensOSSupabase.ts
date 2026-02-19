@@ -64,15 +64,37 @@ export function useItensOSSupabase(osId: string) {
         colaborador_nome: data.colaborador_nome || null,
         fornecedor_id: data.fornecedor_id || null,
         fornecedor_nome: data.fornecedor_nome || null,
+        com_aro: (data as any).com_aro || null,
         created_by: user?.id || null,
       };
 
       console.log('[useItensOS] Inserindo item:', novoItem);
 
-      const { data: inserted, error } = await from('os_items')
-        .insert(novoItem)
-        .select()
-        .single();
+      let result = await from('os_items').insert(novoItem).select().single();
+      let { data: inserted, error } = result;
+
+      // Se falhar por coluna inexistente (migration não rodada), tenta sem campos opcionais
+      if (error && typeof error?.message === 'string' && error.message.includes('does not exist')) {
+        console.warn('[useItensOS] Coluna(s) inexistente(s). Execute a migration 005 (fornecedor) e 004 (com_aro). Tentando inserir sem esses campos.');
+        const fallback: any = {
+          ordem_servico_id: osId,
+          produto_id: data.produto_id || null,
+          tipo: data.tipo,
+          descricao: data.descricao,
+          quantidade: data.quantidade,
+          valor_unitario: data.valor_unitario,
+          valor_minimo: data.valor_minimo || 0,
+          desconto: data.desconto || 0,
+          valor_total: data.valor_total,
+          garantia: data.garantia || 0,
+          colaborador_id: data.colaborador_id || null,
+          colaborador_nome: data.colaborador_nome || null,
+          created_by: user?.id || null,
+        };
+        result = await from('os_items').insert(fallback).select().single();
+        inserted = result.data;
+        error = result.error;
+      }
 
       console.log('[useItensOS] Resultado insert:', { inserted, error });
 

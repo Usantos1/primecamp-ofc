@@ -1504,9 +1504,25 @@ export default function NovaVenda() {
     if (valorRecebido <= 0) return;
     // Em dinheiro com troco: gravar o valor aplicado à venda (valor que fica no caixa), não o valor recebido
     const troco = Number(checkoutPayment.troco) || 0;
-    const valorAplicado = checkoutPayment.forma_pagamento === 'dinheiro' && troco > 0
+    let valorAplicado = checkoutPayment.forma_pagamento === 'dinheiro' && troco > 0
       ? valorRecebido - troco
       : valorRecebido;
+    // Não permitir pagamento acima do total da venda (evita duplicação e valor pago > total)
+    const totalPagoAtual = payments
+      .filter(p => p.status === 'confirmed')
+      .reduce((s, p) => s + Number(p.valor), 0);
+    const saldoRestanteAgora = Number(totals.total || 0) - totalPagoAtual;
+    const tolerancia = 0.005;
+    if (valorAplicado > saldoRestanteAgora + tolerancia) {
+      toast({
+        title: 'Valor acima do permitido',
+        description: `O pagamento não pode ser maior que o saldo restante da venda (${currencyFormatters.brl(saldoRestanteAgora)}). Total da venda: ${currencyFormatters.brl(totals.total)}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Limitar ao saldo restante (evita que PIX/cartão registrem acima do total)
+    if (valorAplicado > saldoRestanteAgora) valorAplicado = saldoRestanteAgora;
     const { taxa_cartao, valor_repasse } = getPaymentFeeAndNet(
       checkoutPayment.forma_pagamento,
       checkoutPayment.parcelas ?? 1,
@@ -3190,7 +3206,14 @@ _PrimeCamp Assistência Técnica_`;
         saleId={id}
         onVoucherApplied={async (voucherId, amount, voucherCode) => {
           if (!id) return;
-          
+          if (Number(amount) > saldoRestante + 0.01) {
+            toast({
+              title: 'Valor acima do permitido',
+              description: `O voucher não pode ser maior que o saldo restante (${currencyFormatters.brl(saldoRestante)}).`,
+              variant: 'destructive',
+            });
+            return;
+          }
           try {
             // Criar pagamento usando voucher
             // Encontrar o código da forma de pagamento voucher

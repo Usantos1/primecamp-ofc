@@ -441,6 +441,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     orcamento_parcelado: undefined as number | undefined,
     orcamento_desconto: undefined as number | undefined,
     orcamento_autorizado: false,
+    apenas_orcamento: false,
   });
 
   // Estados para checklist de entrada (modal)
@@ -536,6 +537,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     colaborador_id: user?.id || '',
     fornecedor_id: '' as string,
     fornecedor_nome: '' as string,
+    com_aro: '' as '' | 'com_aro' | 'sem_aro',
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
 
@@ -613,6 +615,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           orcamento_parcelado: os.orcamento_parcelado || 0,
           orcamento_desconto: os.orcamento_desconto || 0,
           orcamento_autorizado: os.orcamento_autorizado || false,
+          apenas_orcamento: (os as any).apenas_orcamento || false,
         });
         
         // Primeiro tenta buscar cliente localmente
@@ -1167,6 +1170,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         colaborador_nome: resolvedColaboradorNome || undefined,
         fornecedor_id: itemForm.fornecedor_id || null,
         fornecedor_nome: itemForm.fornecedor_nome?.trim() || null,
+        com_aro: (itemForm.com_aro && itemForm.com_aro !== '') ? itemForm.com_aro : null,
         valor_total: valorTotal,
       };
 
@@ -1198,6 +1202,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         colaborador_id: user?.id || '',
         fornecedor_id: '',
         fornecedor_nome: '',
+        com_aro: '',
       });
       setProdutoSearch('');
     } catch (error: any) {
@@ -1236,6 +1241,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       colaborador_id: item.colaborador_id || '',
       fornecedor_id: item.fornecedor_id || '',
       fornecedor_nome: item.fornecedor_nome || '',
+      com_aro: (item as any).com_aro || '',
     });
     setShowAddItem(true);
   };
@@ -1497,6 +1503,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           modelo_nome: modelos.find(m => m.id === formData.modelo_id)?.nome,
           tecnico_nome: tecnico?.nome,
           orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
+          apenas_orcamento: formData.apenas_orcamento || false,
         });
         
         if (osAtualizada) {
@@ -1530,6 +1537,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           modelo_nome: modelos.find(m => m.id === formData.modelo_id)?.nome,
           tecnico_nome: tecnico?.nome,
           orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
+          apenas_orcamento: formData.apenas_orcamento || false,
         } as any);
         
         // Validar se o ID foi retornado
@@ -1554,9 +1562,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
               const marca = marcas.find(m => m.id === formData.marca_id);
               const modelo = modelos.find(m => m.id === formData.modelo_id);
               
+              const linkOs = `${window.location.origin}/acompanhar-os/${novaOS.id}`;
               let mensagem = configEmAndamento.mensagem_whatsapp
                 .replace(/{cliente}/g, selectedCliente?.nome || novaOS.cliente_nome || 'Cliente')
                 .replace(/{numero}/g, novaOS.numero?.toString() || '')
+                .replace(/{link_os}/g, linkOs)
                 .replace(/{status}/g, configEmAndamento.label)
                 .replace(/{marca}/g, marca?.nome || novaOS.marca_nome || '')
                 .replace(/{modelo}/g, modelo?.nome || novaOS.modelo_nome || '');
@@ -1631,9 +1641,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           const marca = marcas.find(m => m.id === currentOS.marca_id);
           const modelo = modelos.find(m => m.id === currentOS.modelo_id);
           
+          const linkOs = `${window.location.origin}/acompanhar-os/${currentOS.id}`;
           let mensagem = config.mensagem_whatsapp
             .replace(/{cliente}/g, cliente?.nome || currentOS.cliente_nome || 'Cliente')
             .replace(/{numero}/g, currentOS.numero?.toString() || '')
+            .replace(/{link_os}/g, linkOs)
             .replace(/{status}/g, config.label)
             .replace(/{marca}/g, marca?.nome || currentOS.marca_nome || '')
             .replace(/{modelo}/g, modelo?.nome || currentOS.modelo_nome || '');
@@ -1700,8 +1712,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const userNome = profile?.display_name || user?.email || null;
       const agora = new Date().toISOString();
 
-      // Atualizar OS com checklist de entrada
-      await updateOS(checklistEntradaModalOSId, {
+      // 1) Primeiro salvar o checklist na OS (updateOS retorna a OS já com os dados salvos)
+      const osParaImprimir = await updateOS(checklistEntradaModalOSId, {
         checklist_entrada: checklistEntradaModalMarcados,
         observacoes_checklist: checklistEntradaModalObservacoes || null,
         checklist_entrada_realizado_por_id: userId,
@@ -1709,17 +1721,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         checklist_entrada_realizado_em: agora,
       });
 
-      // Atualizar status para "em_andamento" se ainda estiver como "aberta"
-      if (osAtualizada.status === 'aberta' || !osAtualizada.status) {
-        try {
-          await updateStatus(checklistEntradaModalOSId, 'em_andamento');
-        } catch (statusError) {
-          console.warn('Erro ao atualizar status para em_andamento:', statusError);
-        }
-      }
-
-      // Buscar OS atualizada novamente para impressão
-      const osParaImprimir = getOSById(checklistEntradaModalOSId);
+      // Manter status "aberta" ao salvar checklist (não mudar para em_andamento automaticamente)
+      // 2) Só depois de salvo, imprimir (assim a impressão já sai com o checklist)
       if (osParaImprimir) {
         try {
           const clienteData = getClienteById(osParaImprimir.cliente_id);
@@ -1834,9 +1837,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             // Usar mensagem configurada no status, se houver
             let mensagem = '';
             if (config?.notificar_whatsapp && config.mensagem_whatsapp) {
+              const linkOs = `${window.location.origin}/acompanhar-os/${currentOS.id}`;
               mensagem = config.mensagem_whatsapp
                 .replace(/{cliente}/g, cliente?.nome || currentOS.cliente_nome || 'Cliente')
                 .replace(/{numero}/g, currentOS.numero?.toString() || '')
+                .replace(/{link_os}/g, linkOs)
                 .replace(/{status}/g, config.label)
                 .replace(/{marca}/g, marca?.nome || currentOS.marca_nome || '')
                 .replace(/{modelo}/g, modelo?.nome || currentOS.modelo_nome || '');
@@ -3086,7 +3091,20 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                   {/* Orçamento Pré Autorizado */}
                   <div className="p-3 bg-gray-50/80 rounded-lg border border-gray-100">
-                    <Label className="text-xs font-semibold text-gray-700 mb-2 block">Orçamento Pré-Autorizado</Label>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <Label className="text-xs font-semibold text-gray-700">Orçamento Pré-Autorizado</Label>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="apenas-orcamento"
+                          checked={!!formData.apenas_orcamento}
+                          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, apenas_orcamento: !!checked }))}
+                          className="h-3 w-3 shrink-0 rounded border-gray-400"
+                        />
+                        <Label htmlFor="apenas-orcamento" className="text-[11px] text-gray-600 cursor-pointer">
+                          Realizar Orçamento
+                        </Label>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-[11px] text-gray-500">Cartão até 6x</Label>
@@ -4814,6 +4832,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <TableHead className="text-right">Desconto</TableHead>
                             <TableHead className="text-right">Garantia</TableHead>
                             <TableHead title="Controle interno (não sai no cupom)">Fornecedor</TableHead>
+                            <TableHead title="Controle interno (não sai no cupom)">Com aro</TableHead>
                             <TableHead>Colaborador</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -4835,6 +4854,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <TableCell className="text-right">{item.garantia ? `${item.garantia} dias` : '-'}</TableCell>
                               <TableCell className="text-muted-foreground text-xs" title="Controle interno (não sai no cupom)">
                                 {item.tipo === 'peca' ? (item.fornecedor_nome || '-') : '-'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-xs" title="Controle interno (não sai no cupom)">
+                                {item.tipo === 'peca' ? ((item as any).com_aro === 'com_aro' ? 'Com aro' : (item as any).com_aro === 'sem_aro' ? 'Sem aro' : '-') : '-'}
                               </TableCell>
                               <TableCell>
                                 {(() => {
@@ -5178,12 +5200,13 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
         {/* Dialog para adicionar/editar item */}
         <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
             <DialogHeader>
               <DialogTitle>{editingItem ? 'Editar Item' : 'Adicionar Item'}</DialogTitle>
               <DialogDescription>Adicione peças ou serviços à ordem de serviço</DialogDescription>
             </DialogHeader>
 
+            <ScrollArea className="flex-1 min-h-0 pr-2 -mr-2">
             <div className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -5421,6 +5444,23 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <p className="text-xs text-muted-foreground">Não sai no cupom. Útil para garantia/retorno.</p>
                 </div>
                 <div className="space-y-2">
+                  <Label>Com aro ou sem aro</Label>
+                  <Select
+                    value={itemForm.com_aro || 'none'}
+                    onValueChange={(v) => setItemForm(prev => ({ ...prev, com_aro: (v === 'none' ? '' : v) as '' | 'com_aro' | 'sem_aro' }))}
+                  >
+                    <SelectTrigger className="w-full h-10">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      <SelectItem value="com_aro">Com aro</SelectItem>
+                      <SelectItem value="sem_aro">Sem aro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Controle interno. Não sai no cupom.</p>
+                </div>
+                <div className="space-y-2">
                   <Label>Colaborador que lançou</Label>
                   <Input value={currentUserNome} readOnly className="bg-muted" />
                   <p className="text-xs text-muted-foreground">Preenchido automaticamente pelo usuário logado</p>
@@ -5434,6 +5474,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </span>
               </div>
             </div>
+            </ScrollArea>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAddItem(false)}>Cancelar</Button>

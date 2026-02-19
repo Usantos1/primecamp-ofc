@@ -1573,6 +1573,39 @@ app.post('/api/insert/:table', async (req, res) => {
       }
     }
 
+    // VALIDAÇÃO CRÍTICA: Pagamento não pode superar o total da venda (evita duplicação PIX/cartão)
+    if (tableNameOnly.toLowerCase() === 'payments') {
+      for (const row of rowsToInsert) {
+        const saleId = row?.sale_id;
+        if (!saleId) continue;
+        const saleResult = await pool.query(
+          'SELECT total FROM public.sales WHERE id = $1',
+          [saleId]
+        );
+        if (saleResult.rows.length === 0) continue;
+        const saleTotal = Number(saleResult.rows[0].total || 0);
+        let valorAplicado = Number(row.valor || 0);
+        const troco = Number(row.troco || 0);
+        const forma = (row.forma_pagamento || '').toLowerCase();
+        if (forma === 'dinheiro' && troco > 0 && valorAplicado > saleTotal) {
+          valorAplicado = valorAplicado - troco;
+        }
+        const sumResult = await pool.query(
+          `SELECT COALESCE(SUM(valor), 0) AS total FROM public.payments WHERE sale_id = $1 AND status = 'confirmed'`,
+          [saleId]
+        );
+        const jaPago = Number(sumResult.rows[0]?.total || 0);
+        const saldoRestante = saleTotal - jaPago;
+        if (valorAplicado > saldoRestante + 0.01) {
+          console.log(`[Insert] Bloqueado: Pagamento acima do saldo. Venda total: ${saleTotal}, Já pago: ${jaPago}, Tentativa: ${valorAplicado}`);
+          return res.status(400).json({
+            error: `O valor do pagamento não pode ser maior que o saldo restante da venda (R$ ${saldoRestante.toFixed(2)}).`,
+            codigo: 'PAGAMENTO_ACIMA_DO_TOTAL'
+          });
+        }
+      }
+    }
+
     // Normalizar colunas a partir do primeiro item
     const firstRow = rowsToInsert[0] || {};
     const keys = Object.keys(firstRow);
@@ -1609,6 +1642,17 @@ app.post('/api/insert/:table', async (req, res) => {
       console.warn(`[Insert] Erro ao verificar tipos de colunas:`, typeError.message);
     }
 
+    // Usar apenas colunas que existem na tabela (evita erro "column does not exist" se o banco não tiver migration)
+    const validKeys = keys.filter(k => columnTypes[k]);
+    if (validKeys.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma coluna válida para esta tabela. Verifique o schema.' });
+    }
+    const skippedKeys = keys.filter(k => !columnTypes[k]);
+    if (skippedKeys.length > 0) {
+      console.log(`[Insert] ${tableNameOnly}: colunas omitidas (não existem na tabela):`, skippedKeys);
+    }
+    const keysToUse = validKeys;
+
     // Colunas conhecidas que são arrays UUID[] (não JSONB)
     const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
 
@@ -1617,8 +1661,8 @@ app.post('/api/insert/:table', async (req, res) => {
     
     const values = [];
     const rowsPlaceholders = rowsToInsert.map((row, rowIndex) => {
-      const base = rowIndex * keys.length;
-      keys.forEach((k, i) => {
+      const base = rowIndex * keysToUse.length;
+      keysToUse.forEach((k, i) => {
         let value = row[k];
         const columnType = columnTypes[k];
         
@@ -1682,7 +1726,7 @@ app.post('/api/insert/:table', async (req, res) => {
         values.push(value);
       });
       // Criar placeholders com CAST para colunas DATE
-      const placeholders = keys.map((k, i) => {
+      const placeholders = keysToUse.map((k, i) => {
         const placeholder = `$${base + i + 1}`;
         // Se for coluna de data, fazer CAST explícito para DATE
         if (dateOnlyColumns.includes(k)) {
@@ -1694,12 +1738,12 @@ app.post('/api/insert/:table', async (req, res) => {
     }).join(', ');
 
     const sql = `
-      INSERT INTO ${tableName} (${keys.join(', ')})
+      INSERT INTO ${tableName} (${keysToUse.join(', ')})
       VALUES ${rowsPlaceholders}
       RETURNING *
     `;
 
-    console.log(`[Insert] ${tableName}:`, keys, Array.isArray(data) ? `(batch ${rowsToInsert.length})` : '(single)');
+    console.log(`[Insert] ${tableName}:`, keysToUse, Array.isArray(data) ? `(batch ${rowsToInsert.length})` : '(single)');
     const result = await pool.query(sql, values);
     res.json({ data: Array.isArray(data) ? result.rows : result.rows[0], rows: result.rows });
   } catch (error) {

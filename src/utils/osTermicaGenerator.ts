@@ -89,53 +89,66 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
     `;
   }
 
-  // Possui senha: sempre exibir (Sim/Não); quando Sim, exibir senha numérica e/ou senha de desenho (padrão)
+  // Figura do padrão de desenho (senha) — só o desenho na impressão, sem código numérico
+  // Grid 0-8: 0=top-left, 1=top-center, 2=top-right, 3=mid-left, 4=center, 5=mid-right, 6=bot-left, 7=bot-center, 8=bot-right
+  // Aceita também 1-9 (formulário): 1→0, 2→1, ..., 9→8
+  const patternToSvg = (pattern: string | undefined): string => {
+    if (!pattern || !String(pattern).trim()) return '';
+    const points: Record<string, [number, number]> = {
+      '0': [20, 20], '1': [50, 20], '2': [80, 20],
+      '3': [20, 50], '4': [50, 50], '5': [80, 50],
+      '6': [20, 80], '7': [50, 80], '8': [80, 80],
+    };
+    let seq = String(pattern).replace(/\s/g, '').split(/[-,.]/).filter(Boolean);
+    // Normalizar 1-9 para 0-8 se vier do formulário
+    if (seq.every(d => d >= '1' && d <= '9')) {
+      seq = seq.map(d => String(Number(d) - 1));
+    }
+    if (seq.length < 2) return '';
+    const lines: string[] = [];
+    for (let i = 0; i < seq.length - 1; i++) {
+      const a = points[seq[i]];
+      const b = points[seq[i + 1]];
+      if (a && b) lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#000" stroke-width="2" />`);
+    }
+    const circles = ['0','1','2','3','4','5','6','7','8'].map(k => {
+      const [x, y] = points[k];
+      const active = seq.includes(k);
+      return `<circle cx="${x}" cy="${y}" r="5" fill="${active ? '#000' : '#fff'}" stroke="#000" stroke-width="1.5" />`;
+    }).join('');
+    return `<div style="margin: 4px 0; text-align: center;"><svg width="80" height="80" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;"><rect x="5" y="5" width="90" height="90" rx="6" fill="#fff" stroke="#000" stroke-width="2"/>${lines.join('')}${circles}</svg></div>`;
+  };
+  const patternSvgHtml = patternToSvg(os.padrao_desbloqueio);
+
+  // Possui senha: Sim/Não; senha numérica só se não for desenho; padrão desenho = só o desenho (sem código na impressão)
   const possuiSenhaLabel = os.possui_senha ? 'Sim' : 'Não';
   const valorSenhaNum = os.senha_numerica || os.senha_aparelho || '';
-  const valorSenhaDesenho = os.padrao_desbloqueio || '';
   const ehPadraoDesenho = Boolean(os.padrao_desbloqueio || os.possui_senha_tipo === 'deslizar');
-  const valorExibir = valorSenhaDesenho || valorSenhaNum || 'Informado';
+  const mostrarSenhaNum = os.possui_senha && !ehPadraoDesenho;
   let senhaHtml = `
-    <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
+    <div style="font-size: 10px; margin: 2px 0; padding: 3px; border: 1px solid #000;">
       <div class="bold">Possui senha:</div>
       <div style="padding-left: 4px;">${possuiSenhaLabel}</div>
-      ${os.possui_senha ? `
-        <div style="padding-left: 4px; font-size: 8px; margin-top: 2px;">
-          ${os.possui_senha_tipo === 'deslizar' || os.padrao_desbloqueio ? 'Padrão (desenho)' : 'Senha'}: ${valorExibir}
-        </div>
-        ${(valorSenhaDesenho || ehPadraoDesenho) ? `<div style="padding-left: 4px; font-size: 8px; margin-top: 1px;"><strong>Senha de desenho (padrão):</strong> ${os.padrao_desbloqueio || valorExibir}</div>` : ''}
-      ` : ''}
+      ${mostrarSenhaNum ? `<div style="padding-left: 4px; font-size: 9px; margin-top: 2px;">Senha: ${valorSenhaNum || 'Informado'}</div>` : ''}
+      ${ehPadraoDesenho && patternSvgHtml ? `<div style="margin-top: 4px;">Padrão (desenho):</div><div style="margin-top: 2px;">${patternSvgHtml}</div>` : ''}
     </div>
   `;
 
-  // Orçamento pré-autorizado
+  // Orçamento pré-autorizado (não mostrar valor quando "apenas orçamento")
+  const apenasOrcamento = (os as any).apenas_orcamento === true;
   let orcamentoHtml = '';
   
   // Converter valores para número (tratando null, undefined, string)
   const valorDesconto = os.orcamento_desconto != null ? Number(os.orcamento_desconto) : 0;
   const valorParcelado = os.orcamento_parcelado != null ? Number(os.orcamento_parcelado) : 0;
   
-  // Mostrar se houver valores de orçamento maiores que zero OU se estiver explicitamente autorizado
+  // Mostrar se houver valores de orçamento maiores que zero OU se estiver explicitamente autorizado (e não for apenas orçamento)
   const temOrcamento = valorDesconto > 0 || valorParcelado > 0;
-  const deveMostrar = temOrcamento || os.orcamento_autorizado === true;
-  
-  console.log('[generateOSTermica] Verificando orçamento:', {
-    orcamento_autorizado: os.orcamento_autorizado,
-    orcamento_desconto: os.orcamento_desconto,
-    orcamento_parcelado: os.orcamento_parcelado,
-    valorDesconto,
-    valorParcelado,
-    temOrcamento,
-    deveMostrar,
-    osId: os.id
-  });
+  const deveMostrar = !apenasOrcamento && (temOrcamento || os.orcamento_autorizado === true);
   
   if (deveMostrar) {
     const valorPix = valorDesconto > 0 ? currencyFormatters.brl(valorDesconto) : null;
     const valorCartao = valorParcelado > 0 ? currencyFormatters.brl(valorParcelado) : null;
-    
-    console.log('[generateOSTermica] Valores formatados:', { valorPix, valorCartao });
-    
     if (valorPix || valorCartao) {
       orcamentoHtml = `
         <div style="font-size: 9px; margin: 2px 0; padding: 2px; border: 1px solid #000; background: #f0f0f0;">
@@ -144,12 +157,7 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
           ${valorCartao ? `<div style="padding-left: 4px;">Cartão (6x): ${valorCartao}</div>` : ''}
         </div>
       `;
-      console.log('[generateOSTermica] Orçamento HTML gerado:', orcamentoHtml.substring(0, 150));
-    } else {
-      console.log('[generateOSTermica] Orçamento não gerado: nenhum valor válido');
     }
-  } else {
-    console.log('[generateOSTermica] Orçamento não deve ser mostrado');
   }
 
   const html = `
@@ -199,17 +207,17 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
           margin: 0;
           padding: 2mm 6mm 2mm 5mm;
           font-family: Arial, Helvetica, sans-serif;
-          font-size: 11px;
+          font-size: 12px;
           color: #000000 !important;
           background: #ffffff;
-          line-height: 1.3;
+          line-height: 1.35;
           font-weight: 900;
           -webkit-font-smoothing: none !important;
           text-rendering: optimizeLegibility !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           overflow: hidden;
-          letter-spacing: 0.1px;
+          letter-spacing: 0.02em;
         }
         .center {
           text-align: center;
@@ -231,25 +239,25 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
           justify-content: space-between;
           margin: 2px 0;
           font-weight: 900 !important;
-          font-size: 10px;
+          font-size: 11px;
         }
         .label {
           font-weight: 900 !important;
-          font-size: 9px;
+          font-size: 10px;
         }
         .value {
-          font-size: 10px;
+          font-size: 11px;
           text-align: right;
         }
         .section-title {
           font-weight: 900 !important;
-          font-size: 11px;
+          font-size: 12px;
           margin: 4px 0 2px;
           text-decoration: underline;
         }
         .checklist-item {
-          font-size: 9px;
-          margin: 1px 0;
+          font-size: 10px;
+          margin: 2px 0;
           padding-left: 8px;
         }
         .checklist-item::before {
@@ -333,16 +341,16 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
       <div class="section-title">CHECKLIST DE ENTRADA</div>
       
       ${checklistFisico ? `
-        <div style="font-size: 9px; margin: 2px 0;">
+        <div style="font-size: 10px; margin: 3px 0;">
           <div class="bold">Problemas Encontrados:</div>
-          <div style="padding-left: 4px; font-size: 8px;">
+          <div style="padding-left: 4px; font-size: 10px;">
             ${checklistFisico.split(', ').map(item => `<div class="checklist-item">${item}</div>`).join('')}
           </div>
         </div>
-      ` : '<div style="font-size: 8px; margin: 2px 0; color: #999;">Nenhum problema encontrado</div>'}
+      ` : '<div style="font-size: 10px; margin: 3px 0;">Nenhum problema encontrado</div>'}
       
       ${os.observacoes_checklist ? `
-        <div style="font-size: 8px; margin: 2px 0; padding: 2px; border: 1px solid #000;">
+        <div style="font-size: 10px; margin: 3px 0; padding: 3px; border: 1px solid #000;">
           <div class="bold">Observações:</div>
           ${os.observacoes_checklist}
         </div>
@@ -364,12 +372,13 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
         <span class="label">Previsão:</span>
         <span class="value">${previsaoEntrega}</span>
       </div>
-      ${os.valor_total ? `
+      ${(os.valor_total && !apenasOrcamento) ? `
         <div class="line">
           <span class="label">Valor Total:</span>
           <span class="value">${valorTotal}</span>
         </div>
       ` : ''}
+      ${apenasOrcamento ? '<div class="line"><span class="label">Realizar Orçamento</span><span class="value">-</span></div>' : ''}
       
       ${orcamentoHtml ? `
         <div class="divider-dashed"></div>

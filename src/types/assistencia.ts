@@ -372,6 +372,7 @@ export interface OrdemServico {
   orcamento_parcelado?: number; // Valor parcelado (débito/crédito até 6x)
   orcamento_desconto?: number; // Valor com desconto (dinheiro/PIX)
   orcamento_autorizado?: boolean;
+  apenas_orcamento?: boolean; // Se true, cupom sai sem valor (apenas orçamento)
   
   // Valores
   subtotal?: number;
@@ -494,6 +495,8 @@ export interface ItemOS {
   /** Fornecedor da peça — apenas controle interno (não sai no cupom de faturamento) */
   fornecedor_id?: string | null;
   fornecedor_nome?: string | null;
+  /** Com aro / Sem aro — apenas controle interno (não sai no cupom) */
+  com_aro?: 'com_aro' | 'sem_aro' | null;
   created_at: string;
 }
 

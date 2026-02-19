@@ -145,6 +145,7 @@ export function useOrdensServicoSupabase() {
         orcamento_parcelado: data.orcamento_parcelado || null,
         orcamento_desconto: data.orcamento_desconto || null,
         orcamento_autorizado: data.orcamento_autorizado || false,
+        apenas_orcamento: (data as any).apenas_orcamento || false,
         tecnico_id: data.tecnico_id || null,
         tecnico_nome: data.tecnico_nome || null,
         servico_executado: data.servico_executado || null,

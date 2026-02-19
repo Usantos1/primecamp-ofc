@@ -982,7 +982,7 @@ export default function ConfiguracaoStatusPage() {
                   className="text-sm border-2 border-gray-300"
                 />
                 <p className="text-[10px] md:text-xs text-muted-foreground">
-                  Use {'{cliente}'}, {'{numero}'}, {'{status}'}, {'{marca}'} e {'{modelo}'} como variáveis
+                  Use {'{cliente}'}, {'{numero}'}, {'{link_os}'}, {'{status}'}, {'{marca}'} e {'{modelo}'} como variáveis
                 </p>
               </div>
             )}
