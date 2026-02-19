@@ -73,8 +73,12 @@ export function useItensOSSupabase(osId: string) {
       let result = await from('os_items').insert(novoItem).select().single();
       let { data: inserted, error } = result;
 
+      // API retorna { error: "mensagem" }; hook usa error.message ou error.error
+      const errorMsg = (error && (typeof (error as any).error === 'string' ? (error as any).error : (error as any).message)) || '';
+      const isColumnMissing = String(errorMsg).includes('does not exist');
+
       // Se falhar por coluna inexistente (migration não rodada), tenta sem campos opcionais
-      if (error && typeof error?.message === 'string' && error.message.includes('does not exist')) {
+      if (error && isColumnMissing) {
         console.warn('[useItensOS] Coluna(s) inexistente(s). Execute a migration 005 (fornecedor) e 004 (com_aro). Tentando inserir sem esses campos.');
         const fallback: any = {
           ordem_servico_id: osId,
@@ -100,7 +104,8 @@ export function useItensOSSupabase(osId: string) {
 
       if (error) {
         console.error('[useItensOS] ERRO no insert:', error);
-        throw new Error(error.message || error.error || 'Erro ao adicionar item');
+        const msg = (error as any).error || (error as any).message || 'Erro ao adicionar item';
+        throw new Error(typeof msg === 'string' ? msg : 'Erro ao adicionar item');
       }
       
       if (!inserted) {

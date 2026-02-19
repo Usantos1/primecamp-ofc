@@ -1,17 +1,27 @@
 #!/bin/bash
-# Deploy frontend na VPS - rodar DENTRO da pasta do projeto: cd ~/primecamp-ofc && ./deploy-vps.sh
+# Deploy Primecamp na VPS (frontend + API)
+# Uso: bash deploy-vps.sh   ou   ./deploy-vps.sh
+
 set -e
-cd "$(dirname "$0")"
-echo ">>> git pull origin main"
+cd ~/primecamp-ofc
+
+echo ">>> Git pull..."
 git pull origin main
-echo ">>> npm install"
+
+echo ">>> npm install..."
 npm install
-echo ">>> npm run build"
+cd server && npm install && cd ..
+
+echo ">>> Build frontend..."
 npm run build
-echo ">>> copiando dist para /var/www/primecamp.cloud/"
+
+echo ">>> Copiando dist para nginx..."
 sudo cp -r dist/* /var/www/primecamp.cloud/
-echo ">>> pm2 restart all"
-pm2 restart all
-echo ">>> nginx reload"
+
+echo ">>> Reiniciando API (para carregar server/index.js)..."
+sudo systemctl restart primecamp-api || true
+
+echo ">>> Reload nginx..."
 sudo systemctl reload nginx
+
 echo ">>> Deploy concluído."
