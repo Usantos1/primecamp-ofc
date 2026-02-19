@@ -1111,20 +1111,23 @@ export default function NovaVenda() {
           return;
         }
 
-        // Se ainda há saldo restante, abrir modal para o usuário registrar o pagamento (não finalizar sozinho)
-        const saldoRestanteAgora = totals.total - totalPagoConsidered;
-        if (saldoRestanteAgora > 0.01) {
+        // Pagamento integral obrigatório: não permitir finalizar com saldo restante
+        const totalVenda = Number(totals.total) || 0;
+        const totalPago = Number(totalPagoConsidered) || 0;
+        const saldoRestanteAgora = totalVenda - totalPago;
+        const toleranciaCentavos = 0.005; // tolerância para arredondamento
+        if (saldoRestanteAgora > toleranciaCentavos) {
           toast({ 
-            title: 'Saldo restante', 
-            description: `Falta registrar ${currencyFormatters.brl(saldoRestanteAgora)}. Adicione a forma de pagamento do valor restante para finalizar.`,
-            variant: 'default' 
+            title: 'Pagamento integral obrigatório', 
+            description: `Não é permitido finalizar a venda sem o pagamento integral. Total: ${currencyFormatters.brl(totalVenda)}. Pago: ${currencyFormatters.brl(totalPago)}. Falta: ${currencyFormatters.brl(saldoRestanteAgora)}.`,
+            variant: 'destructive' 
           });
           setShowCheckout(true);
           setIsSaving(false);
           return;
         }
 
-        // Finalizar
+        // Finalizar (só chega aqui com pagamento >= total)
         await finalizeSale(id);
         
         // Finalizar a OS se houver vínculo

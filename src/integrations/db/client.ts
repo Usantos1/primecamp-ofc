@@ -183,6 +183,11 @@ class UpdateBuilder {
     return this;
   }
 
+  is(field: string, value: any): this {
+    this.where[`${field}__is`] = value;
+    return this;
+  }
+
   select(fields: string | string[] = '*'): this {
     this.selectFields = fields;
     return this;

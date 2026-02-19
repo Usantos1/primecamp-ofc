@@ -32,6 +32,7 @@ export function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     quantidade: Number(supabaseProduto.quantidade || 0),
     estoque_minimo: supabaseProduto.estoque_minimo ? Number(supabaseProduto.estoque_minimo) : undefined,
     localizacao: supabaseProduto.localizacao || undefined,
+    unidade: supabaseProduto.unidade || undefined,
     
     // Configurações
     situacao: (supabaseProduto.situacao || 'ATIVO') as 'ATIVO' | 'INATIVO',
@@ -148,6 +149,10 @@ export function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
   
   if (produto.localizacao !== undefined) {
     payload.localizacao = produto.localizacao;
+  }
+  
+  if (produto.unidade !== undefined) {
+    payload.unidade = produto.unidade;
   }
 
   // Configurações

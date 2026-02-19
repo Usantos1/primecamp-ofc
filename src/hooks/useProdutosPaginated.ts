@@ -35,6 +35,11 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     quantidade: Number(supabaseProduto.quantidade || 0),
     estoque_minimo: supabaseProduto.estoque_minimo ? Number(supabaseProduto.estoque_minimo) : undefined,
     localizacao: supabaseProduto.localizacao || undefined,
+    unidade: supabaseProduto.unidade || undefined,
+    
+    // Configurações (tipo, garantia)
+    tipo: (supabaseProduto.tipo || 'PECA') as 'PECA' | 'SERVICO' | 'PRODUTO',
+    garantia_dias: supabaseProduto.garantia_dias != null ? Number(supabaseProduto.garantia_dias) : undefined,
     
     // Campos internos (timestamps)
     created_at: supabaseProduto.created_at || supabaseProduto.criado_em || new Date().toISOString(),
@@ -116,7 +121,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
     queryFn: async () => {
       // Construir query base usando wrapper PostgreSQL
-      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
+      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,criado_em,atualizado_em';
       
       let query = dbFrom('produtos')
         .select(selectFields);
@@ -180,7 +185,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
       // Fallback defensivo: se a coluna vi_custo não existir no banco, refazer sem ela
       if (error && String(error.message || error).includes('vi_custo') && String(error.message || error).includes('does not exist')) {
-        const fallbackFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,criado_em,atualizado_em';
+        const fallbackFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,criado_em,atualizado_em';
         let fallbackQuery = dbFrom('produtos')
           .select(fallbackFields);
         fallbackQuery = fallbackQuery.order(orderBy === 'codigo' ? 'codigo' : 'nome', { ascending: orderDirection === 'asc', nullsFirst: orderBy === 'codigo' ? false : true });
@@ -298,7 +303,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       queryClient.prefetchQuery({
         queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
         queryFn: async () => {
-          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,vi_custo,criado_em,atualizado_em';
+          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,criado_em,atualizado_em';
           
           let query = dbFrom('produtos')
             .select(selectFields);
@@ -537,6 +542,15 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     
     if (produto.localizacao !== undefined && produto.localizacao !== null && produto.localizacao !== '') {
       payload.localizacao = produto.localizacao;
+    }
+    if (produto.unidade !== undefined && produto.unidade !== null && produto.unidade !== '') {
+      payload.unidade = produto.unidade;
+    }
+    if (produto.tipo !== undefined && produto.tipo !== null && produto.tipo !== '') {
+      payload.tipo = produto.tipo;
+    }
+    if (produto.garantia_dias !== undefined && produto.garantia_dias !== null) {
+      payload.garantia_dias = Number(produto.garantia_dias);
     }
 
     // Custo/Compra (quando existir no banco) - usar vi_custo (compatível com importação)

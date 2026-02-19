@@ -8,6 +8,13 @@ export type TipoAparelho = 'celular' | 'tablet' | 'notebook' | 'outro';
 export type TipoPessoa = 'fisica' | 'juridica';
 export type TipoCliente = 'cliente' | 'fornecedor' | 'ambos';
 export type TipoProduto = 'PECA' | 'SERVICO' | 'PRODUTO';
+
+export const TIPO_PRODUTO_LABELS: Record<TipoProduto, string> = {
+  PECA: 'Peça',
+  PRODUTO: 'Produto',
+  SERVICO: 'Serviço',
+};
+
 export type TipoItemOS = 'peca' | 'servico' | 'mao_de_obra';
 export type FormaPagamento = 'dinheiro' | 'pix' | 'credito' | 'debito' | 'boleto' | 'transferencia';
 
@@ -225,6 +232,7 @@ export interface Produto {
   quantidade: number; // estoque_atual no Supabase
   estoque_minimo?: number;
   localizacao?: string;
+  unidade?: string; // Unidade, Caixa, Kit, Pcs, etc.
   
   // Configurações
   situacao?: 'ATIVO' | 'INATIVO';
@@ -270,6 +278,7 @@ export interface ProdutoFormData {
   quantidade: number;
   estoque_minimo?: number;
   localizacao?: string;
+  unidade?: string;
   
   // Configurações
   situacao?: 'ATIVO' | 'INATIVO';

@@ -333,14 +333,14 @@ export function useOrdensServicoSupabase() {
       aguardandoPeca: ordens.filter(o => o.status === 'aguardando_peca').length,
       finalizadas: ordens.filter(o => o.status === 'finalizada').length,
       aguardandoRetirada: ordens.filter(o => o.status === 'aguardando_retirada').length,
-      entregues: ordens.filter(o => o.status === 'entregue').length,
+      entregues: ordens.filter(o => ['entregue', 'entregue_faturada'].includes(o.status)).length,
       canceladas: ordens.filter(o => o.status === 'cancelada').length,
       hoje: ordens.filter(o => o.data_entrada === hoje).length,
-      prazoHoje: ordens.filter(o => o.previsao_entrega === hoje && !['entregue', 'cancelada'].includes(o.status)).length,
+      prazoHoje: ordens.filter(o => (o.previsao_entrega && o.previsao_entrega.split('T')[0] === hoje) && !['entregue', 'entregue_faturada', 'cancelada'].includes(o.status)).length,
       emAtraso: ordens.filter(o => 
         o.previsao_entrega && 
-        o.previsao_entrega < hoje && 
-        !['entregue', 'cancelada'].includes(o.status)
+        o.previsao_entrega.split('T')[0] < hoje && 
+        !['entregue', 'entregue_faturada', 'cancelada'].includes(o.status)
       ).length,
     };
   }, [ordens]);

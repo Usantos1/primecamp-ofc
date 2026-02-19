@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Produto } from '@/types/assistencia';
+import { Produto, TipoProduto, TIPO_PRODUTO_LABELS } from '@/types/assistencia';
 import { parseBRLInput, maskBRL, formatBRL } from '@/utils/currency';
 import { from } from '@/integrations/db/client';
 import { Barcode, Package, DollarSign, Warehouse, History, Plus, X, Check, ChevronsUpDown } from 'lucide-react';
@@ -46,6 +46,9 @@ interface FormData {
   quantidade?: number;
   estoque_minimo?: number;
   localizacao?: string;
+  unidade?: string;
+  garantia_dias?: number | '';
+  tipo?: TipoProduto;
 }
 
 interface EstoqueMovimentacao {
@@ -438,6 +441,9 @@ export function ProductFormOptimized({
       quantidade: 0,
       estoque_minimo: 0,
       localizacao: '',
+      unidade: 'UN',
+      garantia_dias: undefined as number | undefined,
+      tipo: 'PECA' as TipoProduto,
     },
   });
 
@@ -484,6 +490,9 @@ export function ProductFormOptimized({
           quantidade: produto.quantidade || produto.estoque_atual || 0,
           estoque_minimo: produto.estoque_minimo || 0,
           localizacao: produto.localizacao || '',
+          unidade: produto.unidade || 'UN',
+          garantia_dias: produto.garantia_dias ?? undefined,
+          tipo: (produto.tipo || 'PECA') as TipoProduto,
         });
         
         // Inicializar valores brutos formatados para exibição
@@ -516,6 +525,9 @@ export function ProductFormOptimized({
             quantidade: 0, // Zerar estoque na clonagem
             estoque_minimo: produto.estoque_minimo || 0,
             localizacao: produto.localizacao || '',
+            unidade: produto.unidade || 'UN',
+            garantia_dias: produto.garantia_dias ?? undefined,
+            tipo: (produto.tipo || 'PECA') as TipoProduto,
           });
           // Inicializar valores brutos formatados para exibição
           setPrecoCustoRaw(precoCusto > 0 ? precoCusto.toFixed(2).replace('.', ',') : '');
@@ -543,6 +555,9 @@ export function ProductFormOptimized({
             quantidade: 0,
             estoque_minimo: 0,
             localizacao: '',
+            unidade: 'UN',
+            garantia_dias: undefined,
+            tipo: 'PECA' as TipoProduto,
           });
           // Limpar valores brutos
           setPrecoCustoRaw('');
@@ -704,6 +719,17 @@ export function ProductFormOptimized({
       // Localização: enviar mesmo se vazio (para permitir limpar)
       if (data.localizacao !== undefined) {
         payload.localizacao = data.localizacao.trim() || null;
+      }
+      if (data.unidade !== undefined && data.unidade.trim()) {
+        payload.unidade = data.unidade.trim();
+      }
+      // Garantia (opcional): 0 = nenhum, 7/30/90/180/365 conforme tabela garantias
+      if (data.garantia_dias !== undefined && data.garantia_dias !== '' && data.garantia_dias !== null) {
+        const dias = typeof data.garantia_dias === 'number' ? data.garantia_dias : Number(data.garantia_dias);
+        if (!Number.isNaN(dias) && dias >= 0) payload.garantia_dias = dias;
+      }
+      if (data.tipo !== undefined) {
+        payload.tipo = data.tipo;
       }
 
       await onSave(payload);
@@ -1051,6 +1077,43 @@ export function ProductFormOptimized({
                     className="text-base md:text-sm"
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="garantia_dias">Período de garantia (opcional)</Label>
+                  <Select
+                    value={watch('garantia_dias') === undefined || watch('garantia_dias') === null || watch('garantia_dias') === '' ? '0' : String(watch('garantia_dias'))}
+                    onValueChange={(v) => setValue('garantia_dias', v === '0' ? 0 : Number(v))}
+                  >
+                    <SelectTrigger id="garantia_dias" className="text-base md:text-sm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Nenhum</SelectItem>
+                      <SelectItem value="7">7 dias</SelectItem>
+                      <SelectItem value="30">30 dias</SelectItem>
+                      <SelectItem value="90">90 dias</SelectItem>
+                      <SelectItem value="180">180 dias</SelectItem>
+                      <SelectItem value="365">1 ano</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="tipo">Tipo do produto</Label>
+                  <Select
+                    value={watch('tipo') || 'PECA'}
+                    onValueChange={(v) => setValue('tipo', v as TipoProduto)}
+                  >
+                    <SelectTrigger id="tipo" className="text-base md:text-sm">
+                      <SelectValue placeholder="Produto ou Serviço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(TIPO_PRODUTO_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </TabsContent>
 
@@ -1207,7 +1270,7 @@ export function ProductFormOptimized({
                   </p>
                 </div>
 
-                <div className="md:col-span-2">
+                <div>
                   <Label htmlFor="localizacao">Localização</Label>
                   <Input
                     id="localizacao"
@@ -1215,6 +1278,24 @@ export function ProductFormOptimized({
                     placeholder="Ex: Prateleira A3, Gaveta 2"
                     className="text-base md:text-sm"
                   />
+                </div>
+
+                <div>
+                  <Label htmlFor="unidade">Unidade</Label>
+                  <Select
+                    value={watch('unidade') || 'UN'}
+                    onValueChange={(v) => setValue('unidade', v)}
+                  >
+                    <SelectTrigger id="unidade" className="text-base md:text-sm">
+                      <SelectValue placeholder="Unidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UN">Unidade</SelectItem>
+                      <SelectItem value="CX">Caixa</SelectItem>
+                      <SelectItem value="KT">Kit</SelectItem>
+                      <SelectItem value="PCS">Pcs</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </TabsContent>
