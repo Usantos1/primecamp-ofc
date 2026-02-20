@@ -339,7 +339,7 @@ export default function NovaVenda() {
 
       // Adicionar itens da OS ao carrinho
       for (const itemOS of itensOS) {
-        // Buscar produto se tiver produto_id
+        // Buscar produto se tiver produto_id (para código no cupom)
         let produto = null;
         if (itemOS.produto_id) {
           produto = produtos.find(p => p.id === itemOS.produto_id);
@@ -348,6 +348,8 @@ export default function NovaVenda() {
         await addItem({
           produto_id: itemOS.produto_id || undefined,
           produto_nome: itemOS.descricao,
+          produto_codigo: produto?.codigo != null ? String(produto.codigo) : undefined,
+          produto_codigo_barras: produto?.codigo_barras || undefined,
           produto_tipo: itemOS.tipo === 'peca' ? 'produto' : 'produto',
           quantidade: Number(itemOS.quantidade) || 1,
           valor_unitario: Number(itemOS.valor_unitario) || 0,
@@ -761,6 +763,7 @@ export default function NovaVenda() {
         const quantidade = Number(itemOS.quantidade) || 1;
         const valorUnitario = Number(itemOS.valor_unitario) || 0;
         const desconto = Number(itemOS.desconto || 0);
+        const produto = itemOS.produto_id ? produtos.find((p: any) => p.id === itemOS.produto_id) : null;
         
         console.log(`Adicionando item: ${itemOS.descricao}`);
         console.log(`  Quantidade: ${quantidade}`);
@@ -772,6 +775,8 @@ export default function NovaVenda() {
           await addItem({
             produto_id: itemOS.produto_id || undefined,
             produto_nome: itemOS.descricao,
+            produto_codigo: produto?.codigo != null ? String(produto.codigo) : undefined,
+            produto_codigo_barras: produto?.codigo_barras || undefined,
             // Faturamento OS: enviar como servico para a API não validar estoque (itens já saíram na OS)
             produto_tipo: 'servico',
             quantidade: quantidade,
@@ -949,6 +954,28 @@ export default function NovaVenda() {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return uuidRegex.test(str);
   };
+
+  // Limpar PDV para nova venda (definido antes de handleFinalize que o referencia)
+  const limparPDV = useCallback(() => {
+    setSale(null);
+    setCart([]);
+    setSelectedCliente(null);
+    setClienteSearch('');
+    setProductSearch('');
+    setObservacoes('');
+    setDescontoTotal(0);
+    setShowProductSearch(false);
+    setShowClienteSearch(false);
+    setShowCheckout(false);
+    setCheckoutPayment({
+      forma_pagamento: 'dinheiro',
+      valor: undefined,
+      troco: 0,
+    });
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  }, []);
 
   // Finalizar venda
   const handleFinalize = useCallback(async () => {
@@ -1678,29 +1705,6 @@ export default function NovaVenda() {
       console.error('Erro ao adicionar pagamento:', error);
       toast({ title: 'Erro ao adicionar pagamento', variant: 'destructive' });
     }
-  };
-
-  // Limpar PDV para nova venda
-  const limparPDV = () => {
-    setSale(null);
-    setCart([]);
-    setSelectedCliente(null);
-    setClienteSearch('');
-    setProductSearch('');
-    setObservacoes('');
-    setDescontoTotal(0);
-    setShowProductSearch(false);
-    setShowClienteSearch(false);
-    setShowCheckout(false);
-    setCheckoutPayment({
-      forma_pagamento: 'dinheiro',
-      valor: undefined,
-      troco: 0,
-    });
-    // Focar no campo de busca
-    setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
   };
 
   // Confirmar emissão de cupom - SEMPRE imprime direto
