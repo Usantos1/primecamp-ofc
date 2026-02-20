@@ -309,7 +309,8 @@ export default function Vendas() {
           const fromSale = Math.max(0, sub - tot);
           if (fromSale > 0) return fromSale;
           const fromItens = (fullSale.items || []).reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
-          return Math.max(0, fromItens);
+          const extra = Number(fullSale.desconto_total || 0);
+          return Math.max(0, fromItens + extra);
         })(),
         pagamentos: fullSale.payments
           .filter((p: any) => p.status === 'confirmed')
@@ -406,7 +407,8 @@ export default function Vendas() {
           const fromSale = Math.max(0, sub - tot);
           if (fromSale > 0) return fromSale;
           const fromItens = (fullSale.items || []).reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
-          return Math.max(0, fromItens);
+          const extra = Number(fullSale.desconto_total || 0);
+          return Math.max(0, fromItens + extra);
         })(),
         pagamentos: fullSale.payments
           .filter((p: any) => p.status === 'confirmed')

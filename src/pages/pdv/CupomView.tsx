@@ -62,7 +62,8 @@ export default function CupomView() {
         const fromSale = Math.max(0, sub - tot);
         if (fromSale > 0) return fromSale;
         const fromItens = items.reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
-        return Math.max(0, fromItens);
+        const extra = Number(sale.desconto_total || 0);
+        return Math.max(0, fromItens + extra);
       })(),
       pagamentos: payments
         .filter((p: any) => p.status === 'confirmed')
@@ -197,7 +198,8 @@ export default function CupomView() {
         const fromSale = Math.max(0, sub - tot);
         if (fromSale > 0) return fromSale;
         const fromItens = items.reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
-        return Math.max(0, fromItens);
+        const extra = Number(sale.desconto_total || 0);
+        return Math.max(0, fromItens + extra);
       })(),
       pagamentos: payments
         .filter((p: any) => p.status === 'confirmed')
@@ -246,7 +248,8 @@ export default function CupomView() {
         const fromSale = Math.max(0, sub - tot);
         if (fromSale > 0) return fromSale;
         const fromItens = items.reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
-        return Math.max(0, fromItens);
+        const extra = Number(sale.desconto_total || 0);
+        return Math.max(0, fromItens + extra);
       })(),
       pagamentos: payments
         .filter((p: any) => p.status === 'confirmed')
