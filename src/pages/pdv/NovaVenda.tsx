@@ -772,7 +772,8 @@ export default function NovaVenda() {
           await addItem({
             produto_id: itemOS.produto_id || undefined,
             produto_nome: itemOS.descricao,
-            produto_tipo: itemOS.tipo === 'peca' ? 'produto' : 'produto',
+            // Faturamento OS: enviar como servico para a API não validar estoque (itens já saíram na OS)
+            produto_tipo: 'servico',
             quantidade: quantidade,
             valor_unitario: valorUnitario,
             desconto: desconto,
@@ -787,11 +788,12 @@ export default function NovaVenda() {
               produto_nome: itemOS.descricao,
             } as any);
           }
-        } catch (error) {
+        } catch (error: any) {
+          const msg = error?.error || error?.message || (typeof error === 'string' ? error : 'Erro ao adicionar');
           console.error(`Erro ao adicionar item ${itemOS.descricao}:`, error);
           toast({
             title: 'Item não adicionado',
-            description: `Não foi possível adicionar "${itemOS.descricao}" ao carrinho.`,
+            description: `${itemOS.descricao}: ${msg}`,
             variant: 'destructive',
           });
         }

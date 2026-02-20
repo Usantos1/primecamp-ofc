@@ -207,22 +207,28 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Rate limiting - aumentado para suportar o dashboard com muitas queries
+// Rate limiting - NÃO aplicar limite em rotas /api/auth/* (evita 429 em auth/me e login)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5000, // máximo de 5000 requisições por IP (dashboard faz muitas queries)
+  max: 5000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    const url = (req.originalUrl || req.url || '').toLowerCase();
+    return url.includes('/auth'); // auth/me, auth/login, auth/signup não consomem limite geral
+  },
 });
 
-// Login/signup: limite alto para não bloquear loja (re-logins após desconexão). Contador em memória — reiniciar a API zera.
+// Login/signup: limite bem alto; reiniciar a API zera o contador em memória
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 2500, // 2500 tentativas por IP (evita bloqueio com vários vendedores / re-logins)
+  max: 10000, // 10k tentativas por IP (evita bloqueio com vários usuários / re-logins)
   message: { error: 'Muitas tentativas de login. Aguarde alguns minutos ou reinicie o servidor da API.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Aplicar rate limiting
+// Aplicar rate limiting (auth primeiro, depois geral que ignora /api/auth/*)
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/', limiter);
