@@ -789,10 +789,23 @@ export default function NovaVenda() {
           }
         } catch (error) {
           console.error(`Erro ao adicionar item ${itemOS.descricao}:`, error);
+          toast({
+            title: 'Item não adicionado',
+            description: `Não foi possível adicionar "${itemOS.descricao}" ao carrinho.`,
+            variant: 'destructive',
+          });
         }
       }
       
       console.log(`=== RESUMO: ${itemsAdded} adicionados, ${itemsSkipped} pulados (já existiam) ===`);
+      const failedCount = (itensOS?.length || 0) - itemsAdded - itemsSkipped;
+      if (failedCount > 0) {
+        toast({
+          title: 'Atenção',
+          description: `${failedCount} item(ns) da OS não puderam ser adicionados. Verifique o console.`,
+          variant: 'destructive',
+        });
+      }
 
       // Total já pago na OS (adiantamentos no financeiro) — descontar na venda de faturamento
       const { data: pagamentosOS } = await from('os_pagamentos')

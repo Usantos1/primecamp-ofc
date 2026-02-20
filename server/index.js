@@ -1358,18 +1358,20 @@ app.post('/api/query/:table', async (req, res) => {
     let finalParams = [...params];
     
     if (needsCompanyFilter && req.user && req.companyId) {
+      // os_items por ordem_servico_id: NÃO filtrar por company_id — a OS já é da empresa; evita perder itens ao faturar
+      const isOsItemsByOS = tableNameOnly.toLowerCase() === 'os_items' &&
+        where && typeof where === 'object' && where.ordem_servico_id != null;
+      const skipCompanyFilter = isOsItemsByOS;
+
       // Verificar se já existe filtro de company_id no where
       const hasCompanyFilter = where && (
         (typeof where === 'object' && 'company_id' in where) ||
         (Array.isArray(where) && where.some((w) => w.field === 'company_id' || w.company_id))
       );
       
-      if (!hasCompanyFilter) {
+      if (!hasCompanyFilter && !skipCompanyFilter) {
         // Adicionar filtro de company_id automaticamente
-        // os_items: incluir também registros com company_id NULL (itens antigos) para não perder itens ao faturar OS
-        const companyCondition = tableNameOnly.toLowerCase() === 'os_items'
-          ? `(${tableNameOnly}.company_id = $${finalParams.length + 1} OR ${tableNameOnly}.company_id IS NULL)`
-          : `${tableNameOnly}.company_id = $${finalParams.length + 1}`;
+        const companyCondition = `${tableNameOnly}.company_id = $${finalParams.length + 1}`;
         if (finalWhereClause) {
           finalWhereClause += ` AND ${companyCondition}`;
         } else {
@@ -1377,6 +1379,8 @@ app.post('/api/query/:table', async (req, res) => {
         }
         finalParams.push(req.companyId);
         console.log(`[Query] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
+      } else if (skipCompanyFilter) {
+        console.log(`[Query] os_items por ordem_servico_id: sem filtro company_id para retornar todos os itens da OS`);
       }
     }
 
