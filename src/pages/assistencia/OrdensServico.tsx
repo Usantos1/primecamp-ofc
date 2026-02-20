@@ -245,7 +245,7 @@ export default function OrdensServico() {
   // Estados
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState<OSSearchFieldType>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('abertas');
   const [periodoFilter, setPeriodoFilter] = useState<string>('all');
   const [osToDelete, setOsToDelete] = useState<string | null>(null);
   const [osToReabrir, setOsToReabrir] = useState<{ id: string; motivo: string } | null>(null);
@@ -304,11 +304,13 @@ export default function OrdensServico() {
   hoje.setHours(0, 0, 0, 0);
   const hojeStr = hoje.toISOString().split('T')[0];
 
-  // Filtrar ordens
+  // Filtrar ordens (padrão: apenas abertas; fechadas ocultas até escolher "Todos os Status")
   const filteredOrdens = useMemo(() => {
     let result = [...ordens];
 
-    if (statusFilter !== 'all') {
+    if (statusFilter === 'abertas') {
+      result = result.filter(os => os.situacao !== 'fechada' && os.situacao !== 'cancelada');
+    } else if (statusFilter !== 'all') {
       result = result.filter(os => os.status === statusFilter);
     }
 
@@ -392,7 +394,7 @@ export default function OrdensServico() {
   const clearFilters = () => {
     setSearchTerm('');
     setSearchField('all');
-    setStatusFilter('all');
+    setStatusFilter('abertas');
     setPeriodoFilter('all');
   };
 
@@ -547,12 +549,13 @@ export default function OrdensServico() {
     }
   };
 
-  const hasActiveFilters = searchTerm || searchField !== 'all' || statusFilter !== 'all' || periodoFilter !== 'all';
+  const hasActiveFilters = searchTerm || searchField !== 'all' || (statusFilter !== 'all' && statusFilter !== 'abertas') || periodoFilter !== 'all';
 
-  // Cards de estatísticas config
+  // Cards de estatísticas config (Abertas = não fechadas/canceladas; padrão da tela)
+  const countAbertas = useMemo(() => ordens.filter(o => o.situacao !== 'fechada' && o.situacao !== 'cancelada').length, [ordens]);
   const statsCards = [
     { label: 'Total', value: stats.total, color: 'blue', filter: 'all' },
-    { label: 'Abertas', value: stats.abertas, color: 'yellow', filter: 'aberta' },
+    { label: 'Abertas', value: countAbertas, color: 'yellow', filter: 'abertas' },
     { label: 'Em Andamento', value: stats.emAndamento, color: 'purple', filter: 'em_andamento' },
     { label: 'Aguardando', value: stats.aguardando || 0, color: 'orange', filter: 'aguardando_orcamento' },
     { label: 'Finalizadas', value: stats.finalizadas, color: 'emerald', filter: 'finalizada' },
@@ -623,6 +626,7 @@ export default function OrdensServico() {
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-7 flex-1 text-xs border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="abertas">Abertas</SelectItem>
                 <SelectItem value="all">Todos</SelectItem>
                 {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
               </SelectContent>
@@ -659,6 +663,7 @@ export default function OrdensServico() {
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="abertas">Abertas</SelectItem>
                   <SelectItem value="all">Todos os Status</SelectItem>
                   {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
                 </SelectContent>
