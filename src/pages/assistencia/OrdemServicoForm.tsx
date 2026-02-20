@@ -1703,16 +1703,22 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       });
 
       // Manter status "aberta" ao salvar checklist (não mudar para em_andamento automaticamente)
-      // 2) Só depois de salvo, imprimir (assim a impressão já sai com o checklist)
+      // 2) Só depois de salvo, imprimir — usar OS com checklist que acabamos de salvar para a primeira impressão já sair com o checklist (evita falha de cache/retorno da API)
       if (osParaImprimir) {
         try {
           const clienteData = getClienteById(osParaImprimir.cliente_id);
           const marcaData = marcas.find(m => m.id === osParaImprimir.marca_id);
           const modeloData = modelos.find(m => m.id === osParaImprimir.modelo_id);
 
-          // Imprimir em 2 vias automaticamente
+          const osComChecklistGarantido = {
+            ...osParaImprimir,
+            checklist_entrada: checklistEntradaModalMarcados,
+            observacoes_checklist: checklistEntradaModalObservacoes || osParaImprimir.observacoes_checklist,
+          };
+
+          // Imprimir em 2 vias automaticamente (usando checklist recém-salvo para sair na primeira impressão)
           await printOSTermicaDirect(
-            osParaImprimir,
+            osComChecklistGarantido,
             clienteData,
             marcaData,
             modeloData,

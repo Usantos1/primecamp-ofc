@@ -215,6 +215,15 @@ export function useOrdensServicoSupabase() {
   // Atualizar OS
   const updateOS = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<OrdemServico> }): Promise<OrdemServico> => {
+      // Campos UUID: enviar null em vez de "" para evitar "invalid input syntax for type uuid"
+      const UUID_FIELDS = ['cliente_id', 'marca_id', 'modelo_id', 'tecnico_id', 'company_id'];
+      const sanitized = { ...data };
+      for (const key of UUID_FIELDS) {
+        if (key in sanitized && (sanitized as any)[key] === '') {
+          (sanitized as any)[key] = null;
+        }
+      }
+
       // Buscar OS antes de atualizar para log
       const { data: osAntiga } = await from('ordens_servico')
         .select('*')
@@ -224,7 +233,7 @@ export function useOrdensServicoSupabase() {
       // Primeiro definir o WHERE, depois chamar update
       const { data: updated, error } = await from('ordens_servico')
         .eq('id', id)
-        .update(data);
+        .update(sanitized);
 
       if (error) throw error;
       

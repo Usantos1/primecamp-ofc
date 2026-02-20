@@ -2020,6 +2020,11 @@ app.post('/api/update/:table', async (req, res) => {
       let value = data[key];
       const columnType = columnTypes[key];
       
+      // UUID: string vazia "" causa "invalid input syntax for type uuid" no PostgreSQL
+      if (columnType && columnType.udtName === 'uuid' && (value === '' || value === undefined)) {
+        value = null;
+      }
+      
       // Colunas conhecidas que são arrays UUID[] (não JSONB)
       const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
       
