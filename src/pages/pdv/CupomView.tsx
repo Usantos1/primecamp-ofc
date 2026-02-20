@@ -55,8 +55,15 @@ export default function CupomView() {
         valor_total: Number(item.valor_total),
       })),
       subtotal: Number(sale.subtotal),
-      desconto_total: Number(sale.desconto_total),
       total: Number(sale.total),
+      desconto_total: (() => {
+        const sub = Number(sale.subtotal || 0);
+        const tot = Number(sale.total || 0);
+        const fromSale = Math.max(0, sub - tot);
+        if (fromSale > 0) return fromSale;
+        const fromItens = items.reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
+        return Math.max(0, fromItens);
+      })(),
       pagamentos: payments
         .filter((p: any) => p.status === 'confirmed')
         .map((p: any) => ({
@@ -183,8 +190,15 @@ export default function CupomView() {
         valor_total: Number(item.valor_total),
       })),
       subtotal: Number(sale.subtotal),
-      desconto_total: Number(sale.desconto_total),
       total: Number(sale.total),
+      desconto_total: (() => {
+        const sub = Number(sale.subtotal || 0);
+        const tot = Number(sale.total || 0);
+        const fromSale = Math.max(0, sub - tot);
+        if (fromSale > 0) return fromSale;
+        const fromItens = items.reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
+        return Math.max(0, fromItens);
+      })(),
       pagamentos: payments
         .filter((p: any) => p.status === 'confirmed')
         .map((p: any) => ({
@@ -225,8 +239,15 @@ export default function CupomView() {
         valor_total: Number(item.valor_total),
       })),
       subtotal: Number(sale.subtotal),
-      desconto_total: Number(sale.desconto_total),
       total: Number(sale.total),
+      desconto_total: (() => {
+        const sub = Number(sale.subtotal || 0);
+        const tot = Number(sale.total || 0);
+        const fromSale = Math.max(0, sub - tot);
+        if (fromSale > 0) return fromSale;
+        const fromItens = items.reduce((s: number, i: any) => s + (Number(i.valor_unitario || 0) * Number(i.quantidade || 0) - Number(i.valor_total || 0)), 0);
+        return Math.max(0, fromItens);
+      })(),
       pagamentos: payments
         .filter((p: any) => p.status === 'confirmed')
         .map((p: any) => ({
