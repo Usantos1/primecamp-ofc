@@ -66,6 +66,7 @@ export default function CupomView() {
         })),
       vendedor: sale.vendedor_nome || undefined,
       observacoes: sale.observacoes || undefined,
+      mostrar_termos_garantia_os: !!sale?.ordem_servico_id,
     };
 
     const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
@@ -193,6 +194,7 @@ export default function CupomView() {
         })),
       vendedor: sale.vendedor_nome || undefined,
       observacoes: sale.observacoes || undefined,
+      mostrar_termos_garantia_os: !!sale?.ordem_servico_id,
     };
 
     const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
@@ -233,6 +235,7 @@ export default function CupomView() {
           troco: p.troco ? Number(p.troco) : undefined,
         })),
       vendedor: sale.vendedor_nome || undefined,
+      mostrar_termos_garantia_os: !!sale?.ordem_servico_id,
     };
 
     const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;

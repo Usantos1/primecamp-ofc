@@ -48,6 +48,10 @@ export interface CupomData {
   vendedor_label?: string;
   observacoes?: string;
   termos_garantia?: string;
+  /** Quando true (cupom de faturamento de OS), exibe termos de garantia de 90 dias e data de vencimento */
+  mostrar_termos_garantia_os?: boolean;
+  /** Data de vencimento da garantia (DD/MM/AAAA). Se não informada e mostrar_termos_garantia_os, calculada como data da venda + 90 dias */
+  data_vencimento_garantia?: string;
   mostrar_logo?: boolean;
   mostrar_qr_code?: boolean;
   mensagem_rodape?: string;
@@ -78,6 +82,35 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
   const mostrarQrCode = data.mostrar_qr_code !== undefined ? data.mostrar_qr_code : (config?.mostrar_qr_code ?? true);
   const termosGarantia = data.termos_garantia || config?.termos_garantia || '';
   const mensagemRodape = data.mensagem_rodape || config?.mensagem_rodape || 'Obrigado pela preferência! Volte sempre';
+
+  // Data de vencimento da garantia (90 dias a partir da data da venda) para cupom de OS
+  const dataVencimentoGarantia = (() => {
+    if (!data.mostrar_termos_garantia_os) return '';
+    if (data.data_vencimento_garantia) return data.data_vencimento_garantia;
+    const parts = data.data.split('/');
+    if (parts.length !== 3) return '';
+    const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, y = parseInt(parts[2], 10);
+    const date = new Date(y, m, d);
+    date.setDate(date.getDate() + 90);
+    return date.toLocaleDateString('pt-BR');
+  })();
+
+  const termosGarantiaOSHtml = data.mostrar_termos_garantia_os ? `
+    <div class="divider-dashed" style="margin: 3px 0;"></div>
+    <div style="font-size: 10px; line-height: 1.3; font-weight: 900 !important; color: #000000 !important; text-align: left;">
+      <div style="font-size: 11px; margin-bottom: 3px;"><strong>TERMOS DE GARANTIA</strong></div>
+      <div style="margin-bottom: 3px;">Garantia de 90 dias sobre a peça substituída e o serviço realizado, contados a partir da data de retirada do aparelho.</div>
+      <div style="margin-bottom: 3px;">A garantia cobre exclusivamente defeitos relacionados ao serviço executado.</div>
+      <div style="margin-bottom: 2px;"><strong>A garantia NÃO cobre:</strong></div>
+      <div>• Mau uso</div>
+      <div>• Aparelho molhado ou com oxidação</div>
+      <div>• Quedas, trincas externas ou internas, ou quebras após a retirada</div>
+      <div>• Riscos ou danos físicos</div>
+      <div>• Violação ou manutenção por terceiros</div>
+      <div style="margin-top: 3px;">Ao retirar o aparelho, o cliente declara estar ciente e de acordo com estes termos.</div>
+      ${dataVencimentoGarantia ? `<div style="margin-top: 4px;"><strong>Data de vencimento da garantia: ${dataVencimentoGarantia}</strong></div>` : ''}
+    </div>
+  ` : '';
 
   // Gerar QR Code se fornecido e configurado
   let qrCodeImg = '';
@@ -291,56 +324,48 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       
       <div class="divider-dashed" style="margin: 3px 0;"></div>
       
-      <div style="font-size: 10px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding: 2px 0; gap: 6px;">
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 32px;">Cod</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: center; margin: 0 6px;">Descrição</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 30px; text-align: right;">Qtd</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 44px; text-align: right;">Vl Item</span>
-          <span style="font-weight: 900 !important; color: #000000 !important; min-width: 50px; text-align: right;">Vl Total</span>
+      <div style="font-size: 9px; margin-bottom: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000000; padding: 2px 0; gap: 4px;">
+          <span style="font-weight: 900 !important; color: #000000 !important; width: 38px; flex-shrink: 0;">Cod</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; min-width: 0; text-align: left;">Descrição</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; width: 24px; text-align: right; flex-shrink: 0;">Qtd</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; width: 48px; text-align: right; flex-shrink: 0;">Vl Item</span>
+          <span style="font-weight: 900 !important; color: #000000 !important; width: 52px; text-align: right; flex-shrink: 0;">Vl Total</span>
         </div>
       </div>
       
-      ${data.itens.map((item, idx) => `
-        <div style="font-size: 10px; margin: 2px 0; font-weight: 900 !important; color: #000000 !important;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px;">
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 35px;">${item.codigo || String(idx + 1).padStart(6, '0')}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; text-align: left; margin: 0 4px; text-transform: uppercase; letter-spacing: 0.1px;">${(item.nome || '').toUpperCase()}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 32px; text-align: right;">${item.quantidade}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 46px; text-align: right;">${formatCurrency(item.valor_unitario)}</span>
-            <span style="font-weight: 900 !important; color: #000000 !important; min-width: 52px; text-align: right;">${formatCurrency(item.valor_total)}</span>
+      ${data.itens.map((item) => {
+        const codigoExibir = (item.codigo && String(item.codigo).trim()) ? String(item.codigo).trim() : '-';
+        const descricao = (item.nome || '').toUpperCase();
+        return `
+        <div style="font-size: 9px; margin: 3px 0; font-weight: 900 !important; color: #000000 !important;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 38px; flex-shrink: 0;">${codigoExibir}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; flex: 1; min-width: 0;"></span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 24px; text-align: right; flex-shrink: 0;">${item.quantidade}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 48px; text-align: right; flex-shrink: 0;">${formatCurrency(item.valor_unitario)}</span>
+            <span style="font-weight: 900 !important; color: #000000 !important; width: 52px; text-align: right; flex-shrink: 0;">${formatCurrency(item.valor_total)}</span>
           </div>
+          <div style="word-wrap: break-word; word-break: break-word; margin-top: 1px; font-size: 9px; line-height: 1.25;">${descricao}</div>
         </div>
-      `).join('')}
+      `;
+      }).join('')}
       
       <div class="divider" style="margin: 3px 0;"></div>
       
+      <div class="line total-line" style="font-size: 11px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">Total:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
+      </div>
       <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
         <span style="font-weight: 900 !important; color: #000000 !important;">Total Desconto:</span>
         <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.desconto_total)}</span>
       </div>
-      <div class="line total-line" style="font-size: 11px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
-        <span style="font-weight: 900 !important; color: #000000 !important;">Total:</span>
-        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
-      </div>
-      
-      <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
-        <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
-        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
-      </div>
       
       ${data.pagamentos.map(pag => {
-        const troco = pag.troco || 0;
-        // Traduzir forma de pagamento para português
         const formaPagamentoLabel = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma.toUpperCase();
         const parcelas = pag.parcelas && pag.parcelas > 1 ? ` (${pag.parcelas}x)` : '';
         return `
-          ${troco > 0 ? `
-            <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-              <span style="font-weight: 900 !important; color: #000000 !important;">Troco:</span>
-              <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(troco)}</span>
-            </div>
-          ` : ''}
           <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
             <span style="font-weight: 900 !important; color: #000000 !important;">${formaPagamentoLabel}${parcelas}:</span>
             <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
@@ -348,9 +373,26 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
         `;
       }).join('')}
       
+      <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
+        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0))}</span>
+      </div>
+      
+      ${((): string => {
+        const trocoTotal = data.pagamentos.reduce((s, p) => s + Number(p.troco || 0), 0);
+        return trocoTotal > 0 ? `
+          <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
+            <span style="font-weight: 900 !important; color: #000000 !important;">Troco:</span>
+            <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(trocoTotal)}</span>
+          </div>
+        ` : '';
+      })()}
+      
+      ${termosGarantiaOSHtml}
+      
       ${termosGarantia ? `
         <div class="divider-dashed" style="margin: 3px 0;"></div>
-        <div style="font-size: 8px; line-height: 1.3; font-weight: 900 !important; color: #000000 !important; text-align: justify;">
+        <div style="font-size: 10px; line-height: 1.3; font-weight: 900 !important; color: #000000 !important; text-align: justify;">
           ${termosGarantia}
         </div>
       ` : ''}
@@ -556,7 +598,53 @@ export async function generateCupomPDF(data: CupomData, qrCodeData?: string): Pr
     }
   }
 
-  // Termos de Garantia
+  // Termos de Garantia (cupom de OS - 90 dias)
+  if (data.mostrar_termos_garantia_os) {
+    y += 5;
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 5;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TERMOS DE GARANTIA', margin, y);
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    const termosOS = [
+      'Garantia de 90 dias sobre a peça substituída e o serviço realizado, contados a partir da data de retirada do aparelho.',
+      'A garantia cobre exclusivamente defeitos relacionados ao serviço executado.',
+      'A garantia NÃO cobre:',
+      '• Mau uso',
+      '• Aparelho molhado ou com oxidação',
+      '• Quedas, trincas externas ou internas, ou quebras após a retirada',
+      '• Riscos ou danos físicos',
+      '• Violação ou manutenção por terceiros',
+      'Ao retirar o aparelho, o cliente declara estar ciente e de acordo com estes termos.',
+    ];
+    termosOS.forEach((line: string) => {
+      const lines = doc.splitTextToSize(line, pageWidth - 2 * margin);
+      lines.forEach((l: string) => {
+        doc.text(l, margin, y);
+        y += 3;
+      });
+    });
+    const dataVenc = data.data_vencimento_garantia || (() => {
+      const parts = data.data.split('/');
+      if (parts.length !== 3) return '';
+      const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, y0 = parseInt(parts[2], 10);
+      const date = new Date(y0, m, d);
+      date.setDate(date.getDate() + 90);
+      return date.toLocaleDateString('pt-BR');
+    })();
+    if (dataVenc) {
+      y += 3;
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Data de vencimento da garantia: ${dataVenc}`, margin, y);
+      y += 5;
+      doc.setFont('helvetica', 'normal');
+    }
+  }
+
+  // Termos de Garantia (customizado)
   if (data.termos_garantia) {
     y += 5;
     doc.line(margin, y, pageWidth - margin, y);

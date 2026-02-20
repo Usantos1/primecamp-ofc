@@ -1177,7 +1177,7 @@ export default function NovaVenda() {
         toast({ title: 'Venda finalizada com sucesso!' });
         setShowCheckout(true);
         
-        // Aguardar um pouco para garantir que os dados estão atualizados e imprimir automaticamente
+        // Aguardar um pouco para garantir que os dados estão atualizados, imprimir e limpar PDV
         setTimeout(async () => {
           const finalizedSale = await getSaleById(id);
           if (finalizedSale?.items?.length && finalizedSale?.payments?.length) {
@@ -1191,7 +1191,9 @@ export default function NovaVenda() {
           } else {
             console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos', { id: finalizedSale?.id });
           }
-          await loadSale();
+          limparPDV();
+          navigate('/pdv');
+          toast({ title: 'PDV limpo. Pronto para nova venda!' });
         }, 800);
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);
@@ -1203,7 +1205,7 @@ export default function NovaVenda() {
     } finally {
       setIsSaving(false);
     }
-  }, [cart, isEditing, id, sale, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById]);
+  }, [cart, isEditing, id, sale, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById, limparPDV]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -1680,6 +1682,7 @@ export default function NovaVenda() {
 
   // Limpar PDV para nova venda
   const limparPDV = () => {
+    setSale(null);
     setCart([]);
     setSelectedCliente(null);
     setClienteSearch('');
@@ -1752,6 +1755,7 @@ export default function NovaVenda() {
           telefone: sale.cliente_telefone || undefined,
         } : undefined,
         itens: items.map(item => ({
+          codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
           nome: item.produto_nome,
           quantidade: Number(item.quantidade),
           valor_unitario: Number(item.valor_unitario),
@@ -1770,6 +1774,7 @@ export default function NovaVenda() {
           })),
         vendedor: sale.vendedor_nome || undefined,
         observacoes: sale.observacoes || undefined,
+        mostrar_termos_garantia_os: !!sale.ordem_servico_id,
       };
 
       // Gerar QR code com URL para 2ª via do cupom
@@ -1830,6 +1835,7 @@ export default function NovaVenda() {
           })),
         vendedor: saleToUse.vendedor_nome || undefined,
         observacoes: saleToUse.observacoes || undefined,
+        mostrar_termos_garantia_os: !!saleToUse.ordem_servico_id,
       };
 
       // Gerar QR code com URL para 2ª via do cupom
@@ -1977,6 +1983,7 @@ export default function NovaVenda() {
           telefone: sale.cliente_telefone || undefined,
         } : undefined,
         itens: items.map(item => ({
+          codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
           nome: item.produto_nome,
           quantidade: Number(item.quantidade),
           valor_unitario: Number(item.valor_unitario),
@@ -1995,6 +2002,7 @@ export default function NovaVenda() {
           })),
         vendedor: sale.vendedor_nome || undefined,
         observacoes: sale.observacoes || undefined,
+        mostrar_termos_garantia_os: !!sale.ordem_servico_id,
       };
 
       // Gerar QR code com URL para 2ª via do cupom

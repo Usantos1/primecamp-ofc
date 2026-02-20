@@ -294,6 +294,7 @@ export default function Vendas() {
           telefone: fullSale.cliente_telefone || undefined,
         } : undefined,
         itens: fullSale.items.map((item: any) => ({
+          codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
           nome: item.produto_nome,
           quantidade: Number(item.quantidade),
           valor_unitario: Number(item.valor_unitario),
@@ -312,6 +313,7 @@ export default function Vendas() {
           })),
         vendedor: fullSale.vendedor_nome || undefined,
         observacoes: fullSale.observacoes || undefined,
+        mostrar_termos_garantia_os: !!fullSale.ordem_servico_id,
       };
 
       // Gerar QR code com URL para 2ª via do cupom
@@ -382,6 +384,7 @@ export default function Vendas() {
           telefone: fullSale.cliente_telefone || undefined,
         } : undefined,
         itens: fullSale.items.map((item: any) => ({
+          codigo: item.produto_codigo || item.produto_codigo_barras || undefined,
           nome: item.produto_nome,
           quantidade: Number(item.quantidade),
           valor_unitario: Number(item.valor_unitario),
@@ -400,6 +403,7 @@ export default function Vendas() {
           })),
         vendedor: fullSale.vendedor_nome || undefined,
         observacoes: fullSale.observacoes || undefined,
+        mostrar_termos_garantia_os: !!fullSale.ordem_servico_id,
         termos_garantia: 'A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega. A garantia não cobre danos causados por mau uso, quedas, água ou outros fatores externos.',
       };
 

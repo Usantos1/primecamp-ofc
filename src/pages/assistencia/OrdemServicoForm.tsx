@@ -1302,10 +1302,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       });
 
       if (imprimirCupomAposPagamento) {
+        const dataRetirada = new Date();
+        const vencGarantia = new Date(dataRetirada);
+        vencGarantia.setDate(vencGarantia.getDate() + 90);
         const cupomData = {
           numero: sale?.numero ?? currentOS.numero ?? 0,
-          data: new Date().toLocaleDateString('pt-BR'),
-          hora: new Date().toLocaleTimeString('pt-BR'),
+          data: dataRetirada.toLocaleDateString('pt-BR'),
+          hora: dataRetirada.toLocaleTimeString('pt-BR'),
           empresa: { nome: 'PRIME CAMP', cnpj: '31.833.574/0001-74' },
           cliente: { nome: clienteNome },
           vendedor: currentUserNome,
@@ -1315,6 +1318,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           desconto_total: 0,
           total: valorNum,
           pagamentos: [{ forma: pagamentoOSForm.forma_pagamento, valor: valorNum }],
+          mostrar_termos_garantia_os: true,
+          data_vencimento_garantia: vencGarantia.toLocaleDateString('pt-BR'),
         };
         const html = await generateCupomTermica(cupomData);
         const iframe = document.createElement('iframe');
