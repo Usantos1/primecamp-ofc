@@ -1209,18 +1209,19 @@ export default function NovaVenda() {
           const finalizedSale = await getSaleById(id);
           if (finalizedSale?.items?.length && finalizedSale?.payments?.length) {
             try {
-              // Imprimir cupom automaticamente usando dados frescos da venda (não depende do estado)
               await handlePrintCupomDirect(finalizedSale);
             } catch (printError) {
               console.error('Erro ao imprimir após finalizar:', printError);
-              // Não bloquear a finalização se a impressão falhar
             }
           } else {
             console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos', { id: finalizedSale?.id });
           }
+          // Limpar estado e ir para PDV vazio (ordem: limpar primeiro, depois navegar)
           limparPDV();
-          navigate('/pdv');
-          toast({ title: 'PDV limpo. Pronto para nova venda!' });
+          setTimeout(() => {
+            navigate('/pdv', { replace: true });
+            toast({ title: 'PDV limpo. Pronto para nova venda!' });
+          }, 50);
         }, 800);
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);

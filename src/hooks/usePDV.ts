@@ -223,15 +223,26 @@ export function useSales() {
         throw new Error('Esta venda já foi finalizada e não pode ser faturada novamente');
       }
 
-      // Calcular totais
+      // Buscar venda atualizada do banco (o front pode ter chamado updateSale com subtotal/desconto_total/total corretos, inclusive desconto extra)
+      const { data: saleAtual } = await from('sales').select('subtotal, desconto_total, total').eq('id', id).single();
+      const subFromDb = saleAtual != null ? Number((saleAtual as any).subtotal) : NaN;
+      const descFromDb = saleAtual != null ? Number((saleAtual as any).desconto_total) : NaN;
+      const totFromDb = saleAtual != null ? Number((saleAtual as any).total) : NaN;
+
+      // Calcular totais a partir dos itens (fallback se a venda não tiver totais válidos)
       const { data: items } = await from('sale_items')
         .select('*')
         .eq('sale_id', id)
         .execute();
 
-      const subtotal = items?.reduce((sum, item) => sum + Number(item.valor_unitario) * Number(item.quantidade), 0) || 0;
-      const desconto_total = items?.reduce((sum, item) => sum + Number(item.desconto || 0), 0) || 0;
-      const total = subtotal - desconto_total;
+      const subFromItems = items?.reduce((sum, item) => sum + Number(item.valor_unitario) * Number(item.quantidade), 0) || 0;
+      const descFromItems = items?.reduce((sum, item) => sum + Number(item.desconto || 0), 0) || 0;
+      const totFromItems = subFromItems - descFromItems;
+
+      // Usar totais da venda (com desconto extra) se fizerem sentido; senão usar totais recalculados dos itens
+      const subtotal = !Number.isNaN(subFromDb) && subFromDb >= 0 ? subFromDb : subFromItems;
+      const desconto_total = !Number.isNaN(descFromDb) && descFromDb >= 0 ? descFromDb : descFromItems;
+      const total = !Number.isNaN(totFromDb) && totFromDb >= 0 ? totFromDb : totFromItems;
 
       // Calcular total pago
       const { data: payments } = await from('payments')
