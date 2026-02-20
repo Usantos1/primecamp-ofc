@@ -1555,29 +1555,40 @@ app.post('/api/insert/:table', async (req, res) => {
       }
     }
     
-    // VALIDAÇÃO CRÍTICA: Verificar estoque para sale_items
-    if (table === 'sale_items') {
-      for (const row of rowsToInsert) {
-        if (row?.produto_id && row?.quantidade && row?.produto_tipo === 'produto') {
-          const estoqueResult = await pool.query(
-            'SELECT quantidade FROM public.produtos WHERE id = $1',
-            [row.produto_id]
-          );
-          
-          if (estoqueResult.rows.length > 0) {
-            const estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
-            const quantidadeSolicitada = Number(row.quantidade || 0);
-            
-            if (quantidadeSolicitada > estoqueDisponivel) {
-              console.log(`[Insert] Bloqueado: Estoque insuficiente. Solicitado: ${quantidadeSolicitada}, Disponível: ${estoqueDisponivel}`);
-              return res.status(400).json({ 
-                error: `Estoque insuficiente para este produto. Disponível: ${estoqueDisponivel} unidade(s)`,
-                codigo: 'ESTOQUE_INSUFICIENTE',
-                estoque_disponivel: estoqueDisponivel
-              });
+    // VALIDAÇÃO CRÍTICA: Verificar estoque para sale_items (exceto faturamento de OS — itens já saíram na OS)
+    if (tableNameOnly.toLowerCase() === 'sale_items') {
+      const saleId = rowsToInsert[0]?.sale_id;
+      let isFaturamentoOS = false;
+      if (saleId) {
+        const saleRow = await pool.query(
+          'SELECT ordem_servico_id FROM public.sales WHERE id = $1',
+          [saleId]
+        );
+        isFaturamentoOS = saleRow.rows.length > 0 && saleRow.rows[0].ordem_servico_id != null;
+      }
+      if (!isFaturamentoOS) {
+        for (const row of rowsToInsert) {
+          if (row?.produto_id && row?.quantidade && row?.produto_tipo === 'produto') {
+            const estoqueResult = await pool.query(
+              'SELECT quantidade FROM public.produtos WHERE id = $1',
+              [row.produto_id]
+            );
+            if (estoqueResult.rows.length > 0) {
+              const estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
+              const quantidadeSolicitada = Number(row.quantidade || 0);
+              if (quantidadeSolicitada > estoqueDisponivel) {
+                console.log(`[Insert] Bloqueado: Estoque insuficiente. Solicitado: ${quantidadeSolicitada}, Disponível: ${estoqueDisponivel}`);
+                return res.status(400).json({
+                  error: `Estoque insuficiente para este produto. Disponível: ${estoqueDisponivel} unidade(s)`,
+                  codigo: 'ESTOQUE_INSUFICIENTE',
+                  estoque_disponivel: estoqueDisponivel
+                });
+              }
             }
           }
         }
+      } else {
+        console.log(`[Insert] sale_items: faturamento de OS (sale_id=${saleId}), pulando validação de estoque`);
       }
     }
 
