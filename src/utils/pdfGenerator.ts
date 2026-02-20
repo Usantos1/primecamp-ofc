@@ -80,8 +80,15 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
   const logoUrl = data.empresa?.logo_url || config?.logo_url || '';
   const mostrarLogo = data.mostrar_logo !== undefined ? data.mostrar_logo : (config?.mostrar_logo ?? true);
   const mostrarQrCode = data.mostrar_qr_code !== undefined ? data.mostrar_qr_code : (config?.mostrar_qr_code ?? true);
-  const termosGarantia = data.termos_garantia || config?.termos_garantia || '';
-  const mensagemRodape = data.mensagem_rodape || config?.mensagem_rodape || 'Obrigado pela preferência! Volte sempre';
+  // Cupom de venda de produtos: usar sempre termos e rodapé padronizados (ignorar config antiga)
+  const RODAPE_CUPOM_PRODUTOS = `Produto com garantia contra defeito de fabricação, quando aplicável.
+Não cobre mau uso, impacto, quedas, quebra ou umidade.
+Guarde este comprovante para eventual atendimento.
+
+Agradecemos a preferência!`;
+  const ehCupomVendaProdutos = !data.mostrar_termos_garantia_os;
+  const termosGarantia = ehCupomVendaProdutos ? '' : (data.termos_garantia || config?.termos_garantia || '');
+  const mensagemRodape = ehCupomVendaProdutos ? RODAPE_CUPOM_PRODUTOS : (data.mensagem_rodape || config?.mensagem_rodape || RODAPE_CUPOM_PRODUTOS);
 
   // Data de vencimento da garantia (90 dias a partir da data da venda) para cupom de OS
   const dataVencimentoGarantia = (() => {
@@ -353,40 +360,51 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       
       <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="line total-line" style="font-size: 11px; font-weight: 900 !important; color: #000000 !important;">
-        <span style="font-weight: 900 !important; color: #000000 !important;">Total:</span>
-        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.total)}</span>
+      <div style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
+        <div class="line" style="margin-bottom: 2px;">
+          <span>Total:</span>
+          <span>${formatCurrency(Number(data.subtotal || 0))}</span>
+        </div>
+        <div class="line" style="margin-bottom: 2px;">
+          <span>Desconto:</span>
+          <span>${formatCurrency(data.desconto_total)}</span>
+        </div>
+        <div class="line" style="font-size: 11px; margin: 4px 0 6px 0;">
+          <span>Total a Pagar:</span>
+          <span>${formatCurrency(data.total)}</span>
+        </div>
+        ${data.pagamentos.map(pag => {
+          const formaNormalizada = (() => {
+            const f = (pag.forma || '').toUpperCase().replace(/\s+/g, ' ').trim();
+            if (/^PIX/i.test(f) || f === 'PIX_CELULAR' || f === 'PIX_SAMUP') return 'PIX';
+            const label = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS];
+            if (label) return label;
+            if (/DINHEIRO/i.test(f)) return 'Dinheiro';
+            if (/DEBITO|DÉBITO/i.test(f)) return 'Débito';
+            if (/CREDITO|CRÉDITO/i.test(f)) return 'Crédito';
+            return f || 'Pagamento';
+          })();
+          const parcelas = pag.parcelas && pag.parcelas > 1 ? ` (${pag.parcelas}x)` : '';
+          return `
+          <div class="line" style="margin-bottom: 2px;">
+            <span>Forma de pagamento: ${formaNormalizada}${parcelas}</span>
+            <span>${formatCurrency(pag.valor)}</span>
+          </div>`;
+        }).join('')}
+        <div class="line" style="margin-top: 2px;">
+          <span>Valor Pago:</span>
+          <span>${formatCurrency(data.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0))}</span>
+        </div>
+        ${((): string => {
+          const trocoTotal = data.pagamentos.reduce((s, p) => s + Number(p.troco || 0), 0);
+          if (trocoTotal <= 0) return '';
+          return `
+          <div class="line" style="margin-top: 2px;">
+            <span>Troco:</span>
+            <span>${formatCurrency(trocoTotal)}</span>
+          </div>`;
+        })()}
       </div>
-      <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-        <span style="font-weight: 900 !important; color: #000000 !important;">Total Desconto:</span>
-        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.desconto_total)}</span>
-      </div>
-      
-      ${data.pagamentos.map(pag => {
-        const formaPagamentoLabel = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma.toUpperCase();
-        const parcelas = pag.parcelas && pag.parcelas > 1 ? ` (${pag.parcelas}x)` : '';
-        return `
-          <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-            <span style="font-weight: 900 !important; color: #000000 !important;">${formaPagamentoLabel}${parcelas}:</span>
-            <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(pag.valor)}</span>
-          </div>
-        `;
-      }).join('')}
-      
-      <div class="line" style="font-size: 10px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
-        <span style="font-weight: 900 !important; color: #000000 !important;">Valor Pago:</span>
-        <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(data.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0))}</span>
-      </div>
-      
-      ${((): string => {
-        const trocoTotal = data.pagamentos.reduce((s, p) => s + Number(p.troco || 0), 0);
-        return trocoTotal > 0 ? `
-          <div class="line" style="font-size: 10px; font-weight: 900 !important; color: #000000 !important;">
-            <span style="font-weight: 900 !important; color: #000000 !important;">Troco:</span>
-            <span style="font-weight: 900 !important; color: #000000 !important;">${formatCurrency(trocoTotal)}</span>
-          </div>
-        ` : '';
-      })()}
       
       ${termosGarantiaOSHtml}
       
@@ -399,14 +417,16 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
       
       <div class="divider" style="margin: 3px 0;"></div>
       
-      <div class="center" style="font-size: 9px; margin-top: 3px; font-weight: 900 !important; color: #000000 !important;">
-        <div style="font-weight: 900 !important; color: #000000 !important;">${mensagemRodape}</div>
+      <div class="center" style="font-size: 9px; margin-top: 4px; font-weight: 900 !important; color: #000000 !important; line-height: 1.35;">
+        ${mensagemRodape.split(/\r?\n/).map(linha => linha.trim()).filter(Boolean).map(linha =>
+          `<div style="margin-bottom: 3px; font-weight: 900 !important; color: #000000 !important; text-align: center;">${linha}</div>`
+        ).join('')}
         ${qrCodeImg ? `
-          <div style="margin-top: 3px;">
+          <div style="margin-top: 6px;">
             ${qrCodeImg}
           </div>
         ` : ''}
-        <div style="font-size: 8px; margin-top: 2px; font-weight: 900 !important; color: #000000 !important;">
+        <div style="font-size: 8px; margin-top: 4px; font-weight: 900 !important; color: #000000 !important;">
           Impresso em ${data.data} - ${data.hora.split(':').slice(0, 2).join(':')}
         </div>
       </div>
