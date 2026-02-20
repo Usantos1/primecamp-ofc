@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfiguracaoStatus } from '@/hooks/useAssistencia';
-import { ConfiguracaoStatus, STATUS_OS_LABELS, StatusOS } from '@/types/assistencia';
+import { ConfiguracaoStatus, STATUS_OS_LABELS, StatusOS, AcaoStatusOS } from '@/types/assistencia';
 import { Save, Edit, X, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,6 +43,7 @@ export default function ConfiguracaoStatusPage() {
     mensagem_whatsapp: '',
     ordem: 0,
     ativo: true,
+    acao: 'nenhuma' as AcaoStatusOS,
   });
   const [checklistForm, setChecklistForm] = useState({
     tipo: 'entrada' as 'entrada' | 'saida',
@@ -64,6 +65,7 @@ export default function ConfiguracaoStatusPage() {
       mensagem_whatsapp: '',
       ordem: configuracoes.length + 1,
       ativo: true,
+      acao: 'nenhuma',
     });
   };
 
@@ -78,6 +80,7 @@ export default function ConfiguracaoStatusPage() {
       mensagem_whatsapp: config.mensagem_whatsapp || '',
       ordem: config.ordem,
       ativo: config.ativo,
+      acao: config.acao ?? 'nenhuma',
     });
   };
 
@@ -119,6 +122,7 @@ export default function ConfiguracaoStatusPage() {
         mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
         ordem: editForm.ordem,
         ativo: editForm.ativo,
+        acao: editForm.acao,
       });
       toast({ title: 'Status criado com sucesso' });
       setIsCreating(false);
@@ -130,6 +134,7 @@ export default function ConfiguracaoStatusPage() {
         mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
         ordem: editForm.ordem,
         ativo: editForm.ativo,
+        acao: editForm.acao,
       });
       toast({ title: 'Configuração atualizada com sucesso' });
       setEditing(null);
@@ -410,6 +415,7 @@ export default function ConfiguracaoStatusPage() {
                   <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Código</TableHead>
                   <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Label</TableHead>
                   <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Cor</TableHead>
+                  <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Ação</TableHead>
                   <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Notificar WhatsApp</TableHead>
                   <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Mensagem</TableHead>
                   <TableHead className="font-semibold bg-muted/60 border-r border-gray-200">Ativo</TableHead>
@@ -434,6 +440,9 @@ export default function ConfiguracaoStatusPage() {
                         <div className={`w-4 h-4 rounded ${config.cor}`} />
                         <span className="text-xs text-muted-foreground">{config.cor}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="border-r border-gray-200 text-xs">
+                      {config.acao === 'fechar_os' ? 'Fechar a OS' : config.acao === 'cancelar_os' ? 'Cancelar a OS' : 'Nenhuma'}
                     </TableCell>
                     <TableCell className="border-r border-gray-200">
                       {config.notificar_whatsapp ? (
@@ -517,6 +526,10 @@ export default function ConfiguracaoStatusPage() {
                         <div className={`w-4 h-4 rounded ${config.cor}`} />
                         <span className="text-xs">{config.cor}</span>
                       </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Ação</p>
+                      <span className="text-xs">{config.acao === 'fechar_os' ? 'Fechar a OS' : config.acao === 'cancelar_os' ? 'Cancelar a OS' : 'Nenhuma'}</span>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-gray-200">
                       <span className="text-[10px] text-muted-foreground">WhatsApp</span>
@@ -955,6 +968,26 @@ export default function ConfiguracaoStatusPage() {
               />
               <p className="text-[10px] md:text-xs text-muted-foreground">
                 Ex: bg-blue-500, bg-green-500, bg-red-500, etc.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 md:space-y-2">
+              <Label className="text-xs md:text-sm">Ação ao mudar para este status</Label>
+              <Select
+                value={editForm.acao}
+                onValueChange={(v: AcaoStatusOS) => setEditForm(prev => ({ ...prev, acao: v }))}
+              >
+                <SelectTrigger className="h-9 md:h-10 text-sm border-2 border-gray-300">
+                  <SelectValue placeholder="Selecione a ação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nenhuma">Nenhuma</SelectItem>
+                  <SelectItem value="fechar_os">Fechar a OS</SelectItem>
+                  <SelectItem value="cancelar_os">Cancelar a OS</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] md:text-xs text-muted-foreground">
+                Ex.: &quot;Fechar a OS&quot; marca a ordem como concluída; &quot;Cancelar&quot; marca como cancelada.
               </p>
             </div>
 

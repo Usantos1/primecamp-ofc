@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Plus, Search, Edit, Phone, Calendar, X, Trash2,
-  CheckCircle2, RotateCcw, Package, ChevronLeft, ChevronRight, XCircle, Download, Zap
+  CheckCircle2, RotateCcw, Package, ChevronLeft, ChevronRight, XCircle, Download, Zap, ChevronDown, Filter
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -32,8 +33,8 @@ import {
 } from '@/components/ui/dialog';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
-import { useMarcasModelos } from '@/hooks/useAssistencia';
-import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS, getStatusOSLabel, getStatusOSColor } from '@/types/assistencia';
+import { useMarcasModelos, useConfiguracaoStatus } from '@/hooks/useAssistencia';
+import { StatusOS, STATUS_OS_LABELS, EXTRA_STATUS_OS_LABELS, STATUS_OS_COLORS, getStatusOSLabel, getStatusOSColor } from '@/types/assistencia';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
@@ -69,7 +70,11 @@ const OSTableRow = memo(({
   onEntregue,
   onReabrir,
   onDelete,
+  getConfigByStatus,
 }: any) => {
+  const statusConfig = getConfigByStatus?.(os.status) ?? (['manutencao_finalizada', 'manutenção_finalizada'].includes(os.status) ? getConfigByStatus?.('finalizada') : undefined);
+  const statusLabel = statusConfig?.label ?? getStatusOSLabel(os.status);
+  const statusColor = statusConfig?.cor ?? getStatusOSColor(os.status);
   const zebraClass = index % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50/80 dark:bg-gray-900/50';
   const temSaldoPendente = valorTotal > 0 && valorPago < valorTotal;
 
@@ -87,7 +92,7 @@ const OSTableRow = memo(({
         <div className="flex flex-col items-center gap-1">
           <span className={cn(
             "font-bold text-base",
-            (os.situacao === 'fechada' || ['entregue', 'entregue_faturada', 'finalizada', 'cancelada'].includes(os.status))
+            (os.situacao === 'fechada' || ['entregue', 'entregue_faturada', 'entregue_sem_reparo', 'finalizada', 'cancelada'].includes(os.status))
               ? "text-gray-500 dark:text-gray-400"
               : "text-blue-600 dark:text-blue-400"
           )}>{os.numero}</span>
@@ -142,10 +147,10 @@ const OSTableRow = memo(({
         </TooltipProvider>
       </td>
       
-      {/* Status */}
+      {/* Status (label e cor da config /pdv/configuracao-status quando existir) */}
       <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[160px]">
-        <Badge className={cn('text-xs text-white shadow-sm', getStatusOSColor(os.status))}>
-          {getStatusOSLabel(os.status)}
+        <Badge className={cn('text-xs text-white shadow-sm', statusColor)}>
+          {statusLabel}
         </Badge>
       </td>
       
@@ -205,7 +210,7 @@ const OSTableRow = memo(({
                 <Package className="mr-2 h-4 w-4" /> Entregue s/ reparo
               </DropdownMenuItem>
             )}
-            {['fechada', 'entregue', 'finalizada', 'cancelada'].includes(os.situacao || os.status) && (
+            {['fechada', 'entregue', 'entregue_faturada', 'entregue_sem_reparo', 'finalizada', 'cancelada'].includes(os.situacao || os.status) && (
               <DropdownMenuItem onClick={() => onReabrir(os)}>
                 <RotateCcw className="mr-2 h-4 w-4" /> Reabrir OS
               </DropdownMenuItem>
@@ -246,7 +251,14 @@ export default function OrdensServico() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState<OSSearchFieldType>('all');
   const [statusFilter, setStatusFilter] = useState<string>('abertas');
-  const [periodoFilter, setPeriodoFilter] = useState<string>('all');
+  const [periodoFilter, setPeriodoFilter] = useState<string>('custom');
+  const [periodoCustomInicio, setPeriodoCustomInicio] = useState<string>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3);
+    return d.toISOString().slice(0, 10);
+  });
+  const [periodoCustomFim, setPeriodoCustomFim] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [showFiltroPopover, setShowFiltroPopover] = useState(false);
   const [osToDelete, setOsToDelete] = useState<string | null>(null);
   const [osToReabrir, setOsToReabrir] = useState<{ id: string; motivo: string } | null>(null);
   const [page, setPage] = useState(1);
@@ -280,6 +292,7 @@ export default function OrdensServico() {
   const { ordens, isLoading, getEstatisticas, deleteOS: deleteOSMutation, updateOS, updateStatus } = useOrdensServico();
   const { clientes, getClienteById } = useClientes();
   const { getMarcaById, getModeloById } = useMarcasModelos();
+  const { getConfigByStatus } = useConfiguracaoStatus();
 
   // Buscar totais dos itens
   const { data: todosItens = [] } = useQuery({
@@ -352,21 +365,29 @@ export default function OrdensServico() {
     if (periodoFilter !== 'all') {
       const hojeDate = new Date();
       hojeDate.setHours(0, 0, 0, 0);
-      
+
       result = result.filter(os => {
         if (!os.data_entrada) return false;
         const osDate = new Date(os.data_entrada.split('T')[0]);
         osDate.setHours(0, 0, 0, 0);
-        
+
         switch (periodoFilter) {
           case 'hoje':
             return osDate.getTime() === hojeDate.getTime();
-          case 'semana':
+          case 'semana': {
             const inicioSemana = new Date(hojeDate);
             inicioSemana.setDate(hojeDate.getDate() - hojeDate.getDay());
             return osDate >= inicioSemana && osDate <= hojeDate;
+          }
           case 'mes':
             return osDate.getMonth() === hojeDate.getMonth() && osDate.getFullYear() === hojeDate.getFullYear();
+          case 'custom':
+            if (!periodoCustomInicio || !periodoCustomFim) return true;
+            const inicio = new Date(periodoCustomInicio);
+            const fim = new Date(periodoCustomFim);
+            inicio.setHours(0, 0, 0, 0);
+            fim.setHours(23, 59, 59, 999);
+            return osDate >= inicio && osDate <= fim;
           default:
             return true;
         }
@@ -374,7 +395,7 @@ export default function OrdensServico() {
     }
 
     return result.sort((a, b) => b.numero - a.numero);
-  }, [ordens, statusFilter, searchTerm, searchField, periodoFilter, getClienteById, getMarcaById, getModeloById]);
+  }, [ordens, statusFilter, searchTerm, searchField, periodoFilter, periodoCustomInicio, periodoCustomFim, getClienteById, getMarcaById, getModeloById]);
 
   // Paginação
   const totalPages = Math.ceil(filteredOrdens.length / PAGE_SIZE);
@@ -391,11 +412,20 @@ export default function OrdensServico() {
     if (telefone) window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}`, '_blank');
   };
 
+  const getDefaultPeriodo3Meses = () => {
+    const fim = new Date();
+    const inicio = new Date();
+    inicio.setMonth(inicio.getMonth() - 3);
+    return { inicio: inicio.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10) };
+  };
   const clearFilters = () => {
     setSearchTerm('');
     setSearchField('all');
     setStatusFilter('abertas');
-    setPeriodoFilter('all');
+    setPeriodoFilter('custom');
+    const { inicio, fim } = getDefaultPeriodo3Meses();
+    setPeriodoCustomInicio(inicio);
+    setPeriodoCustomFim(fim);
   };
 
   const handleFinalizar = async (os: any) => {
@@ -502,7 +532,11 @@ export default function OrdensServico() {
           switch (col.id) {
             case 'numero': row['Nº OS'] = os.numero; break;
             case 'situacao': row['Situação'] = os.situacao === 'fechada' ? 'Fechada' : os.situacao === 'cancelada' ? 'Cancelada' : 'Aberta'; break;
-            case 'status': row['Status'] = getStatusOSLabel(os.status); break;
+            case 'status': {
+              const c = getConfigByStatus(os.status) ?? (['manutencao_finalizada', 'manutenção_finalizada'].includes(os.status) ? getConfigByStatus('finalizada') : undefined);
+              row['Status'] = c?.label ?? getStatusOSLabel(os.status);
+              break;
+            }
             case 'cliente': row['Cliente'] = cliente?.nome || os.cliente_nome || ''; break;
             case 'telefone': row['Telefone'] = os.telefone_contato || cliente?.telefone || ''; break;
             case 'aparelho': row['Aparelho'] = `${modelo?.nome || os.modelo_nome || ''} - ${marca?.nome || os.marca_nome || ''}`; break;
@@ -549,7 +583,7 @@ export default function OrdensServico() {
     }
   };
 
-  const hasActiveFilters = searchTerm || searchField !== 'all' || (statusFilter !== 'all' && statusFilter !== 'abertas') || periodoFilter !== 'all';
+  const hasActiveFilters = searchTerm || searchField !== 'all' || statusFilter !== 'abertas' || periodoFilter !== 'custom';
 
   // Cards de estatísticas config (Abertas = não fechadas/canceladas; padrão da tela)
   const countAbertas = useMemo(() => ordens.filter(o => o.situacao !== 'fechada' && o.situacao !== 'cancelada').length, [ordens]);
@@ -637,73 +671,167 @@ export default function OrdensServico() {
           </div>
         </div>
 
-        {/* Desktop: Barra de filtros completa */}
-        <div className="hidden md:block bg-background/95 backdrop-blur-sm shrink-0 shadow-sm rounded-xl mb-3 border border-gray-200/50">
-          <div className="flex flex-col gap-3 p-4">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder={searchField === 'all' ? "Buscar por nº OS, cliente, aparelho, problema... (clique na coluna)" : `Buscar por ${OS_SEARCH_FIELD_LABELS[searchField]}...`} 
-                  value={searchTerm} 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
-                  className={`h-10 pl-10 text-base border-gray-200 focus:border-blue-400 ${searchField !== 'all' ? 'pr-24' : ''}`} 
-                />
-                {searchField !== 'all' && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
-                      {OS_SEARCH_FIELD_LABELS[searchField]}
-                    </Badge>
-                    <button onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
+        {/* Desktop: Barra de filtros em uma linha — [Filtro] [Busca] [Exportar] [Nova OS] */}
+        <div className="hidden md:flex md:items-center md:gap-3 md:flex-wrap md:shrink-0 md:mb-3">
+          <Popover open={showFiltroPopover} onOpenChange={setShowFiltroPopover}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-10 gap-1.5 border-gray-200 min-w-[140px] justify-between',
+                  hasActiveFilters && 'border-blue-400 bg-blue-50/80 dark:bg-blue-950/30'
                 )}
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[160px] shrink-0 border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="abertas">Abertas</SelectItem>
-                  <SelectItem value="all">Todos os Status</SelectItem>
-                  {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              <Button variant="ghost" size="sm" onClick={clearFilters} disabled={!hasActiveFilters} className="h-10 px-3 text-muted-foreground hover:text-foreground">
-                <XCircle className="h-4 w-4 mr-1.5" />Limpar
+              >
+                <span className="flex items-center gap-1.5 truncate">
+                  <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Filtro</span>
+                  <span className="text-xs text-foreground truncate max-w-[200px]">
+                    {periodoFilter === 'custom' && periodoCustomInicio && periodoCustomFim
+                      ? `${periodoCustomInicio.split('-').reverse().join('/')} – ${periodoCustomFim.split('-').reverse().join('/')}`
+                      : periodoFilter === 'all'
+                        ? 'Todos'
+                        : 'Personalizado'}
+                    {' • '}
+                    {statusFilter === 'abertas' ? 'Abertas' : (STATUS_OS_LABELS[statusFilter as StatusOS] ?? EXTRA_STATUS_OS_LABELS[statusFilter] ?? statusFilter)}
+                  </span>
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
               </Button>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Filtros de período */}
-              <div className="flex items-center gap-1">
-                {['all', 'hoje', 'semana', 'mes'].map((p) => (
-                  <Button
-                    key={p}
-                    variant={periodoFilter === p ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPeriodoFilter(p)}
-                    className="h-9 text-xs"
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 rounded-xl border-gray-200 shadow-lg p-0 overflow-hidden max-h-[min(85vh,420px)] flex flex-col" sideOffset={6}>
+              <div className="p-2 flex-shrink-0">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5">Período</p>
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => { setPeriodoFilter('all'); setShowFiltroPopover(false); }}
+                    className={cn(
+                      'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      periodoFilter === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                    )}
                   >
-                    <Calendar className="h-3.5 w-3.5 mr-1" />
-                    {p === 'all' ? 'Todas' : p === 'hoje' ? 'Hoje' : p === 'semana' ? 'Semana' : 'Mês'}
-                  </Button>
-                ))}
+                    Todos
+                  </button>
+                  <div className="border-t border-gray-200 my-1.5" />
+                  <div className="px-2 py-1.5 flex flex-col gap-2">
+                    <p className="text-xs font-medium text-foreground">Personalizado</p>
+                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                      <input
+                        type="date"
+                        value={periodoCustomInicio}
+                        onChange={(e) => setPeriodoCustomInicio(e.target.value)}
+                        className="w-full min-w-0 h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
+                      />
+                      <span className="text-muted-foreground text-xs shrink-0">até</span>
+                      <input
+                        type="date"
+                        value={periodoCustomFim}
+                        onChange={(e) => setPeriodoCustomFim(e.target.value)}
+                        className="w-full min-w-0 h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        if (periodoCustomInicio && periodoCustomFim) {
+                          setPeriodoFilter('custom');
+                          setShowFiltroPopover(false);
+                        }
+                      }}
+                      disabled={!periodoCustomInicio || !periodoCustomFim}
+                    >
+                      Aplicar período
+                    </Button>
+                  </div>
+                </div>
               </div>
+              <div className="border-t border-gray-200 p-2 flex-1 min-h-0 overflow-y-auto pb-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5">Status</p>
+                <div className="flex flex-col gap-0.5 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setStatusFilter('abertas'); setShowFiltroPopover(false); }}
+                    className={cn(
+                      'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      statusFilter === 'abertas' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                    )}
+                  >
+                    Abertas
+                  </button>
+                  {Object.entries(STATUS_OS_LABELS)
+                    .filter(([value]) => value !== 'aberta')
+                    .map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setStatusFilter(value); setShowFiltroPopover(false); }}
+                      className={cn(
+                        'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        statusFilter === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  {Object.entries(EXTRA_STATUS_OS_LABELS)
+                    .filter(([, label], idx, arr) => arr.findIndex(([, l]) => l === label) === idx)
+                    .map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setStatusFilter(value); setShowFiltroPopover(false); }}
+                      className={cn(
+                        'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        statusFilter === value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {hasActiveFilters && (
+                <div className="border-t border-gray-200 p-2 flex-shrink-0 bg-muted/30 rounded-b-xl">
+                  <Button variant="ghost" size="sm" className="w-full justify-center text-muted-foreground" onClick={() => { clearFilters(); setShowFiltroPopover(false); }}>
+                    <XCircle className="h-4 w-4 mr-1.5" /> Limpar filtros
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
 
-              <div className="flex-1" />
-
-              {/* Ações */}
-              <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-9 gap-1.5 border-gray-200">
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Exportar</span>
-              </Button>
-              <PermissionGate permission="os.create">
-                <Button onClick={() => navigate('/os/nova')} size="sm" className="h-9 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-                  <Plus className="h-4 w-4" />
-                  <span>Nova OS</span>
-                </Button>
-              </PermissionGate>
-            </div>
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={searchField === 'all' ? "Buscar por nº OS, cliente, aparelho, problema... (clique na coluna)" : `Buscar por ${OS_SEARCH_FIELD_LABELS[searchField]}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`h-10 pl-10 text-base border-gray-200 focus:border-blue-400 ${searchField !== 'all' ? 'pr-24' : ''}`}
+            />
+            {searchField !== 'all' && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                  {OS_SEARCH_FIELD_LABELS[searchField]}
+                </Badge>
+                <button type="button" onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
+
+          <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-10 gap-1.5 border-gray-200 shrink-0">
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar</span>
+          </Button>
+          <PermissionGate permission="os.create">
+            <Button onClick={() => navigate('/os/nova')} size="sm" className="h-10 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
+              <Plus className="h-4 w-4" />
+              <span>Nova OS</span>
+            </Button>
+          </PermissionGate>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
@@ -800,6 +928,7 @@ export default function OrdensServico() {
                                 onEntregue={handleEntregue}
                                 onReabrir={(os: any) => setOsToReabrir({ id: os.id, motivo: '' })}
                                 onDelete={setOsToDelete}
+                                getConfigByStatus={getConfigByStatus}
                               />
                             );
                           })}
@@ -834,6 +963,9 @@ export default function OrdensServico() {
                       const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
                       const isAtrasada = os.previsao_entrega && os.previsao_entrega.split('T')[0] < hojeStr && !['finalizada', 'entregue', 'cancelada'].includes(os.status);
                       const valorTotal = totaisPorOS[os.id] || Number(os.valor_total || 0);
+                      const statusConfig = getConfigByStatus(os.status) ?? (['manutencao_finalizada', 'manutenção_finalizada'].includes(os.status) ? getConfigByStatus('finalizada') : undefined);
+                      const statusLabel = statusConfig?.label ?? getStatusOSLabel(os.status);
+                      const statusColor = statusConfig?.cor ?? getStatusOSColor(os.status);
 
                       return (
                         <Card 
@@ -848,8 +980,8 @@ export default function OrdensServico() {
                             <div className="flex items-start justify-between border-b border-gray-200 pb-2">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-blue-600 text-lg">#{os.numero}</span>
-                                <Badge className={cn('text-xs text-white', getStatusOSColor(os.status))}>
-                                  {getStatusOSLabel(os.status)}
+                                <Badge className={cn('text-xs text-white', statusColor)}>
+                                  {statusLabel}
                                 </Badge>
                               </div>
                             </div>

@@ -60,16 +60,18 @@ export const STATUS_OS_COLORS: Record<StatusOS, string> = {
 
 /** Labels para status extras (fora do tipo StatusOS) usados no sistema */
 export const EXTRA_STATUS_OS_LABELS: Record<string, string> = {
-  entregue_faturada: 'Entregue e Faturada',
+  entregue_faturada: 'Entregue Faturada',
+  entregue_sem_reparo: 'Entregue Sem Reparo',
   manutencao_finalizada: 'Manutenção Finalizada',
-  manutenção_finalizada: 'Manutenção Finalizada',
+  manutenção_finalizada: 'Manutenção Finalizada', // alias para compatibilidade
 };
 
-/** Cores para status extras */
+/** Cores para status extras (Manutenção Finalizada = emerald como na config) */
 export const EXTRA_STATUS_OS_COLORS: Record<string, string> = {
   entregue_faturada: 'bg-gray-500',
-  manutencao_finalizada: 'bg-gray-500',
-  manutenção_finalizada: 'bg-gray-500',
+  entregue_sem_reparo: 'bg-gray-600',
+  manutencao_finalizada: 'bg-emerald-500',
+  manutenção_finalizada: 'bg-emerald-500',
 };
 
 /** Retorna o label do status (sempre legível; fallback: formata o código) */
@@ -95,6 +97,9 @@ export function getStatusOSColor(status: string | undefined): string {
 
 // ==================== CONFIGURAÇÃO DE STATUS ====================
 
+/** Ação executada ao mudar a OS para este status */
+export type AcaoStatusOS = 'nenhuma' | 'fechar_os' | 'cancelar_os';
+
 export interface ConfiguracaoStatus {
   id: string;
   status: StatusOS | string; // Permite status customizados além dos pré-definidos
@@ -104,19 +109,21 @@ export interface ConfiguracaoStatus {
   mensagem_whatsapp?: string;
   ordem: number;
   ativo: boolean;
+  /** Ação ao mudar para este status: fechar OS, cancelar OS ou nenhuma */
+  acao?: AcaoStatusOS;
 }
 
 export const STATUS_OS_PADRAO: ConfiguracaoStatus[] = [
-  { id: '1', status: 'aberta', label: 'Aberta', cor: 'bg-blue-500', notificar_whatsapp: false, ordem: 1, ativo: true },
-  { id: '2', status: 'aguardando_orcamento', label: 'Aguardando Orçamento', cor: 'bg-yellow-500', notificar_whatsapp: false, ordem: 2, ativo: true },
-  { id: '3', status: 'orcamento_enviado', label: 'Orçamento Enviado', cor: 'bg-orange-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! O orçamento da sua OS #{numero} está pronto.', ordem: 3, ativo: true },
-  { id: '4', status: 'aprovado', label: 'Aprovado', cor: 'bg-green-500', notificar_whatsapp: false, ordem: 4, ativo: true },
-  { id: '5', status: 'em_andamento', label: 'Em Andamento', cor: 'bg-purple-500', notificar_whatsapp: false, ordem: 5, ativo: true },
-  { id: '6', status: 'aguardando_peca', label: 'Aguardando Peça', cor: 'bg-red-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! Sua OS #{numero} está aguardando peça.', ordem: 6, ativo: true },
-  { id: '7', status: 'finalizada', label: 'Finalizada', cor: 'bg-emerald-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! Seu aparelho da OS #{numero} está pronto!', ordem: 7, ativo: true },
-  { id: '8', status: 'aguardando_retirada', label: 'Aguardando Retirada', cor: 'bg-cyan-500', notificar_whatsapp: false, ordem: 8, ativo: true },
-  { id: '9', status: 'entregue', label: 'Entregue', cor: 'bg-gray-500', notificar_whatsapp: true, mensagem_whatsapp: 'Obrigado pela preferência!', ordem: 9, ativo: true },
-  { id: '10', status: 'cancelada', label: 'Cancelada', cor: 'bg-gray-400', notificar_whatsapp: false, ordem: 10, ativo: true },
+  { id: '1', status: 'aberta', label: 'Aberta', cor: 'bg-blue-500', notificar_whatsapp: false, ordem: 1, ativo: true, acao: 'nenhuma' },
+  { id: '2', status: 'aguardando_orcamento', label: 'Aguardando Orçamento', cor: 'bg-yellow-500', notificar_whatsapp: false, ordem: 2, ativo: true, acao: 'nenhuma' },
+  { id: '3', status: 'orcamento_enviado', label: 'Orçamento Enviado', cor: 'bg-orange-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! O orçamento da sua OS #{numero} está pronto.', ordem: 3, ativo: true, acao: 'nenhuma' },
+  { id: '4', status: 'aprovado', label: 'Aprovado', cor: 'bg-green-500', notificar_whatsapp: false, ordem: 4, ativo: true, acao: 'nenhuma' },
+  { id: '5', status: 'em_andamento', label: 'Em Andamento', cor: 'bg-purple-500', notificar_whatsapp: false, ordem: 5, ativo: true, acao: 'nenhuma' },
+  { id: '6', status: 'aguardando_peca', label: 'Aguardando Peça', cor: 'bg-red-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! Sua OS #{numero} está aguardando peça.', ordem: 6, ativo: true, acao: 'nenhuma' },
+  { id: '7', status: 'finalizada', label: 'Finalizada', cor: 'bg-emerald-500', notificar_whatsapp: true, mensagem_whatsapp: 'Olá {cliente}! Seu aparelho da OS #{numero} está pronto!', ordem: 7, ativo: true, acao: 'nenhuma' },
+  { id: '8', status: 'aguardando_retirada', label: 'Aguardando Retirada', cor: 'bg-cyan-500', notificar_whatsapp: false, ordem: 8, ativo: true, acao: 'nenhuma' },
+  { id: '9', status: 'entregue', label: 'Entregue', cor: 'bg-gray-500', notificar_whatsapp: true, mensagem_whatsapp: 'Obrigado pela preferência!', ordem: 9, ativo: true, acao: 'fechar_os' },
+  { id: '10', status: 'cancelada', label: 'Cancelada', cor: 'bg-gray-400', notificar_whatsapp: false, ordem: 10, ativo: true, acao: 'cancelar_os' },
 ];
 
 // ==================== CHECKLIST ====================

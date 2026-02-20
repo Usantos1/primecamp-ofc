@@ -621,10 +621,12 @@ export default function NovaVenda() {
             return true;
           })
           .map(async (os) => {
-            // Buscar TODOS os itens da OS do banco (sem filtrar por tipo)
+            // Buscar TODOS os itens da OS do banco (sem filtrar por tipo; limite alto)
             const { data: itens, error: itensError } = await from('os_items')
               .select('*')
               .eq('ordem_servico_id', os.id)
+              .order('id', { ascending: true })
+              .limit(500)
               .execute();
             
             if (itensError) {
@@ -672,11 +674,13 @@ export default function NovaVenda() {
     try {
       setIsLoadingOS(true);
 
-      // Buscar TODOS os itens da OS do banco
+      // Buscar TODOS os itens da OS do banco (limite alto para não depender de default da API)
       console.log(`Buscando todos os itens da OS #${os.numero} do banco...`);
       const { data: itensOS, error: itensError } = await from('os_items')
         .select('*')
         .eq('ordem_servico_id', os.id)
+        .order('id', { ascending: true })
+        .limit(500)
         .execute();
 
       if (itensError) {

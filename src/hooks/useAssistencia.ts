@@ -462,18 +462,29 @@ export function useOrdensServico() {
 
   const updateStatus = useCallback(async (id: string, status: StatusOS | string, notificar?: boolean) => {
     const updates: Partial<OrdemServico> = { status: status as StatusOS };
-    
-    if (status === 'entregue') {
+
+    try {
+      const stored = loadFromStorage(STORAGE_KEYS.CONFIG_STATUS, [] as ConfiguracaoStatus[]);
+      const config = Array.isArray(stored) ? stored.find((c: ConfiguracaoStatus) => c.status === status) : undefined;
+      if (config?.acao === 'fechar_os') {
+        updates.situacao = 'fechada';
+        updates.data_entrega = new Date().toISOString();
+      } else if (config?.acao === 'cancelar_os') {
+        updates.situacao = 'cancelada';
+      }
+    } catch (_) { /* ignora */ }
+
+    if (!updates.situacao && ['entregue', 'entregue_faturada', 'entregue_sem_reparo'].includes(status as string)) {
       updates.situacao = 'fechada';
       updates.data_entrega = new Date().toISOString();
     }
-    if (status === 'cancelada') {
+    if (!updates.situacao && status === 'cancelada') {
       updates.situacao = 'cancelada';
     }
     if (status === 'finalizada') {
       updates.data_conclusao = new Date().toISOString();
     }
-    
+
     updateOS(id, updates);
     
     if (notificar) {

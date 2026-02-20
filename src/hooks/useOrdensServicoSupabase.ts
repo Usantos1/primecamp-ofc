@@ -123,7 +123,7 @@ export function useOrdensServicoSupabase() {
 
       const novaOS: any = {
         numero,
-        situacao: (data.status === 'entregue' || data.status === 'cancelada') ? 'fechada' : 'aberta',
+        situacao: ['entregue', 'cancelada', 'entregue_faturada', 'entregue_sem_reparo'].includes(data.status as string) ? (data.status === 'cancelada' ? 'cancelada' : 'fechada') : 'aberta',
         status: data.status || 'aberta',
         data_entrada: dataEntrada,
         hora_entrada: horaEntrada,
@@ -286,12 +286,26 @@ export function useOrdensServicoSupabase() {
         .single();
 
       const updates: any = { status };
-      
-      if (status === 'entregue') {
+
+      // Ação definida na configuração de status (pdv/configuracao-status)
+      try {
+        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('assistencia_config_status') : null;
+        const configs: { status: string; acao?: string }[] = stored ? JSON.parse(stored) : [];
+        const config = configs.find((c: { status: string }) => c.status === status);
+        if (config?.acao === 'fechar_os') {
+          updates.situacao = 'fechada';
+          updates.data_entrega = new Date().toISOString().split('T')[0];
+        } else if (config?.acao === 'cancelar_os') {
+          updates.situacao = 'cancelada';
+        }
+      } catch (_) { /* ignora erro de leitura da config */ }
+
+      // Fallback quando a config não define ação (comportamento histórico)
+      if (!updates.situacao && ['entregue', 'entregue_faturada', 'entregue_sem_reparo'].includes(status as string)) {
         updates.situacao = 'fechada';
         updates.data_entrega = new Date().toISOString().split('T')[0];
       }
-      if (status === 'cancelada') {
+      if (!updates.situacao && status === 'cancelada') {
         updates.situacao = 'cancelada';
       }
       if (status === 'finalizada') {

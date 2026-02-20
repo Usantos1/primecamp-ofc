@@ -1366,10 +1366,14 @@ app.post('/api/query/:table', async (req, res) => {
       
       if (!hasCompanyFilter) {
         // Adicionar filtro de company_id automaticamente
+        // os_items: incluir também registros com company_id NULL (itens antigos) para não perder itens ao faturar OS
+        const companyCondition = tableNameOnly.toLowerCase() === 'os_items'
+          ? `(${tableNameOnly}.company_id = $${finalParams.length + 1} OR ${tableNameOnly}.company_id IS NULL)`
+          : `${tableNameOnly}.company_id = $${finalParams.length + 1}`;
         if (finalWhereClause) {
-          finalWhereClause += ` AND ${tableNameOnly}.company_id = $${finalParams.length + 1}`;
+          finalWhereClause += ` AND ${companyCondition}`;
         } else {
-          finalWhereClause = `WHERE ${tableNameOnly}.company_id = $${finalParams.length + 1}`;
+          finalWhereClause = `WHERE ${companyCondition}`;
         }
         finalParams.push(req.companyId);
         console.log(`[Query] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
