@@ -1566,11 +1566,19 @@ app.post('/api/insert/:table', async (req, res) => {
       const saleId = rowsToInsert[0]?.sale_id;
       let isFaturamentoOS = false;
       if (saleId) {
-        const saleRow = await pool.query(
-          'SELECT ordem_servico_id FROM public.sales WHERE id = $1',
-          [saleId]
-        );
-        isFaturamentoOS = saleRow.rows.length > 0 && saleRow.rows[0].ordem_servico_id != null;
+        try {
+          const saleRow = await pool.query(
+            'SELECT ordem_servico_id FROM public.sales WHERE id = $1',
+            [saleId]
+          );
+          isFaturamentoOS = saleRow.rows.length > 0 && saleRow.rows[0].ordem_servico_id != null;
+        } catch (e) {
+          console.warn('[Insert] sale_items: erro ao checar sale ordem_servico_id:', e.message);
+        }
+      }
+      // Fallback: item com observação "OS #123" é faturamento de OS — não validar estoque
+      if (!isFaturamentoOS && rowsToInsert.some(r => (r?.observacao || '').match(/OS\s*#\s*\d+/))) {
+        isFaturamentoOS = true;
       }
       if (!isFaturamentoOS) {
         for (const row of rowsToInsert) {
