@@ -33,7 +33,7 @@ import {
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { useMarcasModelos } from '@/hooks/useAssistencia';
-import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
+import { StatusOS, STATUS_OS_LABELS, STATUS_OS_COLORS, getStatusOSLabel, getStatusOSColor } from '@/types/assistencia';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { EmptyState } from '@/components/EmptyState';
 import { cn } from '@/lib/utils';
@@ -144,8 +144,8 @@ const OSTableRow = memo(({
       
       {/* Status */}
       <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[160px]">
-        <Badge className={cn('text-xs text-white shadow-sm', STATUS_OS_COLORS[os.status as StatusOS] || 'bg-gray-500')}>
-          {STATUS_OS_LABELS[os.status as StatusOS] || os.status}
+        <Badge className={cn('text-xs text-white shadow-sm', getStatusOSColor(os.status))}>
+          {getStatusOSLabel(os.status)}
         </Badge>
       </td>
       
@@ -502,7 +502,7 @@ export default function OrdensServico() {
           switch (col.id) {
             case 'numero': row['Nº OS'] = os.numero; break;
             case 'situacao': row['Situação'] = os.situacao === 'fechada' ? 'Fechada' : os.situacao === 'cancelada' ? 'Cancelada' : 'Aberta'; break;
-            case 'status': row['Status'] = STATUS_OS_LABELS[os.status as StatusOS] || os.status; break;
+            case 'status': row['Status'] = getStatusOSLabel(os.status); break;
             case 'cliente': row['Cliente'] = cliente?.nome || os.cliente_nome || ''; break;
             case 'telefone': row['Telefone'] = os.telefone_contato || cliente?.telefone || ''; break;
             case 'aparelho': row['Aparelho'] = `${modelo?.nome || os.modelo_nome || ''} - ${marca?.nome || os.marca_nome || ''}`; break;
@@ -848,8 +848,8 @@ export default function OrdensServico() {
                             <div className="flex items-start justify-between border-b border-gray-200 pb-2">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-blue-600 text-lg">#{os.numero}</span>
-                                <Badge className={cn('text-xs text-white', STATUS_OS_COLORS[os.status as StatusOS])}>
-                                  {STATUS_OS_LABELS[os.status as StatusOS]}
+                                <Badge className={cn('text-xs text-white', getStatusOSColor(os.status))}>
+                                  {getStatusOSLabel(os.status)}
                                 </Badge>
                               </div>
                             </div>

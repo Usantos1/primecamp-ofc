@@ -58,6 +58,41 @@ export const STATUS_OS_COLORS: Record<StatusOS, string> = {
   cancelada: 'bg-gray-400',
 };
 
+/** Labels para status extras (fora do tipo StatusOS) usados no sistema */
+export const EXTRA_STATUS_OS_LABELS: Record<string, string> = {
+  entregue_faturada: 'Entregue e Faturada',
+  manutencao_finalizada: 'Manutenção Finalizada',
+  manutenção_finalizada: 'Manutenção Finalizada',
+};
+
+/** Cores para status extras */
+export const EXTRA_STATUS_OS_COLORS: Record<string, string> = {
+  entregue_faturada: 'bg-gray-500',
+  manutencao_finalizada: 'bg-gray-500',
+  manutenção_finalizada: 'bg-gray-500',
+};
+
+/** Retorna o label do status (sempre legível; fallback: formata o código) */
+export function getStatusOSLabel(status: string | undefined): string {
+  if (!status) return '-';
+  const s = status as StatusOS;
+  return (
+    STATUS_OS_LABELS[s] ??
+    EXTRA_STATUS_OS_LABELS[status] ??
+    status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  );
+}
+
+/** Retorna a cor do badge do status */
+export function getStatusOSColor(status: string | undefined): string {
+  if (!status) return 'bg-gray-500';
+  return (
+    STATUS_OS_COLORS[status as StatusOS] ??
+    EXTRA_STATUS_OS_COLORS[status] ??
+    'bg-gray-500'
+  );
+}
+
 // ==================== CONFIGURAÇÃO DE STATUS ====================
 
 export interface ConfiguracaoStatus {
