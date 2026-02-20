@@ -803,6 +803,8 @@ export function useSaleItems(saleId: string) {
   useEffect(() => {
     if (currentSaleId) {
       loadItems();
+    } else {
+      setItems([]);
     }
   }, [currentSaleId, loadItems]);
 
@@ -979,7 +981,11 @@ export function usePayments(saleId: string) {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadPayments = useCallback(async () => {
-    if (!saleId) return;
+    if (!saleId) {
+      setPayments([]);
+      setIsLoading(false);
+      return;
+    }
     
     try {
       setIsLoading(true);

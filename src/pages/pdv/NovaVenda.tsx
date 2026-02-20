@@ -2679,7 +2679,10 @@ _PrimeCamp Assistência Técnica_`;
                         className="w-full h-10 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                         onClick={() => {
                           limparPDV();
-                          navigate('/pdv');
+                          // Navegar no próximo tick para garantir que o estado foi limpo antes da troca de rota
+                          setTimeout(() => {
+                            navigate('/pdv', { replace: true });
+                          }, 0);
                         }}
                       >
                         Nova Venda
