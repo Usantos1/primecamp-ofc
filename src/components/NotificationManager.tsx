@@ -8,10 +8,6 @@ interface NotificationManagerProps {
 
 export function NotificationManager({ children }: NotificationManagerProps) {
   const { 
-    sendTaskNotification, 
-    sendCalendarNotification, 
-    sendTaskStatusNotification, 
-    sendProcessNotification, 
     sendJobCandidateNotification,
     sendDiscTestCompletedNotification,
     getUserPhoneByName 
@@ -45,7 +41,7 @@ export function NotificationManager({ children }: NotificationManagerProps) {
     // 🚫 TODAS AS SUBSCRIPTIONS DESABILITADAS - Supabase removido
     // Real-time não está disponível no PostgreSQL ainda
     // TODO: Implementar polling ou WebSockets quando necessário
-  }, [sendTaskNotification, sendCalendarNotification, sendTaskStatusNotification, sendProcessNotification, sendJobCandidateNotification, sendDiscTestCompletedNotification, getUserPhoneByName]);
+  }, [sendJobCandidateNotification, sendDiscTestCompletedNotification, getUserPhoneByName]);
 
   return <>{children}</>;
 }

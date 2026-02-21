@@ -3,15 +3,11 @@ import { AppSidebar } from "@/components/AppSidebar"
 import { AppBar } from "@/components/AppBar"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { Button } from "@/components/ui/button"
-import { Search, Bell, Settings } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Bell, Settings } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { NotificationPanel } from "./NotificationPanel"
 import { SettingsModal } from "./SettingsModal"
-import { useProcesses } from "@/hooks/useProcesses"
-import { useTasks } from "@/hooks/useTasks"
-import { useNavigate } from "react-router-dom"
 import { PermissionGate } from "./PermissionGate"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -20,71 +16,18 @@ interface ModernLayoutProps {
   title?: string
   subtitle?: string
   headerActions?: React.ReactNode
-  onSearch?: (term: string) => void
 }
 
-export function ModernLayout({ children, title, subtitle, headerActions, onSearch }: ModernLayoutProps) {
-  const [searchTerm, setSearchTerm] = useState('')
+export function ModernLayout({ children, title, subtitle, headerActions }: ModernLayoutProps) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [searchResults, setSearchResults] = useState<any[]>([])
   const [notificationCount, setNotificationCount] = useState(3)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const { processes } = useProcesses()
-  const { tasks } = useTasks()
   const { profile } = useAuth()
-  const navigate = useNavigate()
-  const searchRef = useRef<HTMLDivElement>(null)
 
-  // Atualizar relógio a cada minuto
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 60000) // Atualiza a cada 60 segundos
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000)
     return () => clearInterval(timer)
-  }, [])
-
-  const handleSearch = (value: string) => {
-    setSearchTerm(value)
-    onSearch?.(value)
-    
-    if (value.trim()) {
-      const processResults = processes.filter(p => 
-        p.name.toLowerCase().includes(value.toLowerCase()) ||
-        p.objective.toLowerCase().includes(value.toLowerCase())
-      ).map(p => ({ ...p, type: 'process' }))
-      
-      const taskResults = tasks.filter(t => 
-        t.name.toLowerCase().includes(value.toLowerCase()) ||
-        t.responsible_name?.toLowerCase().includes(value.toLowerCase())
-      ).map(t => ({ ...t, type: 'task' }))
-      
-      setSearchResults([...processResults, ...taskResults])
-    } else {
-      setSearchResults([])
-    }
-  }
-
-  const handleResultClick = (result: any) => {
-    if (result.type === 'process') {
-      navigate(`/processo/${result.id}`)
-    } else if (result.type === 'task') {
-      navigate('/tasks')
-    }
-    setSearchTerm('')
-    setSearchResults([])
-  }
-
-  // Close search results when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setSearchResults([])
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   return (

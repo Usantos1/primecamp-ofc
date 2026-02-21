@@ -69,46 +69,11 @@ export default function Admin() {
       color: "text-blue-600"
     },
     {
-      title: "Gestão de Departamentos",
-      description: "Organize a estrutura departamental",
-      icon: Building2,
-      path: "/admin/departments",
-      color: "text-green-600"
-    },
-    {
-      title: "Gestão de Categorias",
-      description: "Organize tarefas e processos com categorias",
-      icon: FolderOpen,
-      path: "/admin/categories",
-      color: "text-orange-600"
-    },
-    {
-      title: "Gestão de Tags",
-      description: "Crie e gerencie tags para classificação",
-      icon: Tag,
-      path: "/admin/tags",
-      color: "text-pink-600"
-    },
-    {
       title: "Gestão de Ponto",
       description: "Monitore registros de ponto dos funcionários",
       icon: Clock,
       path: "/admin/timeclock",
       color: "text-indigo-600"
-    },
-    {
-      title: "Gestão de Metas",
-      description: "Monitore metas de todos os usuários",
-      icon: Target,
-      path: "/admin/goals",
-      color: "text-red-600"
-    },
-    {
-      title: "Gestão de NPS",
-      description: "Gerencie pesquisas NPS e visualize resultados",
-      icon: TrendingUp,
-      path: "/admin/nps",
-      color: "text-emerald-600"
     },
     {
       title: "Gestão de Testes DISC",
@@ -201,12 +166,12 @@ export default function Admin() {
           
           <Card className="border-2 border-gray-300 border-l-4 border-l-red-500 shadow-sm hover:shadow-md transition-shadow bg-red-50/50 md:bg-transparent">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-2 md:pt-3 px-3 md:px-6">
-              <CardTitle className="text-[10px] md:text-sm font-medium text-red-700 md:text-foreground">Tarefas Pendentes</CardTitle>
+              <CardTitle className="text-[10px] md:text-sm font-medium text-red-700 md:text-foreground">Pendências</CardTitle>
               <Target className="h-3 w-3 md:h-4 md:w-4 text-red-600 md:text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
               <div className="text-base md:text-2xl font-bold text-red-700 md:text-foreground">-</div>
-              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Aguardando execução</p>
+              <p className="text-[10px] md:text-xs text-muted-foreground mt-1">Visão geral</p>
             </CardContent>
           </Card>
           

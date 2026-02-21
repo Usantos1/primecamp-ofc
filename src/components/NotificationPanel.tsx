@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Bell, X, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useTasks } from '@/hooks/useTasks';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Notification {
   id: string;
@@ -24,12 +22,9 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({ isOpen, onClose, onNotificationChange }: NotificationPanelProps) {
-  const { tasks } = useTasks();
-  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    // Try to load notifications from localStorage
     const savedNotifications = localStorage.getItem('notifications');
     let allNotifications: Notification[] = [];
 
@@ -41,62 +36,35 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
       }
     }
 
-    // Generate notifications from overdue tasks
-    const overdueTasks = tasks.filter(task => 
-      task.responsible_user_id === user?.id &&
-      new Date(task.deadline) < new Date() && 
-      task.status !== 'completed'
-    );
-
-    const taskNotifications: Notification[] = overdueTasks.map(task => {
-      const existingNotification = allNotifications.find(n => n.id === `overdue-${task.id}`);
-      return {
-        id: `overdue-${task.id}`,
-        type: 'task_overdue',
-        title: 'Tarefa em Atraso',
-        message: `A tarefa "${task.name}" está em atraso desde ${format(new Date(task.deadline), "dd/MM/yyyy", { locale: ptBR })}`,
-        timestamp: new Date(task.deadline),
-        read: existingNotification?.read || false
-      };
-    });
-
-    // Add some mock notifications only if they don't exist
     const systemNotifications: Notification[] = [];
-    
     if (!allNotifications.find(n => n.id === 'welcome')) {
       systemNotifications.push({
         id: 'welcome',
         type: 'info',
-        title: 'Bem-vindo ao ProcessFlow',
-        message: 'Sistema de gestão de processos está funcionando perfeitamente!',
+        title: 'Bem-vindo',
+        message: 'Sistema em funcionamento.',
         timestamp: new Date(),
         read: false
       });
     }
-
     if (!allNotifications.find(n => n.id === 'system-update')) {
       systemNotifications.push({
         id: 'system-update',
         type: 'info',
         title: 'Sistema Atualizado',
         message: 'Nova versão do sistema foi implantada com melhorias de performance.',
-        timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+        timestamp: new Date(Date.now() - 3600000),
         read: false
       });
     }
 
     const finalNotifications = [
-      ...taskNotifications,
       ...systemNotifications,
-      ...allNotifications.filter(n => 
-        !taskNotifications.find(tn => tn.id === n.id) && 
-        !systemNotifications.find(sn => sn.id === n.id)
-      )
+      ...allNotifications.filter(n => !systemNotifications.find(sn => sn.id === n.id))
     ];
-
     setNotifications(finalNotifications);
     localStorage.setItem('notifications', JSON.stringify(finalNotifications));
-  }, [tasks, user]);
+  }, []);
 
   // Update notification count when it changes
   useEffect(() => {

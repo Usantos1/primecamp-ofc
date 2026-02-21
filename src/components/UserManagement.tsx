@@ -16,7 +16,6 @@ import { Check, X, UserPlus, Mail, Calendar, Shield, User, Trash2, Edit, Plus, S
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useDepartments } from '@/hooks/useDepartments';
 import { usePositions, Position } from '@/hooks/usePositions';
-import { DepartmentManager } from '@/components/DepartmentManager';
 import { TeamPermissionsManager } from '@/components/TeamPermissionsManager';
 import { UserPermissionsManager } from '@/components/UserPermissionsManager';
 import { useAuth } from '@/contexts/AuthContext';
@@ -436,9 +435,6 @@ export const UserManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Department Management */}
-      <DepartmentManager />
-
       {/* Team Permissions Management */}
       <TeamPermissionsManager />
 

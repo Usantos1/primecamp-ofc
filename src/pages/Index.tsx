@@ -18,7 +18,8 @@ import { TrendCharts } from '@/components/dashboard/TrendCharts';
 import { DashboardPeriodFilter } from '@/components/dashboard/DashboardPeriodFilter';
 import { PresentationMode } from '@/components/dashboard/PresentationMode';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
-import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { useDelayedLoading } from '@/hooks/useDelayedLoading';
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton';
 import type { DashboardTrendData } from '@/hooks/useDashboardData';
 
 const Index = () => {
@@ -184,10 +185,17 @@ const Index = () => {
     .filter(w => w.enabled)
     .sort((a, b) => a.order - b.order);
 
-  if (authLoading || permissionsLoading || configLoading || dataLoading) {
+  const isLoading = authLoading || permissionsLoading || configLoading || dataLoading;
+  const showSkeleton = useDelayedLoading(isLoading, 200);
+
+  if (showSkeleton) {
+    return <DashboardSkeleton />;
+  }
+
+  if (isLoading) {
     return (
       <ModernLayout title="Dashboard" subtitle="Carregando...">
-        <LoadingSkeleton type="card" count={4} />
+        <div className="flex flex-col h-full min-h-[200px]" aria-hidden />
       </ModernLayout>
     );
   }

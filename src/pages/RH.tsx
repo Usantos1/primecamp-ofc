@@ -74,24 +74,6 @@ export default function RH() {
       color: 'text-blue-600',
       category: 'desenvolvimento',
     },
-    {
-      title: 'Metas',
-      description: 'Acompanhamento de metas e objetivos',
-      icon: Target,
-      path: '/metas',
-      color: 'text-orange-600',
-      category: 'desenvolvimento',
-    },
-    {
-      title: 'Feedback 1:1',
-      description: 'Registro de conversas e planos de desenvolvimento',
-      icon: MessageCircle,
-      path: '/tarefas',
-      color: 'text-cyan-700',
-      category: 'desenvolvimento',
-      badge: 'Em breve',
-    },
-    
     // Avaliação
     {
       title: 'Teste DISC',
@@ -102,15 +84,7 @@ export default function RH() {
       category: 'avaliacao',
     },
     {
-      title: 'NPS',
-      description: 'Pesquisas de satisfação e feedback interno',
-      icon: TrendingUp,
-      path: '/nps',
-      color: 'text-green-600',
-      category: 'avaliacao',
-    },
-    {
-      title: 'Avaliações DISC / NPS (Admin)',
+      title: 'Avaliações DISC (Admin)',
       description: 'Ferramentas administrativas de avaliação e clima',
       icon: FileText,
       path: '/admin/disc',
@@ -143,16 +117,6 @@ export default function RH() {
       color: 'text-indigo-700',
       category: 'gestao',
     },
-    {
-      title: 'Benefícios',
-      description: 'Gestão de benefícios e bem-estar',
-      icon: HeartPulse,
-      path: '/metricas',
-      color: 'text-rose-600',
-      category: 'gestao',
-      badge: 'Em breve',
-    },
-    
     // Compliance
     {
       title: 'Compliance / Documentos',
@@ -161,15 +125,6 @@ export default function RH() {
       path: '/admin/estrutura',
       color: 'text-slate-800',
       category: 'compliance',
-    },
-    {
-      title: 'Checklists de Onboarding',
-      description: 'Passos para entrada de novos colaboradores',
-      icon: BadgeCheck,
-      path: '/processos',
-      color: 'text-green-700',
-      category: 'compliance',
-      badge: 'Em breve',
     },
   ];
 

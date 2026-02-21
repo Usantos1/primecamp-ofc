@@ -151,95 +151,6 @@ export function useWhatsApp() {
     }
   };
 
-  const sendTaskNotification = async (task: any, userPhone?: string, responsibleName?: string) => {
-    console.log('useWhatsApp: Sending task notification', { task, userPhone, responsibleName });
-    if (!userPhone) {
-      console.log('No phone number provided for task notification');
-      return;
-    }
-
-    const statusLabels = {
-      'pending': 'Pendente',
-      'in_progress': 'Em Andamento', 
-      'completed': 'Concluída',
-      'delayed': 'Atrasada'
-    };
-
-    const message = `🔔 *Nova Tarefa Atribuída*\n\n📋 *Tarefa:* ${task.name}\n📊 *Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n📊 *Prioridade:* ${task.priority || 'Normal'}\n🔗 *Link:* ${APP_BASE_URL}/tarefas\n\nAcesse o sistema para mais detalhes!`;
-
-    await sendMessage({
-      number: userPhone,
-      body: message
-    });
-  };
-
-  const sendCalendarNotification = async (event: any, userPhone?: string) => {
-    if (!userPhone) {
-      console.log('No phone number provided for calendar notification');
-      return;
-    }
-
-    const message = `📅 *Novo Evento Agendado*\n\n📋 *Evento:* ${event.title}\n⏰ *Data/Hora:* ${new Date(event.start_time).toLocaleString('pt-BR')}\n📍 *Local:* ${event.location || 'Não informado'}\n🔗 *Link:* ${APP_BASE_URL}/calendario\n\nNão esqueça do seu compromisso!`;
-
-    await sendMessage({
-      number: userPhone,
-      body: message
-    });
-  };
-
-  const sendTaskStatusNotification = async (task: any, userPhone?: string, oldStatus?: string, responsibleName?: string) => {
-    console.log('useWhatsApp: Sending task status notification', { task, userPhone, oldStatus, responsibleName });
-    if (!userPhone) {
-      console.log('No phone number provided for task status notification');
-      return;
-    }
-
-    const statusLabels = {
-      'pending': 'Pendente',
-      'in_progress': 'Em Andamento',
-      'completed': 'Concluída',
-      'delayed': 'Atrasada'
-    };
-
-    const message = `🔄 *Status da Tarefa Atualizado*\n\n📋 *Tarefa:* ${task.name}\n📊 *Novo Status:* ${statusLabels[task.status] || task.status}\n👤 *Responsável:* ${responsibleName || 'Não definido'}\n⏰ *Prazo:* ${task.deadline ? new Date(task.deadline).toLocaleDateString('pt-BR') : 'Não definido'}\n🔗 *Link:* ${APP_BASE_URL}/tarefas\n\nVerifique os detalhes no sistema!`;
-
-    await sendMessage({
-      number: userPhone,
-      body: message
-    });
-  };
-
-  const sendProcessNotification = async (process: any, userPhone?: string, userName?: string) => {
-    console.log('🔥 useWhatsApp: Sending process notification', { process, userPhone, userName });
-    if (!userPhone) {
-      console.log('🔥 No phone number provided for process notification');
-      return;
-    }
-
-    console.log('🔥 Creating message for process:', process.name);
-    const message = `📋 *Novo Processo Criado*\n\n📋 *Processo:* ${process.name}\n📝 *Objetivo:* ${process.objective}\n🏢 *Departamento:* ${process.department}\n👤 *Proprietário:* ${process.owner}\n🔗 *Link:* ${APP_BASE_URL}/processos\n\nAcesse o sistema para mais detalhes!`;
-
-    console.log('🔥 Sending WhatsApp message:', { number: userPhone, message });
-    await sendMessage({
-      number: userPhone,
-      body: message
-    });
-  };
-
-  const sendNPSReminder = async (userPhone: string, userName: string) => {
-    if (!userPhone) {
-      console.log('No phone number provided for NPS reminder');
-      return;
-    }
-
-    const message = `🌟 *Lembrete NPS Diário*\n\nOlá ${userName}! 👋\n\nÉ hora de avaliar seu dia no trabalho.\n\nPor favor, acesse o sistema e responda nossa pesquisa NPS diária.\n\n🔗 *Link:* ${APP_BASE_URL}/nps\n\nSua opinião é muito importante para nós! 💙`;
-
-    await sendMessage({
-      number: userPhone,
-      body: message
-    });
-  };
-
   const sendJobCandidateNotification = async (candidate: any, surveyTitle: string, adminPhone: string) => {
     const message = `🎯 *Novo Candidato!*\n\n` +
       `📋 *Vaga:* ${surveyTitle}\n` +
@@ -294,11 +205,6 @@ export function useWhatsApp() {
 
   return {
     sendMessage,
-    sendTaskNotification,
-    sendCalendarNotification,
-    sendTaskStatusNotification,
-    sendProcessNotification,
-    sendNPSReminder,
     sendJobCandidateNotification,
     sendDiscTestCompletedNotification,
     getUserPhoneByName,

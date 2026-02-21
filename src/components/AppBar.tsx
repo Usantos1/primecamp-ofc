@@ -52,22 +52,7 @@ const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
   ],
   '/': [
     { label: 'Dashboard', icon: Home, path: '/' },
-    { label: 'Tarefas', icon: CheckSquare, path: '/tarefas' },
-    { label: 'Processos', icon: FileText, path: '/processos' },
-    { label: 'Calendário', icon: Calendar, path: '/calendario' },
-    { label: 'Metas', icon: Target, path: '/metas' },
-  ],
-  '/tarefas': [
-    { label: 'Dashboard', icon: Home, path: '/' },
-    { label: 'Tarefas', icon: CheckSquare, path: '/tarefas' },
-    { label: 'Processos', icon: FileText, path: '/processos' },
-    { label: 'Calendário', icon: Calendar, path: '/calendario' },
-  ],
-  '/processos': [
-    { label: 'Dashboard', icon: Home, path: '/' },
-    { label: 'Tarefas', icon: CheckSquare, path: '/tarefas' },
-    { label: 'Processos', icon: FileText, path: '/processos' },
-    { label: 'Calendário', icon: Calendar, path: '/calendario' },
+    { label: 'Relatórios', icon: BarChart3, path: '/relatorios' },
   ],
 };
 

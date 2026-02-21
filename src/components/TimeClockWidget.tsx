@@ -34,7 +34,6 @@ export const TimeClockWidget = () => {
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<string>('');
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
-  const [npsReminderOpen, setNpsReminderOpen] = useState(false);
   const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
   const [correctionData, setCorrectionData] = useState<CorrectionModalData | null>(null);
   const [correctionTime, setCorrectionTime] = useState('');
@@ -173,12 +172,7 @@ export const TimeClockWidget = () => {
           break;
       }
 
-      // Mostrar lembrete do NPS apenas para entrada (clock_in)
-      if (pendingAction === 'clock_in') {
-        setNpsReminderOpen(true);
-      } else {
-        setSuccessDialogOpen(true);
-      }
+      setSuccessDialogOpen(true);
     } catch (error) {
       console.error('Erro ao executar ação:', error);
       toast({
@@ -635,64 +629,6 @@ export const TimeClockWidget = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Lembrete NPS */}
-      <Dialog open={npsReminderOpen} onOpenChange={setNpsReminderOpen}>
-        <DialogContent className="sm:max-w-[500px] mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-center flex items-center justify-center gap-2 text-xl">
-              <div className="relative">
-                <Star className="h-8 w-8 text-yellow-500 animate-pulse" />
-                <Star className="h-6 w-6 text-orange-500 absolute top-1 left-1 animate-bounce" />
-              </div>
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                🌟 Momento NPS! 🌟
-              </span>
-            </DialogTitle>
-            <DialogDescription className="text-center space-y-3">
-              <div className="text-lg font-semibold text-foreground">
-                ✨ Bom dia, {profile?.display_name || user?.email || 'Usuário'}! ✨
-              </div>
-              <div className="text-base text-muted-foreground">
-                Você acabou de bater o ponto de <strong>ENTRADA</strong>!
-              </div>
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200">
-                <div className="text-sm font-medium text-blue-800 mb-2">
-                  🚀 <strong>SUPER IMPORTANTE!</strong> 🚀
-                </div>
-                <div className="text-sm text-blue-700 space-y-1">
-                  <p>• <strong>Seu feedback é ESSENCIAL</strong> para nosso crescimento</p>
-                  <p>• <strong>Leva apenas 30 segundos</strong> para responder</p>
-                  <p>• <strong>Ajuda a melhorar</strong> o ambiente de trabalho</p>
-                  <p>• <strong>Sua opinião</strong> realmente importa! 💪</p>
-                </div>
-              </div>
-              <div className="text-sm text-orange-600 font-medium">
-                ⏰ <strong>Responda AGORA</strong> e começe o dia contribuindo com nosso time!
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 mt-6">
-            <Button 
-              variant="outline" 
-              onClick={() => setNpsReminderOpen(false)} 
-              className="flex-1"
-            >
-              Lembrar mais tarde
-            </Button>
-            <Button 
-              onClick={() => {
-                setNpsReminderOpen(false);
-                navigate('/nps');
-              }} 
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
-              size="lg"
-            >
-              <Star className="mr-2 h-5 w-5" />
-              Responder NPS Agora! 🎯
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

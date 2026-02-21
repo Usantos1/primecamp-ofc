@@ -57,6 +57,15 @@ export interface DashboardTrendData {
 const DASHBOARD_PERIOD_STORAGE_KEY = 'primecamp_dashboard_trend_period';
 const DASHBOARD_CUSTOM_RANGE_KEY = 'primecamp_dashboard_custom_range';
 
+/** Cache em memória: dados antigos para exibir imediatamente ao voltar ao Dashboard e refresh em background */
+interface DashboardCache {
+  financialData: DashboardFinancialData | null;
+  osData: DashboardOSData | null;
+  alerts: DashboardAlerts | null;
+  trendData: DashboardTrendData[];
+}
+let dashboardCache: DashboardCache | null = null;
+
 function getStoredTrendPeriod(): TrendPeriod {
   try {
     const v = localStorage.getItem(DASHBOARD_PERIOD_STORAGE_KEY);
@@ -76,13 +85,13 @@ function getStoredCustomRange(): CustomDateRange | null {
 }
 
 export function useDashboardData() {
-  const [financialData, setFinancialData] = useState<DashboardFinancialData | null>(null);
-  const [osData, setOsData] = useState<DashboardOSData | null>(null);
-  const [alerts, setAlerts] = useState<DashboardAlerts | null>(null);
-  const [trendData, setTrendData] = useState<DashboardTrendData[]>([]);
+  const [financialData, setFinancialData] = useState<DashboardFinancialData | null>(() => dashboardCache?.financialData ?? null);
+  const [osData, setOsData] = useState<DashboardOSData | null>(() => dashboardCache?.osData ?? null);
+  const [alerts, setAlerts] = useState<DashboardAlerts | null>(() => dashboardCache?.alerts ?? null);
+  const [trendData, setTrendData] = useState<DashboardTrendData[]>(() => dashboardCache?.trendData ?? []);
   const [trendPeriod, setTrendPeriodState] = useState<TrendPeriod>(getStoredTrendPeriod);
   const [customDateRange, setCustomDateRangeState] = useState<CustomDateRange | null>(getStoredCustomRange);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !dashboardCache);
   const periodChangeCount = useRef(0);
 
   const setTrendPeriod = useCallback((period: TrendPeriod, customRange?: CustomDateRange) => {
@@ -98,9 +107,9 @@ export function useDashboardData() {
     } catch {}
   }, []);
 
-  const loadDashboardData = useCallback(async (period: TrendPeriod) => {
+  const loadDashboardData = useCallback(async (period: TrendPeriod, backgroundRefresh = false) => {
     try {
-      setLoading(true);
+      if (!backgroundRefresh) setLoading(true);
       await loadFinancialData();
       await loadOSData();
       await loadAlerts();
@@ -113,7 +122,7 @@ export function useDashboardData() {
   }, []);
 
   useEffect(() => {
-    loadDashboardData(trendPeriod);
+    loadDashboardData(trendPeriod, !!dashboardCache);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- carregamento inicial apenas uma vez
   }, []);
 
@@ -127,7 +136,6 @@ export function useDashboardData() {
   }, [trendPeriod]);
 
   const refetch = useCallback(async () => {
-    setLoading(true);
     try {
       await loadFinancialData();
       await loadOSData();
@@ -135,8 +143,6 @@ export function useDashboardData() {
       await loadTrendData(trendPeriod);
     } catch (error) {
       console.error('Erro ao atualizar dashboard:', error);
-    } finally {
-      setLoading(false);
     }
   }, [trendPeriod]);
 
@@ -222,14 +228,16 @@ export function useDashboardData() {
         ? (caixaSession.valor_inicial || 0) + (caixaSession.total_entradas || 0) - (caixaSession.total_saidas || 0)
         : 0;
 
-      setFinancialData({
+      const data = {
         faturamentoDia,
         faturamentoMes,
         ticketMedio,
         totalCaixa,
         vendasHoje,
         vendasMes: vendasMesCount,
-      });
+      };
+      setFinancialData(data);
+      dashboardCache = { ...(dashboardCache ?? { financialData: null, osData: null, alerts: null, trendData: [] }), financialData: data };
     } catch (error) {
       console.error('Erro ao carregar dados financeiros:', error);
     }
@@ -273,6 +281,7 @@ export function useDashboardData() {
       });
 
       setOsData(stats);
+      dashboardCache = { ...(dashboardCache ?? { financialData: null, osData: null, alerts: null, trendData: [] }), osData: stats };
     } catch (error) {
       console.error('Erro ao carregar dados de OS:', error);
     }
@@ -310,12 +319,14 @@ export function useDashboardData() {
         .lt('updated_at', seteDiasAtras.toISOString())
         .execute();
 
-      setAlerts({
+      const data = {
         osParadas: osParadas?.length || 0,
         estoqueBaixo: produtosBaixoEstoque?.length || 0,
         caixaAberto: !!caixaAberto,
         osSemAtualizacao: osSemAtualizacao?.length || 0,
-      });
+      };
+      setAlerts(data);
+      dashboardCache = { ...(dashboardCache ?? { financialData: null, osData: null, alerts: null, trendData: [] }), alerts: data };
     } catch (error) {
       console.error('Erro ao carregar alertas:', error);
     }
@@ -428,6 +439,7 @@ export function useDashboardData() {
       const isMonthAggregate = period === 'year';
       const trends = await Promise.all(items.map((item) => fetchPoint(item as { date: string; dateISO: string; isWeek?: boolean }, isMonthAggregate)));
       setTrendData(trends);
+      dashboardCache = { ...(dashboardCache ?? { financialData: null, osData: null, alerts: null, trendData: [] }), trendData: trends };
     } catch (error) {
       console.error('Erro ao carregar dados de tendência:', error);
     }

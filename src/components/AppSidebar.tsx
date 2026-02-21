@@ -152,10 +152,8 @@ export function AppSidebar() {
   // GESTÃO - RH, Metas, Treinamentos
   // ═══════════════════════════════════════════════════════════════
   const gestaoItems = [
-    { label: "Metas", path: "/metas", icon: Target, permission: "metas.view" },
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
-    { label: "NPS", path: "/nps", icon: Star, permission: "nps.view" },
     { label: "Academy", path: "/treinamentos", icon: GraduationCap, permission: "treinamentos.view" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 

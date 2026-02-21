@@ -15,37 +15,21 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import DashboardGestao from "./pages/DashboardGestao";
 import Auth from "./pages/Auth";
-import ProcessView from "./pages/ProcessView";
-import ProcessEdit from "./pages/ProcessEdit";
-import ProcessCreate from "./pages/ProcessCreate";
 import Admin from "./pages/Admin";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
-import Tasks from "./pages/Tasks";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
-import Processes from "./pages/Processes";
-import Calendar from "./pages/Calendar";
 import Integration from "./pages/Integration";
 import UserProfile from "./pages/UserProfile";
-import Goals from "./pages/Goals";
 import TimeClock from "./pages/TimeClock";
 import UserLogs from "./pages/UserLogs";
-import NPS from "./pages/NPS";
-import Productivity from "./pages/Productivity";
-import ProcessAnalytics from "./pages/ProcessAnalytics";
-import ResetPassword from "./pages/ResetPassword";
 import DiscTest from "./pages/DiscTest";
 // TestAuth será definido inline abaixo
 import CandidateDisc from "./pages/CandidateDisc";
 import CandidateDiscResult from "./pages/CandidateDiscResult";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminDepartments from "./pages/admin/AdminDepartments";
-import AdminCategories from "./pages/admin/AdminCategories";
-import AdminTags from "./pages/admin/AdminTags";
 import AdminTimeClock from "./pages/admin/AdminTimeClock";
-import AdminGoals from "./pages/admin/AdminGoals";
-import AdminNPS from "./pages/admin/AdminNPS";
 import AdminDisc from "./pages/admin/AdminDisc";
 import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
 import FinanceiroCaixaPage from "./pages/financeiro/FinanceiroCaixaPage";
@@ -122,7 +106,28 @@ const App = () => (
             {/* Rotas públicas de autenticação */}
             <Route path="/login" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+            {/* Rotas removidas -> 404 */}
+            <Route path="/reset-password" element={<NotFound />} />
+            <Route path="/reset-senha" element={<NotFound />} />
+            <Route path="/recuperar-acesso" element={<NotFound />} />
+            <Route path="/process-analytics" element={<NotFound />} />
+            <Route path="/processos" element={<NotFound />} />
+            <Route path="/processos/*" element={<NotFound />} />
+            <Route path="/processo/:processId" element={<NotFound />} />
+            <Route path="/processo/:processId/edit" element={<NotFound />} />
+            <Route path="/tarefas" element={<NotFound />} />
+            <Route path="/tarefas/*" element={<NotFound />} />
+            <Route path="/calendario" element={<NotFound />} />
+            <Route path="/nps" element={<NotFound />} />
+            <Route path="/admin/nps" element={<NotFound />} />
+            <Route path="/metas" element={<NotFound />} />
+            <Route path="/metricas" element={<NotFound />} />
+            <Route path="/admin/categories" element={<NotFound />} />
+            <Route path="/admin/tags" element={<NotFound />} />
+            <Route path="/admin/departments" element={<NotFound />} />
+            <Route path="/notifications" element={<NotFound />} />
+            <Route path="/search" element={<NotFound />} />
+            <Route path="/productivity" element={<NotFound />} />
             {/* Rota de teste - DEVE estar antes do catch-all */}
             <Route path="/test-auth" element={
               <div style={{ padding: '50px', textAlign: 'center' }}>
@@ -143,28 +148,11 @@ const App = () => (
                 element={<ProtectedRoute><Index /></ProtectedRoute>} 
               />
               <Route path="/gestao" element={<PermissionRoute permission="dashboard.gestao"><DashboardGestao /></PermissionRoute>} />
-              <Route path="/processos" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />
-              <Route path="/processos/*" element={<PermissionRoute permission="processos.view"><Processes /></PermissionRoute>} />
-              <Route path="/tarefas" element={<PermissionRoute permission="tarefas.view"><Tasks /></PermissionRoute>} />
-              <Route path="/tarefas/*" element={<PermissionRoute permission="tarefas.view"><Tasks /></PermissionRoute>} />
-              <Route path="/calendario" element={<PermissionRoute permission="calendario.view"><Calendar /></PermissionRoute>} />
-              <Route path="/metricas" element={<PermissionRoute permission="metricas.view"><Reports /></PermissionRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-              <Route path="/search" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />
-              <Route path="/notifications" element={<PermissionRoute permission="dashboard.view"><Index /></PermissionRoute>} />
               <Route path="/pending-approval" element={<ProtectedRoute><PendingApproval /></ProtectedRoute>} />
-              <Route path="/processo/:processId" element={<PermissionRoute permission="processos.view"><ProcessView /></PermissionRoute>} />
-              <Route path="/processo/:processId/edit" element={<PermissionRoute permission="processos.edit"><ProcessEdit /></PermissionRoute>} />
-              <Route path="/processos/novo" element={<PermissionRoute permission="processos.create"><ProcessCreate /></PermissionRoute>} />
-              <Route path="/processos/criar" element={<PermissionRoute permission="processos.create"><ProcessCreate /></PermissionRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/admin/users" element={<PermissionRoute permission="admin.users"><AdminUsers /></PermissionRoute>} />
-              <Route path="/admin/departments" element={<PermissionRoute permission="admin.departments"><AdminDepartments /></PermissionRoute>} />
-              <Route path="/admin/categories" element={<PermissionRoute permission="admin.config"><AdminCategories /></PermissionRoute>} />
-              <Route path="/admin/tags" element={<PermissionRoute permission="admin.config"><AdminTags /></PermissionRoute>} />
               <Route path="/admin/timeclock" element={<PermissionRoute permission="admin.timeclock"><AdminTimeClock /></PermissionRoute>} />
-              <Route path="/admin/goals" element={<PermissionRoute permission="rh.metas"><AdminGoals /></PermissionRoute>} />
-              <Route path="/admin/nps" element={<PermissionRoute permission="admin.nps"><AdminNPS /></PermissionRoute>} />
               <Route path="/admin/disc" element={<PermissionRoute permission="admin.disc"><AdminDisc /></PermissionRoute>} />
               <Route path="/admin/financeiro/*" element={<PermissionRoute permission="relatorios.financeiro"><AdminFinanceiro /></PermissionRoute>} />
               <Route path="/admin/revenda" element={<ProtectedRoute><AdminReseller /></ProtectedRoute>} />
@@ -194,18 +182,14 @@ const App = () => (
               <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-            <Route path="/metas" element={<PermissionRoute permission="rh.metas"><Goals /></PermissionRoute>} />
             <Route path="/ponto" element={<PermissionRoute permission="rh.ponto"><TimeClock /></PermissionRoute>} />
             <Route path="/treinamentos" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />
             <Route path="/treinamentos/:trainingId" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />
             <Route path="/logs" element={<ProtectedRoute><UserLogs /></ProtectedRoute>} />
-            <Route path="/nps" element={<PermissionRoute permission="nps.view"><NPS /></PermissionRoute>} />
             <Route path="/teste-disc" element={<PermissionRoute permission="disc.view"><DiscTest /></PermissionRoute>} />
               <Route path="/produtos" element={<PermissionRoute permission="produtos.view"><AssistenciaProdutos /></PermissionRoute>} />
               <Route path="/pedidos" element={<PermissionRoute permission="produtos.view"><Pedidos /></PermissionRoute>} />
               <Route path="/inventario" element={<PermissionRoute permission="produtos.view"><Inventario /></PermissionRoute>} />
-            <Route path="/productivity" element={<ProtectedRoute><Productivity /></ProtectedRoute>} />
-            <Route path="/process-analytics" element={<ProtectedRoute><ProcessAnalytics /></ProtectedRoute>} />
               
               {/* PDV - Frente de Caixa */}
               <Route path="/pdv" element={<PermissionRoute permission="vendas.create"><NovaVenda /></PermissionRoute>} />

@@ -38,13 +38,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'produtos.view', 'produtos.create', 'produtos.edit',
     'clientes.view', 'clientes.create', 'clientes.edit',
     'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
-    'rh.view', 'rh.metas', 'rh.ponto',
-    'processos.view', 'processos.create', 'processos.edit',
-    'tarefas.view', 'tarefas.create', 'tarefas.edit',
-    'calendario.view',
-    'metricas.view',
-    'nps.view',
-    'admin.users', // Pode gerenciar usuários da equipe
+    'rh.view', 'rh.ponto',
+    'admin.users',
   ],
   
   // SUPERVISOR - Supervisão de equipe e operações
@@ -57,10 +52,6 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'clientes.view', 'clientes.create', 'clientes.edit',
     'relatorios.vendas',
     'rh.view', 'rh.ponto',
-    'processos.view',
-    'tarefas.view', 'tarefas.create',
-    'calendario.view',
-    'metricas.view',
   ],
   
   // VENDEDOR - Vendas e atendimento
@@ -71,9 +62,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'os.view', 'os.create',
     'produtos.view',
     'clientes.view', 'clientes.create',
-    'calendario.view',
     'rh.ponto',
-    'nps.view',
   ],
   
   // OPERADOR DE CAIXA - Apenas caixa e PDV
@@ -100,7 +89,6 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'vendas.view',
     'caixa.view',
     'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
-    'metricas.view',
     'clientes.view',
     'rh.ponto',
   ],
@@ -108,12 +96,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   // ATENDENTE - Atendimento e vendas (sem acesso financeiro)
   atendente: [
     'dashboard.view',
-    'vendas.view', 'vendas.create', // PDV e vendas
-    'caixa.view', // Ver caixa (mas não gerenciar)
+    'vendas.view', 'vendas.create',
+    'caixa.view',
     'clientes.view', 'clientes.create',
     'os.view', 'os.create',
     'produtos.view',
-    'calendario.view',
     'rh.ponto',
   ],
   

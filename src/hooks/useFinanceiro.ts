@@ -131,7 +131,8 @@ export function useDashboardExecutivo(startDate?: string, endDate?: string) {
       return data;
     },
     enabled: !!user,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000, // 5 min – evita refetch excessivo; refresh manual ainda funciona
+    placeholderData: (previousData) => previousData, // mantém dados anteriores ao recarregar (sem piscar)
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
