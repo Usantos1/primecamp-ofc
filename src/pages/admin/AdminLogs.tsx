@@ -5,7 +5,7 @@ export default function AdminLogs() {
   return (
     <ModernLayout
       title="Logs do Sistema"
-      subtitle="Visualize e monitore atividades do sistema"
+      subtitle="Vendas, produtos, OS, cancelamentos, exclusões, caixa, ponto e mais — tudo em um só lugar"
     >
       <AdminLogsManager />
     </ModernLayout>

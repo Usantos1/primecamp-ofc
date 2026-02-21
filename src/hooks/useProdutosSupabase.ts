@@ -225,7 +225,6 @@ export function useProdutosSupabase() {
 
   // Criar produto
   const createProduto = useCallback(async (data: Partial<Produto>): Promise<Produto> => {
-    const { user } = useAuth();
     if (!user) throw new Error('Usuário não autenticado');
 
     const produtoSupabase = mapAssistenciaToSupabase(data);
@@ -248,6 +247,24 @@ export function useProdutosSupabase() {
       throw error;
     }
 
+    const created = mapSupabaseToAssistencia(novoProduto?.data || novoProduto);
+    try {
+      await from('audit_logs').insert({
+        user_id: user.id,
+        user_nome: profile?.display_name || user.email || 'Usuário',
+        user_email: user.email,
+        acao: 'create',
+        entidade: 'produto',
+        entidade_id: created?.id,
+        dados_anteriores: null,
+        dados_novos: { nome: created?.nome, codigo: created?.codigo },
+        descricao: `Produto criado: ${created?.nome || ''}`,
+        user_agent: navigator.userAgent,
+      }).execute();
+    } catch (e) {
+      console.warn('Erro ao registrar log de auditoria (produto):', e);
+    }
+
     queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
     
     toast({
@@ -255,8 +272,8 @@ export function useProdutosSupabase() {
       description: 'Produto criado com sucesso!',
     });
 
-    return mapSupabaseToAssistencia(novoProduto?.data || novoProduto);
-  }, [queryClient]);
+    return created;
+  }, [queryClient, user, profile]);
 
   // Atualizar produto
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
@@ -287,6 +304,23 @@ export function useProdutosSupabase() {
         variant: 'destructive',
       });
       throw error;
+    }
+
+    try {
+      await from('audit_logs').insert({
+        user_id: user?.id,
+        user_nome: profile?.display_name || user?.email || 'Usuário',
+        user_email: user?.email,
+        acao: 'update',
+        entidade: 'produto',
+        entidade_id: id,
+        dados_anteriores: oldRow || null,
+        dados_novos: data,
+        descricao: `Produto atualizado: ${(oldRow as any)?.nome || id}`,
+        user_agent: navigator.userAgent,
+      }).execute();
+    } catch (e) {
+      console.warn('Erro ao registrar log de auditoria (produto):', e);
     }
 
     queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
@@ -368,7 +402,7 @@ export function useProdutosSupabase() {
 
   // Deletar produto (soft delete - marcar como inativo)
   const deleteProduto = useCallback(async (id: string) => {
-    // Marcar como INATIVO usando o campo situacao
+    const { data: oldRow } = await from('produtos').select('id, nome').eq('id', id).single().execute();
     const { error } = await from('produtos')
       .eq('id', id)
       .update({ situacao: 'INATIVO' });
@@ -382,13 +416,32 @@ export function useProdutosSupabase() {
       throw error;
     }
 
+    if (user) {
+      try {
+        await from('audit_logs').insert({
+          user_id: user.id,
+          user_nome: profile?.display_name || user.email || 'Usuário',
+          user_email: user.email,
+          acao: 'delete',
+          entidade: 'produto',
+          entidade_id: id,
+          dados_anteriores: oldRow || null,
+          dados_novos: null,
+          descricao: `Produto excluído (inativo): ${(oldRow as any)?.nome || id}`,
+          user_agent: navigator.userAgent,
+        }).execute();
+      } catch (e) {
+        console.warn('Erro ao registrar log de auditoria (produto):', e);
+      }
+    }
+
     queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
     
     toast({
       title: 'Sucesso',
       description: 'Produto deletado com sucesso!',
     });
-  }, [queryClient]);
+  }, [queryClient, user, profile]);
 
   // Grupos (mock - não temos grupos no Supabase ainda)
   const grupos = useMemo(() => [], []);
