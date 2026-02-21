@@ -723,6 +723,47 @@ app.get('/api/public/acompanhar-os/:id', async (req, res) => {
   }
 });
 
+// Segunda via do cupom (público - usado pelo QR code). Não exige autenticação.
+app.get('/api/public/cupom/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'ID do cupom é obrigatório' });
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const saleResult = await pool.query(
+      `SELECT id, numero, status, created_at, subtotal, total, desconto_total,
+              cliente_nome, cliente_cpf_cnpj, cliente_telefone, observacoes, ordem_servico_id
+       FROM public.sales WHERE ${isUUID ? 'id = $1' : 'numero = $1'} LIMIT 1`,
+      [isUUID ? id : parseInt(id, 10)]
+    );
+    if (saleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Cupom não encontrado' });
+    }
+    const sale = saleResult.rows[0];
+    const saleId = sale.id;
+    const [itemsResult, paymentsResult] = await Promise.all([
+      pool.query(
+        `SELECT si.id, si.produto_id, si.produto_nome, si.produto_codigo, si.produto_codigo_barras,
+                si.quantidade, si.valor_unitario, si.desconto, si.valor_total
+         FROM public.sale_items si WHERE si.sale_id = $1 ORDER BY si.created_at`,
+        [saleId]
+      ),
+      pool.query(
+        `SELECT forma_pagamento, valor, troco, parcelas, status
+         FROM public.payments WHERE sale_id = $1 AND status = 'confirmed' ORDER BY created_at`,
+        [saleId]
+      )
+    ]);
+    res.json({
+      sale,
+      items: itemsResult.rows,
+      payments: paymentsResult.rows,
+    });
+  } catch (error) {
+    console.error('[Public] Erro ao consultar cupom:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // ENDPOINTS DE CANDIDATURA (Functions - Público)
 // ============================================

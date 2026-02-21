@@ -1207,22 +1207,23 @@ export default function NovaVenda() {
         
         // Aguardar um pouco para garantir que os dados estão atualizados, imprimir e limpar PDV
         setTimeout(async () => {
-          const finalizedSale = await getSaleById(id);
-          if (finalizedSale?.items?.length && finalizedSale?.payments?.length) {
-            try {
-              await handlePrintCupomDirect(finalizedSale);
-            } catch (printError) {
-              console.error('Erro ao imprimir após finalizar:', printError);
+          try {
+            const finalizedSale = await getSaleById(id);
+            if (finalizedSale?.items?.length && finalizedSale?.payments?.length) {
+              try {
+                await handlePrintCupomDirect(finalizedSale);
+              } catch (printError) {
+                console.error('Erro ao imprimir após finalizar:', printError);
+              }
+            } else {
+              console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos', { id: finalizedSale?.id });
             }
-          } else {
-            console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos', { id: finalizedSale?.id });
-          }
-          // Limpar estado e ir para PDV vazio (ordem: limpar primeiro, depois navegar)
-          limparPDV();
-          setTimeout(() => {
+          } finally {
+            // Sempre ir para PDV vazio e limpar (mesmo se impressão falhar)
             navigate('/pdv', { replace: true });
+            limparPDV();
             toast({ title: 'PDV limpo. Pronto para nova venda!' });
-          }, 50);
+          }
         }, 800);
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);

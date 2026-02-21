@@ -92,74 +92,41 @@ export default function CupomView() {
     try {
       setLoading(true);
 
-      // Tentar por ID (UUID) primeiro
-      let saleData: any = null;
-      let saleError: any = null;
-      const byId = await from('sales')
-        .select('*')
-        .eq('id', id)
-        .single()
-        .execute();
-      saleData = byId.data;
-      saleError = byId.error;
-
-      // Se não encontrou e o id parece número (link compartilhado com número da venda), buscar por numero
-      const idAsNum = id ? parseInt(id, 10) : NaN;
-      if ((saleError || !saleData) && !isNaN(idAsNum) && String(idAsNum) === id) {
-        const byNumero = await from('sales')
-          .select('*')
-          .eq('numero', idAsNum)
-          .maybeSingle()
-          .execute();
-        if (byNumero.data) {
-          saleData = byNumero.data;
-          saleError = null;
+      // API pública: funciona sem login (QR code no cupom / celular do cliente)
+      const apiBase = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const res = await fetch(`${apiBase}/public/cupom/${id}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setSale(null);
+          setItems([]);
+          setPayments([]);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Erro ${res.status}`);
         }
-      }
-
-      if (saleError) throw saleError;
-      setSale(saleData);
-
-      const saleId = saleData?.id;
-      if (!saleId) {
-        setLoading(false);
         return;
       }
+      const data = await res.json();
+      setSale(data.sale);
+      setItems(data.items || []);
+      setPayments(data.payments || []);
 
-      // Carregar items
-      const { data: itemsData, error: itemsError } = await from('sale_items')
-        .select('*')
-        .eq('sale_id', saleId)
-        .execute();
-      
-      if (itemsError) throw itemsError;
-      setItems(itemsData || []);
-      
-      // Carregar payments
-      const { data: paymentsData, error: paymentsError } = await from('payments')
-        .select('*')
-        .eq('sale_id', saleId)
-        .execute();
-      
-      if (paymentsError) throw paymentsError;
-      setPayments(paymentsData || []);
-      
-      // Carregar configuração do cupom (pode falhar se não houver, mas não é crítico)
+      // Config do cupom (só com login; falha silenciosa para quem abre pelo QR)
       try {
         const { data: configData } = await from('kv_store_2c4defad')
           .select('value')
           .eq('key', 'cupom_config')
           .single()
           .execute();
-        
-        if (configData) {
-          setCupomConfig(configData.value);
-        }
-      } catch (configError) {
-        console.warn('Não foi possível carregar configuração do cupom:', configError);
+        if (configData) setCupomConfig(configData.value);
+      } catch {
+        setCupomConfig(null);
       }
     } catch (error) {
-      console.error('Erro ao carregar venda:', error);
+      console.error('Erro ao carregar cupom:', error);
+      setSale(null);
+      setItems([]);
+      setPayments([]);
     } finally {
       setLoading(false);
     }
@@ -293,7 +260,7 @@ export default function CupomView() {
             <CardContent className="p-6 md:p-8">
               <div className="text-center">
                 <p className="text-sm md:text-base text-muted-foreground">
-                  Cupom não encontrado ou você não tem permissão para visualizá-lo.
+                  Cupom não encontrado. Verifique o link ou o número do pedido.
                 </p>
               </div>
             </CardContent>
