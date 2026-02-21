@@ -2246,14 +2246,6 @@ _PrimeCamp Assistência Técnica_`;
     <ModernLayout 
       title={isEditing ? `Venda #${sale?.numero || ''}` : 'Nova Venda'}
       subtitle={isEditing ? 'Editar venda' : 'Criar nova venda'}
-      headerActions={!isEditing && (hasPermission('vendas.create') || hasPermission('vendas.view')) ? (
-        <Button variant="ghost" size="sm" asChild className="gap-1.5 text-muted-foreground hover:text-foreground">
-          <Link to="/pdv/configuracao-cupom">
-            <Printer className="h-4 w-4" />
-            <span className="hidden sm:inline">Configurar impressão</span>
-          </Link>
-        </Button>
-      ) : undefined}
     >
       <div className="space-y-3 md:space-y-4">
         {/* Header minimalista */}
@@ -2846,25 +2838,27 @@ _PrimeCamp Assistência Técnica_`;
                       />
                     </div>
 
-                    {/* Links secundários */}
-                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs">
+                    {/* Links secundários - Importar OS e Vendas em destaque */}
+                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 flex-wrap">
                       {!isEditing && !sale?.ordem_servico_id && cart.length === 0 ? (
                         <button
-                          className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-600 transition-colors"
+                          type="button"
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50 hover:border-violet-400 dark:hover:border-violet-500 transition-all font-medium text-sm shadow-sm"
                           onClick={handleOpenFaturarOSModal}
                         >
-                          <Wrench className="h-3.5 w-3.5" />
+                          <Wrench className="h-4 w-4" />
                           Importar OS
-                          <kbd className="px-1 py-0.5 text-[9px] bg-gray-100 dark:bg-gray-800 rounded">F6</kbd>
+                          <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-violet-200 dark:bg-violet-800 border border-violet-300 dark:border-violet-600 rounded text-violet-800 dark:text-violet-200">F6</kbd>
                         </button>
                       ) : (
                         <span></span>
                       )}
                       <button
-                        className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-600 transition-colors"
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:border-blue-400 dark:hover:border-blue-500 transition-all font-medium text-sm shadow-sm"
                         onClick={() => navigate('/pdv/vendas')}
                       >
-                        <BarChart3 className="h-3.5 w-3.5" />
+                        <BarChart3 className="h-4 w-4" />
                         {isAdmin ? 'Vendas' : 'Minhas vendas'}
                       </button>
                     </div>
@@ -2892,8 +2886,8 @@ _PrimeCamp Assistência Técnica_`;
                 <kbd className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 rounded text-xs font-mono text-emerald-700 dark:text-emerald-300 shadow-sm">F4</kbd>
                 <span className="font-medium">Finalizar</span>
               </span>
-              <span className="flex items-center gap-1.5">
-                <kbd className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-xs font-mono shadow-sm">F6</kbd>
+              <span className="flex items-center gap-1.5 font-medium text-violet-700 dark:text-violet-300">
+                <kbd className="px-2 py-1 bg-violet-100 dark:bg-violet-900 border border-violet-300 dark:border-violet-700 rounded text-xs font-mono text-violet-800 dark:text-violet-200 shadow-sm">F6</kbd>
                 <span>Importar OS</span>
               </span>
               <span className="flex items-center gap-1.5">
@@ -2901,8 +2895,16 @@ _PrimeCamp Assistência Técnica_`;
                 <span>Fechar</span>
               </span>
             </div>
-            {/* Botão Abrir/Fechar Caixa */}
+            {/* Configurar impressão + Abrir/Fechar Caixa */}
             <div className="flex items-center gap-4 text-sm">
+              {!isEditing && (hasPermission('vendas.create') || hasPermission('vendas.view')) && (
+                <Button variant="outline" size="sm" asChild className="gap-1.5">
+                  <Link to="/pdv/configuracao-cupom">
+                    <Printer className="h-4 w-4" />
+                    Configurar impressão
+                  </Link>
+                </Button>
+              )}
               {cashSession && cashSession.status === 'open' ? (
                 <Button
                   type="button"
