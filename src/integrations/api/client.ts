@@ -3,7 +3,10 @@
  * 
  * Este arquivo é o cliente HTTP para comunicação com a API.
  * Todas as requisições passam por aqui.
+ * Em caso de 429 (Too Many Requests), as requisições são repetidas com backoff.
  */
+
+import { fetchWithRetry } from '@/utils/fetchWithRetry';
 
 // Usar VITE_API_URL se definida (permite localhost em dev); senão API de produção
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
@@ -99,7 +102,7 @@ class APIClient {
     try {
       const url = `${this.baseURL}${endpoint}`;
       console.log('[API Client] GET:', url);
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         method: 'GET',
         headers: this.getHeaders(),
       });
@@ -116,7 +119,7 @@ class APIClient {
     try {
       const url = `${this.baseURL}${endpoint}`;
       console.log('[API Client] POST:', url, body);
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         method: 'POST',
         headers: { ...this.getHeaders(), ...customHeaders },
         body: body ? JSON.stringify(body) : undefined,
@@ -138,7 +141,7 @@ class APIClient {
 
   async put(endpoint: string, body?: any): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetchWithRetry(`${this.baseURL}${endpoint}`, {
         method: 'PUT',
         headers: this.getHeaders(),
         body: body ? JSON.stringify(body) : undefined,
@@ -153,7 +156,7 @@ class APIClient {
 
   async patch(endpoint: string, body?: any): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetchWithRetry(`${this.baseURL}${endpoint}`, {
         method: 'PATCH',
         headers: this.getHeaders(),
         body: body ? JSON.stringify(body) : undefined,
@@ -168,7 +171,7 @@ class APIClient {
 
   async delete(endpoint: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetchWithRetry(`${this.baseURL}${endpoint}`, {
         method: 'DELETE',
         headers: this.getHeaders(),
       });
@@ -207,7 +210,7 @@ class APIClient {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      const response = await fetchWithRetry(`${this.baseURL}${endpoint}`, {
         method: 'POST',
         headers,
         body: formData,

@@ -47,7 +47,7 @@ export function useOrdensServicoSupabase() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
 
-  // Buscar todas as OS
+  // Buscar todas as OS (staleTime reduz refetch em massa e ajuda a evitar 429)
   const { data: ordens = [], isLoading } = useQuery({
     queryKey: ['ordens_servico'],
     queryFn: async () => {
@@ -59,6 +59,8 @@ export function useOrdensServicoSupabase() {
       if (error) throw error;
       return (data || []) as OrdemServico[];
     },
+    staleTime: 60 * 1000, // 1 minuto — evita refetch excessivo ao focar janela ou remontar
+    refetchOnWindowFocus: false,
   });
 
   // Criar OS

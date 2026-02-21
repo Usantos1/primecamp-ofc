@@ -1,10 +1,12 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+
+const REDIRECT_DELAY_SECONDS = 5;
 
 interface PermissionRouteProps {
   children: React.ReactNode;
@@ -22,8 +24,10 @@ export function PermissionRoute({
   requireAll = false,
   redirectTo
 }: PermissionRouteProps) {
+  const navigate = useNavigate();
   const { hasPermission, hasAnyPermission, hasAllPermissions, loading, isAdmin } = usePermissions();
   const { profile, isAdmin: isAdminAuth, loading: authLoading, user } = useAuth();
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Verificar admin DIRETAMENTE do profile
   const isAdminDirect = profile?.role?.toLowerCase() === 'admin' || 
@@ -66,6 +70,19 @@ export function PermissionRoute({
     ? (requireAll ? hasAllPermissions(permission) : hasAnyPermission(permission))
     : hasPermission(permission);
 
+  const showAccessDenied = !hasAccess && !redirectTo;
+
+  // Redirecionar para login após alguns segundos quando mostrar "Acesso negado"
+  useEffect(() => {
+    if (!showAccessDenied) return;
+    redirectTimeoutRef.current = setTimeout(() => {
+      navigate('/login', { replace: true });
+    }, REDIRECT_DELAY_SECONDS * 1000);
+    return () => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    };
+  }, [showAccessDenied, navigate]);
+
   if (!hasAccess) {
     if (redirectTo) {
       return <Navigate to={redirectTo} replace />;
@@ -77,10 +94,13 @@ export function PermissionRoute({
             <AlertTriangle className="h-6 w-6 text-amber-500" />
             <CardTitle>Acesso negado</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">
               Você não tem permissão para acessar esta página. Se acredita que isso é um erro,
               peça ao administrador para ajustar suas permissões.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Redirecionando para o login em {REDIRECT_DELAY_SECONDS} segundos…
             </p>
           </CardContent>
         </Card>

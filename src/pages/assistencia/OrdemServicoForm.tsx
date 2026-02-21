@@ -566,6 +566,22 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     setOsLoaded(false);
   }, [id]);
 
+  // Ao abrir uma OS, refetch da lista para evitar status diferente entre abas/ambientes (localhost x nuvem)
+  useEffect(() => {
+    if (isEditing && id) {
+      queryClient.refetchQueries({ queryKey: ['ordens_servico'] });
+    }
+  }, [isEditing, id, queryClient]);
+
+  // Quando a lista de OS atualizar (ex.: após refetch), atualizar currentOS para exibir status/dados em dia
+  useEffect(() => {
+    if (!isEditing || !id || !osLoaded || !currentOS) return;
+    const fresh = getOSById(id);
+    if (fresh && (fresh.status !== currentOS.status || fresh.updated_at !== currentOS.updated_at)) {
+      setCurrentOS(fresh);
+    }
+  }, [id, isEditing, osLoaded, currentOS, getOSById]);
+
   // Carregar OS existente - APENAS UMA VEZ
   useEffect(() => {
     if (isEditing && id && !osLoaded) {

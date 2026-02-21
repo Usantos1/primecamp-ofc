@@ -15,7 +15,7 @@ export function useClientesSupabase(pageSize: number = 50) {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Buscar clientes com paginação
+  // Buscar clientes com paginação (staleTime reduz refetch em massa e ajuda a evitar 429)
   const { data: clientes = [], isLoading } = useQuery({
     queryKey: ['clientes', page, pageSize],
     queryFn: async () => {
@@ -33,6 +33,8 @@ export function useClientesSupabase(pageSize: number = 50) {
       }
       return (data || []) as Cliente[];
     },
+    staleTime: 60 * 1000, // 1 minuto
+    refetchOnWindowFocus: false,
   });
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));

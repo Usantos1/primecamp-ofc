@@ -112,6 +112,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 };
 
+// Cache de permissões por usuário/role para evitar N requisições quando vários componentes montam
+const PERMISSIONS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+let permissionsCache: { key: string; permissions: Set<string>; timestamp: number } | null = null;
+
 export function usePermissions() {
   const { user, profile, loading: authLoading } = useAuth();
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
@@ -142,6 +146,7 @@ export function usePermissions() {
 
     // Ouvir eventos de mudança de permissões
     const handlePermissionsChange = () => {
+      permissionsCache = null; // invalidar cache ao mudar permissões
       loadPermissions();
     };
 
@@ -153,20 +158,31 @@ export function usePermissions() {
   }, [user, profile, authLoading]);
 
   const loadPermissions = async () => {
+    if (!user || !profile) return;
+    const userRole = (profile.role || 'member').toLowerCase();
+    const cacheKey = `${user.id}-${userRole}`;
+
     try {
+      // Se for admin, não precisa buscar no banco — evita requisições extras
+      if (userRole === 'admin' || userRole === 'administrador' || userRole === 'administrator') {
+        setPermissions(new Set(['*']));
+        setLoading(false);
+        return;
+      }
+
+      // Usar cache para evitar várias requisições quando vários componentes montam
+      if (permissionsCache?.key === cacheKey && (Date.now() - permissionsCache.timestamp) < PERMISSIONS_CACHE_TTL_MS) {
+        setPermissions(permissionsCache.permissions);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       const permSet = new Set<string>();
-      const userRole = (profile?.role || 'member').toLowerCase();
 
-      console.log('[usePermissions] Carregando permissões para role:', userRole);
-
-      // Se for admin, não precisa buscar no banco - hasPermission já retorna true para admin
-      if (userRole === 'admin' || userRole === 'administrador' || userRole === 'administrator') {
-        // Apenas marcar como carregado, hasPermission retorna true para qualquer permissão
-        setPermissions(new Set(['*'])); // Marcador de "todas as permissões"
-        setLoading(false);
-        return;
+      if (import.meta.env?.DEV) {
+        console.log('[usePermissions] Carregando permissões para role:', userRole);
       }
 
       // ═══════════════════════════════════════════════════════════════
@@ -320,7 +336,10 @@ export function usePermissions() {
         console.warn('Erro ao buscar permissões customizadas do usuário:', e);
       }
 
-      console.log(`[usePermissions] ✅ Permissões finais carregadas (${permSet.size}):`, Array.from(permSet));
+      if (import.meta.env?.DEV) {
+        console.log(`[usePermissions] ✅ Permissões finais carregadas (${permSet.size}):`, Array.from(permSet));
+      }
+      permissionsCache = { key: cacheKey, permissions: permSet, timestamp: Date.now() };
       setPermissions(permSet);
     } catch (error) {
       console.error('[usePermissions] ❌ Erro ao carregar permissões:', error);

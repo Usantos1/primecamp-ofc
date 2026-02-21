@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,37 +64,73 @@ export interface CreateRefundData {
   notes?: string;
 }
 
+const REFUNDS_QUERY_KEY = ['refunds'] as const;
+const VOUCHERS_QUERY_KEY = ['refunds-vouchers'] as const;
+
 export function useRefunds() {
   const [loading, setLoading] = useState(false);
-  const [refunds, setRefunds] = useState<Refund[]>([]);
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Lista de devoluções com cache — evita múltiplas requisições e 429
+  const refundsQuery = useQuery({
+    queryKey: REFUNDS_QUERY_KEY,
+    queryFn: async (): Promise<Refund[]> => {
+      const response = await apiClient.get('/refunds?');
+      if (response.error) throw new Error(response.error as string);
+      if (!response.data?.success) return [];
+      return response.data.data || [];
+    },
+    staleTime: 90 * 1000, // 1,5 min — reduz refetch ao abrir/focar na página
+    refetchOnWindowFocus: false,
+  });
+  const refunds = refundsQuery.data ?? [];
+
+  // Lista de vales com cache — evita múltiplas requisições e 429
+  const vouchersQuery = useQuery({
+    queryKey: VOUCHERS_QUERY_KEY,
+    queryFn: async (): Promise<Voucher[]> => {
+      const response = await apiClient.get('/refunds/vouchers/list?');
+      if (response.error) throw new Error(response.error as string);
+      if (!response.data?.success) return [];
+      return response.data.data || [];
+    },
+    staleTime: 90 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const vouchers = vouchersQuery.data ?? [];
+
+  const loadingRefunds = refundsQuery.isLoading || refundsQuery.isFetching;
+  const loadingVouchers = vouchersQuery.isLoading || vouchersQuery.isFetching;
+
   const fetchRefunds = useCallback(async (filters?: { status?: string; startDate?: string; endDate?: string }) => {
-    setLoading(true);
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
     try {
-      const params = new URLSearchParams();
-      if (filters?.status) params.append('status', filters.status);
-      if (filters?.startDate) params.append('startDate', filters.startDate);
-      if (filters?.endDate) params.append('endDate', filters.endDate);
-      
       const response = await apiClient.get(`/refunds?${params.toString()}`);
-      if (response.data?.success) {
-        setRefunds(response.data.data || []);
+      if (response.error) {
+        toast({ title: 'Erro', description: String(response.error), variant: 'destructive' });
+        return [];
       }
-      return response.data?.data || [];
+      const data = response.data?.data ?? [];
+      queryClient.setQueryData(REFUNDS_QUERY_KEY, data);
+      return data;
     } catch (error: any) {
       const msg = error?.data?.error || error?.message || 'Erro ao carregar devoluções';
-      toast({
-        title: 'Erro',
-        description: msg,
-        variant: 'destructive'
-      });
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
       return [];
-    } finally {
-      setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
+
+  const refetchRefunds = useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: REFUNDS_QUERY_KEY });
+  }, [queryClient]);
+
+  const refetchVouchers = useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: VOUCHERS_QUERY_KEY });
+  }, [queryClient]);
 
   const fetchRefund = useCallback(async (id: string) => {
     setLoading(true);
@@ -123,6 +160,8 @@ export function useRefunds() {
       
       const response = await apiClient.post('/refunds', data);
       if (response.data?.success) {
+        queryClient.invalidateQueries({ queryKey: REFUNDS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: VOUCHERS_QUERY_KEY });
         toast({
           title: 'Sucesso',
           description: 'Devolução criada com sucesso'
@@ -141,13 +180,15 @@ export function useRefunds() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   const approveRefund = useCallback(async (id: string) => {
     setLoading(true);
     try {
       const response = await apiClient.put(`/refunds/${id}/approve`, {});
       if (response.data?.success) {
+        queryClient.invalidateQueries({ queryKey: REFUNDS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: VOUCHERS_QUERY_KEY });
         toast({
           title: 'Sucesso',
           description: 'Devolução aprovada'
@@ -165,13 +206,15 @@ export function useRefunds() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   const completeRefund = useCallback(async (id: string) => {
     setLoading(true);
     try {
       const response = await apiClient.put(`/refunds/${id}/complete`, {});
       if (response.data?.success) {
+        queryClient.invalidateQueries({ queryKey: REFUNDS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: VOUCHERS_QUERY_KEY });
         toast({
           title: 'Sucesso',
           description: 'Devolução completada e estoque atualizado'
@@ -189,13 +232,15 @@ export function useRefunds() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   const cancelRefund = useCallback(async (id: string, reason: string) => {
     setLoading(true);
     try {
       const response = await apiClient.put(`/refunds/${id}/cancel`, { reason });
       if (response.data?.success) {
+        queryClient.invalidateQueries({ queryKey: REFUNDS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: VOUCHERS_QUERY_KEY });
         toast({
           title: 'Sucesso',
           description: 'Devolução cancelada'
@@ -213,35 +258,30 @@ export function useRefunds() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   // ═══════════════════════════════════════════════════════
   // VALES COMPRA
   // ═══════════════════════════════════════════════════════
 
   const fetchVouchers = useCallback(async (filters?: { status?: string; customer?: string }) => {
-    setLoading(true);
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.customer) params.append('customer', filters.customer);
     try {
-      const params = new URLSearchParams();
-      if (filters?.status) params.append('status', filters.status);
-      if (filters?.customer) params.append('customer', filters.customer);
-      
       const response = await apiClient.get(`/refunds/vouchers/list?${params.toString()}`);
-      if (response.data?.success) {
-        setVouchers(response.data.data || []);
+      if (response.error) {
+        toast({ title: 'Erro', description: String(response.error), variant: 'destructive' });
+        return [];
       }
-      return response.data?.data || [];
+      const data = response.data?.data ?? [];
+      queryClient.setQueryData(VOUCHERS_QUERY_KEY, data);
+      return data;
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message || 'Erro ao carregar vales',
-        variant: 'destructive'
-      });
+      toast({ title: 'Erro', description: 'Erro ao carregar vales', variant: 'destructive' });
       return [];
-    } finally {
-      setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   const checkVoucher = useCallback(async (code: string) => {
     setLoading(true);
@@ -269,6 +309,7 @@ export function useRefunds() {
         customer_document: customerDocument
       });
       if (response.data?.success) {
+        queryClient.invalidateQueries({ queryKey: VOUCHERS_QUERY_KEY });
         toast({
           title: 'Sucesso',
           description: `Vale utilizado. Saldo restante: R$ ${response.data.data.balance_after.toFixed(2)}`
@@ -286,7 +327,7 @@ export function useRefunds() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, queryClient]);
 
   const fetchVoucherHistory = useCallback(async (voucherId: string) => {
     try {
@@ -298,10 +339,12 @@ export function useRefunds() {
   }, []);
 
   return {
-    loading,
+    loading: loading || loadingRefunds || loadingVouchers,
     refunds,
     vouchers,
     fetchRefunds,
+    refetchRefunds,
+    refetchVouchers,
     fetchRefund,
     createRefund,
     approveRefund,

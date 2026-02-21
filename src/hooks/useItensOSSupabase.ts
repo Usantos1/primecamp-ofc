@@ -17,7 +17,7 @@ export function useItensOSSupabase(osId: string) {
 
   const validOsId = isValidUUID(osId) ? osId : undefined;
 
-  // Buscar itens da OS
+  // Buscar itens da OS (staleTime reduz refetch em massa e ajuda a evitar 429)
   const { data: itens = [], isLoading } = useQuery({
     queryKey: ['os_items', validOsId],
     queryFn: async () => {
@@ -33,6 +33,8 @@ export function useItensOSSupabase(osId: string) {
       return (data || []) as ItemOS[];
     },
     enabled: !!validOsId,
+    staleTime: 60 * 1000, // 1 minuto
+    refetchOnWindowFocus: false,
   });
 
   // Calcular total

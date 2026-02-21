@@ -3,7 +3,10 @@
  * 
  * Este arquivo é o ÚNICO ponto de acesso ao banco de dados.
  * Todas as operações passam pela API em api.primecamp.cloud
+ * Em caso de 429 (Too Many Requests), as requisições são repetidas com backoff.
  */
+
+import { fetchWithRetry } from '@/utils/fetchWithRetry';
 
 // Forçar uso da API de produção
 const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
@@ -55,7 +58,7 @@ class InsertBuilder {
       : 'https://api.primecamp.cloud/api';
 
     try {
-      const response = await fetch(`${API_URL}/insert/${this.tableName}`, {
+      const response = await fetchWithRetry(`${API_URL}/insert/${this.tableName}`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify(this.data),
@@ -124,7 +127,7 @@ class DeleteBuilder {
       : 'https://api.primecamp.cloud/api';
 
     try {
-      const response = await fetch(`${API_URL}/delete/${this.tableName}`, {
+      const response = await fetchWithRetry(`${API_URL}/delete/${this.tableName}`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ where: this.where }),
@@ -204,7 +207,7 @@ class UpdateBuilder {
       : 'https://api.primecamp.cloud/api';
 
     try {
-      const response = await fetch(`${API_URL}/update/${this.tableName}`, {
+      const response = await fetchWithRetry(`${API_URL}/update/${this.tableName}`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ data: this.data, where: this.where }),
@@ -387,7 +390,7 @@ class DatabaseClient {
 
   async execute(): Promise<{ data: any[] | null; error: any | null; count?: number }> {
     try {
-      const response = await fetch(`${API_URL}/query/${this.tableName}`, {
+      const response = await fetchWithRetry(`${API_URL}/query/${this.tableName}`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify(this.options),
@@ -447,7 +450,7 @@ class DatabaseClient {
 
   async upsert(data: any, options?: { onConflict?: string }): Promise<{ data: any | null; error: any | null }> {
     try {
-      const response = await fetch(`${API_URL}/upsert/${this.tableName}`, {
+      const response = await fetchWithRetry(`${API_URL}/upsert/${this.tableName}`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ data, onConflict: options?.onConflict }),

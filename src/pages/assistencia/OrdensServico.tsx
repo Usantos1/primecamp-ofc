@@ -294,7 +294,7 @@ export default function OrdensServico() {
   const { getMarcaById, getModeloById } = useMarcasModelos();
   const { getConfigByStatus } = useConfiguracaoStatus();
 
-  // Buscar totais dos itens
+  // Buscar totais dos itens (staleTime reduz refetch em massa e ajuda a evitar 429)
   const { data: todosItens = [] } = useQuery({
     queryKey: ['os_items_all'],
     queryFn: async () => {
@@ -302,6 +302,8 @@ export default function OrdensServico() {
       if (error) throw error;
       return (data || []) as Array<{ ordem_servico_id: string; valor_total: number }>;
     },
+    staleTime: 60 * 1000, // 1 minuto
+    refetchOnWindowFocus: false,
   });
 
   const totaisPorOS = useMemo(() => {

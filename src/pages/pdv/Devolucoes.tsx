@@ -102,10 +102,7 @@ export default function Devolucoes() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    fetchRefunds();
-    fetchVouchers();
-  }, []);
+  // Dados de refunds e vouchers vêm do useRefunds (React Query); não disparar fetch extra no mount
 
   // Carregar dados da venda para devolução
   const loadSaleForRefund = async (saleId: string) => {
