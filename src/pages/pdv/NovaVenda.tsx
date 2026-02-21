@@ -1203,12 +1203,15 @@ export default function NovaVenda() {
         }
         
         toast({ title: 'Venda finalizada com sucesso!' });
-        setShowCheckout(true);
-        
-        // Aguardar um pouco para garantir que os dados estão atualizados, imprimir e limpar PDV
+        // Limpar e redirecionar imediatamente para não deixar URL/estado amarrados à venda anterior
+        const finalizedSaleId = id;
+        limparPDV();
+        navigate('/pdv', { replace: true });
+        toast({ title: 'PDV limpo. Pronto para nova venda!' });
+        // Impressão em segundo plano (sem bloquear a tela)
         setTimeout(async () => {
           try {
-            const finalizedSale = await getSaleById(id);
+            const finalizedSale = await getSaleById(finalizedSaleId);
             if (finalizedSale?.items?.length && finalizedSale?.payments?.length) {
               try {
                 await handlePrintCupomDirect(finalizedSale);
@@ -1218,11 +1221,8 @@ export default function NovaVenda() {
             } else {
               console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos', { id: finalizedSale?.id });
             }
-          } finally {
-            // Sempre ir para PDV vazio e limpar (mesmo se impressão falhar)
-            navigate('/pdv', { replace: true });
-            limparPDV();
-            toast({ title: 'PDV limpo. Pronto para nova venda!' });
+          } catch (e) {
+            console.error('Erro ao obter venda para impressão:', e);
           }
         }, 800);
     } catch (error: any) {
@@ -2777,8 +2777,8 @@ _PrimeCamp Assistência Técnica_`;
                       </div>
                     </div>
 
-                    {/* Adiantamento OS: mostrar Total Pago e Saldo no rascunho */}
-                    {totalPago > 0 && (
+                    {/* Adiantamento OS: mostrar Total Pago e Saldo só em rascunho ou com itens (não mostrar resquícios de venda finalizada com carrinho vazio) */}
+                    {totalPago > 0 && (sale?.is_draft === true || cart.length > 0) && (
                       <div className="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600 dark:text-gray-400">Total Pago</span>

@@ -111,11 +111,9 @@ const App = () => (
             <Route path="/reset-senha" element={<NotFound />} />
             <Route path="/recuperar-acesso" element={<NotFound />} />
             <Route path="/process-analytics" element={<NotFound />} />
-            <Route path="/processos" element={<NotFound />} />
             <Route path="/processos/*" element={<NotFound />} />
             <Route path="/processo/:processId" element={<NotFound />} />
             <Route path="/processo/:processId/edit" element={<NotFound />} />
-            <Route path="/tarefas" element={<NotFound />} />
             <Route path="/tarefas/*" element={<NotFound />} />
             <Route path="/calendario" element={<NotFound />} />
             <Route path="/nps" element={<NotFound />} />

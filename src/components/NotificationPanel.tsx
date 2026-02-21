@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Bell, X, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
+import { Bell, X, AlertTriangle, CheckCircle, Info, Clock, LayoutDashboard, FileBarChart, Wrench, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -21,8 +22,16 @@ interface NotificationPanelProps {
   onNotificationChange?: (count: number) => void;
 }
 
+const QUICK_LINKS = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/relatorios', label: 'Relatórios', icon: FileBarChart },
+  { to: '/os', label: 'Ordens de Serviço', icon: Wrench },
+  { to: '/pdv', label: 'PDV / Vendas', icon: ShoppingCart },
+] as const;
+
 export function NotificationPanel({ isOpen, onClose, onNotificationChange }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const savedNotifications = localStorage.getItem('notifications');
@@ -36,31 +45,40 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
       }
     }
 
-    const systemNotifications: Notification[] = [];
-    if (!allNotifications.find(n => n.id === 'welcome')) {
-      systemNotifications.push({
-        id: 'welcome',
-        type: 'info',
-        title: 'Bem-vindo',
-        message: 'Sistema em funcionamento.',
-        timestamp: new Date(),
-        read: false
-      });
-    }
-    if (!allNotifications.find(n => n.id === 'system-update')) {
-      systemNotifications.push({
-        id: 'system-update',
-        type: 'info',
-        title: 'Sistema Atualizado',
-        message: 'Nova versão do sistema foi implantada com melhorias de performance.',
-        timestamp: new Date(Date.now() - 3600000),
-        read: false
-      });
-    }
+    // Mensagens atuais do sistema (Primecamp)
+    const welcomeNotification: Notification = {
+      id: 'welcome',
+      type: 'info',
+      title: 'Bem-vindo ao Primecamp',
+      message: 'Use o Dashboard para visão geral, Relatórios para análises e o menu para OS, PDV e mais.',
+      timestamp: new Date(),
+      read: false
+    };
+    const systemUpdateNotification: Notification = {
+      id: 'system-update',
+      type: 'info',
+      title: 'Sistema Atualizado',
+      message: 'Nova versão implantada com melhorias de performance e carregamento do dashboard.',
+      timestamp: new Date(Date.now() - 3600000),
+      read: false
+    };
 
+    // Migrar notificações antigas (ex.: "ProcessFlow") para o texto atual e garantir welcome/update
+    const hasWelcome = allNotifications.some(n => n.id === 'welcome');
+    const hasSystemUpdate = allNotifications.some(n => n.id === 'system-update');
+    const migrated = allNotifications.map((n) => {
+      if (n.id === 'welcome') {
+        return { ...welcomeNotification, timestamp: n.timestamp, read: n.read };
+      }
+      if (n.id === 'system-update') {
+        return { ...systemUpdateNotification, timestamp: n.timestamp, read: n.read };
+      }
+      return n;
+    });
     const finalNotifications = [
-      ...systemNotifications,
-      ...allNotifications.filter(n => !systemNotifications.find(sn => sn.id === n.id))
+      ...(hasWelcome ? [] : [welcomeNotification]),
+      ...(hasSystemUpdate ? [] : [systemUpdateNotification]),
+      ...migrated
     ];
     setNotifications(finalNotifications);
     localStorage.setItem('notifications', JSON.stringify(finalNotifications));
@@ -170,59 +188,78 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0 h-full overflow-y-auto">
-            {notifications.length === 0 ? (
-              <div className="flex items-center justify-center h-32 text-muted-foreground">
-                <div className="text-center">
-                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>Nenhuma notificação</p>
+          <CardContent className="p-0 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {notifications.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">
+                  <div className="text-center">
+                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Nenhuma notificação</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {notifications.map(notification => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 border-b cursor-pointer transition-colors ${
-                      notification.read 
-                        ? 'bg-background opacity-60' 
-                        : 'bg-muted/30 hover:bg-muted/50'
-                    }`}
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                  <div className="flex items-start gap-3">
-                    {getNotificationIcon(notification.type)}
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium">{notification.title}</h4>
-                        <div className="flex items-center gap-1">
-                          {getNotificationBadge(notification.type)}
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 w-6 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNotification(notification.id);
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
+              ) : (
+                <div className="space-y-1">
+                  {notifications.map(notification => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 border-b cursor-pointer transition-colors ${
+                        notification.read 
+                          ? 'bg-background opacity-60' 
+                          : 'bg-muted/30 hover:bg-muted/50'
+                      }`}
+                      onClick={() => markAsRead(notification.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        {getNotificationIcon(notification.type)}
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium">{notification.title}</h4>
+                            <div className="flex items-center gap-1">
+                              {getNotificationBadge(notification.type)}
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteNotification(notification.id);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {format(notification.timestamp, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </div>
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {notification.message}
-                      </p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {format(notification.timestamp, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </div>
                     </div>
-                  </div>
-                  </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex-shrink-0 border-t p-3 bg-muted/20">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Recursos úteis</p>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_LINKS.map(({ to, label, icon: Icon }) => (
+                  <Button
+                    key={to}
+                    variant="outline"
+                    size="sm"
+                    className="justify-start h-8 text-xs"
+                    onClick={() => { navigate(to); onClose(); }}
+                  >
+                    <Icon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                    {label}
+                  </Button>
                 ))}
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>
