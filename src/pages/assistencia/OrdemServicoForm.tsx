@@ -1803,83 +1803,37 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const config = getConfigByStatus(pendingStatusChange);
       await updateStatus(currentOS.id, pendingStatusChange as StatusOS, config?.notificar_whatsapp);
 
-      // Notificar cliente via WhatsApp
+      // Notificar cliente via WhatsApp somente se estiver definido em /pdv/configuracao-status (Notificar WhatsApp = Sim e mensagem preenchida)
       const cliente = getClienteById(currentOS.cliente_id);
       const telefone = currentOS.telefone_contato || cliente?.whatsapp || cliente?.telefone;
 
-      if (telefone && checklistSaidaAprovado) {
-        // Aprovado - usar mensagem configurada no status
+      if (telefone && checklistSaidaAprovado && config?.notificar_whatsapp && config.mensagem_whatsapp) {
         try {
-          const config = getConfigByStatus(pendingStatusChange);
           const marca = marcas.find(m => m.id === currentOS.marca_id);
           const modelo = modelos.find(m => m.id === currentOS.modelo_id);
-          
+          const linkOs = `${window.location.origin}/acompanhar-os/${currentOS.id}`;
+          const mensagem = config.mensagem_whatsapp
+            .replace(/{cliente}/g, cliente?.nome || currentOS.cliente_nome || 'Cliente')
+            .replace(/{numero}/g, currentOS.numero?.toString() || '')
+            .replace(/{link_os}/g, linkOs)
+            .replace(/{status}/g, config.label)
+            .replace(/{marca}/g, marca?.nome || currentOS.marca_nome || '')
+            .replace(/{modelo}/g, modelo?.nome || currentOS.modelo_nome || '');
+
           let numero = telefone.replace(/\D/g, '');
           numero = numero.replace(/^0+/, '');
           if (!numero.startsWith('55')) {
-            if (numero.startsWith('0')) {
-              numero = numero.substring(1);
-            }
-            if (numero.length === 10 || numero.length === 11) {
-              numero = '55' + numero;
-            }
+            if (numero.startsWith('0')) numero = numero.substring(1);
+            if (numero.length === 10 || numero.length === 11) numero = '55' + numero;
           }
-          
           if (numero.length >= 12 && numero.length <= 13) {
-            // Usar mensagem configurada no status, se houver
-            let mensagem = '';
-            if (config?.notificar_whatsapp && config.mensagem_whatsapp) {
-              const linkOs = `${window.location.origin}/acompanhar-os/${currentOS.id}`;
-              mensagem = config.mensagem_whatsapp
-                .replace(/{cliente}/g, cliente?.nome || currentOS.cliente_nome || 'Cliente')
-                .replace(/{numero}/g, currentOS.numero?.toString() || '')
-                .replace(/{link_os}/g, linkOs)
-                .replace(/{status}/g, config.label)
-                .replace(/{marca}/g, marca?.nome || currentOS.marca_nome || '')
-                .replace(/{modelo}/g, modelo?.nome || currentOS.modelo_nome || '');
-            } else {
-              // Fallback apenas se não houver mensagem configurada
-              mensagem = `Olá ${cliente?.nome || currentOS.cliente_nome || 'Cliente'}! Sua OS #${currentOS.numero} do ${marca?.nome || currentOS.marca_nome || ''} ${modelo?.nome || currentOS.modelo_nome || ''} está pronta para retirada.`;
-            }
-            
-            if (mensagem) {
-              await sendMessage({ number: numero, body: mensagem });
-            }
+            await sendMessage({ number: numero, body: mensagem });
           }
         } catch (error: any) {
           console.error('Erro ao enviar notificação de aprovação:', error);
         }
-      } else if (telefone && !checklistSaidaAprovado) {
-        // Reprovar - perguntar se quer avisar mesmo assim
-        const avisarCliente = window.confirm(
-          'O aparelho foi reprovado no checklist de saída. Deseja avisar o cliente mesmo assim?'
-        );
-
-        if (avisarCliente) {
-          try {
-            const marca = marcas.find(m => m.id === currentOS.marca_id);
-            const modelo = modelos.find(m => m.id === currentOS.modelo_id);
-            
-            let numero = telefone.replace(/\D/g, '');
-            numero = numero.replace(/^0+/, '');
-            if (!numero.startsWith('55')) {
-              if (numero.startsWith('0')) {
-                numero = numero.substring(1);
-              }
-              if (numero.length === 10 || numero.length === 11) {
-                numero = '55' + numero;
-              }
-            }
-            
-            if (numero.length >= 12 && numero.length <= 13) {
-              const mensagem = `Olá ${cliente?.nome || currentOS.cliente_nome || 'Cliente'}! Sua OS #${currentOS.numero} do ${marca?.nome || currentOS.marca_nome || ''} ${modelo?.nome || currentOS.modelo_nome || ''} está pronta para retirada. ${checklistSaidaObservacoes ? `Observações: ${checklistSaidaObservacoes}` : 'Por favor, entre em contato conosco para mais informações.'}`;
-              await sendMessage({ number: numero, body: mensagem });
-            }
-          } catch (error: any) {
-            console.error('Erro ao enviar notificação de reprovação:', error);
-          }
-        }
       }
+      // Reprovação: não enviamos mensagem automática; só mensagens definidas em configuracao-status são enviadas
 
       // Atualizar estado local
       setCurrentOS((prev: any) => prev ? { 
