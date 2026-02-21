@@ -317,12 +317,14 @@ export default function OrdensServico() {
   hoje.setHours(0, 0, 0, 0);
   const hojeStr = hoje.toISOString().split('T')[0];
 
-  // Filtrar ordens (padrão: apenas abertas; fechadas ocultas até escolher "Todos os Status")
+  // Filtrar ordens: abertas (padrão), fechadas (somente fechadas), all (todos) ou status específico
   const filteredOrdens = useMemo(() => {
     let result = [...ordens];
 
     if (statusFilter === 'abertas') {
       result = result.filter(os => os.situacao !== 'fechada' && os.situacao !== 'cancelada');
+    } else if (statusFilter === 'fechadas') {
+      result = result.filter(os => os.situacao === 'fechada');
     } else if (statusFilter !== 'all') {
       result = result.filter(os => os.status === statusFilter);
     }
@@ -660,8 +662,9 @@ export default function OrdensServico() {
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-7 flex-1 text-xs border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="abertas">Abertas</SelectItem>
                 <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="abertas">Abertas</SelectItem>
+                <SelectItem value="fechadas">Fechadas</SelectItem>
                 {Object.entries(STATUS_OS_LABELS).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
               </SelectContent>
             </Select>
@@ -693,7 +696,7 @@ export default function OrdensServico() {
                         ? 'Todos'
                         : 'Personalizado'}
                     {' • '}
-                    {statusFilter === 'abertas' ? 'Abertas' : (STATUS_OS_LABELS[statusFilter as StatusOS] ?? EXTRA_STATUS_OS_LABELS[statusFilter] ?? statusFilter)}
+                    {statusFilter === 'abertas' ? 'Abertas' : statusFilter === 'fechadas' ? 'Fechadas' : statusFilter === 'all' ? 'Todos' : (STATUS_OS_LABELS[statusFilter as StatusOS] ?? EXTRA_STATUS_OS_LABELS[statusFilter] ?? statusFilter)}
                   </span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
@@ -752,6 +755,16 @@ export default function OrdensServico() {
                 <div className="flex flex-col gap-0.5 pb-2">
                   <button
                     type="button"
+                    onClick={() => { setStatusFilter('all'); setShowFiltroPopover(false); }}
+                    className={cn(
+                      'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      statusFilter === 'all' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                    )}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setStatusFilter('abertas'); setShowFiltroPopover(false); }}
                     className={cn(
                       'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -759,6 +772,16 @@ export default function OrdensServico() {
                     )}
                   >
                     Abertas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setStatusFilter('fechadas'); setShowFiltroPopover(false); }}
+                    className={cn(
+                      'text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      statusFilter === 'fechadas' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                    )}
+                  >
+                    Fechadas
                   </button>
                   {Object.entries(STATUS_OS_LABELS)
                     .filter(([value]) => value !== 'aberta')

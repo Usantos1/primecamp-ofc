@@ -2039,31 +2039,36 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       return;
     }
 
+    // Usar dados atuais do formulário na impressão para que o padrão de desbloqueio (e senha) impresso bata com o que está na tela
+    const osToPrint = isEditing && formData
+      ? { ...os, padrao_desbloqueio: formData.padrao_desbloqueio ?? os.padrao_desbloqueio, possui_senha: formData.possui_senha ?? os.possui_senha, possui_senha_tipo: formData.possui_senha_tipo ?? os.possui_senha_tipo, senha_numerica: formData.senha_numerica ?? os.senha_numerica, senha_aparelho: formData.senha_aparelho ?? os.senha_aparelho }
+      : os;
+
     if (tipo === 'pdf' || tipo === 'a4') {
       // Usar a mesma função para PDF e A4 (baseada na térmica)
       try {
-        const cliente = getClienteById(os.cliente_id);
-        const marca = marcas.find(m => m.id === os.marca_id);
-        const modelo = modelos.find(m => m.id === os.modelo_id);
+        const cliente = getClienteById(osToPrint.cliente_id);
+        const marca = marcas.find(m => m.id === osToPrint.marca_id);
+        const modelo = modelos.find(m => m.id === osToPrint.modelo_id);
         
         // Buscar primeira foto de entrada
-        const fotoEntrada = os.fotos_telegram_entrada?.[0];
+        const fotoEntrada = osToPrint.fotos_telegram_entrada?.[0];
         const fotoEntradaUrl = fotoEntrada 
           ? (typeof fotoEntrada === 'string' ? fotoEntrada : (fotoEntrada.url || fotoEntrada.thumbnailUrl))
           : undefined;
 
         // Buscar imagem de referência do aparelho
         const imagemReferenciaUrl = osImageReferenceUrl || null;
-        const areasDefeito = os.areas_defeito || [];
+        const areasDefeito = osToPrint.areas_defeito || [];
 
         // Gerar uma única página com ambas as vias lado a lado
         const htmlCompleto = await generateOSPDF({
-          os,
-          clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
-          marcaNome: marca?.nome || os.marca_nome,
-          modeloNome: modelo?.nome || os.modelo_nome,
+          os: osToPrint,
+          clienteNome: cliente?.nome || osToPrint.cliente_nome || 'Cliente',
+          marcaNome: marca?.nome || osToPrint.marca_nome,
+          modeloNome: modelo?.nome || osToPrint.modelo_nome,
           checklistEntrada: checklistEntradaConfig,
-          checklistEntradaMarcados: parseJsonArray(os.checklist_entrada),
+          checklistEntradaMarcados: parseJsonArray(osToPrint.checklist_entrada),
           fotoEntradaUrl,
           imagemReferenciaUrl,
           areasDefeito,
@@ -2107,28 +2112,28 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
     } else if (tipo === 'termica') {
       // Impressão térmica com 2 vias
       try {
-        const cliente = getClienteById(os.cliente_id);
-        const marca = marcas.find(m => m.id === os.marca_id);
-        const modelo = modelos.find(m => m.id === os.modelo_id);
+        const cliente = getClienteById(osToPrint.cliente_id);
+        const marca = marcas.find(m => m.id === osToPrint.marca_id);
+        const modelo = modelos.find(m => m.id === osToPrint.modelo_id);
         
         // Buscar primeira foto de entrada
-        const fotoEntrada = os.fotos_telegram_entrada?.[0];
+        const fotoEntrada = osToPrint.fotos_telegram_entrada?.[0];
         const fotoEntradaUrl = fotoEntrada 
           ? (typeof fotoEntrada === 'string' ? fotoEntrada : (fotoEntrada.url || fotoEntrada.thumbnailUrl))
           : undefined;
 
         // Buscar imagem de referência do aparelho
         const imagemReferenciaUrl = osImageReferenceUrl || null;
-        const areasDefeito = os.areas_defeito || [];
+        const areasDefeito = osToPrint.areas_defeito || [];
 
         // Gerar via do cliente (com checklist nas duas vias)
         const htmlCliente = await generateOSTermica({
-          os,
-          clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
-          marcaNome: marca?.nome || os.marca_nome,
-          modeloNome: modelo?.nome || os.modelo_nome,
+          os: osToPrint,
+          clienteNome: cliente?.nome || osToPrint.cliente_nome || 'Cliente',
+          marcaNome: marca?.nome || osToPrint.marca_nome,
+          modeloNome: modelo?.nome || osToPrint.modelo_nome,
           checklistEntrada: checklistEntradaConfig,
-          checklistEntradaMarcados: parseJsonArray(os.checklist_entrada),
+          checklistEntradaMarcados: parseJsonArray(osToPrint.checklist_entrada),
           fotoEntradaUrl,
           imagemReferenciaUrl,
           areasDefeito,
@@ -2138,12 +2143,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
         // Gerar via da loja (com checklist nas duas vias)
         const htmlLoja = await generateOSTermica({
-          os,
-          clienteNome: cliente?.nome || os.cliente_nome || 'Cliente',
-          marcaNome: marca?.nome || os.marca_nome,
-          modeloNome: modelo?.nome || os.modelo_nome,
+          os: osToPrint,
+          clienteNome: cliente?.nome || osToPrint.cliente_nome || 'Cliente',
+          marcaNome: marca?.nome || osToPrint.marca_nome,
+          modeloNome: modelo?.nome || osToPrint.modelo_nome,
           checklistEntrada: checklistEntradaConfig,
-          checklistEntradaMarcados: parseJsonArray(os.checklist_entrada),
+          checklistEntradaMarcados: parseJsonArray(osToPrint.checklist_entrada),
           fotoEntradaUrl,
           imagemReferenciaUrl,
           areasDefeito,
@@ -2224,14 +2229,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         return parts.join(' - ') || '-';
       };
 
+      // Grid 0-8 igual PatternLock e térmica: 0=top-left … 8=bot-right; aceita 1-9 convertendo para 0-8
       const patternToSvg = (pattern: string | undefined) => {
         if (!pattern) return '';
         const points: Record<string, [number, number]> = {
-          '1': [20, 20], '2': [50, 20], '3': [80, 20],
-          '4': [20, 50], '5': [50, 50], '6': [80, 50],
-          '7': [20, 80], '8': [50, 80], '9': [80, 80],
+          '0': [20, 20], '1': [50, 20], '2': [80, 20],
+          '3': [20, 50], '4': [50, 50], '5': [80, 50],
+          '6': [20, 80], '7': [50, 80], '8': [80, 80],
         };
-        const seq = pattern.replace(/\s/g, '').split(/[-,.]/).filter(Boolean);
+        let seq = pattern.replace(/\s/g, '').split(/[-,.]/).filter(Boolean);
+        if (seq.every((d) => d >= '1' && d <= '9')) seq = seq.map((d) => String(Number(d) - 1));
         if (seq.length < 2) return '';
         const lines: string[] = [];
         for (let i = 0; i < seq.length - 1; i++) {
@@ -2241,7 +2248,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#111" stroke-width="1.5" />`);
           }
         }
-        const circles = Object.keys(points).map(k => {
+        const circles = ['0','1','2','3','4','5','6','7','8'].map((k) => {
           const [x, y] = points[k];
           const active = seq.includes(k);
           return `<circle cx="${x}" cy="${y}" r="4" fill="${active ? '#2563eb' : '#fff'}" stroke="#111" stroke-width="1.5" />`;
