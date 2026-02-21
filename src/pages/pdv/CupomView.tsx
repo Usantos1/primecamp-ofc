@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, Share2 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
+import { APP_PUBLIC_URL } from '@/utils/appUrl';
 import { from } from '@/integrations/db/client';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 
@@ -77,7 +78,7 @@ export default function CupomView() {
       mostrar_termos_garantia_os: !!sale?.ordem_servico_id,
     };
 
-    const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+    const qrCodeData = `${APP_PUBLIC_URL}/cupom/${sale.id}`;
     const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
     
     const previewElement = document.getElementById('cupom-preview');
@@ -213,7 +214,7 @@ export default function CupomView() {
       mostrar_termos_garantia_os: !!sale?.ordem_servico_id,
     };
 
-    const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+    const qrCodeData = `${APP_PUBLIC_URL}/cupom/${sale.id}`;
     const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
     printTermica(html);
   };
@@ -262,7 +263,7 @@ export default function CupomView() {
       mostrar_termos_garantia_os: !!sale?.ordem_servico_id,
     };
 
-    const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+    const qrCodeData = `${APP_PUBLIC_URL}/cupom/${sale.id}`;
     const pdf = await generateCupomPDF(cupomData, qrCodeData);
     pdf.save(`cupom-${sale.numero}.pdf`);
   };

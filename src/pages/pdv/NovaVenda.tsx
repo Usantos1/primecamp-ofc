@@ -16,6 +16,7 @@ import {
   FileCheck, ArrowRight, MessageCircle, Share2, CheckCircle2, BarChart3
 } from 'lucide-react';
 import { generateCupomTermica, generateCupomPDF, printTermica, generateOrcamentoPDF, generateOrcamentoHTML, OrcamentoData } from '@/utils/pdfGenerator';
+import { APP_PUBLIC_URL } from '@/utils/appUrl';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useSaleItems, usePayments, useCashRegister, useCashMovements } from '@/hooks/usePDV';
 import { useQuotes } from '@/hooks/useQuotes';
@@ -1791,7 +1792,7 @@ export default function NovaVenda() {
       };
 
       // Gerar QR code com URL para 2ª via do cupom
-      const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+      const qrCodeData = `${APP_PUBLIC_URL}/cupom/${sale.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
       printTermica(html);
     } catch (error) {
@@ -1860,7 +1861,7 @@ export default function NovaVenda() {
       };
 
       // Gerar QR code com URL para 2ª via do cupom
-      const qrCodeData = `${window.location.origin}/cupom/${saleToUse.id}`;
+      const qrCodeData = `${APP_PUBLIC_URL}/cupom/${saleToUse.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
       
       const imprimirSemDialogo = cupomConfig?.imprimir_sem_dialogo !== false; // Default true
@@ -2035,7 +2036,7 @@ export default function NovaVenda() {
       };
 
       // Gerar QR code com URL para 2ª via do cupom
-      const qrCodeData = `${window.location.origin}/cupom/${sale.id}`;
+      const qrCodeData = `${APP_PUBLIC_URL}/cupom/${sale.id}`;
       const pdf = await generateCupomPDF(cupomData, qrCodeData);
       pdf.save(`cupom-venda-${sale.numero}.pdf`);
       

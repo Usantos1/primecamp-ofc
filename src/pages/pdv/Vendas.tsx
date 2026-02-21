@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
 import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
+import { APP_PUBLIC_URL } from '@/utils/appUrl';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useCancelRequests } from '@/hooks/usePDV';
 import { useAuth } from '@/contexts/AuthContext';
@@ -325,7 +326,7 @@ export default function Vendas() {
       };
 
       // Gerar QR code com URL para 2ª via do cupom
-      const qrCodeData = `${window.location.origin}/cupom/${fullSale.id}`;
+      const qrCodeData = `${APP_PUBLIC_URL}/cupom/${fullSale.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData);
       
       // Impressão direta sem abrir janela
@@ -424,7 +425,7 @@ export default function Vendas() {
       };
 
       // Gerar QR code com URL para 2ª via do cupom
-      const qrCodeData = `${window.location.origin}/cupom/${fullSale.id}`;
+      const qrCodeData = `${APP_PUBLIC_URL}/cupom/${fullSale.id}`;
       const pdf = await generateCupomPDF(cupomData, qrCodeData);
       pdf.save(`cupom-venda-${fullSale.numero}.pdf`);
     } catch (error) {
