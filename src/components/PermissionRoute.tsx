@@ -52,6 +52,25 @@ export function PermissionRoute({
     }
   }, [profile?.role, isAdminDirect, user, authLoading]);
 
+  // hasAccess e showAccessDenied precisam ser calculados sempre (antes de qualquer return)
+  // para que o segundo useEffect rode com o mesmo número de hooks em toda renderização
+  const hasAccess = Array.isArray(permission)
+    ? (requireAll ? hasAllPermissions(permission) : hasAnyPermission(permission))
+    : hasPermission(permission);
+  const showAccessDenied = !hasAccess && !redirectTo;
+
+  // Redirecionar para login após alguns segundos quando mostrar "Acesso negado"
+  // SEMPRE chamar o hook (não após return), senão "Rendered more hooks than during the previous render"
+  useEffect(() => {
+    if (!showAccessDenied) return;
+    redirectTimeoutRef.current = setTimeout(() => {
+      navigate('/login', { replace: true });
+    }, REDIRECT_DELAY_SECONDS * 1000);
+    return () => {
+      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+    };
+  }, [showAccessDenied, navigate]);
+
   // Se temos cache de admin, liberar imediatamente (mesmo durante loading)
   if (userIsAdmin) {
     return <ProtectedRoute>{children}</ProtectedRoute>;
@@ -65,23 +84,6 @@ export function PermissionRoute({
       </div>
     );
   }
-
-  const hasAccess = Array.isArray(permission)
-    ? (requireAll ? hasAllPermissions(permission) : hasAnyPermission(permission))
-    : hasPermission(permission);
-
-  const showAccessDenied = !hasAccess && !redirectTo;
-
-  // Redirecionar para login após alguns segundos quando mostrar "Acesso negado"
-  useEffect(() => {
-    if (!showAccessDenied) return;
-    redirectTimeoutRef.current = setTimeout(() => {
-      navigate('/login', { replace: true });
-    }, REDIRECT_DELAY_SECONDS * 1000);
-    return () => {
-      if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
-    };
-  }, [showAccessDenied, navigate]);
 
   if (!hasAccess) {
     if (redirectTo) {
