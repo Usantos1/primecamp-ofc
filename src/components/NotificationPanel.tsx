@@ -22,6 +22,29 @@ interface NotificationPanelProps {
   onNotificationChange?: (count: number) => void;
 }
 
+const DISMISSED_KEY = 'primecamp_notifications_dismissed';
+const NOTIFICATIONS_KEY = 'notifications';
+
+function getDismissedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function setDismissedId(id: string, add: boolean) {
+  const set = getDismissedIds();
+  if (add) set.add(id);
+  else set.delete(id);
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]));
+  } catch {}
+}
+
 const QUICK_LINKS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/relatorios', label: 'Relatórios', icon: FileBarChart },
@@ -34,7 +57,7 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
   const navigate = useNavigate();
 
   useEffect(() => {
-    const savedNotifications = localStorage.getItem('notifications');
+    const savedNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
     let allNotifications: Notification[] = [];
 
     if (savedNotifications) {
@@ -45,7 +68,9 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
       }
     }
 
-    // Mensagens atuais do sistema (Primecamp)
+    const dismissed = getDismissedIds();
+
+    // Mensagens atuais do sistema (Primecamp) – só entram se o usuário nunca dispensou
     const welcomeNotification: Notification = {
       id: 'welcome',
       type: 'info',
@@ -63,25 +88,17 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
       read: false
     };
 
-    // Migrar notificações antigas (ex.: "ProcessFlow") para o texto atual e garantir welcome/update
-    const hasWelcome = allNotifications.some(n => n.id === 'welcome');
-    const hasSystemUpdate = allNotifications.some(n => n.id === 'system-update');
-    const migrated = allNotifications.map((n) => {
-      if (n.id === 'welcome') {
-        return { ...welcomeNotification, timestamp: n.timestamp, read: n.read };
-      }
-      if (n.id === 'system-update') {
-        return { ...systemUpdateNotification, timestamp: n.timestamp, read: n.read };
-      }
-      return n;
-    });
+    const others = allNotifications.filter(
+      (n) => !dismissed.has(n.id) && n.id !== 'welcome' && n.id !== 'system-update'
+    );
+
     const finalNotifications = [
-      ...(hasWelcome ? [] : [welcomeNotification]),
-      ...(hasSystemUpdate ? [] : [systemUpdateNotification]),
-      ...migrated
+      ...(!dismissed.has('welcome') ? [welcomeNotification] : []),
+      ...(!dismissed.has('system-update') ? [systemUpdateNotification] : []),
+      ...others
     ];
     setNotifications(finalNotifications);
-    localStorage.setItem('notifications', JSON.stringify(finalNotifications));
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(finalNotifications));
   }, []);
 
   // Update notification count when it changes
@@ -123,19 +140,22 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
         : notification
     );
     setNotifications(updatedNotifications);
-    localStorage.setItem('notifications', JSON.stringify(updatedNotifications));
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updatedNotifications));
   };
 
   const deleteNotification = (notificationId: string) => {
+    if (notificationId === 'welcome' || notificationId === 'system-update') {
+      setDismissedId(notificationId, true);
+    }
     const updatedNotifications = notifications.filter(n => n.id !== notificationId);
     setNotifications(updatedNotifications);
-    localStorage.setItem('notifications', JSON.stringify(updatedNotifications));
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updatedNotifications));
   };
 
   const clearAll = () => {
     const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updatedNotifications);
-    localStorage.setItem('notifications', JSON.stringify(updatedNotifications));
+    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updatedNotifications));
   };
 
   // Handle click outside to close
