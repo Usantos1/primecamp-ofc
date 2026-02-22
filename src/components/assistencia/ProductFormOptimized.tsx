@@ -138,7 +138,13 @@ function GradeCorFields({
     setValue('estoque_grade', { tipo: 'cor', itens: { ...itens, [cor]: 0 } });
     setNovaCor('');
   };
-  const coresSugeridas = ['Branca', 'Preta', 'Dourada', 'Cinza', 'Verde', 'Azul', 'Rosa', 'Vermelha'];
+  // Cores dos iPhones (iPhone 8 em diante, todas as séries) – sugestões para grade por cor
+  const coresSugeridas = [
+    'Preta', 'Branca', 'Vermelha', 'Azul', 'Verde', 'Amarela', 'Rosa', 'Dourada', 'Prata', 'Roxa', 'Coral',
+    'Cinza Espacial', 'Space Gray', 'Midnight', 'Starlight', 'Graphite', 'Pacific Blue', 'Alpine Green',
+    'Sierra Blue', 'Deep Purple', 'Space Black', 'Natural Titanium', 'Blue Titanium', 'White Titanium',
+    'Black Titanium', 'Desert Titanium',
+  ];
   return (
     <div className="md:col-span-2 space-y-3">
       <Label>Quantidade por cor</Label>
@@ -190,7 +196,7 @@ function GradeCorFields({
           </Button>
           {coresSugeridas.filter(c => !itens[c]).length > 0 && (
             <span className="text-xs text-muted-foreground">
-              Sugestões: {coresSugeridas.filter(c => !itens[c]).slice(0, 5).map(c => (
+              Sugestões: {coresSugeridas.filter(c => !itens[c]).slice(0, 12).map(c => (
                 <button key={c} type="button" className="ml-1 underline hover:no-underline" onClick={() => { setValue('estoque_grade', { tipo: 'cor', itens: { ...itens, [c]: 0 } }); syncQuantidadeFromGrade(setValue as any, { tipo: 'cor', itens: { ...itens, [c]: 0 } }); }}>{c}</button>
               ))}
             </span>
