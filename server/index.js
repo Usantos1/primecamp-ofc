@@ -1532,6 +1532,36 @@ app.post('/api/insert/:table', async (req, res) => {
     const tableName = table.includes('.') ? table : `public.${table}`;
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
 
+    // Suportar INSERT em lote: body pode ser array de objetos
+    const rowsToInsert = Array.isArray(data) ? data : [data];
+
+    // os_config_status: SEMPRE resolver company_id logo no início (evita 500 por NOT NULL)
+    if (tableNameOnly.toLowerCase() === 'os_config_status') {
+      let companyId = (req.user && req.companyId) ? req.companyId : null;
+      if (!companyId) {
+        try {
+          const fromCompanies = await pool.query('SELECT id FROM public.companies LIMIT 1').catch(() => ({ rows: [] }));
+          if (fromCompanies.rows && fromCompanies.rows.length > 0) companyId = fromCompanies.rows[0].id;
+          if (!companyId) {
+            const fromUsers = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
+            if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) companyId = fromUsers.rows[0].company_id;
+          }
+        } catch (e) {
+          console.warn('[Insert] os_config_status resolve company_id:', e.message);
+        }
+      }
+      if (!companyId) {
+        return res.status(400).json({
+          error: 'Nenhuma empresa no sistema. Cadastre uma empresa em Configurações e vincule seu usuário a ela.',
+          codigo: 'COMPANY_ID_REQUIRED'
+        });
+      }
+      rowsToInsert.forEach(row => {
+        if (row && (row.company_id == null || row.company_id === '')) row.company_id = companyId;
+      });
+      console.log('[Insert] os_config_status company_id=', companyId, 'rows=', rowsToInsert.length);
+    }
+
     // Lista COMPLETA de tabelas que precisam de company_id no INSERT
     // CRÍTICO: Garante isolamento de dados entre empresas
     const tablesWithCompanyId = [
@@ -1548,11 +1578,8 @@ app.post('/api/insert/:table', async (req, res) => {
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
-
-    // Suportar INSERT em lote: body pode ser array de objetos
-    const rowsToInsert = Array.isArray(data) ? data : [data];
     
-    // Adicionar company_id automaticamente se necessário
+    // Adicionar company_id automaticamente se necessário (outras tabelas; os_config_status já tratado acima)
     if (needsCompanyId && req.user && req.companyId) {
       rowsToInsert.forEach(row => {
         if (!row.company_id) {
@@ -1596,6 +1623,37 @@ app.post('/api/insert/:table', async (req, res) => {
           error: 'Usuário sem empresa vinculada (company_id). Vincule o usuário a uma empresa para usar esta função.',
           codigo: 'COMPANY_ID_REQUIRED'
         });
+      }
+    }
+
+    // Rede de segurança: os_config_status nunca pode ir ao INSERT sem company_id
+    if (tableNameOnly.toLowerCase() === 'os_config_status' && needsCompanyId) {
+      const missing = rowsToInsert.some(row => row == null || row.company_id == null || row.company_id === '');
+      if (missing) {
+        let fallbackId = req.companyId || null;
+        if (!fallbackId) {
+          try {
+            const fromCompanies = await pool.query('SELECT id FROM companies LIMIT 1').catch(() => ({ rows: [] }));
+            if (fromCompanies.rows && fromCompanies.rows.length > 0) fallbackId = fromCompanies.rows[0].id;
+            if (!fallbackId) {
+              const fromUsers = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
+              if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) fallbackId = fromUsers.rows[0].company_id;
+            }
+          } catch (e) {
+            console.warn('[Insert] os_config_status fallback company_id:', e.message);
+          }
+        }
+        if (fallbackId) {
+          rowsToInsert.forEach(row => {
+            if (row && (row.company_id == null || row.company_id === '')) row.company_id = fallbackId;
+          });
+          console.log('[Insert] os_config_status: company_id aplicado (fallback)', fallbackId);
+        } else {
+          return res.status(400).json({
+            error: 'Nenhuma empresa cadastrada. Cadastre uma empresa ou vincule o usuário a uma empresa.',
+            codigo: 'COMPANY_ID_REQUIRED'
+          });
+        }
       }
     }
 
@@ -1799,7 +1857,11 @@ app.post('/api/insert/:table', async (req, res) => {
     if (skippedKeys.length > 0) {
       console.log(`[Insert] ${tableNameOnly}: colunas omitidas (não existem na tabela):`, skippedKeys);
     }
-    const keysToUse = validKeys;
+    let keysToUse = validKeys;
+    // Garantir company_id no INSERT para tabelas que exigem (evita null constraint)
+    if (needsCompanyId && columnTypes['company_id'] && !keysToUse.includes('company_id')) {
+      keysToUse = ['company_id', ...keysToUse];
+    }
 
     // Colunas conhecidas que são arrays UUID[] (não JSONB)
     const uuidArrayColumns = ['allowed_respondents', 'target_employees'];
