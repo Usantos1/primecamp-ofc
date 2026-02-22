@@ -82,7 +82,10 @@ export function useClientesSupabase(pageSize: number = 50) {
         console.error('[createCliente] Erro ao inserir:', error);
         throw error;
       }
-      return (inserted?.data || inserted) as Cliente;
+      const raw = inserted?.data ?? inserted;
+      const cliente = Array.isArray(raw) ? raw[0] : raw;
+      if (!cliente?.id) throw new Error('Cliente não foi retornado pelo servidor');
+      return cliente as Cliente;
     },
     onSuccess: (data) => {
       console.log('[createCliente] Sucesso! Cliente criado:', data);
