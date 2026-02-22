@@ -1278,10 +1278,13 @@ export function useConfiguracaoStatus() {
     return configuracoes.find(c => c.status === status);
   }, [configuracoes]);
 
+  const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
   const updateConfig = useCallback(async (id: string, data: Partial<ConfiguracaoStatus>) => {
-    const payload: any = {
-      updated_at: new Date().toISOString(),
-    };
+    if (!isUuid(id)) {
+      throw new Error('Não foi possível salvar: os dados estão em modo offline (lista padrão). Faça login com um usuário vinculado a uma empresa e recarregue a página.');
+    }
+    const payload: any = {};
     if (data.label !== undefined) payload.label = data.label;
     if (data.cor !== undefined) payload.cor = data.cor;
     if (data.notificar_whatsapp !== undefined) payload.notificar_whatsapp = data.notificar_whatsapp;
@@ -1291,7 +1294,7 @@ export function useConfiguracaoStatus() {
     if (data.acao !== undefined) payload.acao = data.acao;
     const { error } = await from('os_config_status').eq('id', id).update(payload);
     if (error) {
-      const msg = (error as any)?.message ?? (typeof error === 'string' ? error : 'Erro ao atualizar');
+      const msg = (error as any)?.error ?? (error as any)?.message ?? (typeof error === 'string' ? error : 'Erro ao atualizar');
       throw new Error(msg);
     }
     setConfiguracoes(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
@@ -1310,7 +1313,10 @@ export function useConfiguracaoStatus() {
       acao: data.acao ?? 'nenhuma',
     };
     const { data: inserted, error } = await from('os_config_status').insert(payload);
-    if (error) throw error;
+    if (error) {
+      const msg = (error as any)?.error ?? (error as any)?.message ?? 'Erro ao criar';
+      throw new Error(msg);
+    }
     const raw = inserted?.data ?? inserted;
     const row = Array.isArray(raw) ? raw[0] : raw;
     const newConfig = row ? rowToConfig(row) : { ...data, id: String(Date.now()), ordem: payload.ordem };
@@ -1319,8 +1325,14 @@ export function useConfiguracaoStatus() {
   }, [configuracoes]);
 
   const deleteConfig = useCallback(async (id: string) => {
+    if (!isUuid(id)) {
+      throw new Error('Não é possível remover: os dados estão em modo offline (lista padrão). Recarregue a página após conectar à API.');
+    }
     const { error } = await from('os_config_status').eq('id', id).delete();
-    if (error) throw error;
+    if (error) {
+      const msg = (error as any)?.error ?? (error as any)?.message ?? 'Erro ao remover';
+      throw new Error(msg);
+    }
     setConfiguracoes(prev => prev.filter(c => c.id !== id));
   }, []);
 

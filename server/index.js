@@ -1400,6 +1400,43 @@ app.post('/api/query/:table', async (req, res) => {
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
     
+    if (needsCompanyFilter && req.user && !req.companyId) {
+      if (tableNameOnly.toLowerCase() === 'os_config_status') {
+        try {
+          let defaultCompanyId = null;
+          const fromCompanies = await pool.query('SELECT id FROM companies LIMIT 1').catch(() => ({ rows: [] }));
+          if (fromCompanies.rows && fromCompanies.rows.length > 0) {
+            defaultCompanyId = fromCompanies.rows[0].id;
+          }
+          if (!defaultCompanyId) {
+            const fromUsers = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
+            if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) {
+              defaultCompanyId = fromUsers.rows[0].company_id;
+            }
+          }
+          if (defaultCompanyId) {
+            req.companyId = defaultCompanyId;
+            console.log('[Query] os_config_status: usando empresa padrão', req.companyId);
+          } else {
+            return res.status(400).json({
+              error: 'Nenhuma empresa cadastrada e nenhum usuário com empresa. Cadastre uma empresa e vincule ao usuário.',
+              codigo: 'COMPANY_ID_REQUIRED'
+            });
+          }
+        } catch (e) {
+          return res.status(400).json({
+            error: 'Usuário sem empresa vinculada (company_id). Vincule o usuário a uma empresa.',
+            codigo: 'COMPANY_ID_REQUIRED'
+          });
+        }
+      } else {
+        return res.status(400).json({
+          error: 'Usuário sem empresa vinculada (company_id). Vincule o usuário a uma empresa.',
+          codigo: 'COMPANY_ID_REQUIRED'
+        });
+      }
+    }
+    
     // Se a tabela precisa de filtro por company_id e o usuário está autenticado
     let finalWhereClause = whereClause;
     let finalParams = [...params];
@@ -1523,6 +1560,43 @@ app.post('/api/insert/:table', async (req, res) => {
         }
       });
       console.log(`[Insert] Adicionando company_id=${req.companyId} para tabela ${tableNameOnly}`);
+    } else if (needsCompanyId && req.user && !req.companyId) {
+      if (tableNameOnly.toLowerCase() === 'os_config_status') {
+        try {
+          let defaultCompanyId = null;
+          const fromCompanies = await pool.query('SELECT id FROM companies LIMIT 1').catch(() => ({ rows: [] }));
+          if (fromCompanies.rows && fromCompanies.rows.length > 0) {
+            defaultCompanyId = fromCompanies.rows[0].id;
+          }
+          if (!defaultCompanyId) {
+            const fromUsers = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
+            if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) {
+              defaultCompanyId = fromUsers.rows[0].company_id;
+            }
+          }
+          if (defaultCompanyId) {
+            rowsToInsert.forEach(row => {
+              if (!row.company_id) row.company_id = defaultCompanyId;
+            });
+            console.log('[Insert] os_config_status: usando empresa padrão', defaultCompanyId);
+          } else {
+            return res.status(400).json({
+              error: 'Nenhuma empresa cadastrada e nenhum usuário com empresa. Cadastre uma empresa e vincule ao usuário.',
+              codigo: 'COMPANY_ID_REQUIRED'
+            });
+          }
+        } catch (e) {
+          return res.status(400).json({
+            error: 'Usuário sem empresa vinculada (company_id). Vincule o usuário a uma empresa para usar esta função.',
+            codigo: 'COMPANY_ID_REQUIRED'
+          });
+        }
+      } else {
+        return res.status(400).json({
+          error: 'Usuário sem empresa vinculada (company_id). Vincule o usuário a uma empresa para usar esta função.',
+          codigo: 'COMPANY_ID_REQUIRED'
+        });
+      }
     }
 
     if (!rowsToInsert || rowsToInsert.length === 0) {

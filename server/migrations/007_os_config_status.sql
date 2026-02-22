@@ -1,5 +1,8 @@
 -- Configuração de status de OS: global por empresa (um único conjunto por company_id)
 -- Substitui o uso de localStorage; todos os usuários e dispositivos veem a mesma config.
+--
+-- OBRIGATÓRIO: Rodar este script no MESMO PostgreSQL que a API (api.primecamp.cloud) usa.
+-- Se a tabela não existir nesse banco, /pdv/configuracao-status retorna 500 ao salvar/carregar.
 
 CREATE TABLE IF NOT EXISTS os_config_status (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
