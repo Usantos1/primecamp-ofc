@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   OrdemServico, Cliente, Produto, Marca, Modelo, ItemOS, PagamentoOS,
-  ConfiguracaoStatus, StatusOS, STATUS_OS_PADRAO, STATUS_OS_LABELS
+  ConfiguracaoStatus, StatusOS, AcaoStatusOS, STATUS_OS_PADRAO, STATUS_OS_LABELS
 } from '@/types/assistencia';
 import { from } from '@/integrations/db/client';
 
@@ -464,8 +464,8 @@ export function useOrdensServico() {
     const updates: Partial<OrdemServico> = { status: status as StatusOS };
 
     try {
-      const stored = loadFromStorage(STORAGE_KEYS.CONFIG_STATUS, [] as ConfiguracaoStatus[]);
-      const config = Array.isArray(stored) ? stored.find((c: ConfiguracaoStatus) => c.status === status) : undefined;
+      const { data: configRows } = await from('os_config_status').select('acao').eq('status', status).limit(1).execute();
+      const config = configRows?.[0];
       if (config?.acao === 'fechar_os') {
         updates.situacao = 'fechada';
         updates.data_entrega = new Date().toISOString();
@@ -1208,44 +1208,121 @@ export function usePagamentosOSAPI(osId: string) {
   return { pagamentos: list, totalPago, isLoading, refetch: load };
 }
 
-// ==================== HOOK: CONFIGURAÇÃO DE STATUS ====================
+// ==================== HOOK: CONFIGURAÇÃO DE STATUS (global por empresa, API) ====================
+// Configuração única por empresa; não usa mais localStorage (evita cache por usuário/dispositivo).
+function rowToConfig(row: any): ConfiguracaoStatus {
+  return {
+    id: String(row.id),
+    status: row.status,
+    label: row.label,
+    cor: row.cor || 'bg-blue-500',
+    notificar_whatsapp: Boolean(row.notificar_whatsapp),
+    mensagem_whatsapp: row.mensagem_whatsapp ?? undefined,
+    ordem: Number(row.ordem) || 0,
+    ativo: row.ativo !== false,
+    acao: (row.acao as AcaoStatusOS) || 'nenhuma',
+  };
+}
+
 export function useConfiguracaoStatus() {
-  const [configuracoes, setConfiguracoes] = useState<ConfiguracaoStatus[]>(() => {
-    const stored = loadFromStorage<ConfiguracaoStatus[]>(STORAGE_KEYS.CONFIG_STATUS, []);
-    if (stored.length === 0) {
-      saveToStorage(STORAGE_KEYS.CONFIG_STATUS, STATUS_OS_PADRAO);
-      return STATUS_OS_PADRAO;
+  const [configuracoes, setConfiguracoes] = useState<ConfiguracaoStatus[]>([]);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+
+  const loadConfiguracoes = useCallback(async () => {
+    try {
+      // Limpar cache antigo do localStorage (uma vez por dispositivo)
+      if (typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEYS.CONFIG_STATUS)) {
+        localStorage.removeItem(STORAGE_KEYS.CONFIG_STATUS);
+      }
+      const { data: rows, error } = await from('os_config_status')
+        .select('*')
+        .order('ordem', { ascending: true })
+        .execute();
+      if (error) throw error;
+      const list = (rows || []).map(rowToConfig);
+      if (list.length === 0) {
+        // Seed padrão por empresa (uma única vez)
+        const toInsert = STATUS_OS_PADRAO.map(({ id: _id, ...r }) => ({
+          status: r.status,
+          label: r.label,
+          cor: r.cor,
+          notificar_whatsapp: r.notificar_whatsapp,
+          mensagem_whatsapp: r.mensagem_whatsapp ?? null,
+          ordem: r.ordem,
+          ativo: r.ativo,
+          acao: r.acao ?? 'nenhuma',
+        }));
+        const { error: insertErr } = await from('os_config_status').insert(toInsert);
+        if (insertErr) throw insertErr;
+        const { data: newRows } = await from('os_config_status')
+          .select('*')
+          .order('ordem', { ascending: true })
+          .execute();
+        setConfiguracoes((newRows || []).map(rowToConfig));
+      } else {
+        setConfiguracoes(list);
+      }
+    } catch (e) {
+      console.error('[useConfiguracaoStatus] Erro ao carregar:', e);
+      setConfiguracoes(STATUS_OS_PADRAO);
+    } finally {
+      setIsLoadingConfig(false);
     }
-    return stored;
-  });
+  }, []);
 
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CONFIG_STATUS, configuracoes);
-  }, [configuracoes]);
+    loadConfiguracoes();
+  }, [loadConfiguracoes]);
 
   const getConfigByStatus = useCallback((status: StatusOS | string): ConfiguracaoStatus | undefined => {
     return configuracoes.find(c => c.status === status);
   }, [configuracoes]);
 
-  const updateConfig = useCallback((id: string, data: Partial<ConfiguracaoStatus>) => {
+  const updateConfig = useCallback(async (id: string, data: Partial<ConfiguracaoStatus>) => {
+    const payload: any = {
+      updated_at: new Date().toISOString(),
+    };
+    if (data.label !== undefined) payload.label = data.label;
+    if (data.cor !== undefined) payload.cor = data.cor;
+    if (data.notificar_whatsapp !== undefined) payload.notificar_whatsapp = data.notificar_whatsapp;
+    if (data.mensagem_whatsapp !== undefined) payload.mensagem_whatsapp = data.mensagem_whatsapp;
+    if (data.ordem !== undefined) payload.ordem = data.ordem;
+    if (data.ativo !== undefined) payload.ativo = data.ativo;
+    if (data.acao !== undefined) payload.acao = data.acao;
+    const { error } = await from('os_config_status').eq('id', id).update(payload);
+    if (error) {
+      const msg = (error as any)?.message ?? (typeof error === 'string' ? error : 'Erro ao atualizar');
+      throw new Error(msg);
+    }
     setConfiguracoes(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   }, []);
 
-  const createConfig = useCallback((data: Omit<ConfiguracaoStatus, 'id'>) => {
-    const newConfig: ConfiguracaoStatus = {
-      ...data,
-      id: Date.now().toString(),
+  const createConfig = useCallback(async (data: Omit<ConfiguracaoStatus, 'id'>) => {
+    const maxOrdem = configuracoes.length > 0 ? Math.max(...configuracoes.map(c => c.ordem)) : 0;
+    const payload = {
+      status: data.status,
+      label: data.label,
+      cor: data.cor,
+      notificar_whatsapp: data.notificar_whatsapp,
+      mensagem_whatsapp: data.mensagem_whatsapp ?? null,
+      ordem: data.ordem ?? maxOrdem + 1,
+      ativo: data.ativo !== false,
+      acao: data.acao ?? 'nenhuma',
     };
-    setConfiguracoes(prev => {
-      const maxOrdem = prev.length > 0 ? Math.max(...prev.map(c => c.ordem)) : 0;
-      return [...prev, { ...newConfig, ordem: data.ordem || maxOrdem + 1 }];
-    });
+    const { data: inserted, error } = await from('os_config_status').insert(payload);
+    if (error) throw error;
+    const raw = inserted?.data ?? inserted;
+    const row = Array.isArray(raw) ? raw[0] : raw;
+    const newConfig = row ? rowToConfig(row) : { ...data, id: String(Date.now()), ordem: payload.ordem };
+    setConfiguracoes(prev => [...prev, newConfig]);
     return newConfig;
-  }, []);
+  }, [configuracoes]);
 
-  const deleteConfig = useCallback((id: string) => {
+  const deleteConfig = useCallback(async (id: string) => {
+    const { error } = await from('os_config_status').eq('id', id).delete();
+    if (error) throw error;
     setConfiguracoes(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  return { configuracoes, getConfigByStatus, updateConfig, createConfig, deleteConfig };
+  return { configuracoes, isLoadingConfig, loadConfiguracoes, getConfigByStatus, updateConfig, createConfig, deleteConfig };
 }

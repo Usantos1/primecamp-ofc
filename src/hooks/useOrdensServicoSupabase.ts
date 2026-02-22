@@ -298,18 +298,21 @@ export function useOrdensServicoSupabase() {
 
       const updates: any = { status };
 
-      // Ação definida na configuração de status (pdv/configuracao-status)
+      // Ação definida na configuração de status (global por empresa, API)
       try {
-        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('assistencia_config_status') : null;
-        const configs: { status: string; acao?: string }[] = stored ? JSON.parse(stored) : [];
-        const config = configs.find((c: { status: string }) => c.status === status);
+        const { data: configRows } = await from('os_config_status')
+          .select('acao')
+          .eq('status', status)
+          .limit(1)
+          .execute();
+        const config = configRows?.[0];
         if (config?.acao === 'fechar_os') {
           updates.situacao = 'fechada';
           updates.data_entrega = new Date().toISOString().split('T')[0];
         } else if (config?.acao === 'cancelar_os') {
           updates.situacao = 'cancelada';
         }
-      } catch (_) { /* ignora erro de leitura da config */ }
+      } catch (_) { /* ignora */ }
 
       // Fallback quando a config não define ação (comportamento histórico)
       if (!updates.situacao && ['entregue', 'entregue_faturada', 'entregue_sem_reparo'].includes(status as string)) {

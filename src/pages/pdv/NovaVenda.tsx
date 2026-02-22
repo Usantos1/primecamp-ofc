@@ -22,7 +22,7 @@ import { useSales, useSaleItems, usePayments, useCashRegister, useCashMovements 
 import { useQuotes } from '@/hooks/useQuotes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
-import { useItensOS } from '@/hooks/useAssistencia';
+import { useItensOS, useConfiguracaoStatus } from '@/hooks/useAssistencia';
 import { useProdutosSupabase } from '@/hooks/useProdutosSupabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -103,6 +103,7 @@ export default function NovaVenda() {
   };
   const { clientes, searchClientes, searchClientesAsync, createCliente } = useClientes();
   const { ordens, getOSById, updateStatus: updateOSStatus } = useOrdensServico();
+  const { getConfigByStatus } = useConfiguracaoStatus();
   
   // Buscar todos os itens do localStorage
   // Removido: não precisa mais carregar itens do localStorage
@@ -1623,22 +1624,11 @@ export default function NovaVenda() {
                 await updateOSStatus(updatedSale.ordem_servico_id, novoStatus);
                 console.log(`OS #${os.numero} mudada para ${novoStatus} automaticamente após faturamento`);
                 
-                // Enviar mensagem configurada do status (se houver)
+                // Enviar mensagem configurada do status (config global por empresa, API)
                 try {
                   const telefone = os.telefone_contato;
                   if (telefone) {
-                    // Buscar configuração do status do localStorage
-                    const configStatusStr = localStorage.getItem('assistencia_config_status');
-                    let configStatus: any = null;
-                    if (configStatusStr) {
-                      try {
-                        const configuracoes = JSON.parse(configStatusStr);
-                        configStatus = configuracoes.find((c: any) => c.status === novoStatus || c.status === 'entregue');
-                      } catch (e) {
-                        console.warn('Erro ao ler configurações do localStorage:', e);
-                      }
-                    }
-                    
+                    const configStatus = getConfigByStatus?.(novoStatus) ?? getConfigByStatus?.('entregue');
                     if (configStatus?.notificar_whatsapp && configStatus.mensagem_whatsapp) {
                       // Substituir variáveis na mensagem
                       let mensagem = configStatus.mensagem_whatsapp
@@ -3327,21 +3317,11 @@ _PrimeCamp Assistência Técnica_`;
                     await updateOSStatus(updatedSale.ordem_servico_id, 'entregue_faturada');
                     console.log(`OS #${os.numero} mudada para entregue_faturada automaticamente após pagamento via voucher`);
                     
-                    // Enviar mensagem configurada (mesma lógica do finalizeSale)
+                    // Enviar mensagem configurada (config global por empresa, API)
                     try {
                       const telefone = os.telefone_contato;
                       if (telefone) {
-                        const configStatusStr = localStorage.getItem('assistencia_config_status');
-                        let configStatus: any = null;
-                        if (configStatusStr) {
-                          try {
-                            const configuracoes = JSON.parse(configStatusStr);
-                            configStatus = configuracoes.find((c: any) => c.status === 'entregue_faturada' || c.status === 'entregue');
-                          } catch (e) {
-                            console.warn('Erro ao ler configurações:', e);
-                          }
-                        }
-                        
+                        const configStatus = getConfigByStatus?.('entregue_faturada') ?? getConfigByStatus?.('entregue');
                         if (configStatus?.notificar_whatsapp && configStatus.mensagem_whatsapp) {
                           let mensagem = configStatus.mensagem_whatsapp
                             .replace(/{cliente}/g, os.cliente_nome || 'Cliente')

@@ -23,7 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ConfiguracaoStatusPage() {
-  const { configuracoes, updateConfig, createConfig, deleteConfig } = useConfiguracaoStatus();
+  const { configuracoes, isLoadingConfig, updateConfig, createConfig, deleteConfig } = useConfiguracaoStatus();
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const { imageUrl, uploading, uploadImage, deleteImage } = useOSImageReference();
@@ -84,7 +84,7 @@ export default function ConfiguracaoStatusPage() {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editForm.label.trim()) {
       toast({ 
         title: 'Label obrigatório', 
@@ -94,59 +94,65 @@ export default function ConfiguracaoStatusPage() {
       return;
     }
 
-    if (isCreating) {
-      if (!editForm.status.trim()) {
-        toast({ 
-          title: 'Código do status obrigatório', 
-          description: 'Informe o código único do status (ex: novo_status).',
-          variant: 'destructive' 
+    try {
+      if (isCreating) {
+        if (!editForm.status.trim()) {
+          toast({ 
+            title: 'Código do status obrigatório', 
+            description: 'Informe o código único do status (ex: novo_status).',
+            variant: 'destructive' 
+          });
+          return;
+        }
+        if (configuracoes.some(c => c.status === editForm.status)) {
+          toast({ 
+            title: 'Status já existe', 
+            description: 'Já existe um status com este código.',
+            variant: 'destructive' 
+          });
+          return;
+        }
+        await createConfig({
+          status: editForm.status as StatusOS,
+          label: editForm.label,
+          cor: editForm.cor,
+          notificar_whatsapp: editForm.notificar_whatsapp,
+          mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
+          ordem: editForm.ordem,
+          ativo: editForm.ativo,
+          acao: editForm.acao,
         });
-        return;
-      }
-
-      // Verificar se já existe status com o mesmo código
-      if (configuracoes.some(c => c.status === editForm.status)) {
-        toast({ 
-          title: 'Status já existe', 
-          description: 'Já existe um status com este código.',
-          variant: 'destructive' 
+        toast({ title: 'Status criado com sucesso' });
+        setIsCreating(false);
+      } else if (editing) {
+        await updateConfig(editing.id, {
+          label: editForm.label,
+          cor: editForm.cor,
+          notificar_whatsapp: editForm.notificar_whatsapp,
+          mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
+          ordem: editForm.ordem,
+          ativo: editForm.ativo,
+          acao: editForm.acao,
         });
-        return;
+        toast({ title: 'Configuração atualizada com sucesso' });
+        setEditing(null);
       }
-
-      createConfig({
-        status: editForm.status as StatusOS,
-        label: editForm.label,
-        cor: editForm.cor,
-        notificar_whatsapp: editForm.notificar_whatsapp,
-        mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
-        ordem: editForm.ordem,
-        ativo: editForm.ativo,
-        acao: editForm.acao,
-      });
-      toast({ title: 'Status criado com sucesso' });
-      setIsCreating(false);
-    } else if (editing) {
-      updateConfig(editing.id, {
-        label: editForm.label,
-        cor: editForm.cor,
-        notificar_whatsapp: editForm.notificar_whatsapp,
-        mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
-        ordem: editForm.ordem,
-        ativo: editForm.ativo,
-        acao: editForm.acao,
-      });
-      toast({ title: 'Configuração atualizada com sucesso' });
-      setEditing(null);
+    } catch (e: any) {
+      const msg = e?.message || (e?.error?.message ?? 'Tente novamente');
+      toast({ title: 'Erro ao salvar', description: msg, variant: 'destructive', duration: 8000 });
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleting) return;
-    
-    deleteConfig(deleting.id);
-    toast({ title: 'Status removido com sucesso' });
-    setDeleting(null);
+    try {
+      await deleteConfig(deleting.id);
+      toast({ title: 'Status removido com sucesso' });
+      setDeleting(null);
+    } catch (e: any) {
+      const msg = e?.message || (e?.error?.message ?? 'Tente novamente');
+      toast({ title: 'Erro ao remover', description: msg, variant: 'destructive', duration: 8000 });
+    }
   };
 
   const getStatusLabel = (status: StatusOS | string) => {
@@ -406,6 +412,9 @@ export default function ConfiguracaoStatusPage() {
           </div>
         </CardHeader>
         <CardContent className="p-3 md:p-6">
+          {isLoadingConfig && (
+            <p className="text-sm text-muted-foreground mb-3">Carregando configuração...</p>
+          )}
           {/* Desktop: Tabela */}
           <div className="hidden md:block border-2 border-gray-300 rounded-lg overflow-x-auto">
             <Table>

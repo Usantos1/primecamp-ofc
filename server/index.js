@@ -1394,7 +1394,7 @@ app.post('/api/query/:table', async (req, res) => {
       'marcas', 'modelos',
       // Configurações específicas da empresa
       'configuracoes_empresa', 'company_settings',
-      'os_pagamentos'
+      'os_pagamentos', 'os_config_status'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
@@ -1507,7 +1507,7 @@ app.post('/api/insert/:table', async (req, res) => {
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'fornecedores'
+      'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1888,7 +1888,7 @@ app.post('/api/update/:table', async (req, res) => {
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'fornecedores'
+      'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2425,7 +2425,7 @@ app.post('/api/delete/:table', async (req, res) => {
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'fornecedores'
+      'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
