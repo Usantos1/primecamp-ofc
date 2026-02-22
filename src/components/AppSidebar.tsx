@@ -240,7 +240,7 @@ export function AppSidebar() {
             src={logoImage}
             alt="Prime Camp Logo"
             className="h-10 w-auto object-contain"
-            fetchPriority="high"
+            fetchpriority="high"
             decoding="async"
             width="233"
             height="64"

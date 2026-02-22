@@ -12,7 +12,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Produto, TipoProduto, TIPO_PRODUTO_LABELS } from '@/types/assistencia';
 import { parseBRLInput, maskBRL, formatBRL } from '@/utils/currency';
 import { from } from '@/integrations/db/client';
-import { Barcode, Package, DollarSign, Warehouse, History, Plus, X, Check, ChevronsUpDown } from 'lucide-react';
+import { Barcode, Package, DollarSign, Warehouse, History, Plus, X, Check, ChevronsUpDown, Palette, LayoutGrid } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -49,6 +50,155 @@ interface FormData {
   unidade?: string;
   garantia_dias?: number | '';
   tipo?: TipoProduto;
+  /** Grade: por cor (tampas) ou com/sem aro (telas). Quando preenchido, quantidade = soma dos itens */
+  estoque_grade?: { tipo: 'cor' | 'aro'; itens: Record<string, number> };
+}
+
+/** Sincroniza quantidade do formulário com a soma dos itens da grade */
+function syncQuantidadeFromGrade(
+  setValue: (name: 'quantidade' | 'estoque_grade', value: any) => void,
+  grade: { tipo: 'cor' | 'aro'; itens: Record<string, number> } | undefined
+) {
+  if (!grade?.itens) return;
+  const total = Object.values(grade.itens).reduce((a, b) => a + (Number(b) || 0), 0);
+  setValue('quantidade', total);
+}
+
+function GradeAroFields({
+  watch,
+  setValue,
+}: {
+  watch: (name: 'estoque_grade') => { tipo: string; itens: Record<string, number> } | undefined;
+  setValue: (name: string, value: any) => void;
+}) {
+  const grade = watch('estoque_grade');
+  const itens = grade?.itens || {};
+  const update = (key: 'Com Aro' | 'Sem Aro', value: number) => {
+    const next = { ...itens, [key]: value };
+    setValue('estoque_grade', { tipo: 'aro', itens: next });
+    syncQuantidadeFromGrade(setValue as any, { tipo: 'aro', itens: next });
+  };
+  return (
+    <div className="md:col-span-2 space-y-3">
+      <Label>Quantidade por tipo</Label>
+      <div className="grid grid-cols-2 gap-4 max-w-md">
+        <div>
+          <Label htmlFor="grade_com_aro" className="text-xs text-muted-foreground">Com Aro</Label>
+          <Input
+            id="grade_com_aro"
+            type="number"
+            min={0}
+            value={itens['Com Aro'] ?? ''}
+            onChange={(e) => update('Com Aro', parseInt(e.target.value, 10) || 0)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="grade_sem_aro" className="text-xs text-muted-foreground">Sem Aro</Label>
+          <Input
+            id="grade_sem_aro"
+            type="number"
+            min={0}
+            value={itens['Sem Aro'] ?? ''}
+            onChange={(e) => update('Sem Aro', parseInt(e.target.value, 10) || 0)}
+            className="mt-1"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GradeCorFields({
+  watch,
+  setValue,
+}: {
+  watch: (name: 'estoque_grade') => { tipo: string; itens: Record<string, number> } | undefined;
+  setValue: (name: string, value: any) => void;
+}) {
+  const grade = watch('estoque_grade');
+  const itens = grade?.itens || {};
+  const cores = Object.entries(itens);
+  const update = (cor: string, value: number) => {
+    const next = { ...itens, [cor]: value };
+    if (value === 0) delete next[cor];
+    setValue('estoque_grade', { tipo: 'cor', itens: next });
+    syncQuantidadeFromGrade(setValue as any, { tipo: 'cor', itens: next });
+  };
+  const remove = (cor: string) => {
+    const next = { ...itens };
+    delete next[cor];
+    setValue('estoque_grade', { tipo: 'cor', itens: next });
+    syncQuantidadeFromGrade(setValue as any, { tipo: 'cor', itens: next });
+  };
+  const [novaCor, setNovaCor] = useState('');
+  const addCor = () => {
+    const cor = novaCor.trim();
+    if (!cor) return;
+    setValue('estoque_grade', { tipo: 'cor', itens: { ...itens, [cor]: 0 } });
+    setNovaCor('');
+  };
+  const coresSugeridas = ['Branca', 'Preta', 'Dourada', 'Cinza', 'Verde', 'Azul', 'Rosa', 'Vermelha'];
+  return (
+    <div className="md:col-span-2 space-y-3">
+      <Label>Quantidade por cor</Label>
+      <div className="space-y-2 max-w-lg">
+        {cores.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Adicione cores e informe a quantidade de cada uma.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cor</TableHead>
+                <TableHead className="w-[120px]">Quantidade</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cores.map(([cor, qtd]) => (
+                <TableRow key={cor}>
+                  <TableCell className="font-medium">{cor}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={qtd}
+                      onChange={(e) => update(cor, parseInt(e.target.value, 10) || 0)}
+                      className="h-8"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(cor)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <div className="flex gap-2 flex-wrap items-center pt-2">
+          <Input
+            placeholder="Nome da cor"
+            value={novaCor}
+            onChange={(e) => setNovaCor(e.target.value)}
+            className="w-40"
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCor())}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addCor} disabled={!novaCor.trim()}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar cor
+          </Button>
+          {coresSugeridas.filter(c => !itens[c]).length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              Sugestões: {coresSugeridas.filter(c => !itens[c]).slice(0, 5).map(c => (
+                <button key={c} type="button" className="ml-1 underline hover:no-underline" onClick={() => { setValue('estoque_grade', { tipo: 'cor', itens: { ...itens, [c]: 0 } }); syncQuantidadeFromGrade(setValue as any, { tipo: 'cor', itens: { ...itens, [c]: 0 } }); }}>{c}</button>
+              ))}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface EstoqueMovimentacao {
@@ -444,6 +594,7 @@ export function ProductFormOptimized({
       unidade: 'UN',
       garantia_dias: undefined as number | undefined,
       tipo: 'PECA' as TipoProduto,
+      estoque_grade: undefined,
     },
   });
 
@@ -493,6 +644,7 @@ export function ProductFormOptimized({
           unidade: produto.unidade || 'UN',
           garantia_dias: produto.garantia_dias ?? undefined,
           tipo: (produto.tipo || 'PECA') as TipoProduto,
+          estoque_grade: produto.estoque_grade,
         });
         
         // Inicializar valores brutos formatados para exibição
@@ -528,6 +680,7 @@ export function ProductFormOptimized({
             unidade: produto.unidade || 'UN',
             garantia_dias: produto.garantia_dias ?? undefined,
             tipo: (produto.tipo || 'PECA') as TipoProduto,
+            estoque_grade: produto.estoque_grade ? { ...produto.estoque_grade, itens: { ...produto.estoque_grade.itens } } : undefined,
           });
           // Inicializar valores brutos formatados para exibição
           setPrecoCustoRaw(precoCusto > 0 ? precoCusto.toFixed(2).replace('.', ',') : '');
@@ -706,8 +859,13 @@ export function ProductFormOptimized({
       }
 
       // Estoque
-      if (data.quantidade !== undefined && data.quantidade !== null) {
+      if (data.estoque_grade?.itens && Object.keys(data.estoque_grade.itens).length > 0) {
+        payload.estoque_grade = data.estoque_grade;
+        const totalGrade = Object.values(data.estoque_grade.itens).reduce((a, b) => a + (Number(b) || 0), 0);
+        payload.quantidade = totalGrade;
+      } else if (data.quantidade !== undefined && data.quantidade !== null) {
         payload.quantidade = data.quantidade;
+        if (isEditing) payload.estoque_grade = null as any; // limpar grade se voltar a estoque simples
       }
       // Estoque mínimo: sempre enviar, mesmo se for 0 (para permitir zerar)
       if (data.estoque_minimo !== undefined && data.estoque_minimo !== null) {
@@ -743,9 +901,12 @@ export function ProductFormOptimized({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="product-form-description">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+          <p id="product-form-description" className="sr-only">
+            Formulário com abas: Dados do Produto, Preços, Estoque e Movimentações.
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
@@ -1245,16 +1406,83 @@ export function ProductFormOptimized({
             {/* ABA: Estoque */}
             <TabsContent value="estoque" className="flex-1 overflow-y-auto space-y-4 mt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="quantidade">Quantidade Atual</Label>
-                  <Input
-                    id="quantidade"
-                    type="number"
-                    {...register('quantidade', { valueAsNumber: true })}
-                    placeholder="0"
-                    className="text-base md:text-sm"
+                {/* Opção: estoque simples ou grade (por cor / com-sem aro) */}
+                <div className="md:col-span-2 flex items-center gap-3 rounded-lg border p-4 bg-muted/30">
+                  <Switch
+                    id="usa_grade"
+                    checked={!!watch('estoque_grade')}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setValue('estoque_grade', { tipo: 'cor', itens: {} });
+                        setValue('quantidade', 0);
+                      } else {
+                        setValue('estoque_grade', undefined as any);
+                      }
+                    }}
                   />
+                  <Label htmlFor="usa_grade" className="cursor-pointer flex-1">
+                    Usar grade de estoque (por cor em tampas ou com/sem aro em telas)
+                  </Label>
                 </div>
+
+                {watch('estoque_grade') ? (
+                  <>
+                    <div className="md:col-span-2">
+                      <Label>Tipo de grade</Label>
+                      <Select
+                        value={watch('estoque_grade')?.tipo || 'cor'}
+                        onValueChange={(v: 'cor' | 'aro') => {
+                          const current = watch('estoque_grade');
+                          if (!current) return;
+                          if (v === 'aro') {
+                            const next = { tipo: 'aro' as const, itens: { 'Com Aro': current.itens['Com Aro'] ?? 0, 'Sem Aro': current.itens['Sem Aro'] ?? 0 } };
+                            setValue('estoque_grade', next);
+                            syncQuantidadeFromGrade(setValue as any, next);
+                          } else {
+                            const next = { tipo: 'cor' as const, itens: current.tipo === 'cor' ? current.itens : {} };
+                            setValue('estoque_grade', next);
+                            syncQuantidadeFromGrade(setValue as any, next);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="mt-1 max-w-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cor" className="gap-2">
+                            <Palette className="h-4 w-4" /> Por cor (tampas)
+                          </SelectItem>
+                          <SelectItem value="aro" className="gap-2">
+                            <LayoutGrid className="h-4 w-4" /> Com aro / Sem aro (telas)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {watch('estoque_grade')?.tipo === 'aro' ? (
+                      <GradeAroFields watch={watch} setValue={setValue} />
+                    ) : (
+                      <GradeCorFields watch={watch} setValue={setValue} />
+                    )}
+                    <div className="md:col-span-2 pt-2 border-t">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Total em estoque: <span className="text-foreground font-bold">{watch('quantidade') ?? 0}</span> unidades
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <Label htmlFor="quantidade">Quantidade Atual</Label>
+                      <Input
+                        id="quantidade"
+                        type="number"
+                        {...register('quantidade', { valueAsNumber: true })}
+                        placeholder="0"
+                        className="text-base md:text-sm"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>

@@ -271,11 +271,13 @@ export interface Produto {
   permitir_desconto_percentual?: number;
   
   // Estoque
-  quantidade: number; // estoque_atual no Supabase
+  quantidade: number; // estoque_atual no Supabase (total; se estoque_grade existe, é a soma dos itens)
   estoque_minimo?: number;
   localizacao?: string;
   unidade?: string; // Unidade, Caixa, Kit, Pcs, etc.
-  
+  /** Grade: por cor (tampas) ou com/sem aro (telas). itens = variante -> quantidade */
+  estoque_grade?: { tipo: 'cor' | 'aro'; itens: Record<string, number> };
+
   // Configurações
   situacao?: 'ATIVO' | 'INATIVO';
   tipo?: TipoProduto;
@@ -321,7 +323,8 @@ export interface ProdutoFormData {
   estoque_minimo?: number;
   localizacao?: string;
   unidade?: string;
-  
+  estoque_grade?: { tipo: 'cor' | 'aro'; itens: Record<string, number> };
+
   // Configurações
   situacao?: 'ATIVO' | 'INATIVO';
   tipo?: TipoProduto;

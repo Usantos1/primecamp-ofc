@@ -36,6 +36,9 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     estoque_minimo: supabaseProduto.estoque_minimo ? Number(supabaseProduto.estoque_minimo) : undefined,
     localizacao: supabaseProduto.localizacao || undefined,
     unidade: supabaseProduto.unidade || undefined,
+    estoque_grade: supabaseProduto.estoque_grade && typeof supabaseProduto.estoque_grade === 'object'
+      ? { tipo: supabaseProduto.estoque_grade.tipo, itens: supabaseProduto.estoque_grade.itens || {} }
+      : undefined,
     
     // Configurações (tipo, garantia)
     tipo: (supabaseProduto.tipo || 'PECA') as 'PECA' | 'SERVICO' | 'PRODUTO',
@@ -121,7 +124,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
     queryFn: async () => {
       // Construir query base usando wrapper PostgreSQL
-      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,criado_em,atualizado_em';
+      const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,estoque_grade,criado_em,atualizado_em';
       
       let query = dbFrom('produtos')
         .select(selectFields);
@@ -185,7 +188,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
       // Fallback defensivo: se a coluna vi_custo não existir no banco, refazer sem ela
       if (error && String(error.message || error).includes('vi_custo') && String(error.message || error).includes('does not exist')) {
-        const fallbackFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,criado_em,atualizado_em';
+        const fallbackFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,estoque_grade,criado_em,atualizado_em';
         let fallbackQuery = dbFrom('produtos')
           .select(fallbackFields);
         fallbackQuery = fallbackQuery.order(orderBy === 'codigo' ? 'codigo' : 'nome', { ascending: orderDirection === 'asc', nullsFirst: orderBy === 'codigo' ? false : true });
@@ -236,15 +239,9 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
         totalCount: finalCount,
       };
       
-      console.log('[useProdutosPaginated] Resultado:', {
-        page,
-        produtosCount: result.produtos.length,
-        totalCount: result.totalCount,
-        countRecebido: count,
-        from,
-        to,
-      });
-      
+      if (import.meta.env?.DEV) {
+        console.log('[useProdutosPaginated] Resultado:', { page, produtosCount: result.produtos.length, totalCount: result.totalCount });
+      }
       return result;
     },
     staleTime: Infinity, // Dados nunca ficam stale - não refetch automático
@@ -273,24 +270,9 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     // Se totalCount for 0 mas temos produtos, pode ser que ainda está carregando o count
     // Nesse caso, calcular baseado nos produtos retornados como estimativa mínima
     if (totalCount === 0 && produtos.length > 0) {
-      // Se temos produtos mas count é 0, estimar pelo menos uma página
-      const estimatedPages = Math.max(1, Math.ceil(produtos.length / pageSize));
-      console.log('[useProdutosPaginated] Calculando totalPages (estimado):', {
-        totalCount,
-        produtosCount: produtos.length,
-        pageSize,
-        totalPages: estimatedPages,
-      });
-      return estimatedPages;
+      return Math.max(1, Math.ceil(produtos.length / pageSize));
     }
-    
-    const pages = totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1;
-    console.log('[useProdutosPaginated] Calculando totalPages:', {
-      totalCount,
-      pageSize,
-      totalPages: pages,
-    });
-    return pages;
+    return totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1;
   }, [totalCount, pageSize, produtos.length]);
 
   // Prefetch da próxima página para navegação mais rápida (opcional)
@@ -303,7 +285,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       queryClient.prefetchQuery({
         queryKey: ['produtos-paginated', nextPage, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
         queryFn: async () => {
-          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,criado_em,atualizado_em';
+          const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,estoque_grade,criado_em,atualizado_em';
           
           let query = dbFrom('produtos')
             .select(selectFields);
@@ -546,6 +528,9 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     if (produto.unidade !== undefined && produto.unidade !== null && produto.unidade !== '') {
       payload.unidade = produto.unidade;
     }
+    if (produto.estoque_grade !== undefined) {
+      payload.estoque_grade = produto.estoque_grade ?? null;
+    }
     if (produto.tipo !== undefined && produto.tipo !== null && produto.tipo !== '') {
       payload.tipo = produto.tipo;
     }
@@ -584,9 +569,11 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       });
 
     if (error) {
+      const msg = typeof error === 'object' && error !== null && 'message' in error ? String((error as any).message) : 'Erro ao criar produto';
+      const isNetworkError = msg.includes('Failed to fetch');
       toast({
         title: 'Erro ao criar produto',
-        description: error.message,
+        description: isNetworkError ? 'Sem conexão com o servidor. Verifique sua internet e se a API está acessível.' : msg,
         variant: 'destructive',
       });
       throw error;
@@ -612,9 +599,12 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       .single();
 
     if (oldErr && oldErr.code !== 'PGRST116') {
+      const isNetworkError = oldErr.message?.includes('Failed to fetch') || (oldErr as any).message === 'Failed to fetch';
       toast({
         title: 'Erro ao atualizar produto',
-        description: 'Não foi possível carregar o estado anterior para auditoria.',
+        description: isNetworkError
+          ? 'Sem conexão com o servidor. Verifique sua internet e se a API (api.primecamp.cloud) está acessível.'
+          : 'Não foi possível carregar o estado anterior para auditoria.',
         variant: 'destructive',
       });
       throw oldErr;
@@ -627,9 +617,13 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       .update(produtoSupabase);
 
     if (error) {
+      const msg = typeof error === 'object' && error !== null && 'message' in error ? String((error as any).message) : '';
+      const isNetworkError = msg.includes('Failed to fetch');
       toast({
         title: 'Erro ao atualizar produto',
-        description: error.message,
+        description: isNetworkError
+          ? 'Sem conexão com o servidor. Verifique sua internet e se a API está acessível.'
+          : msg || 'Erro ao atualizar.',
         variant: 'destructive',
       });
       throw error;
