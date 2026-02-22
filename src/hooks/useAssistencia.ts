@@ -4,6 +4,8 @@ import {
   ConfiguracaoStatus, StatusOS, AcaoStatusOS, STATUS_OS_PADRAO, STATUS_OS_LABELS
 } from '@/types/assistencia';
 import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { authAPI } from '@/integrations/auth/api-client';
 
 // ==================== STORAGE KEYS ====================
 const STORAGE_KEYS = {
@@ -1224,7 +1226,12 @@ function rowToConfig(row: any): ConfiguracaoStatus {
   };
 }
 
+const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
+const isValidCompanyId = (id: string | null | undefined) =>
+  id && id !== ZERO_UUID && String(id).toLowerCase() !== ZERO_UUID;
+
 export function useConfiguracaoStatus() {
+  const { user } = useAuth();
   const [configuracoes, setConfiguracoes] = useState<ConfiguracaoStatus[]>([]);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
@@ -1241,7 +1248,15 @@ export function useConfiguracaoStatus() {
       if (error) throw error;
       const list = (rows || []).map(rowToConfig);
       if (list.length === 0) {
-        // Seed padrão por empresa (uma única vez)
+        // Seed padrão por empresa (uma única vez). Enviar company_id no body para evitar 500 se a API não preencher.
+        let companyId = isValidCompanyId(user?.company_id) ? user!.company_id : undefined;
+        if (!companyId) {
+          const me = await authAPI.getCurrentUser();
+          companyId = isValidCompanyId(me?.data?.user?.company_id) ? me!.data!.user!.company_id : undefined;
+        }
+        if (!companyId) {
+          throw new Error('Seu usuário não está vinculado a uma empresa. Em Configurações, vincule seu usuário a uma empresa e recarregue a página.');
+        }
         const toInsert = STATUS_OS_PADRAO.map(({ id: _id, ...r }) => ({
           status: r.status,
           label: r.label,
@@ -1251,6 +1266,7 @@ export function useConfiguracaoStatus() {
           ordem: r.ordem,
           ativo: r.ativo,
           acao: r.acao ?? 'nenhuma',
+          company_id: companyId,
         }));
         const { error: insertErr } = await from('os_config_status').insert(toInsert);
         if (insertErr) throw insertErr;

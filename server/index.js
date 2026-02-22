@@ -1400,17 +1400,19 @@ app.post('/api/query/:table', async (req, res) => {
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
     
+    const ZERO_UUID_QUERY = '00000000-0000-0000-0000-000000000000';
+    const isValidCompanyIdQuery = (id) => id && id !== ZERO_UUID_QUERY && String(id).toLowerCase() !== ZERO_UUID_QUERY;
     if (needsCompanyFilter && req.user && !req.companyId) {
       if (tableNameOnly.toLowerCase() === 'os_config_status') {
         try {
           let defaultCompanyId = null;
-          const fromCompanies = await pool.query('SELECT id FROM companies LIMIT 1').catch(() => ({ rows: [] }));
-          if (fromCompanies.rows && fromCompanies.rows.length > 0) {
+          const fromCompanies = await pool.query('SELECT id FROM public.companies WHERE id != $1::uuid LIMIT 1', [ZERO_UUID_QUERY]).catch(() => ({ rows: [] }));
+          if (fromCompanies.rows && fromCompanies.rows.length > 0 && isValidCompanyIdQuery(fromCompanies.rows[0].id)) {
             defaultCompanyId = fromCompanies.rows[0].id;
           }
           if (!defaultCompanyId) {
-            const fromUsers = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
-            if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) {
+            const fromUsers = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL AND company_id != $1::uuid LIMIT 1', [ZERO_UUID_QUERY]).catch(() => ({ rows: [] }));
+            if (fromUsers.rows && fromUsers.rows.length > 0 && isValidCompanyIdQuery(fromUsers.rows[0].company_id)) {
               defaultCompanyId = fromUsers.rows[0].company_id;
             }
           }
@@ -1536,15 +1538,18 @@ app.post('/api/insert/:table', async (req, res) => {
     const rowsToInsert = Array.isArray(data) ? data : [data];
 
     // os_config_status: SEMPRE resolver company_id logo no início (evita 500 por NOT NULL)
+    const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
+    const isValidCompanyId = (id) => id && id !== ZERO_UUID && String(id).toLowerCase() !== ZERO_UUID;
     if (tableNameOnly.toLowerCase() === 'os_config_status') {
-      let companyId = (req.user && req.companyId) ? req.companyId : null;
+      console.log('[Insert] os_config_status: req.user?', !!req.user, 'req.companyId?', req.companyId);
+      let companyId = (req.user && isValidCompanyId(req.companyId)) ? req.companyId : null;
       if (!companyId) {
         try {
-          const fromCompanies = await pool.query('SELECT id FROM public.companies LIMIT 1').catch(() => ({ rows: [] }));
-          if (fromCompanies.rows && fromCompanies.rows.length > 0) companyId = fromCompanies.rows[0].id;
+          const fromCompanies = await pool.query('SELECT id FROM public.companies WHERE id != $1::uuid LIMIT 1', [ZERO_UUID]).catch(() => ({ rows: [] }));
+          if (fromCompanies.rows && fromCompanies.rows.length > 0 && isValidCompanyId(fromCompanies.rows[0].id)) companyId = fromCompanies.rows[0].id;
           if (!companyId) {
-            const fromUsers = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
-            if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) companyId = fromUsers.rows[0].company_id;
+            const fromUsers = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL AND company_id != $1::uuid LIMIT 1', [ZERO_UUID]).catch(() => ({ rows: [] }));
+            if (fromUsers.rows && fromUsers.rows.length > 0 && isValidCompanyId(fromUsers.rows[0].company_id)) companyId = fromUsers.rows[0].company_id;
           }
         } catch (e) {
           console.warn('[Insert] os_config_status resolve company_id:', e.message);
@@ -1552,12 +1557,12 @@ app.post('/api/insert/:table', async (req, res) => {
       }
       if (!companyId) {
         return res.status(400).json({
-          error: 'Nenhuma empresa no sistema. Cadastre uma empresa em Configurações e vincule seu usuário a ela.',
+          error: 'Nenhuma empresa no sistema. Cadastre uma empresa em Configurações e vincule seu usuário a ela (company_id não pode ser vazio/nulo).',
           codigo: 'COMPANY_ID_REQUIRED'
         });
       }
       rowsToInsert.forEach(row => {
-        if (row && (row.company_id == null || row.company_id === '')) row.company_id = companyId;
+        if (row && (row.company_id == null || row.company_id === '' || !isValidCompanyId(row.company_id))) row.company_id = companyId;
       });
       console.log('[Insert] os_config_status company_id=', companyId, 'rows=', rowsToInsert.length);
     }
@@ -1590,20 +1595,22 @@ app.post('/api/insert/:table', async (req, res) => {
     } else if (needsCompanyId && req.user && !req.companyId) {
       if (tableNameOnly.toLowerCase() === 'os_config_status') {
         try {
+          const zeroUuid = '00000000-0000-0000-0000-000000000000';
+          const valid = (id) => id && id !== zeroUuid && String(id).toLowerCase() !== zeroUuid;
           let defaultCompanyId = null;
-          const fromCompanies = await pool.query('SELECT id FROM companies LIMIT 1').catch(() => ({ rows: [] }));
-          if (fromCompanies.rows && fromCompanies.rows.length > 0) {
+          const fromCompanies = await pool.query('SELECT id FROM public.companies WHERE id != $1::uuid LIMIT 1', [zeroUuid]).catch(() => ({ rows: [] }));
+          if (fromCompanies.rows && fromCompanies.rows.length > 0 && valid(fromCompanies.rows[0].id)) {
             defaultCompanyId = fromCompanies.rows[0].id;
           }
           if (!defaultCompanyId) {
-            const fromUsers = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
-            if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) {
+            const fromUsers = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL AND company_id != $1::uuid LIMIT 1', [zeroUuid]).catch(() => ({ rows: [] }));
+            if (fromUsers.rows && fromUsers.rows.length > 0 && valid(fromUsers.rows[0].company_id)) {
               defaultCompanyId = fromUsers.rows[0].company_id;
             }
           }
           if (defaultCompanyId) {
             rowsToInsert.forEach(row => {
-              if (!row.company_id) row.company_id = defaultCompanyId;
+              if (!row.company_id || !valid(row.company_id)) row.company_id = defaultCompanyId;
             });
             console.log('[Insert] os_config_status: usando empresa padrão', defaultCompanyId);
           } else {
@@ -1627,17 +1634,19 @@ app.post('/api/insert/:table', async (req, res) => {
     }
 
     // Rede de segurança: os_config_status nunca pode ir ao INSERT sem company_id
+    const ZERO_UUID_SAFETY = '00000000-0000-0000-0000-000000000000';
+    const validCompanyIdSafety = (id) => id && id !== ZERO_UUID_SAFETY && String(id).toLowerCase() !== ZERO_UUID_SAFETY;
     if (tableNameOnly.toLowerCase() === 'os_config_status' && needsCompanyId) {
-      const missing = rowsToInsert.some(row => row == null || row.company_id == null || row.company_id === '');
+      const missing = rowsToInsert.some(row => row == null || !validCompanyIdSafety(row.company_id));
       if (missing) {
-        let fallbackId = req.companyId || null;
+        let fallbackId = validCompanyIdSafety(req.companyId) ? req.companyId : null;
         if (!fallbackId) {
           try {
-            const fromCompanies = await pool.query('SELECT id FROM companies LIMIT 1').catch(() => ({ rows: [] }));
-            if (fromCompanies.rows && fromCompanies.rows.length > 0) fallbackId = fromCompanies.rows[0].id;
+            const fromCompanies = await pool.query('SELECT id FROM public.companies WHERE id != $1::uuid LIMIT 1', [ZERO_UUID_SAFETY]).catch(() => ({ rows: [] }));
+            if (fromCompanies.rows && fromCompanies.rows.length > 0 && validCompanyIdSafety(fromCompanies.rows[0].id)) fallbackId = fromCompanies.rows[0].id;
             if (!fallbackId) {
-              const fromUsers = await pool.query('SELECT company_id FROM users WHERE company_id IS NOT NULL LIMIT 1').catch(() => ({ rows: [] }));
-              if (fromUsers.rows && fromUsers.rows.length > 0 && fromUsers.rows[0].company_id) fallbackId = fromUsers.rows[0].company_id;
+              const fromUsers = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL AND company_id != $1::uuid LIMIT 1', [ZERO_UUID_SAFETY]).catch(() => ({ rows: [] }));
+              if (fromUsers.rows && fromUsers.rows.length > 0 && validCompanyIdSafety(fromUsers.rows[0].company_id)) fallbackId = fromUsers.rows[0].company_id;
             }
           } catch (e) {
             console.warn('[Insert] os_config_status fallback company_id:', e.message);
@@ -1645,7 +1654,7 @@ app.post('/api/insert/:table', async (req, res) => {
         }
         if (fallbackId) {
           rowsToInsert.forEach(row => {
-            if (row && (row.company_id == null || row.company_id === '')) row.company_id = fallbackId;
+            if (row && !validCompanyIdSafety(row.company_id)) row.company_id = fallbackId;
           });
           console.log('[Insert] os_config_status: company_id aplicado (fallback)', fallbackId);
         } else {
@@ -1809,6 +1818,17 @@ app.post('/api/insert/:table', async (req, res) => {
             codigo: 'PAGAMENTO_ACIMA_DO_TOTAL'
           });
         }
+      }
+    }
+
+    // Última verificação: os_config_status nunca pode ter linha sem company_id
+    if (tableNameOnly.toLowerCase() === 'os_config_status') {
+      const bad = rowsToInsert.some(row => !row || row.company_id == null || row.company_id === '' || String(row.company_id).toLowerCase() === '00000000-0000-0000-0000-000000000000');
+      if (bad) {
+        return res.status(400).json({
+          error: 'Configuração de status exige empresa. Faça login com usuário vinculado a uma empresa e recarregue a página.',
+          codigo: 'COMPANY_ID_REQUIRED'
+        });
       }
     }
 
