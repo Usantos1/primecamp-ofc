@@ -17,6 +17,7 @@ export default defineConfig({
     port: 8080,
     host: true,
     hmr: {
+      clientPort: 8080,
       port: 8080,
       host: 'localhost',
       protocol: 'ws',

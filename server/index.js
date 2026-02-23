@@ -2049,6 +2049,27 @@ app.post('/api/update/:table', async (req, res) => {
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
 
+    // os_config_status: fallback company_id quando usuário não tem (para UPDATE funcionar)
+    if (needsCompanyFilter && req.user && !req.companyId && tableNameOnly.toLowerCase() === 'os_config_status') {
+      const zeroUuidUpdate = '00000000-0000-0000-0000-000000000000';
+      const valid = (id) => id && id !== zeroUuidUpdate && String(id).toLowerCase() !== zeroUuidUpdate;
+      try {
+        let fallback = null;
+        const fromCo = await pool.query('SELECT id FROM public.companies WHERE id != $1::uuid LIMIT 1', [zeroUuidUpdate]).catch(() => ({ rows: [] }));
+        if (fromCo.rows && fromCo.rows.length > 0 && valid(fromCo.rows[0].id)) fallback = fromCo.rows[0].id;
+        if (!fallback) {
+          const fromUs = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL AND company_id != $1::uuid LIMIT 1', [zeroUuidUpdate]).catch(() => ({ rows: [] }));
+          if (fromUs.rows && fromUs.rows.length > 0 && valid(fromUs.rows[0].company_id)) fallback = fromUs.rows[0].company_id;
+        }
+        if (fallback) {
+          req.companyId = fallback;
+          console.log('[Update] os_config_status: usando empresa padrão', fallback);
+        }
+      } catch (e) {
+        console.warn('[Update] os_config_status fallback company_id:', e.message);
+      }
+    }
+
     if (!where || Object.keys(where).length === 0) {
       return res.status(400).json({ error: 'Update requires WHERE clause' });
     }
@@ -2339,9 +2360,13 @@ app.post('/api/update/:table', async (req, res) => {
       params.push(req.companyId);
     }
     
+    // os_config_status: UPDATE por id apenas — não adicionar filtro company_id para o update sempre persistir
+    // (o registro já foi listado pela query que filtra por company; o id é UUID único)
+    const isOsConfigStatusUpdateById = tableNameOnly.toLowerCase() === 'os_config_status' && where && typeof where === 'object' && Object.keys(where).length === 1 && 'id' in where;
+    
     // Adicionar filtro de company_id se necessário
     // IMPORTANTE: Só adicionar se a coluna company_id existe na tabela
-    if (needsCompanyFilter && req.user && req.companyId && !isOsItemsUpdateById) {
+    if (needsCompanyFilter && req.user && req.companyId && !isOsItemsUpdateById && !isOsConfigStatusUpdateById) {
       const hasCompanyFilter = where && (
         (typeof where === 'object' && 'company_id' in where) ||
         (Array.isArray(where) && where.some((w) => w.field === 'company_id' || w.company_id))
@@ -2586,12 +2611,31 @@ app.post('/api/delete/:table', async (req, res) => {
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
 
+    // os_config_status: fallback company_id quando usuário não tem
+    if (needsCompanyFilter && req.user && !req.companyId && tableNameOnly.toLowerCase() === 'os_config_status') {
+      const zeroUuidDel = '00000000-0000-0000-0000-000000000000';
+      const valid = (id) => id && id !== zeroUuidDel && String(id).toLowerCase() !== zeroUuidDel;
+      try {
+        let fb = null;
+        const fromCo = await pool.query('SELECT id FROM public.companies WHERE id != $1::uuid LIMIT 1', [zeroUuidDel]).catch(() => ({ rows: [] }));
+        if (fromCo.rows && fromCo.rows.length > 0 && valid(fromCo.rows[0].id)) fb = fromCo.rows[0].id;
+        if (!fb) {
+          const fromUs = await pool.query('SELECT company_id FROM public.users WHERE company_id IS NOT NULL AND company_id != $1::uuid LIMIT 1', [zeroUuidDel]).catch(() => ({ rows: [] }));
+          if (fromUs.rows && fromUs.rows.length > 0 && valid(fromUs.rows[0].company_id)) fb = fromUs.rows[0].company_id;
+        }
+        if (fb) req.companyId = fb;
+      } catch (e) { console.warn('[Delete] os_config_status fallback:', e.message); }
+    }
+
     const { clause: whereClause, params } = buildWhereClause(where);
     let finalWhereClause = whereClause;
     let finalParams = [...params];
 
+    // os_config_status DELETE por id apenas: não adicionar filtro company_id para o delete funcionar
+    const isOsConfigStatusDeleteById = tableNameOnly.toLowerCase() === 'os_config_status' && where && typeof where === 'object' && Object.keys(where).length === 1 && 'id' in where;
+
     // CRÍTICO: Adicionar filtro de company_id automaticamente
-    if (needsCompanyFilter && req.user && req.companyId) {
+    if (needsCompanyFilter && req.user && req.companyId && !isOsConfigStatusDeleteById) {
       const hasCompanyFilter = where && (typeof where === 'object' && 'company_id' in where);
       
       if (!hasCompanyFilter) {

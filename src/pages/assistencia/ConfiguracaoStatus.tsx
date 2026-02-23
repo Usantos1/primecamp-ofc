@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useConfiguracaoStatus } from '@/hooks/useAssistencia';
 import { ConfiguracaoStatus, STATUS_OS_LABELS, StatusOS, AcaoStatusOS } from '@/types/assistencia';
-import { Save, Edit, X, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle, CheckSquare } from 'lucide-react';
+import { Save, Edit, X, Plus, Trash2, Upload, Image as ImageIcon, AlertTriangle, CheckSquare, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -23,7 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function ConfiguracaoStatusPage() {
-  const { configuracoes, isLoadingConfig, updateConfig, createConfig, deleteConfig } = useConfiguracaoStatus();
+  const { configuracoes, isLoadingConfig, loadConfiguracoes, updateConfig, createConfig, deleteConfig } = useConfiguracaoStatus();
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const { imageUrl, uploading, uploadImage, deleteImage } = useOSImageReference();
@@ -129,7 +129,8 @@ export default function ConfiguracaoStatusPage() {
           label: editForm.label,
           cor: editForm.cor,
           notificar_whatsapp: editForm.notificar_whatsapp,
-          mensagem_whatsapp: editForm.mensagem_whatsapp || undefined,
+          // Enviar null quando vazio para o backend limpar a mensagem (não usar undefined senão o campo não vai no payload)
+          mensagem_whatsapp: editForm.mensagem_whatsapp?.trim() || null,
           ordem: editForm.ordem,
           ativo: editForm.ativo,
           acao: editForm.acao,
@@ -402,13 +403,25 @@ export default function ConfiguracaoStatusPage() {
                 Configure as mensagens do WhatsApp e outras opções para cada status
               </CardDescription>
             </div>
-            <Button 
-              onClick={handleCreate}
-              className="w-full md:w-auto h-9 md:h-10 text-xs md:text-sm bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
-            >
-              <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
-              Novo Status
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => loadConfiguracoes()}
+                disabled={isLoadingConfig}
+                className="h-9 md:h-10 text-xs md:text-sm border-2 border-gray-300"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 md:h-4 md:w-4 mr-2 ${isLoadingConfig ? 'animate-spin' : ''}`} />
+                Recarregar
+              </Button>
+              <Button 
+                onClick={handleCreate}
+                className="w-full md:w-auto h-9 md:h-10 text-xs md:text-sm bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md"
+              >
+                <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
+                Novo Status
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-3 md:p-6">

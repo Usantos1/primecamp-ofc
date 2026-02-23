@@ -1304,10 +1304,15 @@ export function useConfiguracaoStatus() {
     if (data.label !== undefined) payload.label = data.label;
     if (data.cor !== undefined) payload.cor = data.cor;
     if (data.notificar_whatsapp !== undefined) payload.notificar_whatsapp = data.notificar_whatsapp;
-    if (data.mensagem_whatsapp !== undefined) payload.mensagem_whatsapp = data.mensagem_whatsapp;
+    // Incluir mensagem mesmo quando null para limpar no banco (remover mensagem)
+    if (data.mensagem_whatsapp !== undefined) payload.mensagem_whatsapp = data.mensagem_whatsapp ?? null;
     if (data.ordem !== undefined) payload.ordem = data.ordem;
     if (data.ativo !== undefined) payload.ativo = data.ativo;
     if (data.acao !== undefined) payload.acao = data.acao;
+    if (Object.keys(payload).length === 0) {
+      setConfiguracoes(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+      return;
+    }
     const { error } = await from('os_config_status').eq('id', id).update(payload);
     if (error) {
       const msg = (error as any)?.error ?? (error as any)?.message ?? (typeof error === 'string' ? error : 'Erro ao atualizar');
@@ -1318,6 +1323,14 @@ export function useConfiguracaoStatus() {
 
   const createConfig = useCallback(async (data: Omit<ConfiguracaoStatus, 'id'>) => {
     const maxOrdem = configuracoes.length > 0 ? Math.max(...configuracoes.map(c => c.ordem)) : 0;
+    let companyId = isValidCompanyId(user?.company_id) ? user!.company_id : undefined;
+    if (!companyId) {
+      const me = await authAPI.getCurrentUser();
+      companyId = isValidCompanyId(me?.data?.user?.company_id) ? me!.data!.user!.company_id : undefined;
+    }
+    if (!companyId) {
+      throw new Error('Seu usuário não está vinculado a uma empresa. Vincule em Configurações e tente novamente.');
+    }
     const payload = {
       status: data.status,
       label: data.label,
@@ -1327,6 +1340,7 @@ export function useConfiguracaoStatus() {
       ordem: data.ordem ?? maxOrdem + 1,
       ativo: data.ativo !== false,
       acao: data.acao ?? 'nenhuma',
+      company_id: companyId,
     };
     const { data: inserted, error } = await from('os_config_status').insert(payload);
     if (error) {
@@ -1338,7 +1352,7 @@ export function useConfiguracaoStatus() {
     const newConfig = row ? rowToConfig(row) : { ...data, id: String(Date.now()), ordem: payload.ordem };
     setConfiguracoes(prev => [...prev, newConfig]);
     return newConfig;
-  }, [configuracoes]);
+  }, [configuracoes, user]);
 
   const deleteConfig = useCallback(async (id: string) => {
     if (!isUuid(id)) {
