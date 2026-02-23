@@ -456,6 +456,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const [checklistSaidaAprovado, setChecklistSaidaAprovado] = useState<boolean | null>(null);
   const [checklistSaidaObservacoes, setChecklistSaidaObservacoes] = useState('');
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+  const [isSubmittingChecklistSaida, setIsSubmittingChecklistSaida] = useState(false);
 
   const [currentOS, setCurrentOS] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -1799,6 +1800,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       return;
     }
 
+    // Evitar duplo envio (botão desabilitado + guard)
+    if (isSubmittingChecklistSaida) return;
+    setIsSubmittingChecklistSaida(true);
+
     try {
       // Atualizar OS com checklist de saída
       const checklistSaidaIds = checklistSaidaMarcados;
@@ -1891,6 +1896,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         variant: 'destructive',
         duration: 8000
       });
+    } finally {
+      setIsSubmittingChecklistSaida(false);
     }
   };
 
@@ -5873,14 +5880,20 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </Button>
             <Button 
               onClick={handleFinalizarChecklistSaida}
-              disabled={checklistSaidaAprovado === null}
+              disabled={checklistSaidaAprovado === null || isSubmittingChecklistSaida}
               className={cn(
                 checklistSaidaAprovado === true && 'bg-green-600 hover:bg-green-700',
                 checklistSaidaAprovado === false && 'bg-red-600 hover:bg-red-700'
               )}
             >
-              <Save className="h-4 w-4 mr-2" />
-              Finalizar Checklist e Atualizar Status
+              {isSubmittingChecklistSaida ? (
+                <>Enviando...</>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Finalizar Checklist e Atualizar Status
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
