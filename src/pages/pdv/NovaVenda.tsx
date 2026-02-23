@@ -167,6 +167,8 @@ export default function NovaVenda() {
   const [closeDialogTotalVendas, setCloseDialogTotalVendas] = useState(0);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  /** Callback executado ao fechar a janela de impressão do cupom (após finalizar venda) */
+  const onCupomPrintClosedRef = useRef<(() => void) | null>(null);
 
   // Carregar venda se estiver editando
   useEffect(() => {
@@ -979,6 +981,19 @@ export default function NovaVenda() {
     }, 100);
   }, []);
 
+  // Ao fechar a janela de impressão do cupom (afterprint), limpar PDV e ir para /pdv
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'primecamp-cupom-print-closed') {
+        const fn = onCupomPrintClosedRef.current;
+        onCupomPrintClosedRef.current = null;
+        fn?.();
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
   // Finalizar venda
   const handleFinalize = useCallback(async () => {
     if (cart.length === 0) {
@@ -1209,6 +1224,11 @@ export default function NovaVenda() {
         limparPDV();
         navigate('/pdv', { replace: true });
         toast({ title: 'PDV limpo. Pronto para nova venda!' });
+        // Ao fechar a janela de impressão do cupom, garantir PDV limpo e em /pdv
+        onCupomPrintClosedRef.current = () => {
+          limparPDV();
+          navigate('/pdv', { replace: true });
+        };
         // Impressão em segundo plano (sem bloquear a tela)
         setTimeout(async () => {
           try {
@@ -1669,6 +1689,12 @@ export default function NovaVenda() {
           toast({ title: 'Venda finalizada com sucesso!' });
           setShowCheckout(false);
           
+          // Ao fechar a janela de impressão do cupom, limpar PDV e ir para /pdv (sem link da venda anterior)
+          onCupomPrintClosedRef.current = () => {
+            limparPDV();
+            navigate('/pdv', { replace: true });
+            toast({ title: 'PDV limpo. Pronto para nova venda!' });
+          };
           // Aguardar e imprimir automaticamente com dados frescos da venda
           setPendingSaleForCupom(updatedSale);
           setTimeout(async () => {
@@ -1676,14 +1702,9 @@ export default function NovaVenda() {
             if (finalSale?.items?.length && finalSale?.payments?.length) {
               console.log('[IMPRESSÃO] Iniciando impressão automática...', { saleId: finalSale.id });
               await handlePrintCupomDirect(finalSale);
-              setTimeout(() => {
-                limparPDV();
-                toast({ title: 'PDV limpo. Pronto para nova venda!' });
-              }, 2000);
             } else {
               console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos');
             }
-            await loadSale();
           }, 800);
         } catch (error: any) {
           console.error('Erro ao finalizar venda automaticamente:', error);
@@ -1706,22 +1727,25 @@ export default function NovaVenda() {
     
     if (pendingSaleForCupom?.id) {
       try {
+        // Ao fechar a janela de impressão, limpar PDV e ir para /pdv
+        onCupomPrintClosedRef.current = () => {
+          limparPDV();
+          navigate('/pdv', { replace: true });
+          toast({ title: 'PDV limpo. Pronto para nova venda!' });
+        };
         const saleParaCupom = await getSaleById(pendingSaleForCupom.id);
         if (saleParaCupom?.items?.length && saleParaCupom?.payments?.length) {
           await handlePrintCupomDirect(saleParaCupom);
-          setTimeout(() => {
-            limparPDV();
-            toast({ title: 'PDV limpo. Pronto para nova venda!' });
-          }, 1500);
         } else {
           limparPDV();
+          navigate('/pdv', { replace: true });
         }
-        await loadSale();
       } catch (error) {
         console.error('Erro ao emitir cupom:', error);
         toast({ title: 'Erro ao emitir cupom', variant: 'destructive' });
         // Limpar mesmo em caso de erro
         limparPDV();
+        navigate('/pdv', { replace: true });
       }
     } else {
       // Se não tiver venda pendente, apenas limpar
@@ -1881,6 +1905,20 @@ export default function NovaVenda() {
             // Aguardar carregamento e imprimir
             setTimeout(() => {
               try {
+                const win = printFrame.contentWindow;
+                if (win) {
+                  win.onafterprint = () => {
+                    try {
+                      win.parent?.postMessage?.({ type: 'primecamp-cupom-print-closed' }, '*');
+                    } catch (_) {}
+                  };
+                  // Fallback: alguns navegadores não disparam onafterprint ao cancelar; assumir fechado após 4s
+                  win.setTimeout(() => {
+                    try {
+                      win.parent?.postMessage?.({ type: 'primecamp-cupom-print-closed' }, '*');
+                    } catch (_) {}
+                  }, 4000);
+                }
                 printFrame.contentWindow?.focus();
                 // Imprimir diretamente - navegadores podem mostrar diálogo
                 printFrame.contentWindow?.print();
