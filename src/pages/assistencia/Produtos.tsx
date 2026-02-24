@@ -91,6 +91,11 @@ const ProdutoTableRow = memo(({
     [produto.preco_venda, produto.valor_venda]
   );
 
+  const valor6x = useMemo(() => 
+    currencyFormatters.brl(produto.valor_parcelado_6x ?? produto.preco_venda ?? produto.valor_venda ?? 0),
+    [produto.valor_parcelado_6x, produto.preco_venda, produto.valor_venda]
+  );
+
   const descricaoCompleta = useMemo(() => 
     produto.nome || produto.descricao || '',
     [produto.nome, produto.descricao]
@@ -170,9 +175,13 @@ const ProdutoTableRow = memo(({
       <td className="text-sm py-3.5 px-3 text-center text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 w-[70px] hidden md:table-cell">
         UN
       </td>
-      {/* Valor de Venda - DESTAQUE FINANCEIRO */}
-      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[110px]">
-        <span className="font-semibold text-emerald-700 dark:text-emerald-400">{valorVenda}</span>
+      {/* Valor parcelado 6x - padrão */}
+      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[95px]">
+        <span className="font-semibold text-emerald-700 dark:text-emerald-400">{valor6x}</span>
+      </td>
+      {/* Valor à vista (Dinheiro/PIX) */}
+      <td className="text-sm py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[95px]">
+        <span className="font-medium text-gray-700 dark:text-gray-300">{valorVenda}</span>
       </td>
       {/* Ações */}
       <td className="py-3.5 px-3 text-center w-[80px]">
@@ -905,7 +914,8 @@ export default function Produtos() {
                             </th>
                             <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[100px] text-xs uppercase tracking-wide">Estoque</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[70px] hidden md:table-cell text-xs uppercase tracking-wide">Unid.</th>
-                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[110px] text-xs uppercase tracking-wide">Valor</th>
+                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[95px] text-xs uppercase tracking-wide">Valor 6x</th>
+                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 dark:border-gray-600 w-[95px] text-xs uppercase tracking-wide">À vista</th>
                             <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 w-[80px] text-xs uppercase tracking-wide">Ações</th>
                           </tr>
                         </thead>
@@ -913,7 +923,7 @@ export default function Produtos() {
                           {isFetching && !isLoading && produtos.length > 0 ? (
                             produtos.map((produto, index) => (
                               <tr key={`skeleton-${produto.id}`} className={`border-b border-gray-100 ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}>
-                                <td colSpan={9} className="py-3.5 px-3">
+                                <td colSpan={10} className="py-3.5 px-3">
                                   <div className="h-9 bg-muted rounded animate-pulse" />
                                 </td>
                               </tr>
@@ -989,6 +999,7 @@ export default function Produtos() {
                   <div className="md:hidden flex-1 overflow-y-auto min-h-0 space-y-3 p-3">
                     {produtos.map((produto, index) => {
                       const valorVenda = currencyFormatters.brl(produto.preco_venda || produto.valor_venda || 0);
+                      const valor6x = currencyFormatters.brl(produto.valor_parcelado_6x ?? produto.preco_venda ?? produto.valor_venda ?? 0);
                       const descricaoCompleta = produto.nome || produto.descricao || '';
                       const quantidade = produto.quantidade || 0;
                       const estoqueMinimo = produto.estoque_minimo || 0;
@@ -1023,8 +1034,12 @@ export default function Produtos() {
                                 </div>
                               </div>
                               <div>
-                                <p className="text-xs text-gray-500 font-medium">Valor</p>
-                                <p className="font-bold text-lg text-emerald-600 mt-1">{valorVenda}</p>
+                                <p className="text-xs text-gray-500 font-medium">Valor 6x</p>
+                                <p className="font-bold text-lg text-emerald-600 mt-1">{valor6x}</p>
+                              </div>
+                              <div className="col-span-2">
+                                <p className="text-xs text-gray-500 font-medium">À vista</p>
+                                <p className="font-semibold text-base text-gray-700 mt-1">{valorVenda}</p>
                               </div>
                             </div>
                             <div className="flex justify-end pt-2 border-t border-gray-200">
