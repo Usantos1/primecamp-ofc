@@ -603,7 +603,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           cor: os.cor || '',
           senha_aparelho: os.senha_aparelho || '',
           senha_numerica: os.senha_numerica || '',
-          padrao_desbloqueio: os.padrao_desbloqueio || '',
+          padrao_desbloqueio: (() => {
+            const p = os.padrao_desbloqueio;
+            if (typeof p === 'string' && p.trim()) return p;
+            if (Array.isArray(p) && p.length >= 2) return p.map(n => Number(n)).filter(n => !isNaN(n) && n >= 0 && n <= 8).join('-');
+            return '';
+          })(),
           possui_senha: os.possui_senha,
           possui_senha_tipo: os.possui_senha_tipo || (os.possui_senha ? (os.padrao_desbloqueio ? 'deslizar' : 'sim') : 'nao'),
           deixou_aparelho: os.deixou_aparelho,
@@ -1472,6 +1477,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       camposFaltandoSet.add('possui_senha');
     }
 
+    // Se "Possui senha" = SIM, a senha do aparelho é obrigatória
+    if (formData.possui_senha_tipo === 'sim' && (!formData.senha_aparelho || String(formData.senha_aparelho).trim() === '')) {
+      camposFaltando.push('Senha do aparelho');
+      camposFaltandoSet.add('senha_aparelho');
+    }
+
     // Se houver campos faltando, exibir toast com lista e log no console
     if (camposFaltando.length > 0) {
       console.warn('[VALIDAÇÃO OS] Campos obrigatórios faltando:', camposFaltando);
@@ -1541,6 +1552,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           tecnico_nome: tecnico?.nome,
           orcamento_autorizado: temOrcamento || formData.orcamento_autorizado || false,
           apenas_orcamento: formData.apenas_orcamento || false,
+          vendedor_id: user?.id || undefined,
+          vendedor_nome: currentUserNome,
         } as any);
         
         // Validar se o ID foi retornado
@@ -2016,10 +2029,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
       return;
     }
 
-    // Usar dados atuais do formulário na impressão para que o padrão de desbloqueio (e senha) impresso bata com o que está na tela
+    // Gerar na hora do clique: usar SEMPRE o estado atual do formulário para padrão/senha (não cache da OS)
+    const normalizarPadrao = (p: unknown): string => {
+      if (typeof p === 'string' && p.trim()) return p;
+      if (Array.isArray(p) && p.length >= 2) return p.map((n: number) => Number(n)).filter((n: number) => !isNaN(n) && n >= 0 && n <= 8).join('-');
+      return '';
+    };
+    const padraoAtual = isEditing && formData ? formData.padrao_desbloqueio : os.padrao_desbloqueio;
+    const padraoParaImpressao = normalizarPadrao(padraoAtual);
     const osToPrint = isEditing && formData
-      ? { ...os, padrao_desbloqueio: formData.padrao_desbloqueio ?? os.padrao_desbloqueio, possui_senha: formData.possui_senha ?? os.possui_senha, possui_senha_tipo: formData.possui_senha_tipo ?? os.possui_senha_tipo, senha_numerica: formData.senha_numerica ?? os.senha_numerica, senha_aparelho: formData.senha_aparelho ?? os.senha_aparelho }
-      : os;
+      ? { ...os, padrao_desbloqueio: padraoParaImpressao, possui_senha: formData.possui_senha ?? os.possui_senha, possui_senha_tipo: formData.possui_senha_tipo ?? os.possui_senha_tipo, senha_numerica: formData.senha_numerica ?? os.senha_numerica, senha_aparelho: formData.senha_aparelho ?? os.senha_aparelho }
+      : { ...os, padrao_desbloqueio: padraoParaImpressao };
 
     if (tipo === 'pdf' || tipo === 'a4') {
       // Usar a mesma função para PDF e A4 (baseada na térmica)
@@ -3170,15 +3190,28 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </SelectContent>
                     </Select>
 
-                    {/* Senha - Campo de texto quando SIM */}
+                    {/* Senha - Campo de texto quando SIM (obrigatório) */}
                     {formData.possui_senha_tipo === 'sim' && (
-                      <Input
-                        type="text"
-                        value={formData.senha_aparelho}
-                        onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
-                        placeholder="Digite a senha do aparelho"
-                        className="h-10 text-sm border-gray-200 rounded-lg"
-                      />
+                      <div className="space-y-1">
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('senha_aparelho') && "font-bold text-red-600")}>
+                          Senha do aparelho *
+                        </Label>
+                        {camposFaltandoState.has('senha_aparelho') && (
+                          <p className="text-xs text-red-600">Preencha a senha quando &quot;Possui senha&quot; for SIM.</p>
+                        )}
+                        <Input
+                          type="text"
+                          value={formData.senha_aparelho}
+                          onChange={(e) => {
+                            setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }));
+                            if (e.target.value.trim()) {
+                              setCamposFaltandoState(prev => { const next = new Set(prev); next.delete('senha_aparelho'); return next; });
+                            }
+                          }}
+                          placeholder="Digite a senha do aparelho"
+                          className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('senha_aparelho') && "border-red-500 border-2 bg-red-50")}
+                        />
+                      </div>
                     )}
 
                     {/* Senha - PatternLock quando DESLIZAR */}

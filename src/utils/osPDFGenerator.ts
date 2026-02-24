@@ -3,6 +3,7 @@ import { OrdemServico } from '@/types/assistencia';
 import { ChecklistConfigItem } from '@/hooks/useChecklistConfig';
 import { dateFormatters, currencyFormatters } from '@/utils/formatters';
 import { STATUS_OS_LABELS, StatusOS } from '@/types/assistencia';
+import { patternToSvg, POSSUI_SENHA_LABELS } from '@/utils/osPatternLockSvg';
 
 export interface OSPDFData {
   os: OrdemServico;
@@ -85,12 +86,22 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
     `;
   }
 
-  // Senha do aparelho
+  // Senha do aparelho: label + texto e/ou desenho do padrão (igual térmica)
   let senhaHtml = '';
   if (os.possui_senha) {
-    const senhaTipo = os.possui_senha_tipo || (os.padrao_desbloqueio ? 'Padrão' : 'Senha');
-    const senhaValor = os.senha_aparelho || os.senha_numerica || os.padrao_desbloqueio || 'Sim';
-    senhaHtml = `<div style="font-size: 8px;"><strong>Senha:</strong> ${senhaTipo}: ${senhaValor}</div>`;
+    const tipo = (os.possui_senha_tipo || '').toLowerCase();
+    const label = POSSUI_SENHA_LABELS[tipo] ?? (os.padrao_desbloqueio ? POSSUI_SENHA_LABELS.deslizar : POSSUI_SENHA_LABELS.sim);
+    const ehPadraoDesenho = Boolean((os.padrao_desbloqueio && String(os.padrao_desbloqueio).trim()) || tipo === 'deslizar');
+    const valorSenha = os.senha_aparelho || os.senha_numerica || '';
+    const padraoVal = typeof os.padrao_desbloqueio === 'string' && os.padrao_desbloqueio.trim() ? os.padrao_desbloqueio : (Array.isArray(os.padrao_desbloqueio) && os.padrao_desbloqueio.length >= 2 ? os.padrao_desbloqueio : undefined);
+    const patternSvg = patternToSvg(padraoVal, { size: 100 });
+    // Não mostrar linha "Senha: ..." quando for "CLIENTE NÃO QUIS DEIXAR SENHA"
+    const mostrarLinhaSenha = valorSenha && tipo !== 'nao_autorizou';
+    senhaHtml = `
+      <div style="font-size: 9px; margin-bottom: 2px;"><strong>Possui senha:</strong> ${label}</div>
+      ${mostrarLinhaSenha ? `<div style="font-size: 8px; margin-bottom: 2px;">Senha: ${valorSenha}</div>` : ''}
+      ${ehPadraoDesenho && patternSvg ? `<div style="margin-top: 2px;">${patternSvg}</div>` : ''}
+    `;
   }
 
   // Orçamento pré-autorizado
@@ -137,6 +148,9 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
           <td style="padding: 2px 3px; border: 1px solid #000; width: 25%;"><strong>Hora:</strong> ${horaEntrada}</td>
           <td style="padding: 2px 3px; border: 1px solid #000; width: 25%;"><strong>Status:</strong> ${STATUS_OS_LABELS[os.status as StatusOS] || os.status || '-'}</td>
           <td style="padding: 2px 3px; border: 1px solid #000; width: 25%;"><strong>Previsão:</strong> ${previsaoEntrega}</td>
+        </tr>
+        <tr>
+          <td colspan="4" style="padding: 2px 3px; border: 1px solid #000; font-size: 9px;"><strong>Vendedor(a):</strong> ${os.vendedor_nome || os.atendente_nome || '-'}</td>
         </tr>
       </table>
 

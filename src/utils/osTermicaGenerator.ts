@@ -2,6 +2,7 @@ import QRCode from 'qrcode';
 import { OrdemServico } from '@/types/assistencia';
 import { ChecklistConfigItem } from '@/hooks/useChecklistConfig';
 import { dateFormatters, currencyFormatters } from '@/utils/formatters';
+import { patternToSvg, POSSUI_SENHA_LABELS } from '@/utils/osPatternLockSvg';
 
 export interface OSTermicaData {
   os: OrdemServico;
@@ -92,45 +93,24 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
     `;
   }
 
-  // Figura do padrão de desenho (senha) — maior e com números ao lado de cada bolinha (sequência 1, 2, 3...) para leitura em térmica
-  // Grid 0-8: 0=top-left, 1=top-center, 2=top-right, 3=mid-left, 4=center, 5=mid-right, 6=bot-left, 7=bot-center, 8=bot-right
-  // Aceita também 1-9 (formulário): 1→0, 2→1, ..., 9→8
-  const patternToSvg = (pattern: string | undefined): string => {
-    if (!pattern || !String(pattern).trim()) return '';
-    const points: Record<string, [number, number]> = {
-      '0': [20, 20], '1': [50, 20], '2': [80, 20],
-      '3': [20, 50], '4': [50, 50], '5': [80, 50],
-      '6': [20, 80], '7': [50, 80], '8': [80, 80],
-    };
-    let seq = String(pattern).replace(/\s/g, '').split(/[-,.]/).filter(Boolean);
-    // Normalizar 1-9 para 0-8 se vier do formulário
-    if (seq.every(d => d >= '1' && d <= '9')) {
-      seq = seq.map(d => String(Number(d) - 1));
-    }
-    if (seq.length < 2) return '';
-    const lines: string[] = [];
-    for (let i = 0; i < seq.length - 1; i++) {
-      const a = points[seq[i]];
-      const b = points[seq[i + 1]];
-      if (a && b) lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="#000" stroke-width="2.5" />`);
-    }
-    const circles = ['0','1','2','3','4','5','6','7','8'].map(k => {
-      const [x, y] = points[k];
-      const active = seq.includes(k);
-      const order = active ? seq.indexOf(k) + 1 : 0;
-      // Número ao lado da bolinha (à direita) para não ficar em cima e ser legível em térmica
-      const numText = order ? `<text x="${Math.min(x + 9, 92)}" y="${y + 4}" font-family="Arial,sans-serif" font-size="10" font-weight="bold" fill="#000">${order}</text>` : '';
-      return `<circle cx="${x}" cy="${y}" r="6" fill="${active ? '#000' : '#fff'}" stroke="#000" stroke-width="2"/>${numText}`;
-    }).join('');
-    return `<div style="margin: 6px 0; text-align: center;"><svg width="140" height="140" viewBox="0 0 100 100" style="display:inline-block;vertical-align:middle;"><rect x="2" y="2" width="96" height="96" rx="6" fill="#fff" stroke="#000" stroke-width="2"/>${lines.join('')}${circles}</svg></div>`;
-  };
-  const patternSvgHtml = patternToSvg(os.padrao_desbloqueio);
+  // Padrão para impressão: aceitar string ou array (API pode devolver array)
+  const padraoParaImpressao = (() => {
+    const p = os.padrao_desbloqueio;
+    if (typeof p === 'string' && p.trim()) return p;
+    if (Array.isArray(p) && p.length >= 2) return p;
+    return undefined;
+  })();
+  const patternSvgHtml = patternToSvg(padraoParaImpressao);
 
-  // Possui senha: uma linha só (ex: "Possui senha: Padrão Desenho" ou "Possui senha: Sim"); abaixo o desenho ou a senha
+  // Possui senha: seguir exatamente os status do formulário (SIM, SIM - DESLIZAR (DESENHO), NÃO, etc.)
   const valorSenhaNum = os.senha_numerica || os.senha_aparelho || '';
-  const ehPadraoDesenho = Boolean(os.padrao_desbloqueio || os.possui_senha_tipo === 'deslizar');
-  const mostrarSenhaNum = os.possui_senha && !ehPadraoDesenho;
-  const possuiSenhaTexto = !os.possui_senha ? 'Não' : ehPadraoDesenho ? 'Padrão Desenho' : 'Sim';
+  const ehPadraoDesenho = Boolean((os.padrao_desbloqueio && String(os.padrao_desbloqueio).trim()) || os.possui_senha_tipo === 'deslizar');
+  const tipo = (os.possui_senha_tipo || '').toLowerCase();
+  // Não mostrar "Senha: Informado" quando for "CLIENTE NÃO QUIS DEIXAR SENHA"
+  const mostrarSenhaNum = os.possui_senha && !ehPadraoDesenho && tipo !== 'nao_autorizou';
+  const possuiSenhaTexto = !os.possui_senha
+    ? POSSUI_SENHA_LABELS.nao
+    : (POSSUI_SENHA_LABELS[tipo] ?? (ehPadraoDesenho ? POSSUI_SENHA_LABELS.deslizar : POSSUI_SENHA_LABELS.sim));
   let senhaHtml = `
     <div style="font-size: 10px; margin: 1px 0; padding: 2px; border: 1px solid #000;">
       <span class="bold">Possui senha: ${possuiSenhaTexto}</span>
@@ -299,6 +279,7 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
       <div class="destaque-principal" style="text-align: center;">ORDEM DE SERVIÇO: #${os.numero}</div>
       <div class="compact-line">Data Entrada: ${dataEntrada}${horaEntrada ? ` - Hora: ${horaEntrada}` : ''}</div>
       <div class="compact-line">Previsão de entrega: ${previsaoEntrega}</div>
+      <div class="compact-line">Vendedor(a): ${(os as any).vendedor_nome || (os as any).atendente_nome || '-'}</div>
       <div class="divider"></div>
       
       <div class="section-title">DADOS DO CLIENTE</div>
