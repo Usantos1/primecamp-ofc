@@ -385,15 +385,24 @@ Agradecemos a preferência!`;
             return f || 'Pagamento';
           })();
           const parcelas = pag.parcelas && pag.parcelas > 1 ? ` (${pag.parcelas}x)` : '';
+          // Dinheiro com troco: valor pago = valor recebido (aplicado + troco)
+          const valorExibir = (/dinheiro/i.test(pag.forma || '') && Number(pag.troco || 0) > 0)
+            ? Number(pag.valor || 0) + Number(pag.troco || 0)
+            : Number(pag.valor || 0);
           return `
           <div class="line" style="margin-bottom: 2px;">
             <span>Forma de pagamento: ${formaNormalizada}${parcelas}</span>
-            <span>${formatCurrency(pag.valor)}</span>
+            <span>${formatCurrency(valorExibir)}</span>
           </div>`;
         }).join('')}
         <div class="line" style="margin-top: 2px;">
           <span>Valor Pago:</span>
-          <span>${formatCurrency(data.pagamentos.reduce((s, p) => s + Number(p.valor || 0), 0))}</span>
+          <span>${formatCurrency(data.pagamentos.reduce((s, p) => {
+            const v = (/dinheiro/i.test(p.forma || '') && Number(p.troco || 0) > 0)
+              ? Number(p.valor || 0) + Number(p.troco || 0)
+              : Number(p.valor || 0);
+            return s + v;
+          }, 0))}</span>
         </div>
         ${((): string => {
           const trocoTotal = data.pagamentos.reduce((s, p) => s + Number(p.troco || 0), 0);
@@ -566,7 +575,11 @@ export async function generateCupomPDF(data: CupomData, qrCodeData?: string): Pr
     // Traduzir forma de pagamento para português
     const formaPagamentoLabel = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma.toUpperCase();
     doc.text(`${formaPagamentoLabel}:`, margin, y);
-    doc.text(formatCurrency(pag.valor), pageWidth - margin, y, { align: 'right' });
+    // Dinheiro com troco: exibir valor recebido (aplicado + troco), não só o aplicado
+    const valorRecebido = (/dinheiro/i.test(pag.forma || '') && Number(pag.troco || 0) > 0)
+      ? Number(pag.valor || 0) + Number(pag.troco || 0)
+      : Number(pag.valor || 0);
+    doc.text(formatCurrency(valorRecebido), pageWidth - margin, y, { align: 'right' });
     y += 4;
     
     if (pag.troco) {
@@ -761,7 +774,11 @@ export async function generateComprovantePDF(data: ComprovanteData): Promise<jsP
   doc.setFontSize(10);
   doc.text(`Forma de Pagamento: ${data.pagamento.forma}`, margin, y);
   y += 6;
-  doc.text(`Valor: ${formatCurrency(data.pagamento.valor)}`, margin, y);
+  // Dinheiro com troco: exibir valor recebido (aplicado + troco)
+  const valorRecebidoComprovante = (/dinheiro/i.test(data.pagamento.forma || '') && Number(data.pagamento.troco || 0) > 0)
+    ? Number(data.pagamento.valor || 0) + Number(data.pagamento.troco || 0)
+    : Number(data.pagamento.valor || 0);
+  doc.text(`Valor Pago: ${formatCurrency(valorRecebidoComprovante)}`, margin, y);
   y += 6;
 
   if (data.pagamento.troco) {
