@@ -50,18 +50,22 @@ export function VoucherPayment({ open, onOpenChange, saleTotal, saleId, onVouche
     
     setVoucher(result.data);
     // Sugerir usar o valor total da venda ou o saldo do vale, o que for menor
-    setAmountToUse(Math.min(result.data.current_value, saleTotal));
+    const currentVal = Number(result.data.current_value ?? 0);
+    const totalVal = Number(saleTotal) || 0;
+    setAmountToUse(Math.min(currentVal, totalVal));
   };
 
   const handleApplyVoucher = async () => {
     if (!voucher || !saleId) return;
-    
-    if (amountToUse > voucher.current_value) {
+    const currentVal = Number(voucher.current_value ?? 0);
+    const totalVal = Number(saleTotal) || 0;
+
+    if (amountToUse > currentVal) {
       setError('Valor maior que o saldo disponível');
       return;
     }
     
-    if (amountToUse > saleTotal) {
+    if (amountToUse > totalVal) {
       setError('Valor maior que o total da venda');
       return;
     }
@@ -169,13 +173,13 @@ export function VoucherPayment({ open, onOpenChange, saleTotal, saleId, onVouche
                 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Valor Original</span>
-                  <span>R$ {voucher.original_value.toFixed(2)}</span>
+                  <span>R$ {Number(voucher.original_value ?? 0).toFixed(2).replace('.', ',')}</span>
                 </div>
                 
                 <div className="flex items-center justify-between text-lg">
                   <span className="font-medium">Saldo Disponível</span>
                   <span className="font-bold text-green-600">
-                    R$ {voucher.current_value.toFixed(2)}
+                    R$ {Number(voucher.current_value ?? 0).toFixed(2).replace('.', ',')}
                   </span>
                 </div>
                 
@@ -208,7 +212,7 @@ export function VoucherPayment({ open, onOpenChange, saleTotal, saleId, onVouche
             <div className="space-y-4 border-t pt-4">
               <div className="flex items-center justify-between text-sm">
                 <span>Total da Venda:</span>
-                <span className="font-bold">R$ {saleTotal.toFixed(2)}</span>
+                <span className="font-bold">R$ {Number(saleTotal).toFixed(2).replace('.', ',')}</span>
               </div>
               
               <div className="space-y-2">
@@ -216,14 +220,14 @@ export function VoucherPayment({ open, onOpenChange, saleTotal, saleId, onVouche
                 <Input
                   type="number"
                   min={0}
-                  max={Math.min(voucher.current_value, saleTotal)}
+                  max={Math.min(Number(voucher.current_value ?? 0), Number(saleTotal) || 0)}
                   step={0.01}
                   value={amountToUse}
                   onChange={(e) => setAmountToUse(parseFloat(e.target.value) || 0)}
                   className="text-lg"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Máximo: R$ {Math.min(voucher.current_value, saleTotal).toFixed(2)}
+                  Máximo: R$ {Math.min(Number(voucher.current_value ?? 0), Number(saleTotal) || 0).toFixed(2).replace('.', ',')}
                 </p>
               </div>
 
@@ -238,15 +242,15 @@ export function VoucherPayment({ open, onOpenChange, saleTotal, saleId, onVouche
                 </div>
               )}
 
-              {amountToUse > 0 && amountToUse < saleTotal && (
+              {amountToUse > 0 && amountToUse < (Number(saleTotal) || 0) && (
                 <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
-                  Restante a pagar: <span className="font-bold">R$ {(saleTotal - amountToUse).toFixed(2)}</span>
+                  Restante a pagar: <span className="font-bold">R$ {((Number(saleTotal) || 0) - amountToUse).toFixed(2).replace('.', ',')}</span>
                 </div>
               )}
 
-              {amountToUse > 0 && amountToUse < voucher.current_value && (
+              {amountToUse > 0 && amountToUse < Number(voucher.current_value ?? 0) && (
                 <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-                  Saldo restante no vale: <span className="font-bold">R$ {(voucher.current_value - amountToUse).toFixed(2)}</span>
+                  Saldo restante no vale: <span className="font-bold">R$ {(Number(voucher.current_value ?? 0) - amountToUse).toFixed(2).replace('.', ',')}</span>
                 </div>
               )}
             </div>
@@ -268,7 +272,7 @@ export function VoucherPayment({ open, onOpenChange, saleTotal, saleId, onVouche
               ) : (
                 <CheckCircle2 className="h-4 w-4 mr-2" />
               )}
-              Aplicar R$ {amountToUse.toFixed(2)}
+              Aplicar R$ {Number(amountToUse).toFixed(2).replace('.', ',')}
             </Button>
           )}
         </DialogFooter>

@@ -174,67 +174,81 @@ export function RefundDialog({ open, onOpenChange, sale, onRefundComplete }: Ref
 
   const handlePrintVoucher = () => {
     if (!createdVoucher) return;
-    
-    const printWindow = window.open('', '_blank', 'width=300,height=400');
+
+    const valorVoucher = Number(createdVoucher.current_value ?? createdVoucher.original_value ?? 0);
+    const valorFormatado = valorVoucher.toFixed(2).replace('.', ',');
+    const dataHoraImpressao = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
+
+    const printWindow = window.open('', '_blank', 'width=300,height=500');
     if (!printWindow) return;
-    
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>Vale Compra</title>
         <style>
           @page { margin: 0; size: 80mm auto; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
             margin: 0;
-            padding: 10px;
+            padding: 8px;
             width: 80mm;
+            max-width: 80mm;
+            color: #000;
+            line-height: 1.35;
           }
-          .header { text-align: center; margin-bottom: 10px; }
-          .title { font-size: 16px; font-weight: bold; }
-          .code { font-size: 24px; font-weight: bold; text-align: center; margin: 15px 0; letter-spacing: 2px; }
-          .value { font-size: 20px; font-weight: bold; text-align: center; margin: 10px 0; }
-          .info { margin: 5px 0; }
+          .divider { border-top: 2px solid #000; margin: 6px 0; }
+          .divider-dashed { border-top: 1px dashed #000; margin: 6px 0; }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .empresa { font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+          .cnpj { font-size: 9px; text-align: center; margin-bottom: 4px; }
+          .titulo-vale { font-size: 11px; font-weight: bold; text-align: center; margin: 8px 0 4px; }
+          .code { font-size: 18px; font-weight: bold; text-align: center; margin: 8px 0; letter-spacing: 2px; }
+          .value { font-size: 16px; font-weight: bold; text-align: center; margin: 8px 0; }
+          .info { margin: 3px 0; }
           .label { font-weight: bold; }
-          .divider { border-top: 1px dashed #000; margin: 10px 0; }
-          .warning { font-size: 10px; text-align: center; margin-top: 10px; }
-          .barcode { text-align: center; margin: 10px 0; font-size: 8px; }
+          .warning { font-size: 9px; text-align: center; margin-top: 8px; line-height: 1.4; }
+          .rodape { font-size: 9px; text-align: center; margin-top: 10px; line-height: 1.4; }
+          .barcode { text-align: center; margin: 8px 0; font-size: 10px; letter-spacing: 1px; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="title">═══ VALE COMPRA ═══</div>
-        </div>
-        
-        <div class="code">${createdVoucher.code}</div>
-        
-        <div class="value">R$ ${createdVoucher.current_value.toFixed(2).replace('.', ',')}</div>
-        
+        <div class="empresa">PRIME CAMP</div>
+        <div class="cnpj">Assistência Técnica</div>
+        <div class="cnpj">CNPJ: 31.833.574/0001-74</div>
         <div class="divider"></div>
-        
-        <div class="info"><span class="label">Cliente:</span> ${createdVoucher.customer_name}</div>
+
+        <div class="titulo-vale">VALE COMPRA</div>
+        <div class="code">${(createdVoucher.code || '').toString()}</div>
+        <div class="value">R$ ${valorFormatado}</div>
+        <div class="divider-dashed"></div>
+
+        <div class="info"><span class="label">Cliente:</span> ${(createdVoucher.customer_name || '—').toString()}</div>
         ${createdVoucher.customer_document ? `<div class="info"><span class="label">CPF/CNPJ:</span> ${createdVoucher.customer_document}</div>` : ''}
         <div class="info"><span class="label">Emissão:</span> ${format(new Date(createdVoucher.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</div>
         ${createdVoucher.expires_at ? `<div class="info"><span class="label">Validade:</span> ${format(new Date(createdVoucher.expires_at), "dd/MM/yyyy", { locale: ptBR })}</div>` : '<div class="info"><span class="label">Validade:</span> Indeterminada</div>'}
-        
-        <div class="divider"></div>
-        
+
+        <div class="divider-dashed"></div>
         <div class="warning">
-          ⚠️ VALE INTRANSFERÍVEL ⚠️<br>
-          Uso exclusivo do titular<br>
-          Apresente este comprovante<br>
-          para utilizar o crédito
+          VALE INTRANSFERÍVEL<br>
+          Uso exclusivo do titular. Apresente este comprovante para utilizar o crédito.
         </div>
-        
-        <div class="barcode">
-          ║║║ ${createdVoucher.code} ║║║
+        <div class="barcode">${(createdVoucher.code || '').toString()}</div>
+
+        <div class="divider"></div>
+        <div class="rodape">
+          Agradecemos a preferência!<br>
+          Impresso em ${dataHoraImpressao}
         </div>
       </body>
       </html>
     `);
-    
+
     printWindow.document.close();
     printWindow.focus();
     printWindow.print();
@@ -453,7 +467,7 @@ export function RefundDialog({ open, onOpenChange, sale, onRefundComplete }: Ref
                     {createdVoucher.code}
                   </div>
                   <div className="text-2xl font-bold text-amber-700">
-                    R$ {createdVoucher.current_value.toFixed(2)}
+                    R$ {Number(createdVoucher.current_value ?? createdVoucher.original_value ?? 0).toFixed(2).replace('.', ',')}
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
                     Cliente: {createdVoucher.customer_name}

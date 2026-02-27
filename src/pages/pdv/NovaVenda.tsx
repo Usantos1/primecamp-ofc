@@ -2357,7 +2357,7 @@ _PrimeCamp Assistência Técnica_`;
                     onChange={(e) => setProductSearch(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && productResults.length > 0) {
-                        handleAddProduct(productResults[0]);
+                        handleAddProduct(productResults[0], 'avista');
                       }
                     }}
                     className="h-12 text-base font-medium border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500 flex-1"
@@ -2380,19 +2380,19 @@ _PrimeCamp Assistência Técnica_`;
                       {productResults.map(produto => {
                         const estoque = Number(produto.quantidade || 0);
                         const semEstoque = estoque <= 0 && normalizeProdutoTipo(produto.tipo) === 'produto';
-                        const valor6x = Number(produto.valor_parcelado_6x ?? produto.preco_venda ?? produto.valor_venda ?? 0);
                         const valorAvista = Number(produto.preco_venda || produto.valor_venda || 0);
                         return (
                           <div
                             key={produto.id}
                             className={cn(
-                              "p-3 border-b last:border-0 transition-colors",
+                              "p-3 border-b last:border-0 transition-colors cursor-pointer",
                               semEstoque 
                                 ? "bg-red-50 dark:bg-red-900/20" 
-                                : "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                : "bg-white dark:bg-gray-900 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                             )}
+                            onClick={() => !semEstoque && handleAddProduct(produto, 'avista')}
                           >
-                            <div className="flex justify-between items-start gap-2">
+                            <div className="flex justify-between items-center gap-2">
                               <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-base truncate">{produto.descricao || ''}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
@@ -2412,34 +2412,9 @@ _PrimeCamp Assistência Técnica_`;
                                   )}
                                 </div>
                               </div>
-                              <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-500">6x</span>
-                                  <span className="text-sm font-bold text-emerald-600 tabular-nums">{currencyFormatters.brl(valor6x)}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 px-2 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                                    onClick={(e) => { e.stopPropagation(); handleAddProduct(produto, '6x'); }}
-                                    disabled={semEstoque}
-                                  >
-                                    + 6x
-                                  </Button>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-gray-500">À vista</span>
-                                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 tabular-nums">{currencyFormatters.brl(valorAvista)}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 px-2 text-xs"
-                                    onClick={(e) => { e.stopPropagation(); handleAddProduct(produto, 'avista'); }}
-                                    disabled={semEstoque}
-                                  >
-                                    + À vista
-                                  </Button>
-                                </div>
-                              </div>
+                              <span className="text-lg font-bold text-emerald-600 tabular-nums shrink-0">
+                                {currencyFormatters.brl(valorAvista)}
+                              </span>
                             </div>
                           </div>
                         );
