@@ -74,32 +74,59 @@ export default function NovaVenda() {
   
   // Função de busca de produtos
   const searchProdutos = (term: string, field: 'all' | 'codigo' | 'descricao' | 'referencia' = 'all') => {
-    if (!term || term.length < 2) return [];
-    const search = term.toLowerCase();
-    
+    const trimmed = (term || '').trim();
+    // Código: permite 1 caractere para achar produtos com código baixo (ex: 6, 67)
+    const minLen = field === 'codigo' ? 1 : 2;
+    if (!trimmed || trimmed.length < minLen) return [];
+    const search = trimmed.toLowerCase();
+
+    let filtered: any[];
     if (field === 'codigo') {
-      // Buscar apenas por código (não incluir código de barras)
-      return produtos.filter(p => 
-        p.codigo?.toString() === term || 
-        p.codigo?.toString().includes(term)
-      );
+      const termStr = trimmed;
+      filtered = produtos.filter(p => {
+        const cod = p.codigo?.toString() ?? '';
+        return cod === termStr || cod.includes(termStr);
+      });
+      // Ordenar: exato primeiro, depois códigos que começam com o termo, depois por código numérico (códigos baixos primeiro)
+      filtered.sort((a, b) => {
+        const codA = a.codigo?.toString() ?? '';
+        const codB = b.codigo?.toString() ?? '';
+        const exactA = codA === termStr ? 0 : (codA.startsWith(termStr) ? 1 : 2);
+        const exactB = codB === termStr ? 0 : (codB.startsWith(termStr) ? 1 : 2);
+        if (exactA !== exactB) return exactA - exactB;
+        const numA = Number(codA) || 0;
+        const numB = Number(codB) || 0;
+        if (numA > 0 && numB > 0) return numA - numB;
+        return codA.localeCompare(codB, undefined, { numeric: true });
+      });
+      return filtered;
     } else if (field === 'descricao') {
-      return produtos.filter(p => 
-        p.descricao?.toLowerCase().includes(search)
-      );
+      filtered = produtos.filter(p => p.descricao?.toLowerCase().includes(search));
     } else if (field === 'referencia') {
-      return produtos.filter(p => 
-        p.referencia?.toLowerCase().includes(search)
-      );
+      filtered = produtos.filter(p => p.referencia?.toLowerCase().includes(search));
     } else {
-      // Busca geral (all) - busca em todos os campos
-      return produtos.filter(p => 
+      filtered = produtos.filter(p =>
         p.descricao?.toLowerCase().includes(search) ||
-        p.codigo?.toString().includes(term) ||
-        p.codigo_barras?.includes(term) ||
+        p.codigo?.toString().includes(trimmed) ||
+        p.codigo_barras?.includes(trimmed) ||
         p.referencia?.toLowerCase().includes(search)
       );
+      // Na busca "all", quando o termo parece número, priorizar match por código (exato / começa com)
+      if (/^\d+$/.test(trimmed)) {
+        filtered.sort((a, b) => {
+          const codA = a.codigo?.toString() ?? '';
+          const codB = b.codigo?.toString() ?? '';
+          const exactA = codA === trimmed ? 0 : (codA.startsWith(trimmed) ? 1 : 2);
+          const exactB = codB === trimmed ? 0 : (codB.startsWith(trimmed) ? 1 : 2);
+          if (exactA !== exactB) return exactA - exactB;
+          const numA = Number(codA) || 0;
+          const numB = Number(codB) || 0;
+          if (numA > 0 && numB > 0) return numA - numB;
+          return codA.localeCompare(codB, undefined, { numeric: true });
+        });
+      }
     }
+    return filtered;
   };
   const { clientes, searchClientes, searchClientesAsync, createCliente } = useClientes();
   const { ordens, getOSById, updateStatus: updateOSStatus } = useOrdensServico();
@@ -888,11 +915,12 @@ export default function NovaVenda() {
     }
   };
 
-  // Buscar produtos
+  // Buscar produtos (mínimo 1 caractere quando filtro é Código, senão 2; exibir até 25 para melhorar listagem de códigos baixos)
   useEffect(() => {
-    if (productSearch.length >= 2) {
+    const minLen = productSearchField === 'codigo' ? 1 : 2;
+    if (productSearch.trim().length >= minLen) {
       const results = searchProdutos(productSearch, productSearchField);
-      setProductResults(results.slice(0, 10));
+      setProductResults(results.slice(0, 25));
       setShowProductSearch(true);
     } else {
       setProductResults([]);
