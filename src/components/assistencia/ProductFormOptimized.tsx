@@ -1139,10 +1139,13 @@ export function ProductFormOptimized({
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="start">
-                      <Command>
+                    <PopoverContent className="w-full p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                      <Command className="overflow-visible">
                         <CommandInput placeholder="Buscar modelo..." />
-                        <CommandList>
+                        <CommandList
+                          className="max-h-[280px] overflow-y-auto overflow-x-hidden overscroll-contain"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
                           <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
                           <CommandGroup>
                             {modelosList
