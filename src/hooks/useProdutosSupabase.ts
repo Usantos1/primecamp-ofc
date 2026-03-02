@@ -31,6 +31,9 @@ export function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     // Estoque
     quantidade: Number(supabaseProduto.quantidade || 0),
     estoque_minimo: supabaseProduto.estoque_minimo ? Number(supabaseProduto.estoque_minimo) : undefined,
+    estoque_grade: supabaseProduto.estoque_grade && typeof supabaseProduto.estoque_grade === 'object'
+      ? { tipo: supabaseProduto.estoque_grade.tipo || 'cor', itens: supabaseProduto.estoque_grade.itens || {} }
+      : undefined,
     localizacao: supabaseProduto.localizacao || undefined,
     unidade: supabaseProduto.unidade || undefined,
     

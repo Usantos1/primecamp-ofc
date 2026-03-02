@@ -35,5 +35,36 @@ export function useFornecedores() {
     return novo as Fornecedor;
   };
 
-  return { fornecedores, isLoading, createFornecedor };
+  const updateFornecedor = async (id: string, nome: string): Promise<Fornecedor> => {
+    const nomeTrim = nome.trim();
+    if (!nomeTrim) {
+      toast({ title: 'Nome inválido', description: 'Informe o nome do fornecedor.', variant: 'destructive' });
+      throw new Error('Nome obrigatório');
+    }
+    const { data: atualizado, error } = await from('fornecedores')
+      .update({ nome: nomeTrim })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) {
+      toast({ title: 'Erro ao editar fornecedor', description: error.message, variant: 'destructive' });
+      throw error;
+    }
+    queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+    toast({ title: 'Fornecedor atualizado', description: 'Nome alterado com sucesso.' });
+    return atualizado as Fornecedor;
+  };
+
+  const deleteFornecedor = async (id: string): Promise<void> => {
+    // A desvinculação dos itens de OS é feita no servidor antes do DELETE (evita 500 no update/os_items)
+    const { error } = await from('fornecedores').delete().eq('id', id).execute();
+    if (error) {
+      toast({ title: 'Erro ao excluir fornecedor', description: error.message, variant: 'destructive' });
+      throw error;
+    }
+    queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+    toast({ title: 'Fornecedor excluído', description: 'Fornecedor removido do cadastro.' });
+  };
+
+  return { fornecedores, isLoading, createFornecedor, updateFornecedor, deleteFornecedor };
 }

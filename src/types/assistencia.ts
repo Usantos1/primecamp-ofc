@@ -542,6 +542,8 @@ export interface ItemOS {
   fornecedor_nome?: string | null;
   /** Com aro / Sem aro — apenas controle interno (não sai no cupom) */
   com_aro?: 'com_aro' | 'sem_aro' | null;
+  /** Cor da grade (quando produto tem grade por cor) — controle e exibição na OS */
+  grade_cor?: string | null;
   created_at: string;
 }
 

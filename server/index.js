@@ -2196,7 +2196,7 @@ app.post('/api/update/:table', async (req, res) => {
     let keys = Object.keys(data);
     
     // os_items: só atualizar colunas que existem na base (evita "fornecedor_nome does not exist" se migração não foi aplicada)
-    const osItemsSafeKeys = ['tipo', 'produto_id', 'descricao', 'quantidade', 'valor_unitario', 'valor_minimo', 'desconto', 'valor_total', 'garantia', 'colaborador_id', 'colaborador_nome', 'com_aro'];
+    const osItemsSafeKeys = ['tipo', 'produto_id', 'descricao', 'quantidade', 'valor_unitario', 'valor_minimo', 'desconto', 'valor_total', 'garantia', 'colaborador_id', 'colaborador_nome', 'com_aro', 'fornecedor_id', 'fornecedor_nome', 'grade_cor'];
     if (tableNameOnly.toLowerCase() === 'os_items') {
       data = Object.fromEntries(Object.entries(data).filter(([k]) => osItemsSafeKeys.includes(k)));
       keys = Object.keys(data);
@@ -2630,6 +2630,20 @@ app.post('/api/delete/:table', async (req, res) => {
     const { clause: whereClause, params } = buildWhereClause(where);
     let finalWhereClause = whereClause;
     let finalParams = [...params];
+
+    // Antes de excluir fornecedor: desvincular itens de OS (evita FK e não depende do endpoint update/os_items)
+    if (tableNameOnly.toLowerCase() === 'fornecedores' && where && typeof where === 'object' && where.id) {
+      try {
+        await pool.query(
+          'UPDATE public.os_items SET fornecedor_id = null WHERE fornecedor_id = $1',
+          [where.id]
+        );
+        console.log('[Delete] Fornecedor: os_items desvinculados para id', where.id);
+      } catch (unlinkErr) {
+        // Coluna fornecedor_id pode não existir em ambientes antigos; não bloquear o delete
+        console.warn('[Delete] Fornecedor: aviso ao desvincular os_items:', unlinkErr.message);
+      }
+    }
 
     // os_config_status DELETE por id apenas: não adicionar filtro company_id para o delete funcionar
     const isOsConfigStatusDeleteById = tableNameOnly.toLowerCase() === 'os_config_status' && where && typeof where === 'object' && Object.keys(where).length === 1 && 'id' in where;

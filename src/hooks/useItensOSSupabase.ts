@@ -67,6 +67,7 @@ export function useItensOSSupabase(osId: string) {
         fornecedor_id: data.fornecedor_id || null,
         fornecedor_nome: data.fornecedor_nome || null,
         com_aro: (data as any).com_aro || null,
+        grade_cor: (data as any).grade_cor || null,
         created_by: user?.id || null,
       };
 
@@ -81,7 +82,7 @@ export function useItensOSSupabase(osId: string) {
 
       // Se falhar por coluna inexistente (migration não rodada), tenta sem campos opcionais
       if (error && isColumnMissing) {
-        console.warn('[useItensOS] Coluna(s) inexistente(s). Execute a migration 005 (fornecedor) e 004 (com_aro). Tentando inserir sem esses campos.');
+        console.warn('[useItensOS] Coluna(s) inexistente(s). Execute as migrations (fornecedor, com_aro, grade_cor). Tentando inserir sem esses campos.');
         const fallback: any = {
           ordem_servico_id: osId,
           produto_id: data.produto_id || null,
@@ -139,7 +140,7 @@ export function useItensOSSupabase(osId: string) {
   // Só enviar colunas que existem na base (fornecedor_* pode não existir se a migração 005 não foi aplicada)
   const allowedUpdateKeys = [
     'tipo', 'produto_id', 'descricao', 'quantidade', 'valor_unitario', 'valor_minimo',
-    'desconto', 'valor_total', 'garantia', 'colaborador_id', 'colaborador_nome', 'com_aro'
+    'desconto', 'valor_total', 'garantia', 'colaborador_id', 'colaborador_nome', 'com_aro', 'grade_cor'
   ];
 
   // Atualizar item (remove undefined, garante números e UUID válidos, evita colunas inexistentes)

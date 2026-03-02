@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -539,6 +540,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     fornecedor_id: '' as string,
     fornecedor_nome: '' as string,
     com_aro: '' as '' | 'com_aro' | 'sem_aro',
+    grade_cor: '' as string,
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
 
@@ -548,11 +550,16 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { itens, total, addItem, updateItem, removeItem, isLoading: isLoadingItens, isAddingItem, isUpdatingItem, isRemovingItem } = useItensOSSupabase(osIdParaItens);
   const { pagamentos, totalPago, addPagamento } = usePagamentos(osIdParaItens);
 
-  const { fornecedores, createFornecedor } = useFornecedores();
+  const { fornecedores, createFornecedor, updateFornecedor, deleteFornecedor } = useFornecedores();
   const [fornecedorPopoverOpen, setFornecedorPopoverOpen] = useState(false);
   const [fornecedorSearch, setFornecedorSearch] = useState('');
   const [showNovoFornecedorDialog, setShowNovoFornecedorDialog] = useState(false);
   const [novoFornecedorNome, setNovoFornecedorNome] = useState('');
+  const [showEditFornecedorDialog, setShowEditFornecedorDialog] = useState(false);
+  const [editFornecedorId, setEditFornecedorId] = useState<string | null>(null);
+  const [editFornecedorNome, setEditFornecedorNome] = useState('');
+  const [fornecedorToDelete, setFornecedorToDelete] = useState<{ id: string; nome: string } | null>(null);
+  const [isDeletingFornecedor, setIsDeletingFornecedor] = useState(false);
   const fornecedoresFiltrados = useMemo(() => {
     const q = (fornecedorSearch || '').trim().toLowerCase();
     if (!q) return fornecedores.slice(0, 50);
@@ -1027,7 +1034,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         return;
       }
       if (itemForm.produto_id) {
-        const produto = produtos.find(p => p.id === itemForm.produto_id);
+        const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
         if (!produto) {
           toast({
             title: 'Produto não encontrado',
@@ -1036,11 +1043,23 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           });
           return;
         }
-        const estoqueDisponivel = produto.quantidade || 0;
+        const gradePorCor = produto?.estoque_grade?.tipo === 'cor' && produto?.estoque_grade?.itens && Object.keys(produto.estoque_grade.itens).length > 0;
+        if (gradePorCor && (!itemForm.grade_cor || !itemForm.grade_cor.trim())) {
+          toast({
+            title: 'Cor da grade obrigatória',
+            description: 'Este produto tem grade por cor. Selecione a cor da grade.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        let estoqueDisponivel = produto.quantidade || 0;
+        if (gradePorCor && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
+          estoqueDisponivel = Number(produto.estoque_grade.itens[itemForm.grade_cor]) || 0;
+        }
         if (estoqueDisponivel < itemForm.quantidade) {
           toast({
             title: 'Estoque insuficiente',
-            description: `Estoque disponível: ${estoqueDisponivel} unidades. Quantidade solicitada: ${itemForm.quantidade}`,
+            description: `Estoque disponível: ${estoqueDisponivel} unidades${itemForm.grade_cor ? ` (cor: ${itemForm.grade_cor})` : ''}. Quantidade solicitada: ${itemForm.quantidade}`,
             variant: 'destructive',
           });
           return;
@@ -1093,6 +1112,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         colaborador?.nome ||
         (isCreatingItem ? currentUserNome : (editingItem?.colaborador_nome || currentUserNome));
       const comAroValido = (itemForm.com_aro === 'com_aro' || itemForm.com_aro === 'sem_aro') ? itemForm.com_aro : null;
+      const gradeCorValido = (itemForm.grade_cor && itemForm.grade_cor.trim()) ? itemForm.grade_cor.trim() : null;
       const itemData = {
         tipo: itemForm.tipo,
         produto_id: itemForm.produto_id ?? null,
@@ -1107,6 +1127,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         fornecedor_id: itemForm.fornecedor_id || null,
         fornecedor_nome: itemForm.fornecedor_nome?.trim() || null,
         com_aro: comAroValido,
+        grade_cor: gradeCorValido,
         valor_total: Number(valorTotal),
       };
 
@@ -1206,6 +1227,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         fornecedor_id: '',
         fornecedor_nome: '',
         com_aro: '',
+        grade_cor: '',
       });
       setProdutoSearch('');
     } catch (error: any) {
@@ -1225,8 +1247,37 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       setItemForm(prev => ({ ...prev, fornecedor_id: novo.id, fornecedor_nome: novo.nome }));
       setShowNovoFornecedorDialog(false);
       setNovoFornecedorNome('');
+    } catch (_) {}
+  };
+
+  const handleEditFornecedor = async () => {
+    if (!editFornecedorId || !editFornecedorNome.trim()) return;
+    try {
+      const atualizado = await updateFornecedor(editFornecedorId, editFornecedorNome.trim());
+      if (itemForm.fornecedor_id === editFornecedorId) {
+        setItemForm(prev => ({ ...prev, fornecedor_nome: atualizado.nome }));
+      }
+      setShowEditFornecedorDialog(false);
+      setEditFornecedorId(null);
+      setEditFornecedorNome('');
     } catch (_e) {
       // toast já é exibido pelo hook
+    }
+  };
+
+  const handleConfirmDeleteFornecedor = async () => {
+    if (!fornecedorToDelete) return;
+    setIsDeletingFornecedor(true);
+    try {
+      await deleteFornecedor(fornecedorToDelete.id);
+      if (itemForm.fornecedor_id === fornecedorToDelete.id) {
+        setItemForm(prev => ({ ...prev, fornecedor_id: '', fornecedor_nome: '' }));
+      }
+      setFornecedorToDelete(null);
+    } catch (_e) {
+      // toast no hook
+    } finally {
+      setIsDeletingFornecedor(false);
     }
   };
 
@@ -1245,6 +1296,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       fornecedor_id: item.fornecedor_id || '',
       fornecedor_nome: item.fornecedor_nome || '',
       com_aro: (item as any).com_aro || '',
+      grade_cor: (item as any).grade_cor || '',
     });
     setShowAddItem(true);
   };
@@ -1402,15 +1454,18 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const handleSelectProduto = (produto: Produto) => {
     // Usar garantia do produto ou padrão de 90 dias
     const garantiaProduto = produto.garantia_dias || 90;
-    
+    const gradePorCor = (produto as any).estoque_grade?.tipo === 'cor' && (produto as any).estoque_grade?.itens && Object.keys((produto as any).estoque_grade.itens).length > 0;
+    const primeiraCor = gradePorCor ? Object.keys((produto as any).estoque_grade.itens)[0] : '';
+
     setItemForm(prev => ({
       ...prev,
       produto_id: produto.id,
-      descricao: produto.nome || produto.descricao || '', // Usar nome (campo correto)
+      descricao: produto.nome || produto.descricao || '',
       valor_unitario: produto.valor_dinheiro_pix || produto.valor_venda || produto.preco_venda || 0,
-      garantia: garantiaProduto, // Usar garantia do produto ou 90 dias como padrão
+      garantia: garantiaProduto,
       tipo: produto.tipo === 'peca' ? 'peca' : (produto.tipo === 'produto' ? 'peca' : 'servico'),
-      quantidade: 1, // Resetar quantidade ao selecionar novo produto
+      quantidade: 1,
+      grade_cor: primeiraCor,
     }));
     setProdutoSearch('');
     setProdutoResults([]);
@@ -4798,7 +4853,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <CardTitle className="text-base">Peças e Serviços</CardTitle>
                     <Button onClick={() => {
                       setEditingItem(null);
-                      setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: user?.id || '' });
+                      setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: user?.id || '', fornecedor_id: '', fornecedor_nome: '', com_aro: '', grade_cor: '' });
                       setShowAddItem(true);
                     }} size="sm" className="gap-2">
                       <Plus className="h-4 w-4" />
@@ -4817,7 +4872,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       <Button 
                         onClick={() => {
                           setEditingItem(null);
-                          setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: user?.id || '' });
+                          setItemForm({ tipo: 'servico', produto_id: undefined, descricao: '', quantidade: 1, valor_unitario: 0, valor_minimo: 0, desconto: 0, garantia: 90, colaborador_id: user?.id || '', fornecedor_id: '', fornecedor_nome: '', com_aro: '', grade_cor: '' });
                           setShowAddItem(true);
                         }}
                         className="gap-2"
@@ -4842,6 +4897,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <TableHead className="text-right">Garantia</TableHead>
                             <TableHead title="Controle interno (não sai no cupom)">Fornecedor</TableHead>
                             <TableHead title="Controle interno (não sai no cupom)">Com aro</TableHead>
+                            <TableHead title="Cor da grade (quando produto tem grade por cor)">Cor</TableHead>
                             <TableHead>Colaborador</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -4866,6 +4922,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               </TableCell>
                               <TableCell className="text-muted-foreground text-xs" title="Controle interno (não sai no cupom)">
                                 {item.tipo === 'peca' ? ((item as any).com_aro === 'com_aro' ? 'Com aro' : (item as any).com_aro === 'sem_aro' ? 'Sem aro' : '-') : '-'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-xs" title="Cor da grade">
+                                {(item as any).grade_cor || '-'}
                               </TableCell>
                               <TableCell>
                                 {(() => {
@@ -5297,20 +5356,29 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <Input
                     type="number"
                     min="1"
-                    max={itemForm.tipo === 'peca' && itemForm.produto_id 
-                      ? produtos.find(p => p.id === itemForm.produto_id)?.quantidade || undefined
+                    max={itemForm.tipo === 'peca' && itemForm.produto_id
+                      ? (() => {
+                          const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
+                          if (!produto) return undefined;
+                          if (produto.estoque_grade?.tipo === 'cor' && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
+                            return Number(produto.estoque_grade.itens[itemForm.grade_cor]) || undefined;
+                          }
+                          return produto.quantidade || undefined;
+                        })()
                       : undefined}
                     value={itemForm.quantidade}
                     onChange={(e) => {
                       const valor = parseInt(e.target.value) || 1;
-                      // Se for peça, validar contra estoque
                       if (itemForm.tipo === 'peca' && itemForm.produto_id) {
-                        const produto = produtos.find(p => p.id === itemForm.produto_id);
-                        const estoqueDisponivel = produto?.quantidade || 0;
+                        const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
+                        let estoqueDisponivel = produto?.quantidade || 0;
+                        if (produto?.estoque_grade?.tipo === 'cor' && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
+                          estoqueDisponivel = Number(produto.estoque_grade.itens[itemForm.grade_cor]) || 0;
+                        }
                         if (produto && valor > estoqueDisponivel) {
                           toast({
                             title: 'Quantidade excede estoque',
-                            description: `Estoque disponível: ${estoqueDisponivel} unidades.`,
+                            description: `Estoque disponível: ${estoqueDisponivel} unidades${itemForm.grade_cor ? ` (cor: ${itemForm.grade_cor})` : ''}.`,
                             variant: 'destructive',
                           });
                           return;
@@ -5321,7 +5389,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   />
                   {itemForm.tipo === 'peca' && itemForm.produto_id && (
                     <p className="text-xs text-muted-foreground">
-                      Estoque disponível: {produtos.find(p => p.id === itemForm.produto_id)?.quantidade || 0} unidades
+                      Estoque disponível: {(() => {
+                        const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
+                        if (!produto) return 0;
+                        if (produto.estoque_grade?.tipo === 'cor' && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
+                          return `${Number(produto.estoque_grade.itens[itemForm.grade_cor]) || 0} (cor: ${itemForm.grade_cor})`;
+                        }
+                        return `${produto.quantidade || 0} unidades`;
+                      })()}
                     </p>
                   )}
                 </div>
@@ -5425,21 +5500,51 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <Plus className="h-3.5 w-3.5" />
                         Cadastrar novo fornecedor
                       </button>
-                      <ScrollArea className="max-h-[200px]">
+                      <ScrollArea className="h-[200px] w-full">
                         {fornecedoresFiltrados.length > 0 ? (
-                          <div className="p-1">
+                          <div className="p-1" onWheel={(e) => e.stopPropagation()}>
                             {fornecedoresFiltrados.map(f => (
-                              <button
+                              <div
                                 key={f.id}
-                                type="button"
-                                className="w-full flex items-center px-3 py-2 text-sm text-left rounded-md hover:bg-accent"
-                                onClick={() => {
-                                  setItemForm(prev => ({ ...prev, fornecedor_id: f.id, fornecedor_nome: f.nome }));
-                                  setFornecedorPopoverOpen(false);
-                                }}
+                                className="flex items-center gap-1 group rounded-md hover:bg-accent"
                               >
-                                {f.nome}
-                              </button>
+                                <button
+                                  type="button"
+                                  className="flex-1 flex items-center px-3 py-2 text-sm text-left min-w-0"
+                                  onClick={() => {
+                                    setItemForm(prev => ({ ...prev, fornecedor_id: f.id, fornecedor_nome: f.nome }));
+                                    setFornecedorPopoverOpen(false);
+                                  }}
+                                >
+                                  <span className="truncate">{f.nome}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="p-1.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                  title="Editar nome do fornecedor"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditFornecedorId(f.id);
+                                    setEditFornecedorNome(f.nome);
+                                    setShowEditFornecedorDialog(true);
+                                    setFornecedorPopoverOpen(false);
+                                  }}
+                                >
+                                  <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="p-1.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-muted-foreground hover:text-foreground"
+                                  title="Excluir fornecedor"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFornecedorToDelete({ id: f.id, nome: f.nome });
+                                    setFornecedorPopoverOpen(false);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             ))}
                           </div>
                         ) : (
@@ -5469,6 +5574,33 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </Select>
                   <p className="text-xs text-muted-foreground">Controle interno. Não sai no cupom.</p>
                 </div>
+                {itemForm.tipo === 'peca' && itemForm.produto_id && (() => {
+                  const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
+                  const gradePorCor = produto?.estoque_grade?.tipo === 'cor' && produto?.estoque_grade?.itens && Object.keys(produto.estoque_grade.itens).length > 0;
+                  const cores = gradePorCor ? Object.keys(produto.estoque_grade.itens).sort((a, b) => a.localeCompare(b)) : [];
+                  if (!gradePorCor || cores.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      <Label>Cor da grade</Label>
+                      <Select
+                        value={itemForm.grade_cor || ''}
+                        onValueChange={(v) => setItemForm(prev => ({ ...prev, grade_cor: v, quantidade: 1 }))}
+                      >
+                        <SelectTrigger className="w-full h-10">
+                          <SelectValue placeholder="Selecione a cor" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cores.map((cor) => (
+                            <SelectItem key={cor} value={cor}>
+                              {cor} ({Number(produto.estoque_grade.itens[cor]) || 0} un.)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Produto com grade por cor. Escolha a cor para lançar na OS.</p>
+                    </div>
+                  );
+                })()}
                 <div className="space-y-2">
                   <Label>Colaborador que lançou</Label>
                   <Input value={currentUserNome} readOnly className="bg-muted" />
@@ -5517,7 +5649,52 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </div>
           </DialogContent>
         </Dialog>
-        
+
+        {/* Dialog Editar Fornecedor */}
+        <Dialog open={showEditFornecedorDialog} onOpenChange={(open) => { setShowEditFornecedorDialog(open); if (!open) { setEditFornecedorId(null); setEditFornecedorNome(''); } }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Editar fornecedor</DialogTitle>
+              <DialogDescription>Altere o nome do fornecedor.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <Input
+                placeholder="Nome do fornecedor"
+                value={editFornecedorNome}
+                onChange={(e) => setEditFornecedorNome(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleEditFornecedor(); } }}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => { setShowEditFornecedorDialog(false); setEditFornecedorId(null); setEditFornecedorNome(''); }}>Cancelar</Button>
+                <Button onClick={handleEditFornecedor} disabled={!editFornecedorNome.trim()}>
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={!!fornecedorToDelete} onOpenChange={(open) => !open && setFornecedorToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir fornecedor?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O fornecedor &quot;{fornecedorToDelete?.nome}&quot; será removido do cadastro. Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletingFornecedor}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleConfirmDeleteFornecedor(); }}
+                disabled={isDeletingFornecedor}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeletingFornecedor ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Toast centralizado de sucesso */}
         {showSuccessToast && (
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] pointer-events-none">
