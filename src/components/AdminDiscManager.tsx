@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Eye, Download, Search, Filter, Trash2, FileText } from 'lucide-react';
@@ -47,21 +48,23 @@ interface CandidateDiscResult {
 }
 
 export const AdminDiscManager = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [profileFilter, setProfileFilter] = useState('all');
   const [selectedResult, setSelectedResult] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'list' | 'details' | 'questions'>('list');
   const queryClient = useQueryClient();
 
-  // Fetch internal users results
+  // Fetch internal users results (apenas da empresa do usuário)
   const { data: userResults = [], isLoading: loadingUsers } = useQuery({
-    queryKey: ['admin-disc-users'],
+    queryKey: ['admin-disc-users', user?.company_id],
     queryFn: async () => {
-      const { data, error } = await from('disc_responses')
+      let q = from('disc_responses')
         .select('*')
         .eq('is_completed', true)
-        .order('completion_date', { ascending: false })
-        .execute();
+        .order('completion_date', { ascending: false });
+      if (user?.company_id) q = q.eq('company_id', user.company_id);
+      const { data, error } = await q.execute();
 
       if (error) throw error;
       
@@ -89,14 +92,15 @@ export const AdminDiscManager = () => {
     }
   });
 
-  // Fetch external candidates results (including partial responses)
+  // Fetch external candidates results (apenas da empresa do usuário)
   const { data: candidateResults = [], isLoading: loadingCandidates } = useQuery({
-    queryKey: ['admin-disc-candidates'],
+    queryKey: ['admin-disc-candidates', user?.company_id],
     queryFn: async () => {
-      const { data, error } = await from('candidate_responses')
+      let q = from('candidate_responses')
         .select('*')
-        .order('created_at', { ascending: false })
-        .execute();
+        .order('created_at', { ascending: false });
+      if (user?.company_id) q = q.eq('company_id', user.company_id);
+      const { data, error } = await q.execute();
 
       if (error) throw error;
       return (data || []).map(item => ({

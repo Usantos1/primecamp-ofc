@@ -1399,9 +1399,14 @@ app.post('/api/query/:table', async (req, res) => {
       'marcas', 'modelos',
       // Configurações específicas da empresa
       'configuracoes_empresa', 'company_settings',
+      'cupom_config',
       'os_pagamentos', 'os_config_status',
       // Devoluções e inventário
-      'refunds', 'refund_items'
+      'refunds', 'refund_items',
+      // Logs do sistema, DISC, integrações e Academy
+      'user_activity_logs', 'audit_logs', 'disc_responses',
+      'telegram_config',
+      'trainings', 'training_assignments'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
@@ -1552,8 +1557,12 @@ app.post('/api/insert/:table', async (req, res) => {
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
+      'cupom_config',
       'os_pagamentos', 'os_config_status', 'fornecedores',
-      'refunds', 'refund_items'
+      'refunds', 'refund_items',
+      'user_activity_logs', 'audit_logs', 'disc_responses',
+      'telegram_config',
+      'trainings', 'training_assignments'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1973,8 +1982,12 @@ app.post('/api/update/:table', async (req, res) => {
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
+      'cupom_config',
       'os_pagamentos', 'os_config_status', 'fornecedores',
-      'refunds', 'refund_items'
+      'refunds', 'refund_items',
+      'user_activity_logs', 'audit_logs', 'disc_responses',
+      'telegram_config',
+      'trainings', 'training_assignments'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2519,8 +2532,12 @@ app.post('/api/delete/:table', async (req, res) => {
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
+      'cupom_config',
       'os_pagamentos', 'os_config_status', 'fornecedores',
-      'refunds', 'refund_items'
+      'refunds', 'refund_items',
+      'user_activity_logs', 'audit_logs', 'disc_responses',
+      'telegram_config',
+      'trainings', 'training_assignments'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2616,7 +2633,7 @@ app.post('/api/rpc/:function', async (req, res) => {
 // ENDPOINT WHATSAPP - ENVIO DE MENSAGENS VIA ATIVA CRM
 // ============================================
 
-// POST /api/whatsapp/send
+// POST /api/whatsapp/send (usa integration_settings por empresa se houver auth)
 app.post('/api/whatsapp/send', async (req, res) => {
   try {
     const { action, data } = req.body;
@@ -2625,10 +2642,22 @@ app.post('/api/whatsapp/send', async (req, res) => {
       return res.status(400).json({ error: 'number e body são obrigatórios' });
     }
 
-    // Buscar token do Ativa CRM do banco de dados
-    const tokenResult = await pool.query(`
-      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
-    `);
+    let companyId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.slice(7);
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userRow = await pool.query('SELECT company_id FROM users WHERE id = $1', [decoded.userId || decoded.sub]);
+        if (userRow.rows[0]?.company_id) companyId = userRow.rows[0].company_id;
+      } catch (_) {}
+    }
+    const integrationKey = companyId ? `integration_settings_${companyId}` : 'integration_settings';
+
+    const tokenResult = await pool.query(
+      `SELECT value FROM kv_store_2c4defad WHERE key = $1`,
+      [integrationKey]
+    );
 
     let ativaCrmToken = null;
     if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
@@ -3190,10 +3219,12 @@ app.post('/api/functions/analyze-candidate', authenticateToken, async (req, res)
       return res.status(400).json({ error: 'job_response_id, survey_id, candidate_data e job_data são obrigatórios' });
     }
 
-    // Buscar API key da OpenAI do banco de dados
-    const tokenResult = await pool.query(`
-      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
-    `);
+    // Buscar API key da OpenAI do banco (por empresa)
+    const integrationKey = req.companyId ? `integration_settings_${req.companyId}` : 'integration_settings';
+    const tokenResult = await pool.query(
+      `SELECT value FROM kv_store_2c4defad WHERE key = $1`,
+      [integrationKey]
+    );
 
     let openaiApiKey = null;
     let openaiModel = 'gpt-4o-mini';
@@ -3407,10 +3438,12 @@ app.post('/api/functions/generate-interview-questions', authenticateToken, async
       return res.status(400).json({ error: 'job_response_id e survey_id são obrigatórios' });
     }
 
-    // Buscar API key da OpenAI do banco de dados
-    const tokenResult = await pool.query(`
-      SELECT value FROM kv_store_2c4defad WHERE key = 'integration_settings'
-    `);
+    // Buscar API key da OpenAI do banco (por empresa)
+    const integrationKey = req.companyId ? `integration_settings_${req.companyId}` : 'integration_settings';
+    const tokenResult = await pool.query(
+      `SELECT value FROM kv_store_2c4defad WHERE key = $1`,
+      [integrationKey]
+    );
 
     let openaiApiKey = null;
     let openaiModel = 'gpt-4o-mini';

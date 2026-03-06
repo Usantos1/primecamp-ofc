@@ -9,13 +9,13 @@ export function useTrainings() {
   const { user } = useAuth();
 
   const { data: trainings, isLoading } = useQuery({
-    queryKey: ['trainings'],
+    queryKey: ['trainings', user?.company_id],
     queryFn: async () => {
-      // Buscar treinamentos
-      const { data: trainingsData, error: trainingsError } = await from('trainings')
+      let q = from('trainings')
         .select('*')
-        .order('created_at', { ascending: false })
-        .execute();
+        .order('created_at', { ascending: false });
+      if (user?.company_id) q = q.eq('company_id', user.company_id);
+      const { data: trainingsData, error: trainingsError } = await q.execute();
       
       if (trainingsError) throw trainingsError;
       
@@ -56,11 +56,12 @@ export function useTrainings() {
       if (!user) return [];
 
       // Buscar assignments do usuário
-      const { data: assignments, error: assignmentsError } = await from('training_assignments')
+      let assignQ = from('training_assignments')
         .select('*')
         .eq('user_id', user.id)
-        .order('assigned_at', { ascending: false })
-        .execute();
+        .order('assigned_at', { ascending: false });
+      if (user.company_id) assignQ = assignQ.eq('company_id', user.company_id);
+      const { data: assignments, error: assignmentsError } = await assignQ.execute();
       
       if (assignmentsError) throw assignmentsError;
       
@@ -126,8 +127,10 @@ export function useTrainings() {
 
   const createTraining = useMutation({
     mutationFn: async (training: any) => {
+      const payload: any = { ...training, created_by: user?.id };
+      if (user?.company_id) payload.company_id = user.company_id;
       const { data, error } = await from('trainings')
-        .insert({ ...training, created_by: user?.id })
+        .insert(payload)
         .select()
         .single();
       

@@ -231,6 +231,34 @@ router.post('/companies', async (req, res) => {
 
       const company = companyResult.rows[0];
 
+      // Config de cupom por empresa: dados fictícios (não da Prime Camp) para a nova empresa
+      const cupomConfigKey = `cupom_config_${company.id}`;
+      const cupomConfigValue = {
+        empresa_nome: 'Nome da Empresa',
+        empresa_cnpj: '',
+        empresa_ie: '',
+        empresa_endereco: '',
+        empresa_telefone: '',
+        empresa_whatsapp: '',
+        logo_url: '',
+        termos_garantia: 'Esse comprovante de venda é sua Garantia, portando guarde-o com cuidado. A Garantia não cobre mau uso do cliente. (pressão, impacto, quebra, umidade, calor excessivo).',
+        mostrar_logo: true,
+        mostrar_qr_code: true,
+        mensagem_rodape: 'Obrigado pela preferência! Volte sempre',
+        imprimir_2_vias: false,
+        imprimir_sem_dialogo: true,
+        impressora_padrao: '',
+      };
+      try {
+        await client.query(
+          `INSERT INTO kv_store_2c4defad (key, value) VALUES ($1, $2::jsonb)
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+          [cupomConfigKey, JSON.stringify(cupomConfigValue)]
+        );
+      } catch (kvErr) {
+        console.warn('[Revenda] Não foi possível criar config cupom padrão para nova empresa:', kvErr.message);
+      }
+
       // Criar assinatura se plan_id fornecido
       if (plan_id) {
         const planResult = await client.query('SELECT * FROM plans WHERE id = $1', [plan_id]);

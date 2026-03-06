@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CupomConfig {
   id?: string;
@@ -20,14 +21,16 @@ export interface CupomConfig {
 }
 
 export function useCupomConfig() {
+  const { user } = useAuth();
+  const cupomKey = user?.company_id ? `cupom_config_${user.company_id}` : 'cupom_config';
+
   return useQuery<CupomConfig | null>({
-    queryKey: ['cupom_config'],
+    queryKey: ['cupom_config', user?.company_id],
     queryFn: async () => {
-      // Mesma fonte que ConfiguracaoCupom: kv_store (key cupom_config) ou tabela cupom_config
       try {
         const { data: kvData, error: kvError } = await from('kv_store_2c4defad')
           .select('value')
-          .eq('key', 'cupom_config')
+          .eq('key', cupomKey)
           .limit(1)
           .execute();
 
@@ -35,6 +38,7 @@ export function useCupomConfig() {
           return { ...kvData[0].value } as CupomConfig;
         }
 
+        // Tabela cupom_config: API já filtra por company_id
         const { data, error } = await from('cupom_config')
           .select('*')
           .limit(1)

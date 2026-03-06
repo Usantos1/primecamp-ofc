@@ -41,9 +41,10 @@ const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
 export default function AdminReseller() {
   const { user, profile, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
   const { 
     loading, 
-    error, 
+    error: resellerError, 
     listCompanies, 
     getCompany,
     createCompany, 
@@ -90,24 +91,21 @@ export default function AdminReseller() {
     status: 'trial'
   });
 
-  // Verificar se é admin da empresa principal
+  // Revenda: apenas admin da empresa principal (empresa 1) pode acessar
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        navigate('/login');
-        return;
-      }
-      
-      // Verificar se é admin
-      if (!isAdmin || profile?.role !== 'admin') {
-        toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar esta página.');
-        navigate('/admin');
-        return;
-      }
-      
-      // Verificar se pertence à empresa admin (via API)
-      // O backend já faz essa verificação, mas vamos adicionar uma camada extra de segurança
-      // Se o backend retornar 403, o erro será tratado no hook useReseller
+    if (authLoading) return;
+    if (!user) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    if (!isAdmin || profile?.role !== 'admin') {
+      toast.error('Acesso negado. Apenas administradores podem acessar esta página.');
+      navigate('/admin', { replace: true });
+      return;
+    }
+    if (user.company_id !== ADMIN_COMPANY_ID) {
+      toast.error('Acesso negado. Apenas administradores da empresa principal podem acessar a Gestão de Revenda.');
+      navigate('/admin', { replace: true });
     }
   }, [user, profile, isAdmin, authLoading, navigate]);
 
@@ -413,6 +411,8 @@ export default function AdminReseller() {
     }).format(value);
   };
 
+  if (user && user.company_id !== ADMIN_COMPANY_ID) return null;
+
   return (
     <ModernLayout
       title="Gestão de Revenda"
@@ -494,7 +494,11 @@ export default function AdminReseller() {
               </div>
             ) : companies.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma empresa encontrada
+                {resellerError ? (
+                  <p className="text-destructive font-medium">{resellerError}</p>
+                ) : (
+                  'Nenhuma empresa encontrada'
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">

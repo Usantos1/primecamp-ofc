@@ -120,6 +120,12 @@ WHERE email IN ('usuario1@exemplo.com', 'usuario2@exemplo.com');
 | DRE / despesas fixas mostrando dados de outra empresa | Seção 8 (usuário) + **Seção 10**: rodar `BILLS_TO_PAY_ADD_company_id.sql` e reiniciar a API. |
 | Fluxo de Caixa / Contas / Transações de outra empresa | Seção 8 (usuário) + **Seção 11**: rodar `FINANCEIRO_ADD_company_id.sql` e reiniciar a API. |
 | Integrações / Tokens de API mostrando tokens de outra empresa ou API v1 retornando dados de outra empresa | **Seção 12**: rodar `API_TOKENS_ADD_company_id.sql` e reiniciar a API. |
+| Logs do sistema (/admin/logs) mostrando ações de outra empresa | Rodar `LOGS_ADD_company_id.sql` e reiniciar a API. |
+| DISC (/admin/disc) mostrando resultados de usuários de outra empresa | Rodar `DISC_ADD_company_id.sql` e reiniciar a API. |
+| Configuração do cupom / "Dados da Empresa" mostrando nome/CNPJ de outra empresa | Rodar `CUPOM_CONFIG_ADD_company_id.sql`, reiniciar a API e (se ainda usar kv_store) fazer logout e login para carregar a chave por empresa. |
+| Integrações (WhatsApp, Telegram, API Externa/OpenAI) mostrando ou usando config de outra empresa | Frontend usa chave `integration_settings_<company_id>` no kv_store; backend idem. Rodar `TELEGRAM_CONFIG_ADD_company_id.sql` para Chat IDs do Telegram por empresa; reiniciar a API; logout e login. |
+| Academy / Treinamentos (/treinamentos) mostrando treinamentos de outra empresa | Rodar `TRAININGS_ADD_company_id.sql`; reiniciar a API; logout e login. |
+| Carteiras (/admin/configuracoes/pagamentos) mostrando carteiras de outra empresa | Rodar `WALLETS_ADD_company_id.sql`; reiniciar a API; logout e login. |
 
 ### 8. Logado na empresa A mas aparecendo dados da empresa B (financeiro, caixa, vendas, etc.)
 
@@ -197,3 +203,21 @@ cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U p
 Ao **criar** um novo token pela aplicação, o `company_id` será preenchido automaticamente. Tokens antigos são preenchidos pelo script a partir de `criado_por`. Depois, **reinicie a API**.
 
 Depois de reexecutar o script e conferir os pontos acima, teste de novo em **Nova Empresa** e **Gerenciar Planos**. Se ainda der 500, use a resposta da API (campo `error`/`detail`) para identificar a linha ou constraint que está falhando.
+
+### 13. Configuração do cupom — "Dados da Empresa" mostrando dados de outra empresa
+
+Na tela **Configuração do cupom** (Dados da Empresa), cada empresa deve ver e editar apenas os próprios dados (nome, CNPJ, endereço, logo). Para isolar por empresa:
+
+1. A tabela `cupom_config` precisa da coluna `company_id` (e estar na lista de tabelas filtradas pela API).
+2. No frontend, a config no `kv_store_2c4defad` usa chave por empresa: `cupom_config_<company_id>`.
+
+Execute no PostgreSQL:
+
+**No pgAdmin:** Query Tool → abra e execute `db/migrations/manual/CUPOM_CONFIG_ADD_company_id.sql`.
+
+**Na VPS (como root):**
+```bash
+cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U postgres -d banco_gestao -f db/migrations/manual/CUPOM_CONFIG_ADD_company_id.sql
+```
+
+Depois, **reinicie a API**. Se a config estiver só no kv_store (chave antiga `cupom_config`), faça logout e login para que a tela passe a usar a chave por empresa; configure de novo os dados da empresa na tela e salve.

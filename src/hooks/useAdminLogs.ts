@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { from } from '@/integrations/db/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 /** Categorias para filtrar logs na tela /admin/logs */
 export type LogCategory =
@@ -100,22 +101,31 @@ function actionLabelActivity(activityType: string): string {
 }
 
 export function useAdminLogs() {
+  const { user } = useAuth();
   const [logs, setLogs] = useState<UnifiedLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
+    if (!user?.company_id) {
+      setLogs([]);
+      setLoading(false);
+      setError('Usuário sem empresa vinculada. Não é possível carregar os logs.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const [activityRes, auditRes] = await Promise.all([
         from('user_activity_logs')
           .select('*')
+          .eq('company_id', user.company_id)
           .order('created_at', { ascending: false })
           .limit(500)
           .execute(),
         from('audit_logs')
           .select('*')
+          .eq('company_id', user.company_id)
           .order('created_at', { ascending: false })
           .limit(500)
           .execute(),
@@ -166,7 +176,7 @@ export function useAdminLogs() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.company_id]);
 
   useEffect(() => {
     fetchAll();

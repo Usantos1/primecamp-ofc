@@ -111,11 +111,13 @@ export default function CupomView() {
       setItems(data.items || []);
       setPayments(data.payments || []);
 
-      // Config do cupom (só com login; falha silenciosa para quem abre pelo QR)
+      // Config do cupom por empresa (chave cupom_config_<company_id> para isolamento)
       try {
+        const companyId = data.sale?.company_id;
+        const cupomKey = companyId ? `cupom_config_${companyId}` : 'cupom_config';
         const { data: configData } = await from('kv_store_2c4defad')
           .select('value')
-          .eq('key', 'cupom_config')
+          .eq('key', cupomKey)
           .single()
           .execute();
         if (configData) setCupomConfig(configData.value);

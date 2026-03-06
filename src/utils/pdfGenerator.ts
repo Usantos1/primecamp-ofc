@@ -71,7 +71,7 @@ export async function generateCupomTermica(data: CupomData, qrCodeData?: string)
   }
 
   // Usar configurações do banco ou valores padrão
-  const empresaNome = data.empresa?.nome || config?.empresa_nome || 'PRIME CAMP ASSISTÊNCIA TÉCNICA';
+  const empresaNome = data.empresa?.nome || config?.empresa_nome || 'Nome da Empresa';
   const empresaCnpj = data.empresa?.cnpj || config?.empresa_cnpj || '';
   const empresaIe = data.empresa?.ie || config?.empresa_ie || '';
   const empresaEndereco = data.empresa?.endereco || config?.empresa_endereco || '';

@@ -29,7 +29,8 @@ interface IntegrationSettings {
 }
 
 export default function Integration() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user, session } = useAuth();
+  const integrationKey = user?.company_id ? `integration_settings_${user.company_id}` : 'integration_settings';
   const [settings, setSettings] = useState<IntegrationSettings>({
     ativaCrmToken: '',
     whatsappNotifications: false,
@@ -111,13 +112,13 @@ export default function Integration() {
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [user?.company_id]);
 
   const loadSettings = async () => {
     try {
       const { data, error } = await from('kv_store_2c4defad')
         .select('value')
-        .eq('key', 'integration_settings')
+        .eq('key', integrationKey)
         .maybeSingle();
 
       if (!error && data?.value) {
@@ -140,7 +141,7 @@ export default function Integration() {
       // Usar upsert para inserir ou atualizar automaticamente
       const result = await from('kv_store_2c4defad')
         .upsert({
-          key: 'integration_settings',
+          key: integrationKey,
           value: settings as any
         }, {
           onConflict: 'key'
@@ -171,9 +172,11 @@ export default function Integration() {
       
       // 🚫 Supabase Functions removido - usar API direta
       const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.token) headers['Authorization'] = `Bearer ${session.token}`;
       const response = await fetch(`${API_URL}/whatsapp/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           action: 'send_message',
           data: {
@@ -526,9 +529,9 @@ export default function Integration() {
                   onChange={(e) => setTelegramChatIdEntrada(e.target.value)}
                   disabled={isUpdatingTelegramConfig}
                 />
-                {telegramChatIdEntrada && (
+                {chatIdEntrada && (
                   <p className="text-xs text-green-600">
-                    ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdEntrada}</code>
+                    ✅ Salvo: <code className="bg-background px-1 rounded text-xs">{chatIdEntrada}</code>
                   </p>
                 )}
               </div>
@@ -544,9 +547,9 @@ export default function Integration() {
                   onChange={(e) => setTelegramChatIdProcesso(e.target.value)}
                   disabled={isUpdatingTelegramConfig}
                 />
-                {telegramChatIdProcesso && (
+                {chatIdProcesso && (
                   <p className="text-xs text-green-600">
-                    ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdProcesso}</code>
+                    ✅ Salvo: <code className="bg-background px-1 rounded text-xs">{chatIdProcesso}</code>
                   </p>
                 )}
               </div>
@@ -562,9 +565,9 @@ export default function Integration() {
                   onChange={(e) => setTelegramChatIdSaida(e.target.value)}
                   disabled={isUpdatingTelegramConfig}
                 />
-                {telegramChatIdSaida && (
+                {chatIdSaida && (
                   <p className="text-xs text-green-600">
-                    ✅ <code className="bg-background px-1 rounded text-xs">{telegramChatIdSaida}</code>
+                    ✅ Salvo: <code className="bg-background px-1 rounded text-xs">{chatIdSaida}</code>
                   </p>
                 )}
               </div>

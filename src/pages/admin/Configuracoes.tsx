@@ -34,9 +34,11 @@ import { PermissionGate } from '@/components/PermissionGate';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { toast } from 'sonner';
 
+const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+
 export default function Configuracoes() {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [showDashboardConfig, setShowDashboardConfig] = useState(false);
   const [showOSConfig, setShowOSConfig] = useState(false);
   const [osNumeroInicial, setOsNumeroInicial] = useState<string>('');
@@ -143,7 +145,8 @@ export default function Configuracoes() {
       path: '/admin/logs',
       permission: 'admin.logs',
     },
-    {
+    // Gestão de Revenda — apenas para admin da empresa principal (empresa 1)
+    ...(user?.company_id === ADMIN_COMPANY_ID ? [{
       title: 'Gestão de Revenda',
       description: 'Gerencie revendedores e assinaturas',
       icon: Store,
@@ -151,7 +154,7 @@ export default function Configuracoes() {
       hoverColor: 'hover:from-amber-600 hover:to-yellow-600',
       path: '/admin/revenda',
       permission: 'admin.view',
-    },
+    }] : []),
     {
       title: 'Estrutura Organizacional',
       description: 'Usuários, departamentos, categorias e tags',

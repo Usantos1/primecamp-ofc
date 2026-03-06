@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { from } from '@/integrations/db/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TelegramConfig {
   id: string;
@@ -19,15 +20,15 @@ const CONFIG_KEYS = {
 
 export function useTelegramConfig() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Buscar todas as configurações
+  // Buscar configurações da empresa do usuário (cada empresa tem seus próprios Chat IDs)
   const { data: configs = [], isLoading } = useQuery({
-    queryKey: ['telegram_config'],
+    queryKey: ['telegram_config', user?.company_id],
     queryFn: async () => {
-      const { data, error } = await from('telegram_config')
-        .select('*')
-        .execute();
-
+      let q = from('telegram_config').select('*');
+      if (user?.company_id) q = q.eq('company_id', user.company_id);
+      const { data, error } = await q.execute();
       if (error) throw error;
       return (data || []) as TelegramConfig[];
     },
@@ -47,7 +48,7 @@ export function useTelegramConfig() {
   const chatIdProcesso = getConfigValue(CONFIG_KEYS.CHAT_ID_PROCESSO);
   const chatIdSaida = getConfigValue(CONFIG_KEYS.CHAT_ID_SAIDA);
 
-  // Mutation para atualizar configuração
+  // Mutation para atualizar configuração (sempre no contexto da empresa do usuário)
   const updateConfig = useMutation({
     mutationFn: async ({
       key,
@@ -56,34 +57,27 @@ export function useTelegramConfig() {
       key: string;
       value: string;
     }): Promise<TelegramConfig> => {
-      // Verificar se já existe
       const existing = configs.find((c) => c.key === key);
 
       if (existing) {
-        // Atualizar existente - usar .eq().update() que retorna Promise diretamente
-        const result = await from('telegram_config')
+        let updateQ = from('telegram_config')
           .eq('key', key)
-          .update({ value: value.trim(), updated_at: new Date().toISOString() }) as any;
-
+          .update({ value: value.trim(), updated_at: new Date().toISOString() });
+        if (user?.company_id) updateQ = updateQ.eq('company_id', user.company_id);
+        const result = await updateQ as any;
         if (result.error) throw result.error;
-        // Retornar dados atualizados
         return {
           ...existing,
           value: value.trim(),
           updated_at: new Date().toISOString(),
         } as TelegramConfig;
       } else {
-        // Criar novo
-        const result = await from('telegram_config')
-          .insert({
-            key,
-            value: value.trim(),
-          });
-
+        const payload: Record<string, unknown> = { key, value: value.trim() };
+        if (user?.company_id) payload.company_id = user.company_id;
+        const result = await from('telegram_config').insert(payload);
         if (result.error) throw result.error;
-        // Retornar dados inseridos
         return {
-          id: result.data?.id || '',
+          id: (result as any).data?.id || '',
           key,
           value: value.trim(),
           created_at: new Date().toISOString(),
@@ -92,7 +86,7 @@ export function useTelegramConfig() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['telegram_config'] });
+      queryClient.invalidateQueries({ queryKey: ['telegram_config', user?.company_id] });
     },
   });
 

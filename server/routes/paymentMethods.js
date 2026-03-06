@@ -188,10 +188,16 @@ walletsRouter.get('/', async (req, res) => {
     const hasCompanyId = await pool.query(`
       SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'company_id'
     `).then(r => r.rows.length > 0);
+    // Isolamento: se a tabela tem company_id, só retornar carteiras da empresa do usuário
+    if (hasCompanyId) {
+      if (!companyId) {
+        return res.json({ success: true, data: [] });
+      }
+    }
     let query = 'SELECT id, name, sort_order FROM wallets WHERE 1=1';
     const params = [];
     if (hasCompanyId && companyId) {
-      query += ' AND (company_id = $1 OR company_id IS NULL)';
+      query += ' AND company_id = $1';
       params.push(companyId);
     }
     query += ' ORDER BY sort_order, name';
@@ -239,6 +245,13 @@ walletsRouter.post('/', async (req, res) => {
 walletsRouter.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = req.companyId;
+    const hasCompanyIdCol = await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'company_id'
+    `).then(r => r.rows.length > 0);
+    if (hasCompanyIdCol && !companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada. Não é possível alterar carteiras.' });
+    }
     const { name, sort_order } = req.body || {};
     const sets = [];
     const params = [];
@@ -261,8 +274,19 @@ walletsRouter.put('/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
     }
     params.push(id);
+    let whereClause = 'WHERE id = $' + idx;
+    if (companyId) {
+      const hasCompanyId = await pool.query(`
+        SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'company_id'
+      `).then(r => r.rows.length > 0);
+      if (hasCompanyId) {
+        idx++;
+        params.push(companyId);
+        whereClause += ' AND company_id = $' + idx;
+      }
+    }
     const result = await pool.query(
-      `UPDATE wallets SET ${sets.join(', ')} WHERE id = $${idx} RETURNING id, name, sort_order`,
+      `UPDATE wallets SET ${sets.join(', ')} ${whereClause} RETURNING id, name, sort_order`,
       params
     );
     if (result.rows.length === 0) {
@@ -278,8 +302,21 @@ walletsRouter.put('/:id', async (req, res) => {
 walletsRouter.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const companyId = req.companyId;
+    const hasCompanyIdCol = await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'wallets' AND column_name = 'company_id'
+    `).then(r => r.rows.length > 0);
+    if (hasCompanyIdCol && !companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada. Não é possível excluir carteiras.' });
+    }
+    let deleteWhere = 'WHERE id = $1';
+    const deleteParams = [id];
+    if (hasCompanyIdCol && companyId) {
+      deleteWhere += ' AND company_id = $2';
+      deleteParams.push(companyId);
+    }
     await pool.query('UPDATE payment_methods SET wallet_id = NULL WHERE wallet_id = $1', [id]);
-    const result = await pool.query('DELETE FROM wallets WHERE id = $1 RETURNING id', [id]);
+    const result = await pool.query(`DELETE FROM wallets ${deleteWhere} RETURNING id`, deleteParams);
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Carteira não encontrada' });
     }

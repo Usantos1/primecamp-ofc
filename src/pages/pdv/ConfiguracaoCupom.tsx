@@ -40,7 +40,7 @@ export default function ConfiguracaoCupom() {
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [config, setConfig] = useState<CupomConfig>({
-    empresa_nome: 'PRIME CAMP ASSISTÊNCIA TÉCNICA',
+    empresa_nome: '',
     empresa_cnpj: '',
     empresa_ie: '',
     empresa_endereco: '',
@@ -56,24 +56,27 @@ export default function ConfiguracaoCupom() {
     impressora_padrao: '',
   });
 
+  // Chave por empresa: cada empresa tem sua própria config no kv_store e na tabela cupom_config
+  const cupomKey = user?.company_id ? `cupom_config_${user.company_id}` : 'cupom_config';
+
   useEffect(() => {
     loadConfig();
-  }, []);
+  }, [user?.company_id]);
 
   const loadConfig = async () => {
     try {
-      // Tentar carregar de kv_store_2c4defad primeiro (padrão)
+      // Tentar carregar de kv_store (chave por empresa para isolamento)
       const { data: kvData, error: kvError } = await from('kv_store_2c4defad')
         .select('value')
-        .eq('key', 'cupom_config')
+        .eq('key', cupomKey)
         .maybeSingle();
 
       if (!kvError && kvData?.value) {
-        setConfig({ ...config, ...kvData.value });
+        setConfig((c) => ({ ...c, ...(kvData.value as Partial<CupomConfig>) }));
         return;
       }
 
-      // Fallback para cupom_config (tabela antiga)
+      // Fallback: tabela cupom_config (API já filtra por company_id)
       const { data, error } = await from('cupom_config')
         .select('*')
         .limit(1)
@@ -84,7 +87,7 @@ export default function ConfiguracaoCupom() {
       }
 
       if (data) {
-        setConfig(data);
+        setConfig((c) => ({ ...c, ...(data as Partial<CupomConfig>) }));
       }
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
@@ -160,11 +163,11 @@ export default function ConfiguracaoCupom() {
     try {
       let valueToSave = config;
 
-      // Vendedor: salvar apenas opções de impressão (mesclar com config atual)
+      // Vendedor: salvar apenas opções de impressão (mesclar com config atual da empresa)
       if (canEditPrintOnly && !canEditFull) {
         const { data: kvData } = await from('kv_store_2c4defad')
           .select('value')
-          .eq('key', 'cupom_config')
+          .eq('key', cupomKey)
           .maybeSingle();
         const current = (kvData as any)?.value || {};
         valueToSave = {
@@ -177,7 +180,7 @@ export default function ConfiguracaoCupom() {
 
       const result = await from('kv_store_2c4defad')
         .upsert({
-          key: 'cupom_config',
+          key: cupomKey,
           value: valueToSave,
         }, {
           onConflict: 'key'
@@ -194,12 +197,11 @@ export default function ConfiguracaoCupom() {
           const { data: existingCupom } = await from('cupom_config')
             .select('id')
             .limit(1)
-            .single()
-            .execute();
-          if (existingCupom?.data) {
+            .maybeSingle();
+          if (existingCupom?.id) {
             await from('cupom_config')
               .update(configToSave)
-              .eq('id', existingCupom.data.id)
+              .eq('id', existingCupom.id)
               .execute();
           } else {
             await from('cupom_config')
@@ -318,7 +320,7 @@ export default function ConfiguracaoCupom() {
                 id="empresa_nome"
                 value={config.empresa_nome}
                 onChange={(e) => setConfig({ ...config, empresa_nome: e.target.value })}
-                placeholder="PRIME CAMP ASSISTÊNCIA TÉCNICA"
+                placeholder="Ex.: Nome da sua empresa"
                 className="h-9 md:h-10 text-sm border-2 border-gray-300"
               />
             </div>
@@ -329,7 +331,7 @@ export default function ConfiguracaoCupom() {
                   id="empresa_cnpj"
                   value={config.empresa_cnpj}
                   onChange={(e) => setConfig({ ...config, empresa_cnpj: e.target.value })}
-                  placeholder="31.833.574/0001-74"
+                  placeholder="Ex.: 00.000.000/0001-00"
                   className="h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
@@ -339,7 +341,7 @@ export default function ConfiguracaoCupom() {
                   id="empresa_ie"
                   value={config.empresa_ie}
                   onChange={(e) => setConfig({ ...config, empresa_ie: e.target.value })}
-                  placeholder="122.047.010.118"
+                  placeholder="Ex.: 000.000.000.000"
                   className="h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
@@ -350,7 +352,7 @@ export default function ConfiguracaoCupom() {
                 id="empresa_endereco"
                 value={config.empresa_endereco}
                 onChange={(e) => setConfig({ ...config, empresa_endereco: e.target.value })}
-                placeholder="AV COM EMILIO PIERI, 823 CONJ. HABIT. VIDA NOVA, CAMPINAS"
+                placeholder="Ex.: Rua, número, bairro, cidade"
                 className="h-9 md:h-10 text-sm border-2 border-gray-300"
               />
             </div>
@@ -361,7 +363,7 @@ export default function ConfiguracaoCupom() {
                   id="empresa_telefone"
                   value={config.empresa_telefone}
                   onChange={(e) => setConfig({ ...config, empresa_telefone: e.target.value })}
-                  placeholder="(19) 98768-0453"
+                  placeholder="Ex.: (00) 00000-0000"
                   className="h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
@@ -371,7 +373,7 @@ export default function ConfiguracaoCupom() {
                   id="empresa_whatsapp"
                   value={config.empresa_whatsapp}
                   onChange={(e) => setConfig({ ...config, empresa_whatsapp: e.target.value })}
-                  placeholder="(19) 98768-0453"
+                  placeholder="Ex.: (00) 00000-0000"
                   className="h-9 md:h-10 text-sm border-2 border-gray-300"
                 />
               </div>
