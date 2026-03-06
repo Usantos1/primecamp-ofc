@@ -40,6 +40,13 @@ import { VoucherPayment } from '@/components/pdv/VoucherPayment';
 import { useRefunds } from '@/hooks/useRefunds';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
 
+// Fallback quando a empresa não tem formas de pagamento configuradas (evita venda ficar só em rascunho)
+const FALLBACK_PAYMENT_METHODS: { id: string; code: string; name: string; is_active: boolean; accepts_installments: boolean; max_installments: number }[] = [
+  { id: '_dinheiro', code: 'dinheiro', name: 'Dinheiro', is_active: true, accepts_installments: false, max_installments: 1 },
+  { id: '_pix', code: 'pix', name: 'PIX', is_active: true, accepts_installments: false, max_installments: 1 },
+  { id: '_cartao', code: 'cartao_debito', name: 'Cartão (débito/crédito)', is_active: true, accepts_installments: true, max_installments: 12 },
+];
+
 export default function NovaVenda() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -67,6 +74,8 @@ export default function NovaVenda() {
   
   // Buscar formas de pagamento configuradas
   const { paymentMethods, fetchPaymentMethods } = usePaymentMethodsHook();
+  // Se a empresa não tiver formas configuradas, usar fallback para permitir finalizar venda (evita ficar só em rascunho)
+  const paymentMethodsForCheckout = paymentMethods?.length ? paymentMethods : FALLBACK_PAYMENT_METHODS;
   
   useEffect(() => {
     fetchPaymentMethods(true, true); // Ativas + taxas (para cálculo de valor líquido no Caixa Geral)
@@ -3195,7 +3204,7 @@ _PrimeCamp Assistência Técnica_`;
                     .filter((p: any) => p.status === 'confirmed')
                     .map((payment: any) => (
                       <div key={payment.id} className="flex justify-between items-center text-sm">
-                        <span className="capitalize">{PAYMENT_METHOD_LABELS[payment.forma_pagamento as PaymentMethod] || payment.forma_pagamento}</span>
+                        <span className="capitalize">{paymentMethodsForCheckout.find(p => p.code === payment.forma_pagamento)?.name || PAYMENT_METHOD_LABELS[payment.forma_pagamento as PaymentMethod] || payment.forma_pagamento}</span>
                         <span className="font-semibold">{currencyFormatters.brl(payment.valor)}</span>
                       </div>
                     ))}
@@ -3214,7 +3223,7 @@ _PrimeCamp Assistência Técnica_`;
                   value={checkoutPayment.forma_pagamento}
                   onValueChange={(v: PaymentMethod) => {
                     // Verificar se é voucher/vale - procurar no nome ou código da forma de pagamento
-                    const selectedPM = paymentMethods.find(pm => pm.code === v);
+                    const selectedPM = paymentMethodsForCheckout.find(pm => pm.code === v);
                     const isVoucher = selectedPM && (
                       selectedPM.name.toLowerCase().includes('vale') ||
                       selectedPM.name.toLowerCase().includes('voucher') ||
@@ -3230,7 +3239,7 @@ _PrimeCamp Assistência Técnica_`;
                     }
                     
                     const isDinheiro = v === 'dinheiro';
-                    const pm = paymentMethods.find(pm => pm.code === v);
+                    const pm = paymentMethodsForCheckout.find(pm => pm.code === v);
                     const aceitaParcelas = pm?.accepts_installments ?? ['credito', 'credito_parcelado'].includes(v);
                     const maxParcelas = pm?.max_installments ?? 12;
                     setCheckoutPayment({
@@ -3247,9 +3256,9 @@ _PrimeCamp Assistência Técnica_`;
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {paymentMethods
+                    {paymentMethodsForCheckout
                       .filter(pm => pm.is_active)
-                      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
                       .map((pm) => (
                         <SelectItem key={pm.id} value={pm.code}>
                           {pm.name}
@@ -3292,7 +3301,7 @@ _PrimeCamp Assistência Técnica_`;
             )}
 
             {(() => {
-              const selectedPM = paymentMethods.find(pm => pm.code === checkoutPayment.forma_pagamento);
+              const selectedPM = paymentMethodsForCheckout.find(pm => pm.code === checkoutPayment.forma_pagamento);
               const ehCredito = selectedPM?.name?.toLowerCase().includes('crédito') ?? selectedPM?.name?.toLowerCase().includes('credito') ?? ['credito', 'credito_parcelado', 'cartao_credito'].includes(checkoutPayment.forma_pagamento);
               const aceitaParcelas = selectedPM?.accepts_installments ?? ehCredito;
               const maxParcelas = Math.max(1, selectedPM?.max_installments ?? 12);

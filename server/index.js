@@ -2289,6 +2289,13 @@ app.post('/api/update/:table', async (req, res) => {
       setClause += `, company_id = COALESCE(company_id, $${params.length + 1})`;
       params.push(req.companyId);
     }
+
+    // payments: confirmar pagamento mesmo com company_id NULL (ex.: inserção antiga); preencher company_id e só permitir se for da empresa ou ainda não vinculado
+    const isPaymentsUpdateById = tableNameOnly.toLowerCase() === 'payments' && where && typeof where === 'object' && Object.keys(where).length === 1 && 'id' in where;
+    if (isPaymentsUpdateById && columnTypes['company_id'] && req.companyId) {
+      setClause += `, company_id = COALESCE(company_id, $${params.length + 1})`;
+      params.push(req.companyId);
+    }
     
     // Adicionar filtro de company_id sempre que a tabela for multi-empresa (isolamento: uma empresa não altera dados de outra)
     if (needsCompanyFilter && req.user && req.companyId && !isOsItemsUpdateById) {
@@ -2310,10 +2317,12 @@ app.post('/api/update/:table', async (req, res) => {
           
           if (columnCheck.rows.length > 0) {
             // Coluna existe, adicionar filtro
+            // payments atualizado por id: permitir linha com company_id NULL (confirmar pagamento) e preencher com req.companyId
+            const paymentAllowNull = isPaymentsUpdateById ? ` (company_id = $${params.length + 1} OR company_id IS NULL)` : ` company_id = $${params.length + 1}`;
             if (finalWhereClause) {
-              finalWhereClause += ` AND company_id = $${params.length + 1}`;
+              finalWhereClause += ` AND${paymentAllowNull}`;
             } else {
-              finalWhereClause = `WHERE company_id = $${params.length + 1}`;
+              finalWhereClause = `WHERE${paymentAllowNull}`;
             }
             params.push(req.companyId);
             console.log(`[Update] Adicionando filtro company_id=${req.companyId} para tabela ${tableNameOnly}`);
