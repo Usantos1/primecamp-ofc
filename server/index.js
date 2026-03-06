@@ -170,27 +170,27 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     
-    // CRÍTICO: Buscar company_id do banco para garantir isolamento de dados
-    // Mesmo que o token tenha company_id, buscar do banco para garantir dados atualizados
-    // Se a coluna company_id não existir, usar o valor do token ou null
+    // CRÍTICO: company_id SEMPRE do banco — nunca confiar no token para isolamento entre empresas
+    // Se o usuário existe no banco e company_id está NULL, não usar token (evita ver dados de outra empresa)
     try {
       const userResult = await pool.query(
         'SELECT company_id FROM users WHERE id = $1',
         [decoded.id]
       );
-      
-      if (userResult.rows.length > 0 && userResult.rows[0].company_id) {
-        req.companyId = userResult.rows[0].company_id;
-        req.user.company_id = userResult.rows[0].company_id;
+      if (userResult.rows.length > 0) {
+        const dbCompanyId = userResult.rows[0].company_id;
+        if (dbCompanyId) {
+          req.companyId = dbCompanyId;
+          req.user.company_id = dbCompanyId;
+        }
+        // Se company_id no banco é NULL: não usar decoded.company_id (token pode estar desatualizado)
       } else if (decoded.company_id) {
-        // Se não encontrar no banco mas tem no token, usar do token
         req.companyId = decoded.company_id;
         req.user.company_id = decoded.company_id;
       }
     } catch (dbError) {
-      // Se a coluna company_id não existir, usar do token ou continuar sem
       if (dbError.message && dbError.message.includes('company_id')) {
-        console.warn('[Auth] Coluna company_id não existe na tabela users, usando valor do token');
+        console.warn('[Auth] Coluna company_id não existe na tabela users');
         if (decoded.company_id) {
           req.companyId = decoded.company_id;
           req.user.company_id = decoded.company_id;
@@ -1392,8 +1392,9 @@ app.post('/api/query/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      // Financeiro
+      // Financeiro (contas a pagar, transações, contas a receber, categorias)
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
+      'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       // Marcas e modelos (se tiver por empresa)
       'marcas', 'modelos',
       // Configurações específicas da empresa
@@ -1538,6 +1539,7 @@ app.post('/api/insert/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
+      'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
       'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
@@ -1957,6 +1959,7 @@ app.post('/api/update/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
+      'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
       'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
@@ -2501,6 +2504,7 @@ app.post('/api/delete/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
+      'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
       'os_pagamentos', 'os_config_status', 'fornecedores'
     ];

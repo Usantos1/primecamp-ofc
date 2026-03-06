@@ -1,5 +1,9 @@
 -- Isolamento por empresa: adicionar company_id em cash_register_sessions e cash_movements
 -- Para o Caixa não exibir dados de outra empresa (crítico para multi-tenant).
+--
+-- VPS (como root, troque SUA_SENHA_POSTGRES pela senha real):
+--   cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U postgres -d banco_gestao -f /root/primecamp-ofc/db/migrations/manual/CAIXA_ADD_company_id.sql
+--
 
 -- 1) cash_register_sessions
 DO $$

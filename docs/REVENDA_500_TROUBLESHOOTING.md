@@ -115,15 +115,71 @@ WHERE email IN ('usuario1@exemplo.com', 'usuario2@exemplo.com');
 | `column "company_id" does not exist` (em `users`) | O script adiciona `company_id` em `users`; garantir que esse trecho do script foi executado sem erro. |
 | Token inválido / 403 | Fazer login de novo; conferir se o usuário é admin da empresa principal. |
 | Coluna Usuários sempre 0 | Ver seção 6 acima; conferir se usuários têm `company_id` preenchido e se a API foi reiniciada após o deploy. |
+| Vendo dados de outra empresa (financeiro, caixa, vendas) | **Seção 8**: vincule o usuário à empresa correta na tabela `users`. Depois logout e login. |
+| Caixa com dados de outra empresa | Seções 8 e 9: conferir `company_id` do usuário e rodar `CAIXA_ADD_company_id.sql` se necessário. |
+| DRE / despesas fixas mostrando dados de outra empresa | Seção 8 (usuário) + **Seção 10**: rodar `BILLS_TO_PAY_ADD_company_id.sql` e reiniciar a API. |
+| Fluxo de Caixa / Contas / Transações de outra empresa | Seção 8 (usuário) + **Seção 11**: rodar `FINANCEIRO_ADD_company_id.sql` e reiniciar a API. |
 
-### 8. Caixa (sessões/movimentos) mostrando dados de outra empresa
+### 8. Logado na empresa A mas aparecendo dados da empresa B (financeiro, caixa, vendas, etc.)
 
-O Caixa usa as tabelas `cash_register_sessions` e `cash_movements`. Para isolar por empresa, elas precisam da coluna `company_id`. Execute no PostgreSQL:
+**Causa:** O usuário com que você está logado está vinculado à empresa errada na tabela `users` (coluna `company_id`).
 
-```bash
-psql -U seu_usuario -d seu_banco -f db/migrations/manual/CAIXA_ADD_company_id.sql
+**Solução:** Vincule o usuário à empresa correta no PostgreSQL:
+
+```sql
+-- Ver qual empresa está vinculada ao seu usuário
+SELECT u.email, u.company_id, c.name AS empresa
+FROM users u
+LEFT JOIN companies c ON c.id = u.company_id
+WHERE u.email = 'seu_email@exemplo.com';
+
+-- Vincular à empresa desejada (ex.: Ativa CRM)
+UPDATE users
+SET company_id = (SELECT id FROM companies WHERE name ILIKE '%Ativa CRM%' LIMIT 1)
+WHERE email = 'seu_email@exemplo.com';
 ```
 
-Ou abra e execute o arquivo `db/migrations/manual/CAIXA_ADD_company_id.sql` no pgAdmin/DBeaver. Depois, reinicie a API.
+Ou execute o script `db/migrations/manual/FIX_USUARIO_EMPRESA_VINCULAR.sql` (ajustando os emails e nomes de empresa). Depois faça **logout e login de novo** para o token refletir o novo `company_id`.
+
+### 9. Caixa (sessões/movimentos) mostrando dados de outra empresa
+
+O Caixa usa as tabelas `cash_register_sessions` e `cash_movements`. Para isolar por empresa, elas precisam da coluna `company_id` (e conferir a seção 8 — usuário com `company_id` correto).
+
+**Na VPS (como root)** — comando completo (troque `SUA_SENHA_POSTGRES` pela senha real):
+
+```bash
+cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U postgres -d banco_gestao -f /root/primecamp-ofc/db/migrations/manual/CAIXA_ADD_company_id.sql
+```
+
+Se a pasta do projeto for outra, troque `/root/primecamp-ofc` pelo caminho correto. **Alternativa:** execute o arquivo `CAIXA_ADD_company_id.sql` no pgAdmin/DBeaver. Depois, reinicie a API.
+
+### 10. DRE / Financeiro — despesas fixas (contas a pagar) de outra empresa
+
+A tela de **DRE** e as **despesas fixas** vêm da tabela `bills_to_pay`. Para isolar por empresa, ela precisa da coluna `company_id`. Execute no PostgreSQL (e confira a **Seção 8** — usuário com `company_id` correto).
+
+**Na VPS (como root)** — comando completo (troque `SUA_SENHA_POSTGRES` pela senha real do usuário `postgres`):
+
+```bash
+cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U postgres -d banco_gestao -f /root/primecamp-ofc/db/migrations/manual/BILLS_TO_PAY_ADD_company_id.sql
+```
+
+Se a pasta do projeto na VPS for outra (ex.: `~/primecamp-ofc`), troque os dois caminhos: `cd /root/primecamp-ofc` e `-f /root/primecamp-ofc/db/...` pelo caminho correto.
+
+**No pgAdmin:** (1) Conecte no banco que a API usa (ex.: `banco_gestao`). (2) Botão direito no banco → Query Tool. (3) File → Open e escolha `BILLS_TO_PAY_ADD_company_id.sql` (ou cole o conteúdo do arquivo). (4) Execute (F5 ou ícone play). Veja as NOTICE em Messages.
+
+O script adiciona `company_id` em `bills_to_pay` e preenche a partir de `created_by`. Depois, **reinicie a API** (ex.: `pm2 restart primecamp-api`).
+
+### 11. Fluxo de Caixa, Contas a Pagar ou Transações mostrando dados de outra empresa
+
+As telas **Fluxo de Caixa**, **Contas** e **Transações** usam as tabelas `financial_transactions`, `accounts_receivable` e `financial_categories`. Para isolar por empresa, essas tabelas precisam da coluna `company_id`. Execute no PostgreSQL (e confira a **Seção 8** — usuário com `company_id` correto).
+
+**No pgAdmin:** Query Tool → abra e execute `db/migrations/manual/FINANCEIRO_ADD_company_id.sql`.
+
+**Na VPS (como root):**
+```bash
+cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U postgres -d banco_gestao -f /root/primecamp-ofc/db/migrations/manual/FINANCEIRO_ADD_company_id.sql
+```
+
+Depois, **reinicie a API**.
 
 Depois de reexecutar o script e conferir os pontos acima, teste de novo em **Nova Empresa** e **Gerenciar Planos**. Se ainda der 500, use a resposta da API (campo `error`/`detail`) para identificar a linha ou constraint que está falhando.
