@@ -109,12 +109,17 @@ export function AppSidebar() {
 
   const getItemClasses = (path: string, exact: boolean = false) => {
     const active = isActive(path, exact);
+    const activeStyles =
+      "bg-[hsl(var(--sidebar-primary,var(--primary)))] text-white font-semibold border-l-[6px] border-l-black rounded-lg hover:opacity-90";
+    const inactiveStyles =
+      "text-sidebar-foreground hover:bg-[hsl(var(--sidebar-primary,var(--primary)))] hover:text-white hover:border-l-[6px] hover:border-l-black hover:rounded-lg hover:shadow-md";
     return cn(
-      "flex items-center transition-all duration-200 rounded-lg",
+      "flex items-center transition-all duration-300 ease-in-out rounded-lg",
       collapsed ? "w-10 h-10 justify-center mx-auto" : "w-full p-2.5 gap-3",
-      active
-        ? "bg-[hsl(var(--sidebar-primary,var(--primary)))] text-white font-semibold shadow-md hover:opacity-90"
-        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:scale-[1.03] hover:rounded-[14px] hover:shadow-md hover:-mx-1 hover:px-3.5"
+      collapsed && active && "pl-1",
+      !collapsed && active && "pl-4",
+      !collapsed && !active && "hover:pl-4",
+      active ? activeStyles : inactiveStyles
     );
   };
 
