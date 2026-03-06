@@ -238,29 +238,33 @@ app.get('/api/api-tokens/test', (req, res) => {
   res.json({ success: true, message: 'Rota de API tokens está funcionando!' });
 });
 
-// POST - Gerar códigos em massa para produtos sem código (autenticado)
+// POST - Gerar códigos em massa para produtos sem código (autenticado) — apenas da empresa
 // IMPORTANTE: Esta rota deve estar ANTES do middleware global que pula /api/functions/*
 app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req, res) => {
   try {
-    console.log('[Gerar Códigos] Iniciando geração de códigos para produtos sem código...');
+    if (!req.companyId) {
+      return res.status(403).json({ error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+    const companyId = req.companyId;
+    console.log('[Gerar Códigos] Iniciando geração de códigos para produtos sem código (empresa)', companyId);
     
-    // Buscar o maior código existente
+    // Buscar o maior código existente — apenas da empresa
     const maxCodigoResult = await pool.query(`
       SELECT MAX(codigo) as max_codigo
       FROM produtos
-      WHERE codigo IS NOT NULL
-    `);
+      WHERE company_id = $1 AND codigo IS NOT NULL
+    `, [companyId]);
     
     const maxCodigo = maxCodigoResult.rows[0]?.max_codigo || 0;
     let proximoCodigo = maxCodigo + 1;
     
-    // Buscar todos os produtos sem código
+    // Buscar todos os produtos sem código — apenas da empresa
     const produtosSemCodigoResult = await pool.query(`
       SELECT id, nome
       FROM produtos
-      WHERE codigo IS NULL
+      WHERE company_id = $1 AND codigo IS NULL
       ORDER BY nome
-    `);
+    `, [companyId]);
     
     const produtosSemCodigo = produtosSemCodigoResult.rows;
     console.log(`[Gerar Códigos] Encontrados ${produtosSemCodigo.length} produtos sem código`);
@@ -273,15 +277,15 @@ app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req,
       });
     }
     
-    // Atualizar cada produto com um código sequencial
+    // Atualizar cada produto com um código sequencial (apenas da empresa)
     let atualizados = 0;
     for (const produto of produtosSemCodigo) {
       try {
         await pool.query(`
           UPDATE produtos
           SET codigo = $1
-          WHERE id = $2
-        `, [proximoCodigo, produto.id]);
+          WHERE id = $2 AND company_id = $3
+        `, [proximoCodigo, produto.id, companyId]);
         
         atualizados++;
         proximoCodigo++;

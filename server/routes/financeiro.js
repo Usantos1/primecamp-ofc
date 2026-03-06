@@ -23,11 +23,11 @@ const pool = new Pool({
 // Cache para recomendações de estoque (TTL 5 min) - reduz carga no banco
 const estoqueRecomendacoesCache = new Map();
 const ESTOQUE_CACHE_TTL_MS = 5 * 60 * 1000;
-function getEstoqueRecomendacoesCacheKey(limit, offset) {
-  return `est:${limit}:${offset}`;
+function getEstoqueRecomendacoesCacheKey(companyId, limit, offset) {
+  return `est:${companyId}:${limit}:${offset}`;
 }
-function getCachedEstoqueRecomendacoes(limit, offset) {
-  const key = getEstoqueRecomendacoesCacheKey(limit, offset);
+function getCachedEstoqueRecomendacoes(companyId, limit, offset) {
+  const key = getEstoqueRecomendacoesCacheKey(companyId, limit, offset);
   const entry = estoqueRecomendacoesCache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.at > ESTOQUE_CACHE_TTL_MS) {
@@ -36,10 +36,22 @@ function getCachedEstoqueRecomendacoes(limit, offset) {
   }
   return entry.data;
 }
-function setCachedEstoqueRecomendacoes(limit, offset, data) {
-  const key = getEstoqueRecomendacoesCacheKey(limit, offset);
+function setCachedEstoqueRecomendacoes(companyId, limit, offset, data) {
+  const key = getEstoqueRecomendacoesCacheKey(companyId, limit, offset);
   estoqueRecomendacoesCache.set(key, { data, at: Date.now() });
 }
+
+// CRÍTICO: Isolamento por empresa — todas as rotas exigem company_id e filtram dados
+const requireCompanyId = (req, res, next) => {
+  if (!req.companyId) {
+    return res.status(403).json({
+      error: 'Usuário sem empresa vinculada. Vincule o usuário a uma empresa em Configurações.',
+      codigo: 'COMPANY_ID_REQUIRED'
+    });
+  }
+  next();
+};
+router.use(requireCompanyId);
 
 // ============================================
 // DASHBOARD EXECUTIVO
@@ -47,9 +59,10 @@ function setCachedEstoqueRecomendacoes(limit, offset, data) {
 
 router.get('/dashboard', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { startDate, endDate } = req.query;
     
-    // Calcular per├¡odo (├║ltimos 30 dias se n├úo especificado)
+    // Calcular período (últimos 30 dias se não especificado)
     const end = endDate ? new Date(endDate) : new Date();
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     
@@ -62,7 +75,7 @@ router.get('/dashboard', async (req, res) => {
     `);
     const hasSaleOrigin = columnCheck.rows.length > 0;
     
-    // KPIs principais - usar sale_origin se existir, caso contrário usar lógica alternativa
+    // KPIs principais - SEMPRE filtrar por company_id (isolamento entre empresas)
     let kpisQuery;
     if (hasSaleOrigin) {
       kpisQuery = `
@@ -75,10 +88,9 @@ router.get('/dashboard', async (req, res) => {
           COALESCE(AVG(CASE WHEN sale_origin = 'PDV' AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_pdv,
           COALESCE(AVG(CASE WHEN sale_origin = 'OS' AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_os
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
       `;
     } else {
-      // Fallback: usar ordem_servico_id para determinar origem
       kpisQuery = `
         SELECT 
           COALESCE(SUM(CASE WHEN ordem_servico_id IS NULL AND status IN ('paid', 'partial') THEN total ELSE 0 END), 0) as total_pdv,
@@ -89,14 +101,14 @@ router.get('/dashboard', async (req, res) => {
           COALESCE(AVG(CASE WHEN ordem_servico_id IS NULL AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_pdv,
           COALESCE(AVG(CASE WHEN ordem_servico_id IS NOT NULL AND status IN ('paid', 'partial') THEN total END), 0) as ticket_medio_os
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
       `;
     }
     
-    const kpisResult = await pool.query(kpisQuery, [start, end]);
+    const kpisResult = await pool.query(kpisQuery, [companyId, start, end]);
     const kpis = kpisResult.rows[0];
     
-    // Top 10 produtos (├║ltimos 30 dias)
+    // Top 10 produtos — filtrar por company_id (isolamento entre empresas)
     const topProdutosQuery = `
       SELECT 
         p.id,
@@ -107,14 +119,14 @@ router.get('/dashboard', async (req, res) => {
       FROM public.sale_items si
       INNER JOIN public.sales s ON si.sale_id = s.id
       INNER JOIN public.produtos p ON si.produto_id = p.id
-      WHERE s.created_at >= $1 AND s.created_at <= $2
+      WHERE s.company_id = $1 AND s.created_at >= $2 AND s.created_at <= $3
         AND s.status IN ('paid', 'partial')
       GROUP BY p.id, p.nome
       ORDER BY receita_total DESC
       LIMIT 10
     `;
     
-    const topProdutosResult = await pool.query(topProdutosQuery, [start, end]);
+    const topProdutosResult = await pool.query(topProdutosQuery, [companyId, start, end]);
     
     // Top 10 vendedores - usar vendedor_id se cashier_user_id/technician_id não existirem
     let topVendedoresQuery;
@@ -144,14 +156,13 @@ router.get('/dashboard', async (req, res) => {
         FROM public.sales s
         INNER JOIN public.users u ON ${joinCondition}
         LEFT JOIN public.profiles pr ON u.id = pr.user_id
-        WHERE s.created_at >= $1 AND s.created_at <= $2
+        WHERE s.company_id = $1 AND s.created_at >= $2 AND s.created_at <= $3
           AND s.status IN ('paid', 'partial')
         GROUP BY u.id, pr.display_name, u.email
         ORDER BY total_vendido DESC
         LIMIT 10
       `;
     } else {
-      // Fallback: usar vendedor_id
       topVendedoresQuery = `
         SELECT 
           u.id,
@@ -162,7 +173,7 @@ router.get('/dashboard', async (req, res) => {
         FROM public.sales s
         INNER JOIN public.users u ON s.vendedor_id = u.id
         LEFT JOIN public.profiles pr ON u.id = pr.user_id
-        WHERE s.created_at >= $1 AND s.created_at <= $2
+        WHERE s.company_id = $1 AND s.created_at >= $2 AND s.created_at <= $3
           AND s.status IN ('paid', 'partial')
         GROUP BY u.id, pr.display_name, u.email
         ORDER BY total_vendido DESC
@@ -172,13 +183,13 @@ router.get('/dashboard', async (req, res) => {
     
     let topVendedoresResult;
     try {
-      topVendedoresResult = await pool.query(topVendedoresQuery, [start, end]);
+      topVendedoresResult = await pool.query(topVendedoresQuery, [companyId, start, end]);
     } catch (err) {
       console.warn('[Financeiro] Erro ao buscar top vendedores:', err.message);
       topVendedoresResult = { rows: [] };
     }
     
-    // Tend├¬ncia de vendas (├║ltimos 30 dias)
+    // Tendência de vendas — filtrar por company_id
     let tendenciaQuery;
     if (hasSaleOrigin) {
       tendenciaQuery = `
@@ -188,7 +199,7 @@ router.get('/dashboard', async (req, res) => {
           SUM(CASE WHEN sale_origin = 'OS' THEN total ELSE 0 END) as total_os,
           SUM(total) as total_geral
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
         GROUP BY DATE(created_at)
         ORDER BY data ASC
@@ -201,14 +212,14 @@ router.get('/dashboard', async (req, res) => {
           SUM(CASE WHEN ordem_servico_id IS NOT NULL THEN total ELSE 0 END) as total_os,
           SUM(total) as total_geral
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
         GROUP BY DATE(created_at)
         ORDER BY data ASC
       `;
     }
     
-    const tendenciaResult = await pool.query(tendenciaQuery, [start, end]);
+    const tendenciaResult = await pool.query(tendenciaQuery, [companyId, start, end]);
     
     // Recomenda├º├╡es cr├¡ticas (├║ltimas 5) - opcional, não quebrar se tabela não existir
     let recomendacoesResult = { rows: [] };
@@ -219,14 +230,15 @@ router.get('/dashboard', async (req, res) => {
       `)).rows.length > 0;
       
       if (tableExists) {
-        const recomendacoesQuery = `
-          SELECT *
-          FROM public.ia_recomendacoes
-          WHERE status = 'pendente'
-          ORDER BY prioridade DESC, created_at DESC
-          LIMIT 5
-        `;
-        recomendacoesResult = await pool.query(recomendacoesQuery);
+        const hasRecCompany = (await pool.query(`
+          SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ia_recomendacoes' AND column_name = 'company_id'
+        `)).rows.length > 0;
+        const recomendacoesQuery = hasRecCompany
+          ? `SELECT * FROM public.ia_recomendacoes WHERE company_id = $1 AND status = 'pendente' ORDER BY prioridade DESC, created_at DESC LIMIT 5`
+          : `SELECT * FROM public.ia_recomendacoes WHERE status = 'pendente' ORDER BY prioridade DESC, created_at DESC LIMIT 5`;
+        recomendacoesResult = hasRecCompany
+          ? await pool.query(recomendacoesQuery, [companyId])
+          : await pool.query(recomendacoesQuery);
       }
     } catch (err) {
       console.warn('[Financeiro] Erro ao buscar recomendações:', err.message);
@@ -277,6 +289,7 @@ router.get('/dashboard', async (req, res) => {
 
 router.get('/vendedores/analise', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { startDate, endDate, vendedorId } = req.query;
     
     const end = endDate ? new Date(endDate) : new Date();
@@ -296,11 +309,11 @@ router.get('/vendedores/analise', async (req, res) => {
       FROM public.sales s
       INNER JOIN public.users u ON s.cashier_user_id = u.id OR s.technician_id = u.id
       LEFT JOIN public.profiles pr ON u.id = pr.user_id
-      WHERE s.created_at >= $1 AND s.created_at <= $2
+      WHERE s.company_id = $1 AND s.created_at >= $2 AND s.created_at <= $3
         AND s.status IN ('paid', 'partial')
     `;
     
-    const params = [start, end];
+    const params = [companyId, start, end];
     
     if (vendedorId) {
       query += ` AND u.id = $${params.length + 1}`;
@@ -339,6 +352,7 @@ router.get('/vendedores/analise', async (req, res) => {
 
 router.get('/produtos/analise', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { startDate, endDate, produtoId } = req.query;
     
     const end = endDate ? new Date(endDate) : new Date();
@@ -358,11 +372,11 @@ router.get('/produtos/analise', async (req, res) => {
       FROM public.sale_items si
       INNER JOIN public.sales s ON si.sale_id = s.id
       INNER JOIN public.produtos p ON si.produto_id = p.id
-      WHERE s.created_at >= $1 AND s.created_at <= $2
+      WHERE s.company_id = $1 AND s.created_at >= $2 AND s.created_at <= $3
         AND s.status IN ('paid', 'partial')
     `;
     
-    const params = [start, end];
+    const params = [companyId, start, end];
     
     if (produtoId) {
       query += ` AND p.id = $${params.length + 1}`;
@@ -408,6 +422,7 @@ router.get('/produtos/analise', async (req, res) => {
 
 router.get('/temporal/analise', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { startDate, endDate, groupBy } = req.query; // groupBy: 'hora', 'dia_semana', 'ambos'
     
     const end = endDate ? new Date(endDate) : new Date();
@@ -421,13 +436,13 @@ router.get('/temporal/analise', async (req, res) => {
           SUM(total) as total_vendido,
           AVG(total) as ticket_medio
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
         GROUP BY EXTRACT(HOUR FROM created_at)
         ORDER BY hora ASC
       `;
       
-      const result = await pool.query(query, [start, end]);
+      const result = await pool.query(query, [companyId, start, end]);
       res.json({ porHora: result.rows });
     } else if (groupBy === 'dia_semana') {
       const query = `
@@ -437,13 +452,13 @@ router.get('/temporal/analise', async (req, res) => {
           SUM(total) as total_vendido,
           AVG(total) as ticket_medio
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
         GROUP BY EXTRACT(DOW FROM created_at)
         ORDER BY dia_semana ASC
       `;
       
-      const result = await pool.query(query, [start, end]);
+      const result = await pool.query(query, [companyId, start, end]);
       res.json({ porDiaSemana: result.rows });
     } else {
       // Ambos
@@ -454,7 +469,7 @@ router.get('/temporal/analise', async (req, res) => {
           SUM(total) as total_vendido,
           AVG(total) as ticket_medio
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
         GROUP BY EXTRACT(HOUR FROM created_at)
         ORDER BY hora ASC
@@ -467,15 +482,15 @@ router.get('/temporal/analise', async (req, res) => {
           SUM(total) as total_vendido,
           AVG(total) as ticket_medio
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
         GROUP BY EXTRACT(DOW FROM created_at)
         ORDER BY dia_semana ASC
       `;
       
       const [horaResult, diaResult] = await Promise.all([
-        pool.query(horaQuery, [start, end]),
-        pool.query(diaQuery, [start, end]),
+        pool.query(horaQuery, [companyId, start, end]),
+        pool.query(diaQuery, [companyId, start, end]),
       ]);
       
       res.json({
@@ -495,21 +510,22 @@ router.get('/temporal/analise', async (req, res) => {
 
 router.get('/previsoes/vendas', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { dias = 30 } = req.query;
     
-    // Buscar hist├│rico dos ├║ltimos 90 dias
+    // Buscar histórico dos últimos 90 dias — apenas da empresa
     const query = `
       SELECT 
         DATE(created_at) as data,
         SUM(total) as total_vendido
       FROM public.sales
-      WHERE created_at >= NOW() - INTERVAL '90 days'
+      WHERE company_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
         AND status IN ('paid', 'partial')
       GROUP BY DATE(created_at)
       ORDER BY data ASC
     `;
     
-    const result = await pool.query(query);
+    const result = await pool.query(query, [companyId]);
     
     // M├⌐dia m├│vel simples (7 dias)
     const historico = result.rows.map(r => parseFloat(r.total_vendido || 0));
@@ -550,21 +566,25 @@ router.get('/previsoes/vendas', async (req, res) => {
 
 router.get('/recomendacoes', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { tipo, status = 'pendente' } = req.query;
     
-    let query = 'SELECT * FROM public.ia_recomendacoes WHERE 1=1';
-    const params = [];
+    const hasRecCompany = (await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ia_recomendacoes' AND column_name = 'company_id'
+    `)).rows.length > 0;
+    let query = hasRecCompany
+      ? 'SELECT * FROM public.ia_recomendacoes WHERE company_id = $1'
+      : 'SELECT * FROM public.ia_recomendacoes WHERE 1=1';
+    const params = hasRecCompany ? [companyId] : [];
     
     if (status) {
       query += ` AND status = $${params.length + 1}`;
       params.push(status);
     }
-    
     if (tipo) {
       query += ` AND tipo = $${params.length + 1}`;
       params.push(tipo);
     }
-    
     query += ' ORDER BY prioridade DESC, created_at DESC';
     
     const result = await pool.query(query, params);
@@ -577,20 +597,19 @@ router.get('/recomendacoes', async (req, res) => {
 
 router.post('/recomendacoes/:id/aplicar', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { id } = req.params;
     const userId = req.user?.id;
     
-    const updateQuery = `
-      UPDATE public.ia_recomendacoes
-      SET status = 'aplicada',
-          aplicada_em = NOW(),
-          aplicada_por = $1,
-          updated_at = NOW()
-      WHERE id = $2
-      RETURNING *
-    `;
-    
-    const result = await pool.query(updateQuery, [userId, id]);
+    const hasRecCompany = (await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ia_recomendacoes' AND column_name = 'company_id'
+    `)).rows.length > 0;
+    const updateQuery = hasRecCompany
+      ? `UPDATE public.ia_recomendacoes SET status = 'aplicada', aplicada_em = NOW(), aplicada_por = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3 RETURNING *`
+      : `UPDATE public.ia_recomendacoes SET status = 'aplicada', aplicada_em = NOW(), aplicada_por = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+    const result = hasRecCompany
+      ? await pool.query(updateQuery, [userId, id, companyId])
+      : await pool.query(updateQuery, [userId, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Recomenda├º├úo n├úo encontrada' });
@@ -612,12 +631,12 @@ router.get('/estoque/recomendacoes', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 500);
     const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
 
-    const cached = getCachedEstoqueRecomendacoes(limit, offset);
+    const companyId = req.companyId;
+    const cached = getCachedEstoqueRecomendacoes(companyId, limit, offset);
     if (cached) {
       return res.json(cached);
     }
-
-    // Uma única query com CTE: evita N subconsultas correlacionadas (muito mais rápido)
+    // Uma única query com CTE — filtrar por company_id (isolamento entre empresas)
     const estoqueBaixoQuery = `
       WITH daily_sales AS (
         SELECT 
@@ -626,7 +645,7 @@ router.get('/estoque/recomendacoes', async (req, res) => {
           SUM(si.quantidade)::float AS qty
         FROM public.sale_items si
         INNER JOIN public.sales s ON si.sale_id = s.id
-        WHERE s.created_at >= NOW() - INTERVAL '30 days'
+        WHERE s.company_id = $1 AND s.created_at >= NOW() - INTERVAL '30 days'
           AND s.status IN ('paid', 'partial')
         GROUP BY si.produto_id, DATE(s.created_at)
       ),
@@ -644,16 +663,16 @@ router.get('/estoque/recomendacoes', async (req, res) => {
         COALESCE(v.venda_media_diaria, 0) AS venda_media_diaria
       FROM public.produtos p
       LEFT JOIN venda_media_por_produto v ON v.produto_id = p.id
-      WHERE p.quantidade <= COALESCE(p.estoque_minimo, 5)
+      WHERE p.company_id = $1 AND p.quantidade <= COALESCE(p.estoque_minimo, 5)
       ORDER BY p.quantidade ASC
-      LIMIT $1 OFFSET $2
+      LIMIT $2 OFFSET $3
     `;
 
-    const countQuery = `SELECT COUNT(*) AS total FROM public.produtos p WHERE p.quantidade <= COALESCE(p.estoque_minimo, 5)`;
+    const countQuery = `SELECT COUNT(*) AS total FROM public.produtos p WHERE p.company_id = $1 AND p.quantidade <= COALESCE(p.estoque_minimo, 5)`;
 
     const [countResult, result] = await Promise.all([
-      pool.query(countQuery),
-      pool.query(estoqueBaixoQuery, [limit, offset]),
+      pool.query(countQuery, [companyId]),
+      pool.query(estoqueBaixoQuery, [companyId, limit, offset]),
     ]);
 
     const total = parseInt(countResult.rows[0]?.total || 0, 10);
@@ -680,7 +699,7 @@ router.get('/estoque/recomendacoes', async (req, res) => {
     });
 
     const payload = { recomendacoes, total };
-    setCachedEstoqueRecomendacoes(limit, offset, payload);
+    setCachedEstoqueRecomendacoes(companyId, limit, offset, payload);
     res.json(payload);
   } catch (error) {
     console.error('[Financeiro] Erro nas recomendações de estoque:', error);
@@ -694,15 +713,23 @@ router.get('/estoque/recomendacoes', async (req, res) => {
 
 router.get('/dre/:periodo', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { periodo } = req.params;
     const { tipo = 'mensal' } = req.query;
     
-    // Buscar ou calcular DRE
-    let query = 'SELECT * FROM public.dre WHERE periodo = $1 AND tipo = $2';
-    let result = await pool.query(query, [periodo, tipo]);
+    // Buscar ou calcular DRE (se dre tiver company_id, filtrar)
+    const hasDreCompany = (await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'dre' AND column_name = 'company_id'
+    `)).rows.length > 0;
+    let query = hasDreCompany
+      ? 'SELECT * FROM public.dre WHERE company_id = $1 AND periodo = $2 AND tipo = $3'
+      : 'SELECT * FROM public.dre WHERE periodo = $1 AND tipo = $2';
+    let result = hasDreCompany
+      ? await pool.query(query, [companyId, periodo, tipo])
+      : await pool.query(query, [periodo, tipo]);
     
     if (result.rows.length === 0) {
-      // Calcular DRE automaticamente
+      // Calcular DRE automaticamente — sempre pela empresa
       const periodoDate = new Date(periodo);
       let startDate, endDate;
       
@@ -710,19 +737,18 @@ router.get('/dre/:periodo', async (req, res) => {
         startDate = new Date(periodoDate.getFullYear(), periodoDate.getMonth(), 1);
         endDate = new Date(periodoDate.getFullYear(), periodoDate.getMonth() + 1, 0, 23, 59, 59, 999);
       } else {
-        // Anual
         startDate = new Date(periodoDate.getFullYear(), 0, 1);
         endDate = new Date(periodoDate.getFullYear(), 11, 31, 23, 59, 59, 999);
       }
       
-      // 1. Receita Bruta (vendas pagas/parciais)
+      // 1. Receita Bruta (vendas da empresa)
       const receitaQuery = `
         SELECT COALESCE(SUM(total), 0) as receita_bruta
         FROM public.sales
-        WHERE created_at >= $1 AND created_at <= $2
+        WHERE company_id = $1 AND created_at >= $2 AND created_at <= $3
           AND status IN ('paid', 'partial')
       `;
-      const receitaResult = await pool.query(receitaQuery, [startDate, endDate]);
+      const receitaResult = await pool.query(receitaQuery, [companyId, startDate, endDate]);
       const receitaBruta = parseFloat(receitaResult.rows[0]?.receita_bruta || 0);
       
       // 2. Deduções (descontos, devoluções) - por enquanto 0
@@ -731,16 +757,16 @@ router.get('/dre/:periodo', async (req, res) => {
       // 3. Receita Líquida
       const receitaLiquida = receitaBruta - deducoes;
       
-      // 4. Custo dos Produtos Vendidos (CPV)
+      // 4. Custo dos Produtos Vendidos (CPV) — empresa
       const cpvQuery = `
         SELECT COALESCE(SUM(si.quantidade * COALESCE(p.vi_custo, p.valor_compra, 0)), 0) as cpv
         FROM public.sale_items si
         INNER JOIN public.sales s ON si.sale_id = s.id
         INNER JOIN public.produtos p ON si.produto_id = p.id
-        WHERE s.created_at >= $1 AND s.created_at <= $2
+        WHERE s.company_id = $1 AND s.created_at >= $2 AND s.created_at <= $3
           AND s.status IN ('paid', 'partial')
       `;
-      const cpvResult = await pool.query(cpvQuery, [startDate, endDate]);
+      const cpvResult = await pool.query(cpvQuery, [companyId, startDate, endDate]);
       const custoProdutosVendidos = parseFloat(cpvResult.rows[0]?.cpv || 0);
       
       // 5. Lucro Bruto
@@ -749,9 +775,21 @@ router.get('/dre/:periodo', async (req, res) => {
       // 6. Margem Bruta (%)
       const margemBrutaPercentual = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
       
-      // 7. Despesas Operacionais (contas pagas)
-      // Usar payment_date se existir, caso contrário usar due_date como fallback
-      const despesasQuery = `
+      // 7. Despesas Operacionais (contas pagas) — filtrar por empresa se a tabela tiver company_id
+      const hasBillsCompany = (await pool.query(`
+        SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bills_to_pay' AND column_name = 'company_id'
+      `)).rows.length > 0;
+      const despesasQuery = hasBillsCompany
+        ? `
+        SELECT COALESCE(SUM(amount), 0) as despesas
+        FROM public.bills_to_pay
+        WHERE company_id = $1 AND status = 'pago'
+          AND (
+            (payment_date IS NOT NULL AND payment_date >= $2 AND payment_date <= $3)
+            OR (payment_date IS NULL AND due_date >= $2 AND due_date <= $3)
+          )
+      `
+        : `
         SELECT COALESCE(SUM(amount), 0) as despesas
         FROM public.bills_to_pay
         WHERE status = 'pago'
@@ -760,7 +798,9 @@ router.get('/dre/:periodo', async (req, res) => {
             OR (payment_date IS NULL AND due_date >= $1 AND due_date <= $2)
           )
       `;
-      const despesasResult = await pool.query(despesasQuery, [startDate, endDate]);
+      const despesasResult = hasBillsCompany
+        ? await pool.query(despesasQuery, [companyId, startDate, endDate])
+        : await pool.query(despesasQuery, [startDate, endDate]);
       const despesasOperacionais = parseFloat(despesasResult.rows[0]?.despesas || 0);
       
       console.log(`[DRE] Despesas Operacionais: R$ ${despesasOperacionais.toFixed(2)}`);
@@ -821,9 +861,17 @@ router.get('/dre/:periodo', async (req, res) => {
 
 router.get('/planejamento/:ano', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { ano } = req.params;
-    const query = 'SELECT * FROM public.planejamento_anual WHERE ano = $1 LIMIT 1';
-    const result = await pool.query(query, [ano]);
+    const hasPlanejCompany = (await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'planejamento_anual' AND column_name = 'company_id'
+    `)).rows.length > 0;
+    const query = hasPlanejCompany
+      ? 'SELECT * FROM public.planejamento_anual WHERE company_id = $1 AND ano = $2 LIMIT 1'
+      : 'SELECT * FROM public.planejamento_anual WHERE ano = $1 LIMIT 1';
+    const result = hasPlanejCompany
+      ? await pool.query(query, [companyId, ano])
+      : await pool.query(query, [ano]);
     // Retorna 200 com null quando não existe – evita 404 e deixa o front carregar o formulário vazio
     res.json({ planejamento: result.rows[0] || null });
   } catch (error) {
@@ -834,9 +882,14 @@ router.get('/planejamento/:ano', async (req, res) => {
 
 router.post('/planejamento/:ano', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { ano } = req.params;
     const { receita_planejada, meta_mensal, despesas_planejadas, observacoes } = req.body;
     const userId = req.user?.id;
+    
+    const hasPlanejCompany = (await pool.query(`
+      SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'planejamento_anual' AND column_name = 'company_id'
+    `)).rows.length > 0;
     
     // Converter meta_mensal para objeto JSON válido
     let metaMensalJson = null;
@@ -890,16 +943,17 @@ router.post('/planejamento/:ano', async (req, res) => {
 
 router.post('/precificacao/sugerir', async (req, res) => {
   try {
+    const companyId = req.companyId;
     const { produto_id, margem_desejada } = req.body;
     
     if (!produto_id) {
       return res.status(400).json({ error: 'produto_id é obrigatório' });
     }
     
-    // Buscar produto
+    // Buscar produto — apenas da empresa (isolamento)
     const produtoQuery = await pool.query(
-      'SELECT * FROM public.produtos WHERE id = $1',
-      [produto_id]
+      'SELECT * FROM public.produtos WHERE id = $1 AND company_id = $2',
+      [produto_id, companyId]
     );
     
     if (produtoQuery.rows.length === 0) {
@@ -929,15 +983,15 @@ router.post('/precificacao/sugerir', async (req, res) => {
     const precoMedio = analiseQuery.rows[0]?.preco_medio ? parseFloat(analiseQuery.rows[0].preco_medio) : null;
     const margemMedia = analiseQuery.rows[0]?.margem_media ? parseFloat(analiseQuery.rows[0].margem_media) : null;
     
-    // Análise de vendas
+    // Análise de vendas — apenas da empresa
     const vendasQuery = await pool.query(
       `SELECT COUNT(*) as total_vendas
       FROM public.sale_items si
       INNER JOIN public.sales s ON si.sale_id = s.id
-      WHERE si.produto_id = $1
+      WHERE si.produto_id = $1 AND s.company_id = $2
         AND s.created_at >= NOW() - INTERVAL '30 days'
         AND s.status IN ('paid', 'partial')`,
-      [produto_id]
+      [produto_id, companyId]
     );
     
     const totalVendas = parseInt(vendasQuery.rows[0]?.total_vendas || 0);

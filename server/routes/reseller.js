@@ -78,7 +78,7 @@ router.get('/companies', async (req, res) => {
     const { page = 1, limit = 20, search = '', status = '' } = req.query;
     const offset = (page - 1) * limit;
 
-    // Query sem user_count para funcionar mesmo se users.company_id não existir ainda
+    // user_count: quantidade de usuários vinculados à empresa (users.company_id = c.id)
     let query = `
       SELECT 
         c.*,
@@ -86,7 +86,7 @@ router.get('/companies', async (req, res) => {
         s.expires_at as subscription_expires_at,
         p.name as plan_name,
         p.code as plan_code,
-        0 as user_count
+        (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) as user_count
       FROM companies c
       LEFT JOIN subscriptions s ON s.company_id = c.id AND s.status = 'active'
       LEFT JOIN plans p ON p.id = s.plan_id
@@ -166,7 +166,7 @@ router.get('/companies/:id', async (req, res) => {
         p.id as plan_id,
         p.name as plan_name,
         p.code as plan_code,
-        0 as user_count
+        (SELECT COUNT(*)::int FROM users u WHERE u.company_id = c.id) as user_count
       FROM companies c
       LEFT JOIN subscriptions s ON s.company_id = c.id AND s.status = 'active'
       LEFT JOIN plans p ON p.id = s.plan_id
