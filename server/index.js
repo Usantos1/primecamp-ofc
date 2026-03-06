@@ -1399,11 +1399,15 @@ app.post('/api/query/:table', async (req, res) => {
       'marcas', 'modelos',
       // Configurações específicas da empresa
       'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'os_config_status'
+      'os_pagamentos', 'os_config_status',
+      // Devoluções e inventário
+      'refunds', 'refund_items'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
+    // Tabela companies: usuário só pode ver a própria empresa (id = company_id do usuário)
+    const isCompaniesTable = tableNameOnly.toLowerCase() === 'companies';
 
     // CRÍTICO: Nunca usar "empresa padrão" — isolamento entre empresas. Usuário SEM company_id não pode ver dados de ninguém.
     if (needsCompanyFilter && req.user && !req.companyId) {
@@ -1417,11 +1421,18 @@ app.post('/api/query/:table', async (req, res) => {
     let finalWhereClause = whereClause;
     let finalParams = [...params];
     
-    if (needsCompanyFilter && req.user && req.companyId) {
+    if (req.user && req.companyId && (needsCompanyFilter || isCompaniesTable)) {
+      // companies: só retornar a empresa do usuário (id = company_id do usuário)
+      if (isCompaniesTable) {
+        const companyCondition = `id = $${finalParams.length + 1}`;
+        finalWhereClause = finalWhereClause ? `${finalWhereClause} AND ${companyCondition}` : `WHERE ${companyCondition}`;
+        finalParams.push(req.companyId);
+      }
       // os_items por ordem_servico_id: NÃO filtrar por company_id — a OS já é da empresa; evita perder itens ao faturar
+      // companies: já aplicamos filtro por id = req.companyId acima; tabela não tem coluna company_id
       const isOsItemsByOS = tableNameOnly.toLowerCase() === 'os_items' &&
         where && typeof where === 'object' && where.ordem_servico_id != null;
-      const skipCompanyFilter = isOsItemsByOS;
+      const skipCompanyFilter = isOsItemsByOS || isCompaniesTable;
 
       // Verificar se já existe filtro de company_id no where
       const hasCompanyFilter = where && (
@@ -1541,7 +1552,8 @@ app.post('/api/insert/:table', async (req, res) => {
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'os_config_status', 'fornecedores'
+      'os_pagamentos', 'os_config_status', 'fornecedores',
+      'refunds', 'refund_items'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -1961,7 +1973,8 @@ app.post('/api/update/:table', async (req, res) => {
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'os_config_status', 'fornecedores'
+      'os_pagamentos', 'os_config_status', 'fornecedores',
+      'refunds', 'refund_items'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2506,7 +2519,8 @@ app.post('/api/delete/:table', async (req, res) => {
       'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'bills_to_pay', 'financial_transactions', 'accounts_receivable', 'financial_categories',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
-      'os_pagamentos', 'os_config_status', 'fornecedores'
+      'os_pagamentos', 'os_config_status', 'fornecedores',
+      'refunds', 'refund_items'
     ];
     
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -5306,6 +5320,14 @@ const validateApiToken = async (req, res, next) => {
     
     const apiToken = result.rows[0];
     
+    // Isolamento: definir company_id do token para filtrar dados em /api/v1/*
+    if (apiToken.company_id) {
+      req.companyId = apiToken.company_id;
+    } else if (apiToken.criado_por) {
+      const userRow = await pool.query('SELECT company_id FROM users WHERE id = $1', [apiToken.criado_por]);
+      if (userRow.rows[0]?.company_id) req.companyId = userRow.rows[0].company_id;
+    }
+    
     // Verificar se expirou
     if (apiToken.expires_at && new Date(apiToken.expires_at) < new Date()) {
       return res.status(401).json({ 
@@ -5385,6 +5407,7 @@ const initApiTables = async () => {
         ultimo_uso TIMESTAMP,
         uso_count INTEGER DEFAULT 0,
         criado_por UUID REFERENCES users(id),
+        company_id UUID REFERENCES companies(id),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -5452,15 +5475,18 @@ const initApiTables = async () => {
 };
 initApiTables();
 
-// GET - Listar tokens (autenticado)
+// GET - Listar tokens (autenticado) — só da empresa do usuário
 app.get('/api/api-tokens', authenticateToken, async (req, res) => {
   try {
-    console.log('[API Tokens] GET /api/api-tokens - Usuário:', req.user?.id);
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.' });
+    }
     const result = await pool.query(`
       SELECT id, nome, descricao, token, permissoes, ativo, expires_at, ultimo_uso, uso_count, created_at
       FROM api_tokens 
+      WHERE company_id = $1 OR (company_id IS NULL AND criado_por IN (SELECT id FROM users WHERE company_id = $2))
       ORDER BY created_at DESC
-    `);
+    `, [req.companyId, req.companyId]);
     console.log('[API Tokens] Tokens encontrados:', result.rows.length);
     res.json({ success: true, data: result.rows });
   } catch (error) {
@@ -5482,11 +5508,14 @@ app.post('/api/api-tokens', authenticateToken, async (req, res) => {
     // Gerar token seguro
     const token = crypto.randomBytes(32).toString('hex');
     
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.' });
+    }
     const result = await pool.query(`
-      INSERT INTO api_tokens (nome, descricao, token, permissoes, expires_at, criado_por)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO api_tokens (nome, descricao, token, permissoes, expires_at, criado_por, company_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [nome, descricao, token, JSON.stringify(permissoes || ['produtos:read']), expires_at, req.user.id]);
+    `, [nome, descricao, token, JSON.stringify(permissoes || ['produtos:read']), expires_at, req.user.id, req.companyId]);
     
     console.log('[API Tokens] Token criado com sucesso:', result.rows[0].id);
     res.json({ success: true, data: result.rows[0] });
@@ -5496,10 +5525,13 @@ app.post('/api/api-tokens', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT - Atualizar token (autenticado)
+// PUT - Atualizar token (autenticado) — só token da própria empresa
 app.put('/api/api-tokens/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.' });
+    const check = await pool.query('SELECT id FROM api_tokens WHERE id = $1 AND (company_id = $2 OR (company_id IS NULL AND criado_por IN (SELECT id FROM users WHERE company_id = $2)))', [id, req.companyId]);
+    if (check.rows.length === 0) return res.status(404).json({ success: false, error: 'Token não encontrado.' });
     const { nome, descricao, permissoes, ativo, expires_at } = req.body;
     
     const result = await pool.query(`
@@ -5521,10 +5553,13 @@ app.put('/api/api-tokens/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// DELETE - Excluir token (autenticado)
+// DELETE - Excluir token (autenticado) — só token da própria empresa
 app.delete('/api/api-tokens/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.' });
+    const check = await pool.query('SELECT id FROM api_tokens WHERE id = $1 AND (company_id = $2 OR (company_id IS NULL AND criado_por IN (SELECT id FROM users WHERE company_id = $2)))', [id, req.companyId]);
+    if (check.rows.length === 0) return res.status(404).json({ success: false, error: 'Token não encontrado.' });
     await pool.query(`DELETE FROM api_tokens WHERE id = $1`, [id]);
     res.json({ success: true, message: 'Token excluído' });
   } catch (error) {
@@ -5533,10 +5568,13 @@ app.delete('/api/api-tokens/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// GET - Logs de acesso de um token (autenticado)
+// GET - Logs de acesso de um token (autenticado) — só token da própria empresa
 app.get('/api/api-tokens/:id/logs', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.' });
+    const check = await pool.query('SELECT id FROM api_tokens WHERE id = $1 AND (company_id = $2 OR (company_id IS NULL AND criado_por IN (SELECT id FROM users WHERE company_id = $2)))', [id, req.companyId]);
+    if (check.rows.length === 0) return res.status(404).json({ success: false, error: 'Token não encontrado.' });
     const limit = parseInt(req.query.limit) || 100;
     
     const result = await pool.query(`
@@ -5580,6 +5618,9 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
       ordem = 'asc'
     } = req.query;
     
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Token sem empresa vinculada. Associe o token a uma empresa.' });
+    }
     let query = `
       SELECT 
         p.id,
@@ -5587,10 +5628,10 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
         COALESCE(p.valor_dinheiro_pix, 0) as valor_dinheiro_pix,
         COALESCE(p.valor_parcelado_6x, 0) as valor_parcelado_6x
       FROM produtos p
-      WHERE 1=1
+      WHERE p.company_id = $1
     `;
-    const params = [];
-    let paramIndex = 1;
+    const params = [req.companyId];
+    let paramIndex = 2;
     
     // Filtros
     if (busca) {
@@ -5700,10 +5741,10 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     // Executar query
     const result = await pool.query(query, params);
     
-    // Construir query de count com os mesmos filtros
-    let countQuery = `SELECT COUNT(*) FROM produtos p WHERE 1=1`;
-    const countParams = [];
-    let countParamIndex = 1;
+    // Construir query de count com os mesmos filtros (incluindo company_id)
+    let countQuery = `SELECT COUNT(*) FROM produtos p WHERE p.company_id = $1`;
+    const countParams = [req.companyId];
+    let countParamIndex = 2;
     
     // Aplicar os mesmos filtros da query principal
     if (busca) {
@@ -5804,9 +5845,10 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
   }
 });
 
-// GET - Buscar produto por ID (API pública)
+// GET - Buscar produto por ID (API pública) — só da empresa do token
 app.get('/api/v1/produtos/:id', validateApiToken, async (req, res) => {
   try {
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Token sem empresa vinculada.' });
     const { id } = req.params;
     
     const result = await pool.query(`
@@ -5816,8 +5858,8 @@ app.get('/api/v1/produtos/:id', validateApiToken, async (req, res) => {
         COALESCE(p.valor_dinheiro_pix, 0) as valor_dinheiro_pix,
         COALESCE(p.valor_parcelado_6x, 0) as valor_parcelado_6x
       FROM produtos p
-      WHERE p.id = $1 OR p.codigo::text = $1 OR p.codigo_barras = $1
-    `, [id]);
+      WHERE (p.id = $1 OR p.codigo::text = $1 OR p.codigo_barras = $1) AND p.company_id = $2
+    `, [id, req.companyId]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Produto não encontrado' });
@@ -5830,10 +5872,11 @@ app.get('/api/v1/produtos/:id', validateApiToken, async (req, res) => {
   }
 });
 
-// GET - Listar marcas (API pública)
+// GET - Listar marcas (API pública) — só da empresa do token
 app.get('/api/v1/marcas', validateApiToken, async (req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM marcas ORDER BY nome`);
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Token sem empresa vinculada.' });
+    const result = await pool.query(`SELECT * FROM marcas WHERE company_id = $1 ORDER BY nome`, [req.companyId]);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[API Marcas] Erro:', error);
@@ -5841,16 +5884,17 @@ app.get('/api/v1/marcas', validateApiToken, async (req, res) => {
   }
 });
 
-// GET - Listar modelos (API pública)
+// GET - Listar modelos (API pública) — só da empresa do token
 app.get('/api/v1/modelos', validateApiToken, async (req, res) => {
   try {
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Token sem empresa vinculada.' });
     const { marca_id } = req.query;
     
-    let query = `SELECT mo.*, m.nome as marca_nome FROM modelos mo LEFT JOIN marcas m ON mo.marca_id = m.id`;
-    const params = [];
+    let query = `SELECT mo.*, m.nome as marca_nome FROM modelos mo LEFT JOIN marcas m ON mo.marca_id = m.id WHERE mo.company_id = $1`;
+    const params = [req.companyId];
     
     if (marca_id) {
-      query += ` WHERE mo.marca_id = $1`;
+      query += ` AND mo.marca_id = $2`;
       params.push(marca_id);
     }
     
@@ -5864,16 +5908,17 @@ app.get('/api/v1/modelos', validateApiToken, async (req, res) => {
   }
 });
 
-// GET - Grupos de produtos (API pública)
+// GET - Grupos de produtos (API pública) — só da empresa do token
 app.get('/api/v1/grupos', validateApiToken, async (req, res) => {
   try {
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Token sem empresa vinculada.' });
     const result = await pool.query(`
       SELECT DISTINCT grupo, COUNT(*) as quantidade
       FROM produtos 
-      WHERE grupo IS NOT NULL AND grupo != ''
+      WHERE company_id = $1 AND grupo IS NOT NULL AND grupo != ''
       GROUP BY grupo
       ORDER BY grupo
-    `);
+    `, [req.companyId]);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[API Grupos] Erro:', error);

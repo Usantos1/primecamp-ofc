@@ -119,6 +119,7 @@ WHERE email IN ('usuario1@exemplo.com', 'usuario2@exemplo.com');
 | Caixa com dados de outra empresa | Seções 8 e 9: conferir `company_id` do usuário e rodar `CAIXA_ADD_company_id.sql` se necessário. |
 | DRE / despesas fixas mostrando dados de outra empresa | Seção 8 (usuário) + **Seção 10**: rodar `BILLS_TO_PAY_ADD_company_id.sql` e reiniciar a API. |
 | Fluxo de Caixa / Contas / Transações de outra empresa | Seção 8 (usuário) + **Seção 11**: rodar `FINANCEIRO_ADD_company_id.sql` e reiniciar a API. |
+| Integrações / Tokens de API mostrando tokens de outra empresa ou API v1 retornando dados de outra empresa | **Seção 12**: rodar `API_TOKENS_ADD_company_id.sql` e reiniciar a API. |
 
 ### 8. Logado na empresa A mas aparecendo dados da empresa B (financeiro, caixa, vendas, etc.)
 
@@ -181,5 +182,18 @@ cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U p
 ```
 
 Depois, **reinicie a API**.
+
+### 12. Integrações / Tokens de API — isolamento por empresa
+
+Para que a tela **Integrações** (Tokens de API / Agente de IA) mostre apenas tokens da empresa do usuário e que os endpoints **/api/v1/produtos**, **/api/v1/marcas**, **/api/v1/modelos**, **/api/v1/grupos** retornem só dados da empresa do token, a tabela `api_tokens` precisa da coluna `company_id`. Execute no PostgreSQL:
+
+**No pgAdmin:** Query Tool → abra e execute `db/migrations/manual/API_TOKENS_ADD_company_id.sql`.
+
+**Na VPS (como root):**
+```bash
+cd /root/primecamp-ofc && PGPASSWORD='SUA_SENHA_POSTGRES' psql -h localhost -U postgres -d banco_gestao -f /root/primecamp-ofc/db/migrations/manual/API_TOKENS_ADD_company_id.sql
+```
+
+Ao **criar** um novo token pela aplicação, o `company_id` será preenchido automaticamente. Tokens antigos são preenchidos pelo script a partir de `criado_por`. Depois, **reinicie a API**.
 
 Depois de reexecutar o script e conferir os pontos acima, teste de novo em **Nova Empresa** e **Gerenciar Planos**. Se ainda der 500, use a resposta da API (campo `error`/`detail`) para identificar a linha ou constraint que está falhando.
