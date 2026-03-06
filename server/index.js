@@ -1393,7 +1393,7 @@ app.post('/api/query/:table', async (req, res) => {
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
       // Financeiro
-      'payments', 'caixa_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       // Marcas e modelos (se tiver por empresa)
       'marcas', 'modelos',
       // Configurações específicas da empresa
@@ -1537,7 +1537,7 @@ app.post('/api/insert/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      'payments', 'caixa_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
       'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
@@ -1956,7 +1956,7 @@ app.post('/api/update/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      'payments', 'caixa_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
       'os_pagamentos', 'os_config_status', 'fornecedores'
     ];
@@ -2500,7 +2500,7 @@ app.post('/api/delete/:table', async (req, res) => {
       'job_surveys', 'job_responses', 'job_application_drafts',
       'job_candidate_ai_analysis', 'job_candidate_evaluations', 
       'job_interviews', 'candidate_responses',
-      'payments', 'caixa_sessions', 'caixa_movements',
+      'payments', 'caixa_sessions', 'caixa_movements', 'cash_register_sessions', 'cash_movements',
       'marcas', 'modelos', 'configuracoes_empresa', 'company_settings',
       'os_pagamentos', 'os_config_status', 'fornecedores'
     ];

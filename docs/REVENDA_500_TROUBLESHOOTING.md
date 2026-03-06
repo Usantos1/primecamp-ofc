@@ -116,4 +116,14 @@ WHERE email IN ('usuario1@exemplo.com', 'usuario2@exemplo.com');
 | Token inválido / 403 | Fazer login de novo; conferir se o usuário é admin da empresa principal. |
 | Coluna Usuários sempre 0 | Ver seção 6 acima; conferir se usuários têm `company_id` preenchido e se a API foi reiniciada após o deploy. |
 
+### 8. Caixa (sessões/movimentos) mostrando dados de outra empresa
+
+O Caixa usa as tabelas `cash_register_sessions` e `cash_movements`. Para isolar por empresa, elas precisam da coluna `company_id`. Execute no PostgreSQL:
+
+```bash
+psql -U seu_usuario -d seu_banco -f db/migrations/manual/CAIXA_ADD_company_id.sql
+```
+
+Ou abra e execute o arquivo `db/migrations/manual/CAIXA_ADD_company_id.sql` no pgAdmin/DBeaver. Depois, reinicie a API.
+
 Depois de reexecutar o script e conferir os pontos acima, teste de novo em **Nova Empresa** e **Gerenciar Planos**. Se ainda der 500, use a resposta da API (campo `error`/`detail`) para identificar a linha ou constraint que está falhando.
