@@ -40,6 +40,8 @@ import { VoucherPayment } from '@/components/pdv/VoucherPayment';
 import { useRefunds } from '@/hooks/useRefunds';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
 
+const PDV_SEARCH_FIELD_KEY = 'primecamp_pdv_search_field';
+
 // Fallback quando a empresa não tem formas de pagamento configuradas (evita venda ficar só em rascunho)
 const FALLBACK_PAYMENT_METHODS: { id: string; code: string; name: string; is_active: boolean; accepts_installments: boolean; max_installments: number }[] = [
   { id: '_dinheiro', code: 'dinheiro', name: 'Dinheiro', is_active: true, accepts_installments: false, max_installments: 1 },
@@ -82,10 +84,10 @@ export default function NovaVenda() {
   }, [fetchPaymentMethods]);
   
   // Função de busca de produtos
-  const searchProdutos = (term: string, field: 'all' | 'codigo' | 'descricao' | 'referencia' = 'all') => {
+  const searchProdutos = (term: string, field: 'all' | 'codigo' | 'descricao' | 'referencia' | 'codigo_barras' = 'all') => {
     const trimmed = (term || '').trim();
-    // Código: permite 1 caractere para achar produtos com código baixo (ex: 6, 67)
-    const minLen = field === 'codigo' ? 1 : 2;
+    // Código e Cod. Barras: mínimo 1 caractere (códigos baixos / leitura de barras)
+    const minLen = (field === 'codigo' || field === 'codigo_barras') ? 1 : 2;
     if (!trimmed || trimmed.length < minLen) return [];
     const search = trimmed.toLowerCase();
 
@@ -107,6 +109,21 @@ export default function NovaVenda() {
         const numB = Number(codB) || 0;
         if (numA > 0 && numB > 0) return numA - numB;
         return codA.localeCompare(codB, undefined, { numeric: true });
+      });
+      return filtered;
+    } else if (field === 'codigo_barras') {
+      const termStr = trimmed;
+      filtered = produtos.filter(p => {
+        const barras = (p.codigo_barras ?? '').toString().trim();
+        return barras === termStr || barras.includes(termStr);
+      });
+      // Exato primeiro para leitor de código de barras
+      filtered.sort((a, b) => {
+        const barrasA = (a.codigo_barras ?? '').toString().trim();
+        const barrasB = (b.codigo_barras ?? '').toString().trim();
+        const exactA = barrasA === termStr ? 0 : 1;
+        const exactB = barrasB === termStr ? 0 : 1;
+        return exactA - exactB;
       });
       return filtered;
     } else if (field === 'descricao') {
@@ -149,7 +166,13 @@ export default function NovaVenda() {
   const [sale, setSale] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
-  const [productSearchField, setProductSearchField] = useState<'all' | 'codigo' | 'descricao' | 'referencia'>('codigo');
+  const [productSearchField, setProductSearchField] = useState<'all' | 'codigo' | 'descricao' | 'referencia' | 'codigo_barras'>(() => {
+    try {
+      const saved = localStorage.getItem(PDV_SEARCH_FIELD_KEY);
+      if (saved === 'codigo' || saved === 'descricao' || saved === 'referencia' || saved === 'all' || saved === 'codigo_barras') return saved;
+    } catch { /* ignore */ }
+    return 'codigo';
+  });
   const [productResults, setProductResults] = useState<any[]>([]);
   const [showProductSearch, setShowProductSearch] = useState(false);
   
@@ -942,9 +965,9 @@ export default function NovaVenda() {
     }
   };
 
-  // Buscar produtos (mínimo 1 caractere quando filtro é Código, senão 2; exibir até 25 para melhorar listagem de códigos baixos)
+  // Buscar produtos (mínimo 1 caractere quando filtro é Código ou Cod. Barras, senão 2; exibir até 25)
   useEffect(() => {
-    const minLen = productSearchField === 'codigo' ? 1 : 2;
+    const minLen = (productSearchField === 'codigo' || productSearchField === 'codigo_barras') ? 1 : 2;
     if (productSearch.trim().length >= minLen) {
       const results = searchProdutos(productSearch, productSearchField);
       setProductResults(results.slice(0, 25));
@@ -954,6 +977,24 @@ export default function NovaVenda() {
       setShowProductSearch(false);
     }
   }, [productSearch, productSearchField, produtos]);
+
+  // Auto-inserir produto quando buscar por Cod. Barras e houver 1 resultado exato (leitor de código de barras)
+  const lastBarcodeAutoAdded = useRef<string | null>(null);
+  useEffect(() => {
+    if (!productSearch.trim()) {
+      lastBarcodeAutoAdded.current = null;
+      return;
+    }
+    if (productSearchField !== 'codigo_barras' || productResults.length !== 1) return;
+    const trimmed = productSearch.trim();
+    const barras = (productResults[0].codigo_barras ?? '').toString().trim();
+    if (barras !== trimmed || lastBarcodeAutoAdded.current === trimmed) return;
+    lastBarcodeAutoAdded.current = trimmed;
+    handleAddProduct(productResults[0], 'avista');
+    setProductSearch('');
+    setProductResults([]);
+    setShowProductSearch(false);
+  }, [productSearch, productSearchField, productResults]);
 
   // Buscar clientes (no servidor - busca em todo o cadastro)
   const [clienteSearchLoading, setClienteSearchLoading] = useState(false);
@@ -2372,10 +2413,12 @@ _PrimeCamp Assistência Técnica_`;
                   <Input
                     ref={searchInputRef}
                     placeholder={
-                      productSearchField === 'all' 
-                        ? "Buscar por código, descrição, referência..." 
+                      productSearchField === 'all'
+                        ? "Buscar por código, descrição, referência..."
                         : productSearchField === 'codigo'
                         ? "Buscar por código..."
+                        : productSearchField === 'codigo_barras'
+                        ? "Leia o código de barras ou digite..."
                         : productSearchField === 'descricao'
                         ? "Buscar por descrição..."
                         : "Buscar por referência..."
@@ -2389,12 +2432,21 @@ _PrimeCamp Assistência Técnica_`;
                     }}
                     className="h-12 text-base font-medium border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 focus:ring-emerald-500 flex-1"
                   />
-                  <Select value={productSearchField} onValueChange={(value: any) => setProductSearchField(value)}>
+                  <Select
+                    value={productSearchField}
+                    onValueChange={(value: 'all' | 'codigo' | 'descricao' | 'referencia' | 'codigo_barras') => {
+                      setProductSearchField(value);
+                      try {
+                        localStorage.setItem(PDV_SEARCH_FIELD_KEY, value);
+                      } catch { /* ignore */ }
+                    }}
+                  >
                     <SelectTrigger className="h-12 w-[140px] border-2 border-gray-200 dark:border-gray-700">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="codigo">Código</SelectItem>
+                      <SelectItem value="codigo_barras">Cod. Barras</SelectItem>
                       <SelectItem value="descricao">Descrição</SelectItem>
                       <SelectItem value="referencia">Referência</SelectItem>
                       <SelectItem value="all">Todos</SelectItem>
