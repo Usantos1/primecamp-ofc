@@ -179,6 +179,7 @@ const App = () => (
               {/* Public OS tracking route */}
               <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
+              <Route path="/integracoes/:tab" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/ponto" element={<PermissionRoute permission="rh.ponto"><TimeClock /></PermissionRoute>} />
             <Route path="/treinamentos" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />

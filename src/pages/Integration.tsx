@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -17,26 +16,33 @@ import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ApiManager } from '@/components/ApiManager';
 
+const TAB_VALUES = ['api', 'crm', 'telegram', 'ia'] as const;
+type TabValue = (typeof TAB_VALUES)[number];
+
 interface IntegrationSettings {
   ativaCrmToken: string;
-  whatsappNotifications: boolean;
-  defaultNotificationPhone: string;
   webhookUrl: string;
-  notificationEvents: string[];
   aiProvider?: 'openai';
   aiApiKey?: string;
   aiModel?: string;
 }
 
 export default function Integration() {
+  const { tab: tabParam } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
   const { isAdmin, user, session } = useAuth();
   const integrationKey = user?.company_id ? `integration_settings_${user.company_id}` : 'integration_settings';
+
+  const currentTab: TabValue = TAB_VALUES.includes(tabParam as TabValue) ? (tabParam as TabValue) : 'api';
+
+  useEffect(() => {
+    if (!tabParam || !TAB_VALUES.includes(tabParam as TabValue)) {
+      navigate('/integracoes/api', { replace: true });
+    }
+  }, [tabParam, navigate]);
   const [settings, setSettings] = useState<IntegrationSettings>({
     ativaCrmToken: '',
-    whatsappNotifications: false,
-    defaultNotificationPhone: '',
     webhookUrl: '',
-    notificationEvents: [],
     aiProvider: 'openai',
     aiApiKey: '',
     aiModel: 'gpt-4.1-mini'
@@ -122,7 +128,14 @@ export default function Integration() {
         .maybeSingle();
 
       if (!error && data?.value) {
-        setSettings(data.value as any);
+        const v = data.value as Record<string, unknown>;
+        setSettings({
+          ativaCrmToken: (v.ativaCrmToken as string) ?? '',
+          webhookUrl: (v.webhookUrl as string) ?? '',
+          aiProvider: (v.aiProvider as 'openai') ?? 'openai',
+          aiApiKey: (v.aiApiKey as string) ?? '',
+          aiModel: (v.aiModel as string) ?? 'gpt-4.1-mini'
+        });
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -225,69 +238,10 @@ export default function Integration() {
     }
   };
 
-  const testNPSReminder = async () => {
-    // Verificar se é domingo
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    
-    if (dayOfWeek === 0) {
-      toast.warning('🚫 Lembretes de NPS são bloqueados aos domingos. Tente novamente em outro dia.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await apiClient.invokeFunction('daily-nps-reminder');
-
-      if (error) {
-        console.error('Function error:', error);
-        throw error;
-      }
-
-      // Verificar se foi bloqueado por domingo
-      if (data && data.blocked) {
-        toast.warning(`🚫 ${data.message}`);
-        return;
-      }
-
-      // Verificar se está desabilitado
-      if (data && data.message && (
-        data.message.includes('disabled') || 
-        data.message.includes('WhatsApp notifications disabled') ||
-        data.message.includes('NPS daily reminders disabled')
-      )) {
-        toast.warning(`⚠️ ${data.message}`);
-        return;
-      }
-
-      if (data && data.sent !== undefined) {
-        if (data.sent === 0 && data.errors === 0) {
-          toast.info('ℹ️ Nenhum lembrete foi enviado - todos os usuários já responderam hoje ou não há usuários elegíveis.');
-        } else if (data.errors > 0 && data.sent === 0) {
-          toast.error(`❌ Erro: ${data.errors} falhas no envio. Verifique configuração do WhatsApp no Ativa CRM.`);
-        } else {
-          toast.success(`✅ Lembretes NPS enviados! Enviados: ${data.sent}, Erros: ${data.errors}, Total: ${data.total}`);
-        }
-      } else {
-        toast.success('✅ Processo de lembrete NPS executado!');
-      }
-    } catch (error) {
-      console.error('Error testing NPS reminder:', error);
-      toast.error(`❌ Erro ao enviar lembretes NPS: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+  const setTab = (value: string) => {
+    const tab = value as TabValue;
+    if (TAB_VALUES.includes(tab)) navigate(`/integracoes/${tab}`);
   };
-
-  const eventOptions = [
-    { value: 'task_created', label: 'Nova Tarefa Criada' },
-    { value: 'task_status_changed', label: 'Mudança de Status da Tarefa' },
-    { value: 'task_assigned', label: 'Tarefa Atribuída' },
-    { value: 'task_completed', label: 'Tarefa Concluída' },
-    { value: 'process_created', label: 'Novo Processo Criado' },
-    { value: 'calendar_event', label: 'Evento de Calendário' },
-    { value: 'nps_daily_reminder', label: 'Lembrete NPS Diário (08:00)' }
-  ];
 
   if (!isAdmin) {
     return (
@@ -309,23 +263,23 @@ export default function Integration() {
       subtitle="Configure integrações com APIs externas"
     >
       <div className="h-full overflow-y-auto overflow-x-hidden -mx-2 md:-mx-4 px-2 md:px-4">
-        <Tabs defaultValue="api" className="w-full">
+        <Tabs value={currentTab} onValueChange={setTab} className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="api" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
               API Externa
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="flex items-center gap-2">
+            <TabsTrigger value="crm" className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
-              WhatsApp
+              CRM
             </TabsTrigger>
             <TabsTrigger value="telegram" className="flex items-center gap-2">
               <Paperclip className="h-4 w-4" />
               Telegram
             </TabsTrigger>
-            <TabsTrigger value="outros" className="flex items-center gap-2">
+            <TabsTrigger value="ia" className="flex items-center gap-2">
               <Plug className="h-4 w-4" />
-              Outros
+              IA
             </TabsTrigger>
           </TabsList>
 
@@ -334,8 +288,8 @@ export default function Integration() {
             <ApiManager />
           </TabsContent>
 
-          {/* Tab WhatsApp */}
-          <TabsContent value="whatsapp" className="space-y-6">
+          {/* Tab CRM (WhatsApp / Ativa CRM) */}
+          <TabsContent value="crm" className="space-y-6">
         <div className="grid gap-4 md:gap-6 pb-6 max-w-full">
         {/* WhatsApp / Ativa CRM Integration */}
         <Card>
@@ -360,63 +314,30 @@ export default function Integration() {
                   value={settings.ativaCrmToken}
                   onChange={(e) => setSettings({...settings, ativaCrmToken: e.target.value})}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Obtenha seu token em: https://app.ativacrm.com/settings/integrations
+                <p className="text-xs text-muted-foreground mb-2">
+                  Obtenha seu token em:{' '}
+                  <a href="https://app.ativacrm.com/connections" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    https://app.ativacrm.com/connections
+                  </a>
+                  {' '}(menu Conexões → editar WhatsApp → campo Token).
                 </p>
+                <div className="rounded-lg border overflow-hidden bg-muted/30 max-w-2xl">
+                  <img
+                    src="/images/ativacrm-connections-token.png"
+                    alt="Tela do Ativa CRM: Conexões → Editar WhatsApp → campo Token para obter o token de integração"
+                    className="w-full h-auto"
+                  />
+                </div>
                 {settings.ativaCrmToken && (
-                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                    <p className="text-xs text-amber-700">
+                  <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
                       ⚠️ <strong>Importante:</strong> Certifique-se de configurar um WhatsApp padrão no Ativa CRM 
-                      (<a href="https://app.ativacrm.com/" target="_blank" className="underline">painel administrativo</a>) 
+                      (<a href="https://app.ativacrm.com/" target="_blank" rel="noopener noreferrer" className="underline">painel administrativo</a>) 
                       para que as mensagens sejam enviadas corretamente.
                     </p>
                   </div>
                 )}
               </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="whatsapp-notifications"
-                checked={settings.whatsappNotifications}
-                onCheckedChange={(checked) => setSettings({...settings, whatsappNotifications: checked})}
-              />
-              <Label htmlFor="whatsapp-notifications">Habilitar notificações WhatsApp</Label>
-            </div>
-
-            {settings.whatsappNotifications && (
-              <div className="space-y-4 border-l-2 border-primary/20 pl-4">
-                <div className="space-y-2">
-                  <Label htmlFor="defaultPhone">Número padrão para notificações</Label>
-                  <Input
-                    id="defaultPhone"
-                    placeholder="5511999999999"
-                    value={settings.defaultNotificationPhone}
-                    onChange={(e) => setSettings({...settings, defaultNotificationPhone: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Eventos que disparam notificações</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {eventOptions.map((option) => (
-                      <Badge
-                        key={option.value}
-                        variant={settings.notificationEvents.includes(option.value) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          const events = settings.notificationEvents.includes(option.value)
-                            ? settings.notificationEvents.filter(e => e !== option.value)
-                            : [...settings.notificationEvents, option.value];
-                          setSettings({...settings, notificationEvents: events});
-                        }}
-                      >
-                        {option.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             <Button onClick={saveSettings} disabled={loading}>
               <Settings className="h-4 w-4 mr-2" />
@@ -465,32 +386,6 @@ export default function Integration() {
           </Card>
         )}
 
-        {/* NPS Reminder Test */}
-        {settings.whatsappNotifications && settings.notificationEvents.includes('nps_daily_reminder') && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-blue-600" />
-                Teste de Lembrete NPS
-              </CardTitle>
-              <CardDescription>
-                Envie lembretes de NPS diário manualmente para testar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-xs text-blue-700">
-                  ℹ️ <strong>Nota:</strong> Lembretes de NPS são automaticamente bloqueados aos domingos.
-                  O sistema executa diariamente às 08:00 (BRT) e envia apenas para usuários que ainda não responderam no dia.
-                </p>
-              </div>
-              <Button onClick={testNPSReminder} disabled={loading}>
-                <Send className="h-4 w-4 mr-2" />
-                Enviar Lembretes NPS Agora
-              </Button>
-            </CardContent>
-          </Card>
-        )}
         </div>
           </TabsContent>
 
@@ -582,8 +477,8 @@ export default function Integration() {
         </Card>
           </TabsContent>
 
-          {/* Tab Outros */}
-          <TabsContent value="outros" className="space-y-6">
+          {/* Tab IA */}
+          <TabsContent value="ia" className="space-y-6">
         {/* IA / OpenAI */}
         <Card>
           <CardHeader>
