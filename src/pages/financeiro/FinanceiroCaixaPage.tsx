@@ -3,6 +3,7 @@ import { ModernLayout } from '@/components/ModernLayout';
 import { CashRegisterSessionsManager } from '@/components/financeiro/CashRegisterSessionsManager';
 import { CaixaGeral } from '@/components/financeiro/CaixaGeral';
 import { useAuth } from '@/contexts/AuthContext';
+import { getStoredValuesVisible, ValuesVisibilityToggle } from '@/components/dashboard/FinancialCards';
 
 export default function FinanceiroCaixaPage() {
   const { isAdmin } = useAuth();
@@ -11,9 +12,14 @@ export default function FinanceiroCaixaPage() {
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
 
   return (
-    <ModernLayout title="Caixa" subtitle={isAdmin ? 'Gestão de sessões de caixa' : 'Meu caixa (hoje)'}>
+    <ModernLayout
+      title="Caixa"
+      subtitle={isAdmin ? 'Gestão de sessões de caixa' : 'Meu caixa (hoje)'}
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col h-full min-h-0 overflow-y-auto overflow-x-hidden gap-4">
         {isAdmin && (
           <CaixaGeral
@@ -27,6 +33,8 @@ export default function FinanceiroCaixaPage() {
             setShowDatePicker={setShowDatePicker}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
+            valuesVisible={valuesVisible}
+            setValuesVisible={setValuesVisible}
           />
         )}
         <CashRegisterSessionsManager
@@ -34,6 +42,7 @@ export default function FinanceiroCaixaPage() {
           customDateStart={isAdmin ? customDateStart : undefined}
           customDateEnd={isAdmin ? customDateEnd : undefined}
           statusFilter={statusFilter}
+          valuesVisible={valuesVisible}
         />
       </div>
     </ModernLayout>

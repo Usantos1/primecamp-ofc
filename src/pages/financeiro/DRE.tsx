@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ModernLayout } from '@/components/ModernLayout';
 import { DREComplete } from '@/components/financeiro/DREComplete';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { getStoredValuesVisible, ValuesVisibilityToggle } from '@/components/dashboard/FinancialCards';
 
 function getDefaultMonthRange() {
   const today = new Date();
@@ -18,12 +19,18 @@ export default function DRE() {
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(undefined);
   const [startDate, setStartDate] = useState<string | undefined>(defaultRange.start);
   const [endDate, setEndDate] = useState<string | undefined>(defaultRange.end);
-  
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
+
   return (
-    <ModernLayout title="DRE - Demonstrativo do Resultado do Exercício" subtitle="Demonstração do resultado financeiro">
+    <ModernLayout
+      title="DRE - Demonstrativo do Resultado do Exercício"
+      subtitle="Demonstração do resultado financeiro"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-4">
         <div className="flex-1">
           <DREComplete
+            valuesVisible={valuesVisible}
             startDate={startDate}
             endDate={endDate}
             dateFilter={dateFilter}

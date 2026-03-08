@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { currencyFormatters } from '@/utils/formatters';
+import { getStoredValuesVisible, setStoredValuesVisible, ValuesVisibilityToggle, MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { useDashboardExecutivo, useRecomendacoes } from '@/hooks/useFinanceiro';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -24,6 +25,7 @@ export default function DashboardExecutivo() {
     new Date(new Date().setDate(new Date().getDate() - 30))
   );
   const [periodoFim, setPeriodoFim] = useState<Date | undefined>(new Date());
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
   
   const formattedStartDate = periodoInicio ? format(periodoInicio, 'yyyy-MM-dd') : undefined;
   const formattedEndDate = periodoFim ? format(periodoFim, 'yyyy-MM-dd') : undefined;
@@ -62,8 +64,14 @@ export default function DashboardExecutivo() {
     ? (dashboard.kpis.totalOS / dashboard.kpis.totalGeral) * 100 
     : 0;
   
+  const fmt = (n: number) => valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE;
+
   return (
-    <ModernLayout title="Dashboard Executivo" subtitle="Visão geral financeira e operacional com IA">
+    <ModernLayout
+      title="Dashboard Executivo"
+      subtitle="Visão geral financeira e operacional com IA"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-4">
         {/* Filtros */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
@@ -123,7 +131,7 @@ export default function DashboardExecutivo() {
               <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{currencyFormatters.brl(dashboard.kpis.totalGeral)}</div>
+              <div className="text-2xl font-bold">{fmt(dashboard.kpis.totalGeral)}</div>
               <p className="text-xs text-muted-foreground">
                 {dashboard.kpis.quantidadePDV + dashboard.kpis.quantidadeOS} vendas
               </p>
@@ -136,7 +144,7 @@ export default function DashboardExecutivo() {
               <ShoppingCart className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{currencyFormatters.brl(dashboard.kpis.totalPDV)}</div>
+              <div className="text-2xl font-bold">{fmt(dashboard.kpis.totalPDV)}</div>
               <p className="text-xs text-muted-foreground">
                 {dashboard.kpis.quantidadePDV} vendas ({percentPDV.toFixed(1)}%)
               </p>
@@ -149,7 +157,7 @@ export default function DashboardExecutivo() {
               <Wrench className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{currencyFormatters.brl(dashboard.kpis.totalOS)}</div>
+              <div className="text-2xl font-bold">{fmt(dashboard.kpis.totalOS)}</div>
               <p className="text-xs text-muted-foreground">
                 {dashboard.kpis.quantidadeOS} vendas ({percentOS.toFixed(1)}%)
               </p>
@@ -163,12 +171,12 @@ export default function DashboardExecutivo() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {currencyFormatters.brl(
-                  (dashboard.kpis.ticketMedioPDV + dashboard.kpis.ticketMedioOS) / 2
-                )}
+                {fmt((dashboard.kpis.ticketMedioPDV + dashboard.kpis.ticketMedioOS) / 2)}
               </div>
               <p className="text-xs text-muted-foreground">
-                PDV: {currencyFormatters.brl(dashboard.kpis.ticketMedioPDV)} | OS: {currencyFormatters.brl(dashboard.kpis.ticketMedioOS)}
+                {valuesVisible
+                  ? `PDV: ${currencyFormatters.brl(dashboard.kpis.ticketMedioPDV)} | OS: ${currencyFormatters.brl(dashboard.kpis.ticketMedioOS)}`
+                  : 'PDV: R$ ••••••• | OS: R$ •••••••'}
               </p>
             </CardContent>
           </Card>
@@ -190,9 +198,9 @@ export default function DashboardExecutivo() {
                     dataKey="data" 
                     tickFormatter={(value) => format(new Date(value), 'dd/MM', { locale: ptBR })}
                   />
-                  <YAxis tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
+                  <YAxis tickFormatter={(value) => valuesVisible ? `R$ ${(value / 1000).toFixed(0)}k` : '•••'} />
                   <Tooltip 
-                    formatter={(value: number) => currencyFormatters.brl(value)}
+                    formatter={(value: number) => valuesVisible ? currencyFormatters.brl(value) : MASKED_VALUE}
                     labelFormatter={(label) => format(new Date(label), 'dd/MM/yyyy', { locale: ptBR })}
                   />
                   <Legend />

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Wallet, ShoppingCart, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DollarSign, TrendingUp, Wallet, ShoppingCart, Wrench, Eye, EyeOff } from 'lucide-react';
 import { DashboardFinancialData } from '@/hooks/useDashboardData';
 import { currencyFormatters } from '@/utils/formatters';
 import type { DashboardExecutivo } from '@/hooks/useFinanceiro';
@@ -16,7 +17,7 @@ interface FinancialCardsProps {
   compact?: boolean;
 }
 
-const MASKED_VALUE = 'R$ •••••••';
+export const MASKED_VALUE = 'R$ •••••••';
 const STORAGE_KEY = 'primecamp_dashboard_values_visible';
 
 export function getStoredValuesVisible(): boolean {
@@ -34,6 +35,38 @@ export function setStoredValuesVisible(visible: boolean): void {
   } catch {}
 }
 
+/** Botão olhinho para ocultar/exibir valores em R$ (uso em /financeiro, DRE, etc.) */
+export function ValuesVisibilityToggle({
+  valuesVisible,
+  setValuesVisible,
+  className,
+}: {
+  valuesVisible: boolean;
+  setValuesVisible: (v: boolean) => void;
+  className?: string;
+}) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className={`h-8 w-8 sm:h-9 sm:w-9 p-0 shrink-0 border-gray-300 dark:border-gray-600 ${className ?? ''}`}
+      onClick={() => {
+        const next = !valuesVisible;
+        setStoredValuesVisible(next);
+        setValuesVisible(next);
+      }}
+      title={valuesVisible ? 'Ocultar valores' : 'Exibir valores'}
+      aria-label={valuesVisible ? 'Ocultar valores em reais' : 'Exibir valores em reais'}
+    >
+      {valuesVisible ? (
+        <Eye className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-muted-foreground" />
+      ) : (
+        <EyeOff className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-muted-foreground" />
+      )}
+    </Button>
+  );
+}
+
 export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inline = false, compact = false }: FinancialCardsProps) {
   const cards = financeiroKpis
     ? (() => {
@@ -45,6 +78,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
             title: 'Receita Total',
             value: currencyFormatters.brl(financeiroKpis.totalGeral),
             subtitle: `${total} vendas`,
+            subtitleWhenMasked: undefined,
             icon: DollarSign,
             color: 'bg-green-500',
           },
@@ -52,6 +86,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
             title: 'Vendas PDV',
             value: currencyFormatters.brl(financeiroKpis.totalPDV),
             subtitle: `${financeiroKpis.quantidadePDV} vendas (${pctPDV}%)`,
+            subtitleWhenMasked: undefined,
             icon: ShoppingCart,
             color: 'bg-blue-500',
           },
@@ -59,6 +94,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
             title: 'Vendas OS',
             value: currencyFormatters.brl(financeiroKpis.totalOS),
             subtitle: `${financeiroKpis.quantidadeOS} vendas (${pctOS}%)`,
+            subtitleWhenMasked: undefined,
             icon: Wrench,
             color: 'bg-emerald-500',
           },
@@ -66,6 +102,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
             title: 'Ticket Médio',
             value: currencyFormatters.brl((financeiroKpis.ticketMedioPDV + financeiroKpis.ticketMedioOS) / 2),
             subtitle: `PDV: ${currencyFormatters.brl(financeiroKpis.ticketMedioPDV)} | OS: ${currencyFormatters.brl(financeiroKpis.ticketMedioOS)}`,
+            subtitleWhenMasked: 'PDV: R$ ••••••• | OS: R$ •••••••',
             icon: TrendingUp,
             color: 'bg-purple-500',
           },
@@ -76,6 +113,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
           title: 'Faturamento do Dia',
           value: currencyFormatters.brl(data.faturamentoDia),
           subtitle: `${data.vendasHoje} vendas`,
+          subtitleWhenMasked: undefined,
           icon: DollarSign,
           color: 'bg-green-500',
         },
@@ -83,6 +121,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
           title: 'Faturamento do Mês',
           value: currencyFormatters.brl(data.faturamentoMes),
           subtitle: `${data.vendasMes} vendas`,
+          subtitleWhenMasked: undefined,
           icon: TrendingUp,
           color: 'bg-blue-500',
         },
@@ -90,6 +129,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
           title: 'Ticket Médio',
           value: currencyFormatters.brl(data.ticketMedio),
           subtitle: 'Média por venda',
+          subtitleWhenMasked: undefined,
           icon: ShoppingCart,
           color: 'bg-purple-500',
         },
@@ -97,6 +137,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
           title: 'Total em Caixa',
           value: currencyFormatters.brl(data.totalCaixa),
           subtitle: 'Valor disponível',
+          subtitleWhenMasked: undefined,
           icon: Wallet,
           color: 'bg-orange-500',
         },
@@ -105,6 +146,9 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
   const content = cards.map((card) => {
     const Icon = card.icon;
     const displayValue = valuesVisible ? card.value : MASKED_VALUE;
+    const displaySubtitle = !valuesVisible && 'subtitleWhenMasked' in card && card.subtitleWhenMasked != null
+      ? card.subtitleWhenMasked
+      : card.subtitle;
     return (
       <Card
         key={card.title}
@@ -120,7 +164,7 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
         </CardHeader>
         <CardContent className={compact ? 'px-2 pb-2 pt-0' : 'px-3 sm:px-4 pb-3'}>
           <div className={`font-bold tabular-nums ${compact ? 'text-sm sm:text-base' : 'text-lg sm:text-xl md:text-2xl'}`}>{displayValue}</div>
-          <p className={`text-muted-foreground mt-0.5 ${compact ? 'text-[10px]' : 'text-xs'}`}>{card.subtitle}</p>
+          <p className={`text-muted-foreground mt-0.5 ${compact ? 'text-[10px]' : 'text-xs'}`}>{displaySubtitle}</p>
         </CardContent>
       </Card>
     );

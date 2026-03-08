@@ -228,6 +228,9 @@ export interface CaixaGeralProps {
   setShowDatePicker: (v: boolean) => void;
   statusFilter: 'all' | 'open' | 'closed';
   setStatusFilter: (v: 'all' | 'open' | 'closed') => void;
+  /** Quando passado pelo layout (ex.: FinanceiroCaixaPage), usa o olhinho do header e não exibe o interno */
+  valuesVisible?: boolean;
+  setValuesVisible?: (v: boolean) => void;
 }
 
 export function CaixaGeral({
@@ -241,6 +244,8 @@ export function CaixaGeral({
   setShowDatePicker,
   statusFilter,
   setStatusFilter,
+  valuesVisible: valuesVisibleProp,
+  setValuesVisible: setValuesVisibleProp,
 }: CaixaGeralProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -254,10 +259,14 @@ export function CaixaGeral({
     fetchWallets();
   }, [fetchPaymentMethods, fetchWallets]);
 
-  const [valuesVisible, setValuesVisible] = useState(getCaixaValuesVisible);
+  const [internalVisible, setInternalVisible] = useState(getCaixaValuesVisible);
   useEffect(() => {
-    setCaixaValuesVisible(valuesVisible);
-  }, [valuesVisible]);
+    setCaixaValuesVisible(internalVisible);
+  }, [internalVisible]);
+
+  const valuesVisible = valuesVisibleProp ?? internalVisible;
+  const setValuesVisible = setValuesVisibleProp ?? setInternalVisible;
+  const showInternalToggle = valuesVisibleProp === undefined;
 
   const [showRetiradaDialog, setShowRetiradaDialog] = useState(false);
   const [retiradaTipo, setRetiradaTipo] = useState<'sangria' | 'transferencia' | 'pagamento_conta' | 'retirada_lucro'>('sangria');
@@ -519,16 +528,18 @@ export function CaixaGeral({
               </SelectContent>
             </Select>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 w-8 p-0 shrink-0"
-            onClick={() => setValuesVisible((v) => !v)}
-            title={valuesVisible ? 'Ocultar valores' : 'Exibir valores'}
-            aria-label={valuesVisible ? 'Ocultar valores em reais' : 'Exibir valores em reais'}
-          >
-            {valuesVisible ? <Eye className="h-4 w-4 text-muted-foreground" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
-          </Button>
+          {showInternalToggle && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setValuesVisible(!valuesVisible)}
+              title={valuesVisible ? 'Ocultar valores' : 'Exibir valores'}
+              aria-label={valuesVisible ? 'Ocultar valores em reais' : 'Exibir valores em reais'}
+            >
+              {valuesVisible ? <Eye className="h-4 w-4 text-muted-foreground" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowRetiradaDialog(true)}>
             <MinusCircle className="h-3.5 w-3.5 mr-1" />
             Retirar
@@ -723,7 +734,7 @@ export function CaixaGeral({
                           <SelectItem key={b.id} value={b.id}>
                             <span className="flex items-center gap-2">
                               <span className={statusDot} title={statusLabel} aria-hidden />
-                              <span>{b.description ?? 'Sem descrição'} — {currencyFormatters.brl(Number(b.amount) || 0)} (venc. {b.due_date ? format(new Date(b.due_date), 'dd/MM/yy', { locale: ptBR }) : '-'})</span>
+                              <span>{b.description ?? 'Sem descrição'} — {valuesVisible ? currencyFormatters.brl(Number(b.amount) || 0) : MASKED_VALUE} (venc. {b.due_date ? format(new Date(b.due_date), 'dd/MM/yy', { locale: ptBR }) : '-'})</span>
                             </span>
                           </SelectItem>
                         );

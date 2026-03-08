@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ModernLayout } from '@/components/ModernLayout';
+import { getStoredValuesVisible, ValuesVisibilityToggle, MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,7 @@ const meses = [
 export default function PlanejamentoAnual() {
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState<number>(anoAtual);
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
   
   const { data: planejamento, isLoading, isError } = usePlanejamentoAnual(ano);
   const salvarPlanejamento = useSalvarPlanejamentoAnual();
@@ -87,9 +89,15 @@ export default function PlanejamentoAnual() {
     }
   }, [isError]);
 
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
+
   if (isLoading) {
     return (
-      <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
+      <ModernLayout
+        title="Planejamento Anual"
+        subtitle="Planeje suas metas financeiras para o ano"
+        headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+      >
         <div className="flex flex-col gap-4">
           <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl p-4">
             <div className="flex items-end gap-3">
@@ -147,7 +155,11 @@ export default function PlanejamentoAnual() {
   }
 
   return (
-    <ModernLayout title="Planejamento Anual" subtitle="Planeje suas metas financeiras para o ano">
+    <ModernLayout
+      title="Planejamento Anual"
+      subtitle="Planeje suas metas financeiras para o ano"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-4">
         {/* Controles */}
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
@@ -221,7 +233,7 @@ export default function PlanejamentoAnual() {
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${lucroEsperado >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {currencyFormatters.brl(lucroEsperado)}
+                {fmt(lucroEsperado)}
               </div>
             </CardContent>
           </Card>
@@ -284,7 +296,7 @@ export default function PlanejamentoAnual() {
                 })}
                 <TableRow className="border-t-[3px] border-gray-400 bg-gray-50 font-bold">
                   <TableCell>TOTAL</TableCell>
-                  <TableCell className="text-right">{currencyFormatters.brl(totalMetaMensal)}</TableCell>
+                  <TableCell className="text-right">{fmt(totalMetaMensal)}</TableCell>
                   <TableCell className="text-right">
                     {receitaPlanejada > 0 ? ((totalMetaMensal / receitaPlanejada) * 100).toFixed(1) : 0}%
                   </TableCell>
@@ -295,7 +307,7 @@ export default function PlanejamentoAnual() {
                       {diferencaMeta > 0 ? 'Faltam distribuir:' : 'Excesso distribuído:'}
                     </TableCell>
                     <TableCell className={`text-right font-bold ${diferencaMeta > 0 ? 'text-yellow-700' : 'text-red-700'}`}>
-                      {currencyFormatters.brl(Math.abs(diferencaMeta))}
+                      {fmt(Math.abs(diferencaMeta))}
                     </TableCell>
                   </TableRow>
                 )}

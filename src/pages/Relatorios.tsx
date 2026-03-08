@@ -25,6 +25,7 @@ import { useDashboardExecutivo } from '@/hooks/useFinanceiro';
 import { useCargos } from '@/hooks/useCargos';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
 import { currencyFormatters } from '@/utils/formatters';
+import { getStoredValuesVisible, ValuesVisibilityToggle, MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { PAYMENT_METHOD_LABELS } from '@/types/pdv';
 import type { DashboardTrendData } from '@/hooks/useDashboardData';
 
@@ -39,6 +40,8 @@ export default function Relatorios() {
   const [saleOrigin, setSaleOrigin] = useState<'PDV' | 'OS' | 'all'>('all');
   const [paymentMethod, setPaymentMethod] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'summary' | 'productivity'>('summary');
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
 
   const filters: ReportFilters = useMemo(
     () => ({
@@ -138,7 +141,11 @@ export default function Relatorios() {
   }, [financeiroDashboard?.tendencia, filters.startDate, filters.endDate, saleOrigin]);
 
   return (
-    <ModernLayout title="Relatórios" subtitle="Vendas, tendências e produtividade">
+    <ModernLayout
+      title="Relatórios"
+      subtitle="Vendas, tendências e produtividade"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-3 md:gap-4 pb-6">
         {/* Filtros */}
         <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm flex-shrink-0">
@@ -263,7 +270,7 @@ export default function Relatorios() {
         {/* Gráfico de tendência (respeita período e origem) */}
         {trendChartData.length > 0 && (
           <div className="w-full min-w-0">
-            <TrendCharts data={trendChartData} valuesVisible hidePeriodSelector />
+            <TrendCharts data={trendChartData} valuesVisible={valuesVisible} hidePeriodSelector />
           </div>
         )}
 
@@ -291,7 +298,7 @@ export default function Relatorios() {
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-muted-foreground font-semibold truncate">Total PDV</p>
-                          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1 truncate" title={currencyFormatters.brl(summary.totalPDV)}>{currencyFormatters.brl(summary.totalPDV)}</p>
+                          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1 truncate" title={fmt(summary.totalPDV)}>{fmt(summary.totalPDV)}</p>
                           <p className="text-xs text-muted-foreground mt-1">{summary.countPDV} {summary.countPDV === 1 ? 'venda' : 'vendas'}</p>
                         </div>
                         <ShoppingCart className="h-8 w-8 text-blue-500 opacity-50 flex-shrink-0" />
@@ -303,7 +310,7 @@ export default function Relatorios() {
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-muted-foreground font-semibold truncate">Total OS</p>
-                          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1 truncate" title={currencyFormatters.brl(summary.totalOS)}>{currencyFormatters.brl(summary.totalOS)}</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1 truncate" title={fmt(summary.totalOS)}>{fmt(summary.totalOS)}</p>
                           <p className="text-xs text-muted-foreground mt-1">{summary.countOS} {summary.countOS === 1 ? 'OS' : 'OS'}</p>
                         </div>
                         <Wrench className="h-8 w-8 text-green-500 opacity-50 flex-shrink-0" />
@@ -315,7 +322,7 @@ export default function Relatorios() {
                       <div className="flex items-center justify-between gap-2 min-w-0">
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-muted-foreground font-semibold truncate">Total Geral</p>
-                          <p className="text-lg font-bold text-purple-700 dark:text-purple-400 mt-1 truncate" title={currencyFormatters.brl(summary.totalGeral)}>{currencyFormatters.brl(summary.totalGeral)}</p>
+                          <p className="text-lg font-bold text-purple-700 dark:text-purple-400 mt-1 truncate" title={fmt(summary.totalGeral)}>{fmt(summary.totalGeral)}</p>
                           <p className="text-xs text-muted-foreground mt-1">{summary.countGeral} {summary.countGeral === 1 ? 'venda' : 'vendas'}</p>
                         </div>
                         <DollarSign className="h-8 w-8 text-purple-500 opacity-50 flex-shrink-0" />
@@ -367,10 +374,10 @@ export default function Relatorios() {
                           <TableRow key={tech.technician_id} className="border-b border-gray-100 dark:border-gray-800">
                             <TableCell className="font-medium">{tech.technician_nome}</TableCell>
                             <TableCell className="text-right">{tech.osCompleted}</TableCell>
-                            <TableCell className="text-right font-semibold">{currencyFormatters.brl(tech.totalRevenue)}</TableCell>
-                            <TableCell className="text-right">{currencyFormatters.brl(tech.serviceRevenue)}</TableCell>
-                            <TableCell className="text-right">{currencyFormatters.brl(tech.productRevenue)}</TableCell>
-                            <TableCell className="text-right font-semibold">{currencyFormatters.brl(tech.averageTicket)}</TableCell>
+                            <TableCell className="text-right font-semibold">{fmt(tech.totalRevenue)}</TableCell>
+                            <TableCell className="text-right">{fmt(tech.serviceRevenue)}</TableCell>
+                            <TableCell className="text-right">{fmt(tech.productRevenue)}</TableCell>
+                            <TableCell className="text-right font-semibold">{fmt(tech.averageTicket)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -383,8 +390,8 @@ export default function Relatorios() {
                           <h3 className="font-bold">{tech.technician_nome}</h3>
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div><span className="text-muted-foreground">OS:</span> {tech.osCompleted}</div>
-                            <div><span className="text-muted-foreground">Ticket médio:</span> {currencyFormatters.brl(tech.averageTicket)}</div>
-                            <div className="col-span-2"><span className="text-muted-foreground">Receita total:</span> {currencyFormatters.brl(tech.totalRevenue)}</div>
+                            <div><span className="text-muted-foreground">Ticket médio:</span> {fmt(tech.averageTicket)}</div>
+                            <div className="col-span-2"><span className="text-muted-foreground">Receita total:</span> {fmt(tech.totalRevenue)}</div>
                           </div>
                         </CardContent>
                       </Card>

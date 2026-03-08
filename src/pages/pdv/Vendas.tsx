@@ -46,6 +46,7 @@ import { Sale, SALE_STATUS_LABELS } from '@/types/pdv';
 import type { CancelRequest } from '@/types/pdv';
 import { from } from '@/integrations/db/client';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { getStoredValuesVisible, ValuesVisibilityToggle, MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { EmptyState } from '@/components/EmptyState';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -107,6 +108,9 @@ export default function Vendas() {
   const PAGE_SIZE = 25;
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
+
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
 
   const pendingCancelRequests = useMemo(() => cancelRequests.filter(r => r.status === 'pending'), [cancelRequests]);
 
@@ -657,17 +661,21 @@ export default function Vendas() {
   }
 
   return (
-    <ModernLayout title="Vendas" subtitle="Gerenciamento de vendas do PDV">
+    <ModernLayout
+      title="Vendas"
+      subtitle="Gerenciamento de vendas do PDV"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-2 md:gap-3 pb-8">
         {/* Estatísticas - Mobile: linha única compacta (reflete período filtrado) */}
         <div className="md:hidden flex-shrink-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           <div className="flex items-center gap-1 px-2 py-1.5 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 text-xs whitespace-nowrap">
-            <span className="text-green-600 font-bold">{currencyFormatters.brl(stats.totalPeriodo)}</span>
+            <span className="text-green-600 font-bold">{fmt(stats.totalPeriodo)}</span>
             <span className="text-green-500">({stats.qtdPeriodo})</span>
           </div>
           <div className="flex items-center gap-1 px-2 py-1.5 bg-purple-50 dark:bg-purple-950/30 rounded border border-purple-200 text-xs whitespace-nowrap">
             <span className="text-purple-500">Ticket:</span>
-            <span className="text-purple-600 font-bold">{currencyFormatters.brl(stats.ticketMedio)}</span>
+            <span className="text-purple-600 font-bold">{fmt(stats.ticketMedio)}</span>
           </div>
           <div className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 text-xs whitespace-nowrap">
             <span className="text-blue-600 font-bold">{stats.totalHoje}</span>
@@ -692,7 +700,7 @@ export default function Vendas() {
             </CardHeader>
             <CardContent className="px-6 pb-3">
               <div className="text-2xl font-bold">{stats.totalHoje}</div>
-              <p className="text-xs text-muted-foreground mt-1">{currencyFormatters.brl(stats.totalHojeValor)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{fmt(stats.totalHojeValor)}</p>
             </CardContent>
           </Card>
           <Card className="border-2 border-l-4 border-l-green-500 border-gray-300">
@@ -701,7 +709,7 @@ export default function Vendas() {
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-6 pb-3">
-              <div className="text-2xl font-bold text-green-600">{currencyFormatters.brl(stats.totalPeriodo)}</div>
+              <div className="text-2xl font-bold text-green-600">{fmt(stats.totalPeriodo)}</div>
               <p className="text-xs text-muted-foreground mt-1">{stats.qtdPeriodo} vendas pagas</p>
             </CardContent>
           </Card>
@@ -711,7 +719,7 @@ export default function Vendas() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="px-6 pb-3">
-              <div className="text-2xl font-bold text-purple-600">{currencyFormatters.brl(stats.ticketMedio)}</div>
+              <div className="text-2xl font-bold text-purple-600">{fmt(stats.ticketMedio)}</div>
               <p className="text-xs text-muted-foreground mt-1">por venda</p>
             </CardContent>
           </Card>
@@ -774,7 +782,7 @@ export default function Vendas() {
                           <TableCell className="font-medium">
                             {info ? `#${info.numero}` : `#${req.sale_id.slice(0, 8)}…`}
                             {info != null && (
-                              <span className="text-muted-foreground text-xs ml-1">{currencyFormatters.brl(info.total)}</span>
+                              <span className="text-muted-foreground text-xs ml-1">{fmt(info.total)}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-sm">{req.solicitante_nome}</TableCell>
@@ -1061,14 +1069,14 @@ export default function Vendas() {
                             {dateFormatters.withTime(sale.created_at)}
                           </TableCell>
                           <TableCell className="text-right font-semibold border-r border-gray-200">
-                            {currencyFormatters.brl(sale.total)}
+                            {fmt(sale.total)}
                           </TableCell>
                           <TableCell className="text-right border-r border-gray-200">
                             <span className={cn(
                               "font-semibold",
                               Number(sale.total_pago) >= Number(sale.total) ? "text-green-600" : "text-orange-600"
                             )}>
-                              {currencyFormatters.brl(sale.total_pago)}
+                              {fmt(sale.total_pago)}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
@@ -1246,7 +1254,7 @@ export default function Vendas() {
                             Venda #{sale.numero}
                           </button>
                           <span className="text-base font-bold text-primary">
-                            {currencyFormatters.brl(sale.total)}
+                            {fmt(sale.total)}
                           </span>
                         </div>
 
@@ -1285,7 +1293,7 @@ export default function Vendas() {
                               "text-sm font-semibold",
                               Number(sale.total_pago) >= Number(sale.total) ? "text-green-600" : "text-orange-600"
                             )}>
-                              {currencyFormatters.brl(sale.total_pago)}
+                              {fmt(sale.total_pago)}
                             </span>
                           </div>
                           <div className="flex gap-1">
@@ -1510,7 +1518,7 @@ export default function Vendas() {
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Total</Label>
-                    <p className="text-sm font-semibold">{currencyFormatters.brl(previewSale.total)}</p>
+                    <p className="text-sm font-semibold">{fmt(previewSale.total)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1556,28 +1564,28 @@ export default function Vendas() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm md:text-base truncate">{item.produto_nome}</p>
                           <p className="text-xs text-muted-foreground">
-                            {item.quantidade}x {currencyFormatters.brl(item.valor_unitario)}
-                            {item.desconto > 0 && ` - Desc: ${currencyFormatters.brl(item.desconto)}`}
+                            {item.quantidade}x {fmt(item.valor_unitario)}
+                            {item.desconto > 0 && ` - Desc: ${fmt(item.desconto)}`}
                           </p>
                         </div>
-                        <p className="font-semibold text-sm md:text-base ml-2">{currencyFormatters.brl(item.valor_total)}</p>
+                        <p className="font-semibold text-sm md:text-base ml-2">{fmt(item.valor_total)}</p>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t-2 border-gray-300 space-y-1 text-sm md:text-base">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>{currencyFormatters.brl(previewSale.subtotal)}</span>
+                      <span>{fmt(previewSale.subtotal)}</span>
                     </div>
                     {previewSale.desconto_total > 0 && (
                       <div className="flex justify-between text-red-600">
                         <span>Desconto:</span>
-                        <span>-{currencyFormatters.brl(previewSale.desconto_total)}</span>
+                        <span>-{fmt(previewSale.desconto_total)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold text-lg pt-2">
                       <span>Total:</span>
-                      <span>{currencyFormatters.brl(previewSale.total)}</span>
+                      <span>{fmt(previewSale.total)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -1599,11 +1607,11 @@ export default function Vendas() {
                               <p className="font-medium text-sm md:text-base capitalize">{payment.forma_pagamento}</p>
                               {payment.troco > 0 && (
                                 <p className="text-xs text-muted-foreground">
-                                  Troco: {currencyFormatters.brl(payment.troco)}
+                                  Troco: {fmt(payment.troco)}
                                 </p>
                               )}
                             </div>
-                            <p className="font-semibold text-sm md:text-base ml-2">{currencyFormatters.brl(payment.valor)}</p>
+                            <p className="font-semibold text-sm md:text-base ml-2">{fmt(payment.valor)}</p>
                           </div>
                         ))}
                     </div>
@@ -1614,14 +1622,14 @@ export default function Vendas() {
                           "font-semibold",
                           Number(previewSale.total_pago) >= Number(previewSale.total) ? "text-green-600" : "text-orange-600"
                         )}>
-                          {currencyFormatters.brl(previewSale.total_pago)}
+                          {fmt(previewSale.total_pago)}
                         </span>
                       </div>
                       {Number(previewSale.total_pago) < Number(previewSale.total) && (
                         <div className="flex justify-between text-orange-600 mt-1">
                           <span>Saldo Restante:</span>
                           <span className="font-semibold">
-                            {currencyFormatters.brl(Number(previewSale.total) - Number(previewSale.total_pago))}
+                            {fmt(Number(previewSale.total) - Number(previewSale.total_pago))}
                           </span>
                         </div>
                       )}

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown, DollarSign, Package } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
+import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
 // TODO: Implementar hooks do sistema financeiro antigo ou migrar para novo sistema
 // import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
@@ -23,6 +24,7 @@ interface DRECompleteProps {
   onCustomDateStartChange?: (date: Date | undefined) => void;
   onCustomDateEndChange?: (date: Date | undefined) => void;
   onDatesChange?: (start: string | undefined, end: string | undefined) => void;
+  valuesVisible?: boolean;
 }
 
 // Função para extrair custo da observação
@@ -44,7 +46,9 @@ export function DREComplete({
   onCustomDateStartChange,
   onCustomDateEndChange,
   onDatesChange,
+  valuesVisible = true,
 }: DRECompleteProps) {
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
   // TODO: Implementar hooks do sistema financeiro antigo
   const transactions: any[] = [];
   const categories: any[] = [];
@@ -260,7 +264,7 @@ export function DREComplete({
                   RECEITA BRUTA DE VENDAS
                 </TableCell>
                 <TableCell className="text-right font-bold text-green-700">
-                  {currencyFormatters.brl(dreData.receitaBrutaVendas)}
+                  {fmt(dreData.receitaBrutaVendas)}
                 </TableCell>
               </TableRow>
 
@@ -271,7 +275,7 @@ export function DREComplete({
                   (-) CMV - Custo das Mercadorias/Peças
                 </TableCell>
                 <TableCell className="text-right font-bold text-orange-700">
-                  ({currencyFormatters.brl(dreData.cmv)})
+                  ({fmt(dreData.cmv)})
                 </TableCell>
               </TableRow>
 
@@ -285,7 +289,7 @@ export function DREComplete({
                   "text-right font-bold text-lg",
                   dreData.lucroBruto >= 0 ? 'text-blue-700' : 'text-red-700'
                 )}>
-                  {currencyFormatters.brl(dreData.lucroBruto)}
+                  {fmt(dreData.lucroBruto)}
                 </TableCell>
               </TableRow>
               <TableRow>
@@ -304,13 +308,13 @@ export function DREComplete({
                   <TableRow className="bg-green-50/30">
                     <TableCell className="font-bold text-green-700">(+) OUTRAS RECEITAS</TableCell>
                     <TableCell className="text-right font-bold text-green-700">
-                      {currencyFormatters.brl(dreData.totalOutrasReceitas)}
+                      {fmt(dreData.totalOutrasReceitas)}
                     </TableCell>
                   </TableRow>
                   {Object.entries(dreData.outrasReceitas).map(([descricao, valor]) => (
                     <TableRow key={descricao}>
                       <TableCell className="pl-8">{descricao}</TableCell>
-                      <TableCell className="text-right text-green-600">{currencyFormatters.brl(valor)}</TableCell>
+                      <TableCell className="text-right text-green-600">{fmt(valor)}</TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -325,13 +329,13 @@ export function DREComplete({
                       (-) DESPESAS FIXAS
                     </TableCell>
                     <TableCell className="text-right font-bold text-red-700">
-                      ({currencyFormatters.brl(dreData.totalDespesasFixas)})
+                      ({fmt(dreData.totalDespesasFixas)})
                     </TableCell>
                   </TableRow>
                   {Object.entries(dreData.despesasFixas).map(([descricao, valor]) => (
                     <TableRow key={`fixa-${descricao}`}>
                       <TableCell className="pl-8">{descricao}</TableCell>
-                      <TableCell className="text-right text-red-600">({currencyFormatters.brl(valor)})</TableCell>
+                      <TableCell className="text-right text-red-600">({fmt(valor)})</TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -343,13 +347,13 @@ export function DREComplete({
                   <TableRow className="bg-red-50/30">
                     <TableCell className="font-bold text-red-600">(-) DESPESAS VARIÁVEIS</TableCell>
                     <TableCell className="text-right font-bold text-red-600">
-                      ({currencyFormatters.brl(dreData.totalDespesasVariaveis)})
+                      ({fmt(dreData.totalDespesasVariaveis)})
                     </TableCell>
                   </TableRow>
                   {Object.entries(dreData.despesasVariaveis).map(([descricao, valor]) => (
                     <TableRow key={`var-${descricao}`}>
                       <TableCell className="pl-8">{descricao}</TableCell>
-                      <TableCell className="text-right text-red-600">({currencyFormatters.brl(valor)})</TableCell>
+                      <TableCell className="text-right text-red-600">({fmt(valor)})</TableCell>
                     </TableRow>
                   ))}
                 </>
@@ -359,7 +363,7 @@ export function DREComplete({
               <TableRow className="bg-red-100/50">
                 <TableCell className="font-bold text-red-700">TOTAL DESPESAS OPERACIONAIS</TableCell>
                 <TableCell className="text-right font-bold text-red-700">
-                  ({currencyFormatters.brl(dreData.totalDespesasOperacionais)})
+                  ({fmt(dreData.totalDespesasOperacionais)})
                 </TableCell>
               </TableRow>
 
@@ -373,7 +377,7 @@ export function DREComplete({
                   "text-right font-bold text-lg",
                   dreData.resultadoOperacional >= 0 ? 'text-blue-700' : 'text-red-700'
                 )}>
-                  {currencyFormatters.brl(dreData.resultadoOperacional)}
+                  {fmt(dreData.resultadoOperacional)}
                 </TableCell>
               </TableRow>
               <TableRow>
@@ -390,7 +394,7 @@ export function DREComplete({
               {dreData.impostos > 0 && (
                 <TableRow>
                   <TableCell className="pl-8">(-) Impostos e Contribuições (Estimado 6%)</TableCell>
-                  <TableCell className="text-right text-red-600">({currencyFormatters.brl(dreData.impostos)})</TableCell>
+                  <TableCell className="text-right text-red-600">({fmt(dreData.impostos)})</TableCell>
                 </TableRow>
               )}
 
@@ -407,7 +411,7 @@ export function DREComplete({
                   "text-right font-bold text-xl",
                   dreData.lucroLiquido >= 0 ? 'text-green-700' : 'text-red-700'
                 )}>
-                  {currencyFormatters.brl(dreData.lucroLiquido)}
+                  {fmt(dreData.lucroLiquido)}
                 </TableCell>
               </TableRow>
               <TableRow>
@@ -427,20 +431,20 @@ export function DREComplete({
         <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3 bg-green-50 rounded-lg text-center border border-green-200">
             <p className="text-xs text-muted-foreground">Receita Bruta</p>
-            <p className="text-lg font-bold text-green-600">{currencyFormatters.brl(dreData.receitaBrutaVendas)}</p>
+            <p className="text-lg font-bold text-green-600">{fmt(dreData.receitaBrutaVendas)}</p>
           </div>
           <div className="p-3 bg-orange-50 rounded-lg text-center border border-orange-200">
             <p className="text-xs text-muted-foreground">Custo (CMV)</p>
-            <p className="text-lg font-bold text-orange-600">{currencyFormatters.brl(dreData.cmv)}</p>
+            <p className="text-lg font-bold text-orange-600">{fmt(dreData.cmv)}</p>
           </div>
           <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
             <p className="text-xs text-muted-foreground">Despesas</p>
-            <p className="text-lg font-bold text-red-600">{currencyFormatters.brl(dreData.totalDespesasOperacionais)}</p>
+            <p className="text-lg font-bold text-red-600">{fmt(dreData.totalDespesasOperacionais)}</p>
           </div>
           <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
             <p className="text-xs text-muted-foreground">Custo total de despesas</p>
             <p className="text-lg font-bold text-red-600">
-              {currencyFormatters.brl(dreData.impostos + dreData.cmv + dreData.totalDespesasOperacionais)}
+              {fmt(dreData.impostos + dreData.cmv + dreData.totalDespesasOperacionais)}
             </p>
           </div>
           <div className={cn(
@@ -452,7 +456,7 @@ export function DREComplete({
               "text-lg font-bold",
               dreData.lucroLiquido >= 0 ? 'text-green-700' : 'text-red-700'
             )}>
-              {currencyFormatters.brl(dreData.lucroLiquido)}
+              {fmt(dreData.lucroLiquido)}
             </p>
           </div>
         </div>

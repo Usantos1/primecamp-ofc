@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { ModernLayout } from '@/components/ModernLayout';
 import { TransactionsManager } from '@/components/financeiro/TransactionsManager';
 import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
+import { getStoredValuesVisible, ValuesVisibilityToggle } from '@/components/dashboard/FinancialCards';
 
 const STORAGE_KEY = 'financeiro_transacoes_filter';
 type DateFilterType = 'today' | 'week' | 'month' | 'all' | 'custom';
@@ -72,6 +73,7 @@ export default function FinanceiroTransacoesPage() {
   const [customDateEnd, setCustomDateEnd] = useState<Date | undefined>(saved.customDateEnd);
   const [startDate, setStartDate] = useState<string | undefined>(saved.startDate);
   const [endDate, setEndDate] = useState<string | undefined>(saved.endDate);
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
 
   const saveFilter = (filter: DateFilterType, customStart?: Date, customEnd?: Date) => {
     try {
@@ -98,7 +100,11 @@ export default function FinanceiroTransacoesPage() {
   };
 
   return (
-    <ModernLayout title="Transações" subtitle="Transações financeiras">
+    <ModernLayout
+      title="Transações"
+      subtitle="Transações financeiras"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-4">
         {/* Filtros de Data */}
         <DateFilterBar

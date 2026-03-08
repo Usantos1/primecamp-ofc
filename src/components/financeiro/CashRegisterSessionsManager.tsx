@@ -12,6 +12,7 @@ import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCashRegister, useCashMovements } from '@/hooks/usePDV';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { useToast } from '@/hooks/use-toast';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 import { Lock, Plus, Minus } from 'lucide-react';
@@ -36,6 +37,7 @@ interface Props {
   customDateStart?: Date;
   customDateEnd?: Date;
   statusFilter?: 'all' | 'open' | 'closed';
+  valuesVisible?: boolean;
 }
 
 function labelForma(forma: string) {
@@ -129,11 +131,12 @@ async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSess
   });
 }
 
-export function CashRegisterSessionsManager({ dateFilter, customDateStart, customDateEnd, statusFilter = 'all' }: Props) {
+export function CashRegisterSessionsManager({ dateFilter, customDateStart, customDateEnd, statusFilter = 'all', valuesVisible = true }: Props) {
   const { user, profile, isAdmin } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { closeCash } = useCashRegister();
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
   const [selected, setSelected] = useState<CashSession | null>(null);
   const [showCloseForm, setShowCloseForm] = useState(false);
   const [valorFinal, setValorFinal] = useState('');
@@ -317,7 +320,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
               {Object.entries(totalsByMethod).map(([forma, valor]) => (
                 <Badge key={forma} variant="outline" className="gap-2">
                   <span className="font-medium">{labelForma(forma)}:</span>
-                  <span className="font-bold">{currencyFormatters.brl(valor)}</span>
+                  <span className="font-bold">{fmt(valor)}</span>
                 </Badge>
               ))}
             </div>
@@ -361,18 +364,18 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                     </TableCell>
                     <TableCell>{s.opened_at ? dateFormatters.short(s.opened_at) : '-'}</TableCell>
                     <TableCell>{s.closed_at ? dateFormatters.short(s.closed_at) : '-'}</TableCell>
-                    <TableCell className="text-right">{currencyFormatters.brl(Number(s.valor_inicial || 0))}</TableCell>
-                    <TableCell className="text-right">{currencyFormatters.brl(Number(s.valor_esperado || 0))}</TableCell>
-                    <TableCell className="text-right">{currencyFormatters.brl(Number(s.valor_final || 0))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(s.valor_inicial || 0))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(s.valor_esperado || 0))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(s.valor_final || 0))}</TableCell>
                     <TableCell className="text-right font-semibold">
-                      {currencyFormatters.brl(Number(s.divergencia || 0))}
+                      {fmt(Number(s.divergencia || 0))}
                     </TableCell>
                     <TableCell>
                       {s.totais_forma_pagamento && Object.keys(s.totais_forma_pagamento).length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {Object.entries(s.totais_forma_pagamento).map(([forma, valor]) => (
                             <Badge key={forma} variant="outline" className="text-xs">
-                              {labelForma(forma)} {currencyFormatters.brl(Number(valor || 0))}
+                              {labelForma(forma)} {fmt(Number(valor || 0))}
                             </Badge>
                           ))}
                         </div>
@@ -416,21 +419,21 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                 </div>
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground">Diferença</div>
-                  <div className="font-bold">{currencyFormatters.brl(Number(selected.divergencia || 0))}</div>
+                  <div className="font-bold">{fmt(Number(selected.divergencia || 0))}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground">Inicial</div>
-                  <div className="font-semibold">{currencyFormatters.brl(Number(selected.valor_inicial || 0))}</div>
+                  <div className="font-semibold">{fmt(Number(selected.valor_inicial || 0))}</div>
                 </div>
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground">Esperado</div>
-                  <div className="font-semibold">{currencyFormatters.brl(Number(selected.valor_esperado ?? selected.valor_inicial ?? 0))}</div>
+                  <div className="font-semibold">{fmt(Number(selected.valor_esperado ?? selected.valor_inicial ?? 0))}</div>
                 </div>
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground">Final</div>
-                  <div className="font-semibold">{currencyFormatters.brl(Number(selected.valor_final ?? 0))}</div>
+                  <div className="font-semibold">{fmt(Number(selected.valor_final ?? 0))}</div>
                 </div>
               </div>
 
@@ -441,7 +444,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                     {Object.entries(selected.totais_forma_pagamento).map(([forma, valor]) => (
                       <Badge key={forma} variant="outline" className="gap-2">
                         <span className="font-medium">{labelForma(forma)}:</span>
-                        <span className="font-bold">{currencyFormatters.brl(Number(valor || 0))}</span>
+                        <span className="font-bold">{fmt(Number(valor || 0))}</span>
                       </Badge>
                     ))}
                   </div>
@@ -509,7 +512,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                             {movements.map((m: any) => (
                               <TableRow key={m.id}>
                                 <TableCell>{m.tipo === 'sangria' ? 'Sangria' : 'Suprimento'}</TableCell>
-                                <TableCell>{currencyFormatters.brl(Number(m.valor || 0))}</TableCell>
+                                <TableCell>{fmt(Number(m.valor || 0))}</TableCell>
                                 <TableCell>{m.motivo || '-'}</TableCell>
                                 <TableCell className="text-xs text-muted-foreground">{m.created_at ? dateFormatters.short(m.created_at) : '-'}</TableCell>
                               </TableRow>

@@ -16,6 +16,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { getStoredValuesVisible, ValuesVisibilityToggle, MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { from } from '@/integrations/db/client';
 import { useQuery } from '@tanstack/react-query';
 import { format, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays, parseISO } from 'date-fns';
@@ -83,7 +84,9 @@ export default function FluxoDeCaixa() {
   const [startDate, setStartDate] = useState(() => format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(() => format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [page, setPage] = useState(1);
+  const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
   const ITEMS_PER_PAGE = 20;
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
 
   const range = useMemo(
     () => getRangeFromQuick(quickRange, startDate, endDate),
@@ -304,7 +307,11 @@ export default function FluxoDeCaixa() {
   const totalPages = Math.max(1, Math.ceil(movimentacoes.length / ITEMS_PER_PAGE));
 
   return (
-    <ModernLayout title="Fluxo de Caixa" subtitle="Entradas, saídas e projeção de caixa">
+    <ModernLayout
+      title="Fluxo de Caixa"
+      subtitle="Entradas, saídas e projeção de caixa"
+      headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
+    >
       <div className="flex flex-col gap-4">
         <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
           <div className="flex flex-wrap items-end gap-3">
@@ -375,7 +382,7 @@ export default function FluxoDeCaixa() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-emerald-700">
-                    {currencyFormatters.brl(totalEntradas)}
+                    {fmt(totalEntradas)}
                   </div>
                 </CardContent>
               </Card>
@@ -388,7 +395,7 @@ export default function FluxoDeCaixa() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-red-700">
-                    {currencyFormatters.brl(totalSaidas)}
+                    {fmt(totalSaidas)}
                   </div>
                 </CardContent>
               </Card>
@@ -403,7 +410,7 @@ export default function FluxoDeCaixa() {
                   <div
                     className={`text-2xl font-bold ${saldoPeriodo >= 0 ? 'text-emerald-700' : 'text-red-700'}`}
                   >
-                    {currencyFormatters.brl(saldoPeriodo)}
+                    {fmt(saldoPeriodo)}
                   </div>
                 </CardContent>
               </Card>
@@ -420,7 +427,7 @@ export default function FluxoDeCaixa() {
                       menorSaldoProjetado >= 0 ? 'text-emerald-700' : 'text-amber-700'
                     }`}
                   >
-                    {currencyFormatters.brl(menorSaldoProjetado)}
+                    {fmt(menorSaldoProjetado)}
                   </div>
                   {menorSaldoProjetado < 0 && (
                     <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
@@ -452,9 +459,9 @@ export default function FluxoDeCaixa() {
                           tickFormatter={(v) => format(parseISO(v), 'dd/MM', { locale: ptBR })}
                           fontSize={11}
                         />
-                        <YAxis tickFormatter={(v) => `R$${v / 1000}k`} fontSize={11} />
+                        <YAxis tickFormatter={(v) => (valuesVisible ? `R$${v / 1000}k` : '•••')} fontSize={11} />
                         <Tooltip
-                          formatter={(value: number) => [currencyFormatters.brl(value), '']}
+                          formatter={(value: number) => [fmt(value), '']}
                           labelFormatter={(label) => dateFormatters.short(label)}
                         />
                         <Legend />
@@ -490,9 +497,9 @@ export default function FluxoDeCaixa() {
                           tickFormatter={(v) => format(parseISO(v), 'dd/MM', { locale: ptBR })}
                           fontSize={11}
                         />
-                        <YAxis tickFormatter={(v) => `R$${v / 1000}k`} fontSize={11} />
+                        <YAxis tickFormatter={(v) => (valuesVisible ? `R$${v / 1000}k` : '•••')} fontSize={11} />
                         <Tooltip
-                          formatter={(value: number) => [currencyFormatters.brl(value), 'Saldo']}
+                          formatter={(value: number) => [fmt(value), 'Saldo']}
                           labelFormatter={(label) => dateFormatters.short(label)}
                         />
                         <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
@@ -555,7 +562,7 @@ export default function FluxoDeCaixa() {
                               m.tipo === 'entrada' ? 'text-emerald-700' : 'text-red-700'
                             }`}
                           >
-                            {m.tipo === 'entrada' ? '+' : '-'} {currencyFormatters.brl(m.valor)}
+                            {m.tipo === 'entrada' ? '+' : '-'} {fmt(m.valor)}
                           </TableCell>
                         </TableRow>
                       ))
