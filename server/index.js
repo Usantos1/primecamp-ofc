@@ -857,6 +857,19 @@ app.post('/api/functions/job-application-submit', async (req, res) => {
     const survey = surveyResult.rows[0];
     const companyId = survey.company_id;
     const emailLower = email.toLowerCase().trim();
+
+    // Não permitir candidatura se o e-mail já possui cadastro (usuário) no sistema
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE LOWER(email) = $1',
+      [emailLower]
+    );
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({
+        error: 'Você já possui cadastro no sistema.',
+        code: 'ALREADY_REGISTERED',
+        message: 'Este e-mail já está cadastrado no banco de dados. Faça login para acessar sua conta ou use outro e-mail para esta candidatura.'
+      });
+    }
     
     // Verificar se já existe candidatura deste email para esta vaga
     const existingResponse = await pool.query(

@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 /* =======================
    Tema consistente (Claro/Escuro) - Design Profissional
@@ -257,6 +258,8 @@ export default function JobApplicationSteps() {
   }, [showAlreadyAppliedModal]);
 
   const storageKey = useMemo(() => `jobapp:${slug}`, [slug]);
+  // Chave estável por sessão para o mesmo rascunho (evita criar dezenas de "leads parciais" quando o usuário ainda não preencheu email)
+  const draftSessionKey = useMemo(() => `jobapp_draft_email:${slug}`, [slug]);
 
   // Debounce para autosave (salvar após 2 segundos sem digitar)
   const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -312,9 +315,18 @@ export default function JobApplicationSteps() {
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
       try {
-        // Usar email se tiver, senão usar um placeholder baseado no telefone/whatsapp
-        const emailToSave = formData.email?.trim().toLowerCase() || 
-                           `lead_${formData.phone?.replace(/\D/g, '') || formData.whatsapp?.replace(/\D/g, '') || Date.now()}@temp.primecamp`;
+        // Email estável por sessão: evita criar um rascunho novo a cada autosave quando o usuário ainda não preencheu email
+        let emailToSave = formData.email?.trim().toLowerCase();
+        if (!emailToSave) {
+          const stored = sessionStorage.getItem(draftSessionKey);
+          if (stored) {
+            emailToSave = stored;
+          } else {
+            const phoneOrWhatsapp = (formData.phone?.replace(/\D/g, '') || formData.whatsapp?.replace(/\D/g, '') || '').slice(-11) || 'anon';
+            emailToSave = `lead_${survey.id.slice(0, 8)}_${phoneOrWhatsapp}_${Date.now().toString(36)}@temp.primecamp`;
+            sessionStorage.setItem(draftSessionKey, emailToSave);
+          }
+        }
 
         const { data, error } = await apiClient.invokeFunction('job-application-save-draft', {
           survey_id: survey.id,
@@ -345,7 +357,7 @@ export default function JobApplicationSteps() {
         setSaving(false);
       }
     }, 2000);
-  }, [survey, formData, currentStep]);
+  }, [survey, formData, currentStep, draftSessionKey]);
 
   // Salvar no backend quando formData ou currentStep mudar (salva qualquer dado de contato)
   useEffect(() => {
@@ -633,13 +645,24 @@ export default function JobApplicationSteps() {
 
       const responseData = response.data;
       
-      // Verificar se é erro 409 (já candidatou)
+      // Verificar erros 409 (já candidatou ou já tem cadastro no sistema)
       if (response.error) {
-        const errorMessage = response.error.message || response.error.error || 'Erro desconhecido';
-        const statusCode = response.error.status || response.error.code;
-        
+        const errorMessage = response.error.message || (response.error as any).error || 'Erro desconhecido';
+        const statusCode = (response.error as any).status || (response.error as any).code;
+        const errorData = (response.error as any).data || {};
+
+        if (statusCode === 409 && errorData.code === 'ALREADY_REGISTERED') {
+          toast({
+            title: 'Cadastro existente',
+            description: errorData.message || 'Você já possui cadastro no banco de dados. Faça login para acessar sua conta ou use outro e-mail para esta candidatura.',
+            variant: 'destructive'
+          });
+          setSubmitting(false);
+          return;
+        }
+
         if (statusCode === 409 || errorMessage.includes('já se candidatou')) {
-          const existingId = response.error.data?.job_response_id || response.error.job_response_id || responseData?.job_response_id;
+          const existingId = errorData.job_response_id || responseData?.job_response_id;
           console.warn('[JobApplication] Candidatura duplicada:', {
             email: formData.email.trim().toLowerCase(),
             survey_id: survey.id,
@@ -669,7 +692,8 @@ export default function JobApplicationSteps() {
       setJobResponseId(jobResponseId || null);
       
       sessionStorage.setItem('candidate_disc_info', JSON.stringify(candidateInfo));
-      
+      sessionStorage.removeItem(draftSessionKey);
+
       setSubmitted(true);
       toast({ title: "Candidatura enviada com sucesso! 🎉", description: "Sua candidatura foi recebida com sucesso!" });
       
@@ -769,7 +793,7 @@ export default function JobApplicationSteps() {
             <SelectTrigger className={`${fieldClass} ${error ? 'border-red-500' : ''}`} style={fieldStyle}>
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" sideOffset={4}>
               {question.options?.map((option, index) => (
                 <SelectItem key={index} value={option}>{option}</SelectItem>
               ))}
@@ -1182,8 +1206,21 @@ export default function JobApplicationSteps() {
           </CardHeader>
 
               <CardContent className="space-y-6">
+                <ErrorBoundary
+                  fallback={
+                    <div className="py-6 text-center space-y-4" style={{ color: 'hsl(var(--job-text))' }}>
+                      <AlertTriangle className="h-12 w-12 mx-auto" style={{ color: 'hsl(var(--job-primary))' }} />
+                      <p className="font-medium">Ocorreu um problema ao exibir este passo.</p>
+                      <p className="text-sm" style={{ color: 'hsl(var(--job-text-muted))' }}>Seus dados foram salvos. Clique em continuar para seguir.</p>
+                      <Button onClick={() => window.location.reload()} style={{ background: 'hsl(var(--job-primary))' }}>
+                        Continuar
+                      </Button>
+                    </div>
+                  }
+                >
+                {/* key por etapa evita conflito de portal (removeChild) ao trocar de passo com Select aberto */}
                 {currentStep === 0 ? (
-                  <>
+                  <div key="step-0">
                     {/* Aviso de Privacidade LGPD */}
                     <div className="mb-4 p-4 rounded-lg border" style={{ 
                       backgroundColor: 'hsl(var(--job-badge))', 
@@ -1341,12 +1378,13 @@ export default function JobApplicationSteps() {
                         />
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
-                  <div className="max-w-2xl mx-auto">
+                  <div key={`step-${currentStep}`} className="max-w-2xl mx-auto">
                     {"question" in steps[currentStep] && renderQuestion((steps[currentStep] as any).question)}
                   </div>
                 )}
+                </ErrorBoundary>
               </CardContent>
         </Card>
 
