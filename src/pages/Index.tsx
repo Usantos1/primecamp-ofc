@@ -13,7 +13,6 @@ import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { useDashboardExecutivo } from '@/hooks/useFinanceiro';
 import { FinancialCards, getStoredValuesVisible, setStoredValuesVisible } from '@/components/dashboard/FinancialCards';
 import { OSStatusCards } from '@/components/dashboard/OSStatusCards';
-import { AlertCards } from '@/components/dashboard/AlertCards';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
 import { DashboardPeriodFilter } from '@/components/dashboard/DashboardPeriodFilter';
 import { PresentationMode } from '@/components/dashboard/PresentationMode';
@@ -315,17 +314,8 @@ const Index = () => {
                     </div>
                   );
 
-                case 'alerts': {
-                  if (!isGestor || !alerts) return null;
-                  const hasAlertsToShow = alerts.osParadas > 0 || alerts.osSemAtualizacao > 0;
-                  if (!hasAlertsToShow) return null;
-                  return (
-                    <div key={widget.id} className="w-full min-w-0">
-                      <h2 className="text-base md:text-lg font-semibold mb-2 sm:mb-3">Alertas de Gestão</h2>
-                      <AlertCards alerts={alerts} excludeTopRow />
-                    </div>
-                  );
-                }
+                case 'alerts':
+                  return null;
 
                 case 'trend-charts':
                   if (!isGestor) return null;

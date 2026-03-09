@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FinancialCards } from './FinancialCards';
 import { OSStatusCards } from './OSStatusCards';
-import { AlertCards } from './AlertCards';
 import { TrendCharts } from './TrendCharts';
 import { DashboardFinancialData, DashboardOSData, DashboardAlerts, DashboardTrendData } from '@/hooks/useDashboardData';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
@@ -97,11 +96,6 @@ export function PresentationMode({ financialData, osData, alerts, trendData }: P
             <OSStatusCards data={osData} />
           </CardContent>
         </Card>
-
-        {/* Alertas */}
-        {alerts && (alerts.osParadas > 0 || alerts.estoqueBaixo > 0 || alerts.osSemAtualizacao > 0) && (
-          <AlertCards alerts={alerts} />
-        )}
 
         {/* Gráficos de Tendência */}
         {trendData.length > 0 && <TrendCharts data={trendData} valuesVisible={valuesVisible} />}
