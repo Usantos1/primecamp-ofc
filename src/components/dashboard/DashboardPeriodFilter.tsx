@@ -100,7 +100,11 @@ export function DashboardPeriodFilter({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn('w-[130px] sm:w-[140px] justify-between h-8 text-xs sm:text-sm border-gray-300 dark:border-gray-600', triggerClassName)}
+          className={cn(
+            'w-[130px] sm:w-[140px] justify-between text-xs sm:text-sm border-gray-300 dark:border-gray-600',
+            'min-h-[44px] h-11 sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation',
+            triggerClassName
+          )}
         >
           <span className="truncate">{currentLabel}</span>
           <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />

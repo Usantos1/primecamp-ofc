@@ -12,7 +12,6 @@ import {
   Clock, 
   CheckSquare, 
   Target,
-  GraduationCap,
   Brain,
   FileText,
   Download,
@@ -54,7 +53,6 @@ export default function Reports() {
 
   // Data states
   const [tasksData, setTasksData] = useState<any>(null);
-  const [trainingsData, setTrainingsData] = useState<any>(null);
   const [discData, setDiscData] = useState<any>(null);
   const [processesData, setProcessesData] = useState<any>(null);
   const [usersData, setUsersData] = useState<any>(null);
@@ -93,16 +91,6 @@ export default function Reports() {
 
       const { data: tasks } = await tasksQuery.execute();
 
-      // Fetch Trainings Data
-      let trainingsQuery = from('training_assignments')
-        .select('id, status, progress, completed_at, training_id, user_id');
-      
-      if (dateFilter) {
-        trainingsQuery = trainingsQuery.gte('assigned_at', dateFilter);
-      }
-
-      const { data: trainings } = await trainingsQuery.execute();
-
       // Fetch DISC Data
       const { data: discResults } = await from('disc_responses')
         .select('id, dominant, d, i, s, c, created_at, user_id')
@@ -128,18 +116,6 @@ export default function Reports() {
       const tasksByDay = tasks?.reduce((acc: any, task: any) => {
         const date = new Date(task.created_at).toLocaleDateString('pt-BR');
         acc[date] = (acc[date] || 0) + 1;
-        return acc;
-      }, {}) || {};
-
-      // Process Trainings Data
-      const trainingsByStatus = trainings?.reduce((acc: any, training: any) => {
-        acc[training.status] = (acc[training.status] || 0) + 1;
-        return acc;
-      }, {}) || {};
-
-      const trainingsByDepartment = trainings?.reduce((acc: any, training: any) => {
-        const dept = training.training?.department || 'Sem departamento';
-        acc[dept] = (acc[dept] || 0) + 1;
         return acc;
       }, {}) || {};
 
@@ -176,17 +152,6 @@ export default function Reports() {
         pending: tasks?.filter((t: any) => t.status === 'pending').length || 0,
         delayed: tasks?.filter((t: any) => t.status === 'delayed').length || 0,
         inProgress: tasks?.filter((t: any) => t.status === 'in_progress').length || 0
-      });
-
-      setTrainingsData({
-        total: trainings?.length || 0,
-        byStatus: trainingsByStatus,
-        byDepartment: Object.entries(trainingsByDepartment).map(([name, value]) => ({ name, value })),
-        completed: trainings?.filter((t: any) => t.status === 'completed').length || 0,
-        inProgress: trainings?.filter((t: any) => t.status === 'in_progress').length || 0,
-        averageProgress: trainings?.length > 0 
-          ? Math.round(trainings.reduce((sum: number, t: any) => sum + (t.progress || 0), 0) / trainings.length)
-          : 0
       });
 
       setDiscData({
@@ -311,13 +276,12 @@ export default function Reports() {
     doc.text('Visão Geral', margin, yPos);
     yPos += 8;
     
-    const boxWidth = (pageWidth - (margin * 2) - 15) / 4;
+    const boxWidth = (pageWidth - (margin * 2) - 10) / 3;
     const boxHeight = 25;
     
     addMetricBox('Tarefas', overviewStats.tasks.total, margin, yPos, boxWidth, [59, 130, 246]);
-    addMetricBox('Academy', overviewStats.trainings.total, margin + boxWidth + 5, yPos, boxWidth, [16, 185, 129]);
-    addMetricBox('Usuários', overviewStats.users.active, margin + (boxWidth + 5) * 2, yPos, boxWidth, [139, 92, 246]);
-    addMetricBox('Processos', overviewStats.processes.active, margin + (boxWidth + 5) * 3, yPos, boxWidth, [245, 158, 11]);
+    addMetricBox('Usuários', overviewStats.users.active, margin + boxWidth + 5, yPos, boxWidth, [139, 92, 246]);
+    addMetricBox('Processos', overviewStats.processes.active, margin + (boxWidth + 5) * 2, yPos, boxWidth, [245, 158, 11]);
     
     yPos += boxHeight + 15;
 
@@ -361,56 +325,6 @@ export default function Reports() {
       doc.setFillColor(16, 185, 129);
       doc.rect(margin, yPos, (pageWidth - (margin * 2)) * (completionRate / 100), 6, 'F');
       yPos += 15;
-    }
-
-    // Trainings Section
-    if (trainingsData) {
-      if (yPos > pageHeight - 80) {
-        doc.addPage();
-        yPos = margin;
-      }
-      
-      yPos = addSectionHeader('RESUMO DA ACADEMY', yPos);
-      
-      const trainingBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
-      addMetricBox('Total', trainingsData.total, margin, yPos, trainingBoxWidth, [16, 185, 129]);
-      addMetricBox('Concluídos', trainingsData.completed, margin + trainingBoxWidth + 5, yPos, trainingBoxWidth, [16, 185, 129]);
-      addMetricBox('Progresso Médio', `${trainingsData.averageProgress}%`, margin + (trainingBoxWidth + 5) * 2, yPos, trainingBoxWidth, [59, 130, 246]);
-      yPos += 30;
-
-      // Trainings by Status
-      if (trainingsData.byStatus && Object.keys(trainingsData.byStatus).length > 0) {
-        yPos = addTableRow('Status', 'Quantidade', yPos, true);
-        Object.entries(trainingsData.byStatus).forEach(([status, count]: [string, any]) => {
-          if (yPos > pageHeight - 30) {
-            doc.addPage();
-            yPos = margin;
-          }
-          yPos = addTableRow(status, count, yPos);
-        });
-        yPos += 10;
-      }
-
-      // Trainings by Department
-      if (trainingsData.byDepartment && trainingsData.byDepartment.length > 0) {
-        if (yPos > pageHeight - 50) {
-          doc.addPage();
-          yPos = margin;
-        }
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Por Departamento:', margin, yPos);
-        yPos += 8;
-        yPos = addTableRow('Departamento', 'Quantidade', yPos, true);
-        trainingsData.byDepartment.forEach((dept: any) => {
-          if (yPos > pageHeight - 30) {
-            doc.addPage();
-            yPos = margin;
-          }
-          yPos = addTableRow(dept.name, dept.value, yPos);
-        });
-        yPos += 10;
-      }
     }
 
     // Users Section
@@ -558,11 +472,6 @@ export default function Reports() {
           ? Math.round((tasksData.completed / tasksData.total) * 100) 
           : 0
       },
-      trainings: {
-        total: trainingsData?.total || 0,
-        completed: trainingsData?.completed || 0,
-        averageProgress: trainingsData?.averageProgress || 0
-      },
       users: {
         total: usersData?.total || 0,
         active: usersData?.active || 0,
@@ -578,7 +487,7 @@ export default function Reports() {
           : 0
       }
     };
-  }, [tasksData, trainingsData, usersData, processesData]);
+  }, [tasksData, usersData, processesData]);
 
   if (loading) {
     return (
@@ -624,10 +533,9 @@ export default function Reports() {
         </div>
 
         {/* Cards de Resumo - fixo */}
-        <div className="flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="flex-shrink-0 grid grid-cols-2 lg:grid-cols-3 gap-3">
           {[
             { title: 'Tarefas', value: overviewStats.tasks.total, subtitle: `${overviewStats.tasks.completionRate}% concluídas`, icon: CheckSquare, color: 'from-blue-50 to-blue-100' },
-            { title: 'Academy', value: overviewStats.trainings.total, subtitle: `${overviewStats.trainings.averageProgress}% progresso`, icon: GraduationCap, color: 'from-green-50 to-green-100' },
             { title: 'Usuários', value: overviewStats.users.active, subtitle: `${overviewStats.users.activeRate}% ativos`, icon: Users, color: 'from-purple-50 to-purple-100' },
             { title: 'Processos', value: overviewStats.processes.active, subtitle: `${overviewStats.processes.activeRate}% ativos`, icon: Target, color: 'from-orange-50 to-orange-100' },
           ].map((card) => {
@@ -649,10 +557,9 @@ export default function Reports() {
 
         {/* Tabs de Relatórios - flex-1 com scroll */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <TabsList className="flex-shrink-0 grid w-full grid-cols-5 rounded-lg bg-muted/50 p-1 text-xs">
+          <TabsList className="flex-shrink-0 grid w-full grid-cols-4 rounded-lg bg-muted/50 p-1 text-xs">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="tasks">Tarefas</TabsTrigger>
-            <TabsTrigger value="trainings">Academy</TabsTrigger>
             <TabsTrigger value="disc">DISC</TabsTrigger>
             <TabsTrigger value="processes">Processos</TabsTrigger>
           </TabsList>
@@ -694,34 +601,6 @@ export default function Reports() {
                       <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p>Nenhum dado disponível</p>
               </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Academy por Departamento */}
-              <Card className="border-2 border-gray-200 rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5" />
-                    Academy por Departamento
-                  </CardTitle>
-            </CardHeader>
-                <CardContent>
-                  {trainingsData?.byDepartment && trainingsData.byDepartment.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={trainingsData.byDepartment}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#10b981" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhum dado disponível</p>
-                </div>
                   )}
                 </CardContent>
               </Card>
@@ -871,95 +750,6 @@ export default function Reports() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Relatório da Academy */}
-          <TabsContent value="trainings" className="flex-1 overflow-auto scrollbar-thin space-y-4 mt-3">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Academy por Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {trainingsData?.byStatus && Object.keys(trainingsData.byStatus).length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={Object.entries(trainingsData.byStatus).map(([name, value]) => ({ name, value }))}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {Object.entries(trainingsData.byStatus).map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhum dado disponível</p>
-              </div>
-                  )}
-            </CardContent>
-          </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Academy por Departamento</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {trainingsData?.byDepartment && trainingsData.byDepartment.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={trainingsData.byDepartment}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="value" fill="#10b981" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhum dado disponível</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Métricas da Academy</CardTitle>
-            </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{trainingsData?.total || 0}</p>
-                    <p className="text-sm text-muted-foreground">Total</p>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{trainingsData?.completed || 0}</p>
-                    <p className="text-sm text-muted-foreground">Concluídos</p>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-600">{trainingsData?.inProgress || 0}</p>
-                    <p className="text-sm text-muted-foreground">Em Progresso</p>
-                </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{trainingsData?.averageProgress || 0}%</p>
-                    <p className="text-sm text-muted-foreground">Progresso Médio</p>
-                </div>
-                </div>
-            </CardContent>
-          </Card>
           </TabsContent>
 
           {/* Relatório DISC */}

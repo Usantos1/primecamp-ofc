@@ -99,7 +99,7 @@ export default function PlanejamentoAnual() {
         headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
       >
         <div className="flex flex-col gap-4">
-          <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl p-4">
+          <Card className="flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl p-4">
             <div className="flex items-end gap-3">
               <div className="space-y-1 flex-1 max-w-xs">
                 <Label className="text-xs font-semibold text-muted-foreground">Ano</Label>
@@ -110,13 +110,13 @@ export default function PlanejamentoAnual() {
           </Card>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="border-[3px] border-gray-400 rounded-xl">
+              <Card key={i} className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
                 <CardHeader className="pb-3"><Skeleton className="h-5 w-32" /></CardHeader>
                 <CardContent><Skeleton className="h-12 w-full" /></CardContent>
               </Card>
             ))}
           </div>
-          <Card className="border-[3px] border-gray-400 rounded-xl flex flex-col">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl flex flex-col">
             <CardHeader>
               <CardTitle className="text-lg font-bold">Metas Mensais</CardTitle>
               <CardDescription>Distribua a receita planejada pelos meses do ano</CardDescription>
@@ -142,7 +142,7 @@ export default function PlanejamentoAnual() {
               </Table>
             </CardContent>
           </Card>
-          <Card className="border-[3px] border-gray-400 rounded-xl">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
             <CardHeader>
               <CardTitle className="text-lg font-bold">Observações</CardTitle>
               <CardDescription>Anotações e observações sobre o planejamento</CardDescription>
@@ -160,11 +160,11 @@ export default function PlanejamentoAnual() {
       subtitle="Planeje suas metas financeiras para o ano"
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col gap-4">
-        {/* Controles */}
-        <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
-          <div className="flex items-end gap-3">
-            <div className="space-y-1 flex-1 max-w-xs">
+      <div className="flex flex-col gap-4 pb-8 min-w-0">
+        {/* Controles — mobile: toque confortável */}
+        <Card className="flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm p-3 sm:p-4 min-w-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+            <div className="space-y-1 flex-1 min-w-0">
               <Label className="text-xs font-semibold text-muted-foreground">Ano</Label>
               <Input
                 type="number"
@@ -172,13 +172,13 @@ export default function PlanejamentoAnual() {
                 max={2100}
                 value={ano}
                 onChange={(e) => setAno(Math.max(2020, Math.min(2100, parseInt(e.target.value) || anoAtual)))}
-                className="h-10 border-[3px] border-gray-400 rounded-lg"
+                className="min-h-[44px] sm:h-10 border-2 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-lg touch-manipulation"
               />
             </div>
             <Button
               onClick={handleSalvar}
               disabled={salvarPlanejamento.isPending}
-              className="h-10 bg-green-600 hover:bg-green-700"
+              className="min-h-[44px] sm:h-10 rounded-xl sm:rounded-md bg-green-600 hover:bg-green-700 touch-manipulation"
             >
               <Save className="h-4 w-4 mr-2" />
               Salvar Planejamento
@@ -186,9 +186,9 @@ export default function PlanejamentoAnual() {
           </div>
         </Card>
         
-        {/* Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+        {/* Resumo — mobile: 2 colunas */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-w-0">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Target className="h-5 w-5" />
@@ -200,16 +200,16 @@ export default function PlanejamentoAnual() {
                 value={receitaPlanejada}
                 onChange={setReceitaPlanejada}
                 showCurrency
-                className="text-2xl font-bold border-2 border-gray-300 focus:border-primary h-12"
+                className="text-lg sm:text-2xl font-bold border-2 border-gray-300 focus:border-primary min-h-[44px] sm:h-12 rounded-lg touch-manipulation"
                 placeholder="0,00"
               />
             </CardContent>
           </Card>
           
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+                <DollarSign className="h-5 w-5 shrink-0" />
                 Despesas Planejadas
               </CardTitle>
             </CardHeader>
@@ -218,16 +218,16 @@ export default function PlanejamentoAnual() {
                 value={despesasPlanejadas}
                 onChange={setDespesasPlanejadas}
                 showCurrency
-                className="text-2xl font-bold border-2 border-gray-300 focus:border-primary h-12"
+                className="text-lg sm:text-2xl font-bold border-2 border-gray-300 focus:border-primary min-h-[44px] sm:h-12 rounded-lg touch-manipulation"
                 placeholder="0,00"
               />
             </CardContent>
           </Card>
           
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <TrendingUp className="h-5 w-5 shrink-0" />
                 Lucro Esperado
               </CardTitle>
             </CardHeader>
@@ -238,7 +238,7 @@ export default function PlanejamentoAnual() {
             </CardContent>
           </Card>
           
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Target className="h-5 w-5" />
@@ -254,7 +254,7 @@ export default function PlanejamentoAnual() {
         </div>
         
         {/* Metas Mensais */}
-        <Card className="flex-1 overflow-hidden border-[3px] border-gray-400 rounded-xl shadow-sm flex flex-col">
+        <Card className="flex-1 overflow-hidden border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm flex flex-col">
           <CardHeader>
             <CardTitle className="text-lg font-bold">Metas Mensais</CardTitle>
             <CardDescription>
@@ -317,7 +317,7 @@ export default function PlanejamentoAnual() {
         </Card>
         
         {/* Observações */}
-        <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+        <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm">
           <CardHeader>
             <CardTitle className="text-lg font-bold">Observações</CardTitle>
             <CardDescription>Anotações e observações sobre o planejamento</CardDescription>
@@ -327,7 +327,7 @@ export default function PlanejamentoAnual() {
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
               placeholder="Adicione observações, estratégias, premissas e outras informações relevantes para o planejamento..."
-              className="min-h-[120px] border-[3px] border-gray-400"
+              className="min-h-[120px] border-2 border-gray-300 dark:border-gray-600"
             />
           </CardContent>
         </Card>

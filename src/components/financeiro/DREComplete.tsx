@@ -226,12 +226,12 @@ export function DREComplete({
   }, [transactions, sales, billsPaid]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <CardTitle>DRE - Demonstrativo de Resultado do Exercício</CardTitle>
-            <CardDescription>Período: {month ? month.replace('-', '/') : 'Todo o período'}</CardDescription>
+    <Card className="rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden min-w-0">
+      <CardHeader className="pb-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-4">
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg">DRE - Demonstrativo de Resultado do Exercício</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Período: {month ? month.replace('-', '/') : 'Todo o período'}</CardDescription>
           </div>
           {dateFilter != null && onDateFilterChange && onDatesChange && (
             <DateFilterBar
@@ -242,13 +242,13 @@ export function DREComplete({
               onCustomDateStartChange={onCustomDateStartChange}
               onCustomDateEndChange={onCustomDateEndChange}
               onDatesChange={onDatesChange}
-              className="border border-muted/70 rounded-lg shadow-sm flex-shrink-0"
+              className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm flex-shrink-0 w-full sm:w-auto min-w-0"
             />
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="border rounded-lg overflow-hidden">
+      <CardContent className="min-w-0">
+        <div className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-x-auto min-w-0">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">

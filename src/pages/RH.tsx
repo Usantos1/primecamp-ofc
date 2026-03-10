@@ -65,15 +65,6 @@ export default function RH() {
       category: 'recrutamento',
     },
     
-    // Desenvolvimento
-    {
-      title: 'Academy',
-      description: 'Gerencie cursos, aulas e progresso dos colaboradores',
-      icon: GraduationCap,
-      path: '/treinamentos',
-      color: 'text-blue-600',
-      category: 'desenvolvimento',
-    },
     // Avaliação
     {
       title: 'Teste DISC',

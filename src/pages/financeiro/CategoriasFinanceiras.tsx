@@ -7,7 +7,7 @@ export default function CategoriasFinanceiras() {
       title="Categorias Financeiras"
       subtitle="Gerencie categorias para contas a pagar e receber"
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 pb-8 min-w-0">
         <FinancialCategoriesManager />
       </div>
     </ModernLayout>

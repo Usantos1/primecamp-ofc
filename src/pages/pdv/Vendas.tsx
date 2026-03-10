@@ -666,28 +666,28 @@ export default function Vendas() {
       subtitle="Gerenciamento de vendas do PDV"
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col gap-2 md:gap-3 pb-8">
-        {/* Estatísticas - Mobile: linha única compacta (reflete período filtrado) */}
-        <div className="md:hidden flex-shrink-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 text-xs whitespace-nowrap">
-            <span className="text-green-600 font-bold">{fmt(stats.totalPeriodo)}</span>
-            <span className="text-green-500">({stats.qtdPeriodo})</span>
+      <div className="flex flex-col gap-3 md:gap-3 pb-8 min-w-0">
+        {/* Estatísticas — Mobile: grid 2 colunas, toque confortável */}
+        <div className="md:hidden grid grid-cols-2 sm:grid-cols-3 gap-2 shrink-0">
+          <div className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 bg-green-50 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-800 touch-manipulation">
+            <span className="text-green-600 dark:text-green-400 font-bold tabular-nums">{fmt(stats.totalPeriodo)}</span>
+            <span className="text-green-600 dark:text-green-400 text-xs">({stats.qtdPeriodo})</span>
           </div>
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-purple-50 dark:bg-purple-950/30 rounded border border-purple-200 text-xs whitespace-nowrap">
-            <span className="text-purple-500">Ticket:</span>
-            <span className="text-purple-600 font-bold">{fmt(stats.ticketMedio)}</span>
+          <div className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800 touch-manipulation">
+            <span className="text-purple-600 dark:text-purple-400 text-xs">Ticket</span>
+            <span className="text-purple-600 dark:text-purple-400 font-bold tabular-nums">{fmt(stats.ticketMedio)}</span>
           </div>
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 text-xs whitespace-nowrap">
-            <span className="text-blue-600 font-bold">{stats.totalHoje}</span>
-            <span className="text-blue-500">hoje</span>
+          <div className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800 touch-manipulation">
+            <span className="text-blue-600 dark:text-blue-400 font-bold tabular-nums">{stats.totalHoje}</span>
+            <span className="text-blue-600 dark:text-blue-400 text-xs">hoje</span>
           </div>
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200 text-xs whitespace-nowrap">
-            <span className="text-yellow-600 font-bold">{stats.rascunhos}</span>
-            <span className="text-yellow-500">rasc.</span>
+          <div className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 bg-yellow-50 dark:bg-yellow-950/30 rounded-xl border border-yellow-200 dark:border-yellow-800 touch-manipulation">
+            <span className="text-yellow-600 dark:text-yellow-400 font-bold tabular-nums">{stats.rascunhos}</span>
+            <span className="text-yellow-600 dark:text-yellow-400 text-xs">rasc.</span>
           </div>
-          <div className="flex items-center gap-1 px-2 py-1.5 bg-orange-50 dark:bg-orange-950/30 rounded border border-orange-200 text-xs whitespace-nowrap">
-            <span className="text-orange-600 font-bold">{stats.pendentes}</span>
-            <span className="text-orange-500">pend.</span>
+          <div className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 bg-orange-50 dark:bg-orange-950/30 rounded-xl border border-orange-200 dark:border-orange-800 touch-manipulation col-span-2 sm:col-span-1">
+            <span className="text-orange-600 dark:text-orange-400 font-bold tabular-nums">{stats.pendentes}</span>
+            <span className="text-orange-600 dark:text-orange-400 text-xs">pend.</span>
           </div>
         </div>
 
@@ -822,18 +822,18 @@ export default function Vendas() {
           </Card>
         )}
 
-        {/* Card principal - lista de vendas (página inteira com scroll) */}
-        <Card className="border border-gray-200">
-          <CardHeader className="pb-2 pt-3 px-4">
+        {/* Card principal - lista de vendas */}
+        <Card className="border border-gray-200 dark:border-gray-700 rounded-xl md:rounded-lg overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-3 sm:px-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold">Lista de Vendas</CardTitle>
               <PermissionGate permission="vendas.create">
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button 
                     onClick={() => navigate('/pdv/devolucoes')} 
                     size="sm"
                     variant="ghost"
-                    className="gap-1 h-9 text-muted-foreground hover:text-foreground"
+                    className="gap-1 h-9 min-h-[44px] md:min-h-0 text-muted-foreground hover:text-foreground rounded-xl md:rounded-md touch-manipulation"
                     title="Devoluções e Vouchers"
                   >
                     <ReceiptText className="h-4 w-4" />
@@ -843,7 +843,7 @@ export default function Vendas() {
                     onClick={() => setImportDialogOpen(true)} 
                     size="sm"
                     variant="outline"
-                    className="gap-2 h-9"
+                    className="gap-2 h-9 min-h-[44px] md:min-h-0 rounded-xl md:rounded-md touch-manipulation"
                   >
                     <Upload className="h-4 w-4" />
                     <span className="text-xs hidden sm:inline">Importar</span>
@@ -851,7 +851,7 @@ export default function Vendas() {
                   <Button 
                     onClick={() => navigate('/pdv/venda/nova')} 
                     size="sm"
-                    className="gap-2 h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                    className="gap-2 h-9 min-h-[44px] md:min-h-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl md:rounded-md touch-manipulation"
                   >
                     <Plus className="h-4 w-4" />
                     <span className="text-xs">Nova Venda</span>
@@ -861,41 +861,42 @@ export default function Vendas() {
             </div>
           </CardHeader>
           <CardContent className="p-3 space-y-3">
-            {/* Filtros */}
+            {/* Filtros — mobile: toque confortável, 100% largura */}
             <div className="flex-shrink-0 flex flex-col md:flex-row gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="Buscar por nº venda, cliente, CPF/CNPJ..."
+                  placeholder="Buscar por nº venda, cliente..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-9 md:h-10 text-base md:text-sm border-2 border-gray-300"
+                  className="pl-9 h-11 min-h-[44px] md:h-10 md:min-h-0 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 rounded-xl md:rounded-md touch-manipulation"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[180px] h-9 md:h-10 text-sm border-2 border-gray-300">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="draft">Rascunho</SelectItem>
-                  <SelectItem value="open">Aberta</SelectItem>
-                  <SelectItem value="paid">Paga</SelectItem>
-                  <SelectItem value="partial">Parcial</SelectItem>
-                  <SelectItem value="canceled">Cancelada</SelectItem>
-                  <SelectItem value="refunded">Devolvida</SelectItem>
-                  <SelectItem value="partial_refund">Dev. Parcial</SelectItem>
-                </SelectContent>
-              </Select>
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className={cn(
-                      "w-full md:w-[220px] h-9 md:h-10 text-sm border-2 border-gray-300 justify-start text-left font-normal",
-                      dateFilter === 'custom' && customDateStart && customDateEnd && "text-foreground"
-                    )}
-                  >
+              <div className="flex flex-col sm:flex-row gap-2 sm:flex-1 md:flex-initial">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-11 min-h-[44px] md:h-10 md:min-h-0 text-sm border-2 border-gray-300 dark:border-gray-600 rounded-xl md:rounded-md touch-manipulation [&>span]:truncate">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="draft">Rascunho</SelectItem>
+                    <SelectItem value="open">Aberta</SelectItem>
+                    <SelectItem value="paid">Paga</SelectItem>
+                    <SelectItem value="partial">Parcial</SelectItem>
+                    <SelectItem value="canceled">Cancelada</SelectItem>
+                    <SelectItem value="refunded">Devolvida</SelectItem>
+                    <SelectItem value="partial_refund">Dev. Parcial</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className={cn(
+                        "w-full sm:w-[220px] h-11 min-h-[44px] md:h-10 md:min-h-0 text-sm border-2 border-gray-300 dark:border-gray-600 justify-start text-left font-normal rounded-xl md:rounded-md touch-manipulation",
+                        dateFilter === 'custom' && customDateStart && customDateEnd && "text-foreground"
+                      )}
+                    >
                     <CalendarDays className="mr-2 h-4 w-4" />
                     {dateFilter === 'custom' && customDateStart && customDateEnd ? (
                       <span className="truncate">
@@ -991,6 +992,7 @@ export default function Vendas() {
                   </div>
                 </PopoverContent>
               </Popover>
+              </div>
             </div>
 
             {/* Tabela de vendas */}
@@ -1231,114 +1233,102 @@ export default function Vendas() {
                   </Table>
                 </div>
 
-                {/* Mobile: Cards */}
-                <div className="md:hidden space-y-3">
+                {/* Mobile: Cards compactos — toque confortável, hierarquia clara */}
+                <div className="md:hidden space-y-2.5">
                   {paginatedSales.map((sale) => (
-                    <Card 
+                    <Card
                       key={sale.id}
-                      className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
+                      className="border-2 border-gray-300 dark:border-gray-600 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.99] rounded-xl overflow-hidden touch-manipulation"
                       onClick={() => navigate(`/pdv/venda/${sale.id}`)}
                     >
-                      <CardContent className="p-3 space-y-2">
-                        {/* Header: Número e Total */}
-                        <div className="flex items-center justify-between border-b-2 border-gray-200 pb-2">
-                          <button
-                            type="button"
-                            className="font-semibold text-sm underline underline-offset-2 hover:text-blue-600"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await handleViewSale(sale);
-                            }}
-                            title="Visualizar venda"
-                          >
-                            Venda #{sale.numero}
-                          </button>
-                          <span className="text-base font-bold text-primary">
-                            {fmt(sale.total)}
-                          </span>
-                        </div>
-
-                        {/* Info: Cliente e Vendedor */}
-                        <div className="space-y-1.5">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Cliente</p>
-                            <p className="text-sm font-medium">{sale.cliente_nome || 'Consumidor Final'}</p>
-                            {sale.cliente_cpf_cnpj && (
-                              <p className="text-xs text-muted-foreground">{sale.cliente_cpf_cnpj}</p>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Vendedor</p>
-                            <p className="text-sm">{sale.vendedor_nome || '-'}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={cn('text-xs', SALE_STATUS_COLORS[sale.status])}>
-                              {SALE_STATUS_LABELS[sale.status]}
-                            </Badge>
-                            {sale.is_draft && (
-                              <Badge variant="outline" className="text-xs border-2 border-gray-300">Rascunho</Badge>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Data / Hora</p>
-                            <p className="text-sm">{dateFormatters.withTime(sale.created_at)}</p>
-                          </div>
-                        </div>
-
-                        {/* Footer: Pago e Ações */}
-                        <div className="flex items-center justify-between pt-2 border-t-2 border-gray-200">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Pago</p>
-                            <span className={cn(
-                              "text-sm font-semibold",
-                              Number(sale.total_pago) >= Number(sale.total) ? "text-green-600" : "text-orange-600"
-                            )}>
-                              {fmt(sale.total_pago)}
-                            </span>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
+                      <CardContent className="p-3">
+                        {/* Topo: nº venda + badge + total */}
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <button
+                              type="button"
+                              className="font-semibold text-sm underline underline-offset-2 hover:text-blue-600 text-left truncate"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 await handleViewSale(sale);
                               }}
+                              title="Visualizar venda"
                             >
-                              <Eye className="h-3.5 w-3.5" />
+                              #{sale.numero}
+                            </button>
+                            <Badge className={cn('text-xs font-medium shrink-0', SALE_STATUS_COLORS[sale.status])}>
+                              {SALE_STATUS_LABELS[sale.status]}
+                            </Badge>
+                            {sale.is_draft && (
+                              <Badge variant="outline" className="text-xs shrink-0">Rasc.</Badge>
+                            )}
+                          </div>
+                          <span className="font-semibold text-primary tabular-nums shrink-0">{fmt(sale.total)}</span>
+                        </div>
+                        {/* Cliente em destaque */}
+                        <p className="font-medium text-foreground text-sm truncate mb-1">
+                          {sale.cliente_nome || 'Consumidor Final'}
+                        </p>
+                        {/* Meta: vendedor · data em uma linha */}
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-2">
+                          <span>{sale.vendedor_nome || '-'}</span>
+                          <span>·</span>
+                          <span>{dateFormatters.withTime(sale.created_at)}</span>
+                        </div>
+                        {/* Footer: Pago + ações */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                          <span className={cn(
+                            "text-sm font-semibold tabular-nums",
+                            Number(sale.total_pago) >= Number(sale.total) ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"
+                          )}>
+                            Pago: {fmt(sale.total_pago)}
+                          </span>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 min-h-[44px] rounded-xl touch-manipulation"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await handleViewSale(sale);
+                              }}
+                              aria-label="Visualizar"
+                            >
+                              <Eye className="h-4 w-4" />
                             </Button>
                             {sale.is_draft && (
                               <>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-10 w-10 min-h-[44px] rounded-xl touch-manipulation"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(`/pdv/venda/${sale.id}/editar`);
                                   }}
+                                  aria-label="Editar"
                                 >
-                                  <Edit className="h-3.5 w-3.5" />
+                                  <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  className="h-10 w-10 min-h-[44px] rounded-xl text-destructive hover:text-destructive touch-manipulation"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleOpenDeleteDialog(sale, e);
                                   }}
+                                  aria-label="Excluir"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </>
                             )}
                             {!sale.is_draft && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  <Button variant="ghost" size="icon" className="h-10 w-10 min-h-[44px] rounded-xl touch-manipulation" aria-label="Mais opções">
+                                    <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
@@ -1420,57 +1410,37 @@ export default function Vendas() {
                   ))}
                 </div>
 
-                {/* Paginação */}
+                {/* Paginação — mobile: toque fácil */}
                 {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-200">
-                    <p className="text-sm text-muted-foreground order-2 sm:order-1">
-                      {filteredSales.length} venda(s) • Página {page} de {totalPages}
-                      {filteredSales.length > 0 && (
-                        <span className="ml-1">
-                          ({((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, filteredSales.length)})
-                        </span>
-                      )}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1 tabular-nums min-w-0 truncate">
+                      {filteredSales.length} venda(s) · {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, filteredSales.length)} de {filteredSales.length}
                     </p>
-                    <div className="flex items-center gap-2 order-1 sm:order-2">
+                    <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2 shrink-0">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 gap-1"
+                        className="h-10 min-h-[44px] w-10 p-0 sm:h-9 sm:w-auto sm:min-h-0 sm:gap-1 sm:px-3 rounded-xl sm:rounded-md touch-manipulation"
                         onClick={() => setPage(p => Math.max(1, p - 1))}
                         disabled={page <= 1}
+                        aria-label="Página anterior"
                       >
-                        <ChevronLeft className="h-4 w-4" />
-                        Anterior
+                        <ChevronLeft className="h-5 w-5 sm:h-4 sm:w-4" />
+                        <span className="hidden sm:inline">Anterior</span>
                       </Button>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let p: number;
-                          if (totalPages <= 5) p = i + 1;
-                          else if (page <= 3) p = i + 1;
-                          else if (page >= totalPages - 2) p = totalPages - 4 + i;
-                          else p = page - 2 + i;
-                          return (
-                            <Button
-                              key={p}
-                              variant={page === p ? 'default' : 'outline'}
-                              size="sm"
-                              className="h-9 w-9 p-0"
-                              onClick={() => setPage(p)}
-                            >
-                              {p}
-                            </Button>
-                          );
-                        })}
-                      </div>
+                      <span className="min-w-[2.5rem] text-center text-sm font-medium tabular-nums px-1">
+                        {page}/{totalPages}
+                      </span>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 gap-1"
+                        className="h-10 min-h-[44px] w-10 p-0 sm:h-9 sm:w-auto sm:min-h-0 sm:gap-1 sm:px-3 rounded-xl sm:rounded-md touch-manipulation"
                         onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                         disabled={page >= totalPages}
+                        aria-label="Próxima página"
                       >
-                        Próxima
-                        <ChevronRight className="h-4 w-4" />
+                        <span className="hidden sm:inline">Próxima</span>
+                        <ChevronRight className="h-5 w-5 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </div>

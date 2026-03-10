@@ -178,22 +178,22 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
   }
 
   return (
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle>Contas a Receber</CardTitle>
-              <CardDescription>Gerencie os recebimentos pendentes</CardDescription>
+      <Card className="overflow-hidden min-w-0">
+        <CardHeader className="pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-base sm:text-lg">Contas a Receber</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Gerencie os recebimentos pendentes</CardDescription>
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto rounded-xl sm:rounded-md touch-manipulation shrink-0">
               <Plus className="h-4 w-4" />
               Nova Conta a Receber
             </Button>
           </div>
         </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Resumo */}
-        <div className="grid grid-cols-2 gap-4">
+      <CardContent className="space-y-4 min-w-0">
+        {/* Resumo — mobile: 2 colunas */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 min-w-0">
           <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
             <p className="text-sm text-muted-foreground">A Receber</p>
             <p className="text-xl font-bold text-warning">{fmt(totalPendente)}</p>
@@ -204,24 +204,24 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-sm">
+        {/* Filtros — mobile: toque confortável */}
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3 min-w-0">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0 max-w-full sm:max-w-sm">
             <Label className="text-xs text-muted-foreground">Buscar</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Cliente ou ID..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
               />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Período</Label>
             <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
@@ -233,10 +233,10 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Status</Label>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -249,7 +249,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
           </div>
         </div>
 
-        {/* Tabela */}
+        {/* Lista: mobile = cards; desktop = tabela */}
         {filteredAccounts.length === 0 ? (
           <EmptyState
             variant="no-data"
@@ -257,90 +257,136 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
             description="As contas a receber são geradas automaticamente a partir de vendas e ordens de serviço."
           />
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedAccounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="font-medium">{account.cliente_nome || '-'}</TableCell>
-                    <TableCell className="font-semibold">{fmt(account.valor_total)}</TableCell>
-                    <TableCell>{account.data_vencimento ? dateFormatters.short(account.data_vencimento) : '-'}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(account.status, account.data_vencimento)}>
-                        {account.status === 'parcial' ? 'Parcial' : account.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
+          <>
+            <div className="md:hidden space-y-2 min-w-0">
+              {paginatedAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{account.cliente_nome || '—'}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+                        <span className="font-semibold text-sm tabular-nums">{fmt(account.valor_total)}</span>
+                        <span className="text-xs text-muted-foreground">{account.data_vencimento ? dateFormatters.short(account.data_vencimento) : '—'}</span>
+                        <Badge className={getStatusColor(account.status, account.data_vencimento) + ' text-[10px]'}>
+                          {account.status === 'parcial' ? 'Parcial' : account.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 touch-manipulation"
+                        onClick={() => setViewingAccount(account)}
+                        aria-label="Ver"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {(account.status === 'pendente' || account.status === 'parcial') && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setViewingAccount(account)}
+                          className="h-9 w-9 text-success touch-manipulation"
+                          onClick={() => {
+                            setPayingAccountId(account.id);
+                            setPayDialogOpen(true);
+                          }}
+                          aria-label="Receber"
                         >
-                          <Eye className="h-4 w-4" />
+                          <Check className="h-4 w-4" />
                         </Button>
-                        {(account.status === 'pendente' || account.status === 'parcial') && (
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block border rounded-lg overflow-x-auto min-w-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAccounts.map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell className="font-medium">{account.cliente_nome || '-'}</TableCell>
+                      <TableCell className="font-semibold">{fmt(account.valor_total)}</TableCell>
+                      <TableCell>{account.data_vencimento ? dateFormatters.short(account.data_vencimento) : '-'}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(account.status, account.data_vencimento)}>
+                          {account.status === 'parcial' ? 'Parcial' : account.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-success"
-                            onClick={() => {
-                              setPayingAccountId(account.id);
-                              setPayDialogOpen(true);
-                            }}
+                            className="h-8 w-8"
+                            onClick={() => setViewingAccount(account)}
                           >
-                            <Check className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        {/* Paginação */}
-        {filteredAccounts.length > ITEMS_PER_PAGE && (
-          <div className="flex items-center justify-between gap-4 flex-wrap pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(page * ITEMS_PER_PAGE, filteredAccounts.length)} de {filteredAccounts.length}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Anterior
-              </Button>
-              <span className="text-sm font-medium px-2">
-                Página {page} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
-                Próxima
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+                          {(account.status === 'pendente' || account.status === 'parcial') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-success"
+                              onClick={() => {
+                                setPayingAccountId(account.id);
+                                setPayDialogOpen(true);
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          </div>
+            {filteredAccounts.length > ITEMS_PER_PAGE && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
+                  {((page - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(page * ITEMS_PER_PAGE, filteredAccounts.length)} de {filteredAccounts.length}
+                </p>
+                <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <span className="text-sm font-medium px-2 tabular-nums">{page}/{totalPages}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
 

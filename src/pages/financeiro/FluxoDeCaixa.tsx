@@ -312,15 +312,15 @@ export default function FluxoDeCaixa() {
       subtitle="Entradas, saídas e projeção de caixa"
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col gap-4">
-        <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-4 pb-8 min-w-0">
+        <Card className="flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm p-3 sm:p-4 min-w-0">
+          <div className="flex flex-col sm:flex-row flex-wrap sm:items-end gap-3">
+            <div className="flex flex-wrap gap-1.5">
               {(
                 [
                   ['este-mes', 'Este mês'],
                   ['mes-passado', 'Mês passado'],
-                  ['3-meses', 'Últimos 3 meses'],
+                  ['3-meses', '3 meses'],
                   ['ano', 'Este ano'],
                 ] as [QuickRange, string][]
               ).map(([value, label]) => (
@@ -328,15 +328,15 @@ export default function FluxoDeCaixa() {
                   key={value}
                   variant={quickRange === value ? 'default' : 'outline'}
                   size="sm"
-                  className="h-9"
+                  className="min-h-[44px] sm:min-h-0 sm:h-9 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
                   onClick={() => applyQuick(value)}
                 >
                   {label}
                 </Button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
+              <div className="space-y-1 flex-1 min-w-0">
                 <Label className="text-xs text-muted-foreground">De</Label>
                 <Input
                   type="date"
@@ -345,10 +345,10 @@ export default function FluxoDeCaixa() {
                     setStartDate(e.target.value);
                     setQuickRange('custom');
                   }}
-                  className="h-9 w-36"
+                  className="min-h-[44px] sm:h-9 w-full sm:w-36 rounded-lg touch-manipulation"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 flex-1 min-w-0">
                 <Label className="text-xs text-muted-foreground">Até</Label>
                 <Input
                   type="date"
@@ -357,7 +357,7 @@ export default function FluxoDeCaixa() {
                     setEndDate(e.target.value);
                     setQuickRange('custom');
                   }}
-                  className="h-9 w-36"
+                  className="min-h-[44px] sm:h-9 w-full sm:w-36 rounded-lg touch-manipulation"
                 />
               </div>
             </div>
@@ -365,65 +365,65 @@ export default function FluxoDeCaixa() {
         </Card>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 min-w-0">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
+              <Skeleton key={i} className="h-24 sm:h-28 rounded-xl" />
             ))}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 min-w-0">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 touch-manipulation">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-700">
-                    <ArrowDownLeft className="h-5 w-5" />
+                    <ArrowDownLeft className="h-5 w-5 shrink-0" />
                     Total Entradas
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-emerald-700">
+                  <div className="text-lg sm:text-2xl font-bold text-emerald-700 tabular-nums">
                     {fmt(totalEntradas)}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 touch-manipulation">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-red-700">
-                    <ArrowUpRight className="h-5 w-5" />
+                    <ArrowUpRight className="h-5 w-5 shrink-0" />
                     Total Saídas
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-700">
+                  <div className="text-lg sm:text-2xl font-bold text-red-700 tabular-nums">
                     {fmt(totalSaidas)}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 touch-manipulation">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Wallet className="h-5 w-5" />
+                    <Wallet className="h-5 w-5 shrink-0" />
                     Saldo do Período
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div
-                    className={`text-2xl font-bold ${saldoPeriodo >= 0 ? 'text-emerald-700' : 'text-red-700'}`}
+                    className={`text-lg sm:text-2xl font-bold tabular-nums ${saldoPeriodo >= 0 ? 'text-emerald-700' : 'text-red-700'}`}
                   >
                     {fmt(saldoPeriodo)}
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 touch-manipulation">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
+                    <TrendingUp className="h-5 w-5 shrink-0" />
                     Menor saldo projetado
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div
-                    className={`text-2xl font-bold ${
+                    className={`text-lg sm:text-2xl font-bold tabular-nums ${
                       menorSaldoProjetado >= 0 ? 'text-emerald-700' : 'text-amber-700'
                     }`}
                   >
@@ -440,7 +440,7 @@ export default function FluxoDeCaixa() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="border-[3px] border-gray-400 rounded-xl overflow-hidden">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold">Fluxo diário</CardTitle>
                   <CardDescription>Entradas e saídas por dia no período</CardDescription>
@@ -472,7 +472,7 @@ export default function FluxoDeCaixa() {
                   )}
                 </CardContent>
               </Card>
-              <Card className="border-[3px] border-gray-400 rounded-xl overflow-hidden">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold">Projeção de saldo</CardTitle>
                   <CardDescription>Saldo acumulado e projetado (contas a pagar/receber)</CardDescription>
@@ -518,7 +518,7 @@ export default function FluxoDeCaixa() {
               </Card>
             </div>
 
-            <Card className="flex-1 overflow-hidden border-[3px] border-gray-400 rounded-xl">
+            <Card className="flex-1 overflow-hidden border-2 border-gray-300 dark:border-gray-600 rounded-xl">
               <CardHeader>
                 <CardTitle className="text-lg font-bold">Movimentações</CardTitle>
                 <CardDescription>

@@ -27,8 +27,8 @@ export default function DRE() {
       subtitle="Demonstração do resultado financeiro"
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex-1">
+      <div className="flex flex-col gap-4 pb-8 min-w-0">
+        <div className="flex-1 min-w-0">
           <DREComplete
             valuesVisible={valuesVisible}
             startDate={startDate}

@@ -55,7 +55,6 @@ import JobApplicationSteps from "./pages/JobApplicationSteps";
 import JobSuccess from "./pages/JobSuccess";
 import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
-import TrainingsIndex from "./pages/trainings/TrainingsIndex";
 import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, MarcasModelos as AssistenciaMarcasModelos, ConfiguracaoStatus as AssistenciaConfiguracaoStatus } from "./pages/assistencia";
 import Vendas from "./pages/pdv/Vendas";
 import NovaVenda from "./pages/pdv/NovaVenda";
@@ -182,8 +181,6 @@ const App = () => (
               <Route path="/integracoes/:tab" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/ponto" element={<PermissionRoute permission="rh.ponto"><TimeClock /></PermissionRoute>} />
-            <Route path="/treinamentos" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />
-            <Route path="/treinamentos/:trainingId" element={<PermissionRoute permission="rh.treinamentos"><TrainingsIndex /></PermissionRoute>} />
             <Route path="/logs" element={<ProtectedRoute><UserLogs /></ProtectedRoute>} />
             <Route path="/teste-disc" element={<PermissionRoute permission="disc.view"><DiscTest /></PermissionRoute>} />
               <Route path="/produtos" element={<PermissionRoute permission="produtos.view"><AssistenciaProdutos /></PermissionRoute>} />

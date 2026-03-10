@@ -376,33 +376,43 @@ export default function Clientes() {
 
   return (
     <ModernLayout title="Clientes" subtitle="Gerenciar clientes">
-      <div className="flex flex-col h-full overflow-hidden gap-2 md:gap-3">
-        {/* Mobile: Header compacto */}
-        <div className="md:hidden flex-shrink-0 bg-white/80 dark:bg-slate-900/50 border border-gray-200 rounded-lg p-2 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
-              <Input 
-                placeholder={searchField === 'all' ? "Buscar cliente..." : `Buscar por ${SEARCH_FIELD_LABELS[searchField]}...`} 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className={`h-8 pl-8 text-sm border-gray-200 ${searchField !== 'all' ? 'pr-20' : ''}`} 
+      <div className="flex flex-col min-h-0 md:h-full md:overflow-hidden gap-3 md:gap-3 min-w-0">
+        {/* Mobile: Busca + botão — toque confortável */}
+        <div className="md:hidden shrink-0 space-y-2">
+          <div className="flex items-stretch gap-2 min-h-[44px]">
+            <div className="relative flex-1 min-w-0">
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${isSearching ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
+              <Input
+                placeholder={searchField === 'all' ? "Buscar cliente..." : `Buscar por ${SEARCH_FIELD_LABELS[searchField]}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-11 min-h-[44px] pl-10 pr-3 text-base border-input rounded-xl touch-manipulation"
               />
               {searchField !== 'all' && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
                     {SEARCH_FIELD_LABELS[searchField]}
                   </Badge>
-                  <button onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
-                    <X className="h-3 w-3" />
+                  <button type="button" onClick={() => setSearchField('all')} className="text-muted-foreground hover:text-foreground p-1 rounded touch-manipulation" aria-label="Limpar filtro de busca">
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               )}
             </div>
-            <Button onClick={handleNew} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="h-4 w-4" />
+            <Button onClick={handleNew} size="sm" className="h-11 min-h-[44px] min-w-[48px] px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0 touch-manipulation" aria-label="Novo cliente">
+              <Plus className="h-5 w-5" />
             </Button>
           </div>
+          <Select value={searchField} onValueChange={(v) => setSearchField(v as SearchFieldType)}>
+            <SelectTrigger className="h-11 min-h-[44px] w-full text-sm border-input rounded-xl touch-manipulation [&>span]:truncate">
+              <SelectValue placeholder="Buscar por" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SEARCH_FIELD_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Desktop: Barra de ações completa */}
@@ -439,9 +449,9 @@ export default function Clientes() {
           </div>
         </div>
 
-        {/* Lista de clientes - flex-1 com scroll interno */}
-        <Card className="flex-1 flex flex-col overflow-hidden min-h-0 border border-gray-200">
-          <CardContent className="flex-1 flex flex-col overflow-hidden min-h-0 p-0">
+        {/* Lista de clientes — mobile: página rola; desktop: scroll interno */}
+        <Card className="flex flex-col border border-gray-200 dark:border-gray-700 rounded-xl md:rounded-lg overflow-hidden md:flex-1 md:min-h-0 md:overflow-hidden">
+          <CardContent className="flex flex-col p-0 md:flex-1 md:overflow-hidden md:min-h-0">
             {filteredClientes.length === 0 ? (
               <div className="p-6 md:p-12">
                 <EmptyState
@@ -541,97 +551,66 @@ export default function Clientes() {
                   </div>
                 </div>
 
-                {/* Mobile: Cards com scroll */}
-                <div className="md:hidden flex-1 overflow-auto scrollbar-thin p-2 space-y-3">
-                  {filteredClientes.map((cliente, index) => (
-                    <Card 
+                {/* Mobile: Cards compactos — sem scroll interno, página rola */}
+                <div className="md:hidden">
+                  <p className="text-xs text-muted-foreground px-3 py-2 border-b border-border/60">Toque para abrir · duplo toque para editar</p>
+                  <div className="space-y-2 px-3 py-2 pb-3">
+                  {filteredClientes.map((cliente) => (
+                    <Card
                       key={cliente.id}
-                      className="border-2 border-gray-300 cursor-pointer hover:border-blue-400 transition-all active:scale-[0.98]"
-                      onDoubleClick={() => handleEdit(cliente)}
-                      title="Duplo clique para editar"
+                      className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden touch-manipulation active:scale-[0.99] cursor-pointer"
+                      onClick={() => handleEdit(cliente)}
+                      onDoubleClick={(e) => { e.stopPropagation(); handleEdit(cliente); }}
                     >
-                      <CardContent className="p-3 space-y-2">
-                        {/* Header: Nome */}
-                        <div className="border-b-2 border-gray-200 pb-2">
-                          <h3 className="font-semibold text-sm truncate">{cliente.nome}</h3>
-                          <div className="flex flex-col gap-0.5 mt-1">
-                            {cliente.cpf_cnpj && (
-                              <p className="text-xs text-muted-foreground">CPF/CNPJ: {cliente.cpf_cnpj}</p>
-                            )}
-                            {cliente.rg && (
-                              <p className="text-xs text-muted-foreground">RG: {cliente.rg}</p>
+                      <CardContent className="p-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-foreground text-sm truncate">{cliente.nome}</p>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
+                              {(cliente.whatsapp || cliente.telefone) && (
+                                <span>{cliente.whatsapp || cliente.telefone}</span>
+                              )}
+                              {cliente.cidade && (
+                                <span>{(cliente.whatsapp || cliente.telefone) ? '·' : ''} {cliente.cidade}</span>
+                              )}
+                            </div>
+                            {cliente.email && (
+                              <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cliente.email}</p>
                             )}
                           </div>
-                        </div>
-
-                        {/* Info: Contato e Localização */}
-                        <div className="space-y-2">
-                          {(cliente.whatsapp || cliente.telefone) && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-muted-foreground">
-                                {cliente.whatsapp || cliente.telefone}
-                              </span>
-                            </div>
-                          )}
-                          {cliente.email && (
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-muted-foreground truncate">{cliente.email}</span>
-                            </div>
-                          )}
-                          {cliente.cidade && (
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-muted-foreground">{cliente.cidade}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Footer: Botões de ação */}
-                        <div className="flex justify-end gap-2 pt-2 border-t-2 border-gray-200">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(cliente)}
-                            className="h-8 px-3 text-xs border-2 border-gray-300"
-                          >
-                            <Edit className="h-3.5 w-3.5 mr-1" />
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDelete(cliente.id)}
-                            className="h-8 px-3 text-xs border-2 border-red-300 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-1" />
-                            Excluir
-                          </Button>
+                          <div className="flex gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-lg touch-manipulation" onClick={() => handleEdit(cliente)} aria-label="Editar">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-lg text-destructive hover:text-destructive touch-manipulation" onClick={() => handleDelete(cliente.id)} aria-label="Excluir">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+                  </div>
                 </div>
 
-                {/* Paginação - fixo no rodapé */}
+                {/* Paginação — mobile: toque fácil; desktop: primeira/última + prev/next */}
                 {totalPages > 1 && (
-                  <div className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-200 bg-muted/30">
-                    <div className="text-xs text-muted-foreground">
-                      Mostrando {((page - 1) * pageSize) + 1} - {Math.min(page * pageSize, totalCount)} de {totalCount}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => goToPage(1)} disabled={page === 1}>
+                  <div className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-muted/30 rounded-b-xl sm:rounded-none">
+                    <p className="text-xs text-muted-foreground tabular-nums order-2 sm:order-1">
+                      {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalCount)} de {totalCount}
+                    </p>
+                    <div className="flex items-center gap-1 order-1 sm:order-2">
+                      <Button variant="outline" size="icon" className="hidden sm:flex h-8 w-8" onClick={() => goToPage(1)} disabled={page === 1} aria-label="Primeira página">
                         <ChevronsLeft className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevPage} disabled={page === 1}>
-                        <ChevronLeft className="h-3.5 w-3.5" />
+                      <Button variant="outline" size="sm" className="h-10 min-h-[44px] w-10 p-0 rounded-xl touch-manipulation md:h-8 md:w-8 md:min-h-0 md:rounded-md" onClick={prevPage} disabled={page === 1} aria-label="Página anterior">
+                        <ChevronLeft className="h-5 w-5 md:h-3.5 md:w-3.5" />
                       </Button>
-                      <span className="px-2 text-xs font-medium">{page} / {totalPages}</span>
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextPage} disabled={page === totalPages}>
-                        <ChevronRight className="h-3.5 w-3.5" />
+                      <span className="min-w-[2.5rem] text-center text-sm font-medium tabular-nums px-1">{page} / {totalPages}</span>
+                      <Button variant="outline" size="sm" className="h-10 min-h-[44px] w-10 p-0 rounded-xl touch-manipulation md:h-8 md:w-8 md:min-h-0 md:rounded-md" onClick={nextPage} disabled={page === totalPages} aria-label="Próxima página">
+                        <ChevronRight className="h-5 w-5 md:h-3.5 md:w-3.5" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => goToPage(totalPages)} disabled={page === totalPages}>
+                      <Button variant="outline" size="icon" className="hidden sm:flex h-8 w-8" onClick={() => goToPage(totalPages)} disabled={page === totalPages} aria-label="Última página">
                         <ChevronsRight className="h-3.5 w-3.5" />
                       </Button>
                     </div>

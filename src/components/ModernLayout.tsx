@@ -36,15 +36,20 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out">
-          {/* Mobile Header - Mínimo */}
-          <header className="h-10 bg-background/95 backdrop-blur-sm sticky top-0 z-40 md:hidden flex items-center px-2 border-b border-gray-100">
-            <SidebarTrigger className="h-8 w-8 p-1" />
-            {title && (
-              <div className="ml-2 min-w-0 flex-1">
-                <h1 className="font-medium text-sm truncate text-gray-700">{title}</h1>
-              </div>
-            )}
-            <ThemeToggle variant="button" size="sm" />
+          {/* Mobile Header — título + AppBar (navegação DRE, Contas etc. no financeiro) */}
+          <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 md:hidden flex flex-col border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div className="h-10 flex items-center px-2 min-h-[40px]">
+              <SidebarTrigger className="h-8 w-8 p-1 shrink-0" />
+              {title && (
+                <div className="ml-2 min-w-0 flex-1">
+                  <h1 className="font-medium text-sm truncate text-foreground">{title}</h1>
+                </div>
+              )}
+              <ThemeToggle variant="button" size="sm" className="shrink-0" />
+            </div>
+            <div className="min-h-0 min-w-0 overflow-x-auto overflow-y-hidden">
+              <AppBar />
+            </div>
           </header>
 
           {/* Desktop Header */}
@@ -105,10 +110,10 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
             </div>
           </header>
 
-          {/* Main Content - usa todo o espaço disponível */}
-          <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Main Content — mobile: página rola; desktop: scroll interno */}
+          <main className="flex-1 flex flex-col min-h-0 overflow-x-hidden overflow-y-auto md:overflow-hidden">
             <div 
-              className="flex-1 min-h-0 overflow-y-auto p-1 sm:p-2 md:p-4 pt-1 sm:pt-2 md:pt-4 scrollbar-thin"
+              className="flex-1 min-h-0 p-1 sm:p-2 md:p-4 pt-1 sm:pt-2 md:pt-4 overflow-x-hidden md:overflow-y-auto scrollbar-thin min-w-0"
             >
               {children}
             </div>

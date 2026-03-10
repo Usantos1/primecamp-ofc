@@ -22,7 +22,6 @@ import {
   ListChecks,
   Compass,
   Bell,
-  BookOpen,
   FilePlus,
   CheckSquare,
   Calendar as CalendarIcon,
@@ -263,13 +262,6 @@ export default function CadastrosBase() {
       icon: Users,
       path: '/rh',
       color: 'text-emerald-700',
-    },
-    {
-      title: 'Treinamentos (Academy)',
-      description: 'Catálogo de cursos',
-      icon: BookOpen,
-      path: '/treinamentos',
-      color: 'text-indigo-700',
     },
     {
       title: 'Candidato DISC',

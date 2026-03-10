@@ -16,7 +16,6 @@ import {
   Receipt,
   List,
   Clock,
-  GraduationCap,
   Boxes,
   FileText,
   LogOut,
@@ -154,12 +153,11 @@ export function AppSidebar() {
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // GESTÃO - RH, Metas, Treinamentos
+  // GESTÃO - RH, Metas
   // ═══════════════════════════════════════════════════════════════
   const gestaoItems = [
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
-    { label: "Academy", path: "/treinamentos", icon: GraduationCap, permission: "treinamentos.view" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════

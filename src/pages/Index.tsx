@@ -204,13 +204,13 @@ const Index = () => {
       title="Dashboard" 
       subtitle={isGestor ? "Visão geral e gestão" : "Acesso rápido às principais funcionalidades"}
     >
-      <div className="flex flex-col h-full overflow-hidden min-h-0">
-        {/* Indicadores Financeiros + Alertas (6 na mesma linha) */}
+      <div className="flex flex-col min-h-0 md:h-full md:overflow-hidden">
+        {/* Indicadores Financeiros + Alertas — mobile: 2 cols, toque confortável */}
         {isGestor && financialData && (
-          <div className="flex-shrink-0 px-2 sm:px-3 md:px-0 pb-3 sm:pb-4 border-b border-gray-200 dark:border-gray-700 bg-background">
-            <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+          <div className="flex-shrink-0 px-3 sm:px-3 md:px-0 pb-3 sm:pb-4 border-b border-gray-200 dark:border-gray-700 bg-background">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-base md:text-lg font-semibold">Indicadores Financeiros</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-h-[44px]">
                 <DashboardPeriodFilter
                   value={trendPeriod}
                   onChange={setTrendPeriod}
@@ -221,7 +221,7 @@ const Index = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 w-8 sm:h-9 sm:w-9 p-0 shrink-0 border-gray-300 dark:border-gray-600"
+                  className="h-11 min-h-[44px] w-11 sm:h-9 sm:w-9 sm:min-h-0 shrink-0 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-md touch-manipulation"
                   onClick={() => {
                     const next = !valuesVisible;
                     setStoredValuesVisible(next);
@@ -239,7 +239,7 @@ const Index = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 w-8 sm:h-9 sm:w-9 p-0 shrink-0 border-gray-300 dark:border-gray-600"
+                  className="h-11 min-h-[44px] w-11 sm:h-9 sm:w-9 sm:min-h-0 shrink-0 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-md touch-manipulation"
                   onClick={() => { refetch(); refetchFinanceiro(); }}
                   title="Atualizar dados"
                   aria-label="Atualizar dashboard"
@@ -249,7 +249,7 @@ const Index = () => {
                 </Button>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2">
               <FinancialCards
                 data={financialData}
                 financeiroKpis={financeiroDashboard?.kpis}
@@ -260,11 +260,11 @@ const Index = () => {
               {alerts && (
                 <>
                   <Card
-                    className="border-2 border-orange-300 dark:border-orange-600 shadow-sm hover:shadow-md transition-all cursor-pointer min-w-0 bg-orange-50 dark:bg-orange-950/30 py-1 px-2"
+                    className="border-2 border-orange-300 dark:border-orange-600 shadow-sm hover:shadow-md transition-all cursor-pointer min-w-0 bg-orange-50 dark:bg-orange-950/30 py-1 px-2 rounded-xl min-h-[72px] sm:min-h-0 sm:rounded-lg touch-manipulation active:scale-[0.99]"
                     onClick={() => navigate('/produtos?filter=estoque_baixo')}
                   >
                     <CardHeader className="pb-1 pt-2 px-2">
-                      <CardTitle className="text-[10px] sm:text-xs font-semibold flex items-center gap-1 text-orange-700 dark:text-orange-400">
+                      <CardTitle className="text-xs sm:text-xs font-semibold flex items-center gap-1 text-orange-700 dark:text-orange-400">
                         <Package className="h-5 w-5 shrink-0" />
                         Estoque Baixo
                       </CardTitle>
@@ -275,11 +275,11 @@ const Index = () => {
                     </CardContent>
                   </Card>
                   <Card
-                    className={`border-2 shadow-sm hover:shadow-md transition-all cursor-pointer min-w-0 py-1 px-2 ${alerts.caixaAberto ? 'border-green-300 bg-green-50 dark:border-green-600 dark:bg-green-950/30' : 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900/50'}`}
+                    className={`border-2 shadow-sm hover:shadow-md transition-all cursor-pointer min-w-0 py-1 px-2 rounded-xl min-h-[72px] sm:min-h-0 sm:rounded-lg touch-manipulation active:scale-[0.99] ${alerts.caixaAberto ? 'border-green-300 bg-green-50 dark:border-green-600 dark:bg-green-950/30' : 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900/50'}`}
                     onClick={() => navigate('/pdv/caixa')}
                   >
                     <CardHeader className="pb-1 pt-2 px-2">
-                      <CardTitle className="text-[10px] sm:text-xs font-semibold flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                      <CardTitle className="text-xs sm:text-xs font-semibold flex items-center gap-1 text-gray-700 dark:text-gray-300">
                         <Wallet className="h-5 w-5 shrink-0" />
                         Caixa Aberto
                       </CardTitle>
@@ -295,9 +295,9 @@ const Index = () => {
           </div>
         )}
 
-        {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-2 sm:px-3 md:px-0 pt-3 sm:pt-4 min-h-0">
-          <div className="space-y-4 sm:space-y-5 md:space-y-6 pb-4 sm:pb-6 max-w-full">
+        {/* Conteúdo — mobile: página rola; desktop: scroll interno */}
+        <div className="md:flex-1 md:min-h-0 md:overflow-y-auto overflow-x-hidden scrollbar-thin px-3 sm:px-3 md:px-0 pt-3 sm:pt-4">
+          <div className="space-y-4 sm:space-y-5 md:space-y-6 pb-6 sm:pb-6 max-w-full min-w-0">
             {/* Renderizar widgets conforme configuração (exceto financial-cards que está fixo) */}
             {enabledWidgets.map((widget) => {
               switch (widget.id) {

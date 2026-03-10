@@ -63,17 +63,15 @@ export function OSStatusCards({ data, showValues = false }: OSStatusCardsProps) 
         return (
           <Card
             key={card.title}
-            className="border-2 border-gray-300 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98]"
+            className="border-2 border-gray-300 dark:border-gray-600 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.99] rounded-xl md:rounded-lg min-h-[52px] sm:min-h-[56px] md:min-h-0 touch-manipulation"
             onClick={() => navigate(card.path)}
           >
-            <CardHeader className="pb-2 pt-2 px-3">
-              <CardTitle className="text-[10px] md:text-xs font-semibold flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <Icon className={`h-3 w-3 md:h-4 md:w-4 ${card.color.replace('bg-', 'text-')}`} />
-                  {card.title}
-                </span>
-                <span className="text-base md:text-xl font-bold">{card.value}</span>
+            <CardHeader className="pb-2 pt-2 px-3 sm:py-2 sm:px-3 flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-xs md:text-xs font-semibold flex items-center gap-1.5 min-w-0">
+                <Icon className={`h-4 w-4 shrink-0 ${card.color.replace('bg-', 'text-')}`} />
+                <span className="truncate">{card.title}</span>
               </CardTitle>
+              <span className="text-base md:text-xl font-bold tabular-nums shrink-0">{card.value}</span>
             </CardHeader>
           </Card>
         );

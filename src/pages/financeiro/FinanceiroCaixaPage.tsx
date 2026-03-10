@@ -20,7 +20,7 @@ export default function FinanceiroCaixaPage() {
       subtitle={isAdmin ? 'Gestão de sessões de caixa' : 'Meu caixa (hoje)'}
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col h-full min-h-0 overflow-y-auto overflow-x-hidden gap-4">
+      <div className="flex flex-col gap-4 pb-8 min-w-0 overflow-x-hidden">
         {isAdmin && (
           <CaixaGeral
             dateFilter={dateFilter}

@@ -75,15 +75,15 @@ function WalletSaldoCard({
   const displaySaldo = valuesVisible ? currencyFormatters.brl(saldo) : MASKED_VALUE;
   if (compact) {
     return (
-      <Card className="overflow-hidden min-w-0 min-w-[100px] flex-1 basis-0 min-h-[72px] flex flex-col">
-        <CardHeader className="pb-0.5 pt-2 px-2">
+      <Card className="overflow-hidden min-w-0 flex-1 basis-0 min-h-0 flex flex-col rounded-lg">
+        <CardHeader className="pb-0 pt-1.5 px-2 sm:pt-2">
           <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
             <Wallet className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{name}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-2 pb-2 pt-0 flex-1 flex flex-col justify-end min-h-[2.5rem]">
-          <p className={cn('text-sm sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
+        <CardContent className="px-2 pb-1.5 sm:pb-2 pt-0 flex-1 flex flex-col justify-end min-h-0">
+          <p className={cn('text-xs sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
             {displaySaldo}
           </p>
         </CardContent>
@@ -141,7 +141,7 @@ function SaldoCard({
           <p className={cn('text-sm sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
             {displaySaldo}
           </p>
-          <p className="text-[10px] text-muted-foreground truncate mt-0.5 min-h-[1rem]">
+          <p className="text-[10px] text-muted-foreground mt-0.5 min-h-[1rem] line-clamp-2 break-words">
             {(bruto > 0 || taxa !== 0) ? (
               <>Bruto {displayBruto}{taxa > 0 && <> · −{displayTaxa}</>}</>
             ) : (
@@ -444,8 +444,8 @@ export function CaixaGeral({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold shrink-0">Caixa geral (tesouraria)</h2>
-        {/* Único bloco de filtros: Período + Status ao lado do olhinho e ações */}
-        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
+        {/* Único bloco de filtros: Período + Status + ações — mobile: wrap e toque confortável */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <div className="flex items-center gap-1.5 shrink-0">
             <Label className="text-muted-foreground whitespace-nowrap text-xs">Período</Label>
             <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
@@ -454,7 +454,7 @@ export function CaixaGeral({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'h-8 w-[140px] sm:w-[160px] text-xs justify-start font-normal',
+                    'min-h-[44px] sm:h-8 w-full min-w-[140px] sm:w-[160px] text-xs justify-start font-normal rounded-xl sm:rounded-md touch-manipulation',
                     dateFilter === 'custom' && customDateStart && customDateEnd && 'text-foreground'
                   )}
                 >
@@ -518,7 +518,7 @@ export function CaixaGeral({
                 if (v === 'all' || v === 'open' || v === 'closed') setStatusFilter(v);
               }}
             >
-              <SelectTrigger id="caixa-status" className="h-8 w-[100px] text-xs">
+              <SelectTrigger id="caixa-status" className="min-h-[44px] sm:h-8 w-[100px] text-xs rounded-xl sm:rounded-md touch-manipulation">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -532,7 +532,7 @@ export function CaixaGeral({
             <Button
               variant="outline"
               size="sm"
-              className="h-8 w-8 p-0 shrink-0"
+              className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 p-0 shrink-0 rounded-xl sm:rounded-md touch-manipulation"
               onClick={() => setValuesVisible(!valuesVisible)}
               title={valuesVisible ? 'Ocultar valores' : 'Exibir valores'}
               aria-label={valuesVisible ? 'Ocultar valores em reais' : 'Exibir valores em reais'}
@@ -540,11 +540,11 @@ export function CaixaGeral({
               {valuesVisible ? <Eye className="h-4 w-4 text-muted-foreground" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowRetiradaDialog(true)}>
+          <Button variant="outline" size="sm" className="min-h-[44px] sm:h-8 text-xs rounded-xl sm:rounded-md touch-manipulation shrink-0" onClick={() => setShowRetiradaDialog(true)}>
             <MinusCircle className="h-3.5 w-3.5 mr-1" />
             Retirar
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => refetch()} disabled={isLoading}>
+          <Button variant="outline" size="sm" className="min-h-[44px] sm:h-8 text-xs rounded-xl sm:rounded-md touch-manipulation shrink-0" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={cn('h-3.5 w-3.5 mr-1', isLoading && 'animate-spin')} />
             Atualizar
           </Button>
@@ -555,14 +555,14 @@ export function CaixaGeral({
         <div className="text-muted-foreground py-8 text-center">Carregando saldos...</div>
       ) : (
         <>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-              <Wallet className="h-4 w-4" />
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 flex items-center gap-1.5">
+              <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Carteiras (saldo real)
             </h3>
-            <div className="flex flex-wrap justify-center gap-2 min-w-0">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-1.5 sm:gap-2 min-w-0">
               {walletList.map((w) => (
-                <div key={w.id} className="w-full sm:w-[min(100%,200px)]">
+                <div key={w.id} className="min-w-0 w-full sm:w-[min(100%,200px)]">
                   <WalletSaldoCard
                     name={w.name}
                     saldo={round2(saldoPorWallet[w.id] ?? 0)}

@@ -244,6 +244,16 @@ export default function OrdensServico() {
     problema: 'Problema',
   };
 
+  // Mobile: um toque abre a OS (double-tap não é confiável em touch)
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia('(pointer: coarse)');
+    setIsTouchDevice(m.matches);
+    const listener = () => setIsTouchDevice(m.matches);
+    m.addEventListener('change', listener);
+    return () => m.removeEventListener('change', listener);
+  }, []);
+
   // Estados
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState<OSSearchFieldType>('all');
@@ -595,25 +605,41 @@ export default function OrdensServico() {
     { label: 'Canceladas', value: stats.canceladas || 0, color: 'red', filter: 'cancelada' },
   ];
 
+  const getStatusChipClasses = (color: string, active: boolean) => {
+    if (!active) return 'bg-muted/80 border-border text-muted-foreground';
+    const map: Record<string, string> = {
+      blue: 'bg-blue-100 border-blue-400 text-blue-700 dark:bg-blue-950/50 dark:border-blue-500 dark:text-blue-300',
+      yellow: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-950/50 dark:border-amber-500 dark:text-amber-300',
+      purple: 'bg-purple-100 border-purple-400 text-purple-700 dark:bg-purple-950/50 dark:border-purple-500 dark:text-purple-300',
+      orange: 'bg-orange-100 border-orange-400 text-orange-700 dark:bg-orange-950/50 dark:border-orange-500 dark:text-orange-300',
+      emerald: 'bg-emerald-100 border-emerald-400 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-500 dark:text-emerald-300',
+      cyan: 'bg-cyan-100 border-cyan-400 text-cyan-700 dark:bg-cyan-950/50 dark:border-cyan-500 dark:text-cyan-300',
+      gray: 'bg-gray-200 border-gray-400 text-gray-800 dark:bg-gray-700 dark:border-gray-500 dark:text-gray-200',
+      red: 'bg-red-100 border-red-400 text-red-700 dark:bg-red-950/50 dark:border-red-500 dark:text-red-300',
+    };
+    return map[color] ?? map.blue;
+  };
+
   return (
     <ModernLayout title="Ordens de Serviço" subtitle="Gestão de assistência técnica">
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col min-h-0 md:h-full md:overflow-hidden">
         
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* Mobile: Estatísticas inline compactas */}
+        {/* Mobile: Status em grid 2 colunas, área de toque confortável */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="md:hidden flex-shrink-0 flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-thin">
-          {statsCards.slice(0, 5).map((card) => (
+        <div className="md:hidden grid grid-cols-2 gap-2 shrink-0 mb-3">
+          {statsCards.slice(0, 6).map((card) => (
             <button
               key={card.filter}
               onClick={() => setStatusFilter(card.filter)}
               className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap border",
-                statusFilter === card.filter ? `bg-${card.color}-100 border-${card.color}-400 text-${card.color}-700` : "bg-gray-50 border-gray-200 text-gray-600"
+                'flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 rounded-xl border text-left transition-colors touch-manipulation',
+                'text-sm font-medium rounded-xl shadow-sm',
+                getStatusChipClasses(card.color, statusFilter === card.filter)
               )}
             >
-              <span className="font-bold">{card.value}</span>
-              <span>{card.label}</span>
+              <span className="font-bold text-base tabular-nums">{card.value}</span>
+              <span className="truncate">{card.label}</span>
             </button>
           ))}
         </div>
@@ -639,23 +665,35 @@ export default function OrdensServico() {
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* Mobile: Filtros compactos */}
+        {/* Mobile: Busca + botão e filtro — toque confortável, 100% largura */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="md:hidden flex-shrink-0 bg-white/80 dark:bg-slate-900/50 border border-gray-200 rounded-lg p-2 mb-2 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar OS..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 pl-8 text-sm border-gray-200" />
+        <div className="md:hidden shrink-0 space-y-3 mb-3">
+          <div className="flex items-stretch gap-2 min-h-[44px]">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder="Buscar OS..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-11 min-h-[44px] pl-10 pr-3 text-base border-input rounded-xl touch-manipulation"
+              />
             </div>
             <PermissionGate permission="os.create">
-              <Button onClick={() => navigate('/os/nova')} size="sm" className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="h-4 w-4" />
+              <Button
+                onClick={() => navigate('/os/nova')}
+                size="sm"
+                className="h-11 min-h-[44px] min-w-[48px] px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0 touch-manipulation"
+                aria-label="Nova OS"
+              >
+                <Plus className="h-5 w-5" />
               </Button>
             </PermissionGate>
           </div>
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-7 flex-1 text-xs border-gray-200"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="h-11 min-h-[44px] w-full text-sm border-input rounded-xl touch-manipulation [&>span]:truncate">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="abertas">Abertas</SelectItem>
@@ -664,7 +702,9 @@ export default function OrdensServico() {
               </SelectContent>
             </Select>
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 px-2 text-xs"><XCircle className="h-3 w-3" /></Button>
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-11 min-h-[44px] min-w-[44px] p-0 shrink-0 rounded-xl touch-manipulation" aria-label="Limpar filtros">
+                <XCircle className="h-5 w-5" />
+              </Button>
             )}
           </div>
         </div>
@@ -853,11 +893,11 @@ export default function OrdensServico() {
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* ÁREA DA TABELA */}
+        {/* ÁREA DA TABELA — desktop: scroll interno; mobile: página rola */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <Card className="flex-1 flex flex-col overflow-hidden border-gray-200 shadow-sm">
-            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-col min-h-0 md:flex-1 md:overflow-hidden">
+          <Card className="flex flex-col border-gray-200 shadow-sm md:flex-1 md:overflow-hidden">
+            <CardContent className="p-0 flex flex-col md:flex-1 md:overflow-hidden">
               {isLoading ? (
                 <div className="p-10 text-center text-muted-foreground">
                   <div className="space-y-3">
@@ -975,8 +1015,10 @@ export default function OrdensServico() {
                     </div>
                   </div>
 
-                  {/* Mobile: Cards */}
-                  <div className="md:hidden flex-1 overflow-y-auto min-h-0 space-y-3 p-3">
+                  {/* Mobile: Cards compactos — sem scroll interno, página rola */}
+                  <div className="md:hidden">
+                    <p className="text-xs text-muted-foreground px-3 py-2 border-b border-border/60">Toque para selecionar · dois toques para abrir a OS</p>
+                    <div className="space-y-2.5 px-3 py-2 pb-3">
                     {paginatedOrdens.map((os) => {
                       const cliente = getClienteById(os.cliente_id);
                       const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
@@ -988,70 +1030,92 @@ export default function OrdensServico() {
                       const statusColor = statusConfig?.cor ?? getStatusOSColor(os.status);
 
                       return (
-                        <Card 
+                        <Card
                           key={os.id}
                           className={cn(
-                            'border-gray-300 cursor-pointer hover:shadow-md transition-all active:scale-[0.98] shadow-sm',
-                            isAtrasada && 'border-red-500 bg-red-50',
-                            selectedOsId === os.id && 'ring-2 ring-primary'
+                            'cursor-pointer transition-all active:scale-[0.99] shadow-sm rounded-xl border overflow-hidden touch-manipulation',
+                            isAtrasada && 'border-red-400 bg-red-50/50 dark:bg-red-950/20',
+                            selectedOsId === os.id && 'ring-2 ring-primary ring-offset-2'
                           )}
-                          onClick={() => setSelectedOsId(os.id)}
-                          onDoubleClick={() => navigate(`/os/${os.id}`)}
+                          onClick={() => isTouchDevice ? navigate(`/os/${os.id}`) : setSelectedOsId(os.id)}
+                          onDoubleClick={!isTouchDevice ? () => navigate(`/os/${os.id}`) : undefined}
                         >
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-start justify-between border-b border-gray-200 pb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-blue-600 text-lg">#{os.numero}</span>
-                                <Badge className={cn('text-xs text-white', statusColor)}>
-                                  {statusLabel}
-                                </Badge>
-                              </div>
+                          <CardContent className="p-3">
+                            {/* Topo: nº OS + badge */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="font-bold text-blue-600 dark:text-blue-400 text-base tabular-nums">#{os.numero}</span>
+                              <Badge className={cn('text-xs font-medium shrink-0', statusColor)}>
+                                {statusLabel}
+                              </Badge>
                             </div>
-                            <div className="border-b border-gray-200 pb-2">
-                              <p className="font-semibold text-gray-900">{cliente?.nome || os.cliente_nome || '-'}</p>
-                              {(cliente?.telefone || os.telefone_contato) && (
-                                <p className="text-xs text-muted-foreground mt-1">{os.telefone_contato || cliente?.telefone}</p>
+                            {/* Cliente em destaque */}
+                            <p className="font-semibold text-foreground text-sm leading-tight truncate mb-1.5">
+                              {cliente?.nome || os.cliente_nome || '-'}
+                            </p>
+                            {/* Aparelho e problema em uma linha compacta */}
+                            <div className="text-xs text-muted-foreground line-clamp-2 min-w-0 leading-tight">
+                              {(modelo?.nome || os.modelo_nome) && (
+                                <span>{modelo?.nome || os.modelo_nome}{marca?.nome || os.marca_nome ? ` · ${marca?.nome || os.marca_nome}` : ''}</span>
                               )}
+                              {os.descricao_problema && (
+                                <span>{(modelo?.nome || os.modelo_nome) ? ' · ' : ''}{os.descricao_problema}</span>
+                              )}
+                              {!(modelo?.nome || os.modelo_nome) && !os.descricao_problema && <span>—</span>}
                             </div>
-                            {(modelo?.nome || os.modelo_nome) && (
-                              <div className="border-b border-gray-200 pb-2">
-                                <p className="text-xs text-gray-500">Aparelho</p>
-                                <p className="font-medium">{modelo?.nome || os.modelo_nome} - {marca?.nome || os.marca_nome}</p>
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/60">
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                                {os.data_entrada && <span>Entrada: {dateFormatters.short(os.data_entrada)}</span>}
+                                {os.previsao_entrega && (
+                                  <span className={isAtrasada ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
+                                    Previsão: {dateFormatters.short(os.previsao_entrega)}
+                                  </span>
+                                )}
                               </div>
-                            )}
-                            {os.descricao_problema && (
-                              <div className="border-b border-gray-200 pb-2">
-                                <p className="text-xs text-gray-500">Problema</p>
-                                <p className="text-sm line-clamp-2">{os.descricao_problema}</p>
-                              </div>
-                            )}
-                            <div className="flex justify-between items-end pt-1">
-                              <div>
-                                {os.data_entrada && <p className="text-xs text-gray-500">Entrada: {dateFormatters.short(os.data_entrada)}</p>}
-                                {os.previsao_entrega && <p className={cn("text-xs", isAtrasada ? "text-red-600 font-medium" : "text-gray-500")}>Previsão: {dateFormatters.short(os.previsao_entrega)}</p>}
-                              </div>
-                              {valorTotal > 0 && <p className="font-bold text-emerald-600 text-lg">{currencyFormatters.brl(valorTotal)}</p>}
+                              {valorTotal > 0 && (
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-sm shrink-0">
+                                  {currencyFormatters.brl(valorTotal)}
+                                </span>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
                       );
                     })}
+                    </div>
                   </div>
                 </>
               )}
             </CardContent>
           </Card>
 
-          {/* Mobile: Paginação */}
-          <div className="md:hidden shrink-0 bg-gray-50/50 mt-3 px-4 py-3 flex items-center justify-between rounded-xl border border-gray-200">
-            <div className="text-xs text-muted-foreground">{(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, filteredOrdens.length)} de {filteredOrdens.length}</div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1} className="h-8 w-8 p-0">
-                <ChevronLeft className="h-4 w-4" />
+          {/* Mobile: Paginação — toque fácil, visual limpo */}
+          <div className="md:hidden shrink-0 mt-3 px-3 py-3 flex items-center justify-between gap-3 rounded-xl bg-muted/40 border border-border">
+            <p className="text-xs text-muted-foreground tabular-nums min-w-0 truncate">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredOrdens.length)} de {filteredOrdens.length}
+            </p>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 1}
+                className="h-10 min-h-[44px] w-10 p-0 rounded-xl touch-manipulation"
+                aria-label="Página anterior"
+              >
+                <ChevronLeft className="h-5 w-5" />
               </Button>
-              <span className="text-xs font-medium">{page}/{totalPages || 1}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages} className="h-8 w-8 p-0">
-                <ChevronRight className="h-4 w-4" />
+              <span className="min-w-[3rem] text-center text-sm font-medium tabular-nums px-1">
+                {page}/{totalPages || 1}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => p + 1)}
+                disabled={page >= totalPages}
+                className="h-10 min-h-[44px] w-10 p-0 rounded-xl touch-manipulation"
+                aria-label="Próxima página"
+              >
+                <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
           </div>

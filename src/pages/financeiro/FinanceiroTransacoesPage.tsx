@@ -105,7 +105,7 @@ export default function FinanceiroTransacoesPage() {
       subtitle="Transações financeiras"
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 pb-8 min-w-0">
         {/* Filtros de Data */}
         <DateFilterBar
           dateFilter={dateFilter}
@@ -117,7 +117,7 @@ export default function FinanceiroTransacoesPage() {
           onDatesChange={handleDatesChange}
         />
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0">
           <TransactionsManager startDate={startDate} endDate={endDate} valuesVisible={valuesVisible} />
         </div>
       </div>

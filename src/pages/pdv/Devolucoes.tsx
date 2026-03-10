@@ -638,261 +638,325 @@ export default function Devolucoes() {
       title="Devoluções e Vouchers"
       subtitle="Gerencie devoluções, trocas e cupons de crédito"
     >
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total de Vouchers</CardDescription>
-            <CardTitle className="text-2xl">{stats.totalVouchers}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Vouchers Ativos</CardDescription>
-            <CardTitle className="text-2xl text-green-600">{stats.activeVouchers}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Saldo em Vouchers</CardDescription>
-            <CardTitle className="text-2xl text-blue-600">{formatCurrency(stats.totalValue)}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total de Devoluções</CardDescription>
-            <CardTitle className="text-2xl">{stats.totalRefunds}</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
+      <div className="flex flex-col gap-3 md:gap-6 pb-8 min-w-0">
+        {/* Estatísticas — mobile: compactos */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-4">
+          <Card className="rounded-lg md:rounded-lg touch-manipulation">
+            <CardHeader className="py-2 px-2 sm:pb-2 sm:pt-3 sm:px-6">
+              <CardDescription className="text-[10px] sm:text-sm leading-tight">Total de Vouchers</CardDescription>
+              <CardTitle className="text-lg sm:text-2xl tabular-nums leading-tight">{stats.totalVouchers}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="rounded-lg md:rounded-lg touch-manipulation">
+            <CardHeader className="py-2 px-2 sm:pb-2 sm:pt-3 sm:px-6">
+              <CardDescription className="text-[10px] sm:text-sm leading-tight">Vouchers Ativos</CardDescription>
+              <CardTitle className="text-lg sm:text-2xl text-green-600 tabular-nums leading-tight">{stats.activeVouchers}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="rounded-lg md:rounded-lg touch-manipulation">
+            <CardHeader className="py-2 px-2 sm:pb-2 sm:pt-3 sm:px-6">
+              <CardDescription className="text-[10px] sm:text-sm leading-tight">Saldo em Vouchers</CardDescription>
+              <CardTitle className="text-lg sm:text-2xl text-blue-600 tabular-nums leading-tight">{formatCurrency(stats.totalValue)}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="rounded-lg md:rounded-lg touch-manipulation col-span-2 md:col-span-1">
+            <CardHeader className="py-2 px-2 sm:pb-2 sm:pt-3 sm:px-6">
+              <CardDescription className="text-[10px] sm:text-sm leading-tight">Total de Devoluções</CardDescription>
+              <CardTitle className="text-lg sm:text-2xl tabular-nums leading-tight">{stats.totalRefunds}</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
 
-      {/* Validar Voucher */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <QrCode className="h-5 w-5" />
-            Validar Voucher
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Digite o código do voucher (ex: VC-ABC123)"
-              value={validationCode}
-              onChange={(e) => setValidationCode(e.target.value.toUpperCase())}
-              className="max-w-md"
-            />
-            <Button onClick={handleValidateVoucher} disabled={loading}>
-              <Search className="h-4 w-4 mr-2" />
-              Validar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Validar Voucher — compacto */}
+        <Card className="rounded-lg md:rounded-lg overflow-hidden">
+          <CardHeader className="py-2 px-3 sm:py-3 sm:px-6">
+            <CardTitle className="text-sm sm:text-lg flex items-center gap-2">
+              <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
+              Validar Voucher
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-2 px-3 sm:py-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                placeholder="Código do voucher (ex: VC-ABC123)"
+                value={validationCode}
+                onChange={(e) => setValidationCode(e.target.value.toUpperCase())}
+                className="flex-1 min-w-0 h-10 sm:h-10 rounded-lg touch-manipulation text-sm"
+              />
+              <Button
+                onClick={handleValidateVoucher}
+                disabled={loading}
+                className="h-10 rounded-lg touch-manipulation shrink-0"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Validar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Tabs defaultValue="vouchers" className="w-full">
-        <TabsList>
-          <TabsTrigger value="vouchers" className="flex items-center gap-2">
-            <ReceiptText className="h-4 w-4" />
-            Vouchers ({stats.totalVouchers})
+      <Tabs defaultValue="vouchers" className="w-full min-w-0">
+        <TabsList className="grid w-full grid-cols-2 h-10 md:h-10 rounded-lg p-1 touch-manipulation">
+          <TabsTrigger value="vouchers" className="flex items-center justify-center gap-1.5 rounded-lg text-xs sm:text-sm py-2">
+            <ReceiptText className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <span className="truncate">Vouchers ({stats.totalVouchers})</span>
           </TabsTrigger>
-          <TabsTrigger value="refunds" className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Devoluções ({stats.totalRefunds})
+          <TabsTrigger value="refunds" className="flex items-center justify-center gap-1.5 rounded-lg text-xs sm:text-sm py-2">
+            <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <span className="truncate">Devoluções ({stats.totalRefunds})</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="vouchers" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Vouchers Emitidos</CardTitle>
-                <CardDescription>Cupons de crédito únicos e rastreáveis</CardDescription>
+        <TabsContent value="vouchers" className="mt-3">
+          <Card className="rounded-lg md:rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 pt-2 px-2 sm:pb-2 sm:pt-3 sm:px-6">
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-lg">Vouchers Emitidos</CardTitle>
+                <CardDescription className="text-[10px] sm:text-sm hidden sm:block">Cupons de crédito únicos e rastreáveis</CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 w-full sm:w-auto">
                 <Input
                   placeholder="Buscar por código ou cliente..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-64"
+                  className="flex-1 sm:w-64 h-10 rounded-lg touch-manipulation text-sm"
                 />
-                <Button variant="outline" onClick={() => fetchVouchers()}>
+                <Button
+                  variant="outline"
+                  onClick={() => fetchVouchers()}
+                  className="h-10 w-10 p-0 rounded-lg touch-manipulation shrink-0"
+                  aria-label="Atualizar lista"
+                >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 py-2 sm:px-6 sm:py-4">
               {loading ? (
                 <div className="text-center py-8">Carregando...</div>
               ) : filteredVouchers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-muted-foreground text-sm">
                   Nenhum voucher encontrado
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Valor Original</TableHead>
-                      <TableHead>Saldo</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Validade</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Código</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Valor Original</TableHead>
+                          <TableHead>Saldo</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Validade</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredVouchers.map((voucher) => (
+                          <TableRow key={voucher.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <code className="bg-muted px-2 py-1 rounded font-mono text-sm">
+                                  {voucher.code}
+                                </code>
+                                <Button variant="ghost" size="sm" onClick={() => handleCopyCode(voucher.code)}>
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>{voucher.customer_name || '-'}</TableCell>
+                            <TableCell>{formatCurrency(voucher.original_value || voucher.value || 0)}</TableCell>
+                            <TableCell className="font-semibold">
+                              {formatCurrency(voucher.current_value || voucher.remaining_value || 0)}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(voucher.status)}</TableCell>
+                            <TableCell>
+                              {voucher.expires_at ? formatDate(voucher.expires_at) : 'Sem validade'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="sm" onClick={() => { setSelectedVoucher(voucher); setVoucherDialogOpen(true); }}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handlePrintVoucher(voucher)}>
+                                  <Printer className="h-4 w-4" />
+                                </Button>
+                                {voucher.status === 'active' && (
+                                  <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleCancelVoucher(voucher.id)}>
+                                    <Ban className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {/* Mobile: Cards compactos */}
+                  <div className="md:hidden space-y-1.5">
                     {filteredVouchers.map((voucher) => (
-                      <TableRow key={voucher.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="bg-muted px-2 py-1 rounded font-mono text-sm">
-                              {voucher.code}
-                            </code>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleCopyCode(voucher.code)}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
+                      <Card
+                        key={voucher.id}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden touch-manipulation active:scale-[0.99]"
+                      >
+                        <CardContent className="p-2">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="min-w-0 flex-1">
+                              <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-xs font-semibold truncate block">
+                                {voucher.code}
+                              </code>
+                              <p className="text-xs text-foreground truncate mt-0.5">{voucher.customer_name || '-'}</p>
+                            </div>
+                            {getStatusBadge(voucher.status)}
                           </div>
-                        </TableCell>
-                        <TableCell>{voucher.customer_name || '-'}</TableCell>
-                        <TableCell>{formatCurrency(voucher.original_value || voucher.value || 0)}</TableCell>
-                        <TableCell className="font-semibold">
-                          {formatCurrency(voucher.current_value || voucher.remaining_value || 0)}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(voucher.status)}</TableCell>
-                        <TableCell>
-                          {voucher.expires_at ? formatDate(voucher.expires_at) : 'Sem validade'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedVoucher(voucher);
-                                setVoucherDialogOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handlePrintVoucher(voucher)}
-                            >
-                              <Printer className="h-4 w-4" />
-                            </Button>
-                            {voucher.status === 'active' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600"
-                                onClick={() => handleCancelVoucher(voucher.id)}
-                              >
-                                <Ban className="h-4 w-4" />
+                          <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatCurrency(voucher.current_value || voucher.remaining_value || 0)} saldo
+                            </span>
+                            <div className="flex gap-0.5">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md" onClick={() => handleCopyCode(voucher.code)} aria-label="Copiar">
+                                <Copy className="h-3.5 w-3.5" />
                               </Button>
-                            )}
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md" onClick={() => { setSelectedVoucher(voucher); setVoucherDialogOpen(true); }} aria-label="Ver">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md" onClick={() => handlePrintVoucher(voucher)} aria-label="Imprimir">
+                                <Printer className="h-3.5 w-3.5" />
+                              </Button>
+                              {voucher.status === 'active' && (
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md text-red-600" onClick={() => handleCancelVoucher(voucher.id)} aria-label="Cancelar">
+                                  <Ban className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="refunds" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Histórico de Devoluções</CardTitle>
-              <CardDescription>Todas as devoluções processadas</CardDescription>
+        <TabsContent value="refunds" className="mt-3">
+          <Card className="rounded-lg md:rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+            <CardHeader className="py-2 px-2 sm:pb-2 sm:pt-3 sm:px-6">
+              <CardTitle className="text-sm sm:text-lg">Histórico de Devoluções</CardTitle>
+              <CardDescription className="text-[10px] sm:text-sm hidden sm:block">Todas as devoluções processadas</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 py-2 sm:px-6 sm:py-4">
               {loading ? (
                 <div className="text-center py-8">Carregando...</div>
               ) : filteredRefunds.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-muted-foreground text-sm">
                   Nenhuma devolução encontrada
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nº</TableHead>
-                      <TableHead>Venda Original</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nº</TableHead>
+                          <TableHead>Venda Original</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredRefunds.map((refund) => (
+                          <TableRow key={refund.id} className="cursor-pointer hover:bg-muted/50">
+                            <TableCell>#{refund.refund_number}</TableCell>
+                            <TableCell>#{refund.original_sale_number || refund.sale_id?.slice(0,8)}</TableCell>
+                            <TableCell>{refund.customer_name || '-'}</TableCell>
+                            <TableCell>{formatCurrency(refund.total_refund_value)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {refund.refund_method === 'voucher' ? '🎟️ Voucher' : 
+                                 refund.refund_method === 'cash' ? '💵 Dinheiro' : 
+                                 refund.refund_method === 'card' ? '💳 Cartão' : refund.refund_method}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(refund.status)}</TableCell>
+                            <TableCell>{formatDate(refund.created_at)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button variant="ghost" size="sm" onClick={() => loadRefundDetails(refund)} title="Ver detalhes">
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                {refund.status === 'pending' && (
+                                  <Button variant="ghost" size="sm" className="text-green-600" onClick={() => handleApproveRefund(refund.id)} title="Aprovar">
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {(refund.status === 'pending' || refund.status === 'approved') && (
+                                  <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => handleCompleteRefund(refund.id)} title="Completar (estornar estoque)">
+                                    <Package className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {/* Mobile: Cards compactos */}
+                  <div className="md:hidden space-y-1.5">
                     {filteredRefunds.map((refund) => (
-                      <TableRow key={refund.id} className="cursor-pointer hover:bg-muted/50">
-                        <TableCell>#{refund.refund_number}</TableCell>
-                        <TableCell>#{refund.original_sale_number || refund.sale_id?.slice(0,8)}</TableCell>
-                        <TableCell>{refund.customer_name || '-'}</TableCell>
-                        <TableCell>{formatCurrency(refund.total_refund_value)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {refund.refund_method === 'voucher' ? '🎟️ Voucher' : 
-                             refund.refund_method === 'cash' ? '💵 Dinheiro' : 
-                             refund.refund_method === 'card' ? '💳 Cartão' : refund.refund_method}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(refund.status)}</TableCell>
-                        <TableCell>{formatDate(refund.created_at)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-1 justify-end">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => loadRefundDetails(refund)}
-                              title="Ver detalhes"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {refund.status === 'pending' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-green-600"
-                                onClick={() => handleApproveRefund(refund.id)}
-                                title="Aprovar"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {(refund.status === 'pending' || refund.status === 'approved') && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-blue-600"
-                                onClick={() => handleCompleteRefund(refund.id)}
-                                title="Completar (estornar estoque)"
-                              >
-                                <Package className="h-4 w-4" />
-                              </Button>
-                            )}
+                      <Card
+                        key={refund.id}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden touch-manipulation active:scale-[0.99] cursor-pointer"
+                        onClick={() => loadRefundDetails(refund)}
+                      >
+                        <CardContent className="p-2">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="min-w-0 flex-1">
+                              <span className="font-semibold text-sm tabular-nums">#{refund.refund_number}</span>
+                              <p className="text-xs text-foreground truncate mt-0.5">{refund.customer_name || '-'}</p>
+                            </div>
+                            {getStatusBadge(refund.status)}
                           </div>
-                        </TableCell>
-                      </TableRow>
+                          <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50 text-[10px] text-muted-foreground">
+                            <span>Venda #{refund.original_sale_number || refund.sale_id?.slice(0,8)} · {formatCurrency(refund.total_refund_value)}</span>
+                            <div className="flex gap-0.5" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md" onClick={() => loadRefundDetails(refund)} aria-label="Ver">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              {refund.status === 'pending' && (
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md text-green-600" onClick={() => handleApproveRefund(refund.id)} aria-label="Aprovar">
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {(refund.status === 'pending' || refund.status === 'approved') && (
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md text-blue-600" onClick={() => handleCompleteRefund(refund.id)} aria-label="Completar">
+                                  <Package className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
 
       {/* Dialog de Detalhes do Voucher */}
       <Dialog open={voucherDialogOpen} onOpenChange={setVoucherDialogOpen}>

@@ -72,9 +72,9 @@ export default function DashboardExecutivo() {
       subtitle="Visão geral financeira e operacional com IA"
       headerActions={<ValuesVisibilityToggle valuesVisible={valuesVisible} setValuesVisible={setValuesVisible} />}
     >
-      <div className="flex flex-col gap-4">
-        {/* Filtros */}
-        <Card className="flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm p-4">
+      <div className="flex flex-col gap-4 pb-8 min-w-0">
+        {/* Filtros — mobile: toque confortável */}
+        <Card className="flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm p-3 sm:p-4 min-w-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground">Período Início</Label>
@@ -83,11 +83,11 @@ export default function DashboardExecutivo() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal h-10 rounded-lg border-[3px] border-gray-400",
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl sm:rounded-lg border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
                       !periodoInicio && "text-muted-foreground"
                     )}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">
                       {periodoInicio ? format(periodoInicio, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
                     </span>
@@ -105,11 +105,11 @@ export default function DashboardExecutivo() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal h-10 rounded-lg border-[3px] border-gray-400",
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl sm:rounded-lg border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
                       !periodoFim && "text-muted-foreground"
                     )}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Calendar className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">
                       {periodoFim ? format(periodoFim, "dd/MM/yyyy", { locale: ptBR }) : "Data"}
                     </span>
@@ -123,11 +123,11 @@ export default function DashboardExecutivo() {
           </div>
         </Card>
         
-        {/* KPIs Principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+        {/* KPIs Principais — mobile: 2 colunas */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-w-0">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-bold">Receita Total</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Receita Total</CardTitle>
               <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -138,9 +138,9 @@ export default function DashboardExecutivo() {
             </CardContent>
           </Card>
           
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-bold">Vendas PDV</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Vendas PDV</CardTitle>
               <ShoppingCart className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -151,9 +151,9 @@ export default function DashboardExecutivo() {
             </CardContent>
           </Card>
           
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-bold">Vendas OS</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Vendas OS</CardTitle>
               <Wrench className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -164,9 +164,9 @@ export default function DashboardExecutivo() {
             </CardContent>
           </Card>
           
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-bold">Ticket Médio</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Ticket Médio</CardTitle>
               <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -183,14 +183,15 @@ export default function DashboardExecutivo() {
         </div>
         
         {/* Gráfico de Tendência e Alertas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Gráfico de Tendência */}
-          <Card className="lg:col-span-2 border-[3px] border-gray-400 rounded-xl shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold">Tendência de Vendas</CardTitle>
-              <CardDescription>Evolução diária de vendas (PDV vs OS)</CardDescription>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
+          {/* Gráfico de Tendência — responsivo */}
+          <Card className="lg:col-span-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden min-w-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg font-bold">Tendência de Vendas</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Evolução diária de vendas (PDV vs OS)</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
+              <div className="w-full min-h-[240px] sm:min-h-[300px] min-w-0">
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={dashboard.tendencia}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -209,11 +210,12 @@ export default function DashboardExecutivo() {
                   <Line type="monotone" dataKey="totalGeral" stroke="#8b5cf6" name="Total" strokeWidth={3} />
                 </LineChart>
               </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
           
           {/* Alertas Críticos */}
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -225,7 +227,7 @@ export default function DashboardExecutivo() {
               <div className="space-y-2">
                 {recomendacoesCriticas.length > 0 ? (
                   recomendacoesCriticas.map((rec: any) => (
-                    <div key={rec.id} className="p-2 border-[3px] border-gray-300 rounded-lg">
+                    <div key={rec.id} className="p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg touch-manipulation">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className="text-sm font-semibold">{rec.titulo}</p>
@@ -250,20 +252,20 @@ export default function DashboardExecutivo() {
         </div>
         
         {/* Top Produtos e Top Vendedores */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
           {/* Top 10 Produtos */}
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <Package className="h-5 w-5" />
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
+                <Package className="h-5 w-5 shrink-0" />
                 Top 10 Produtos
               </CardTitle>
-              <CardDescription>Maiores receitas do período</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Maiores receitas do período</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              <div className="space-y-2 max-h-[320px] sm:max-h-[400px] overflow-y-auto min-w-0">
                 {dashboard.topProdutos.map((produto, index) => (
-                  <div key={produto.id} className="flex items-center justify-between p-2 border-[3px] border-gray-200 rounded-lg">
+                  <div key={produto.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg min-h-[44px] sm:min-h-0">
                     <div className="flex items-center gap-3 flex-1">
                       <Badge variant="outline" className="font-bold">
                         #{index + 1}
@@ -288,18 +290,18 @@ export default function DashboardExecutivo() {
           </Card>
           
           {/* Top 10 Vendedores */}
-          <Card className="border-[3px] border-gray-400 rounded-xl shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <Users className="h-5 w-5" />
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
+                <Users className="h-5 w-5 shrink-0" />
                 Top 10 Vendedores
               </CardTitle>
-              <CardDescription>Melhor performance do período</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Melhor performance do período</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              <div className="space-y-2 max-h-[320px] sm:max-h-[400px] overflow-y-auto min-w-0">
                 {dashboard.topVendedores.map((vendedor, index) => (
-                  <div key={vendedor.id} className="flex items-center justify-between p-2 border-[3px] border-gray-200 rounded-lg">
+                  <div key={vendedor.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg min-h-[44px] sm:min-h-0">
                     <div className="flex items-center gap-3 flex-1">
                       <Badge variant="outline" className="font-bold">
                         #{index + 1}

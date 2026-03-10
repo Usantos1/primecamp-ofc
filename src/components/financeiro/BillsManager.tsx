@@ -542,39 +542,39 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle>Contas a Pagar</CardTitle>
-            <CardDescription>Gerencie suas despesas fixas e variáveis</CardDescription>
+    <Card className="overflow-hidden min-w-0">
+      <CardHeader className="pb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg">Contas a Pagar</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Gerencie suas despesas fixas e variáveis</CardDescription>
           </div>
-          <Button onClick={() => handleOpenDialog()} className="gap-2">
+          <Button onClick={() => handleOpenDialog()} className="gap-2 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation w-full sm:w-auto shrink-0">
             <Plus className="h-4 w-4" />
             Nova Conta
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-sm">
+      <CardContent className="space-y-4 min-w-0">
+        {/* Filtros — mobile: full width e toque confortável */}
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0 max-w-full sm:max-w-sm">
             <Label className="text-xs text-muted-foreground">Buscar</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Descrição ou fornecedor..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
               />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Período</Label>
             <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
+              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+                <Filter className="h-4 w-4 mr-2 shrink-0" />
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
@@ -586,10 +586,10 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Status</Label>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -600,10 +600,10 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Tipo</Label>
             <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -613,10 +613,10 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Categoria</Label>
             <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -631,7 +631,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
           </div>
         </div>
 
-        {/* Tabela */}
+        {/* Lista: mobile = cards; desktop = tabela */}
         {filteredBills.length === 0 ? (
           <EmptyState
             variant="no-data"
@@ -640,99 +640,165 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
             action={{ label: 'Nova Conta', onClick: () => handleOpenDialog() }}
           />
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedBills.map((bill) => (
-                  <TableRow key={bill.id}>
-                    <TableCell className="font-medium">{bill.description}</TableCell>
-                    <TableCell className="text-muted-foreground">{bill.supplier || '-'}</TableCell>
-                    <TableCell className="font-semibold">{fmt(bill.amount)}</TableCell>
-                    <TableCell>{dateFormatters.short(bill.due_date)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{EXPENSE_TYPE_LABELS[bill.expense_type]}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(bill.status, bill.due_date)}>
-                        {BILL_STATUS_LABELS[bill.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        {bill.status === 'pendente' && (
+          <>
+            {/* Mobile: cards compactos */}
+            <div className="md:hidden space-y-2 min-w-0">
+              {paginatedBills.map((bill) => (
+                <div
+                  key={bill.id}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{bill.description}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{bill.supplier || '—'}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
+                        <span className="font-semibold text-sm tabular-nums">{fmt(bill.amount)}</span>
+                        <span className="text-xs text-muted-foreground">{dateFormatters.short(bill.due_date)}</span>
+                        <Badge variant="outline" className="text-[10px]">{EXPENSE_TYPE_LABELS[bill.expense_type]}</Badge>
+                        <Badge className={getStatusColor(bill.status, bill.due_date) + ' text-[10px]'}>
+                          {BILL_STATUS_LABELS[bill.status]}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {bill.status === 'pendente' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-success touch-manipulation"
+                          onClick={() => {
+                            setPayingBillId(bill.id);
+                            setPayDialogOpen(true);
+                          }}
+                          aria-label="Pagar"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 touch-manipulation"
+                        onClick={() => handleOpenDialog(bill)}
+                        aria-label="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-destructive touch-manipulation"
+                        onClick={() => {
+                          setDeletingBillId(bill.id);
+                          setDeleteDialogOpen(true);
+                        }}
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: tabela com scroll horizontal se necessário */}
+            <div className="hidden md:block border rounded-lg overflow-x-auto min-w-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Fornecedor</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedBills.map((bill) => (
+                    <TableRow key={bill.id}>
+                      <TableCell className="font-medium">{bill.description}</TableCell>
+                      <TableCell className="text-muted-foreground">{bill.supplier || '-'}</TableCell>
+                      <TableCell className="font-semibold">{fmt(bill.amount)}</TableCell>
+                      <TableCell>{dateFormatters.short(bill.due_date)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{EXPENSE_TYPE_LABELS[bill.expense_type]}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(bill.status, bill.due_date)}>
+                          {BILL_STATUS_LABELS[bill.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          {bill.status === 'pendente' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-success"
+                              onClick={() => {
+                                setPayingBillId(bill.id);
+                                setPayDialogOpen(true);
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-success"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenDialog(bill)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
                             onClick={() => {
-                              setPayingBillId(bill.id);
-                              setPayDialogOpen(true);
+                              setDeletingBillId(bill.id);
+                              setDeleteDialogOpen(true);
                             }}
                           >
-                            <Check className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleOpenDialog(bill)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => {
-                            setDeletingBillId(bill.id);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
 
-        {/* Paginação */}
+        {/* Paginação — mobile: toque confortável */}
         {filteredBills.length > ITEMS_PER_PAGE && (
-          <div className="flex items-center justify-between gap-4 flex-wrap pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {((page - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(page * ITEMS_PER_PAGE, filteredBills.length)} de {filteredBills.length}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t min-w-0">
+            <p className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
+              {((page - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(page * ITEMS_PER_PAGE, filteredBills.length)} de {filteredBills.length}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Anterior
               </Button>
-              <span className="text-sm font-medium px-2">
-                Página {page} de {totalPages}
+              <span className="text-sm font-medium px-2 tabular-nums">
+                {page}/{totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
               >

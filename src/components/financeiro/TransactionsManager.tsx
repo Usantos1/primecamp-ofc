@@ -400,22 +400,22 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle>Transações</CardTitle>
-            <CardDescription>Histórico de entradas e saídas</CardDescription>
+    <Card className="overflow-hidden min-w-0">
+      <CardHeader className="pb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg">Transações</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Histórico de entradas e saídas</CardDescription>
           </div>
-          <Button onClick={handleOpenDialog} className="gap-2">
+          <Button onClick={handleOpenDialog} className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto rounded-xl sm:rounded-md touch-manipulation shrink-0">
             <Plus className="h-4 w-4" />
             Nova Transação
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Resumo */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <CardContent className="space-y-4 min-w-0">
+        {/* Resumo — mobile: 2 colunas */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 min-w-0">
           <div className="p-3 rounded-lg bg-red-50 border border-red-200">
             <p className="text-xs text-muted-foreground">Total Custo</p>
             <p className="text-lg font-bold text-red-600">{fmt(totalCusto)}</p>
@@ -448,19 +448,19 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Filtros — mobile: toque confortável */}
+        <div className="flex flex-col sm:flex-row gap-3 min-w-0">
+          <div className="relative flex-1 min-w-0 max-w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Buscar transações..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -471,7 +471,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
           </Select>
         </div>
 
-        {/* Tabela */}
+        {/* Lista: mobile = cards; desktop = tabela */}
         {filteredTransactions.length === 0 ? (
           <EmptyState
             variant="no-data"
@@ -481,7 +481,73 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
           />
         ) : (
           <>
-            <div className="border rounded-lg overflow-hidden overflow-x-auto">
+            {/* Mobile: cards compactos */}
+            <div className="md:hidden space-y-2 min-w-0">
+              {paginatedTransactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{transaction.description}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span className="text-xs text-muted-foreground">{dateFormatters.short(transaction.date)}</span>
+                        <Badge className={cn(
+                          'text-[10px]',
+                          transaction.source === 'bill'
+                            ? 'bg-orange-100 text-orange-700 border-orange-300'
+                            : transaction.type === 'entrada'
+                              ? 'bg-success/10 text-success border-success/30'
+                              : 'bg-destructive/10 text-destructive border-destructive/30'
+                        )}>
+                          {transaction.source === 'sale' ? 'Venda' : transaction.source === 'bill' ? 'Despesa' : TRANSACTION_TYPE_LABELS[transaction.type]}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-2 text-xs tabular-nums">
+                        {transaction.custo != null && transaction.custo > 0 && <span className="text-red-600">Custo {fmt(transaction.custo)}</span>}
+                        {transaction.source === 'sale' && <span className="text-blue-600 font-medium">Venda {fmt(transaction.amount)}</span>}
+                        {transaction.source === 'bill' && <span className="text-orange-600 font-medium">Desp. {fmt(transaction.amount)}</span>}
+                        {transaction.lucro != null && transaction.lucro > 0 && <span className="text-green-600 font-medium">Lucro {fmt(transaction.lucro)}</span>}
+                      </div>
+                    </div>
+                    {transaction.source !== 'sale' && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-blue-600 touch-manipulation"
+                          onClick={() => handleEditDateClick({
+                            id: transaction.id,
+                            source: transaction.source,
+                            description: transaction.description,
+                            date: transaction.date
+                          })}
+                          aria-label="Editar data"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-destructive touch-manipulation"
+                          onClick={() => handleDeleteClick({
+                            id: transaction.id,
+                            source: transaction.source,
+                            description: transaction.description
+                          })}
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: tabela com scroll horizontal */}
+            <div className="hidden md:block border rounded-lg overflow-x-auto min-w-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -573,27 +639,29 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
               </Table>
             </div>
             
-            {/* Paginação */}
+            {/* Paginação — mobile: toque confortável */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-4">
-                <p className="text-sm text-muted-foreground">
-                  Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} de {filteredTransactions.length}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
+                  {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} de {filteredTransactions.length}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="text-sm">
-                    Página {currentPage} de {totalPages}
+                  <span className="text-sm tabular-nums">
+                    {currentPage}/{totalPages}
                   </span>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                   >

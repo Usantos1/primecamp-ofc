@@ -907,40 +907,43 @@ export function ProductFormOptimized({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" aria-describedby="product-form-description">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+      <DialogContent
+        className="max-w-4xl w-[95vw] sm:w-full max-h-[90dvh] sm:max-h-[90vh] overflow-hidden flex flex-col rounded-xl border-2 border-gray-300 dark:border-gray-600 p-4 sm:p-6 gap-3 sm:gap-4"
+        aria-describedby="product-form-description"
+      >
+        <DialogHeader className="space-y-0 pb-1">
+          <DialogTitle className="text-base sm:text-lg">{isEditing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
           <p id="product-form-description" className="sr-only">
             Formulário com abas: Dados do Produto, Preços, Estoque e Movimentações.
           </p>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid grid-cols-4 w-full">
-              <TabsTrigger value="dados" className="gap-2">
-                <Package className="h-4 w-4" />
-                Dados do Produto
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0 min-w-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 min-w-0">
+            <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full h-auto gap-1 p-1 rounded-xl">
+              <TabsTrigger value="dados" className="gap-1.5 sm:gap-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg touch-manipulation py-2">
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">Dados</span>
               </TabsTrigger>
-              <TabsTrigger value="precos" className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Preços
+              <TabsTrigger value="precos" className="gap-1.5 sm:gap-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg touch-manipulation py-2">
+                <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">Preços</span>
               </TabsTrigger>
-              <TabsTrigger value="estoque" className="gap-2">
-                <Warehouse className="h-4 w-4" />
-                Estoque
+              <TabsTrigger value="estoque" className="gap-1.5 sm:gap-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg touch-manipulation py-2">
+                <Warehouse className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">Estoque</span>
               </TabsTrigger>
-              <TabsTrigger value="movimentacoes" className="gap-2" disabled={!isEditing}>
-                <History className="h-4 w-4" />
-                Movimentações
+              <TabsTrigger value="movimentacoes" className="gap-1.5 sm:gap-2 min-h-[44px] sm:min-h-0 text-xs sm:text-sm rounded-lg touch-manipulation py-2" disabled={!isEditing}>
+                <History className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">Movim.</span>
               </TabsTrigger>
             </TabsList>
 
             {/* ABA: Dados do Produto */}
-            <TabsContent value="dados" className="flex-1 overflow-y-auto space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Label htmlFor="nome">
+            <TabsContent value="dados" className="flex-1 overflow-y-auto space-y-4 mt-3 sm:mt-4 min-w-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+                <div className="md:col-span-2 min-w-0">
+                  <Label htmlFor="nome" className="text-sm">
                     Nome/Descrição <span className="text-destructive">*</span>
                     {errors.nome && <span className="text-destructive ml-2">({errors.nome.message})</span>}
                   </Label>
@@ -948,20 +951,20 @@ export function ProductFormOptimized({
                     id="nome"
                     {...register('nome', { required: 'Nome é obrigatório' })}
                     placeholder="Ex: Adaptador iPhone Jack P2"
-                    className="text-base md:text-sm"
+                    className="text-base md:text-sm mt-1 min-h-[44px] sm:min-h-0 rounded-lg touch-manipulation"
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="codigo">Código</Label>
-                  <div className="flex gap-2">
+                <div className="min-w-0">
+                  <Label htmlFor="codigo" className="text-sm">Código</Label>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-1">
                     <Input
                       id="codigo"
                       type="number"
                       {...register('codigo', { valueAsNumber: true })}
                       placeholder="Código do produto"
                       disabled={isLoadingCodigo || (isEditing && produto?.codigo !== null && produto?.codigo !== undefined)}
-                      className="flex-1 text-base md:text-sm"
+                      className="flex-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                     />
                     {(isEditing && (produto?.codigo === null || produto?.codigo === undefined)) && (
                       <Button
@@ -974,7 +977,7 @@ export function ProductFormOptimized({
                           setIsLoadingCodigo(false);
                         }}
                         disabled={isLoadingCodigo}
-                        className="gap-2"
+                        className="gap-2 min-h-[44px] sm:min-h-0 rounded-lg touch-manipulation shrink-0"
                       >
                         <Plus className="h-4 w-4" />
                         Gerar
@@ -991,14 +994,14 @@ export function ProductFormOptimized({
                   )}
                 </div>
 
-                <div>
-                  <Label htmlFor="codigo_barras">Código de Barras (EAN-13)</Label>
-                  <div className="flex gap-2">
+                <div className="min-w-0">
+                  <Label htmlFor="codigo_barras" className="text-sm">Código de Barras (EAN-13)</Label>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-1">
                     <Input
                       id="codigo_barras"
                       {...register('codigo_barras')}
                       placeholder="7890000000000"
-                      className="flex-1 text-base md:text-sm"
+                      className="flex-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                       maxLength={13}
                     />
                     <Button
@@ -1006,7 +1009,7 @@ export function ProductFormOptimized({
                       variant="outline"
                       onClick={handleGerarCodigoBarras}
                       disabled={!codigo && !codigoBarras}
-                      className="gap-2"
+                      className="gap-2 min-h-[44px] sm:min-h-0 rounded-lg touch-manipulation shrink-0"
                     >
                       <Barcode className="h-4 w-4" />
                       Gerar
@@ -1014,25 +1017,25 @@ export function ProductFormOptimized({
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="referencia">Referência</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="referencia" className="text-sm">Referência</Label>
                   <Input
                     id="referencia"
                     {...register('referencia')}
                     placeholder="Ex: AIJ-669"
-                    className="text-base md:text-sm"
+                    className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="marca">Marca</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="marca" className="text-sm">Marca</Label>
                   <Popover open={marcaOpen} onOpenChange={setMarcaOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         role="combobox"
                         aria-expanded={marcaOpen}
-                        className="w-full justify-between text-base md:text-sm"
+                        className="w-full justify-between mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                       >
                         {watch('marca') || 'Selecione a marca'}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1081,7 +1084,7 @@ export function ProductFormOptimized({
                   
                   {/* Dialog para criar nova marca */}
                   <Dialog open={showNewMarcaDialog} onOpenChange={setShowNewMarcaDialog}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-[95vw] sm:max-w-md rounded-xl p-4 sm:p-6">
                       <DialogHeader>
                         <DialogTitle>Nova Marca</DialogTitle>
                       </DialogHeader>
@@ -1101,7 +1104,7 @@ export function ProductFormOptimized({
                             }}
                           />
                         </div>
-                        <DialogFooter>
+                        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -1109,6 +1112,7 @@ export function ProductFormOptimized({
                               setShowNewMarcaDialog(false);
                               setNewMarcaNome('');
                             }}
+                            className="w-full sm:w-auto min-h-[44px] rounded-lg touch-manipulation"
                           >
                             Cancelar
                           </Button>
@@ -1116,6 +1120,7 @@ export function ProductFormOptimized({
                             type="button"
                             onClick={handleCreateNewMarca}
                             disabled={!newMarcaNome.trim()}
+                            className="w-full sm:w-auto min-h-[44px] rounded-lg touch-manipulation"
                           >
                             Criar e Selecionar
                           </Button>
@@ -1125,15 +1130,15 @@ export function ProductFormOptimized({
                   </Dialog>
                 </div>
 
-                <div>
-                  <Label htmlFor="modelo">Modelo</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="modelo" className="text-sm">Modelo</Label>
                   <Popover open={modeloOpen} onOpenChange={setModeloOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         role="combobox"
                         aria-expanded={modeloOpen}
-                        className="w-full justify-between text-base md:text-sm"
+                        className="w-full justify-between mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                       >
                         {watch('modelo') || 'Selecione o modelo'}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1194,7 +1199,7 @@ export function ProductFormOptimized({
                   
                   {/* Dialog para criar novo modelo */}
                   <Dialog open={showNewModeloDialog} onOpenChange={setShowNewModeloDialog}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-[95vw] sm:max-w-md rounded-xl p-4 sm:p-6">
                       <DialogHeader>
                         <DialogTitle>Novo Modelo</DialogTitle>
                       </DialogHeader>
@@ -1214,7 +1219,7 @@ export function ProductFormOptimized({
                             }}
                           />
                         </div>
-                        <DialogFooter>
+                        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -1222,6 +1227,7 @@ export function ProductFormOptimized({
                               setShowNewModeloDialog(false);
                               setNewModeloNome('');
                             }}
+                            className="w-full sm:w-auto min-h-[44px] rounded-lg touch-manipulation"
                           >
                             Cancelar
                           </Button>
@@ -1229,6 +1235,7 @@ export function ProductFormOptimized({
                             type="button"
                             onClick={handleCreateNewModelo}
                             disabled={!newModeloNome.trim() || !watch('marca')}
+                            className="w-full sm:w-auto min-h-[44px] rounded-lg touch-manipulation"
                           >
                             Criar e Selecionar
                           </Button>
@@ -1238,23 +1245,23 @@ export function ProductFormOptimized({
                   </Dialog>
                 </div>
 
-                <div>
-                  <Label htmlFor="qualidade">Qualidade</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="qualidade" className="text-sm">Qualidade</Label>
                   <Input
                     id="qualidade"
                     {...register('qualidade')}
                     placeholder="Ex: Original"
-                    className="text-base md:text-sm"
+                    className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="garantia_dias">Período de garantia (opcional)</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="garantia_dias" className="text-sm">Período de garantia (opcional)</Label>
                   <Select
                     value={watch('garantia_dias') === undefined || watch('garantia_dias') === null || watch('garantia_dias') === '' ? '0' : String(watch('garantia_dias'))}
                     onValueChange={(v) => setValue('garantia_dias', v === '0' ? 0 : Number(v))}
                   >
-                    <SelectTrigger id="garantia_dias" className="text-base md:text-sm">
+                    <SelectTrigger id="garantia_dias" className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1268,13 +1275,13 @@ export function ProductFormOptimized({
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="tipo">Tipo do produto</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="tipo" className="text-sm">Tipo do produto</Label>
                   <Select
                     value={watch('tipo') || 'PECA'}
                     onValueChange={(v) => setValue('tipo', v as TipoProduto)}
                   >
-                    <SelectTrigger id="tipo" className="text-base md:text-sm">
+                    <SelectTrigger id="tipo" className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation">
                       <SelectValue placeholder="Produto ou Serviço" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1288,10 +1295,10 @@ export function ProductFormOptimized({
             </TabsContent>
 
             {/* ABA: Preços */}
-            <TabsContent value="precos" className="flex-1 overflow-y-auto space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="preco_custo">Valor de Compra / Custo</Label>
+            <TabsContent value="precos" className="flex-1 overflow-y-auto space-y-4 mt-3 sm:mt-4 min-w-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+                <div className="min-w-0">
+                  <Label htmlFor="preco_custo" className="text-sm">Valor de Compra / Custo</Label>
                   <Input
                     id="preco_custo"
                     type="text"
@@ -1319,15 +1326,15 @@ export function ProductFormOptimized({
                       }
                     }}
                     placeholder="0,00"
-                    className="text-right text-base md:text-sm"
+                    className="text-right text-base md:text-sm min-h-[44px] sm:min-h-0 rounded-lg touch-manipulation mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Usado para calcular a margem automaticamente
                   </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="valor_venda">
+                <div className="min-w-0">
+                  <Label htmlFor="valor_venda" className="text-sm">
                     Valor de Venda (Dinheiro/PIX) <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -1357,12 +1364,12 @@ export function ProductFormOptimized({
                       }
                     }}
                     placeholder="0,00"
-                    className="text-right font-semibold text-base md:text-sm"
+                    className="text-right font-semibold text-base md:text-sm min-h-[44px] sm:min-h-0 rounded-lg touch-manipulation"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="valor_parcelado_6x">Valor Parcelado 6x</Label>
+                  <Label htmlFor="valor_parcelado_6x" className="text-sm">Valor Parcelado 6x</Label>
                   <Input
                     id="valor_parcelado_6x"
                     type="text"
@@ -1390,12 +1397,12 @@ export function ProductFormOptimized({
                       }
                     }}
                     placeholder="0,00"
-                    className="text-right text-base md:text-sm"
+                    className="text-right text-base md:text-sm min-h-[44px] sm:min-h-0 rounded-lg touch-manipulation"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="margem_percentual">Margem (%)</Label>
+                  <Label htmlFor="margem_percentual" className="text-sm">Margem (%)</Label>
                   <Input
                     id="margem_percentual"
                     type="number"
@@ -1403,7 +1410,7 @@ export function ProductFormOptimized({
                     {...register('margem_percentual', { valueAsNumber: true })}
                     placeholder="0.00"
                     readOnly
-                    className="bg-muted text-base md:text-sm"
+                    className="bg-muted text-base md:text-sm min-h-[44px] sm:min-h-0 rounded-lg"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Calculada automaticamente: ((Venda - Compra) / Compra) × 100
@@ -1413,8 +1420,8 @@ export function ProductFormOptimized({
             </TabsContent>
 
             {/* ABA: Estoque */}
-            <TabsContent value="estoque" className="flex-1 overflow-y-auto space-y-4 mt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TabsContent value="estoque" className="flex-1 overflow-y-auto space-y-4 mt-3 sm:mt-4 min-w-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 min-w-0">
                 {/* Opção: estoque simples ou grade (por cor / com-sem aro) */}
                 <div className="md:col-span-2 flex items-center gap-3 rounded-lg border p-4 bg-muted/30">
                   <Switch
@@ -1480,50 +1487,50 @@ export function ProductFormOptimized({
                   </>
                 ) : (
                   <>
-                    <div>
-                      <Label htmlFor="quantidade">Quantidade Atual</Label>
+                    <div className="min-w-0">
+                      <Label htmlFor="quantidade" className="text-sm">Quantidade Atual</Label>
                       <Input
                         id="quantidade"
                         type="number"
                         {...register('quantidade', { valueAsNumber: true })}
                         placeholder="0"
-                        className="text-base md:text-sm"
+                        className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                       />
                     </div>
                   </>
                 )}
 
-                <div>
-                  <Label htmlFor="estoque_minimo">Estoque Mínimo</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="estoque_minimo" className="text-sm">Estoque Mínimo</Label>
                   <Input
                     id="estoque_minimo"
                     type="number"
                     {...register('estoque_minimo', { valueAsNumber: true })}
                     placeholder="0"
-                    className="text-base md:text-sm"
+                    className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Alerta quando estoque ficar abaixo deste valor
                   </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="localizacao">Localização</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="localizacao" className="text-sm">Localização</Label>
                   <Input
                     id="localizacao"
                     {...register('localizacao')}
                     placeholder="Ex: Prateleira A3, Gaveta 2"
-                    className="text-base md:text-sm"
+                    className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation"
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="unidade">Unidade</Label>
+                <div className="min-w-0">
+                  <Label htmlFor="unidade" className="text-sm">Unidade</Label>
                   <Select
                     value={watch('unidade') || 'UN'}
                     onValueChange={(v) => setValue('unidade', v)}
                   >
-                    <SelectTrigger id="unidade" className="text-base md:text-sm">
+                    <SelectTrigger id="unidade" className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation">
                       <SelectValue placeholder="Unidade" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1538,7 +1545,7 @@ export function ProductFormOptimized({
             </TabsContent>
 
             {/* ABA: Movimentações de Estoque */}
-            <TabsContent value="movimentacoes" className="flex-1 overflow-y-auto space-y-4 mt-4">
+            <TabsContent value="movimentacoes" className="flex-1 overflow-y-auto overflow-x-auto space-y-4 mt-3 sm:mt-4 min-w-0">
               {isLoadingMovimentacoes ? (
                 <div className="text-center py-8 text-muted-foreground">
                   Carregando histórico...
@@ -1648,11 +1655,21 @@ export function ProductFormOptimized({
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="mt-4 border-t pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <DialogFooter className="mt-4 border-t pt-4 flex-col-reverse sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSaving}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSaving || isLoadingCodigo}>
+            <Button
+              type="submit"
+              disabled={isSaving || isLoadingCodigo}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+            >
               {isSaving ? 'Salvando...' : isEditing ? 'Atualizar' : 'Criar'}
             </Button>
           </DialogFooter>

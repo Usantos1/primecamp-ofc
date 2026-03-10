@@ -569,36 +569,39 @@ export default function Pedidos() {
 
   return (
     <ModernLayout title="Pedidos" subtitle="Crie pedidos e dê entrada no estoque">
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="space-y-4 md:space-y-6 pb-8 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             Crie pedidos de compra e, quando receber a mercadoria, use &quot;Dar entrada&quot; para atualizar o estoque e gerar a despesa em Contas a Pagar.
           </p>
-          <Button onClick={abrirNovo}>
+          <Button
+            onClick={abrirNovo}
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Novo pedido
           </Button>
         </div>
 
         {loadingPedidos ? (
-          <Card className="border-2 border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Loader2 className="h-12 w-12 text-muted-foreground mb-4 animate-spin" />
-              <CardTitle className="text-lg">Carregando pedidos...</CardTitle>
+          <Card className="border-2 border-dashed rounded-xl overflow-hidden">
+            <CardContent className="flex flex-col items-center justify-center py-10 sm:py-12 text-center px-4">
+              <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4 animate-spin" />
+              <CardTitle className="text-base sm:text-lg">Carregando pedidos...</CardTitle>
             </CardContent>
           </Card>
         ) : pedidos.length === 0 ? (
-          <Card className="border-2 border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <ClipboardList className="h-12 w-12 text-muted-foreground mb-4" />
-              <CardTitle className="text-lg">Nenhum pedido</CardTitle>
-              <CardDescription className="mt-2">
+          <Card className="border-2 border-dashed rounded-xl overflow-hidden">
+            <CardContent className="flex flex-col items-center justify-center py-10 sm:py-12 text-center px-4">
+              <ClipboardList className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
+              <CardTitle className="text-base sm:text-lg">Nenhum pedido</CardTitle>
+              <CardDescription className="mt-2 text-sm">
                 {!companyId
                   ? 'Faça login para ver os pedidos da sua empresa.'
                   : 'Crie um pedido para listar itens e depois dar entrada no estoque.'}
               </CardDescription>
               {companyId && (
-                <Button className="mt-4" onClick={abrirNovo}>
+                <Button className="mt-4 min-h-[44px] rounded-xl touch-manipulation w-full sm:w-auto" onClick={abrirNovo}>
                   <Plus className="h-4 w-4 mr-2" />
                   Novo pedido
                 </Button>
@@ -608,37 +611,37 @@ export default function Pedidos() {
         ) : (
           <>
             {pedidosFromStorage && (
-              <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-500/30">
-                <AlertTitle>Lista apenas deste navegador</AlertTitle>
-                <AlertDescription>
-                  Você está vendo só os pedidos salvos neste computador. Para que todos da empresa (ex.: você e o Vitor) vejam a mesma lista, é preciso que a API exponha as tabelas <strong>pedidos</strong> e <strong>pedido_itens</strong> no backend e que a migração <code className="text-xs">ADD_PEDIDOS_COMPANY_ID</code> esteja aplicada no banco.
+              <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-500/30 rounded-xl">
+                <AlertTitle className="text-sm sm:text-base">Lista apenas deste navegador</AlertTitle>
+                <AlertDescription className="text-xs sm:text-sm">
+                  Você está vendo só os pedidos salvos neste computador. Para que todos da empresa vejam a mesma lista, é preciso que a API exponha as tabelas <strong>pedidos</strong> e <strong>pedido_itens</strong> no backend e que a migração <code className="text-[10px] sm:text-xs">ADD_PEDIDOS_COMPANY_ID</code> esteja aplicada no banco.
                 </AlertDescription>
               </Alert>
             )}
-            <div className="grid gap-4">
+            <div className="grid gap-3 md:gap-4">
             {pedidos.map((p) => (
-              <Card key={p.id} className={p.recebido ? 'opacity-90' : ''}>
-                <CardHeader className="pb-2">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <CardTitle className="text-base flex items-center gap-2 flex-wrap">
-                          {p.nome}
+              <Card key={p.id} className={`rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0 ${p.recebido ? 'opacity-90' : ''}`}>
+                <CardHeader className="pb-2 pt-3 px-3 sm:pt-4 sm:px-6">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="min-w-0">
+                        <CardTitle className="text-base sm:text-base flex items-center gap-2 flex-wrap">
+                          <span className="truncate">{p.nome}</span>
                           {p.recebido && (
-                            <Badge variant="secondary" className="font-normal">
+                            <Badge variant="secondary" className="font-normal shrink-0">
                               Recebido
                             </Badge>
                           )}
                         </CardTitle>
-                        <CardDescription className="mt-1 flex flex-col gap-0.5">
+                        <CardDescription className="mt-1 flex flex-col gap-0.5 text-xs sm:text-sm">
                           <span>{new Date(p.createdAt).toLocaleString('pt-BR')} · {p.itens.length} item(ns)</span>
-                          <span className="flex items-center gap-1.5 text-xs">
-                            <User className="h-3 w-3" />
+                          <span className="flex items-center gap-1.5">
+                            <User className="h-3 w-3 shrink-0" />
                             Criado por: {p.createdBy}
                           </span>
                           {p.recebido && p.receivedBy && (
-                            <span className="flex items-center gap-1.5 text-xs">
-                              <Package className="h-3 w-3" />
+                            <span className="flex items-center gap-1.5">
+                              <Package className="h-3 w-3 shrink-0" />
                               Recebido por: {p.receivedBy}
                               {p.receivedAt && ` em ${new Date(p.receivedAt).toLocaleString('pt-BR')}`}
                             </span>
@@ -646,8 +649,13 @@ export default function Pedidos() {
                         </CardDescription>
                       </div>
                       {!p.recebido && (
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => abrirEdicao(p)}>
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => abrirEdicao(p)}
+                            className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation flex-1 sm:flex-initial"
+                          >
                             <Pencil className="h-4 w-4 mr-1" />
                             Editar
                           </Button>
@@ -655,6 +663,7 @@ export default function Pedidos() {
                             size="sm"
                             onClick={() => darEntrada(p)}
                             disabled={!!darEntradaId}
+                            className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation flex-1 sm:flex-initial"
                           >
                             {darEntradaId === p.id ? (
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -668,6 +677,8 @@ export default function Pedidos() {
                             variant="outline"
                             onClick={() => excluirPedido(p.id)}
                             disabled={!!darEntradaId}
+                            className="min-h-[44px] sm:min-h-0 min-w-[44px] rounded-xl sm:rounded-md touch-manipulation"
+                            aria-label="Excluir pedido"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -676,8 +687,37 @@ export default function Pedidos() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto -mx-2">
+                <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 pt-0">
+                  {/* Mobile: lista de itens legível, sem tabela truncada */}
+                  <div className="md:hidden space-y-2 min-w-0">
+                    {p.itens.map((i) => (
+                      <div
+                        key={i.produto_id}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700 bg-muted/30 dark:bg-muted/20 px-3 py-2.5"
+                      >
+                        <p className="font-medium text-sm text-foreground truncate">{i.produto_nome}</p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+                          <span>Cód: {i.codigo ?? i.referencia ?? '—'}</span>
+                          <span>·</span>
+                          <span>Qtd: {i.quantidade}</span>
+                          <span>·</span>
+                          <span>Custo un: {i.valor_compra != null ? currencyFormatters.brl(i.valor_compra) : '—'}</span>
+                          <span>·</span>
+                          <span>Venda un: {i.valor_venda != null ? currencyFormatters.brl(i.valor_venda) : '—'}</span>
+                        </div>
+                        <p className="text-xs font-semibold text-foreground mt-1.5 tabular-nums">
+                          Total: {currencyFormatters.brl((i.valor_compra ?? 0) * i.quantidade)}
+                        </p>
+                      </div>
+                    ))}
+                    {totalPedido(p.itens) > 0 && (
+                      <p className="text-sm font-semibold text-muted-foreground pt-1 border-t border-border">
+                        Total do pedido (custo): {currencyFormatters.brl(totalPedido(p.itens))}
+                      </p>
+                    )}
+                  </div>
+                  {/* Desktop: tabela */}
+                  <div className="hidden md:block overflow-x-auto -mx-2 min-w-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -710,12 +750,12 @@ export default function Pedidos() {
                         ))}
                       </TableBody>
                     </Table>
+                    {totalPedido(p.itens) > 0 && (
+                      <p className="text-sm font-medium text-muted-foreground mt-2 text-right">
+                        Total do pedido (custo): {currencyFormatters.brl(totalPedido(p.itens))}
+                      </p>
+                    )}
                   </div>
-                  {totalPedido(p.itens) > 0 && (
-                    <p className="text-sm font-medium text-muted-foreground mt-2 text-right">
-                      Total do pedido (custo): {currencyFormatters.brl(totalPedido(p.itens))}
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             ))}
@@ -725,47 +765,53 @@ export default function Pedidos() {
       </div>
 
       <Dialog open={showNovo} onOpenChange={(open) => !open && (setShowNovo(false), setEditingPedido(null))}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{editingPedido ? 'Editar pedido' : 'Novo pedido'}</DialogTitle>
-            <CardDescription>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col rounded-xl sm:rounded-lg">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-base sm:text-lg">{editingPedido ? 'Editar pedido' : 'Novo pedido'}</DialogTitle>
+            <CardDescription className="text-xs sm:text-sm">
               {editingPedido ? 'Altere nome e itens (custos e vendas serão usados ao dar entrada).' : 'Nome do pedido e itens. Informe custo e venda para atualizar ao dar entrada e gerar despesa.'}
             </CardDescription>
           </DialogHeader>
           <div className="space-y-4 overflow-y-auto flex-1 min-h-0">
             <div>
-              <Label>Nome do pedido</Label>
+              <Label className="text-sm">Nome do pedido</Label>
               <Input
                 placeholder="Ex: Pedido Fornecedor X - Jan/2025"
                 value={nomePedido}
                 onChange={(e) => setNomePedido(e.target.value)}
-                className="mt-1"
+                className="mt-1 min-h-[44px] rounded-lg touch-manipulation"
               />
             </div>
             <div>
-              <Label>Buscar produto para adicionar</Label>
-              <div className="flex gap-2 mt-1">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm">Buscar produto para adicionar</Label>
+              <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <Input
-                    className="pl-9"
+                    className="pl-9 min-h-[44px] rounded-lg touch-manipulation"
                     placeholder="Nome ou código do produto..."
                     value={buscaProduto}
                     onChange={(e) => setBuscaProduto(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), buscarProdutos())}
                   />
                 </div>
-                <Button type="button" variant="secondary" onClick={buscarProdutos} disabled={loadingBusca}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={buscarProdutos}
+                  disabled={loadingBusca}
+                  className="min-h-[44px] rounded-lg touch-manipulation shrink-0"
+                >
                   {loadingBusca ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
                 </Button>
               </div>
               {produtosBusca.length > 0 && (
-                <ul className="mt-2 border rounded-md divide-y max-h-40 overflow-auto">
+                <ul className="mt-2 border rounded-lg divide-y max-h-40 overflow-auto">
                   {produtosBusca.map((prod) => (
                     <li key={prod.id}>
                       <button
                         type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex justify-between items-center"
+                        className="w-full px-3 py-3 sm:py-2 text-left text-sm hover:bg-muted flex justify-between items-center min-h-[44px] sm:min-h-0 touch-manipulation"
                         onClick={() => adicionarItem(prod)}
                       >
                         <span className="truncate">{prod.nome}</span>
@@ -853,11 +899,19 @@ export default function Pedidos() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNovo(false)}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowNovo(false)}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+            >
               Cancelar
             </Button>
-            <Button onClick={salvarPedido} disabled={itensNovo.length === 0 || !nomePedido.trim()}>
+            <Button
+              onClick={salvarPedido}
+              disabled={itensNovo.length === 0 || !nomePedido.trim()}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+            >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               {editingPedido ? 'Salvar alterações' : 'Salvar pedido'}
             </Button>

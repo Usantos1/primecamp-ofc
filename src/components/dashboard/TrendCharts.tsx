@@ -112,11 +112,11 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
   const showPeriodInCard = onPeriodChange && !hidePeriodSelector;
 
   return (
-    <div className="space-y-4 w-full min-w-0">
-      <Card className="border-2 border-gray-300 dark:border-gray-600 shadow-sm w-full min-w-0 overflow-hidden">
+    <div className="space-y-4 w-full min-w-0 overflow-hidden">
+      <Card className="border-2 border-gray-300 dark:border-gray-600 shadow-sm w-full min-w-0 overflow-hidden rounded-xl md:rounded-lg">
         <CardHeader className="pb-2 sm:pb-3 pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6 border-b-2 border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-xl">
                 <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-emerald-100 to-rose-100 dark:from-emerald-900/30 dark:to-rose-900/30 border border-gray-200 dark:border-gray-600 flex-shrink-0">
                   <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-emerald-600 dark:text-emerald-400" />
@@ -143,8 +143,8 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
           </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-4 md:p-6">
-          {/* Gráfico principal: Total com gradiente (estilo foto 2 - teal/verde até rosa) */}
-          <div className="w-full min-h-[200px] sm:min-h-[240px] md:min-h-[260px] mb-4">
+          {/* Gráfico principal: Total com gradiente — responsivo, sem overflow em mobile */}
+          <div className="w-full min-h-[200px] sm:min-h-[240px] md:min-h-[260px] mb-4 min-w-0">
             {isEmpty ? (
               <div className="flex items-center justify-center h-[200px] text-muted-foreground text-sm">
                 Nenhum dado para o período selecionado

@@ -74,15 +74,15 @@ export function DateFilterBar({
   };
 
   return (
-    <Card className={cn("flex-shrink-0 border-[3px] border-gray-400 rounded-xl shadow-sm", className)}>
+    <Card className={cn("flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0", className)}>
       <CardContent className="p-3">
         <div className="flex flex-wrap items-center gap-2">
-          {/* Botões de filtro rápido */}
-          <div className="flex items-center gap-1 flex-wrap">
+          {/* Botões de filtro rápido — mobile: toque confortável */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Button
               variant={dateFilter === 'today' ? 'default' : 'outline'}
               size="sm"
-              className="h-8 text-xs"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('today')}
             >
               Hoje
@@ -90,7 +90,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'week' ? 'default' : 'outline'}
               size="sm"
-              className="h-8 text-xs"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('week')}
             >
               7 dias
@@ -98,7 +98,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'month' ? 'default' : 'outline'}
               size="sm"
-              className="h-8 text-xs"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('month')}
             >
               30 dias
@@ -106,7 +106,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'all' ? 'default' : 'outline'}
               size="sm"
-              className="h-8 text-xs"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('all')}
             >
               Todos
@@ -120,11 +120,11 @@ export function DateFilterBar({
                 variant={dateFilter === 'custom' && customDateStart && customDateEnd ? 'default' : 'outline'}
                 size="sm"
                 className={cn(
-                  "h-8 text-xs justify-start text-left font-normal border-[2px]",
+                  "min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs sm:text-xs justify-start text-left font-normal border-2 w-full sm:w-auto",
                   dateFilter === 'custom' && customDateStart && customDateEnd && "bg-primary text-primary-foreground"
                 )}
               >
-                <CalendarDays className="mr-2 h-3.5 w-3.5" />
+                <CalendarDays className="mr-2 h-3.5 w-3.5 shrink-0" />
                 {dateFilter === 'custom' && customDateStart && customDateEnd ? (
                   <span className="truncate">
                     {format(customDateStart, 'dd/MM/yy', { locale: ptBR })} - {format(customDateEnd, 'dd/MM/yy', { locale: ptBR })}
@@ -157,7 +157,7 @@ export function DateFilterBar({
                           }
                         }
                       }}
-                      className="h-8 text-sm"
+                      className="min-h-[44px] sm:h-8 rounded-lg touch-manipulation text-sm"
                     />
                   </div>
                   <div>
@@ -175,7 +175,7 @@ export function DateFilterBar({
                           }
                         }
                       }}
-                      className="h-8 text-sm"
+                      className="min-h-[44px] sm:h-8 rounded-lg touch-manipulation text-sm"
                     />
                   </div>
                 </div>
