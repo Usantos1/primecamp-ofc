@@ -197,6 +197,7 @@ export default function NovaVenda() {
   const [descontoTotal, setDescontoTotal] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [showEmitirCupomDialog, setShowEmitirCupomDialog] = useState(false);
   const [shouldEmitCupom, setShouldEmitCupom] = useState(true);
   const [pendingSaleForCupom, setPendingSaleForCupom] = useState<any>(null);
@@ -226,6 +227,7 @@ export default function NovaVenda() {
   const [closeDialogTotalVendas, setCloseDialogTotalVendas] = useState(0);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const addingPaymentRef = useRef(false);
   /** Callback executado ao fechar a janela de impressão do cupom (após finalizar venda) */
   const onCupomPrintClosedRef = useRef<(() => void) | null>(null);
 
@@ -1673,11 +1675,18 @@ export default function NovaVenda() {
     return { taxa_cartao: feePct, valor_repasse };
   };
 
-  // Adicionar pagamento
+  // Adicionar pagamento (bloqueia duplo clique para não duplicar forma de pagamento)
   const handleAddPayment = async () => {
     if (!id) return;
+    if (addingPaymentRef.current || isAddingPayment) return;
+    addingPaymentRef.current = true;
+    setIsAddingPayment(true);
     const valorRecebido = Number(checkoutPayment.valor) || 0;
-    if (valorRecebido <= 0) return;
+    if (valorRecebido <= 0) {
+      addingPaymentRef.current = false;
+      setIsAddingPayment(false);
+      return;
+    }
     // Em dinheiro com troco: gravar o valor aplicado à venda (valor que fica no caixa), não o valor recebido
     const troco = Number(checkoutPayment.troco) || 0;
     let valorAplicado = checkoutPayment.forma_pagamento === 'dinheiro' && troco > 0
@@ -1690,6 +1699,8 @@ export default function NovaVenda() {
     const saldoRestanteAgora = Number(totals.total || 0) - totalPagoAtual;
     const tolerancia = 0.005;
     if (valorAplicado > saldoRestanteAgora + tolerancia) {
+      addingPaymentRef.current = false;
+      setIsAddingPayment(false);
       toast({
         title: 'Valor acima do permitido',
         description: `O pagamento não pode ser maior que o saldo restante da venda (${currencyFormatters.brl(saldoRestanteAgora)}). Total da venda: ${currencyFormatters.brl(totals.total)}.`,
@@ -1713,19 +1724,19 @@ export default function NovaVenda() {
     try {
       const payment = await addPayment(payload);
       await confirmPayment(payment.id);
-      
+
       toast({ title: 'Pagamento adicionado com sucesso!' });
-      
+
       // Recarregar dados para atualizar saldo restante
       await loadSale();
-      
+
       // Resetar formulário mas manter modal aberto
       setCheckoutPayment({
         forma_pagamento: 'dinheiro',
         valor: undefined,
         troco: 0,
       });
-      
+
       // Verificar se está totalmente pago e finalizar automaticamente
       const updatedSale = await getSaleById(id);
       if (updatedSale && Number(updatedSale.total_pago) >= Number(updatedSale.total)) {
@@ -1818,6 +1829,9 @@ export default function NovaVenda() {
     } catch (error) {
       console.error('Erro ao adicionar pagamento:', error);
       toast({ title: 'Erro ao adicionar pagamento', variant: 'destructive' });
+    } finally {
+      addingPaymentRef.current = false;
+      setIsAddingPayment(false);
     }
   };
 
@@ -3401,8 +3415,11 @@ _PrimeCamp Assistência Técnica_`;
             <Button variant="outline" onClick={() => setShowCheckout(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAddPayment} disabled={!checkoutPayment.valor || checkoutPayment.valor <= 0 || checkoutPayment.valor === undefined}>
-              Confirmar Pagamento
+            <Button
+              onClick={handleAddPayment}
+              disabled={!checkoutPayment.valor || checkoutPayment.valor <= 0 || checkoutPayment.valor === undefined || isAddingPayment}
+            >
+              {isAddingPayment ? 'Confirmando...' : 'Confirmar Pagamento'}
             </Button>
           </DialogFooter>
         </DialogContent>

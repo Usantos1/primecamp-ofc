@@ -11,6 +11,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { useDashboardExecutivo } from '@/hooks/useFinanceiro';
+import { useSalesSummary } from '@/hooks/useReports';
 import { FinancialCards, getStoredValuesVisible, setStoredValuesVisible } from '@/components/dashboard/FinancialCards';
 import { OSStatusCards } from '@/components/dashboard/OSStatusCards';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
@@ -89,6 +90,28 @@ const Index = () => {
     financeiroEnd
   );
 
+  // Quando período é "Dia", usar a mesma fonte que /relatorios (useSalesSummary) para bater Total PDV/OS/Geral
+  const daySummaryFilters = useMemo(() =>
+    (trendPeriod === 'day' && periodStartDate && periodEndDate)
+      ? { startDate: periodStartDate, endDate: periodEndDate }
+      : undefined,
+    [trendPeriod, periodStartDate, periodEndDate]
+  );
+  const { data: salesSummaryDay } = useSalesSummary(daySummaryFilters ?? {}, { enabled: !!daySummaryFilters });
+
+  const kpisFromDaySummary = useMemo(() => {
+    if (!salesSummaryDay) return null;
+    return {
+      totalPDV: salesSummaryDay.totalPDV,
+      totalOS: salesSummaryDay.totalOS,
+      totalGeral: salesSummaryDay.totalGeral,
+      quantidadePDV: salesSummaryDay.countPDV,
+      quantidadeOS: salesSummaryDay.countOS,
+      ticketMedioPDV: salesSummaryDay.countPDV > 0 ? salesSummaryDay.totalPDV / salesSummaryDay.countPDV : 0,
+      ticketMedioOS: salesSummaryDay.countOS > 0 ? salesSummaryDay.totalOS / salesSummaryDay.countOS : 0,
+    };
+  }, [salesSummaryDay]);
+
   // Gráfico: usar tendência do financeiro (dados reais); filtrar pelo período e preencher dias faltantes
   const trendChartData: DashboardTrendData[] = useMemo(() => {
     const emptyPoint = (dateStr: string, dateLabel: string): DashboardTrendData => ({
@@ -101,6 +124,22 @@ const Index = () => {
       totalOS: 0,
       totalGeral: 0,
     });
+
+    // Período "Dia": usar os mesmos valores de /relatorios (useSalesSummary) no gráfico
+    if (trendPeriod === 'day' && salesSummaryDay && periodStartDate) {
+      const d = new Date(periodStartDate + 'T12:00:00');
+      const dateLabel = format(d, 'dd/MM', { locale: ptBR });
+      return [{
+        date: dateLabel,
+        data: periodStartDate,
+        vendas: salesSummaryDay.totalPDV,
+        os: salesSummaryDay.countOS,
+        faturamento_os: salesSummaryDay.totalOS,
+        totalPDV: salesSummaryDay.totalPDV,
+        totalOS: salesSummaryDay.totalOS,
+        totalGeral: salesSummaryDay.totalGeral,
+      }];
+    }
 
     if (financeiroDashboard?.tendencia?.length && periodStartDate && periodEndDate) {
       const byDate = new Map<string, DashboardTrendData>();
@@ -122,6 +161,25 @@ const Index = () => {
           faturamento_os: t.totalOS ?? 0,
           totalPDV: t.totalPDV ?? 0,
           totalOS: t.totalOS ?? 0,
+          totalGeral: t.totalGeral ?? 0,
+        });
+      });
+
+      // Mesclar dados locais (trendData) para o período — garante que "hoje" apareça quando a API não retornar o dia
+      trendData.forEach((t) => {
+        const dateStr = typeof t.data === 'string' ? t.data.trim().slice(0, 10) : '';
+        if (!dateStr || dateStr.length < 10 || dateStr < periodStartDate || dateStr > periodEndDate) return;
+        const d = new Date(dateStr + 'T12:00:00');
+        if (Number.isNaN(d.getTime())) return;
+        const dateLabel = format(d, 'dd/MM', { locale: ptBR });
+        byDate.set(dateStr, {
+          date: dateLabel,
+          data: dateStr,
+          vendas: t.vendas ?? 0,
+          os: t.os ?? 0,
+          faturamento_os: t.faturamento_os ?? 0,
+          totalPDV: t.totalPDV ?? t.vendas ?? 0,
+          totalOS: t.totalOS ?? t.faturamento_os ?? 0,
           totalGeral: t.totalGeral ?? 0,
         });
       });
@@ -165,7 +223,7 @@ const Index = () => {
       });
     }
     return trendData;
-  }, [financeiroDashboard?.tendencia, trendData, periodStartDate, periodEndDate]);
+  }, [trendPeriod, salesSummaryDay, financeiroDashboard?.tendencia, trendData, periodStartDate, periodEndDate]);
 
   // Se modo apresentação está ativo e é gestor, mostrar modo apresentação
   if (config.presentationMode && isGestor && financialData && osData && alerts) {
@@ -252,7 +310,7 @@ const Index = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2">
               <FinancialCards
                 data={financialData}
-                financeiroKpis={financeiroDashboard?.kpis}
+                financeiroKpis={trendPeriod === 'day' ? (kpisFromDaySummary ?? undefined) : financeiroDashboard?.kpis}
                 valuesVisible={valuesVisible}
                 inline
                 compact

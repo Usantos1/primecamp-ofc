@@ -37,8 +37,9 @@ export interface TechnicianProductivity {
 
 /**
  * Hook para resumo geral de vendas (PDV vs OS)
+ * @param options.enabled - se false, a query não roda (útil para dashboard quando período não é "Dia")
  */
-export function useSalesSummary(filters: ReportFilters = {}) {
+export function useSalesSummary(filters: ReportFilters = {}, options?: { enabled?: boolean }) {
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
 
@@ -141,7 +142,7 @@ export function useSalesSummary(filters: ReportFilters = {}) {
         countGeral,
       };
     },
-    enabled: isAdmin || Boolean(user?.id), // Apenas admins podem ver relatórios gerais
+    enabled: (options?.enabled !== false) && (isAdmin || Boolean(user?.id)),
   });
 }
 

@@ -149,29 +149,34 @@ export function useDashboardData() {
   const loadFinancialData = async () => {
     try {
       const hoje = new Date();
-      const inicioDia = startOfDay(hoje);
-      const fimDia = endOfDay(hoje);
       const inicioMes = startOfMonth(hoje);
       const fimMes = endOfMonth(hoje);
 
-      // Vendas do dia - apenas status 'paid' e 'partial' são válidos
-      const { data: vendasDia, error: errorDia } = await from('sales')
+      // Mesma lógica da página Vendas: buscar vendas sem filtro de data na API e filtrar "hoje" no cliente
+      const { data: vendasRecentes, error: errorDia } = await from('sales')
         .select('total, total_pago, status, created_at, company_id')
         .in('status', ['paid', 'partial'])
-        .gte('created_at', inicioDia.toISOString())
-        .lte('created_at', fimDia.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1000)
         .execute();
 
+      const hojeZero = new Date(hoje);
+      hojeZero.setHours(0, 0, 0, 0);
+      const vendasDia = (vendasRecentes || []).filter((v: any) => {
+        if (!v?.created_at) return false;
+        const data = new Date(v.created_at);
+        data.setHours(0, 0, 0, 0);
+        return data.getTime() === hojeZero.getTime();
+      });
+
       if (errorDia) {
-        console.error('[Dashboard] Erro ao buscar vendas do dia:', errorDia);
-      } else {
-        console.log('[Dashboard] Vendas do dia encontradas:', vendasDia?.length || 0, 'Período:', inicioDia.toISOString(), 'até', fimDia.toISOString());
+        console.error('[Dashboard] Erro ao buscar vendas:', errorDia);
       }
 
       // Vendas do mês - se não houver vendas no mês atual, buscar dos últimos 30 dias como fallback
       let vendasMes = null;
       let errorMes = null;
-      
+
       const { data: vendasMesAtual, error: errorMesAtual } = await from('sales')
         .select('total, total_pago, status, created_at, company_id')
         .in('status', ['paid', 'partial'])
@@ -389,9 +394,11 @@ export function useDashboardData() {
         });
       }
 
+      const hojeStr = format(hoje, 'yyyy-MM-dd');
       const fetchPoint = async (item: { date: string; dateISO: string; isWeek?: boolean }, isMonthAggregate: boolean) => {
         let inicio: Date;
         let fim: Date;
+        const isHoje = item.dateISO === hojeStr;
         if (isMonthAggregate) {
           inicio = startOfMonth(new Date(item.dateISO));
           fim = endOfMonth(inicio);
@@ -402,36 +409,59 @@ export function useDashboardData() {
           inicio = startOfDay(new Date(item.dateISO));
           fim = endOfDay(inicio);
         }
-        const { data: vendas } = await from('sales')
-          .select('id, total, total_pago')
-          .in('status', ['paid', 'partial'])
-          .gte('created_at', inicio.toISOString())
-          .lte('created_at', fim.toISOString())
-          .execute();
-        const { data: osList } = await from('ordens_servico')
-          .select('id')
-          .gte('created_at', inicio.toISOString())
-          .lte('created_at', fim.toISOString())
-          .execute();
-        const osIds = (osList || []).map((o: any) => o.id).filter(Boolean);
-        let faturamentoOS = 0;
-        if (osIds.length > 0) {
-          const { data: itensOS } = await from('os_items')
-            .select('ordem_servico_id, valor_total')
-            .in('ordem_servico_id', osIds)
-            .execute();
-          faturamentoOS = (itensOS || []).reduce((acc: number, i: any) => acc + Number(i.valor_total ?? 0), 0);
+        // Mesmo critério de data do /relatorios: para um dia use dateISO + T23:59:59.999Z; para mês/semana use inicio/fim
+        let rangeStart: string;
+        let rangeEnd: string;
+        if (isMonthAggregate || item.isWeek) {
+          rangeStart = inicio.toISOString();
+          rangeEnd = fim.toISOString();
+        } else {
+          rangeStart = item.dateISO;
+          rangeEnd = `${item.dateISO}T23:59:59.999Z`;
         }
-        const faturamentoDia = vendas?.reduce((acc, v) => acc + Number(v.total_pago || v.total || 0), 0) || 0;
-        const totalGeral = faturamentoDia + faturamentoOS;
+        let vendas: any[] | null = null;
+        if (isHoje) {
+          const { data: recentes } = await from('sales')
+            .select('id, total, total_pago, created_at, sale_origin')
+            .in('status', ['paid', 'partial'])
+            .order('created_at', { ascending: false })
+            .limit(1000)
+            .execute();
+          const hojeZero = new Date(hoje);
+          hojeZero.setHours(0, 0, 0, 0);
+          vendas = (recentes || []).filter((v: any) => {
+            if (!v?.created_at) return false;
+            const d = new Date(v.created_at);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === hojeZero.getTime();
+          });
+        } else {
+          const res = await from('sales')
+            .select('id, total, total_pago, sale_origin')
+            .in('status', ['paid', 'partial'])
+            .gte('created_at', rangeStart)
+            .lte('created_at', rangeEnd)
+            .execute();
+          vendas = res.data || [];
+        }
+        // PDV e OS pelo mesmo critério do /relatorios: tabela sales por sale_origin
+        const vendasList = vendas || [];
+        const totalPDV = vendasList
+          .filter((v: any) => v.sale_origin === 'PDV')
+          .reduce((acc: number, v: any) => acc + Number(v.total_pago ?? v.total ?? 0), 0);
+        const totalOS = vendasList
+          .filter((v: any) => v.sale_origin === 'OS')
+          .reduce((acc: number, v: any) => acc + Number(v.total_pago ?? v.total ?? 0), 0);
+        const totalGeral = totalPDV + totalOS;
+        const countOS = vendasList.filter((v: any) => v.sale_origin === 'OS').length;
         return {
           date: item.date,
           data: item.dateISO,
-          vendas: faturamentoDia,
-          os: osIds.length,
-          faturamento_os: faturamentoOS,
-          totalPDV: faturamentoDia,
-          totalOS: faturamentoOS,
+          vendas: totalPDV,
+          os: countOS,
+          faturamento_os: totalOS,
+          totalPDV,
+          totalOS,
           totalGeral,
         };
       };
