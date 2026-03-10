@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Edit, Trash2, Check, Search, Filter, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BillToPayFormData, BILL_STATUS_LABELS, EXPENSE_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, FinancialCategory, BillToPay } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -26,9 +27,11 @@ interface BillsManagerProps {
   month?: string;
   startDate?: string;
   endDate?: string;
+  valuesVisible?: boolean;
 }
 
-export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
+export function BillsManager({ month, startDate, endDate, valuesVisible = true }: BillsManagerProps) {
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -655,7 +658,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
                   <TableRow key={bill.id}>
                     <TableCell className="font-medium">{bill.description}</TableCell>
                     <TableCell className="text-muted-foreground">{bill.supplier || '-'}</TableCell>
-                    <TableCell className="font-semibold">{currencyFormatters.brl(bill.amount)}</TableCell>
+                    <TableCell className="font-semibold">{fmt(bill.amount)}</TableCell>
                     <TableCell>{dateFormatters.short(bill.due_date)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{EXPENSE_TYPE_LABELS[bill.expense_type]}</Badge>
@@ -962,7 +965,7 @@ export function BillsManager({ month, startDate, endDate }: BillsManagerProps) {
                           className={cn(editingBill?.id === bill.id && 'bg-primary/5 border-l-2 border-l-primary')}
                         >
                           <TableCell>{dateFormatters.short(bill.due_date)}</TableCell>
-                          <TableCell className="text-right font-medium">{currencyFormatters.brl(bill.amount)}</TableCell>
+                          <TableCell className="text-right font-medium">{fmt(bill.amount)}</TableCell>
                           <TableCell>
                             <Badge className={cn(
                               bill.status === 'pago' && 'bg-success/10 text-success border-success/30',

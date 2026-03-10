@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Check, Search, Eye, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils';
 
 interface AccountsReceivableManagerProps {
   month?: string;
+  valuesVisible?: boolean;
 }
 
 interface AccountReceivable {
@@ -41,7 +43,8 @@ interface AccountReceivable {
   updated_at?: string;
 }
 
-export function AccountsReceivableManager({ month }: AccountsReceivableManagerProps) {
+export function AccountsReceivableManager({ month, valuesVisible = true }: AccountsReceivableManagerProps) {
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<string>('all');
@@ -193,11 +196,11 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
         <div className="grid grid-cols-2 gap-4">
           <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
             <p className="text-sm text-muted-foreground">A Receber</p>
-            <p className="text-xl font-bold text-warning">{currencyFormatters.brl(totalPendente)}</p>
+            <p className="text-xl font-bold text-warning">{fmt(totalPendente)}</p>
           </div>
           <div className="p-4 rounded-lg bg-success/10 border border-success/30">
             <p className="text-sm text-muted-foreground">Recebido</p>
-            <p className="text-xl font-bold text-success">{currencyFormatters.brl(totalPago)}</p>
+            <p className="text-xl font-bold text-success">{fmt(totalPago)}</p>
           </div>
         </div>
 
@@ -269,7 +272,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                 {paginatedAccounts.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell className="font-medium">{account.cliente_nome || '-'}</TableCell>
-                    <TableCell className="font-semibold">{currencyFormatters.brl(account.valor_total)}</TableCell>
+                    <TableCell className="font-semibold">{fmt(account.valor_total)}</TableCell>
                     <TableCell>{account.data_vencimento ? dateFormatters.short(account.data_vencimento) : '-'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(account.status, account.data_vencimento)}>
@@ -409,7 +412,7 @@ export function AccountsReceivableManager({ month }: AccountsReceivableManagerPr
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Valor Total</p>
-                  <p className="font-bold text-lg">{currencyFormatters.brl(viewingAccount.valor_total)}</p>
+                  <p className="font-bold text-lg">{fmt(viewingAccount.valor_total)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Vencimento</p>

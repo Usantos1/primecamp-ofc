@@ -54,8 +54,8 @@ export default function FinanceiroContasPage() {
 
           {/* Conteúdo */}
           <div className="flex-1 overflow-hidden">
-            {activeTab === 'pagar' && <BillsManager />}
-            {activeTab === 'receber' && <AccountsReceivableManager />}
+            {activeTab === 'pagar' && <BillsManager valuesVisible={valuesVisible} />}
+            {activeTab === 'receber' && <AccountsReceivableManager valuesVisible={valuesVisible} />}
           </div>
         </div>
       </div>

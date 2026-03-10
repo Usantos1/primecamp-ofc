@@ -13,6 +13,7 @@ import { Plus, TrendingUp, TrendingDown, Search, ChevronLeft, ChevronRight, Shop
 // import { useFinancialTransactions, useFinancialCategories } from '@/hooks/useFinanceiro';
 import { TRANSACTION_TYPE_LABELS, PAYMENT_METHOD_LABELS, PaymentMethod, TransactionType, type FinancialCategory } from '@/types/financial';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -27,11 +28,13 @@ interface TransactionsManagerProps {
   month?: string;
   startDate?: string;
   endDate?: string;
+  valuesVisible?: boolean;
 }
 
 const ITEMS_PER_PAGE = 20;
 
-export function TransactionsManager({ month, startDate, endDate }: TransactionsManagerProps) {
+export function TransactionsManager({ month, startDate, endDate, valuesVisible = true }: TransactionsManagerProps) {
+  const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -415,19 +418,19 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="p-3 rounded-lg bg-red-50 border border-red-200">
             <p className="text-xs text-muted-foreground">Total Custo</p>
-            <p className="text-lg font-bold text-red-600">{currencyFormatters.brl(totalCusto)}</p>
+            <p className="text-lg font-bold text-red-600">{fmt(totalCusto)}</p>
           </div>
           <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
             <p className="text-xs text-muted-foreground">Total Vendas</p>
-            <p className="text-lg font-bold text-blue-600">{currencyFormatters.brl(totalVenda)}</p>
+            <p className="text-lg font-bold text-blue-600">{fmt(totalVenda)}</p>
           </div>
           <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
             <p className="text-xs text-muted-foreground">Total Despesas</p>
-            <p className="text-lg font-bold text-orange-600">{currencyFormatters.brl(totalDespesas)}</p>
+            <p className="text-lg font-bold text-orange-600">{fmt(totalDespesas)}</p>
           </div>
           <div className="p-3 rounded-lg bg-green-50 border border-green-200">
             <p className="text-xs text-muted-foreground">Total Lucro</p>
-            <p className="text-lg font-bold text-green-600">{currencyFormatters.brl(totalLucro)}</p>
+            <p className="text-lg font-bold text-green-600">{fmt(totalLucro)}</p>
           </div>
           <div className={cn(
             "p-3 rounded-lg border",
@@ -440,7 +443,7 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
               "text-lg font-bold",
               totalEntradas - totalSaidas >= 0 ? "text-primary" : "text-destructive"
             )}>
-              {currencyFormatters.brl(totalEntradas - totalSaidas)}
+              {fmt(totalEntradas - totalSaidas)}
             </p>
           </div>
         </div>
@@ -518,16 +521,16 @@ export function TransactionsManager({ month, startDate, endDate }: TransactionsM
                       </TableCell>
                       <TableCell className="font-medium">{transaction.description}</TableCell>
                       <TableCell className="text-right text-red-600">
-                        {transaction.custo && transaction.custo > 0 ? currencyFormatters.brl(transaction.custo) : '-'}
+                        {transaction.custo && transaction.custo > 0 ? fmt(transaction.custo) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-blue-600">
-                        {transaction.source === 'sale' ? currencyFormatters.brl(transaction.amount) : '-'}
+                        {transaction.source === 'sale' ? fmt(transaction.amount) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-orange-600">
-                        {transaction.source === 'bill' ? currencyFormatters.brl(transaction.amount) : '-'}
+                        {transaction.source === 'bill' ? fmt(transaction.amount) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
-                        {transaction.lucro && transaction.lucro > 0 ? currencyFormatters.brl(transaction.lucro) : '-'}
+                        {transaction.lucro && transaction.lucro > 0 ? fmt(transaction.lucro) : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

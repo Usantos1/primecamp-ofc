@@ -118,7 +118,7 @@ export default function FinanceiroTransacoesPage() {
         />
         
         <div className="flex-1 overflow-hidden">
-          <TransactionsManager startDate={startDate} endDate={endDate} />
+          <TransactionsManager startDate={startDate} endDate={endDate} valuesVisible={valuesVisible} />
         </div>
       </div>
     </ModernLayout>
