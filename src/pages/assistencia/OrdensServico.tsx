@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  Plus, Search, Edit, Phone, Calendar, X, Trash2,
+  Plus, Search, Edit, Calendar, X, Trash2,
   CheckCircle2, RotateCcw, Package, ChevronLeft, ChevronRight, XCircle, Download, Zap, ChevronDown, Filter
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -53,7 +53,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Componente de linha da tabela otimizado
+// Componente de linha da tabela otimizado — 1 clique seleciona, 2 cliques abre a OS
 const OSTableRow = memo(({ 
   os, 
   cliente, 
@@ -64,8 +64,9 @@ const OSTableRow = memo(({
   isAtrasada,
   hojeStr,
   index,
+  selected,
+  onSelect,
   onNavigate,
-  onWhatsApp,
   onFinalizar,
   onEntregue,
   onReabrir,
@@ -83,9 +84,11 @@ const OSTableRow = memo(({
       className={cn(
         zebraClass,
         isAtrasada && 'bg-red-50 dark:bg-red-950/20',
-        'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 border-b border-gray-200 dark:border-gray-700 transition-all duration-150'
+        'cursor-pointer border-b border-gray-200 dark:border-gray-700 transition-all duration-150',
+        selected ? 'ring-2 ring-primary bg-blue-100 dark:bg-blue-950/50' : 'hover:bg-blue-50 dark:hover:bg-blue-950/30'
       )}
-      onClick={() => onNavigate(`/os/${os.id}`)}
+      onClick={() => onSelect(os.id)}
+      onDoubleClick={() => onNavigate(`/os/${os.id}`)}
     >
       {/* Nº OS — cinza quando fechada/entregue */}
       <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[100px]">
@@ -110,18 +113,12 @@ const OSTableRow = memo(({
         </div>
       </td>
       
-      {/* Cliente */}
+      {/* Cliente — telefone sem link WhatsApp */}
       <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700 w-[200px] max-w-[200px]">
         <div className="min-w-0">
           <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
           {(cliente?.telefone || os.telefone_contato) && (
-            <button 
-              className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1 mt-0.5"
-              onClick={(e) => { e.stopPropagation(); onWhatsApp(os.telefone_contato || cliente?.telefone); }}
-            >
-              <Phone className="h-3 w-3" />
-              {os.telefone_contato || cliente?.telefone}
-            </button>
+            <p className="text-xs text-muted-foreground mt-0.5">{os.telefone_contato || cliente?.telefone}</p>
           )}
           {cliente?.cpf_cnpj && <p className="text-xs text-gray-500 truncate">CPF: {cliente.cpf_cnpj}</p>}
         </div>
@@ -262,6 +259,7 @@ export default function OrdensServico() {
   const [osToDelete, setOsToDelete] = useState<string | null>(null);
   const [osToReabrir, setOsToReabrir] = useState<{ id: string; motivo: string } | null>(null);
   const [page, setPage] = useState(1);
+  const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
   
   // Estados de exportação
   const [showExportModal, setShowExportModal] = useState(false);
@@ -410,11 +408,6 @@ export default function OrdensServico() {
 
   // Reset página quando filtros mudam
   useEffect(() => { setPage(1); }, [searchTerm, searchField, statusFilter, periodoFilter]);
-
-  // Handlers
-  const handleWhatsApp = (telefone?: string) => {
-    if (telefone) window.open(`https://wa.me/55${telefone.replace(/\D/g, '')}`, '_blank');
-  };
 
   const getDefaultPeriodo3Meses = () => {
     const fim = new Date();
@@ -885,6 +878,7 @@ export default function OrdensServico() {
                 <>
                   {/* Desktop: Tabela */}
                   <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
+                    <p className="text-xs text-muted-foreground px-4 py-1.5 border-b border-gray-100 dark:border-gray-800 shrink-0">Clique para selecionar a linha · Duplo clique para abrir a OS</p>
                     <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
                       <table className="w-full caption-bottom text-sm border-collapse table-fixed">
                         <thead className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 shadow-sm">
@@ -947,8 +941,9 @@ export default function OrdensServico() {
                                 isAtrasada={isAtrasada}
                                 hojeStr={hojeStr}
                                 index={index}
+                                selected={selectedOsId === os.id}
+                                onSelect={setSelectedOsId}
                                 onNavigate={navigate}
-                                onWhatsApp={handleWhatsApp}
                                 onFinalizar={handleFinalizar}
                                 onEntregue={handleEntregue}
                                 onReabrir={(os: any) => setOsToReabrir({ id: os.id, motivo: '' })}
@@ -997,9 +992,11 @@ export default function OrdensServico() {
                           key={os.id}
                           className={cn(
                             'border-gray-300 cursor-pointer hover:shadow-md transition-all active:scale-[0.98] shadow-sm',
-                            isAtrasada && 'border-red-500 bg-red-50'
+                            isAtrasada && 'border-red-500 bg-red-50',
+                            selectedOsId === os.id && 'ring-2 ring-primary'
                           )}
-                          onClick={() => navigate(`/os/${os.id}`)}
+                          onClick={() => setSelectedOsId(os.id)}
+                          onDoubleClick={() => navigate(`/os/${os.id}`)}
                         >
                           <CardContent className="p-4 space-y-3">
                             <div className="flex items-start justify-between border-b border-gray-200 pb-2">
@@ -1013,9 +1010,7 @@ export default function OrdensServico() {
                             <div className="border-b border-gray-200 pb-2">
                               <p className="font-semibold text-gray-900">{cliente?.nome || os.cliente_nome || '-'}</p>
                               {(cliente?.telefone || os.telefone_contato) && (
-                                <button className="text-xs text-emerald-600 flex items-center gap-1 mt-1" onClick={(e) => { e.stopPropagation(); handleWhatsApp(os.telefone_contato || cliente?.telefone); }}>
-                                  <Phone className="h-3 w-3" /> {os.telefone_contato || cliente?.telefone}
-                                </button>
+                                <p className="text-xs text-muted-foreground mt-1">{os.telefone_contato || cliente?.telefone}</p>
                               )}
                             </div>
                             {(modelo?.nome || os.modelo_nome) && (
