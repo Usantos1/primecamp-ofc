@@ -245,6 +245,16 @@ app.get('/api/api-tokens/test', (req, res) => {
   res.json({ success: true, message: 'Rota de API tokens está funcionando!' });
 });
 
+// Theme-config GET (ANTES do middleware de auth — assim não exige token)
+app.get('/api/theme-config/ok', (req, res) => {
+  res.setHeader('X-Theme-Config', 'enabled');
+  res.json({ ok: true, themeConfig: 'enabled', path: req.path || req.url });
+});
+app.get('/theme-config/ok', (req, res) => {
+  res.setHeader('X-Theme-Config', 'enabled');
+  res.json({ ok: true, themeConfig: 'enabled', path: req.path || req.url });
+});
+
 // POST - Gerar códigos em massa para produtos sem código (autenticado) — apenas da empresa
 // IMPORTANTE: Esta rota deve estar ANTES do middleware global que pula /api/functions/*
 app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req, res) => {
@@ -2780,14 +2790,6 @@ function themeConfigKey(host) {
   if (h === 'ativafix.com') return 'theme_config_ativafix';
   return `theme_config_${normalized}`;
 }
-
-// Diagnóstico: confirma que a API tem a rota de tema (se retornar 404, o deploy da API não atualizou)
-function themeConfigOk(req, res) {
-  res.setHeader('X-Theme-Config', 'enabled');
-  res.json({ ok: true, themeConfig: 'enabled', path: req.path || req.url });
-}
-app.get('/api/theme-config/ok', themeConfigOk);
-app.get('/theme-config/ok', themeConfigOk); // quando Nginx repassa sem prefixo /api
 
 // GET /api/theme-config — público (login) ou com auth (tema da empresa do usuário)
 // Com Authorization: retorna tema da empresa (company_id); senão usa ?host= para tema do domínio
