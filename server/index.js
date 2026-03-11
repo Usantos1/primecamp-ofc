@@ -450,6 +450,7 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/auth/') || 
       req.path === '/api/health' || 
       req.path === '/health' ||
+      (req.path === '/api/theme-config' && req.method === 'GET') || // GET tema público (login e primeira carga)
       req.path.startsWith('/api/public/') ||  // Rotas públicas (vagas, candidaturas)
       req.path.startsWith('/api/functions/') ||
       req.path.startsWith('/api/storage/') ||
