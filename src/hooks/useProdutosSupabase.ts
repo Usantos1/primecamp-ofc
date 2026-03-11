@@ -149,6 +149,10 @@ export function mapAssistenciaToSupabase(produto: Partial<Produto>): any {
   if (produto.estoque_minimo !== undefined) {
     payload.estoque_minimo = produto.estoque_minimo;
   }
+
+  if (produto.estoque_grade !== undefined) {
+    payload.estoque_grade = produto.estoque_grade;
+  }
   
   if (produto.localizacao !== undefined) {
     payload.localizacao = produto.localizacao;

@@ -21,6 +21,8 @@ import { useRefunds, Refund, Voucher } from '@/hooks/useRefunds';
 import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useThemeConfig } from '@/contexts/ThemeConfigContext';
+import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -65,6 +67,8 @@ export default function Devolucoes() {
   } = useRefunds();
   const { toast } = useToast();
   const { profile, isAdmin } = useAuth();
+  const { config: themeConfig } = useThemeConfig();
+  const { data: cupomConfig } = useCupomConfig();
   
   // Quem pode aprovar/completar sem senha (admin ou gestor). Vendedores podem criar e aprovar/completar com senha.
   const canApproveWithoutPassword = isAdmin || profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'gestor';
@@ -386,59 +390,91 @@ export default function Devolucoes() {
     });
   };
 
+  // Constrói o HTML do voucher com as configs do cupom (logo e nome da empresa), igual ao cupom de venda
+  const getVoucherPrintHtml = (voucher: any) => {
+    const valorVoucher = voucher.original_value || voucher.current_value || voucher.value || voucher.remaining_value || 0;
+    const mostrarLogo = cupomConfig?.mostrar_logo !== false;
+    const logoUrl = cupomConfig?.logo_url || '';
+    const companyName = cupomConfig?.empresa_nome || themeConfig?.companyName || 'Ativa FIX';
+    const logoSrc = logoUrl.startsWith('data:') ? logoUrl : logoUrl.startsWith('http') ? logoUrl : `${window.location.origin}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+    const logoImg =
+      mostrarLogo && logoUrl
+        ? `<div class="center" style="margin-bottom: 3px;"><img src="${logoSrc}" style="max-width: 60mm; max-height: 20mm; object-fit: contain; filter: contrast(2) brightness(0.85) saturate(1.2); -webkit-filter: contrast(2) brightness(0.85) saturate(1.2); image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; -webkit-print-color-adjust: exact; print-color-adjust: exact;" alt="${companyName}" onerror="this.style.display='none'" /></div><div class="divider-dashed"></div>`
+        : '';
+    const validityText = voucher.expires_at ? formatDate(voucher.expires_at) : '90 dias após a emissão';
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Voucher ${voucher.code}</title>
+          <style>
+            @page { size: 80mm 297mm; margin: 0; padding: 0; }
+            @media print {
+              @page { size: 80mm 297mm; margin: 0; padding: 0; }
+              * { color: #000000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; -webkit-font-smoothing: none !important; text-rendering: optimizeLegibility !important; image-rendering: -webkit-optimize-contrast !important; image-rendering: crisp-edges !important; }
+              body { font-size: 12px !important; padding: 2mm 6mm !important; transform: scale(1) !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            }
+            * { margin: 0; padding: 0; box-sizing: border-box; color: #000000 !important; -webkit-font-smoothing: none !important; text-rendering: optimizeLegibility !important; image-rendering: crisp-edges !important; }
+            body { width: 80mm; max-width: 80mm; margin: 0; padding: 2mm 6mm 2mm 5mm; font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000000 !important; background: #fff; line-height: 1.35; font-weight: 900; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; overflow: hidden; letter-spacing: 0.1px; }
+            .center { text-align: center; }
+            .bold { font-weight: 900 !important; color: #000000 !important; }
+            .divider-dashed { border-top: 2px dashed #000000 !important; margin: 4px 0; }
+            .big { font-size: 14px !important; font-weight: 900 !important; }
+            .huge { font-size: 18px !important; font-weight: 900 !important; letter-spacing: 1px; }
+            .alert { background: #000000 !important; color: #ffffff !important; padding: 4px 6px; margin: 6px 0; font-weight: 900 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .value { font-size: 16px !important; font-weight: 900 !important; }
+            div, p, span { color: #000000 !important; font-weight: 900 !important; }
+          </style>
+        </head>
+        <body>
+          ${logoImg}
+          <div class="center bold big" style="margin: 4px 0;">VALE COMPRA</div>
+          <div class="divider-dashed"></div>
+          <div class="center bold huge" style="margin: 6px 0;">${voucher.code}</div>
+          <div class="divider-dashed"></div>
+          <div class="center" style="margin: 4px 0;">
+            <div>Valor do Crédito:</div>
+            <div class="bold value">${formatCurrency(valorVoucher)}</div>
+          </div>
+          <div class="divider-dashed"></div>
+          <div style="font-size: 11px; margin: 2px 0;">Cliente: ${voucher.customer_name || '-'}</div>
+          <div style="font-size: 11px; margin: 2px 0;">Emitido: ${formatDate(voucher.created_at)}</div>
+          <div style="font-size: 11px; margin: 2px 0;">Validade: ${validityText}</div>
+          <div class="divider-dashed"></div>
+          <div class="center alert bold" style="font-size: 10px;">GUARDE ESTE CUPOM</div>
+          <div class="center" style="font-size: 9px; margin-top: 4px; line-height: 1.4;">
+            Este vale é de USO ÚNICO.<br>
+            Apresente no caixa para usar.<br>
+            Não pode ser dividido.</div>
+          <div class="center" style="font-size: 9px; margin-top: 2px;">Apresente este código no caixa.</div>
+          <div class="divider-dashed"></div>
+          <div class="center" style="font-size: 9px;">Gerado por ${companyName}</div>
+        </body>
+      </html>`;
+  };
+
   const handlePrintVoucher = (voucher: any) => {
-    // Criar janela de impressão térmica
-    const printWindow = window.open('', '_blank', 'width=300,height=600');
-    if (printWindow) {
-      // Usar campos corretos do banco: original_value e current_value
-      const valorVoucher = voucher.original_value || voucher.current_value || voucher.value || voucher.remaining_value || 0;
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Voucher ${voucher.code}</title>
-            <style>
-              body { font-family: monospace; font-size: 12px; width: 280px; margin: 0; padding: 10px; }
-              .center { text-align: center; }
-              .bold { font-weight: bold; }
-              .line { border-top: 1px dashed #000; margin: 10px 0; }
-              .big { font-size: 18px; }
-              .huge { font-size: 24px; }
-              .alert { background: #000; color: #fff; padding: 5px; margin: 10px 0; }
-              .value { font-size: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="center bold big">VALE COMPRA</div>
-            <div class="line"></div>
-            
-            <div class="center bold huge">${voucher.code}</div>
-            
-            <div class="line"></div>
-            <div class="center">
-              <div>Valor do Crédito:</div>
-              <div class="bold value">${formatCurrency(valorVoucher)}</div>
-            </div>
-            <div class="line"></div>
-            
-            <div>Cliente: ${voucher.customer_name || '-'}</div>
-            <div>Emitido: ${formatDate(voucher.created_at)}</div>
-            <div>Validade: ${voucher.expires_at ? formatDate(voucher.expires_at) : 'Sem validade'}</div>
-            
-            <div class="line"></div>
-            <div class="center alert bold">⚠️ GUARDE ESTE CUPOM ⚠️</div>
-            <div class="center" style="margin-top: 5px;">
-              Este vale é de USO ÚNICO.<br>
-              Apresente no caixa para usar.<br>
-              Não pode ser dividido.</div>
-            <div class="center">Apresente este código no caixa.</div>
-            <div class="line"></div>
-            <div class="center" style="font-size: 10px;">Gerado por Prime Camp</div>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
+    const html = getVoucherPrintHtml(voucher);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(html);
+      doc.close();
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
     }
+    setTimeout(() => {
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    }, 500);
   };
 
   const handleValidateVoucher = async () => {
@@ -774,7 +810,7 @@ export default function Devolucoes() {
                             </TableCell>
                             <TableCell>{getStatusBadge(voucher.status)}</TableCell>
                             <TableCell>
-                              {voucher.expires_at ? formatDate(voucher.expires_at) : 'Sem validade'}
+                              {voucher.expires_at ? formatDate(voucher.expires_at) : '90 dias após a emissão'}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-1">
@@ -989,7 +1025,7 @@ export default function Devolucoes() {
                 <div>
                   <div className="text-sm text-muted-foreground">Validade</div>
                   <div className="font-semibold">
-                    {selectedVoucher.expires_at ? formatDate(selectedVoucher.expires_at) : 'Sem validade'}
+                    {selectedVoucher.expires_at ? formatDate(selectedVoucher.expires_at) : '90 dias após a emissão'}
                   </div>
                 </div>
                 <div className="col-span-2">

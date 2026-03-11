@@ -527,6 +527,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const [showAddItem, setShowAddItem] = useState(false);
   const [produtoSearch, setProdutoSearch] = useState('');
   const [produtoResults, setProdutoResults] = useState<any[]>([]);
+  /** Produto escolhido na busca (mantém estoque_grade para exibir seletor de grade) */
+  const [selectedProdutoForItem, setSelectedProdutoForItem] = useState<any>(null);
   const [itemForm, setItemForm] = useState({
     tipo: 'servico' as 'peca' | 'servico' | 'mao_de_obra',
     produto_id: undefined as string | undefined,
@@ -1044,10 +1046,19 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           return;
         }
         const gradePorCor = produto?.estoque_grade?.tipo === 'cor' && produto?.estoque_grade?.itens && Object.keys(produto.estoque_grade.itens).length > 0;
+        const gradePorAro = produto?.estoque_grade?.tipo === 'aro' && produto?.estoque_grade?.itens && Object.keys(produto.estoque_grade.itens).length > 0;
         if (gradePorCor && (!itemForm.grade_cor || !itemForm.grade_cor.trim())) {
           toast({
-            title: 'Cor da grade obrigatória',
-            description: 'Este produto tem grade por cor. Selecione a cor da grade.',
+            title: 'Grade obrigatória',
+            description: 'Este produto tem grade por cor. Selecione a cor no modal.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        if (gradePorAro && (!itemForm.com_aro || (itemForm.com_aro !== 'com_aro' && itemForm.com_aro !== 'sem_aro'))) {
+          toast({
+            title: 'Grade obrigatória',
+            description: 'Este produto tem grade (Com Aro / Sem Aro). Selecione a opção no modal.',
             variant: 'destructive',
           });
           return;
@@ -1056,10 +1067,17 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         if (gradePorCor && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
           estoqueDisponivel = Number(produto.estoque_grade.itens[itemForm.grade_cor]) || 0;
         }
+        if (gradePorAro && itemForm.com_aro) {
+          const aroKey = comAroToGradeKey(itemForm.com_aro);
+          if (aroKey && produto.estoque_grade?.itens?.[aroKey] != null) {
+            estoqueDisponivel = Number(produto.estoque_grade.itens[aroKey]) || 0;
+          }
+        }
         if (estoqueDisponivel < itemForm.quantidade) {
+          const gradeLabel = itemForm.grade_cor ? ` (cor: ${itemForm.grade_cor})` : (itemForm.com_aro ? ` (${itemForm.com_aro === 'com_aro' ? 'Com Aro' : 'Sem Aro'})` : '');
           toast({
             title: 'Estoque insuficiente',
-            description: `Estoque disponível: ${estoqueDisponivel} unidades${itemForm.grade_cor ? ` (cor: ${itemForm.grade_cor})` : ''}. Quantidade solicitada: ${itemForm.quantidade}`,
+            description: `Estoque disponível: ${estoqueDisponivel} unidades${gradeLabel}. Quantidade solicitada: ${itemForm.quantidade}`,
             variant: 'destructive',
           });
           return;
@@ -1111,7 +1129,9 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const resolvedColaboradorNome =
         colaborador?.nome ||
         (isCreatingItem ? currentUserNome : (editingItem?.colaborador_nome || currentUserNome));
-      const comAroValido = (itemForm.com_aro === 'com_aro' || itemForm.com_aro === 'sem_aro') ? itemForm.com_aro : null;
+      const comAroValido = (itemForm.com_aro === 'com_aro' || itemForm.com_aro === 'sem_aro')
+        ? itemForm.com_aro
+        : (gradeKeyToComAro(itemForm.com_aro) || null);
       const gradeCorValido = (itemForm.grade_cor && itemForm.grade_cor.trim()) ? itemForm.grade_cor.trim() : null;
       const itemData = {
         tipo: itemForm.tipo,
@@ -1134,14 +1154,36 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       if (editingItem) {
         // Editar: ajustar estoque só se quantidade mudou e item tem produto
         if (itemForm.produto_id) {
-          const produto = produtos.find(p => p.id === itemForm.produto_id);
+          const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
           if (produto) {
             const quantidadeAntiga = editingItem.quantidade || 0;
             const quantidadeNova = itemForm.quantidade;
             const diferenca = quantidadeNova - quantidadeAntiga;
             if (diferenca !== 0) {
-              const estoqueAtual = produto.quantidade || 0;
-              const novoEstoque = Math.max(0, estoqueAtual - diferenca);
+              const grade = produto.estoque_grade;
+              const gradeCor = grade?.tipo === 'cor' && itemForm.grade_cor && grade?.itens?.[itemForm.grade_cor] != null;
+              const gradeAro = grade?.tipo === 'aro' && itemForm.com_aro;
+              const aroKey = gradeAro ? comAroToGradeKey(itemForm.com_aro) : null;
+              let estoqueAtual: number;
+              let payload: { quantidade: number; estoque_grade?: { tipo: string; itens: Record<string, number> } };
+              if (gradeCor) {
+                estoqueAtual = Number(grade.itens[itemForm.grade_cor]) || 0;
+                const novoValor = Math.max(0, estoqueAtual - diferenca);
+                const newItens = { ...grade.itens, [itemForm.grade_cor]: novoValor };
+                const newTotal = Object.values(newItens).reduce((a, b) => a + (Number(b) || 0), 0);
+                payload = { quantidade: newTotal, estoque_grade: { tipo: 'cor', itens: newItens } };
+              } else if (gradeAro && aroKey && grade?.itens?.[aroKey] != null) {
+                estoqueAtual = Number(grade.itens[aroKey]) || 0;
+                const novoValor = Math.max(0, estoqueAtual - diferenca);
+                const newItens = { ...grade.itens, [aroKey]: novoValor };
+                const newTotal = Object.values(newItens).reduce((a, b) => a + (Number(b) || 0), 0);
+                payload = { quantidade: newTotal, estoque_grade: { tipo: 'aro', itens: newItens } };
+              } else {
+                estoqueAtual = produto.quantidade || 0;
+                const novoEstoque = Math.max(0, estoqueAtual - diferenca);
+                payload = { quantidade: novoEstoque };
+              }
+              const novoEstoque = payload.quantidade;
               if (diferenca > 0 && estoqueAtual < diferenca) {
                 toast({
                   title: 'Estoque insuficiente',
@@ -1150,7 +1192,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
                 });
                 return;
               }
-              await updateProduto(produto.id, { quantidade: novoEstoque });
+              await updateProduto(produto.id, payload);
               try {
                 await from('produto_movimentacoes')
                   .insert({
@@ -1158,7 +1200,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
                     tipo: diferenca < 0 ? 'baixa_os' : 'ajuste_estoque',
                     motivo: `Edição de item na OS #${osNumero || '?'}`,
                     quantidade_antes: estoqueAtual,
-                    quantidade_depois: novoEstoque,
+                    quantidade_depois: payload.quantidade,
                     quantidade_delta: diferenca,
                     user_id: user?.id || null,
                     user_nome: currentUserNome,
@@ -1182,19 +1224,37 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         // Adicionar: primeiro gravar o item; depois baixa no estoque e movimentação (evita inconsistência se addItem falhar)
         await addItem(itemData);
         if (itemForm.produto_id) {
-          const produto = produtos.find(p => p.id === itemForm.produto_id);
+          const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
           if (produto) {
-            const estoqueAtual = produto.quantidade || 0;
-            const novoEstoque = Math.max(0, estoqueAtual - itemForm.quantidade);
-            await updateProduto(produto.id, { quantidade: novoEstoque });
+            const grade = produto.estoque_grade;
+            const gradeCor = grade?.tipo === 'cor' && itemForm.grade_cor && grade?.itens?.[itemForm.grade_cor] != null;
+            const gradeAro = grade?.tipo === 'aro' && itemForm.com_aro;
+            const aroKey = gradeAro ? comAroToGradeKey(itemForm.com_aro) : null;
+            let estoqueAtual: number;
+            let payload: { quantidade: number; estoque_grade?: { tipo: string; itens: Record<string, number> } };
+            if (gradeCor) {
+              estoqueAtual = Number(grade.itens[itemForm.grade_cor]) || 0;
+              const novoValor = Math.max(0, estoqueAtual - itemForm.quantidade);
+              const newItens = { ...grade.itens, [itemForm.grade_cor]: novoValor };
+              payload = { quantidade: Object.values(newItens).reduce((a, b) => a + (Number(b) || 0), 0), estoque_grade: { tipo: 'cor', itens: newItens } };
+            } else if (gradeAro && aroKey && grade?.itens?.[aroKey] != null) {
+              estoqueAtual = Number(grade.itens[aroKey]) || 0;
+              const novoValor = Math.max(0, estoqueAtual - itemForm.quantidade);
+              const newItens = { ...grade.itens, [aroKey]: novoValor };
+              payload = { quantidade: Object.values(newItens).reduce((a, b) => a + (Number(b) || 0), 0), estoque_grade: { tipo: 'aro', itens: newItens } };
+            } else {
+              estoqueAtual = produto.quantidade || 0;
+              payload = { quantidade: Math.max(0, estoqueAtual - itemForm.quantidade) };
+            }
+            await updateProduto(produto.id, payload);
             try {
               await from('produto_movimentacoes')
                 .insert({
                   produto_id: produto.id,
                   tipo: 'baixa_os',
                   motivo: `Item adicionado na OS #${osNumero || '?'}`,
-                  quantidade_antes: estoqueAtual,
-                  quantidade_depois: novoEstoque,
+                  quantidade_antes: produto.quantidade ?? 0,
+                  quantidade_depois: payload.quantidade,
                   quantidade_delta: -itemForm.quantidade,
                   user_id: user?.id || null,
                   user_nome: currentUserNome,
@@ -1214,6 +1274,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       }
 
       setShowAddItem(false);
+      setSelectedProdutoForItem(null);
       setItemForm({
         tipo: 'servico',
         produto_id: undefined,
@@ -1450,12 +1511,28 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     }
   };
 
+  // Mapeia valor com_aro para a chave da grade no produto (estoque_grade.itens)
+  const comAroToGradeKey = (v: string): string | null => {
+    if (v === 'com_aro' || v === 'Com Aro') return 'Com Aro';
+    if (v === 'sem_aro' || v === 'Sem Aro') return 'Sem Aro';
+    return null;
+  };
+  const gradeKeyToComAro = (key: string): '' | 'com_aro' | 'sem_aro' =>
+    key === 'Com Aro' ? 'com_aro' : key === 'Sem Aro' ? 'sem_aro' : '';
+
   // Selecionar produto
   const handleSelectProduto = (produto: Produto) => {
-    // Usar garantia do produto ou padrão de 90 dias
     const garantiaProduto = produto.garantia_dias || 90;
-    const gradePorCor = (produto as any).estoque_grade?.tipo === 'cor' && (produto as any).estoque_grade?.itens && Object.keys((produto as any).estoque_grade.itens).length > 0;
-    const primeiraCor = gradePorCor ? Object.keys((produto as any).estoque_grade.itens)[0] : '';
+    const grade = (produto as any).estoque_grade;
+    const gradePorCor = grade?.tipo === 'cor' && grade?.itens && Object.keys(grade.itens).length > 0;
+    const gradePorAro = grade?.tipo === 'aro' && grade?.itens && Object.keys(grade.itens).length > 0;
+    const temGrade = gradePorCor || gradePorAro;
+    const primeiraCor = gradePorCor ? Object.keys(grade.itens)[0] : '';
+    const primeiraAro = gradePorAro ? Object.keys(grade.itens)[0] : '';
+    const comAroInicial = gradePorAro && primeiraAro ? gradeKeyToComAro(primeiraAro) : '';
+
+    // Produto com grade sempre como peça para exibir seletor de grade e dar baixa correta
+    const tipoItem = temGrade ? 'peca' : (produto.tipo === 'peca' ? 'peca' : (produto.tipo === 'produto' ? 'peca' : 'servico'));
 
     setItemForm(prev => ({
       ...prev,
@@ -1463,10 +1540,12 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       descricao: produto.nome || produto.descricao || '',
       valor_unitario: produto.valor_dinheiro_pix || produto.valor_venda || produto.preco_venda || 0,
       garantia: garantiaProduto,
-      tipo: produto.tipo === 'peca' ? 'peca' : (produto.tipo === 'produto' ? 'peca' : 'servico'),
+      tipo: tipoItem,
       quantidade: 1,
       grade_cor: primeiraCor,
+      com_aro: comAroInicial || prev.com_aro,
     }));
+    setSelectedProdutoForItem(produto);
     setProdutoSearch('');
     setProdutoResults([]);
   };
@@ -1624,21 +1703,22 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         
         toast({ title: `OS #${novaOS.numero} criada!` });
         
-        // Enviar mensagem de "em andamento" se configurado
+        // Enviar mensagem do status "OS Aberta" se configurado (nova OS já nasce com status aberta)
         try {
-          const configEmAndamento = getConfigByStatus('em_andamento');
-          if (configEmAndamento?.notificar_whatsapp && configEmAndamento.mensagem_whatsapp) {
+          const statusInicial = novaOS.status || 'aberta';
+          const configAberta = getConfigByStatus(statusInicial);
+          if (configAberta?.notificar_whatsapp && configAberta.mensagem_whatsapp) {
             const telefone = formData.telefone_contato || selectedCliente?.whatsapp || selectedCliente?.telefone;
             if (telefone) {
               const marca = marcas.find(m => m.id === formData.marca_id);
               const modelo = modelos.find(m => m.id === formData.modelo_id);
               
               const linkOs = `${window.location.origin}/acompanhar-os/${novaOS.id}`;
-              let mensagem = configEmAndamento.mensagem_whatsapp
+              let mensagem = configAberta.mensagem_whatsapp
                 .replace(/{cliente}/g, selectedCliente?.nome || novaOS.cliente_nome || 'Cliente')
                 .replace(/{numero}/g, novaOS.numero?.toString() || '')
                 .replace(/{link_os}/g, linkOs)
-                .replace(/{status}/g, configEmAndamento.label)
+                .replace(/{status}/g, configAberta.label)
                 .replace(/{marca}/g, marca?.nome || novaOS.marca_nome || '')
                 .replace(/{modelo}/g, modelo?.nome || novaOS.modelo_nome || '');
               
@@ -1660,7 +1740,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             }
           }
         } catch (error: any) {
-          console.error('Erro ao enviar notificação de abertura:', error);
+          console.error('Erro ao enviar notificação de abertura (OS Aberta):', error);
           // Não bloquear a criação se o envio falhar
         }
         
@@ -5366,6 +5446,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               <p className="text-xs text-muted-foreground">
                                 {currencyFormatters.brl(prod.valor_venda || prod.preco_venda || 0)}
                               </p>
+                              {(prod as any).estoque_grade?.itens && Object.keys((prod as any).estoque_grade.itens).length > 0 && (
+                                <Badge variant="secondary" className="text-xs">Grade</Badge>
+                              )}
                               <Badge 
                                 variant={(prod.quantidade || 0) > 0 ? "default" : "destructive"}
                                 className="text-xs"
@@ -5430,6 +5513,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           if (produto.estoque_grade?.tipo === 'cor' && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
                             return Number(produto.estoque_grade.itens[itemForm.grade_cor]) || undefined;
                           }
+                          if (produto.estoque_grade?.tipo === 'aro' && itemForm.com_aro) {
+                            const aroKey = comAroToGradeKey(itemForm.com_aro);
+                            if (aroKey && produto.estoque_grade?.itens?.[aroKey] != null) {
+                              return Number(produto.estoque_grade.itens[aroKey]) || undefined;
+                            }
+                          }
                           return produto.quantidade || undefined;
                         })()
                       : undefined}
@@ -5442,10 +5531,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         if (produto?.estoque_grade?.tipo === 'cor' && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
                           estoqueDisponivel = Number(produto.estoque_grade.itens[itemForm.grade_cor]) || 0;
                         }
+                        if (produto?.estoque_grade?.tipo === 'aro' && itemForm.com_aro) {
+                          const aroKey = comAroToGradeKey(itemForm.com_aro);
+                          if (aroKey && produto.estoque_grade?.itens?.[aroKey] != null) {
+                            estoqueDisponivel = Number(produto.estoque_grade.itens[aroKey]) || 0;
+                          }
+                        }
                         if (produto && valor > estoqueDisponivel) {
+                          const gradeLabel = itemForm.grade_cor ? ` (cor: ${itemForm.grade_cor})` : (itemForm.com_aro ? ` (${comAroToGradeKey(itemForm.com_aro) || itemForm.com_aro})` : '');
                           toast({
                             title: 'Quantidade excede estoque',
-                            description: `Estoque disponível: ${estoqueDisponivel} unidades${itemForm.grade_cor ? ` (cor: ${itemForm.grade_cor})` : ''}.`,
+                            description: `Estoque disponível: ${estoqueDisponivel} unidades${gradeLabel}.`,
                             variant: 'destructive',
                           });
                           return;
@@ -5461,6 +5557,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         if (!produto) return 0;
                         if (produto.estoque_grade?.tipo === 'cor' && itemForm.grade_cor && produto.estoque_grade?.itens?.[itemForm.grade_cor] != null) {
                           return `${Number(produto.estoque_grade.itens[itemForm.grade_cor]) || 0} (cor: ${itemForm.grade_cor})`;
+                        }
+                        if (produto.estoque_grade?.tipo === 'aro' && itemForm.com_aro) {
+                          const aroKey = comAroToGradeKey(itemForm.com_aro);
+                          if (aroKey && produto.estoque_grade?.itens?.[aroKey] != null) {
+                            return `${Number(produto.estoque_grade.itens[aroKey]) || 0} (${aroKey})`;
+                          }
                         }
                         return `${produto.quantidade || 0} unidades`;
                       })()}
@@ -5624,49 +5726,82 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </Popover>
                   <p className="text-xs text-muted-foreground">Não sai no cupom. Útil para garantia/retorno.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Com aro ou sem aro</Label>
-                  <Select
-                    value={itemForm.com_aro || 'none'}
-                    onValueChange={(v) => setItemForm(prev => ({ ...prev, com_aro: (v === 'none' ? '' : v) as '' | 'com_aro' | 'sem_aro' }))}
-                  >
-                    <SelectTrigger className="w-full h-10">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">—</SelectItem>
-                      <SelectItem value="com_aro">Com aro</SelectItem>
-                      <SelectItem value="sem_aro">Sem aro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Controle interno. Não sai no cupom.</p>
-                </div>
-                {itemForm.tipo === 'peca' && itemForm.produto_id && (() => {
-                  const produto = produtos.find(p => p.id === itemForm.produto_id) as any;
+                {/* Grade para baixa no estoque: cor ou aro (sempre que o produto selecionado tiver grade) */}
+                {itemForm.produto_id && (() => {
+                  const produto = (selectedProdutoForItem?.id === itemForm.produto_id ? selectedProdutoForItem : produtos.find(p => p.id === itemForm.produto_id)) as any;
                   const gradePorCor = produto?.estoque_grade?.tipo === 'cor' && produto?.estoque_grade?.itens && Object.keys(produto.estoque_grade.itens).length > 0;
-                  const cores = gradePorCor ? Object.keys(produto.estoque_grade.itens).sort((a, b) => a.localeCompare(b)) : [];
-                  if (!gradePorCor || cores.length === 0) return null;
-                  return (
-                    <div className="space-y-2">
-                      <Label>Cor da grade</Label>
-                      <Select
-                        value={itemForm.grade_cor || ''}
-                        onValueChange={(v) => setItemForm(prev => ({ ...prev, grade_cor: v, quantidade: 1 }))}
-                      >
-                        <SelectTrigger className="w-full h-10">
-                          <SelectValue placeholder="Selecione a cor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cores.map((cor) => (
-                            <SelectItem key={cor} value={cor}>
-                              {cor} ({Number(produto.estoque_grade.itens[cor]) || 0} un.)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">Produto com grade por cor. Escolha a cor para lançar na OS.</p>
-                    </div>
-                  );
+                  const gradePorAro = produto?.estoque_grade?.tipo === 'aro' && produto?.estoque_grade?.itens && Object.keys(produto.estoque_grade.itens).length > 0;
+                  if (gradePorCor) {
+                    const cores = Object.keys(produto.estoque_grade.itens).sort((a, b) => a.localeCompare(b));
+                    return (
+                      <div className="space-y-2">
+                        <Label>Grade — Cor (para baixa no estoque)</Label>
+                        <Select
+                          value={itemForm.grade_cor || ''}
+                          onValueChange={(v) => setItemForm(prev => ({ ...prev, grade_cor: v, quantidade: 1 }))}
+                        >
+                          <SelectTrigger className="w-full h-10">
+                            <SelectValue placeholder="Selecione a cor" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cores.map((cor) => (
+                              <SelectItem key={cor} value={cor}>
+                                {cor} ({Number(produto.estoque_grade.itens[cor]) || 0} un.)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Selecione a cor para dar baixa no estoque certo.</p>
+                      </div>
+                    );
+                  }
+                  if (gradePorAro) {
+                    const opcoes = Object.keys(produto.estoque_grade.itens).sort((a, b) => a.localeCompare(b));
+                    return (
+                      <div className="space-y-2">
+                        <Label>Grade — Tipo (para baixa no estoque)</Label>
+                        <Select
+                          value={itemForm.com_aro || ''}
+                          onValueChange={(v) => setItemForm(prev => ({ ...prev, com_aro: (v === 'com_aro' || v === 'sem_aro' ? v : '') as '' | 'com_aro' | 'sem_aro', quantidade: 1 }))}
+                        >
+                          <SelectTrigger className="w-full h-10">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {opcoes.map((opc) => (
+                              <SelectItem key={opc} value={gradeKeyToComAro(opc) || opc}>
+                                {opc} ({Number(produto.estoque_grade.itens[opc]) || 0} un.)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Selecione Com Aro ou Sem Aro para dar baixa no estoque certo.</p>
+                      </div>
+                    );
+                  }
+                  if (itemForm.tipo === 'peca') {
+                    return (
+                      <div className="space-y-2">
+                        <Label>Com aro ou sem aro</Label>
+                        <Select
+                          value={itemForm.com_aro || 'none'}
+                          onValueChange={(v) => setItemForm(prev => ({ ...prev, com_aro: (v === 'none' ? '' : v) as '' | 'com_aro' | 'sem_aro' }))}
+                        >
+                          <SelectTrigger className="w-full h-10">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">—</SelectItem>
+                            <SelectItem value="com_aro">Com aro</SelectItem>
+                            <SelectItem value="sem_aro">Sem aro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">Controle interno. Não sai no cupom.</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-500">Para escolher cor ou tipo (grade), cadastre o produto em Produtos com &quot;Usar grade de estoque&quot; (por cor ou por aro).</p>
+                      </div>
+                    );
+                  }
+                  return null;
                 })()}
                 <div className="space-y-2">
                   <Label>Colaborador que lançou</Label>
@@ -5685,7 +5820,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </ScrollArea>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddItem(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { setShowAddItem(false); setSelectedProdutoForItem(null); }}>Cancelar</Button>
               <Button onClick={handleSubmitItem} disabled={!itemForm.descricao || isAddingItem || isUpdatingItem}>
                 {editingItem ? 'Atualizar' : 'Adicionar'}
               </Button>
