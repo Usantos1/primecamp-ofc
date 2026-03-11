@@ -63,24 +63,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         compactMode
       }));
 
-      // Salvar tema (cores, logo, nome) na VPS — reflete para todos os clientes do domínio
-      const host = typeof window !== 'undefined' ? window.location.hostname : '';
-      const payload = {
-        host,
-        companyName: nameToSave,
-        logo: logoPreview || undefined,
-        colors: {
-          primary: primaryColor,
-          sidebar: sidebarColor,
-          button: buttonColor,
-        },
-      };
-      const { data, error } = await apiClient.post('/theme-config', payload);
-      if (error) {
-        toast.error(error?.message || error?.error || 'Erro ao salvar tema na VPS');
-        return;
-      }
-
       const newConfig = {
         companyName: nameToSave,
         colors: {
@@ -93,9 +75,37 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         },
         logo: logoPreview || config.logo,
       };
+
+      // Salvar tema (cores, logo, nome) na VPS — reflete para todos os clientes do domínio
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+      const payload = {
+        host,
+        companyName: nameToSave,
+        logo: logoPreview || undefined,
+        colors: {
+          primary: primaryColor,
+          sidebar: sidebarColor,
+          button: buttonColor,
+        },
+      };
+      const { error } = await apiClient.post('/theme-config', payload);
+
+      // Aplica na interface em qualquer caso (nome e logo mudam na sessão atual)
       updateConfig(newConfig);
       document.title = nameToSave;
-      toast.success('Configurações salvas. O tema foi atualizado na VPS para todos os dispositivos.');
+
+      if (error) {
+        const is404 = (error as { status?: number })?.status === 404;
+        if (is404) {
+          toast.warning(
+            'Tema aplicado aqui, mas não foi salvo na VPS (servidor desatualizado). Faça o deploy da última versão na VPS para persistir para todos.'
+          );
+        } else {
+          toast.error(error?.message || (error as { message?: string })?.message || 'Erro ao salvar tema na VPS');
+        }
+      } else {
+        toast.success('Configurações salvas. O tema foi atualizado na VPS para todos os dispositivos.');
+      }
       onClose();
     } catch (error) {
       toast.error('Erro ao salvar configurações');

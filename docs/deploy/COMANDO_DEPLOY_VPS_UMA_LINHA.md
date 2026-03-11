@@ -43,6 +43,8 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 7. Limpa cache do Nginx e recarrega  
 8. `cd server` → `npm install --production` → `pm2 restart primecamp-api` → `cd ..`
 
+**Importante:** o passo 8 (reiniciar a API com PM2) é necessário para que o salvamento do **tema do sistema** (cores, nome, logo) funcione. Se ao salvar configurações aparecer 404 em `/api/theme-config`, a VPS está com a API antiga — refaça o deploy completo (incluindo `cd server` e `pm2 restart primecamp-api`).
+
 ## Requisito: Node 18+ na API
 
 A API usa o **fetch nativo** do Node (sem `node-fetch` nem `form-data`). É necessário **Node 18 ou superior** no ambiente onde a API roda. Para conferir: `node -v`. Se for menor que 18, atualize: `nvm install 20 && nvm use 20` (ou use o método do seu provedor).
