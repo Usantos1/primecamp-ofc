@@ -47,7 +47,7 @@ function getDefaultConfigByHost(): ThemeConfig {
       ...defaultConfigPrimeCamp,
       logo: `${origin}/logo-ativafix.png`,
       logoAlt: 'Ativa Fix',
-      companyName: 'Ativa Fix',
+      companyName: 'Ativa FIX | Gestão de Assistência e Vendas',
       colors: {
         ...defaultConfigPrimeCamp.colors,
         primary: ATIVAFIX_PRIMARY_HSL,
