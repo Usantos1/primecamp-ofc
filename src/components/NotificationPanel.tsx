@@ -70,31 +70,31 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
 
     const dismissed = getDismissedIds();
 
-    // Mensagens atuais do sistema (Primecamp) – só entram se o usuário nunca dispensou
-    const welcomeNotification: Notification = {
-      id: 'welcome',
+    // Dicas úteis do sistema – só entram se o usuário nunca dispensou
+    const tipAlertas: Notification = {
+      id: 'tip-alertas',
       type: 'info',
-      title: 'Bem-vindo ao Primecamp',
-      message: 'Use o Dashboard para visão geral, Relatórios para análises e o menu para OS, PDV e mais.',
+      title: 'Painel de Alertas',
+      message: 'Receba avisos por WhatsApp: nova OS, caixa fechado, resumo de vendas. Configure em Relatórios > Painel de Alertas.',
       timestamp: new Date(),
       read: false
     };
-    const systemUpdateNotification: Notification = {
-      id: 'system-update',
+    const tipRelatorios: Notification = {
+      id: 'tip-relatorios',
       type: 'info',
-      title: 'Sistema Atualizado',
-      message: 'Nova versão implantada com melhorias de performance e carregamento do dashboard.',
+      title: 'Relatórios',
+      message: 'Tendência de vendas (PDV vs OS), resumo geral e filtros por data em Relatórios.',
       timestamp: new Date(Date.now() - 3600000),
       read: false
     };
 
     const others = allNotifications.filter(
-      (n) => !dismissed.has(n.id) && n.id !== 'welcome' && n.id !== 'system-update'
+      (n) => !dismissed.has(n.id) && n.id !== 'tip-alertas' && n.id !== 'tip-relatorios'
     );
 
     const finalNotifications = [
-      ...(!dismissed.has('welcome') ? [welcomeNotification] : []),
-      ...(!dismissed.has('system-update') ? [systemUpdateNotification] : []),
+      ...(!dismissed.has('tip-alertas') ? [tipAlertas] : []),
+      ...(!dismissed.has('tip-relatorios') ? [tipRelatorios] : []),
       ...others
     ];
     setNotifications(finalNotifications);
@@ -144,7 +144,7 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
   };
 
   const deleteNotification = (notificationId: string) => {
-    if (notificationId === 'welcome' || notificationId === 'system-update') {
+    if (notificationId === 'tip-alertas' || notificationId === 'tip-relatorios') {
       setDismissedId(notificationId, true);
     }
     const updatedNotifications = notifications.filter(n => n.id !== notificationId);
@@ -182,10 +182,10 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
-      <div className="w-full max-w-md bg-background border-l shadow-lg h-full overflow-hidden notification-panel">
-        <Card className="h-full rounded-none border-0">
-          <CardHeader className="border-b">
+    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end items-stretch">
+      <div className="w-full max-w-md h-full max-h-[calc(100dvh-2rem)] bg-background border-l shadow-lg overflow-hidden flex flex-col notification-panel">
+        <Card className="flex flex-col min-h-0 flex-1 rounded-none border-0">
+          <CardHeader className="flex-shrink-0 border-b">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -208,8 +208,8 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0 flex flex-col h-full overflow-hidden">
-            <div className="flex-1 overflow-y-auto min-h-0">
+          <CardContent className="p-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
               {notifications.length === 0 ? (
                 <div className="flex items-center justify-center h-32 text-muted-foreground">
                   <div className="text-center">

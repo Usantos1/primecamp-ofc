@@ -240,7 +240,7 @@ export function AppSidebar() {
       collapsible="icon"
     >
       {!collapsed && (
-        <SidebarHeader className="px-4 py-4 border-b-2 border-gray-200 dark:border-gray-700 h-16 flex items-center justify-center bg-white dark:bg-gray-900">
+        <SidebarHeader className="flex-shrink-0 px-4 py-4 border-b-2 border-gray-200 dark:border-gray-700 h-16 flex items-center justify-center bg-white dark:bg-gray-900">
           <img
             src={logoUrl}
             alt={config.logoAlt || "Logo"}
@@ -254,7 +254,7 @@ export function AppSidebar() {
       )}
 
       <SidebarContent 
-        className={cn("flex flex-col gap-0 sidebar-scroll", collapsed ? "p-2 pt-4" : "p-3")}
+        className={cn("flex flex-1 min-h-0 flex-col gap-0 overflow-y-auto sidebar-scroll", collapsed ? "p-2 pt-4" : "p-3")}
       >
         <SidebarGroup>
           <SidebarGroupContent>
@@ -292,7 +292,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className={cn("border-t-2 border-gray-200 dark:border-gray-700 mt-auto bg-white/50 dark:bg-gray-900/50", collapsed ? "p-2" : "p-3")}>
+      <SidebarFooter className={cn("flex-shrink-0 border-t-2 border-gray-200 dark:border-gray-700 mt-auto bg-white/50 dark:bg-gray-900/50", collapsed ? "p-2" : "p-3")}>
         {!collapsed ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
