@@ -19,7 +19,7 @@ interface ThemeConfig {
 // Cores fixas do sistema — uma vez definidas valem para todos os usuários (AppBar, Sidebar, Botões)
 const SYSTEM_PRIMARY_HSL = '0 100% 47%';
 
-const defaultConfig: ThemeConfig = {
+const defaultConfigPrimeCamp: ThemeConfig = {
   logo: "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png",
   logoAlt: "Prime Camp Logo",
   colors: {
@@ -32,6 +32,24 @@ const defaultConfig: ThemeConfig = {
   },
   companyName: 'Prime Camp',
 };
+
+/** Configuração padrão por domínio: em ativafix.com o logo/nome vêm do mesmo build (arquivo em /public). */
+function getDefaultConfigByHost(): ThemeConfig {
+  if (typeof window === 'undefined') return defaultConfigPrimeCamp;
+  const h = window.location.hostname;
+  if (h === 'ativafix.com' || h === 'www.ativafix.com') {
+    const origin = window.location.origin;
+    return {
+      ...defaultConfigPrimeCamp,
+      logo: `${origin}/logo-ativafix.png`,
+      logoAlt: 'Ativa Fix',
+      companyName: 'Ativa Fix',
+    };
+  }
+  return defaultConfigPrimeCamp;
+}
+
+const defaultConfig = defaultConfigPrimeCamp;
 
 interface ThemeConfigContextType {
   config: ThemeConfig;
@@ -80,18 +98,19 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   const savedName = loadSystemNameFromStorage();
   const savedLogo = loadLogoFromStorage();
   const savedColors = loadThemeColorsFromStorage();
+  const baseConfig = getDefaultConfigByHost();
   const [config, setConfig] = useState<ThemeConfig>({
-    ...defaultConfig,
+    ...baseConfig,
     ...(savedName ? { companyName: savedName } : {}),
     ...(savedLogo ? { logo: savedLogo } : {}),
     ...(savedColors && Object.keys(savedColors).length > 0
-      ? { colors: { ...defaultConfig.colors, ...savedColors } }
+      ? { colors: { ...baseConfig.colors, ...savedColors } }
       : {}),
   });
 
-  // Aplicar nome do sistema e título da aba ao carregar (quando foi salvo nas configurações)
+  // Aplicar nome do sistema e título da aba ao carregar (salvo nas configurações ou padrão do domínio)
   useEffect(() => {
-    const name = loadSystemNameFromStorage();
+    const name = loadSystemNameFromStorage() || getDefaultConfigByHost().companyName;
     if (name) {
       document.title = name;
     }
@@ -103,8 +122,9 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   };
 
   const resetConfig = () => {
-    setConfig(defaultConfig);
-    applyThemeConfig(defaultConfig);
+    const base = getDefaultConfigByHost();
+    setConfig(base);
+    applyThemeConfig(base);
   };
 
   // Aplicar configurações de tema no CSS
