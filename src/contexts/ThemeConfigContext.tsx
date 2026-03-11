@@ -60,13 +60,33 @@ function loadLogoFromStorage(): string | undefined {
   return undefined;
 }
 
+function loadThemeColorsFromStorage(): Partial<ThemeColors> | null {
+  try {
+    const raw = localStorage.getItem('themeColors');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { primary?: string; sidebar?: string; button?: string };
+    if (parsed && typeof parsed === 'object') {
+      return {
+        ...(typeof parsed.primary === 'string' && parsed.primary.trim() ? { primary: parsed.primary } : {}),
+        ...(typeof parsed.sidebar === 'string' && parsed.sidebar.trim() ? { sidebar: parsed.sidebar } : {}),
+        ...(typeof parsed.button === 'string' && parsed.button.trim() ? { button: parsed.button } : {}),
+      };
+    }
+  } catch (_) {}
+  return null;
+}
+
 export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   const savedName = loadSystemNameFromStorage();
   const savedLogo = loadLogoFromStorage();
+  const savedColors = loadThemeColorsFromStorage();
   const [config, setConfig] = useState<ThemeConfig>({
     ...defaultConfig,
     ...(savedName ? { companyName: savedName } : {}),
     ...(savedLogo ? { logo: savedLogo } : {}),
+    ...(savedColors && Object.keys(savedColors).length > 0
+      ? { colors: { ...defaultConfig.colors, ...savedColors } }
+      : {}),
   });
 
   // Aplicar nome do sistema e título da aba ao carregar (quando foi salvo nas configurações)

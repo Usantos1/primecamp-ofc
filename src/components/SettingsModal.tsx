@@ -40,9 +40,20 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
         const logo = localStorage.getItem('systemLogo');
         setLogoPreview(logo && logo.startsWith('data:image/') ? logo : config.logo || null);
+        const colorsRaw = localStorage.getItem('themeColors');
+        if (colorsRaw) {
+          const colors = JSON.parse(colorsRaw) as { primary?: string; sidebar?: string; button?: string };
+          if (colors?.primary) setPrimaryColor(colors.primary);
+          if (colors?.sidebar) setSidebarColor(colors.sidebar);
+          if (colors?.button) setButtonColor(colors.button);
+        } else {
+          setPrimaryColor(config.colors.primary);
+          setSidebarColor(config.colors.sidebar || config.colors.primary);
+          setButtonColor(config.colors.button || config.colors.primary);
+        }
       } catch (_) {}
     }
-  }, [isOpen, config.logo]);
+  }, [isOpen, config.logo, config.colors.primary, config.colors.sidebar, config.colors.button]);
   
   // Cores do tema
   const [primaryColor, setPrimaryColor] = useState(config.colors.primary);
@@ -58,6 +69,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         autoSave,
         notifications,
         compactMode
+      }));
+
+      // Persistir cores do tema (para não voltar ao vermelho ao atualizar)
+      localStorage.setItem('themeColors', JSON.stringify({
+        primary: primaryColor,
+        sidebar: sidebarColor,
+        button: buttonColor,
       }));
 
       // Persistir logo (em chave separada para não estourar quota do JSON)
