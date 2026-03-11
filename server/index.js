@@ -455,6 +455,8 @@ try {
 app.use((req, res, next) => {
   // Preflight CORS: OPTIONS nunca exige autenticação
   if (req.method === 'OPTIONS') return next();
+  // GET theme-config (qualquer path): bypass imediato por req.url (funciona mesmo se req.path vier diferente)
+  if (req.method === 'GET' && typeof req.url === 'string' && req.url.indexOf('theme-config') !== -1) return next();
   // Pular autenticação para rotas de auth, health check, functions, whatsapp, webhook/leads, webhook/test e API pública v1
   // Também pular para rota de teste de api-tokens
   // IMPORTANTE: Pular também para /api/admin/revenda/* pois já tem autenticação própria
