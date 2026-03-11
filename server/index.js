@@ -21,8 +21,17 @@ import dashboardRoutes from './routes/dashboard.js';
 import refundsRoutes from './routes/refunds.js';
 import paymentMethodsRoutes from './routes/paymentMethods.js';
 import financeiroRoutes from './routes/financeiro.js';
-import alertsRoutes from './routes/alerts.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
+
+// Painel de Alertas: carregamento dinâmico para não derrubar o servidor se tabelas não existirem
+let alertsRoutes = null;
+try {
+  const alertsModule = await import('./routes/alerts.js');
+  alertsRoutes = alertsModule.default;
+  console.log('[Server] Módulo Painel de Alertas carregado');
+} catch (e) {
+  console.error('[Server] Painel de Alertas não carregado. Rode db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql no banco:', e.message);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -368,9 +377,19 @@ try {
   
   // Registrar rotas de financeiro/IA (COM autenticação)
   app.use('/api/financeiro', authenticateToken, financeiroRoutes);
-  // Registrar rotas do Painel de Alertas (COM autenticação)
-  app.use('/api/alerts', authenticateToken, alertsRoutes);
-  console.log('[Server] ✅ Rotas do Painel de Alertas registradas com sucesso');
+  // Registrar rotas do Painel de Alertas (COM autenticação) ou stub 503 se módulo não carregou
+  if (alertsRoutes) {
+    app.use('/api/alerts', authenticateToken, alertsRoutes);
+    console.log('[Server] ✅ Rotas do Painel de Alertas registradas com sucesso');
+  } else {
+    app.use('/api/alerts', authenticateToken, (req, res) => {
+      res.status(503).json({
+        error: 'Painel de Alertas indisponível. Rode a migração PAINEL_ALERTAS_TABELAS.sql no banco e reinicie a API.',
+        codigo: 'ALERTS_MODULE_NOT_LOADED',
+      });
+    });
+    console.log('[Server] ⚠️ Painel de Alertas: usando stub 503 (migração não aplicada ou erro no carregamento)');
+  }
   console.log('[Server] ✅ Rotas de financeiro/IA registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora

@@ -43,6 +43,8 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 7. Limpa cache do Nginx e recarrega  
 8. `cd server` → `npm install --production` → `pm2 restart primecamp-api` → `cd ..`
 
+**Painel de Alertas:** para o Painel de Alertas funcionar, rode **uma vez** no banco usado pela API a migração `db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql`. Se a API estiver em "errored" com muitos restarts, veja a seção "PM2 em erro / API caindo" abaixo.
+
 **Importante:** o passo 8 (reiniciar a API com PM2) é necessário para que o salvamento do **tema do sistema** (cores, nome, logo) funcione. Se ao salvar configurações aparecer 404 ou 401 em `/api/theme-config`, a VPS está com a API antiga — refaça o deploy **completo** (incluindo `git pull`, `cd server`, `npm install --production` e `pm2 restart primecamp-api`). Só atualizar o frontend não basta; a API precisa ser reiniciada com o código novo.
 
 **Tema por empresa (cores, nome, logo):** o tema é salvo **por empresa** (company_id do usuário). Cada empresa tem sua própria config; ao salvar nas configurações do sistema, reflete para todos os usuários da mesma empresa. Sem login usa tema do domínio (host). Para funcionar, a API na VPS precisa estar atualizada (deploy completo com `cd server` e `pm2 restart primecamp-api`); senão o POST retorna 404.
@@ -134,3 +136,24 @@ cd /root/primecamp-ofc && sudo rm -rf /var/www/primecamp.cloud/* && sudo cp -r d
 ```
 
 Se o build já foi feito antes, isso já resolve. Se não, rode o deploy completo (comando de uma linha no topo) com atenção ao path.
+
+## PM2 em erro / API caindo (status "errored", muitos restarts)
+
+Se `pm2 list` mostra **primecamp-api** com status **errored** e muitas reinicializações:
+
+1. **Ver o erro que está derrubando a API:**
+   ```bash
+   pm2 logs primecamp-api --err --lines 100
+   ```
+   Ou: `cat /root/.pm2/logs/primecamp-api-error.log | tail -150`
+
+2. **Causas comuns:**
+   - **Tabelas do Painel de Alertas não existem:** rode a migração no banco que a API usa:
+     ```bash
+   cd /root/primecamp-ofc
+   PGPASSWORD='SUA_SENHA' psql -h localhost -U postgres -d banco_gestao -f db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql
+   ```
+     (troque `SUA_SENHA`, usuário e banco conforme o `.env` do `server`). Depois: `pm2 restart primecamp-api`.
+   - **Variáveis de ambiente (.env):** confira se na pasta do projeto (ou em `server/`) existe `.env` com `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`. O PM2 pode estar rodando com outro diretório de trabalho; use `pm2 show primecamp-api` e veja "exec cwd".
+
+3. **Depois do deploy com código novo:** o Painel de Alertas passou a carregar de forma defensiva. Se o módulo falhar (ex.: tabelas inexistentes), a API sobe mesmo assim e `/api/alerts/*` retorna 503 com mensagem para rodar a migração. Assim o servidor para de cair; basta rodar a SQL e reiniciar.
