@@ -7,6 +7,41 @@ import { toast } from 'sonner';
 import { Send } from 'lucide-react';
 import type { AlertCatalogItem, AlertConfigItem } from '@/hooks/useAlerts';
 
+/** Valores de exemplo para teste de envio — mensagem não sai "vazia" com [var]. */
+const SAMPLE_PAYLOAD: Record<string, string> = {
+  cliente: 'Maria Silva',
+  numero_os: '7111',
+  marca: 'Apple',
+  modelo: 'iPhone 11',
+  usuario: 'Atendente',
+  link_os: 'https://exemplo.com/acompanhar-os/123',
+  empresa: 'Minha Empresa',
+  status: 'Aberta',
+  valor: 'R$ 150,00',
+  total_vendas: 'R$ 2.500,00',
+  quantidade_vendas: '18',
+  ticket_medio: 'R$ 138,89',
+  dias: '3',
+  data_vencimento: '25/02/2026',
+  descricao: 'Manutenção preventiva',
+  meta: 'R$ 10.000,00',
+  valor_abertura: 'R$ 500,00',
+  valor_fechamento: 'R$ 1.200,00',
+  horario: '20:00',
+  tipo: 'Venda',
+  id: '123',
+  campo: 'status',
+  valor_anterior: 'Aberta',
+  valor_novo: 'Finalizada',
+  limite: 'R$ 5.000,00',
+  mota: 'R$ 8.000,00', // typo comum no catálogo (meta)
+};
+
+function getSampleValue(varName: string): string {
+  const key = varName.toLowerCase().replace(/\s/g, '_');
+  return SAMPLE_PAYLOAD[key] ?? SAMPLE_PAYLOAD[varName] ?? `(exemplo: ${varName})`;
+}
+
 export function AlertRow({
   catalogItem,
   config,
@@ -63,7 +98,7 @@ export function AlertRow({
   const handleTest = async () => {
     if (!onTest) return;
     const payload: Record<string, string> = {};
-    vars.forEach((v) => (payload[v] = `[${v}]`));
+    vars.forEach((v) => (payload[v] = getSampleValue(v)));
     setTesting(true);
     try {
       await onTest({ codigo_alerta: catalogItem.codigo_alerta, payload });
