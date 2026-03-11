@@ -312,7 +312,7 @@ export async function dispatch(options) {
   } else if (alertConf && alertConf.numeros_destino && alertConf.numeros_destino.length) {
     numeros = [...alertConf.numeros_destino];
   }
-  numeros = [...new Set(numeros.map(n => String(n).replace(/\D/g, ''))).filter(Boolean)];
+  numeros = [...new Set(numeros.map(n => String(n).replace(/\D/g, '')))].filter(Boolean);
   if (numeros.length === 0) return { sent: false, error: 'Nenhum número configurado para envio' };
 
   const timezone = panel.timezone || 'America/Sao_Paulo';

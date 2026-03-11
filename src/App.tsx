@@ -72,7 +72,9 @@ import DashboardExecutivo from "./pages/financeiro/DashboardExecutivo";
 import DRE from "./pages/financeiro/DRE";
 import PlanejamentoAnual from "./pages/financeiro/PlanejamentoAnual";
 import FluxoDeCaixa from "./pages/financeiro/FluxoDeCaixa";
-import PainelAlertas from "./pages/PainelAlertas";
+import PainelAlertasConfig from "./pages/painel-alertas/PainelAlertasConfig";
+import PainelAlertasCategoria from "./pages/painel-alertas/PainelAlertasCategoria";
+import PainelAlertasHistorico from "./pages/painel-alertas/PainelAlertasHistorico";
 
 const queryClient = new QueryClient();
 
@@ -216,7 +218,10 @@ const App = () => (
               <Route path="/financeiro/contas" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroContasPage /></PermissionRoute>} />
               <Route path="/financeiro/transacoes" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroTransacoesPage /></PermissionRoute>} />
               <Route path="/financeiro/categorias" element={<PermissionRoute permission="relatorios.financeiro"><CategoriasFinanceiras /></PermissionRoute>} />
-              <Route path="/painel-alertas" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertas /></PermissionRoute>} />
+              <Route path="/painel-alertas" element={<PermissionRoute permission="relatorios.financeiro"><Navigate to="/painel-alertas/configuracoes" replace /></PermissionRoute>} />
+              <Route path="/painel-alertas/configuracoes" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasConfig /></PermissionRoute>} />
+              <Route path="/painel-alertas/alertas/:categoria" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasCategoria /></PermissionRoute>} />
+              <Route path="/painel-alertas/historico" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasHistorico /></PermissionRoute>} />
               
               {/* Rotas de OS - simplificadas para /os */}
               <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
