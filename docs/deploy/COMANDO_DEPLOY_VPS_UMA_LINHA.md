@@ -45,7 +45,9 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 
 **Importante:** o passo 8 (reiniciar a API com PM2) é necessário para que o salvamento do **tema do sistema** (cores, nome, logo) funcione. Se ao salvar configurações aparecer 404 ou 401 em `/api/theme-config`, a VPS está com a API antiga — refaça o deploy **completo** (incluindo `git pull`, `cd server`, `npm install --production` e `pm2 restart primecamp-api`). Só atualizar o frontend não basta; a API precisa ser reiniciada com o código novo.
 
-**White-label (tema por domínio):** cada domínio liberado tem sua própria configuração de tema (nome, logo, cores). Na VPS, no `.env` do projeto, você pode definir `WHITELABEL_DOMAINS=ativafix.com,www.ativafix.com,primecamp.cloud,www.primecamp.cloud` (ou outros domínios separados por vírgula). Só domínios listados usam config própria; os demais usam o tema padrão. Se a variável não existir, ativafix.com e primecamp.cloud já vêm liberados por padrão.
+**Tema por empresa (cores, nome, logo):** o tema é salvo **por empresa** (company_id do usuário). Cada empresa tem sua própria config; ao salvar nas configurações do sistema, reflete para todos os usuários da mesma empresa. Sem login usa tema do domínio (host). Para funcionar, a API na VPS precisa estar atualizada (deploy completo com `cd server` e `pm2 restart primecamp-api`); senão o POST retorna 404.
+
+**White-label (tema por domínio):** para a tela de login e quando o usuário não tem empresa, usa-se o tema do domínio. No `.env` da VPS: `WHITELABEL_DOMAINS=ativafix.com,www.ativafix.com,primecamp.cloud,www.primecamp.cloud` (opcional; esses já vêm por padrão).
 
 ## Requisito: Node 18+ na API
 

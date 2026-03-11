@@ -74,14 +74,17 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   const baseConfig = getDefaultConfigByHost();
   const [config, setConfig] = useState<ThemeConfig>(baseConfig);
 
-  // Buscar tema salvo na VPS (reflete para todos os clientes do domínio)
+  // Buscar tema: logado = tema da empresa (company); não logado = tema do domínio (host)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const host = window.location.hostname;
     const base = getApiUrl();
     const url = new URL('theme-config', base.endsWith('/') ? base : base + '/');
     url.searchParams.set('host', host);
-    fetch(url.toString())
+    const token = localStorage.getItem('auth_token');
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    fetch(url.toString(), { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: Partial<ThemeConfig> | null) => {
         if (!data || typeof data !== 'object') return;

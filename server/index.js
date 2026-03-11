@@ -2777,15 +2777,38 @@ function themeConfigKey(host) {
   return `theme_config_${normalized}`;
 }
 
-// GET /api/theme-config — público (login e primeira carga); ?host=ativafix.com
+// GET /api/theme-config — público (login) ou com auth (tema da empresa do usuário)
+// Com Authorization: retorna tema da empresa (company_id); senão usa ?host= para tema do domínio
 app.get('/api/theme-config', async (req, res) => {
   try {
-    const host = req.query.host || (req.headers.origin ? new URL(req.headers.origin).hostname : null);
+    let companyId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.slice(7);
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userRow = await pool.query('SELECT company_id FROM users WHERE id = $1', [decoded.id || decoded.userId || decoded.sub]);
+        if (userRow.rows[0]?.company_id) companyId = userRow.rows[0].company_id;
+      } catch (_) {}
+    }
+    // 1) Se logado com empresa, buscar tema da empresa
+    if (companyId) {
+      const companyKey = `theme_config_company_${companyId}`;
+      const companyResult = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [companyKey]);
+      if (companyResult.rows.length > 0 && companyResult.rows[0].value) {
+        const val = companyResult.rows[0].value;
+        return res.json(typeof val === 'string' ? JSON.parse(val) : val);
+      }
+    }
+    // 2) Fallback: tema do domínio (host)
+    let host = req.query.host;
+    if (host == null && req.headers.origin) {
+      try {
+        host = new URL(req.headers.origin).hostname;
+      } catch (_) {}
+    }
     const key = themeConfigKey(host);
-    const result = await pool.query(
-      'SELECT value FROM kv_store_2c4defad WHERE key = $1',
-      [key]
-    );
+    const result = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [key]);
     if (result.rows.length === 0 || !result.rows[0].value) {
       return res.json(null);
     }
@@ -2797,12 +2820,13 @@ app.get('/api/theme-config', async (req, res) => {
   }
 });
 
-// POST /api/theme-config — salvar tema (autenticado); reflete na VPS para todos os clientes do domínio
+// POST /api/theme-config — salvar tema (autenticado); por empresa (company_id) para que cada empresa tenha suas cores/nome/logo
 app.post('/api/theme-config', authenticateToken, async (req, res) => {
   try {
-    const host = req.body.host || (req.headers.origin ? new URL(req.headers.origin).hostname : null);
-    const key = themeConfigKey(host);
     const { companyName, logo, logoAlt, colors } = req.body;
+    const key = req.companyId
+      ? `theme_config_company_${req.companyId}`
+      : themeConfigKey(req.body.host || (req.headers.origin ? new URL(req.headers.origin).hostname : null));
     const incoming = {
       ...(companyName != null && { companyName: String(companyName).trim() || null }),
       ...(logo != null && { logo: logo === '' ? null : logo }),
