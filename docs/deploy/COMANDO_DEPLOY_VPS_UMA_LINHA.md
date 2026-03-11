@@ -8,7 +8,7 @@
 cd /root/primecamp-ofc && git pull origin main && npm install && npm run build && sudo rm -rf /var/www/primecamp.cloud/* && sudo cp -r dist/* /var/www/primecamp.cloud/ && sudo chown -R www-data:www-data /var/www/primecamp.cloud && sudo chmod -R 755 /var/www/primecamp.cloud && sudo rm -rf /var/cache/nginx/* 2>/dev/null; sudo systemctl reload nginx && cd server && npm install --production && pm2 restart primecamp-api && cd .. && echo "Deploy concluido!"
 ```
 
-**Atenção:** use o comando inteiro; não corte no meio. A parte do Nginx usa `;` de propósito (reload roda mesmo se o cache não existir).
+**Atenção:** use o comando inteiro; não corte no meio. O path correto é **`/var/www/primecamp.cloud`** (com `.cloud`). Se aparecer `chown: cannot access '/var/www/primecamp'`, o path está errado e o deploy não conclui (404). A parte do Nginx usa `;` de propósito (reload roda mesmo se o cache não existir).
 
 ## Em vários passos (se a uma linha falhar ou para ver em qual passo deu erro)
 
@@ -56,3 +56,14 @@ cd /root/primecamp-ofc && git pull origin main && cd server && npm install --pro
 ```
 
 Se ainda falhar, force reinstalação: `cd server && rm -rf node_modules && npm install --production && pm2 restart primecamp-api`
+
+## Se deu 404 ou "chown: cannot access '/var/www/primecamp'"
+
+O path certo é **`/var/www/primecamp.cloud`** (com `.cloud`). Criar a pasta se não existir e rodar só a parte do frontend:
+
+```bash
+sudo mkdir -p /var/www/primecamp.cloud
+cd /root/primecamp-ofc && sudo rm -rf /var/www/primecamp.cloud/* && sudo cp -r dist/* /var/www/primecamp.cloud/ && sudo chown -R www-data:www-data /var/www/primecamp.cloud && sudo chmod -R 755 /var/www/primecamp.cloud && sudo systemctl reload nginx && echo "Frontend atualizado!"
+```
+
+Se o build já foi feito antes, isso já resolve. Se não, rode o deploy completo (comando de uma linha no topo) com atenção ao path.

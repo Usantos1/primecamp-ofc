@@ -208,7 +208,7 @@ server {
 4. **Testar no navegador:**  
    https://ativafix.com e https://api.ativafix.com/api/health
 
-**Nota:** O frontend usa a mesma pasta do primecamp (`/var/www/primecamp.cloud`). O deploy continua sendo o mesmo; ativafix.com e primecamp.cloud servem os mesmos arquivos.
+**Importante:** O `root` **tem que ser** `/var/www/primecamp.cloud` (não `/var/www/ativafix.com`). Não existe pasta separada para ativafix; o mesmo deploy serve os dois domínios. Se no servidor estiver `root /var/www/ativafix.com;`, o site dá 404. Corrija para `root /var/www/primecamp.cloud;`, depois `sudo nginx -t && sudo systemctl reload nginx`.
 
 ---
 
