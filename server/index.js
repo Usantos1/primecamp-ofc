@@ -11,13 +11,10 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs';
 import crypto from 'crypto';
+import https from 'https';
 
-// Usar fetch nativo do Node 18+ (evita node-fetch e pacote form-data na VPS)
-const fetch = globalThis.fetch;
-if (typeof fetch !== 'function') {
-  console.error('Node 18+ é necessário (fetch nativo). Atualize o Node na VPS.');
-  process.exit(1);
-}
+// Fetch: usar nativo (Node 18+) onde existir; senão node-fetch não é usado na rota telegram (usa https)
+const fetch = typeof globalThis.fetch === 'function' ? globalThis.fetch : null;
 import resellerRoutes from './routes/reseller.js';
 import paymentsRoutes from './routes/payments.js';
 import dashboardRoutes from './routes/dashboard.js';
@@ -4425,8 +4422,35 @@ app.get('/api/clientes/search', authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// TELEGRAM BOT FUNCTIONS
+// TELEGRAM BOT FUNCTIONS (usa apenas https nativo, sem fetch/form-data)
 // ============================================
+
+function httpsRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname,
+      port: 443,
+      path: u.pathname + u.search,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        try {
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, json: () => Promise.resolve(JSON.parse(body)) });
+        } catch {
+          resolve({ ok: false, json: () => Promise.resolve({}) });
+        }
+      });
+    });
+    req.on('error', reject);
+    if (options.body) req.write(options.body);
+    req.end();
+  });
+}
 
 // POST /api/functions/telegram-bot - Enviar foto para Telegram
 app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
@@ -4445,24 +4469,19 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
       }
 
       const deleteUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`;
-      const deleteResponse = await fetch(deleteUrl, {
+      const deleteResponse = await httpsRequest(deleteUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          message_id: messageId,
-        }),
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
       });
-
       const deleteResult = await deleteResponse.json();
-      
+
       if (!deleteResult.ok) {
-        return res.status(400).json({ 
-          success: false, 
-          error: deleteResult.description || 'Erro ao deletar mensagem' 
+        return res.status(400).json({
+          success: false,
+          error: deleteResult.description || 'Erro ao deletar mensagem',
         });
       }
-
       return res.json({ success: true });
     }
 
@@ -4478,12 +4497,10 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
 
     console.log(`[Telegram] Enviando foto para OS-${osNumero}, tipo: ${tipo}, chat: ${chatId}`);
 
-    // Decodificar base64 para buffer
     const imageBuffer = Buffer.from(file, 'base64');
     const captionText = caption || `📱 OS-${osNumero}\n📁 Tipo: ${tipo === 'entrada' ? 'Entrada' : tipo === 'saida' ? 'Saída' : 'Processo'}\n📅 ${new Date().toLocaleString('pt-BR')}`;
     const photoName = fileName || `os-${osNumero}-${tipo}.jpg`;
 
-    // Multipart manual (sem dependência form-data) para compatibilidade na VPS
     const boundary = '----PrimeCampTelegram' + Date.now();
     const CRLF = '\r\n';
     const parts = [];
@@ -4495,43 +4512,37 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
     const body = Buffer.concat(parts);
 
     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
-    const telegramResponse = await fetch(telegramUrl, {
+    const telegramResponse = await httpsRequest(telegramUrl, {
       method: 'POST',
-      body,
       headers: {
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
         'Content-Length': String(body.length),
       },
+      body,
     });
-
     const telegramResult = await telegramResponse.json();
 
     if (!telegramResult.ok) {
       console.error('[Telegram] Erro na API:', telegramResult);
-      return res.status(400).json({ 
-        success: false, 
-        error: telegramResult.description || 'Erro ao enviar foto para Telegram' 
+      return res.status(400).json({
+        success: false,
+        error: telegramResult.description || 'Erro ao enviar foto para Telegram',
       });
     }
 
     const photo = telegramResult.result.photo;
-    const largestPhoto = photo[photo.length - 1]; // Pegar a maior resolução
-    const smallestPhoto = photo[0]; // Pegar a menor resolução (thumbnail)
+    const largestPhoto = photo[photo.length - 1];
+    const smallestPhoto = photo[0];
 
-    // Obter URL do arquivo
     let fileUrl = null;
     let thumbnailUrl = null;
-    
     try {
-      // URL do arquivo grande
-      const fileResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${largestPhoto.file_id}`);
+      const fileResponse = await httpsRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${largestPhoto.file_id}`);
       const fileData = await fileResponse.json();
       if (fileData.ok) {
         fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
       }
-      
-      // URL do thumbnail
-      const thumbResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${smallestPhoto.file_id}`);
+      const thumbResponse = await httpsRequest(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${smallestPhoto.file_id}`);
       const thumbData = await thumbResponse.json();
       if (thumbData.ok) {
         thumbnailUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${thumbData.result.file_path}`;
