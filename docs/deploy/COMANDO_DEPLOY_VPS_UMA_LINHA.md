@@ -49,8 +49,10 @@ A API usa o **fetch nativo** do Node (sem `node-fetch` nem `form-data`). É nece
 
 ## Se aparecer "Cannot find package 'form-data'" (Telegram)
 
-A API **não usa mais** esse pacote. Faça um deploy atualizado (`git pull` e `npm install --production` no `server`) e garanta **Node 18+** (`node -v`). Se o erro continuar, force a atualização do código:
+O `form-data` está no `package.json` do server para dependências transitivas. Na VPS, atualize o código, **reinstale** as dependências do server e reinicie a API:
 
 ```bash
-cd /root/primecamp-ofc && git fetch origin && git reset --hard origin/main && cd server && npm install --production && pm2 restart primecamp-api && echo "API atualizada!"
+cd /root/primecamp-ofc && git fetch origin && git reset --hard origin/main && cd server && rm -rf node_modules && npm install --production && pm2 restart primecamp-api && echo "OK"
 ```
+
+Assim o pacote `form-data` é instalado e o erro some.
