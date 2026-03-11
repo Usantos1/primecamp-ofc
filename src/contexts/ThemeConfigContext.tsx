@@ -37,11 +37,12 @@ const defaultConfigPrimeCamp: ThemeConfig = {
 // Cor padrão Ativa Fix (dourado) — HSL: 44 100% 53%
 const ATIVAFIX_PRIMARY_HSL = '44 100% 53%';
 
-/** Configuração padrão por domínio: em ativafix.com o logo, nome e cores vêm do mesmo build. */
+/** Configuração padrão por domínio: ativafix.com e localhost (dev) usam branding Ativa FIX para evitar flash "Prime Camp" no F5. */
 function getDefaultConfigByHost(): ThemeConfig {
   if (typeof window === 'undefined') return defaultConfigPrimeCamp;
   const h = window.location.hostname;
-  if (h === 'ativafix.com' || h === 'www.ativafix.com') {
+  const isAtivaFix = h === 'ativafix.com' || h === 'www.ativafix.com' || h === 'localhost' || h === '127.0.0.1';
+  if (isAtivaFix) {
     const origin = window.location.origin;
     return {
       ...defaultConfigPrimeCamp,
