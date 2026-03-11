@@ -42,3 +42,13 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 6. Ajusta dono e permissões  
 7. Limpa cache do Nginx e recarrega  
 8. `cd server` → `npm install --production` → `pm2 restart primecamp-api` → `cd ..`
+
+## Se aparecer "Cannot find package 'form-data'" (Telegram)
+
+A API **não usa mais** o pacote `form-data`; o envio de fotos usa multipart manual. Esse erro significa que a VPS está com **código antigo**. Rode na VPS:
+
+```bash
+cd /root/primecamp-ofc && git fetch origin && git reset --hard origin/main && cd server && npm install --production && pm2 restart primecamp-api && echo "API atualizada!"
+```
+
+Isso força a pasta a ficar igual ao `main` do GitHub e reinicia a API. Depois teste de novo o envio de foto para o Telegram.

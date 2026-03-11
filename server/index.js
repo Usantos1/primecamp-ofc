@@ -4488,8 +4488,10 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
     parts.push(Buffer.from(`${CRLF}--${boundary}--${CRLF}`, 'utf8'));
     const body = Buffer.concat(parts);
 
+    // Usar fetch nativo do Node 18+ para evitar node-fetch e pacote form-data na VPS
+    const nodeFetch = typeof globalThis.fetch === 'function' ? globalThis.fetch : fetch;
     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
-    const telegramResponse = await fetch(telegramUrl, {
+    const telegramResponse = await nodeFetch(telegramUrl, {
       method: 'POST',
       body,
       headers: {
@@ -4517,15 +4519,15 @@ app.post('/api/functions/telegram-bot', authenticateToken, async (req, res) => {
     let thumbnailUrl = null;
     
     try {
-      // URL do arquivo grande
-      const fileResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${largestPhoto.file_id}`);
+      // URL do arquivo grande (fetch nativo evita form-data na VPS)
+      const fileResponse = await nodeFetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${largestPhoto.file_id}`);
       const fileData = await fileResponse.json();
       if (fileData.ok) {
         fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileData.result.file_path}`;
       }
       
       // URL do thumbnail
-      const thumbResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${smallestPhoto.file_id}`);
+      const thumbResponse = await nodeFetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${smallestPhoto.file_id}`);
       const thumbData = await thumbResponse.json();
       if (thumbData.ok) {
         thumbnailUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${thumbData.result.file_path}`;
