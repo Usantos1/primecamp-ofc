@@ -72,6 +72,7 @@ import DashboardExecutivo from "./pages/financeiro/DashboardExecutivo";
 import DRE from "./pages/financeiro/DRE";
 import PlanejamentoAnual from "./pages/financeiro/PlanejamentoAnual";
 import FluxoDeCaixa from "./pages/financeiro/FluxoDeCaixa";
+import PainelAlertas from "./pages/PainelAlertas";
 
 const queryClient = new QueryClient();
 
@@ -215,6 +216,7 @@ const App = () => (
               <Route path="/financeiro/contas" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroContasPage /></PermissionRoute>} />
               <Route path="/financeiro/transacoes" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroTransacoesPage /></PermissionRoute>} />
               <Route path="/financeiro/categorias" element={<PermissionRoute permission="relatorios.financeiro"><CategoriasFinanceiras /></PermissionRoute>} />
+              <Route path="/painel-alertas" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertas /></PermissionRoute>} />
               
               {/* Rotas de OS - simplificadas para /os */}
               <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />

@@ -21,6 +21,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import refundsRoutes from './routes/refunds.js';
 import paymentMethodsRoutes from './routes/paymentMethods.js';
 import financeiroRoutes from './routes/financeiro.js';
+import alertsRoutes from './routes/alerts.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -367,6 +368,9 @@ try {
   
   // Registrar rotas de financeiro/IA (COM autenticação)
   app.use('/api/financeiro', authenticateToken, financeiroRoutes);
+  // Registrar rotas do Painel de Alertas (COM autenticação)
+  app.use('/api/alerts', authenticateToken, alertsRoutes);
+  console.log('[Server] ✅ Rotas do Painel de Alertas registradas com sucesso');
   console.log('[Server] ✅ Rotas de financeiro/IA registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora
@@ -1459,7 +1463,8 @@ app.post('/api/query/:table', async (req, res) => {
       // Logs do sistema, DISC, integrações e Academy
       'user_activity_logs', 'audit_logs', 'disc_responses',
       'telegram_config',
-      'trainings', 'training_assignments'
+      'trainings', 'training_assignments',
+      'alert_panel_config', 'alert_config', 'alert_logs'
     ];
     
     const tableNameOnly = table.includes('.') ? table.split('.')[1] : table;
@@ -1615,7 +1620,8 @@ app.post('/api/insert/:table', async (req, res) => {
       'refunds', 'refund_items',
       'user_activity_logs', 'audit_logs', 'disc_responses',
       'telegram_config',
-      'trainings', 'training_assignments'
+      'trainings', 'training_assignments',
+      'alert_panel_config', 'alert_config', 'alert_logs'
     ];
     
     const needsCompanyId = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
@@ -2040,9 +2046,10 @@ app.post('/api/update/:table', async (req, res) => {
       'refunds', 'refund_items',
       'user_activity_logs', 'audit_logs', 'disc_responses',
       'telegram_config',
-      'trainings', 'training_assignments'
+      'trainings', 'training_assignments',
+      'alert_panel_config', 'alert_config', 'alert_logs'
     ];
-    
+
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
 
     // CRÍTICO: Usuário sem company_id não pode alterar dados de ninguém (isolamento entre empresas)
@@ -2601,9 +2608,10 @@ app.post('/api/delete/:table', async (req, res) => {
       'refunds', 'refund_items',
       'user_activity_logs', 'audit_logs', 'disc_responses',
       'telegram_config',
-      'trainings', 'training_assignments'
+      'trainings', 'training_assignments',
+      'alert_panel_config', 'alert_config', 'alert_logs'
     ];
-    
+
     const needsCompanyFilter = tablesWithCompanyId.includes(tableNameOnly.toLowerCase());
 
     // CRÍTICO: Usuário sem company_id não pode excluir dados de ninguém (isolamento entre empresas)

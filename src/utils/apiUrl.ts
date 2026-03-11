@@ -1,17 +1,14 @@
 /**
- * URL base da API. Em produção:
- * - Se o site for acessado por ativafix.com ou www.ativafix.com → https://api.ativafix.com/api
- * - Caso contrário → https://api.primecamp.cloud/api
- * Permite um único build servir os dois domínios.
+ * URL base da API.
+ * - VITE_API_URL definido no .env → usa esse valor (ex.: API local em dev).
+ * - Caso contrário → https://api.ativafix.com/api
+ * Para testar Painel de Alertas no localhost, suba a API local e defina VITE_API_URL=http://localhost:3000/api
  */
 export function getApiUrl(): string {
-  if (import.meta.env.VITE_API_URL && !String(import.meta.env.VITE_API_URL).includes('localhost')) {
-    const url = String(import.meta.env.VITE_API_URL).replace(/\/$/, '');
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && String(envUrl).trim()) {
+    const url = String(envUrl).trim().replace(/\/$/, '');
     return url.endsWith('/api') ? url : url + '/api';
   }
-  if (typeof window !== 'undefined') {
-    const h = window.location.hostname;
-    if (h === 'ativafix.com' || h === 'www.ativafix.com') return 'https://api.ativafix.com/api';
-  }
-  return 'https://api.primecamp.cloud/api';
+  return 'https://api.ativafix.com/api';
 }

@@ -151,6 +151,7 @@ export function AppSidebar() {
   const relatoriosItems = [
     { label: "Relatórios", path: "/relatorios", icon: Receipt, permission: "relatorios.view" },
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
+    { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ].filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
