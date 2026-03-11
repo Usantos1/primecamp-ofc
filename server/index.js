@@ -117,6 +117,16 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Bypass imediato para GET theme-config/ok (antes de qualquer auth/rota) — evita 401 em deploy
+app.use((req, res, next) => {
+  const url = (req.originalUrl || req.url || '').split('?')[0];
+  if (req.method === 'GET' && (url.includes('theme-config/ok') || (req.url && String(req.url).indexOf('theme-config/ok') !== -1))) {
+    res.setHeader('X-Theme-Config', 'enabled');
+    return res.status(200).json({ ok: true, themeConfig: 'enabled', path: url || req.url, _v: 2 });
+  }
+  next();
+});
+
 // Configurar multer para upload de arquivos
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

@@ -86,7 +86,15 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
    cd server && pm2 restart primecamp-api
    curl -s http://localhost:3000/api/theme-config/ok
    ```
-   Se localhost retornar `{"ok":true,...}`, aí teste de novo: `curl -s https://api.ativafix.com/api/theme-config/ok`.
+   Se localhost retornar `{"ok":true,...}`, teste a API pública: `curl -s https://api.ativafix.com/api/theme-config/ok` (sempre use `curl`, não digite a URL direto no bash).
+
+   **c) Teste sem /api** (caso o Nginx repasse só o path): `curl -s http://localhost:3000/theme-config/ok`
+
+   **d) Conferir se a VPS está com o código novo:** na VPS rode:
+   ```bash
+   grep -n "Bypass imediato" /root/primecamp-ofc/server/index.js
+   ```
+   Deve aparecer uma linha (ex.: `121:// Bypass imediato...`). Se não aparecer, o repositório na VPS está desatualizado: no seu **PC** faça `git push origin main`; na **VPS** rode `git fetch origin main && git reset --hard origin/main`, depois `cd server && pm2 restart primecamp-api`. Confirme também que o PM2 usa o projeto certo: `pm2 describe primecamp-api` (campo "script path" deve ser o `index.js` dentro de `/root/primecamp-ofc/server`). Resposta correta do endpoint: `{"ok":true,"themeConfig":"enabled","path":"/api/theme-config/ok","_v":2}`.
 
 ## Requisito: Node 18+ na API
 
