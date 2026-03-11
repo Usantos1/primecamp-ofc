@@ -1,22 +1,10 @@
 /**
  * Cliente de Banco de Dados - PostgreSQL via API REST
- * 
- * Este arquivo é o ÚNICO ponto de acesso ao banco de dados.
- * Todas as operações passam pela API em api.primecamp.cloud
- * Em caso de 429 (Too Many Requests), as requisições são repetidas com backoff.
+ * Usa getApiUrl() para suportar ativafix.com e primecamp.cloud com o mesmo build.
  */
 
 import { fetchWithRetry } from '@/utils/fetchWithRetry';
-
-// Forçar uso da API de produção
-const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-  ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
-
-// Validação de segurança
-if (API_URL.includes('.supabase.co')) {
-  throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
-}
+import { getApiUrl } from '@/utils/apiUrl';
 
 // Cliente PostgreSQL inicializado silenciosamente
 
@@ -53,10 +41,7 @@ class InsertBuilder {
   }
 
   async execute(): Promise<{ data: any | null; error: any | null }> {
-    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-      ? import.meta.env.VITE_API_URL 
-      : 'https://api.primecamp.cloud/api';
-
+    const API_URL = getApiUrl();
     try {
       const response = await fetchWithRetry(`${API_URL}/insert/${this.tableName}`, {
         method: 'POST',
@@ -122,10 +107,7 @@ class DeleteBuilder {
   }
 
   async execute(): Promise<{ data: any | null; error: any | null }> {
-    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-      ? import.meta.env.VITE_API_URL 
-      : 'https://api.primecamp.cloud/api';
-
+    const API_URL = getApiUrl();
     try {
       const response = await fetchWithRetry(`${API_URL}/delete/${this.tableName}`, {
         method: 'POST',
@@ -202,10 +184,7 @@ class UpdateBuilder {
   }
 
   async execute(): Promise<{ data: any | null; error: any | null }> {
-    const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-      ? import.meta.env.VITE_API_URL 
-      : 'https://api.primecamp.cloud/api';
-
+    const API_URL = getApiUrl();
     try {
       const response = await fetchWithRetry(`${API_URL}/update/${this.tableName}`, {
         method: 'POST',
@@ -389,6 +368,7 @@ class DatabaseClient {
   }
 
   async execute(): Promise<{ data: any[] | null; error: any | null; count?: number }> {
+    const API_URL = getApiUrl();
     try {
       const response = await fetchWithRetry(`${API_URL}/query/${this.tableName}`, {
         method: 'POST',
@@ -449,6 +429,7 @@ class DatabaseClient {
   }
 
   async upsert(data: any, options?: { onConflict?: string }): Promise<{ data: any | null; error: any | null }> {
+    const API_URL = getApiUrl();
     try {
       const response = await fetchWithRetry(`${API_URL}/upsert/${this.tableName}`, {
         method: 'POST',

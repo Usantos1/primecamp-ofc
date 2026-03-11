@@ -95,6 +95,10 @@ app.use(cors({
       'http://primecamp.cloud',
       'https://www.primecamp.cloud',
       'http://www.primecamp.cloud',
+      'https://ativafix.com',
+      'http://ativafix.com',
+      'https://www.ativafix.com',
+      'http://www.ativafix.com',
     ].filter(Boolean);
     
     if (allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1')) {

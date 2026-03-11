@@ -1,22 +1,9 @@
 /**
- * Cliente de Autenticação - API REST
- * 
- * Este arquivo gerencia toda a autenticação do sistema.
- * Todas as operações passam pela API em api.primecamp.cloud
+ * Cliente de Autenticação - API REST.
+ * Usa getApiUrl() para suportar ativafix.com e primecamp.cloud com o mesmo build.
  */
 
-// Configurar URL da API
-// SEMPRE usar api.primecamp.cloud (mesmo em desenvolvimento local)
-const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
-  ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
-
-// Validação de segurança
-if (API_URL.includes('.supabase.co')) {
-  throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
-}
-
-// Cliente de autenticação inicializado silenciosamente
+import { getApiUrl } from '@/utils/apiUrl';
 
 // Limpar qualquer token antigo de outros sistemas
 const cleanOldTokens = () => {
@@ -69,7 +56,7 @@ class AuthAPIClient {
 
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${getApiUrl()}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -115,7 +102,7 @@ class AuthAPIClient {
 
   async signup(email: string, password: string, userData?: any): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${API_URL}/auth/signup`, {
+      const response = await fetch(`${getApiUrl()}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, ...userData }),
@@ -138,7 +125,7 @@ class AuthAPIClient {
     try {
       const token = localStorage.getItem('auth_token');
       if (token) {
-        await fetch(`${API_URL}/auth/logout`, {
+        await fetch(`${getApiUrl()}/auth/logout`, {
           method: 'POST',
           headers: this.getHeaders(),
         }).catch(() => {});
@@ -156,7 +143,7 @@ class AuthAPIClient {
         return { data: { user: undefined } };
       }
 
-      const response = await fetch(`${API_URL}/auth/me`, {
+      const response = await fetch(`${getApiUrl()}/auth/me`, {
         method: 'GET',
         headers: this.getHeaders(),
       });
@@ -187,7 +174,7 @@ class AuthAPIClient {
 
   async resetPassword(email: string): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -208,7 +195,7 @@ class AuthAPIClient {
 
   async updatePassword(newPassword: string): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${API_URL}/auth/update-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/update-password`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ password: newPassword }),

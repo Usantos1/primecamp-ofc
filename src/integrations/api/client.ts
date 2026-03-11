@@ -1,22 +1,10 @@
 /**
- * Cliente HTTP centralizado para a API
- * 
- * Este arquivo é o cliente HTTP para comunicação com a API.
- * Todas as requisições passam por aqui.
- * Em caso de 429 (Too Many Requests), as requisições são repetidas com backoff.
+ * Cliente HTTP centralizado para a API.
+ * Usa getApiUrl() para suportar ativafix.com e primecamp.cloud com o mesmo build.
  */
 
 import { fetchWithRetry } from '@/utils/fetchWithRetry';
-
-// Usar VITE_API_URL se definida (permite localhost em dev); senão API de produção
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
-
-// Validação de segurança
-if (API_URL.includes('.supabase.co')) {
-  throw new Error('CONFIGURAÇÃO INVÁLIDA: API_URL não pode apontar para Supabase');
-}
-
-// API Client inicializado silenciosamente
+import { getApiUrl } from '@/utils/apiUrl';
 
 interface ApiResponse {
   data?: any;
@@ -24,10 +12,8 @@ interface ApiResponse {
 }
 
 class APIClient {
-  private baseURL: string;
-
-  constructor() {
-    this.baseURL = API_URL;
+  private get baseURL(): string {
+    return getApiUrl();
   }
 
   private getHeaders(): Record<string, string> {
