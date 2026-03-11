@@ -283,7 +283,7 @@ sudo nginx -t && sudo systemctl reload nginx
 - **Frontend:** ao abrir o site em **ativafix.com** ou **www.ativafix.com**, a aplicação usa automaticamente **https://api.ativafix.com/api** (arquivo `src/utils/apiUrl.ts`).
 - **Backend:** a API aceita requisições com origem **ativafix.com** e **www.ativafix.com** (CORS no `server/index.js`).
 - **Deploy:** o mesmo build e a mesma pasta (`/var/www/primecamp.cloud`) servem **primecamp.cloud** e **ativafix.com**; não é necessário build ou pasta separados.
-- **Logo e nome no ativafix.com:** em **ativafix.com** e **www.ativafix.com**, o logo padrão e o nome "Ativa Fix" vêm do **domínio** (não do localStorage). O logo é carregado de `/logo-ativafix.png` (arquivo em `public/logo-ativafix.png`).
+- **Logo, nome e cores no ativafix.com:** em **ativafix.com** e **www.ativafix.com**, o logo, o nome "Ativa Fix" e as cores padrão (dourado HSL 44 100% 53%) vêm do **domínio**. O tema (cores, nome, logo) é **persistido na VPS** (API `GET/POST /api/theme-config`, tabela `kv_store_2c4defad`), não no localStorage: ao salvar nas configurações do sistema, reflete para todos os dispositivos e navegadores que acessam esse domínio.
 
 ---
 

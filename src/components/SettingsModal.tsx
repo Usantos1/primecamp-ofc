@@ -10,6 +10,7 @@ import { Settings, Moon, Sun, Save, Building, Palette, Upload, Image as ImageIco
 import { useTheme } from 'next-themes';
 import { useThemeConfig } from '@/contexts/ThemeConfigContext';
 import { toast } from 'sonner';
+import { apiClient } from '@/integrations/api/client';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,34 +27,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [notifications, setNotifications] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
 
-  // Carregar configurações salvas ao abrir o modal
+  // Ao abrir o modal: preferências locais do localStorage; tema (nome, logo, cores) do context (vindo da VPS)
   useEffect(() => {
     if (isOpen) {
       try {
         const saved = localStorage.getItem('systemSettings');
         if (saved) {
           const parsed = JSON.parse(saved) as { systemName?: string; autoSave?: boolean; notifications?: boolean; compactMode?: boolean };
-          if (parsed.systemName != null) setSystemName(parsed.systemName);
           if (parsed.autoSave != null) setAutoSave(parsed.autoSave);
           if (parsed.notifications != null) setNotifications(parsed.notifications);
           if (parsed.compactMode != null) setCompactMode(parsed.compactMode);
         }
-        const logo = localStorage.getItem('systemLogo');
-        setLogoPreview(logo && logo.startsWith('data:image/') ? logo : config.logo || null);
-        const colorsRaw = localStorage.getItem('themeColors');
-        if (colorsRaw) {
-          const colors = JSON.parse(colorsRaw) as { primary?: string; sidebar?: string; button?: string };
-          if (colors?.primary) setPrimaryColor(colors.primary);
-          if (colors?.sidebar) setSidebarColor(colors.sidebar);
-          if (colors?.button) setButtonColor(colors.button);
-        } else {
-          setPrimaryColor(config.colors.primary);
-          setSidebarColor(config.colors.sidebar || config.colors.primary);
-          setButtonColor(config.colors.button || config.colors.primary);
-        }
+        setSystemName(config.companyName || 'Prime Camp | Gestão de Processos');
+        setLogoPreview(config.logo || null);
+        setPrimaryColor(config.colors.primary);
+        setSidebarColor(config.colors.sidebar || config.colors.primary);
+        setButtonColor(config.colors.button || config.colors.primary);
       } catch (_) {}
     }
-  }, [isOpen, config.logo, config.colors.primary, config.colors.sidebar, config.colors.button]);
+  }, [isOpen, config.companyName, config.logo, config.colors.primary, config.colors.sidebar, config.colors.button]);
   
   // Cores do tema
   const [primaryColor, setPrimaryColor] = useState(config.colors.primary);
@@ -61,7 +53,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [buttonColor, setButtonColor] = useState(config.colors.button || config.colors.primary);
   const [logoPreview, setLogoPreview] = useState<string | null>(config.logo || null);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
       const nameToSave = (systemName || '').trim() || 'Prime Camp | Gestão de Processos';
       localStorage.setItem('systemSettings', JSON.stringify({
@@ -71,43 +63,39 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         compactMode
       }));
 
-      // Persistir cores do tema (para não voltar ao vermelho ao atualizar)
-      localStorage.setItem('themeColors', JSON.stringify({
-        primary: primaryColor,
-        sidebar: sidebarColor,
-        button: buttonColor,
-      }));
-
-      // Persistir logo (em chave separada para não estourar quota do JSON)
-      try {
-        if (logoPreview) {
-          localStorage.setItem('systemLogo', logoPreview);
-        } else {
-          localStorage.removeItem('systemLogo');
-        }
-      } catch (e) {
-        if (e instanceof DOMException && (e as DOMException).name === 'QuotaExceededError') {
-          toast.error('Logo muito grande para salvar. Use uma imagem menor (recomendado até 1MB).');
-          return;
-        }
-        throw e;
+      // Salvar tema (cores, logo, nome) na VPS — reflete para todos os clientes do domínio
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+      const payload = {
+        host,
+        companyName: nameToSave,
+        logo: logoPreview || undefined,
+        colors: {
+          primary: primaryColor,
+          sidebar: sidebarColor,
+          button: buttonColor,
+        },
+      };
+      const { data, error } = await apiClient.post('/theme-config', payload);
+      if (error) {
+        toast.error(error?.message || error?.error || 'Erro ao salvar tema na VPS');
+        return;
       }
-      
-      updateConfig({
+
+      const newConfig = {
         companyName: nameToSave,
         colors: {
           primary: primaryColor,
           primaryForeground: config.colors.primaryForeground,
           secondary: config.colors.secondary,
-          accent: config.colors.accent,
+          accent: primaryColor,
           sidebar: sidebarColor,
           button: buttonColor,
         },
         logo: logoPreview || config.logo,
-      });
-      
+      };
+      updateConfig(newConfig);
       document.title = nameToSave;
-      toast.success('Configurações salvas com sucesso!');
+      toast.success('Configurações salvas. O tema foi atualizado na VPS para todos os dispositivos.');
       onClose();
     } catch (error) {
       toast.error('Erro ao salvar configurações');

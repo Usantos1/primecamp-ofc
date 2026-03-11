@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { getApiUrl } from '@/utils/apiUrl';
 
 interface ThemeColors {
   primary: string;
@@ -33,7 +34,10 @@ const defaultConfigPrimeCamp: ThemeConfig = {
   companyName: 'Prime Camp',
 };
 
-/** Configuração padrão por domínio: em ativafix.com o logo/nome vêm do mesmo build (arquivo em /public). */
+// Cor padrão Ativa Fix (dourado) — HSL: 44 100% 53%
+const ATIVAFIX_PRIMARY_HSL = '44 100% 53%';
+
+/** Configuração padrão por domínio: em ativafix.com o logo, nome e cores vêm do mesmo build. */
 function getDefaultConfigByHost(): ThemeConfig {
   if (typeof window === 'undefined') return defaultConfigPrimeCamp;
   const h = window.location.hostname;
@@ -44,6 +48,13 @@ function getDefaultConfigByHost(): ThemeConfig {
       logo: `${origin}/logo-ativafix.png`,
       logoAlt: 'Ativa Fix',
       companyName: 'Ativa Fix',
+      colors: {
+        ...defaultConfigPrimeCamp.colors,
+        primary: ATIVAFIX_PRIMARY_HSL,
+        accent: ATIVAFIX_PRIMARY_HSL,
+        sidebar: ATIVAFIX_PRIMARY_HSL,
+        button: ATIVAFIX_PRIMARY_HSL,
+      },
     };
   }
   return defaultConfigPrimeCamp;
@@ -59,62 +70,42 @@ interface ThemeConfigContextType {
 
 const ThemeConfigContext = createContext<ThemeConfigContextType | undefined>(undefined);
 
-function loadSystemNameFromStorage(): string | undefined {
-  try {
-    const saved = localStorage.getItem('systemSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved) as { systemName?: string };
-      return typeof parsed.systemName === 'string' && parsed.systemName.trim() ? parsed.systemName.trim() : undefined;
-    }
-  } catch (_) {}
-  return undefined;
-}
-
-function loadLogoFromStorage(): string | undefined {
-  try {
-    const logo = localStorage.getItem('systemLogo');
-    if (logo && typeof logo === 'string' && logo.startsWith('data:image/')) return logo;
-  } catch (_) {}
-  return undefined;
-}
-
-function loadThemeColorsFromStorage(): Partial<ThemeColors> | null {
-  try {
-    const raw = localStorage.getItem('themeColors');
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { primary?: string; sidebar?: string; button?: string };
-    if (parsed && typeof parsed === 'object') {
-      return {
-        ...(typeof parsed.primary === 'string' && parsed.primary.trim() ? { primary: parsed.primary } : {}),
-        ...(typeof parsed.sidebar === 'string' && parsed.sidebar.trim() ? { sidebar: parsed.sidebar } : {}),
-        ...(typeof parsed.button === 'string' && parsed.button.trim() ? { button: parsed.button } : {}),
-      };
-    }
-  } catch (_) {}
-  return null;
-}
-
 export function ThemeConfigProvider({ children }: { children: ReactNode }) {
-  const savedName = loadSystemNameFromStorage();
-  const savedLogo = loadLogoFromStorage();
-  const savedColors = loadThemeColorsFromStorage();
   const baseConfig = getDefaultConfigByHost();
-  const [config, setConfig] = useState<ThemeConfig>({
-    ...baseConfig,
-    ...(savedName ? { companyName: savedName } : {}),
-    ...(savedLogo ? { logo: savedLogo } : {}),
-    ...(savedColors && Object.keys(savedColors).length > 0
-      ? { colors: { ...baseConfig.colors, ...savedColors } }
-      : {}),
-  });
+  const [config, setConfig] = useState<ThemeConfig>(baseConfig);
 
-  // Aplicar nome do sistema e título da aba ao carregar (salvo nas configurações ou padrão do domínio)
+  // Buscar tema salvo na VPS (reflete para todos os clientes do domínio)
   useEffect(() => {
-    const name = loadSystemNameFromStorage() || getDefaultConfigByHost().companyName;
-    if (name) {
-      document.title = name;
-    }
+    if (typeof window === 'undefined') return;
+    const host = window.location.hostname;
+    const url = `${getApiUrl()}/theme-config?host=${encodeURIComponent(host)}`;
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Partial<ThemeConfig> | null) => {
+        if (!data || typeof data !== 'object') return;
+        setConfig((prev) => {
+          const next = {
+            ...prev,
+            ...(data.companyName != null && { companyName: data.companyName }),
+            ...(data.logo != null && { logo: data.logo }),
+            ...(data.logoAlt != null && { logoAlt: data.logoAlt }),
+            colors: {
+              ...prev.colors,
+              ...(data.colors && typeof data.colors === 'object' ? data.colors : {}),
+            },
+          };
+          return next;
+        });
+      })
+      .catch(() => {});
   }, []);
+
+  // Título da aba conforme config
+  useEffect(() => {
+    if (config.companyName) {
+      document.title = config.companyName;
+    }
+  }, [config.companyName]);
 
   const updateConfig = (newConfig: Partial<ThemeConfig>) => {
     setConfig(prev => ({ ...prev, ...newConfig }));

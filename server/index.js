@@ -2752,6 +2752,76 @@ app.post('/api/whatsapp/send', async (req, res) => {
 });
 
 // ============================================
+// TEMA DO SISTEMA (cores, logo, nome) — persistido na VPS por domínio
+// ============================================
+
+function themeConfigKey(host) {
+  if (!host || typeof host !== 'string') return 'theme_config';
+  const h = host.toLowerCase().replace(/^www\./, '');
+  return (h === 'ativafix.com') ? 'theme_config_ativafix' : 'theme_config';
+}
+
+// GET /api/theme-config — público (login e primeira carga); ?host=ativafix.com
+app.get('/api/theme-config', async (req, res) => {
+  try {
+    const host = req.query.host || (req.headers.origin ? new URL(req.headers.origin).hostname : null);
+    const key = themeConfigKey(host);
+    const result = await pool.query(
+      'SELECT value FROM kv_store_2c4defad WHERE key = $1',
+      [key]
+    );
+    if (result.rows.length === 0 || !result.rows[0].value) {
+      return res.json(null);
+    }
+    const value = result.rows[0].value;
+    res.json(typeof value === 'string' ? JSON.parse(value) : value);
+  } catch (err) {
+    console.error('[theme-config] GET error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/theme-config — salvar tema (autenticado); reflete na VPS para todos os clientes do domínio
+app.post('/api/theme-config', authenticateToken, async (req, res) => {
+  try {
+    const host = req.body.host || (req.headers.origin ? new URL(req.headers.origin).hostname : null);
+    const key = themeConfigKey(host);
+    const { companyName, logo, logoAlt, colors } = req.body;
+    const incoming = {
+      ...(companyName != null && { companyName: String(companyName).trim() || null }),
+      ...(logo != null && { logo: logo === '' ? null : logo }),
+      ...(logoAlt != null && { logoAlt: String(logoAlt).trim() || null }),
+      ...(colors && typeof colors === 'object' && {
+        colors: {
+          ...(colors.primary != null && { primary: String(colors.primary).trim() }),
+          ...(colors.sidebar != null && { sidebar: String(colors.sidebar).trim() }),
+          ...(colors.button != null && { button: String(colors.button).trim() }),
+        },
+      }),
+    };
+    const existing = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [key]);
+    const prev = existing.rows.length > 0 && existing.rows[0].value
+      ? (typeof existing.rows[0].value === 'string' ? JSON.parse(existing.rows[0].value) : existing.rows[0].value)
+      : {};
+    const merged = {
+      ...prev,
+      ...incoming,
+      colors: incoming.colors ? { ...(prev.colors || {}), ...incoming.colors } : (prev.colors || undefined),
+    };
+    if (merged.colors && Object.keys(merged.colors).length === 0) merged.colors = undefined;
+    await pool.query(
+      `INSERT INTO kv_store_2c4defad (key, value) VALUES ($1, $2::jsonb)
+       ON CONFLICT (key) DO UPDATE SET value = $2::jsonb`,
+      [key, JSON.stringify(merged)]
+    );
+    res.json({ success: true, config: merged });
+  } catch (err) {
+    console.error('[theme-config] POST error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // ENDPOINT DE STORAGE - UPLOAD DE ARQUIVOS
 // ============================================
 
