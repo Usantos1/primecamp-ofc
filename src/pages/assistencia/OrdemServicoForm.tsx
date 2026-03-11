@@ -4549,7 +4549,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                           }
                                         }}
                                       />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                      <div className="absolute inset-0 pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
                                           {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
@@ -4686,7 +4686,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                      <div className="absolute inset-0 pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
                                           {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
@@ -4817,7 +4817,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                           (e.target as HTMLImageElement).style.display = 'none';
                                         }}
                                       />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                      <div className="absolute inset-0 pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium">
                                           {fotoData.postLink ? 'Clique para ver no Telegram' : 'Clique para ampliar'}
                                         </span>
