@@ -45,15 +45,22 @@ export function DemoBanner() {
     }
   }, []);
 
+  // Interval: decrementa o timer a cada segundo (não passa de 0)
   useEffect(() => {
     if (!visible || dismissed || showPostTimerModal) return;
-    if (secondsLeft <= 0) {
-      setShowPostTimerModal(true);
-      return;
-    }
-    const t = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    if (secondsLeft <= 0) return;
+    const t = setInterval(() => {
+      setSecondsLeft((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
     return () => clearInterval(t);
   }, [visible, dismissed, secondsLeft, showPostTimerModal]);
+
+  // Quando o timer chega a 0, abrir o modal (efeito dedicado para garantir que abra)
+  useEffect(() => {
+    if (visible && !dismissed && secondsLeft <= 0) {
+      setShowPostTimerModal(true);
+    }
+  }, [visible, dismissed, secondsLeft]);
 
   const handleDismiss = () => {
     setDismissed(true);
