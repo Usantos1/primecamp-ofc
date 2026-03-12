@@ -1264,7 +1264,7 @@ export function ProductFormOptimized({
                     <SelectTrigger id="garantia_dias" className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       <SelectItem value="0">Nenhum</SelectItem>
                       <SelectItem value="7">7 dias</SelectItem>
                       <SelectItem value="30">30 dias</SelectItem>
@@ -1284,7 +1284,7 @@ export function ProductFormOptimized({
                     <SelectTrigger id="tipo" className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation">
                       <SelectValue placeholder="Produto ou Serviço" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       {Object.entries(TIPO_PRODUTO_LABELS).map(([value, label]) => (
                         <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
@@ -1464,7 +1464,7 @@ export function ProductFormOptimized({
                         <SelectTrigger className="mt-1 max-w-xs">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[110]">
                           <SelectItem value="cor" className="gap-2">
                             <Palette className="h-4 w-4" /> Por cor (tampas)
                           </SelectItem>
@@ -1533,7 +1533,7 @@ export function ProductFormOptimized({
                     <SelectTrigger id="unidade" className="mt-1 min-h-[44px] sm:min-h-0 text-base md:text-sm rounded-lg touch-manipulation">
                       <SelectValue placeholder="Unidade" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       <SelectItem value="UN">Unidade</SelectItem>
                       <SelectItem value="CX">Caixa</SelectItem>
                       <SelectItem value="KT">Kit</SelectItem>

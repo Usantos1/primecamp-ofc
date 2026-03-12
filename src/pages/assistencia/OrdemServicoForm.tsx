@@ -63,6 +63,7 @@ import { printOSTermicaDirect } from '@/utils/osPrintUtils';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { useAlertsFire } from '@/hooks/useAlerts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanySegment } from '@/hooks/useCompanySegment';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
 import { useRegisterPagamentoOS } from '@/hooks/usePDV';
 
@@ -354,6 +355,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
+  const { segmentoSlug } = useCompanySegment();
+  const isOficinaMecanica = segmentoSlug === 'oficina_mecanica';
   const currentUserNome = profile?.display_name || user?.email || 'Usuário';
 
   // Hooks
@@ -411,11 +414,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     fetchPaymentMethods(true);
   }, [fetchPaymentMethods]);
 
-  // Estados do formulário
+  // Estados do formulário (Oficina Mecânica: padrão veículo; Assistência: celular)
   const [formData, setFormData] = useState<OrdemServicoFormData>({
     cliente_id: '',
     telefone_contato: '', // Obrigatório
-    tipo_aparelho: 'celular',
+    tipo_aparelho: isOficinaMecanica ? 'veiculo' : 'celular',
     marca_id: '',
     modelo_id: '',
     imei: '',
@@ -1767,10 +1770,13 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         }
 
         if (isModal && onClose) {
-          // Se estiver no modal, fecha e deixa o usuário abrir novamente se quiser
           onClose();
+        } else if (isOficinaMecanica) {
+          // Oficina Mecânica: não exige checklist de entrada; apenas invalida e navega
+          queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
+          navigate(`/os/${novaOS.id}`, { replace: true });
         } else {
-          // Abrir modal de checklist de entrada após criar OS
+          // Assistência Técnica: abrir modal de checklist de entrada após criar OS
           queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
           setChecklistEntradaModalOSId(novaOS.id);
           setChecklistEntradaModalMarcados([]);
@@ -1794,11 +1800,11 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const handleChangeStatus = async (status: StatusOS | string) => {
     if (!currentOS) return;
     
-    // Se mudar para "manutenção finalizada" ou "finalizada", abrir modal de checklist de saída
-    if (status === 'finalizada' || status === 'manutencao_finalizada' || status.toLowerCase().includes('finalizada')) {
+    // Se mudar para "manutenção finalizada" ou "finalizada", abrir modal de checklist de saída (exceto Oficina Mecânica)
+    if (!isOficinaMecanica && (status === 'finalizada' || status === 'manutencao_finalizada' || status.toLowerCase().includes('finalizada'))) {
       setPendingStatusChange(status);
       setShowChecklistSaidaModal(true);
-      return; // Não atualizar status ainda, aguardar aprovação do checklist
+      return;
     }
     
     const config = getConfigByStatus(status);

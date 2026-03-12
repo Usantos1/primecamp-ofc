@@ -7,18 +7,25 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Trash2, Smartphone, Tag, ChevronRight } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Smartphone, Tag, ChevronRight, Car } from 'lucide-react';
 import { useMarcasSupabase, useModelosSupabase } from '@/hooks/useMarcasModelosSupabase';
+import { useCompanySegment } from '@/hooks/useCompanySegment';
 import { Marca, Modelo } from '@/types/assistencia';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { LoadingButton } from '@/components/LoadingButton';
 
 export default function MarcasModelos() {
+  const { segmentoSlug } = useCompanySegment();
+  const isOficina = segmentoSlug === 'oficina_mecanica';
   const { marcas, createMarca, updateMarca, deleteMarca, isLoading: isLoadingMarcas } = useMarcasSupabase();
   const { modelos, createModelo, updateModelo, deleteModelo, isLoading: isLoadingModelos } = useModelosSupabase();
   
   const [activeTab, setActiveTab] = useState<'marcas' | 'modelos'>('marcas');
+  const segmentLabel = isOficina ? 'veículos' : 'celulares';
+  const segmentTitle = isOficina ? 'Marcas e Modelos de Veículos' : 'Marcas e Modelos de Celulares';
+  const segmentSubtitle = isOficina ? 'Gerencie marcas e modelos de veículos.' : 'Gerencie marcas e modelos de celulares.';
+  const ModelIcon = isOficina ? Car : Smartphone;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMarcaId, setSelectedMarcaId] = useState<string | null>(null);
   
@@ -171,7 +178,7 @@ export default function MarcasModelos() {
   const isEmpty = currentData.length === 0;
 
   return (
-    <ModernLayout title="Marcas e Modelos" subtitle="Gerencie marcas e modelos de celulares">
+    <ModernLayout title={segmentTitle} subtitle={segmentSubtitle}>
       {/* Container principal */}
       <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-120px)] flex flex-col gap-2">
         {/* Mobile: resumo inline compacto */}
@@ -187,7 +194,7 @@ export default function MarcasModelos() {
             <div><p className="text-xs text-blue-600 dark:text-blue-400">Marcas</p><p className="text-xl font-bold text-blue-700 dark:text-blue-300">{marcas.length}</p></div>
           </div>
           <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 flex items-center gap-3">
-            <div className="bg-purple-500 text-white rounded-full p-2"><Smartphone className="h-4 w-4" /></div>
+            <div className="bg-purple-500 text-white rounded-full p-2"><ModelIcon className="h-4 w-4" /></div>
             <div><p className="text-xs text-purple-600 dark:text-purple-400">Modelos</p><p className="text-xl font-bold text-purple-700 dark:text-purple-300">{modelos.length}</p></div>
           </div>
         </div>
@@ -217,7 +224,7 @@ export default function MarcasModelos() {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Smartphone className="h-3.5 w-3.5 mr-1.5" />
+                <ModelIcon className="h-3.5 w-3.5 mr-1.5" />
                 Modelos
               </button>
             </div>
@@ -265,7 +272,7 @@ export default function MarcasModelos() {
                 <EmptyState
                   variant="no-data"
                   title={activeTab === 'marcas' ? "Nenhuma marca cadastrada" : "Nenhum modelo encontrado"}
-                  description={activeTab === 'marcas' ? "Cadastre as marcas de celulares." : (selectedMarcaId ? "Cadastre modelos para esta marca." : "Selecione uma marca ou cadastre um novo modelo.")}
+                  description={activeTab === 'marcas' ? `Cadastre as marcas de ${segmentLabel}.` : (selectedMarcaId ? `Cadastre modelos para esta marca.` : "Selecione uma marca ou cadastre um novo modelo.")}
                   action={{ 
                     label: activeTab === 'marcas' ? 'Nova Marca' : 'Novo Modelo', 
                     onClick: () => activeTab === 'marcas' ? handleOpenMarcaDialog() : handleOpenModeloDialog() 
@@ -394,7 +401,7 @@ export default function MarcasModelos() {
         <DialogContent className="max-w-sm max-w-[95vw] p-3 md:p-6">
           <DialogHeader>
             <DialogTitle className="text-base md:text-lg">{editingMarca ? 'Editar Marca' : 'Nova Marca'}</DialogTitle>
-            <DialogDescription className="text-xs md:text-sm">Cadastre uma marca de celular</DialogDescription>
+            <DialogDescription className="text-xs md:text-sm">Cadastre uma marca de {segmentLabel}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 md:space-y-4">
             <div className="space-y-2">
@@ -431,7 +438,7 @@ export default function MarcasModelos() {
         <DialogContent className="max-w-sm max-w-[95vw] p-3 md:p-6">
           <DialogHeader>
             <DialogTitle className="text-base md:text-lg">{editingModelo ? 'Editar Modelo' : 'Novo Modelo'}</DialogTitle>
-            <DialogDescription className="text-xs md:text-sm">Cadastre um modelo de celular</DialogDescription>
+            <DialogDescription className="text-xs md:text-sm">Cadastre um modelo de {segmentLabel}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 md:space-y-4">
             <div className="space-y-2">

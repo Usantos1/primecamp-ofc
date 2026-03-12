@@ -4,7 +4,7 @@
 
 // ==================== TIPOS BASE ====================
 
-export type TipoAparelho = 'celular' | 'tablet' | 'notebook' | 'outro';
+export type TipoAparelho = 'celular' | 'tablet' | 'notebook' | 'outro' | 'veiculo';
 export type TipoPessoa = 'fisica' | 'juridica';
 export type TipoCliente = 'cliente' | 'fornecedor' | 'ambos';
 export type TipoProduto = 'PECA' | 'SERVICO' | 'PRODUTO';

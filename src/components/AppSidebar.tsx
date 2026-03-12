@@ -178,7 +178,7 @@ export function AppSidebar() {
   ];
   const operacaoItemsFromSegment = hasSegmentMenu
     ? segmentMenu.map((m: { path: string; label_menu: string; slug?: string; icone?: string }) => ({
-        label: m.label_menu,
+        label: m.path === '/inventario' ? 'Inventário' : m.label_menu,
         path: m.path || '/',
         icon: iconMap[m.icone || ''] || Home,
         exact: m.path === '/',

@@ -674,7 +674,7 @@ export default function Produtos() {
               <SelectTrigger className="h-11 min-h-[44px] w-full text-sm border-input rounded-xl touch-manipulation [&>span]:truncate">
                 <SelectValue placeholder="Grupo" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="all">Todos os grupos</SelectItem>
                 {grupos.map((g) => (<SelectItem key={g.id || g.nome} value={g.nome}>{g.nome}</SelectItem>))}
               </SelectContent>
@@ -683,7 +683,7 @@ export default function Produtos() {
               <SelectTrigger className="h-11 min-h-[44px] w-full text-sm border-input rounded-xl touch-manipulation [&>span]:truncate">
                 <SelectValue placeholder="Localização" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="all">Todas localizações</SelectItem>
                 {localizacoes.map((loc: string) => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
               </SelectContent>
@@ -725,14 +725,14 @@ export default function Produtos() {
             </div>
             <Select value={grupo && grupo.trim() !== '' ? grupo : 'all'} onValueChange={(value) => { setGrupo(value === 'all' ? '' : value); hookResult.setPage(1); }}>
               <SelectTrigger className="h-9 w-[170px] shrink-0 border-gray-200 text-sm"><SelectValue placeholder="Grupo" /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="all">Todos os grupos</SelectItem>
                 {grupos.map((g) => (<SelectItem key={g.id || g.nome} value={g.nome}>{g.nome}</SelectItem>))}
               </SelectContent>
             </Select>
             <Select value={localizacao && localizacao.trim() !== '' ? localizacao : 'all'} onValueChange={(value) => { setLocalizacao(value === 'all' ? '' : value); hookResult.setPage(1); }}>
               <SelectTrigger className="h-9 w-[170px] shrink-0 border-gray-200 text-sm"><SelectValue placeholder="Localização" /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="all">Todas localizações</SelectItem>
                 {localizacoes.map((loc: string) => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
               </SelectContent>
@@ -749,7 +749,7 @@ export default function Produtos() {
               <SelectTrigger className="h-9 w-[200px] shrink-0 border-gray-200 text-sm">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[110]">
                 <SelectItem value="nome-asc">
                   <div className="flex items-center gap-2">
                     <ArrowUp className="h-3 w-3" />
@@ -1202,7 +1202,7 @@ export default function Produtos() {
                     <SelectTrigger>
                       <SelectValue placeholder="Todas as marcas" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[110]">
                       <SelectItem value="all">Todas as marcas</SelectItem>
                       {marcas.map((m: any) => (
                         <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>

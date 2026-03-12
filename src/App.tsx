@@ -65,6 +65,7 @@ import Caixa from "./pages/pdv/Caixa";
 import Relatorios from "./pages/Relatorios";
 import Pedidos from "./pages/Pedidos";
 import Inventario from "./pages/Inventario";
+import Orcamentos from "./pages/Orcamentos";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
 import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
@@ -242,6 +243,8 @@ const App = () => {
               <Route path="/painel-alertas/alertas/:categoria" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasCategoria /></PermissionRoute>} />
               <Route path="/painel-alertas/historico" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasHistorico /></PermissionRoute>} />
               
+              {/* Orçamentos (oficina / assistência) */}
+              <Route path="/orcamentos" element={<PermissionRoute permission="os.view"><Orcamentos /></PermissionRoute>} />
               {/* Rotas de OS - simplificadas para /os */}
               <Route path="/os" element={<PermissionRoute permission="os.view"><AssistenciaOS /></PermissionRoute>} />
               <Route path="/os/nova" element={<PermissionRoute permission="os.create"><OrdemServicoForm /></PermissionRoute>} />

@@ -331,7 +331,7 @@ BEGIN
     IF seg_id IS NULL THEN RETURN; END IF;
 
     ord := 0;
-    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('ordens_servico'), ('clientes'), ('veiculos'), ('orcamentos'), ('estoque'), ('produtos_pecas'), ('caixa'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
+    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('ordens_servico'), ('clientes'), ('veiculos'), ('orcamentos'), ('pdv'), ('estoque'), ('produtos_pecas'), ('caixa'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
     LOOP
         SELECT id INTO mod_id FROM public.modulos WHERE modulos.slug = r.slug LIMIT 1;
         IF mod_id IS NOT NULL THEN
