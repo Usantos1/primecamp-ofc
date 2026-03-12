@@ -51,8 +51,9 @@ Depois do deploy, confira:
 
 1. **https://ativafix.com** — deve abrir a **landing de vendas** (LP em React). Se abrir outra coisa ou 404, o Nginx de `ativafix.com` não está usando o mesmo `root` que `app.ativafix.com` ou o build não foi copiado.
 2. **https://app.ativafix.com** — deve abrir o **sistema** (tela de login).
-3. **https://app.ativafix.com/termos-de-uso** — deve abrir a página **Termos de Uso** (sem login).
-4. **https://app.ativafix.com/politica-de-privacidade** — deve abrir a página **Política de Privacidade** (sem login).
+3. **https://app.ativafix.com/demo** — deve abrir a página **Demonstração** (botão "Entrar na demonstração"). Se aparecer "Página em Construção", o build na VPS está antigo; rode o deploy de novo.
+4. **https://app.ativafix.com/termos-de-uso** — deve abrir a página **Termos de Uso** (sem login).
+5. **https://app.ativafix.com/politica-de-privacidade** — deve abrir a página **Política de Privacidade** (sem login).
 
 Se **termos-de-uso** ou **politica-de-privacidade** derem 404 ao abrir o link direto, o Nginx está sem a regra de SPA. Nos blocos `server` de `ativafix.com` e `app.ativafix.com` o `location /` precisa ter:
 
@@ -86,11 +87,19 @@ curl -s https://app.ativafix.com 2>/dev/null | head -20
 ```
 Se o corpo de ativafix.com for diferente (ex.: texto "em construção" ou outro HTML), o Nginx está com `root` diferente para ativafix.com — corrija para `root /var/www/ativafix;` no bloco de ativafix.com.
 
-**Correção em uma linha (na VPS):** trocar `ativafix-lp` por `ativafix` no config do ativafix.com e recarregar o Nginx:
+**Correção em uma linha (na VPS):** garantir que ativafix.com e app.ativafix.com usem **só** `root /var/www/ativafix;`:
 ```bash
-sudo sed -i 's|root /var/www/ativafix-lp;|root /var/www/ativafix;|g' /etc/nginx/sites-available/ativafix && sudo nginx -t && sudo systemctl reload nginx
+# Corrige qualquer root errado no config ativafix (ativafix-lp, primecamp.cloud, etc.)
+sudo sed -i 's|root /var/www/ativafix-lp;|root /var/www/ativafix;|g' /etc/nginx/sites-available/ativafix
+sudo sed -i 's|root /var/www/primecamp.cloud;|root /var/www/ativafix;|g' /etc/nginx/sites-available/ativafix
+sudo nginx -t && sudo systemctl reload nginx
 ```
-Depois abra https://ativafix.com em aba anônima — deve carregar a LP em React (hero verde).
+**Conferir:** no config, ativafix.com e app.ativafix.com devem ter exatamente `root /var/www/ativafix;`:
+```bash
+sudo grep -A 2 "server_name ativafix.com" /etc/nginx/sites-available/ativafix
+sudo grep -A 2 "server_name app.ativafix.com" /etc/nginx/sites-available/ativafix
+```
+Depois abra https://ativafix.com em aba anônima (Ctrl+Shift+N) — deve carregar a LP em React (hero verde), não a página HTML “em construção”.
 
 **Painel de Alertas:** para o Painel de Alertas funcionar, rode **uma vez** no banco usado pela API a migração `db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql`. Se a API estiver em "errored" com muitos restarts, veja a seção "PM2 em erro / API caindo" abaixo.
 

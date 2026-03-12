@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import DashboardGestao from "./pages/DashboardGestao";
 import Auth from "./pages/Auth";
+import DemoLoginPage from "./pages/DemoLoginPage";
 import Admin from "./pages/Admin";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
@@ -121,6 +122,7 @@ const App = () => {
             {/* Rotas públicas de autenticação */}
             <Route path="/login" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/demo" element={<DemoLoginPage />} />
             {/* Páginas legais e LP (acessíveis sem login; no topo para bater antes do restante) */}
             <Route path="/termos-de-uso" element={<TermosDeUso />} />
             <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />

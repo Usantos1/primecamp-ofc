@@ -256,6 +256,7 @@ const authLimiter = rateLimit({
 // Aplicar rate limiting (auth primeiro, depois geral que ignora /api/auth/*)
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/demo', authLimiter);
 app.use('/api/', limiter);
 
 // Rota de teste de API tokens (ANTES do middleware de autenticação)
@@ -1070,6 +1071,75 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('[API] Erro no login:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Login demo — entra com usuário de demonstração (credenciais só no servidor)
+const DEMO_EMAIL = process.env.DEMO_EMAIL || process.env.DEMO_USER_EMAIL;
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || process.env.DEMO_USER_PASSWORD;
+
+app.post('/api/auth/demo', async (req, res) => {
+  try {
+    if (!DEMO_EMAIL || !DEMO_PASSWORD) {
+      return res.status(503).json({
+        error: 'Demonstração não configurada. Defina DEMO_EMAIL e DEMO_PASSWORD no servidor.',
+        code: 'DEMO_NOT_CONFIGURED'
+      });
+    }
+
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [DEMO_EMAIL.toLowerCase().trim()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(503).json({
+        error: 'Usuário de demonstração não encontrado no banco. Execute o script de criação do usuário demo.',
+        code: 'DEMO_USER_NOT_FOUND'
+      });
+    }
+
+    const user = result.rows[0];
+    if (!user.password_hash) {
+      return res.status(503).json({ error: 'Usuário demo sem senha configurada.', code: 'DEMO_NO_PASSWORD' });
+    }
+
+    const isValidPassword = await bcrypt.compare(DEMO_PASSWORD, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(503).json({ error: 'Senha do usuário demo não confere com DEMO_PASSWORD.', code: 'DEMO_PASSWORD_MISMATCH' });
+    }
+
+    const profileResult = await pool.query(
+      'SELECT * FROM profiles WHERE user_id = $1',
+      [user.id]
+    );
+    const profile = profileResult.rows[0] || null;
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: profile?.role || 'member',
+        company_id: user.company_id
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        email_verified: user.email_verified,
+        created_at: user.created_at,
+        company_id: user.company_id
+      },
+      profile
+    });
+  } catch (error) {
+    console.error('[API] Erro no login demo:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });

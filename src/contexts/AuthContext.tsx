@@ -164,13 +164,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
-      // Limpar estado
       setUser(null);
       setSession(null);
       setProfile(null);
-      // Limpar token do localStorage
       localStorage.removeItem('auth_token');
-      // Redirecionar para login
+      try {
+        sessionStorage.removeItem('ativafix_demo_session');
+      } catch {}
       window.location.href = '/login';
     }
   };

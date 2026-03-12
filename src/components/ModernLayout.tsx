@@ -9,6 +9,7 @@ import { useState, useEffect } from "react"
 import { NotificationPanel } from "./NotificationPanel"
 import { SettingsModal } from "./SettingsModal"
 import { PermissionGate } from "./PermissionGate"
+import { DemoBanner } from "./DemoBanner"
 import { useAuth } from "@/contexts/AuthContext"
 
 /** Apenas a empresa 1 (administradora) pode alterar nome e cores do sistema. */
@@ -115,6 +116,8 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
               </div>
             </div>
           </header>
+
+          <DemoBanner />
 
           {/* Main Content — mobile: página rola; desktop: scroll interno */}
           <main className="flex-1 flex flex-col min-h-0 overflow-x-hidden overflow-y-auto md:overflow-hidden">

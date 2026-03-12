@@ -100,6 +100,55 @@ class AuthAPIClient {
     }
   }
 
+  /** Login em modo demonstração (usa usuário configurado no servidor; sem enviar senha no client). */
+  async loginDemo(): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/demo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      const rawText = await response.text();
+      if (response.status === 429) {
+        return {
+          error: {
+            message: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+          },
+        };
+      }
+
+      let data: any = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        return {
+          error: {
+            message: response.ok ? 'Resposta inválida do servidor.' : (rawText || 'Erro ao entrar na demonstração'),
+          },
+        };
+      }
+
+      if (!response.ok) {
+        return {
+          error: {
+            message: data.error || 'Demonstração não disponível no momento.',
+            code: data.code,
+          },
+        };
+      }
+
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
+
+      return { data: { user: data.user, token: data.token, profile: data.profile } };
+    } catch (error: any) {
+      console.error('[Auth] Erro no login demo:', error);
+      return { error: { message: error.message || 'Erro de conexão' } };
+    }
+  }
+
   async signup(email: string, password: string, userData?: any): Promise<AuthResponse> {
     try {
       const response = await fetch(`${getApiUrl()}/auth/signup`, {
