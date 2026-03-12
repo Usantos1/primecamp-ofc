@@ -256,3 +256,5 @@ Se passar, o cron do certbot já renova sozinho.
 | api.ativafix.com  | API (Node na porta 3000)     | `proxy_pass :3000`                |
 
 - **ativafix.com** e **app.ativafix.com** usam o **mesmo** build. O React mostra a landing em ativafix.com e o app em app.ativafix.com (detecção por hostname). Um deploy só atualiza os dois.
+
+**Importante:** Em ambos os blocos (ativafix.com e app.ativafix.com) o `location /` deve ter `try_files $uri $uri/ /index.html;`. Sem isso, links diretos como `/termos-de-uso` e `/politica-de-privacidade` retornam 404 em vez de carregar o React (SPA).

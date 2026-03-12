@@ -112,6 +112,10 @@ const App = () => (
             {/* Rotas públicas de autenticação */}
             <Route path="/login" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
+            {/* Páginas legais e LP (acessíveis sem login; no topo para bater antes do restante) */}
+            <Route path="/termos-de-uso" element={<TermosDeUso />} />
+            <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
+            <Route path="/lp" element={<LandingPage />} />
             {/* Rotas removidas -> 404 */}
             <Route path="/reset-password" element={<NotFound />} />
             <Route path="/reset-senha" element={<NotFound />} />
@@ -184,9 +188,6 @@ const App = () => (
               
               {/* Public OS tracking route */}
               <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
-              <Route path="/termos-de-uso" element={<TermosDeUso />} />
-              <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
-              <Route path="/lp" element={<LandingPage />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/integracoes/:tab" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />

@@ -45,6 +45,23 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 7. Limpa cache do Nginx e recarrega  
 8. `cd server` → `npm install --production` → `pm2 restart primecamp-api` → `cd ..`
 
+## Verificação após o deploy (LP + páginas legais)
+
+Depois do deploy, confira:
+
+1. **https://ativafix.com** — deve abrir a **landing de vendas** (LP em React). Se abrir outra coisa ou 404, o Nginx de `ativafix.com` não está usando o mesmo `root` que `app.ativafix.com` ou o build não foi copiado.
+2. **https://app.ativafix.com** — deve abrir o **sistema** (tela de login).
+3. **https://app.ativafix.com/termos-de-uso** — deve abrir a página **Termos de Uso** (sem login).
+4. **https://app.ativafix.com/politica-de-privacidade** — deve abrir a página **Política de Privacidade** (sem login).
+
+Se **termos-de-uso** ou **politica-de-privacidade** derem 404 ao abrir o link direto, o Nginx está sem a regra de SPA. Nos blocos `server` de `ativafix.com` e `app.ativafix.com` o `location /` precisa ter:
+
+```nginx
+try_files $uri $uri/ /index.html;
+```
+
+Assim qualquer caminho (ex.: `/politica-de-privacidade`) devolve `index.html` e o React Router mostra a página certa. Veja o arquivo `docs/deploy/NGINX_ATIVAFIX_PASSO_A_PASSO.md` para o config completo.
+
 **Painel de Alertas:** para o Painel de Alertas funcionar, rode **uma vez** no banco usado pela API a migração `db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql`. Se a API estiver em "errored" com muitos restarts, veja a seção "PM2 em erro / API caindo" abaixo.
 
 **Importante:** o passo 8 (reiniciar a API com PM2) é necessário para que o salvamento do **tema do sistema** (cores, nome, logo) funcione. Se ao salvar configurações aparecer 404 ou 401 em `/api/theme-config`, a VPS está com a API antiga — refaça o deploy **completo** (incluindo `git pull`, `cd server`, `npm install --production` e `pm2 restart primecamp-api`). Só atualizar o frontend não basta; a API precisa ser reiniciada com o código novo.
