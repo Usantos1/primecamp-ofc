@@ -1,25 +1,52 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authAPI } from '@/integrations/auth/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useThemeConfig, getDefaultConfigByHost } from '@/contexts/ThemeConfigContext';
+import { DEMO_SESSION_KEY } from '@/utils/demoMode';
 
 export default function DemoLoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { config } = useThemeConfig();
   const logoUrl = config.logo || getDefaultConfigByHost().logo || '/logo-ativafix.png';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoLoginDone = useRef(false);
+
+  const autoLogin = searchParams.get('auto') === '1' || searchParams.get('auto') === 'true';
 
   if (!authLoading && user) {
     navigate('/', { replace: true });
     return null;
   }
+
+  useEffect(() => {
+    if (!autoLogin || autoLoginDone.current) return;
+    autoLoginDone.current = true;
+    setLoading(true);
+    setError(null);
+    authAPI.loginDemo()
+      .then((response) => {
+        if (response.error) {
+          setError(response.error.message || 'Não foi possível entrar na demonstração.');
+          return;
+        }
+        try {
+          sessionStorage.setItem(DEMO_SESSION_KEY, '1');
+        } catch {}
+        window.location.href = '/';
+      })
+      .catch((e: unknown) => {
+        setError(e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Erro ao conectar.');
+      })
+      .finally(() => setLoading(false));
+  }, [autoLogin]);
 
   const handleDemoLogin = async () => {
     setError(null);
@@ -31,7 +58,7 @@ export default function DemoLoginPage() {
         return;
       }
       try {
-        sessionStorage.setItem('ativafix_demo_session', '1');
+        sessionStorage.setItem(DEMO_SESSION_KEY, '1');
       } catch {}
       window.location.href = '/';
     } catch (e: any) {
@@ -40,6 +67,20 @@ export default function DemoLoginPage() {
       setLoading(false);
     }
   };
+
+  if (autoLogin && (loading || !error)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Entrando na demonstração…</p>
+        {error && (
+          <div className="rounded-lg bg-destructive/10 text-destructive text-sm p-3 max-w-md text-center">
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">

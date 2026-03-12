@@ -5,6 +5,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { isDemoSession } from '@/utils/demoMode';
 
 const REDIRECT_DELAY_SECONDS = 5;
 
@@ -37,8 +38,11 @@ export function PermissionRoute({
   // Verificar cache do localStorage (para acesso instantâneo durante loading)
   const cachedIsAdmin = localStorage.getItem(ADMIN_CACHE_KEY) === 'true';
 
-  // Se QUALQUER indicador diz que é admin, tem acesso total
-  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
+  // Sessão demo: acesso total (evita "Acesso negado" ao abrir pelo iframe com um clique)
+  const inDemoSession = isDemoSession();
+
+  // Se QUALQUER indicador diz que é admin ou está em demo, tem acesso total
+  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin || inDemoSession;
 
   // Atualizar cache quando descobrimos o status de admin
   useEffect(() => {
