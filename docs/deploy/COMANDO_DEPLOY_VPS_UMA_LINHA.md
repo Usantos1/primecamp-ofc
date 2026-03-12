@@ -2,7 +2,7 @@
 
 **Use estes comandos na VPS** (SSH no servidor). O `cd` no início é obrigatório para funcionar de qualquer diretório.
 
-**Domínios:** o sistema (login, dashboard, OS, cupom, etc.) fica em **app.ativafix.com**. O domínio principal **ativafix.com** fica para LP e páginas de vendas. Configure o Nginx para servir o mesmo build do frontend em `app.ativafix.com` (e opcionalmente em ativafix.com para a LP). Na API, use `FRONTEND_URL=https://app.ativafix.com` no `.env` para links de e-mail (ex.: reset de senha).
+**Domínios:** o sistema (login, dashboard, OS, cupom) fica em **app.ativafix.com**; **ativafix.com** é só a página de vendas (LP). No Nginx: `app.ativafix.com` → `root` da pasta do build do app (ex.: `/var/www/primecamp.cloud`); `ativafix.com` → `root /var/www/ativafix-lp` (conteúdo da pasta `landing/` do repo). Para atualizar a LP: `sudo cp -r landing/* /var/www/ativafix-lp/` (após `git pull`). Na API: `FRONTEND_URL=https://app.ativafix.com` no `.env`.
 
 ## Uma linha (copiar inteiro, incluindo a aspas final do echo)
 
