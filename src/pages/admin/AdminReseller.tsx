@@ -329,6 +329,7 @@ export default function AdminReseller() {
 
   const openEditDialog = async (company: Company) => {
     try {
+      await loadSegmentos();
       const fullCompany = await getCompany(company.id);
       setSelectedCompany(fullCompany);
       setFormData({
@@ -344,7 +345,6 @@ export default function AdminReseller() {
         segmento_id: (fullCompany as any).segmento_id ?? undefined
       });
       setDialogOpen(true);
-      loadSegmentos();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao carregar empresa');
     }
@@ -502,7 +502,7 @@ export default function AdminReseller() {
           </Card>
         )}
 
-        <Tabs defaultValue="empresas" className="w-full" onValueChange={(v) => { if (v === 'segmentos') loadSegmentos(); if (v === 'modulos') loadModulosGlobal(); if (v === 'recursos') loadRecursosGlobal(); }}>
+        <Tabs defaultValue="empresas" className="w-full" onValueChange={(v) => { if (v === 'empresas' || v === 'segmentos') loadSegmentos(); if (v === 'modulos') loadModulosGlobal(); if (v === 'recursos') loadRecursosGlobal(); }}>
           <TabsList className="grid w-full grid-cols-5 mb-4">
             <TabsTrigger value="empresas" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
@@ -861,7 +861,7 @@ export default function AdminReseller() {
                     value={formData.segmento_id || 'none'}
                     onValueChange={(value) => setFormData({ ...formData, segmento_id: value === 'none' ? undefined : value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="segmento_id">
                       <SelectValue placeholder="Nenhum (padrão)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -873,7 +873,9 @@ export default function AdminReseller() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Define o menu e os recursos disponíveis para esta empresa.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Define o menu e os recursos disponíveis para esta empresa. Pode ser alterado ao criar ou editar.
+                  </p>
                 </div>
               )}
             </div>
