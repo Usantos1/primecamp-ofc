@@ -274,10 +274,10 @@ export default function Relatorios() {
           </div>
         )}
 
-        {/* Conteúdo com Tabs */}
-        <div className="w-full min-w-0">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'summary' | 'productivity')} className="space-y-4">
-            <TabsList className="h-auto grid w-full grid-cols-2 gap-2 p-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl min-h-[3.25rem] items-center justify-items-center overflow-visible bg-muted/40">
+        {/* Conteúdo com Tabs — overflow-visible e espaço inferior para não cortar o widget */}
+        <div className="w-full min-w-0 overflow-visible">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'summary' | 'productivity')} className="space-y-4 overflow-visible">
+            <TabsList className="h-auto grid w-full grid-cols-2 gap-2 p-2 pb-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl min-h-[3.25rem] items-center justify-items-center overflow-visible bg-muted/40 mb-1 shadow-sm">
               <TabsTrigger
                 value="summary"
                 className={cn(
@@ -304,7 +304,7 @@ export default function Relatorios() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="summary" className="space-y-4 mt-4">
+            <TabsContent value="summary" className="space-y-4 mt-4 overflow-visible min-h-0">
               {isLoadingSummary ? (
                 <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Carregando...</div>
               ) : summary ? (
@@ -368,7 +368,7 @@ export default function Relatorios() {
               )}
             </TabsContent>
 
-            <TabsContent value="productivity" className="space-y-4 mt-4">
+            <TabsContent value="productivity" className="space-y-4 mt-4 overflow-visible min-h-0">
               {isLoadingProductivity ? (
                 <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Carregando...</div>
               ) : productivity && productivity.length > 0 ? (

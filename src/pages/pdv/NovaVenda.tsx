@@ -31,7 +31,7 @@ import { Link } from 'react-router-dom';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS, Quote, LIMITES_DESCONTO_PERFIL } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
-import { getDemoAwareErrorMessage } from '@/utils/demoMode';
+import { getDemoAwareErrorMessage, isDemoSession } from '@/utils/demoMode';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
@@ -316,7 +316,7 @@ export default function NovaVenda() {
       setShowOpenCashDialog(false);
       setCashValorInicial('');
     } catch (error: any) {
-      toast({ title: 'Erro ao abrir caixa', description: getDemoAwareErrorMessage(error, 'Tente novamente'), variant: 'destructive' });
+      toast({ title: isDemoSession() ? 'Não é possível na conta demo' : 'Erro ao abrir caixa', description: getDemoAwareErrorMessage(error, 'Tente novamente'), variant: 'destructive' });
     } finally {
       setIsProcessingCash(false);
     }
@@ -339,7 +339,7 @@ export default function NovaVenda() {
       setCashDivergencia('');
       setCashJustificativa('');
     } catch (error: any) {
-      toast({ title: 'Erro ao fechar caixa', description: getDemoAwareErrorMessage(error, 'Tente novamente'), variant: 'destructive' });
+      toast({ title: isDemoSession() ? 'Não é possível na conta demo' : 'Erro ao fechar caixa', description: getDemoAwareErrorMessage(error, 'Tente novamente'), variant: 'destructive' });
     } finally {
       setIsProcessingCash(false);
     }

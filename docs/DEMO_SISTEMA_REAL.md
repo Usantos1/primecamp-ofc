@@ -112,8 +112,8 @@ node server/scripts/seed-demo-data.js
 
 O script insere na empresa "Ativa FIX - Demonstração":
 - **5 clientes** de teste  
-- **6 ordens de serviço** (abertas e finalizadas)  
-- **8 vendas** de exemplo  
+- **60 ordens de serviço** (abertas, finalizadas, entregues etc.)  
+- **75 vendas** de exemplo totalizando **~R$ 45.000** (para o dashboard mostrar receita e tendência)  
 
 Pode rodar mais de uma vez; ele evita conflito de números. Para mais dados, use o próprio sistema logado como usuário demo.
 

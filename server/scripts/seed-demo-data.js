@@ -70,10 +70,15 @@ async function seedClientes(client, companyId) {
   return inserted;
 }
 
+const OS_DESCRICOES = [
+  'Tela quebrada', 'Bateria não carrega', 'Troca de conector', 'Desbloqueio', 'Problema no áudio', 'Atualização de sistema',
+  'Troca de tela', 'Não liga', 'Câmera com defeito', 'Microfone não funciona', 'Carregador queimado', 'Display quebrado',
+  'Água no aparelho', 'Senha esquecida', 'Troca de bateria', 'Reparo na placa', 'Conector USB', 'Alto-falante'
+];
+const OS_STATUSES = ['aberta', 'aberta', 'fechada', 'fechada', 'aberta', 'fechada', 'aberta', 'entregue', 'finalizada', 'aguardando_orcamento'];
+
 async function seedOrdensServico(client, companyId, clienteIds) {
-  const statuses = ['aberta', 'aberta', 'fechada', 'fechada', 'aberta', 'fechada'];
-  const descricoes = ['Tela quebrada', 'Bateria não carrega', 'Troca de conector', 'Desbloqueio', 'Problema no áudio', 'Atualização de sistema'];
-  const valores = [120, 85, 200, 50, 95, 60];
+  const totalOS = 60;
   let numeroBase = 900000;
   try {
     const maxNum = await client.query(
@@ -84,18 +89,20 @@ async function seedOrdensServico(client, companyId, clienteIds) {
     numeroBase = Math.max(900000, (typeof m === 'number' ? m : parseInt(m, 10) || 900000) + 1);
   } catch (_) {}
   let inserted = 0;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < totalOS; i++) {
     const numero = numeroBase + i;
     const clienteId = clienteIds.length ? clienteIds[i % clienteIds.length] : null;
-    const valorTotal = valores[i];
-    const status = statuses[i] === 'fechada' ? 'finalizada' : 'aberta';
+    const valorTotal = 80 + (i % 15) * 45 + Math.floor(Math.random() * 100);
+    const situacao = OS_STATUSES[i % OS_STATUSES.length];
+    const status = situacao === 'fechada' || situacao === 'finalizada' || situacao === 'entregue' ? situacao : 'aberta';
+    const descricao = OS_DESCRICOES[i % OS_DESCRICOES.length];
     try {
       await client.query(
         `INSERT INTO ordens_servico (
           company_id, numero, cliente_id, telefone_contato, data_entrada, descricao_problema,
           status, situacao, valor_total, tipo_aparelho, created_at, updated_at
         ) VALUES ($1, $2, $3, '(11) 99999-0000', CURRENT_DATE - ($4::int || ' days')::interval, $5, $6, $7, $8, 'Celular', NOW(), NOW())`,
-        [companyId, numero, clienteId, i * 2, descricoes[i], status, statuses[i], valorTotal]
+        [companyId, numero, clienteId, i % 90, descricao, status, situacao, valorTotal]
       );
       inserted++;
     } catch (e) {
@@ -103,7 +110,7 @@ async function seedOrdensServico(client, companyId, clienteIds) {
         await client.query(
           `INSERT INTO ordens_servico (company_id, numero, cliente_nome, defeito_relatado, status, valor_total, data_entrada, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW() - ($7::int || ' days')::interval, NOW(), NOW())`,
-          [companyId, numero, 'Cliente ' + (i + 1), descricoes[i], status, valorTotal, i * 2]
+          [companyId, numero, 'Cliente ' + (i % 5 + 1), descricao, status, valorTotal, i % 90]
         );
         inserted++;
       } catch (e2) {
@@ -130,8 +137,17 @@ async function seedVendas(client, companyId) {
     numeroStart = Math.max(900000, (typeof m === 'number' ? m : parseInt(m, 10) || 900000) + 1);
   } catch (_) {}
 
+  // ~R$ 45.000 em vendas (demo): 75 vendas variadas que somam 45000
+  const numVendas = 75;
+  const totals = [];
+  for (let i = 0; i < numVendas; i++) {
+    totals.push(400 + Math.floor(Math.random() * 400)); // 400–800 por venda
+  }
+  const sum = totals.reduce((a, b) => a + b, 0);
+  const diff = 45000 - sum;
+  if (totals.length > 0) totals[0] += diff; // ajuste na primeira para totalizar 45k
+
   let inserted = 0;
-  const totals = [150, 89.9, 320, 45, 199.9, 75, 280, 110];
   for (let i = 0; i < totals.length; i++) {
     const numero = numeroStart + i;
     const total = totals[i];

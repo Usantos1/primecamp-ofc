@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useQuery } from '@tanstack/react-query';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useAuth } from '@/contexts/AuthContext';
+import { getDemoAwareErrorMessage, isDemoSession } from '@/utils/demoMode';
 
 // Tipos de função disponíveis
 type UserRoleType = 'admin' | 'gerente' | 'supervisor' | 'vendedor' | 'caixa' | 'estoquista' | 'financeiro' | 'atendente' | 'member';
@@ -171,7 +172,7 @@ export const UserManagementNew = () => {
         console.error('Erro ao buscar usuários:', usersError);
         toast({
           title: "Erro",
-          description: "Erro ao carregar usuários",
+          description: getDemoAwareErrorMessage(usersError, "Erro ao carregar usuários"),
           variant: "destructive"
         });
         return;
@@ -196,7 +197,7 @@ export const UserManagementNew = () => {
       if (profilesError) {
         toast({
           title: "Erro",
-          description: "Erro ao carregar perfis",
+          description: getDemoAwareErrorMessage(profilesError, "Erro ao carregar perfis"),
           variant: "destructive"
         });
         return;
@@ -274,7 +275,7 @@ export const UserManagementNew = () => {
       console.error('Error fetching users:', error);
       toast({
         title: "Erro",
-        description: "Erro ao carregar usuários",
+        description: getDemoAwareErrorMessage(error, "Erro ao carregar usuários"),
         variant: "destructive"
       });
     } finally {
@@ -571,7 +572,14 @@ export const UserManagementNew = () => {
 
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (isDemoSession()) {
+      toast({
+        title: "Conta demonstração",
+        description: "Funcionalidade não disponível na conta demonstração. Cadastre-se para criar usuários.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!newUser.email || !newUser.password || !newUser.display_name || !newUser.department) {
       toast({
         title: "Erro",
@@ -637,7 +645,7 @@ export const UserManagementNew = () => {
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao criar usuário",
+        description: getDemoAwareErrorMessage(error, "Erro ao criar usuário"),
         variant: "destructive"
       });
     }
@@ -669,6 +677,7 @@ export const UserManagementNew = () => {
                 Gerencie usuários, funções e permissões do sistema
               </p>
             </div>
+            {!isDemoSession() && (
             <Button onClick={() => {
               setNewUser(prev => ({ ...prev, role: rolesFromApi[0]?.name ?? prev.role ?? '' }));
               setNewUserDialogOpen(true);
@@ -676,6 +685,7 @@ export const UserManagementNew = () => {
               <UserPlus className="h-4 w-4 mr-2" />
               Novo Usuário
             </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>

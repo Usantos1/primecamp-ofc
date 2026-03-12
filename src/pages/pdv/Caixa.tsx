@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CashRegisterSessionsManager } from '@/components/financeiro/CashRegisterSessionsManager';
 import { usePermissions } from '@/hooks/usePermissions';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
-import { getDemoAwareErrorMessage } from '@/utils/demoMode';
+import { getDemoAwareErrorMessage, isDemoSession } from '@/utils/demoMode';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
@@ -175,7 +175,7 @@ export default function Caixa() {
       setValorInicial('');
     } catch (error: any) {
       toast({ 
-        title: 'Erro ao abrir caixa', 
+        title: isDemoSession() ? 'Não é possível na conta demo' : 'Erro ao abrir caixa', 
         description: getDemoAwareErrorMessage(error, 'Tente novamente'),
         variant: 'destructive' 
       });
@@ -211,7 +211,7 @@ export default function Caixa() {
       setJustificativa('');
     } catch (error: any) {
       toast({ 
-        title: 'Erro ao fechar caixa', 
+        title: isDemoSession() ? 'Não é possível na conta demo' : 'Erro ao fechar caixa', 
         description: getDemoAwareErrorMessage(error, 'Tente novamente'),
         variant: 'destructive' 
       });
@@ -244,7 +244,7 @@ export default function Caixa() {
       setMovementMotivo('');
     } catch (error: any) {
       toast({ 
-        title: 'Erro ao registrar movimento', 
+        title: isDemoSession() ? 'Não é possível na conta demo' : 'Erro ao registrar movimento', 
         description: getDemoAwareErrorMessage(error, 'Tente novamente'),
         variant: 'destructive' 
       });
