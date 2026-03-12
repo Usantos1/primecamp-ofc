@@ -277,14 +277,30 @@ export default function Relatorios() {
         {/* Conteúdo com Tabs */}
         <div className="w-full min-w-0">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'summary' | 'productivity')} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl">
-              <TabsTrigger value="summary" className="font-semibold">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Resumo Geral
+            <TabsList className="h-auto grid w-full grid-cols-2 gap-2 p-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl min-h-[3.25rem] items-center justify-items-center overflow-visible bg-muted/40">
+              <TabsTrigger
+                value="summary"
+                className={cn(
+                  "w-full min-h-11 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all",
+                  "data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm",
+                  "dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100",
+                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+                )}
+              >
+                <BarChart3 className="h-4 w-4 shrink-0" />
+                <span className="truncate text-center">Resumo Geral</span>
               </TabsTrigger>
-              <TabsTrigger value="productivity" className="font-semibold">
-                <User className="h-4 w-4 mr-2" />
-                Produtividade por Técnico
+              <TabsTrigger
+                value="productivity"
+                className={cn(
+                  "w-full min-h-11 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all",
+                  "data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm",
+                  "dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100",
+                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+                )}
+              >
+                <User className="h-4 w-4 shrink-0" />
+                <span className="truncate text-center">Produtividade por Técnico</span>
               </TabsTrigger>
             </TabsList>
 
