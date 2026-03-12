@@ -100,7 +100,7 @@ export function DemoFullscreenModal({ onClose, onAssinar }: DemoFullscreenModalP
                 <Button
                   variant="outline"
                   onClick={handleTestarMaisUmMinuto}
-                  className="w-full h-12 rounded-xl font-semibold border-2"
+                  className="w-full h-12 rounded-xl font-semibold border-2 border-[#00F7A5]/50 bg-[#0B0F0D] text-[#F5F7F6] hover:bg-[#00F7A5]/15 hover:border-[#00F7A5]/70 dark:bg-[#0B0F0D] dark:text-[#F5F7F6]"
                 >
                   Testar por mais 1 minuto
                 </Button>

@@ -126,7 +126,7 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
               <Button
                 variant="outline"
                 onClick={handleTestarMaisUmMinuto}
-                className="w-full h-12 rounded-xl font-semibold border-2 border-[#00F7A5]/40 text-[#F5F7F6]"
+                className="w-full h-12 rounded-xl font-semibold border-2 border-[#00F7A5]/50 bg-[#07110D] text-[#F5F7F6] hover:bg-[#00F7A5]/15 hover:border-[#00F7A5]/70"
               >
                 Testar por mais 1 minuto
               </Button>
