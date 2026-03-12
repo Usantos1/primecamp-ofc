@@ -324,9 +324,21 @@ All colors MUST be HSL.
     @apply border-border;
   }
   
-  /* Sistema de Scroll Padronizado */
+  /* Sistema de Scroll Padronizado (app com sidebar) */
   html, body, #root {
     @apply h-screen overflow-hidden;
+  }
+  /* Landing page: scroll da página inteira, várias dobras */
+  html.landing-page,
+  html.landing-page body,
+  html.landing-page body #root {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+    overflow-x: hidden;
+  }
+  html.landing-page body {
+    overflow-x: hidden;
   }
   
   body {

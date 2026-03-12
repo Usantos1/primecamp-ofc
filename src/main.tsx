@@ -2,7 +2,15 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "next-themes";
 import App from "./App.tsx";
+import LandingPage from "./pages/landing/LandingPage.tsx";
 import "./index.css";
+
+// ativafix.com e www.ativafix.com = só landing de vendas. app.ativafix.com e localhost = app completo.
+function isLandingDomain() {
+  if (typeof window === 'undefined') return false;
+  const h = window.location.hostname.toLowerCase();
+  return h === 'ativafix.com' || h === 'www.ativafix.com';
+}
 
 // Limpar tokens antigos/inválidos do localStorage
 if (typeof window !== 'undefined' && window.localStorage) {
@@ -23,10 +31,16 @@ if (typeof window !== 'undefined' && window.localStorage) {
   }
 }
 
-createRoot(document.getElementById("root")!).render(
+const Root = isLandingDomain() ? (
+  <StrictMode>
+    <LandingPage />
+  </StrictMode>
+) : (
   <StrictMode>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <App />
     </ThemeProvider>
-  </StrictMode>,
+  </StrictMode>
 );
+
+createRoot(document.getElementById("root")!).render(Root);

@@ -3,59 +3,342 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ativa FIX – Sistema de gestão para assistência técnica</title>
-  <meta name="description" content="Controle ordens de serviço, estoque, financeiro e clientes. Acesse o sistema ou fale conosco." />
+  <title>Ativa FIX – Controle sua assistência técnica de vez</title>
+  <meta name="description" content="Sistema completo para sua assistência: ordens de serviço, estoque, financeiro, clientes e cupom. Chega de planilha e papel." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --primary: #E60000;
+      --primary-dark: #b80000;
+      --primary-light: #ff3333;
+      --dark: #0f172a;
+      --dark-soft: #1e293b;
+      --muted: #64748b;
+      --light: #f8fafc;
+      --white: #ffffff;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       line-height: 1.6;
-      color: #1a1a1a;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      min-height: 100vh;
+      color: #1e293b;
+      background: var(--white);
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1rem 1.5rem;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 2rem;
+      justify-content: space-between;
     }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 2.5rem;
-      max-width: 480px;
-      width: 100%;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-      text-align: center;
-    }
-    h1 { font-size: 1.75rem; margin-bottom: 0.5rem; color: #0f172a; }
-    .sub { color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem; }
-    p { color: #475569; margin-bottom: 1.5rem; }
-    .btn {
-      display: inline-block;
-      background: #0f172a;
-      color: #fff;
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.02em;
       text-decoration: none;
-      padding: 0.75rem 1.5rem;
+    }
+    .logo span { color: var(--dark); }
+    .header-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--primary);
+      color: var(--white) !important;
+      text-decoration: none;
+      padding: 0.6rem 1.2rem;
       border-radius: 8px;
       font-weight: 600;
-      transition: background 0.2s;
+      font-size: 0.9rem;
+      transition: background 0.2s, transform 0.15s;
     }
-    .btn:hover { background: #1e293b; }
-    .btn.secondary { background: #e2e8f0; color: #0f172a; margin-top: 0.75rem; }
-    .btn.secondary:hover { background: #cbd5e1; }
-    .note { font-size: 0.8rem; color: #94a3b8; margin-top: 1.5rem; }
+    .header-cta:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 1.5rem 4rem;
+      background: linear-gradient(160deg, var(--dark) 0%, var(--dark-soft) 50%, #334155 100%);
+      color: var(--white);
+      text-align: center;
+    }
+    .hero-content { max-width: 720px; }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(230,0,0,0.2);
+      color: #fca5a5;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      margin-bottom: 1.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+    .hero h1 .destaque { color: var(--primary-light); }
+    .hero p {
+      font-size: 1.2rem;
+      color: #cbd5e1;
+      margin-bottom: 2rem;
+      max-width: 540px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: var(--primary);
+      color: var(--white) !important;
+      text-decoration: none;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      transition: background 0.2s, transform 0.15s;
+      box-shadow: 0 4px 20px rgba(230,0,0,0.4);
+    }
+    .hero-cta:hover { background: var(--primary-light); transform: translateY(-2px); }
+    .hero-cta svg { width: 1.35rem; height: 1.35rem; flex-shrink: 0; }
+
+    /* Pain – Você vive isso? */
+    .pain {
+      padding: 4.5rem 1.5rem;
+      background: var(--light);
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .section-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800;
+      color: var(--dark);
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+    }
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+    .pain-card {
+      background: var(--white);
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .pain-card strong { color: var(--dark); display: block; margin-bottom: 0.35rem; }
+    .pain-card p { font-size: 0.95rem; color: var(--muted); }
+
+    /* Features */
+    .features {
+      padding: 4.5rem 1.5rem;
+      background: var(--white);
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    .feature {
+      padding: 1.75rem;
+      border-radius: 14px;
+      background: var(--light);
+      border: 1px solid #e2e8f0;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .feature:hover { border-color: var(--primary); box-shadow: 0 8px 24px rgba(230,0,0,0.08); }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--primary);
+      color: var(--white);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .feature h3 { font-size: 1.15rem; color: var(--dark); margin-bottom: 0.5rem; }
+    .feature p { font-size: 0.95rem; color: var(--muted); }
+
+    /* CTA final */
+    .cta-block {
+      padding: 4.5rem 1.5rem;
+      background: linear-gradient(150deg, var(--dark) 0%, var(--dark-soft) 100%);
+      color: var(--white);
+      text-align: center;
+    }
+    .cta-block h2 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+    .cta-block p { color: #94a3b8; margin-bottom: 2rem; font-size: 1.05rem; }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: #22c55e;
+      color: var(--white) !important;
+      text-decoration: none;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      transition: background 0.2s, transform 0.15s;
+      box-shadow: 0 4px 20px rgba(34,197,94,0.4);
+    }
+    .cta-btn:hover { background: #16a34a; transform: translateY(-2px); }
+    .cta-btn svg { width: 1.4rem; height: 1.4rem; }
+
+    /* Footer */
+    .footer {
+      padding: 2rem 1.5rem;
+      background: var(--dark);
+      color: #94a3b8;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .footer a { color: var(--primary-light); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Ativa FIX</h1>
-    <p class="sub">Sistema de gestão para assistência técnica</p>
-    <p>Controle ordens de serviço, estoque, financeiro e clientes em um só lugar.</p>
-    <a href="https://app.ativafix.com" class="btn">Acessar o sistema</a>
-    <br />
-    <a href="https://app.ativafix.com/login" class="btn secondary">Fazer login</a>
-    <p class="note">Página de vendas e informações em construção. Use o link acima para acessar o app.</p>
-  </div>
+  <header class="header">
+    <div class="header-inner">
+      <a href="#" class="logo">Ativa <span>FIX</span></a>
+      <a href="https://wa.me/551991979912" class="header-cta" target="_blank" rel="noopener">
+        Falar no WhatsApp
+      </a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-content">
+      <span class="hero-badge">Sistema completo para assistência técnica</span>
+      <h1>Chega de desordem.<br />Sua oficina <span class="destaque">organizada e sob controle</span>.</h1>
+      <p>OS, estoque, financeiro, clientes e cupom em um só lugar. Sem planilha, sem papel perdido, sem dor de cabeça.</p>
+      <a href="https://wa.me/551991979912?text=Olá! Quero saber mais sobre o Ativa FIX." class="hero-cta" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.21 1.03 7.11 2.832 1.9 1.9 2.847 4.47 2.847 7.12 0 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Quero organizar minha oficina
+      </a>
+    </div>
+  </section>
+
+  <section class="pain">
+    <div class="container">
+      <h2 class="section-title">Você vive isso?</h2>
+      <p class="section-sub">Sem um sistema, a assistência vira bagunça. O Ativa FIX acaba com isso.</p>
+      <div class="pain-grid">
+        <div class="pain-card">
+          <strong>OS em papel ou planilha</strong>
+          <p>Ficha some, cliente cobra, você não acha o histórico. Tudo desorganizado.</p>
+        </div>
+        <div class="pain-card">
+          <strong>Estoque no “achômetro”</strong>
+          <p>Peça sumiu, comprou em dobro, não sabe o que tem nem o que falta.</p>
+        </div>
+        <div class="pain-card">
+          <strong>Financeiro na cabeça</strong>
+          <p>Contas a pagar e a receber espalhados. DRE? Nem sabe por onde começar.</p>
+        </div>
+        <div class="pain-card">
+          <strong>Cliente ligando toda hora</strong>
+          <p>“Ficou pronto?” Você perde tempo atendendo em vez de consertando.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="container">
+      <h2 class="section-title">Tudo que sua assistência precisa</h2>
+      <p class="section-sub">Um sistema pensado para quem conserta celular, notebook e eletrônicos. Simples e completo.</p>
+      <div class="features-grid">
+        <div class="feature">
+          <div class="feature-icon">OS</div>
+          <h3>Ordens de serviço</h3>
+          <p>Abra a OS, anote defeito e checklist, acompanhe status. Cliente consulta pelo link sem você parar o serviço.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📦</div>
+          <h3>Estoque e produtos</h3>
+          <p>Cadastre peças e produtos, controle entrada e saída. Sabe o que tem na gaveta e o que precisa comprar.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">💰</div>
+          <h3>Financeiro</h3>
+          <p>Caixa, contas a pagar e a receber, DRE e fluxo de caixa. Números claros para decidir melhor.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">👥</div>
+          <h3>Clientes</h3>
+          <p>Cadastro único, histórico de serviços e compras. Atendimento mais rápido e profissional.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🧾</div>
+          <h3>Cupom e PDV</h3>
+          <p>Venda com cupom e impressão. Integrado ao estoque e ao caixa.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📊</div>
+          <h3>Relatórios e alertas</h3>
+          <p>Resumos de vendas, alertas por WhatsApp no horário que você definir. Tudo no celular.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-block">
+    <div class="container">
+      <h2>Pronto para organizar sua oficina?</h2>
+      <p>Fale com a gente no WhatsApp. Sem compromisso.</p>
+      <a href="https://wa.me/551991979912?text=Olá! Quero conhecer o Ativa FIX e organizar minha assistência." class="cta-btn" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.21 1.03 7.11 2.832 1.9 1.9 2.847 4.47 2.847 7.12 0 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Chamar no WhatsApp — (19) 91979-9912
+      </a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Ativa FIX – Sistema de gestão para assistência técnica. <a href="https://app.ativafix.com">Acessar o sistema</a></p>
+  </footer>
 </body>
 </html>

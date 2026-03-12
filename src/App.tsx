@@ -68,6 +68,9 @@ import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
+import TermosDeUso from "./pages/public/TermosDeUso";
+import PoliticaPrivacidade from "./pages/public/PoliticaPrivacidade";
+import LandingPage from "./pages/landing/LandingPage";
 import DashboardExecutivo from "./pages/financeiro/DashboardExecutivo";
 import DRE from "./pages/financeiro/DRE";
 import PlanejamentoAnual from "./pages/financeiro/PlanejamentoAnual";
@@ -181,6 +184,9 @@ const App = () => (
               
               {/* Public OS tracking route */}
               <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
+              <Route path="/termos-de-uso" element={<TermosDeUso />} />
+              <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
+              <Route path="/lp" element={<LandingPage />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/integracoes/:tab" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />

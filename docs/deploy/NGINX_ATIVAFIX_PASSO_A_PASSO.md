@@ -14,21 +14,16 @@ Se não estiver: `sudo apt update && sudo apt install -y nginx`
 
 ---
 
-## 2. Criar pastas: app (sistema) e LP (página de vendas)
+## 2. Criar pasta do frontend (app + landing)
 
 ```bash
-# App = build do frontend (React) – servido em app.ativafix.com
-sudo mkdir -p /var/www/ativafix
-sudo chown -R www-data:www-data /var/www/ativafix
-sudo chmod -R 755 /var/www/ativafix
-
-# LP = página de vendas (landing) – servida em ativafix.com e www.ativafix.com
-sudo mkdir -p /var/www/ativafix-lp
-sudo chown -R www-data:www-data /var/www/ativafix-lp
-sudo chmod -R 755 /var/www/ativafix-lp
+# Um único build serve ativafix.com (landing) e app.ativafix.com (sistema)
+sudo mkdir -p /var/www/primecamp.cloud
+sudo chown -R www-data:www-data /var/www/primecamp.cloud
+sudo chmod -R 755 /var/www/primecamp.cloud
 ```
 
-*(Se você já usa `/var/www/primecamp.cloud` para o app, use esse path no bloco **app.ativafix.com** do Nginx e mantenha `/var/www/ativafix-lp` só para a LP.)*
+*(O deploy do frontend copia o build para essa pasta. ativafix.com e app.ativafix.com apontam para a mesma pasta no Nginx.)*
 
 ---
 
@@ -77,8 +72,7 @@ sudo nano /etc/nginx/sites-available/ativafix
 
 **Apague tudo** que estiver no arquivo e **cole o bloco abaixo inteiro**. Depois ajuste:
 
-- **ativafix.com:** `root` deve ser a pasta da **LP** (página de vendas), ex.: `/var/www/ativafix-lp`.
-- **app.ativafix.com:** `root` deve ser a pasta do **build do app** (React), ex.: `/var/www/ativafix` ou `/var/www/primecamp.cloud`.
+- **ativafix.com e app.ativafix.com:** usam o **mesmo** `root` (pasta do build do app React), ex.: `/var/www/primecamp.cloud`. O próprio app decide: em ativafix.com exibe a landing de vendas; em app.ativafix.com exibe o sistema. Um deploy só atualiza os dois.
 - **ssl_certificate / ssl_certificate_key:** se o Certbot tiver gerado em outro caminho, use `ls /etc/letsencrypt/live/` e ajuste.
 
 ```nginx
@@ -93,14 +87,14 @@ server {
 }
 
 # =========================
-# ativafix.com – LP / página de vendas (HTTPS) – NÃO é o app
+# ativafix.com – Landing de vendas (mesmo build do app; o React mostra a LP por hostname)
 # =========================
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name ativafix.com www.ativafix.com;
 
-    root /var/www/ativafix-lp;
+    root /var/www/primecamp.cloud;
     index index.html;
 
     location / {
@@ -131,7 +125,7 @@ server {
     listen [::]:443 ssl http2;
     server_name app.ativafix.com;
 
-    root /var/www/ativafix;
+    root /var/www/primecamp.cloud;
     index index.html;
 
     location / {
@@ -255,26 +249,10 @@ Se passar, o cron do certbot já renova sozinho.
 
 ## Resumo dos domínios
 
-| Domínio           | Uso                          | root / proxy                  |
-|-------------------|------------------------------|-------------------------------|
-| ativafix.com      | LP / página de vendas        | `root /var/www/ativafix-lp`   |
-| app.ativafix.com  | Sistema (login, dashboard…)  | `root /var/www/ativafix`      |
-| api.ativafix.com  | API (Node na porta 3000)    | `proxy_pass :3000`            |
+| Domínio           | Uso                          | root / proxy                     |
+|-------------------|------------------------------|-----------------------------------|
+| ativafix.com      | Landing de vendas (React)    | `root /var/www/primecamp.cloud`   |
+| app.ativafix.com  | Sistema (login, dashboard…)  | `root /var/www/primecamp.cloud`   |
+| api.ativafix.com  | API (Node na porta 3000)     | `proxy_pass :3000`                |
 
-- **ativafix.com** = conteúdo da pasta `landing/` do repositório (página de vendas).
-- **app.ativafix.com** = build do frontend React (deploy do app). Se você usa `/var/www/primecamp.cloud` para o app, troque o `root` do bloco app.ativafix.com para esse path.
-
----
-
-## Deploy da LP (página de vendas) em ativafix.com
-
-Na VPS, a partir da pasta do projeto (ex.: `/root/primecamp-ofc`):
-
-```bash
-sudo mkdir -p /var/www/ativafix-lp
-sudo cp -r landing/* /var/www/ativafix-lp/
-sudo chown -R www-data:www-data /var/www/ativafix-lp
-sudo chmod -R 755 /var/www/ativafix-lp
-```
-
-Depois de editar os arquivos em `landing/` no repositório, faça `git pull` e rode os comandos acima de novo para atualizar a LP.
+- **ativafix.com** e **app.ativafix.com** usam o **mesmo** build. O React mostra a landing em ativafix.com e o app em app.ativafix.com (detecção por hostname). Um deploy só atualiza os dois.
