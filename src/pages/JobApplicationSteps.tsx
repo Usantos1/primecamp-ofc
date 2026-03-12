@@ -447,7 +447,7 @@ export default function JobApplicationSteps() {
   const fetchSurvey = async () => {
     try {
       // Usar API pública para buscar vaga por slug (não precisa de autenticação)
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
       const response = await fetch(`${API_URL}/public/vaga/${slug}`);
       
       if (!response.ok) {

@@ -7,7 +7,7 @@ import { Loader2, Smartphone, User, Calendar, Clock, DollarSign, CheckCircle2, X
 import { dateFormatters, currencyFormatters } from '@/utils/formatters';
 import { STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
 
 export default function AcompanharOS() {
   const { id } = useParams<{ id: string }>();

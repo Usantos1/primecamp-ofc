@@ -77,7 +77,7 @@ const verifyCompanyAccess = (req, res, next) => {
 // Gerar código PIX (simulação - em produção usar API de pagamentos)
 function generatePixCode(amount, description, txid) {
   // Formato PIX Copia e Cola simplificado
-  const pixKey = process.env.PIX_KEY || 'contato@primecamp.cloud';
+  const pixKey = process.env.PIX_KEY || 'contato@ativafix.com';
   const merchantName = 'PRIME CAMP LTDA';
   const merchantCity = 'SAO PAULO';
   

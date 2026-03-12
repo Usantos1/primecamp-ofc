@@ -7,7 +7,7 @@ import { Cliente } from '@/types/assistencia';
 // URL da API
 const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
   ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
+  : 'https://api.ativafix.com/api';
 
 export function useClientesSupabase(pageSize: number = 50) {
   const { user } = useAuth();

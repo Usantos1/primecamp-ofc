@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { from } from '@/integrations/db/client';
 import { toast } from 'sonner';
 
-const APP_BASE_URL = import.meta.env.VITE_APP_URL || 'https://primecamp.cloud';
+const APP_BASE_URL = import.meta.env.VITE_APP_URL || 'https://ativafix.com';
 
 interface SendMessageData {
   number: string;
@@ -58,7 +58,7 @@ export function useWhatsApp() {
       });
       
       // 🚫 Supabase Functions removido - usar API direta
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
       const response = await fetch(`${API_URL}/whatsapp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

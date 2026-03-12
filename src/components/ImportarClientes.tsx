@@ -209,7 +209,7 @@ export function ImportarClientes({ onClose, onSuccess }: ImportarClientesProps) 
           },
         };
 
-        const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+        const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
         const response = await fetch(`${API_URL}/functions/import-clientes`, {
           method: 'POST',
           headers: { 

@@ -1,6 +1,6 @@
 /**
  * Cliente HTTP centralizado para a API.
- * Usa getApiUrl() para suportar ativafix.com e primecamp.cloud com o mesmo build.
+ * Usa getApiUrl() para suportar ativafix.com com o mesmo build.
  */
 
 import { fetchWithRetry } from '@/utils/fetchWithRetry';

@@ -275,7 +275,7 @@ export function ImportarProdutos() {
           }
           
           // 🚫 Supabase Functions removido - usar API direta
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
       const response = await fetch(`${API_URL}/functions/${'import-produtos'}`, {
         method: 'POST',
         headers: { 

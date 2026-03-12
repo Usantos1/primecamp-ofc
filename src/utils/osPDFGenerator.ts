@@ -27,7 +27,7 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
   // Gerar QR Code
   let qrCodeImg = '';
   try {
-    const publicDomain = 'https://primecamp.cloud';
+    const publicDomain = 'https://ativafix.com';
     const qrCodeUrl = await QRCode.toDataURL(`${publicDomain}/acompanhar-os/${os.id}`, {
       width: 100,
       margin: 1,

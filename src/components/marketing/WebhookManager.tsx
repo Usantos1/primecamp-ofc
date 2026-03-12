@@ -21,7 +21,7 @@ import { dateFormatters } from '@/utils/formatters';
 import { LoadingButton } from '@/components/LoadingButton';
 import { useToast } from '@/hooks/use-toast';
 
-const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
 
 // Função para extrair valor de um caminho aninhado (ex: "contact.name")
 const getNestedValue = (obj: any, path: string): any => {

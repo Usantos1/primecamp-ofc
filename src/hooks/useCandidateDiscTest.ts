@@ -524,7 +524,7 @@ export const useCandidateDiscTest = () => {
           questionId: currentQuestionId,
           selectedType,
           idempotencyKey: requestId,
-          url: `${import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api'}/functions/disc-answer`
+          url: `${import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api'}/functions/disc-answer`
         });
 
         const response = await apiClient.invokeFunction('disc-answer', {

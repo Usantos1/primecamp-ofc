@@ -93,7 +93,7 @@ export default function CupomView() {
       setLoading(true);
 
       // API pública: funciona sem login (QR code no cupom / celular do cliente)
-      const apiBase = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const apiBase = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
       const res = await fetch(`${apiBase}/public/cupom/${id}`);
       if (!res.ok) {
         if (res.status === 404) {

@@ -95,7 +95,7 @@ export function ApiManager() {
     setLoadingLogs(false);
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
 
   return (
     <div className="space-y-6">

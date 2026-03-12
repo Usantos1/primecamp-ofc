@@ -10,10 +10,10 @@ const TestAuth = () => {
         Se você está vendo isso, a rota /test-auth está funcionando!
       </p>
       <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#f0f0f0', borderRadius: '10px' }}>
-        <p><strong>API URL:</strong> {import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api'}</p>
+        <p><strong>API URL:</strong> {import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api'}</p>
         <button 
           onClick={async () => {
-            const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
             try {
               const response = await fetch(`${apiUrl}/health`);
               const data = await response.json();

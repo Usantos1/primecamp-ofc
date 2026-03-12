@@ -101,10 +101,6 @@ app.use(cors({
       'http://127.0.0.1:8080',
       'http://127.0.0.1:3000',
       apiOrigin,
-      'https://primecamp.cloud',
-      'http://primecamp.cloud',
-      'https://www.primecamp.cloud',
-      'http://www.primecamp.cloud',
       'https://ativafix.com',
       'http://ativafix.com',
       'https://www.ativafix.com',
@@ -1235,7 +1231,7 @@ app.post('/api/auth/request-password-reset', async (req, res) => {
 
     // TODO: Enviar email com link de reset usando nodemailer ou serviço de email
     // Por enquanto, apenas retornar o token (em desenvolvimento)
-    const resetLink = `${process.env.FRONTEND_URL || 'https://primecamp.cloud'}/reset-password?access_token=${resetToken}`;
+    const resetLink = `${process.env.FRONTEND_URL || 'https://ativafix.com'}/reset-password?access_token=${resetToken}`;
     
     console.log(`[API] Link de reset gerado para ${user.email}: ${resetLink}`);
 
@@ -2815,8 +2811,8 @@ app.post('/api/whatsapp/send', async (req, res) => {
 // TEMA DO SISTEMA (cores, logo, nome) — persistido na VPS por domínio (white-label)
 // ============================================
 // Cada domínio tem sua própria chave; domínios não listados usam a chave padrão.
-// Para liberar white-label em um domínio, adicione-o em WHITELABEL_DOMAINS no .env (ex: ativafix.com,primecamp.cloud).
-const WHITELABEL_DOMAINS = (process.env.WHITELABEL_DOMAINS || 'ativafix.com,www.ativafix.com,primecamp.cloud,www.primecamp.cloud')
+// Para liberar white-label em um domínio, adicione-o em WHITELABEL_DOMAINS no .env (ex: ativafix.com).
+const WHITELABEL_DOMAINS = (process.env.WHITELABEL_DOMAINS || 'ativafix.com,www.ativafix.com')
   .toLowerCase()
   .split(',')
   .map((s) => s.trim())
@@ -2951,7 +2947,7 @@ app.post('/api/storage/upload', authenticateToken, upload.single('file'), async 
     // Construir URL pública
     // STORAGE_BASE_URL é opcional - se não definido, usa localhost
     // Em produção, configure STORAGE_BASE_URL no .env para sua URL pública
-    // Exemplo: STORAGE_BASE_URL=https://api.primecamp.cloud/uploads
+    // Exemplo: STORAGE_BASE_URL=https://api.ativafix.com/uploads
     const baseUrl = process.env.STORAGE_BASE_URL || `http://localhost:${PORT}/uploads`;
     const publicUrl = `${baseUrl}/${req.file.filename}`;
 
@@ -5080,7 +5076,7 @@ app.post('/api/webhook/test/session', authenticateToken, async (req, res) => {
     userId: req.user.id
   });
   
-  const testUrl = `${process.env.STORAGE_BASE_URL?.replace('/uploads', '') || 'https://api.primecamp.cloud'}/api/webhook/test/${sessionId}`;
+  const testUrl = `${process.env.STORAGE_BASE_URL?.replace('/uploads', '') || 'https://api.ativafix.com'}/api/webhook/test/${sessionId}`;
   
   res.json({ 
     success: true, 
@@ -6196,7 +6192,7 @@ app.get('/api/v1/docs', (req, res) => {
     name: "PrimeCamp API",
     version: "1.0.0",
     description: "API para integração com sistemas externos e agentes de IA",
-    base_url: "https://api.primecamp.cloud/api/v1",
+    base_url: "https://api.ativafix.com/api/v1",
     authentication: {
       type: "Bearer Token",
       header: "Authorization: Bearer <seu_token>",
@@ -6250,8 +6246,8 @@ app.get('/api/v1/docs', (req, res) => {
       }
     ],
     examples: {
-      curl: `curl -X GET "https://api.primecamp.cloud/api/v1/produtos?modelo=iPhone%2015" -H "Authorization: Bearer SEU_TOKEN"`,
-      javascript: `fetch('https://api.primecamp.cloud/api/v1/produtos?modelo=iPhone 15', {
+      curl: `curl -X GET "https://api.ativafix.com/api/v1/produtos?modelo=iPhone%2015" -H "Authorization: Bearer SEU_TOKEN"`,
+      javascript: `fetch('https://api.ativafix.com/api/v1/produtos?modelo=iPhone 15', {
   headers: { 'Authorization': 'Bearer SEU_TOKEN' }
 }).then(r => r.json()).then(console.log)`,
       ai_agent: `Use esta API quando o cliente perguntar sobre preços, disponibilidade ou características de produtos. Exemplo: "Qual o preço da tela do iPhone 15?" -> GET /produtos?modelo=iPhone 15&busca=tela`

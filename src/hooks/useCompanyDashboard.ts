@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
 
 interface CompanyMetrics {
   company: {

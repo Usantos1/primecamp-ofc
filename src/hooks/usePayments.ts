@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
 
 export interface Payment {
   id: string;

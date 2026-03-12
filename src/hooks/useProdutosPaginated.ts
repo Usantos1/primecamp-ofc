@@ -603,7 +603,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       toast({
         title: 'Erro ao atualizar produto',
         description: isNetworkError
-          ? 'Sem conexão com o servidor. Verifique sua internet e se a API (api.primecamp.cloud) está acessível.'
+          ? 'Sem conexão com o servidor. Verifique sua internet e se a API (api.ativafix.com) está acessível.'
           : 'Não foi possível carregar o estado anterior para auditoria.',
         variant: 'destructive',
       });

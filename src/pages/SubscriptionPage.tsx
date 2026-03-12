@@ -46,7 +46,7 @@ export default function SubscriptionPage() {
     try {
       // Carregar planos
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('https://api.primecamp.cloud/api/query/plans', {
+      const response = await fetch('https://api.ativafix.com/api/query/plans', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -45,7 +45,7 @@ export function useWebhooks() {
     queryKey: ['webhook-configs'],
     queryFn: async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
         const response = await fetch(`${apiUrl}/api/webhook/configs`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -70,7 +70,7 @@ export function useWebhooks() {
   // Criar webhook
   const createWebhook = useMutation({
     mutationFn: async (data: { nome: string; fonte_padrao?: string; descricao?: string }) => {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
       const response = await fetch(`${apiUrl}/api/webhook/configs`, {
         method: 'POST',
         headers: {
@@ -100,7 +100,7 @@ export function useWebhooks() {
   // Atualizar webhook
   const updateWebhook = useMutation({
     mutationFn: async ({ id, ...data }: Partial<WebhookConfig> & { id: string }) => {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
       const response = await fetch(`${apiUrl}/api/webhook/configs/${id}`, {
         method: 'PUT',
         headers: {
@@ -125,7 +125,7 @@ export function useWebhooks() {
   // Excluir webhook
   const deleteWebhook = useMutation({
     mutationFn: async (id: string) => {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
       const response = await fetch(`${apiUrl}/api/webhook/configs/${id}`, {
         method: 'DELETE',
         headers: {
@@ -146,7 +146,7 @@ export function useWebhooks() {
 
   // Gerar URL do webhook
   const getWebhookUrl = (webhookKey: string) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
     return `${baseUrl}/api/webhook/leads/${webhookKey}`;
   };
 
@@ -174,7 +174,7 @@ export function useWebhookLogs(webhookId: string | null) {
     queryKey: ['webhook-logs', webhookId],
     queryFn: async () => {
       if (!webhookId) return [];
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.ativafix.com';
       const response = await fetch(`${apiUrl}/api/webhook/logs/${webhookId}?limit=100`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,

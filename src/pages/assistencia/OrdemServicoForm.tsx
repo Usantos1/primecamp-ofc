@@ -659,7 +659,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           try {
             const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
               ? import.meta.env.VITE_API_URL 
-              : 'https://api.primecamp.cloud/api';
+              : 'https://api.ativafix.com/api';
             const token = localStorage.getItem('auth_token');
             const response = await fetch(`${API_URL}/query/clientes`, {
               method: 'POST',

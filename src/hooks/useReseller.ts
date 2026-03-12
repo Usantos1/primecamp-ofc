@@ -4,7 +4,7 @@ import { authAPI } from '@/integrations/auth/api-client';
 // URL base da API
 const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
   ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
+  : 'https://api.ativafix.com/api';
 
 export interface Company {
   id: string;

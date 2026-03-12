@@ -134,8 +134,8 @@ const App = () => (
               <div style={{ padding: '50px', textAlign: 'center' }}>
                 <h1 style={{ color: 'green' }}>✅ FUNCIONANDO!</h1>
                 <p>Rota /test-auth está funcionando!</p>
-                <p>API: {import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api'}</p>
-                <button onClick={() => fetch(`${import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api'}/health`).then(r => r.json()).then(d => alert(JSON.stringify(d))).catch(e => alert('Erro: ' + e.message))}>
+                <p>API: {import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api'}</p>
+                <button onClick={() => fetch(`${import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api'}/health`).then(r => r.json()).then(d => alert(JSON.stringify(d))).catch(e => alert('Erro: ' + e.message))}>
                   Testar API
                 </button>
               </div>

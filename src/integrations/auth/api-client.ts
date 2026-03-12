@@ -1,6 +1,6 @@
 /**
  * Cliente de Autenticação - API REST.
- * Usa getApiUrl() para suportar ativafix.com e primecamp.cloud com o mesmo build.
+ * Usa getApiUrl() para suportar ativafix.com com o mesmo build.
  */
 
 import { getApiUrl } from '@/utils/apiUrl';

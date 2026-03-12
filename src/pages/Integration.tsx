@@ -184,7 +184,7 @@ export default function Integration() {
       console.log('Testing WhatsApp with:', { number: testPhone, body: testMessage });
       
       // 🚫 Supabase Functions removido - usar API direta
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.primecamp.cloud/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session?.token) headers['Authorization'] = `Bearer ${session.token}`;
       const response = await fetch(`${API_URL}/whatsapp/send`, {
@@ -569,7 +569,7 @@ export default function Integration() {
               <Label>URL do Webhook (somente leitura)</Label>
               <Input
                 readOnly
-                value={`https://primecamp.cloud/api/webhook`}
+                value={`https://ativafix.com/api/webhook`}
                 className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">

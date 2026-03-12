@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
   ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
+  : 'https://api.ativafix.com/api';
 
 // Interfaces
 export interface DashboardExecutivo {

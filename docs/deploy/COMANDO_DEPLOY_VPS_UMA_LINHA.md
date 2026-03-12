@@ -49,7 +49,7 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 
 **Tema por empresa (cores, nome, logo):** o tema é salvo **por empresa** (company_id do usuário). Cada empresa tem sua própria config; ao salvar nas configurações do sistema, reflete para todos os usuários da mesma empresa. Sem login usa tema do domínio (host). Para funcionar, a API na VPS precisa estar atualizada (deploy completo com `cd server` e `pm2 restart primecamp-api`); senão o POST retorna 404.
 
-**White-label (tema por domínio):** para a tela de login e quando o usuário não tem empresa, usa-se o tema do domínio. No `.env` da VPS: `WHITELABEL_DOMAINS=ativafix.com,www.ativafix.com,primecamp.cloud,www.primecamp.cloud` (opcional; esses já vêm por padrão).
+**White-label (tema por domínio):** para a tela de login e quando o usuário não tem empresa, usa-se o tema do domínio. No `.env` da VPS: `WHITELABEL_DOMAINS=ativafix.com,www.ativafix.com` (padrão). O path do frontend (`/var/www/...`) deve ser o que o Nginx usa para o seu domínio; se for ativafix.com, pode ser `/var/www/ativafix.com` — ajuste o comando de deploy e o site do Nginx conforme seu servidor.
 
 ## POST /api/theme-config ainda retorna 404 depois do deploy
 

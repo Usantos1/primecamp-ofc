@@ -68,7 +68,7 @@ interface JobSurveysOptions {
 
 const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) 
   ? import.meta.env.VITE_API_URL 
-  : 'https://api.primecamp.cloud/api';
+  : 'https://api.ativafix.com/api';
 
 export const useJobSurveys = (options: JobSurveysOptions = {}) => {
   const queryClient = useQueryClient();
