@@ -11,6 +11,9 @@ import { SettingsModal } from "./SettingsModal"
 import { PermissionGate } from "./PermissionGate"
 import { useAuth } from "@/contexts/AuthContext"
 
+/** Apenas a empresa 1 (administradora) pode alterar nome e cores do sistema. */
+const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+
 interface ModernLayoutProps {
   children: React.ReactNode
   title?: string
@@ -23,7 +26,8 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [notificationCount, setNotificationCount] = useState(3)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
+  const isAdminCompany = user?.company_id === ADMIN_COMPANY_ID
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000)
@@ -94,15 +98,17 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
                     </Badge>
                   )}
                 </Button>
-                <PermissionGate permission="admin.config">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setIsSettingsOpen(true)}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </PermissionGate>
+                {isAdminCompany && (
+                  <PermissionGate permission="admin.config">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setIsSettingsOpen(true)}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </PermissionGate>
+                )}
 
                 {/* Header Actions */}
                 {headerActions}
