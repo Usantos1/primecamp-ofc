@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Sparkles, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState, useEffect, useLayoutEffect } from 'react';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CTA_WHATSAPP, CTA_MSG } from '@/pages/landing/constants';
 import { DEMO_SESSION_KEY } from '@/utils/demoMode';
@@ -45,22 +44,41 @@ export function DemoBanner() {
     }
   }, []);
 
-  // Interval: decrementa o timer a cada segundo (não passa de 0)
+  // Interval: decrementa o timer a cada segundo; ao chegar em 0, abre o modal no mesmo fluxo
   useEffect(() => {
     if (!visible || dismissed || showPostTimerModal) return;
     if (secondsLeft <= 0) return;
     const t = setInterval(() => {
-      setSecondsLeft((s) => (s <= 1 ? 0 : s - 1));
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          setShowPostTimerModal(true);
+          return 0;
+        }
+        return s - 1;
+      });
     }, 1000);
     return () => clearInterval(t);
   }, [visible, dismissed, secondsLeft, showPostTimerModal]);
 
-  // Quando o timer chega a 0, abrir o modal (efeito dedicado para garantir que abra)
-  useEffect(() => {
+  // Fallback: se o timer já estiver em 0 ao montar/atualizar, abrir o modal
+  useLayoutEffect(() => {
     if (visible && !dismissed && secondsLeft <= 0) {
       setShowPostTimerModal(true);
     }
   }, [visible, dismissed, secondsLeft]);
+
+  // Bloquear Escape para não fechar o modal (só fecha pelos botões)
+  useEffect(() => {
+    if (!showPostTimerModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [showPostTimerModal]);
 
   const handleDismiss = () => {
     setDismissed(true);
@@ -113,31 +131,43 @@ export function DemoBanner() {
         </button>
       </div>
 
-      <Dialog open={showPostTimerModal} onOpenChange={setShowPostTimerModal}>
-        <DialogContent className="rounded-2xl max-w-sm gap-4">
-          <DialogHeader>
-            <DialogTitle className="text-lg">Tempo da demonstração</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            O tempo da demonstração acabou. Assine agora ou teste por mais 1 minuto.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Button
-              onClick={handleAssinarWhatsApp}
-              className="w-full h-12 rounded-xl font-semibold bg-[#00C27F] hover:bg-[#00a86b] text-white"
-            >
-              Assinar Agora
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleTestarMaisUmMinuto}
-              className="w-full h-12 rounded-xl font-semibold border-2"
-            >
-              Testar por mais 1 minuto
-            </Button>
+      {/* Modal fixo: sem X, não fecha ao clicar fora nem com Escape — só pelos botões */}
+      {showPostTimerModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="demo-modal-title"
+          aria-describedby="demo-modal-desc"
+        >
+          <div
+            className="rounded-2xl border border-gray-400 dark:border-gray-700 bg-background p-6 shadow-lg w-full max-w-sm gap-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="demo-modal-title" className="text-lg font-bold leading-none tracking-tight">
+              Tempo da demonstração
+            </h2>
+            <p id="demo-modal-desc" className="text-sm text-muted-foreground">
+              O tempo da demonstração acabou. Assine agora ou teste por mais 1 minuto.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleAssinarWhatsApp}
+                className="w-full h-12 rounded-xl font-semibold bg-[#00C27F] hover:bg-[#00a86b] text-white"
+              >
+                Assinar Agora
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTestarMaisUmMinuto}
+                className="w-full h-12 rounded-xl font-semibold border-2"
+              >
+                Testar por mais 1 minuto
+              </Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </>
   );
 }

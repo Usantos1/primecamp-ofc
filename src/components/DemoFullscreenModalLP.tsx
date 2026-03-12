@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { APP_URL, CTA_WHATSAPP, CTA_MSG } from '@/pages/landing/constants';
 
 const DEMO_TIMER_SECONDS = 60;
@@ -32,6 +31,19 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
   useEffect(() => {
     if (open && secondsLeft <= 0) setShowTimeUpModal(true);
   }, [open, secondsLeft]);
+
+  // Bloquear Escape no modal "tempo acabou" (só fecha pelos botões)
+  useEffect(() => {
+    if (!showTimeUpModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [showTimeUpModal]);
 
   const handleAssinar = () => {
     window.open(`${CTA_WHATSAPP}?text=${encodeURIComponent(CTA_MSG)}`, '_blank', 'noopener,noreferrer');
@@ -85,31 +97,43 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
         allow="fullscreen"
       />
 
-      <Dialog open={showTimeUpModal} onOpenChange={setShowTimeUpModal}>
-        <DialogContent className="rounded-2xl max-w-sm gap-4">
-          <DialogHeader>
-            <DialogTitle className="text-lg">Tempo da demonstração</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            O tempo da demonstração acabou. Assine agora ou teste por mais 1 minuto.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Button
-              onClick={handleAssinar}
-              className="w-full h-12 rounded-xl font-semibold bg-[#00C27F] hover:bg-[#00a86b] text-white"
-            >
-              Assinar Agora
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleTestarMaisUmMinuto}
-              className="w-full h-12 rounded-xl font-semibold border-2"
-            >
-              Testar por mais 1 minuto
-            </Button>
+      {/* Modal "tempo acabou": sem X, não fecha ao clicar fora nem com Escape — só pelos botões */}
+      {showTimeUpModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lp-demo-modal-title"
+          aria-describedby="lp-demo-modal-desc"
+        >
+          <div
+            className="rounded-2xl border border-[#00F7A5]/30 bg-[#0B0F0D] p-6 shadow-lg w-full max-w-sm gap-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="lp-demo-modal-title" className="text-lg font-bold leading-none tracking-tight text-[#F5F7F6]">
+              Tempo da demonstração
+            </h2>
+            <p id="lp-demo-modal-desc" className="text-sm text-[#9AA4A0]">
+              O tempo da demonstração acabou. Assine agora ou teste por mais 1 minuto.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleAssinar}
+                className="w-full h-12 rounded-xl font-semibold bg-[#00C27F] hover:bg-[#00a86b] text-white"
+              >
+                Assinar Agora
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleTestarMaisUmMinuto}
+                className="w-full h-12 rounded-xl font-semibold border-2 border-[#00F7A5]/40 text-[#F5F7F6]"
+              >
+                Testar por mais 1 minuto
+              </Button>
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }
