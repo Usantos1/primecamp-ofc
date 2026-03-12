@@ -24,7 +24,17 @@ Você pode criar o usuário **pelo próprio sistema** (cadastro normal com um em
 2. Crie um usuário com email, por exemplo, `demo@ativafix.com` e senha forte (essa será a senha do demo).
 3. Anote o **email** e a **senha** para o passo 2.
 
-**Opção B – Direto no banco (SQL)**
+**Opção B – Script automático (recomendado)**
+
+Na raiz do projeto (onde está o `.env` com `DEMO_EMAIL` e `DEMO_PASSWORD`):
+
+```bash
+node server/scripts/create-demo-user.js
+```
+
+O script lê o `.env`, usa a primeira empresa do banco como empresa demo, cria o usuário e o perfil. Se o usuário já existir, não faz nada.
+
+**Opção C – Direto no banco (SQL)**
 
 1. Gerar o hash da senha (Node, na pasta do servidor):
 
@@ -65,7 +75,9 @@ Você pode criar o usuário **pelo próprio sistema** (cadastro normal com um em
 
 ### 2. Variáveis de ambiente da API
 
-No servidor (arquivo `.env` da API), defina:
+O `.env` deve ficar na **raiz do projeto** (pasta que contém a pasta `server/`), por exemplo `/root/primecamp-ofc/.env`. A API carrega com `dotenv.config({ path: join(__dirname, '..', '.env') })`.
+
+No servidor (VPS), edite o `.env` da raiz do projeto e defina:
 
 ```env
 DEMO_EMAIL=demo@ativafix.com
@@ -79,7 +91,16 @@ DEMO_USER_EMAIL=demo@ativafix.com
 DEMO_USER_PASSWORD=SuaSenhaDemoAqui
 ```
 
-Reinicie a API após alterar o `.env`.
+Depois **reinicie a API** para carregar as variáveis: `pm2 restart primecamp-api`.
+
+**Conferir na VPS** se as variáveis existem (sem mostrar o valor):
+
+```bash
+cd /root/primecamp-ofc   # ou o caminho do seu projeto
+grep -E '^DEMO_' .env
+```
+
+Deve aparecer pelo menos `DEMO_EMAIL=...` e `DEMO_PASSWORD=...`.
 
 ### 3. Dados de exemplo (opcional)
 
@@ -99,6 +120,50 @@ Para a demo ficar rica (OS, vendas, gráficos etc.), popule a **empresa demo** c
 - A senha do demo **não** é enviada pelo navegador; fica só no servidor (env).
 - O endpoint `/api/auth/demo` usa o mesmo rate limit das rotas de login.
 - Recomenda-se que a **empresa demo** seja só para isso (e que os dados sejam apenas de exemplo).
+
+## Problemas comuns
+
+### Erro "Cannot POST /api/auth/demo"
+
+Significa que a **API na VPS está rodando código antigo** (sem a rota `/api/auth/demo`). É preciso atualizar o backend e reiniciar:
+
+1. Na VPS: `cd /root/primecamp-ofc` (ou o caminho do projeto).
+2. Atualize o código: `git pull origin main`.
+3. Reinicie a API: `cd server && npm install --production && pm2 restart primecamp-api`.
+
+Ou rode o **deploy completo** (frontend + backend) conforme `docs/deploy/COMANDO_DEPLOY_VPS_UMA_LINHA.md`.
+
+### Mensagem "Demonstração não configurada. Defina DEMO_EMAIL e DEMO_PASSWORD no servidor."
+
+A API está em execução, mas não está vendo as variáveis. Faça o seguinte **na VPS**:
+
+1. **Confirme que o `.env` está na raiz do projeto** (ao lado da pasta `server/`), não dentro de `server/`.
+2. **Confirme que as linhas existem** no `.env`:
+   ```bash
+   cd /root/primecamp-ofc
+   grep -E '^DEMO_EMAIL=|^DEMO_PASSWORD=' .env
+   ```
+   Se não aparecer nada, adicione:
+   ```env
+   DEMO_EMAIL=demo@ativafix.com
+   DEMO_PASSWORD=demo
+   ```
+3. **Reinicie a API** para carregar o `.env` de novo:
+   ```bash
+   pm2 restart primecamp-api
+   ```
+4. Se usar outro nome de app no PM2, use: `pm2 list` e depois `pm2 restart NOME_DO_APP`.
+
+### "Usuário de demonstração não encontrado no banco"
+
+O `.env` está correto, mas não existe usuário com o email `DEMO_EMAIL` no banco. Crie o usuário demo **na VPS** (na raiz do projeto):
+
+```bash
+cd /root/primecamp-ofc
+node server/scripts/create-demo-user.js
+```
+
+O script usa o `DEMO_EMAIL` e `DEMO_PASSWORD` do `.env` e vincula o usuário à primeira empresa. Depois disso, tente "Entrar na demonstração" de novo.
 
 ## Resumo
 
