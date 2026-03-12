@@ -38,7 +38,7 @@ const defaultConfigPrimeCamp: ThemeConfig = {
 const ATIVAFIX_PRIMARY_HSL = '44 100% 53%';
 
 /** Configuração padrão por domínio: ativafix.com e localhost (dev) usam branding Ativa FIX para evitar flash "Prime Camp" no F5. */
-function getDefaultConfigByHost(): ThemeConfig {
+export function getDefaultConfigByHost(): ThemeConfig {
   if (typeof window === 'undefined') return defaultConfigPrimeCamp;
   const h = window.location.hostname;
   const isAtivaFix = h === 'ativafix.com' || h === 'www.ativafix.com' || h === 'localhost' || h === '127.0.0.1';
@@ -93,7 +93,7 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
           const next = {
             ...prev,
             ...(data.companyName != null && { companyName: data.companyName }),
-            ...(data.logo != null && { logo: data.logo }),
+            ...(data.logo && typeof data.logo === 'string' && { logo: data.logo }),
             ...(data.logoAlt != null && { logoAlt: data.logoAlt }),
             colors: {
               ...prev.colors,

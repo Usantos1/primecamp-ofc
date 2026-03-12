@@ -27,7 +27,7 @@ import {
   Star,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useThemeConfig } from "@/contexts/ThemeConfigContext";
+import { useThemeConfig, getDefaultConfigByHost } from "@/contexts/ThemeConfigContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useQuery } from "@tanstack/react-query";
 import { from } from "@/integrations/db/client";
@@ -60,7 +60,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user, profile, isAdmin: isAdminAuth, signOut } = useAuth();
   const { config } = useThemeConfig();
-  const logoUrl = config.logo || "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
+  const logoUrl = config.logo || getDefaultConfigByHost().logo || "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
   const { hasPermission, loading: permissionsLoading, isAdmin } = usePermissions();
   
   // Verificar admin de MÚLTIPLAS fontes para garantir que funcione

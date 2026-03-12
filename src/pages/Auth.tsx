@@ -11,9 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, LogIn, UserPlus, Phone, Palette, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useThemeConfig } from "@/contexts/ThemeConfigContext";
-
-const DEFAULT_LOGO = "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
+import { useThemeConfig, getDefaultConfigByHost } from "@/contexts/ThemeConfigContext";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -21,7 +19,7 @@ const Auth = () => {
   const { toast } = useToast();
   const { setTheme } = useTheme();
   const { config } = useThemeConfig();
-  const logoUrl = config.logo || DEFAULT_LOGO;
+  const logoUrl = config.logo || getDefaultConfigByHost().logo || "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
 
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
