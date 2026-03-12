@@ -27,6 +27,9 @@ export interface Company {
   plan_name?: string;
   plan_code?: string;
   user_count?: number;
+  segmento_id?: string | null;
+  segmento_nome?: string;
+  segmento_slug?: string;
 }
 
 export interface Plan {

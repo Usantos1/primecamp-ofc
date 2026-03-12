@@ -79,6 +79,7 @@ router.get('/companies', async (req, res) => {
     const offset = (page - 1) * limit;
 
     // user_count: quantidade de usuários com company_id = empresa (tabela public.users)
+    // segmento_id/segmento_nome: multi-segmento (tabelas segmentos podem não existir)
     let query = `
       SELECT 
         c.*,
@@ -92,11 +93,34 @@ router.get('/companies', async (req, res) => {
       LEFT JOIN plans p ON p.id = s.plan_id
       WHERE (c.deleted_at IS NULL)
     `;
+    try {
+      const hasSegmento = await pool.query(
+        `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'segmento_id'`
+      );
+      if (hasSegmento.rows.length > 0) {
+        query = `
+          SELECT 
+            c.*,
+            seg.nome as segmento_nome,
+            seg.slug as segmento_slug,
+            sub.status as subscription_status,
+            sub.expires_at as subscription_expires_at,
+            p.name as plan_name,
+            p.code as plan_code,
+            (SELECT COUNT(*)::int FROM public.users u WHERE u.company_id = c.id) as user_count
+          FROM companies c
+          LEFT JOIN segmentos seg ON seg.id = c.segmento_id
+          LEFT JOIN subscriptions sub ON sub.company_id = c.id AND sub.status = 'active'
+          LEFT JOIN plans p ON p.id = sub.plan_id
+          WHERE (c.deleted_at IS NULL)
+        `;
+      }
+    } catch (_) {}
     const params = [];
     let paramCount = 1;
 
     if (search) {
-      query += ` AND (c.name ILIKE $${paramCount} OR c.email ILIKE $${paramCount} OR c.cnpj::text ILIKE $${paramCount})`;
+      query += ` AND (c.name ILIKE $${paramCount} OR c.email ILIKE $${paramCount} OR (c.cnpj::text IS NOT NULL AND c.cnpj::text ILIKE $${paramCount}))`;
       params.push(`%${search}%`);
       paramCount++;
     }
@@ -156,7 +180,7 @@ router.get('/companies/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await pool.query(
+    let result = await pool.query(
       `SELECT 
         c.*,
         s.id as subscription_id,
@@ -178,7 +202,21 @@ router.get('/companies/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Empresa não encontrada' });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    const row = result.rows[0];
+    try {
+      const hasSegmento = await pool.query(
+        `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'segmento_id'`
+      );
+      if (hasSegmento.rows.length > 0 && row.segmento_id) {
+        const seg = await pool.query('SELECT id, nome, slug FROM segmentos WHERE id = $1', [row.segmento_id]);
+        if (seg.rows.length > 0) {
+          row.segmento_nome = seg.rows[0].nome;
+          row.segmento_slug = seg.rows[0].slug;
+        }
+      }
+    } catch (_) {}
+
+    res.json({ success: true, data: row });
   } catch (error) {
     if (isSchemaError(error)) {
       return res.status(503).json({
@@ -221,12 +259,21 @@ router.post('/companies', async (req, res) => {
     try {
       await client.query('BEGIN');
 
-      // Criar empresa
+      // Criar empresa (segmento_id opcional se coluna existir)
+      const companyCols = ['name', 'cnpj', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'status'];
+      const companyVals = [nameTrim, cnpj || null, emailTrim, phone || null, address || null, city || null, state || null, zip_code || null, 'trial'];
+      const segmentoId = req.body.segmento_id || null;
+      try {
+        const hasSeg = await client.query(`SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'segmento_id'`);
+        if (hasSeg.rows.length > 0 && segmentoId) {
+          companyCols.push('segmento_id');
+          companyVals.push(segmentoId);
+        }
+      } catch (_) {}
+      const placeholders = companyVals.map((_, i) => `$${i + 1}`).join(', ');
       const companyResult = await client.query(
-        `INSERT INTO companies (name, cnpj, email, phone, address, city, state, zip_code, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'trial')
-         RETURNING *`,
-        [nameTrim, cnpj || null, emailTrim, phone || null, address || null, city || null, state || null, zip_code || null]
+        `INSERT INTO companies (${companyCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+        companyVals
       );
 
       const company = companyResult.rows[0];
@@ -306,7 +353,7 @@ router.put('/companies/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const allowedFields = ['name', 'cnpj', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'status', 'settings'];
+    const allowedFields = ['name', 'cnpj', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'status', 'settings', 'segmento_id'];
     const updateFields = [];
     const values = [];
     let paramCount = 1;
@@ -711,6 +758,379 @@ router.put('/companies/:companyId/users/:userId/toggle-active', async (req, res)
     res.json({ success: true, message: `Usuário ${newStatus ? 'ativado' : 'desativado'} com sucesso` });
   } catch (error) {
     console.error('Erro ao alterar status do usuário:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MULTI-SEGMENTO: Segmentos, Módulos, Recursos
+// ═══════════════════════════════════════════════════════════════
+
+function isSegmentSchemaError(err) {
+  const msg = (err.message || '').toLowerCase();
+  const code = err.code || '';
+  return code === '42P01' || code === '42703' || msg.includes('does not exist');
+}
+
+// Listar segmentos
+router.get('/segmentos', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT s.*,
+        (SELECT COUNT(*)::int FROM segmentos_modulos sm WHERE sm.segmento_id = s.id AND sm.ativo) as modulos_count,
+        (SELECT COUNT(*)::int FROM segmentos_recursos sr WHERE sr.segmento_id = s.id AND sr.ativo) as recursos_count
+       FROM segmentos s
+       ORDER BY s.nome`
+    );
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) {
+      return res.status(503).json({
+        success: false,
+        error: 'Estrutura multi-segmento não instalada. Execute: db/migrations/manual/REVENDA_MULTI_SEGMENTO.sql',
+        detail: error.message
+      });
+    }
+    console.error('Erro ao listar segmentos:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Obter um segmento
+router.get('/segmentos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT s.*,
+        (SELECT COUNT(*)::int FROM segmentos_modulos sm WHERE sm.segmento_id = s.id AND sm.ativo) as modulos_count,
+        (SELECT COUNT(*)::int FROM segmentos_recursos sr WHERE sr.segmento_id = s.id AND sr.ativo) as recursos_count
+       FROM segmentos s WHERE s.id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Segmento não encontrado' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) {
+      return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.', detail: error.message });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Criar segmento
+router.post('/segmentos', async (req, res) => {
+  try {
+    const { nome, slug, descricao, icone, cor, ativo = true } = req.body;
+    if (!nome || !slug) {
+      return res.status(400).json({ success: false, error: 'Nome e slug são obrigatórios' });
+    }
+    const slugNorm = String(slug).trim().toLowerCase().replace(/\s+/g, '_');
+    const result = await pool.query(
+      `INSERT INTO segmentos (nome, slug, descricao, icone, cor, ativo)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [nome.trim(), slugNorm, descricao || null, icone || 'briefcase', cor || '#3b82f6', ativo]
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') return res.status(400).json({ success: false, error: 'Slug já existe' });
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Atualizar segmento
+router.put('/segmentos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, slug, descricao, icone, cor, ativo } = req.body;
+    const updates = [];
+    const values = [];
+    let n = 1;
+    if (nome !== undefined) { updates.push(`nome = $${n++}`); values.push(nome); }
+    if (slug !== undefined) { updates.push(`slug = $${n++}`); values.push(String(slug).trim().toLowerCase().replace(/\s+/g, '_')); }
+    if (descricao !== undefined) { updates.push(`descricao = $${n++}`); values.push(descricao); }
+    if (icone !== undefined) { updates.push(`icone = $${n++}`); values.push(icone); }
+    if (cor !== undefined) { updates.push(`cor = $${n++}`); values.push(cor); }
+    if (ativo !== undefined) { updates.push(`ativo = $${n++}`); values.push(ativo); }
+    if (updates.length === 0) return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE segmentos SET ${updates.join(', ')} WHERE id = $${n} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Segmento não encontrado' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') return res.status(400).json({ success: false, error: 'Slug já existe' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Listar módulos do segmento + ordem (para edição)
+router.get('/segmentos/:id/modulos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT m.*, sm.ativo as link_ativo, sm.ordem_menu
+       FROM modulos m
+       LEFT JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1
+       ORDER BY COALESCE(sm.ordem_menu, 999), m.nome`,
+      [id]
+    );
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Atualizar vínculo segmento x módulos (ativo + ordem_menu)
+router.put('/segmentos/:id/modulos', async (req, res) => {
+  try {
+    const { id: segmentoId } = req.params;
+    const { modulos } = req.body; // array of { modulo_id, ativo, ordem_menu }
+    await pool.query('DELETE FROM segmentos_modulos WHERE segmento_id = $1', [segmentoId]);
+    if (Array.isArray(modulos) && modulos.length > 0) {
+      for (let i = 0; i < modulos.length; i++) {
+        const { modulo_id, ativo, ordem_menu } = modulos[i];
+        if (ativo) {
+          await pool.query(
+            `INSERT INTO segmentos_modulos (segmento_id, modulo_id, ativo, ordem_menu)
+             VALUES ($1, $2, true, $3)
+             ON CONFLICT (segmento_id, modulo_id) DO UPDATE SET ativo = true, ordem_menu = $3`,
+            [segmentoId, modulo_id, ordem_menu != null ? ordem_menu : i]
+          );
+        }
+      }
+    }
+    const result = await pool.query(
+      `SELECT m.*, sm.ativo as link_ativo, sm.ordem_menu
+       FROM modulos m
+       LEFT JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1
+       ORDER BY COALESCE(sm.ordem_menu, 999), m.nome`,
+      [segmentoId]
+    );
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Listar recursos do segmento (agrupados por módulo)
+router.get('/segmentos/:id/recursos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const modulos = await pool.query(
+      `SELECT m.id, m.nome, m.slug FROM modulos m
+       INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo
+       ORDER BY sm.ordem_menu, m.nome`,
+      [id]
+    );
+    const recursos = await pool.query(
+      `SELECT r.*, sr.ativo as link_ativo
+       FROM recursos r
+       LEFT JOIN segmentos_recursos sr ON sr.recurso_id = r.id AND sr.segmento_id = $1
+       WHERE r.modulo_id IN (SELECT modulo_id FROM segmentos_modulos WHERE segmento_id = $1 AND ativo)
+       ORDER BY (SELECT ordem_menu FROM segmentos_modulos WHERE segmento_id = $1 AND modulo_id = r.modulo_id), r.nome`,
+      [id, id, id]
+    );
+    res.json({
+      success: true,
+      data: {
+        modulos: modulos.rows,
+        recursos: recursos.rows || []
+      }
+    });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Atualizar vínculo segmento x recursos
+router.put('/segmentos/:id/recursos', async (req, res) => {
+  try {
+    const { id: segmentoId } = req.params;
+    const { recurso_ids } = req.body; // array of recurso_id to enable
+    await pool.query('DELETE FROM segmentos_recursos WHERE segmento_id = $1', [segmentoId]);
+    if (Array.isArray(recurso_ids) && recurso_ids.length > 0) {
+      for (const recursoId of recurso_ids) {
+        await pool.query(
+          `INSERT INTO segmentos_recursos (segmento_id, recurso_id, ativo)
+           VALUES ($1, $2, true)
+           ON CONFLICT (segmento_id, recurso_id) DO UPDATE SET ativo = true`,
+          [segmentoId, recursoId]
+        );
+      }
+    }
+    const count = await pool.query('SELECT COUNT(*)::int as c FROM segmentos_recursos WHERE segmento_id = $1', [segmentoId]);
+    res.json({ success: true, recursos_count: count.rows[0].c });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Prévia do menu do segmento
+router.get('/segmentos/:id/menu-preview', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, sm.ordem_menu
+       FROM modulos m
+       INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo
+       ORDER BY sm.ordem_menu, m.nome`,
+      [id]
+    );
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// --- Módulos (CRUD global)
+router.get('/modulos', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM modulos ORDER BY categoria, nome');
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/modulos/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM modulos WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Módulo não encontrado' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/modulos', async (req, res) => {
+  try {
+    const { nome, slug, descricao, categoria, icone, path, label_menu, ativo = true } = req.body;
+    if (!nome || !slug) return res.status(400).json({ success: false, error: 'Nome e slug são obrigatórios' });
+    const slugNorm = String(slug).trim().toLowerCase().replace(/\s+/g, '_');
+    const result = await pool.query(
+      `INSERT INTO modulos (nome, slug, descricao, categoria, icone, path, label_menu, ativo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [nome.trim(), slugNorm, descricao || null, categoria || null, icone || 'box', path || null, label_menu || null, ativo]
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') return res.status(400).json({ success: false, error: 'Slug já existe' });
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/modulos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nome, slug, descricao, categoria, icone, path, label_menu, ativo } = req.body;
+    const updates = [];
+    const values = [];
+    let n = 1;
+    if (nome !== undefined) { updates.push(`nome = $${n++}`); values.push(nome); }
+    if (slug !== undefined) { updates.push(`slug = $${n++}`); values.push(String(slug).trim().toLowerCase().replace(/\s+/g, '_')); }
+    if (descricao !== undefined) { updates.push(`descricao = $${n++}`); values.push(descricao); }
+    if (categoria !== undefined) { updates.push(`categoria = $${n++}`); values.push(categoria); }
+    if (icone !== undefined) { updates.push(`icone = $${n++}`); values.push(icone); }
+    if (path !== undefined) { updates.push(`path = $${n++}`); values.push(path); }
+    if (label_menu !== undefined) { updates.push(`label_menu = $${n++}`); values.push(label_menu); }
+    if (ativo !== undefined) { updates.push(`ativo = $${n++}`); values.push(ativo); }
+    if (updates.length === 0) return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE modulos SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${n} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Módulo não encontrado' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') return res.status(400).json({ success: false, error: 'Slug já existe' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// --- Recursos (CRUD global, filtro por modulo_id opcional)
+router.get('/recursos', async (req, res) => {
+  try {
+    const { modulo_id } = req.query;
+    let query = `SELECT r.*, m.nome as modulo_nome, m.slug as modulo_slug FROM recursos r JOIN modulos m ON m.id = r.modulo_id`;
+    const params = [];
+    if (modulo_id) { query += ' WHERE r.modulo_id = $1'; params.push(modulo_id); }
+    query += ' ORDER BY m.nome, r.nome';
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/recursos/:id', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT r.*, m.nome as modulo_nome FROM recursos r JOIN modulos m ON m.id = r.modulo_id WHERE r.id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Recurso não encontrado' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post('/recursos', async (req, res) => {
+  try {
+    const { modulo_id, nome, slug, descricao, tipo, permission_key, ativo = true } = req.body;
+    if (!modulo_id || !nome || !slug) return res.status(400).json({ success: false, error: 'modulo_id, nome e slug são obrigatórios' });
+    const slugNorm = String(slug).trim().toLowerCase().replace(/\s+/g, '_');
+    const result = await pool.query(
+      `INSERT INTO recursos (modulo_id, nome, slug, descricao, tipo, permission_key, ativo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [modulo_id, nome.trim(), slugNorm, descricao || null, tipo || 'action', permission_key || null, ativo]
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    if (isSegmentSchemaError(error)) return res.status(503).json({ success: false, error: 'Estrutura multi-segmento não instalada.' });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.put('/recursos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { modulo_id, nome, slug, descricao, tipo, permission_key, ativo } = req.body;
+    const updates = [];
+    const values = [];
+    let n = 1;
+    if (modulo_id !== undefined) { updates.push(`modulo_id = $${n++}`); values.push(modulo_id); }
+    if (nome !== undefined) { updates.push(`nome = $${n++}`); values.push(nome); }
+    if (slug !== undefined) { updates.push(`slug = $${n++}`); values.push(String(slug).trim().toLowerCase().replace(/\s+/g, '_')); }
+    if (descricao !== undefined) { updates.push(`descricao = $${n++}`); values.push(descricao); }
+    if (tipo !== undefined) { updates.push(`tipo = $${n++}`); values.push(tipo); }
+    if (permission_key !== undefined) { updates.push(`permission_key = $${n++}`); values.push(permission_key); }
+    if (ativo !== undefined) { updates.push(`ativo = $${n++}`); values.push(ativo); }
+    if (updates.length === 0) return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE recursos SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${n} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Recurso não encontrado' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });

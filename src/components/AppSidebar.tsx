@@ -89,6 +89,27 @@ export function AppSidebar() {
     staleTime: 1000 * 60 * 30, // Cache por 30 minutos
   });
   const companyName = companyData?.name || '';
+
+  // Menu por segmento: se a empresa tem segmento, usar os módulos configurados
+  const apiBase = (import.meta.env.VITE_API_URL && !String(import.meta.env.VITE_API_URL).includes('localhost'))
+    ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '')
+    : 'https://api.ativafix.com/api';
+  const { data: segmentMenuData } = useQuery({
+    queryKey: ['segment-menu', user?.company_id],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return { menu: [] };
+      const res = await fetch(`${apiBase}/me/segment-menu`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      return { menu: data.menu || [], segmento_nome: data.segmento_nome };
+    },
+    enabled: !!user?.company_id,
+    staleTime: 1000 * 60 * 5, // 5 min
+  });
+  const segmentMenu = segmentMenuData?.menu ?? [];
+  const hasSegmentMenu = Array.isArray(segmentMenu) && segmentMenu.length > 0;
   
   // Função para verificar permissão
   const checkPermission = (permission: string): boolean => {
@@ -123,10 +144,30 @@ export function AppSidebar() {
     );
   };
 
+  // Mapa de ícone (nome do módulo) para componente Lucide (menu por segmento)
+  const iconMap: Record<string, React.ElementType> = {
+    'layout-dashboard': Home,
+    'home': Home,
+    'wrench': Wrench,
+    'users': UserCircle,
+    'user-circle': UserCircle,
+    'car': Target,
+    'file-text': FileText,
+    'package': Package,
+    'box': Package,
+    'shopping-cart': ShoppingCart,
+    'receipt': Receipt,
+    'list': List,
+    'refresh-cw': RefreshCw,
+    'wallet': Wallet,
+    'bar-chart-3': BarChart3,
+    'activity': Activity,
+  };
+
   // ═══════════════════════════════════════════════════════════════
-  // OPERAÇÃO - Atividades do dia a dia
+  // OPERAÇÃO - Atividades do dia a dia (ou menu do segmento se houver)
   // ═══════════════════════════════════════════════════════════════
-  const operacaoItems = [
+  const operacaoItemsBase = [
     { label: "Dashboard", path: "/", icon: Home, exact: true },
     { label: "PDV", path: "/pdv", icon: ShoppingCart, exact: true, permission: "vendas.create" },
     { label: "Vendas", path: "/pdv/vendas", icon: Receipt, exact: true, permission: "vendas.view" },
@@ -134,33 +175,48 @@ export function AppSidebar() {
     { label: "Ordem de Serviço", path: "/os", icon: Wrench, permission: "os.view" },
     { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
     { label: "Clientes", path: "/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
-  ].filter(item => !item.permission || checkPermission(item.permission));
+  ];
+  const operacaoItemsFromSegment = hasSegmentMenu
+    ? segmentMenu.map((m: { path: string; label_menu: string; slug?: string; icone?: string }) => ({
+        label: m.label_menu,
+        path: m.path || '/',
+        icon: iconMap[m.icone || ''] || Home,
+        exact: m.path === '/',
+        permission: undefined as string | undefined,
+      }))
+    : [];
+  const operacaoItems = (hasSegmentMenu ? operacaoItemsFromSegment : operacaoItemsBase).filter(
+    item => !item.permission || checkPermission(item.permission)
+  );
 
   // ═══════════════════════════════════════════════════════════════
-  // ESTOQUE - Gestão de produtos
+  // ESTOQUE - Gestão de produtos (oculto quando menu por segmento)
   // ═══════════════════════════════════════════════════════════════
-  const estoqueItems = [
+  const estoqueItemsBase = [
     { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
     { label: "Pedidos", path: "/pedidos", icon: List, exact: true, permission: "produtos.view" },
     { label: "Inventário", path: "/inventario", icon: Boxes, exact: true, permission: "produtos.view" },
-  ].filter(item => !item.permission || checkPermission(item.permission));
+  ];
+  const estoqueItems = (hasSegmentMenu ? [] : estoqueItemsBase).filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // RELATÓRIOS - Todos os relatórios juntos
+  // RELATÓRIOS - Todos os relatórios juntos (oculto quando menu por segmento)
   // ═══════════════════════════════════════════════════════════════
-  const relatoriosItems = [
+  const relatoriosItemsBase = [
     { label: "Relatórios", path: "/relatorios", icon: Receipt, permission: "relatorios.view" },
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
-  ].filter(item => !item.permission || checkPermission(item.permission));
+  ];
+  const relatoriosItems = (hasSegmentMenu ? [] : relatoriosItemsBase).filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // GESTÃO - RH, Metas
+  // GESTÃO - RH, Metas (oculto quando menu por segmento)
   // ═══════════════════════════════════════════════════════════════
-  const gestaoItems = [
+  const gestaoItemsBase = [
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
-  ].filter(item => !item.permission || checkPermission(item.permission));
+  ];
+  const gestaoItems = (hasSegmentMenu ? [] : gestaoItemsBase).filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
   // ADMINISTRAÇÃO - Apenas para admins

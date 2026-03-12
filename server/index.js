@@ -1272,6 +1272,39 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
   res.json({ message: 'Logout realizado com sucesso' });
 });
 
+// Menu por segmento: retorna o menu (módulos) da empresa do usuário para adaptar sidebar
+app.get('/api/me/segment-menu', authenticateToken, async (req, res) => {
+  try {
+    const companyId = req.user?.company_id;
+    if (!companyId) return res.json({ segmento_id: null, segmento_nome: null, menu: [] });
+    const hasSegmentoCol = await pool.query(
+      `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'segmento_id'`
+    );
+    if (hasSegmentoCol.rows.length === 0) return res.json({ segmento_id: null, segmento_nome: null, menu: [] });
+    const company = await pool.query('SELECT segmento_id FROM companies WHERE id = $1', [companyId]);
+    if (company.rows.length === 0 || !company.rows[0].segmento_id) return res.json({ segmento_id: null, segmento_nome: null, menu: [] });
+    const segmentoId = company.rows[0].segmento_id;
+    const seg = await pool.query('SELECT id, nome, slug FROM segmentos WHERE id = $1', [segmentoId]);
+    const segmentoNome = seg.rows[0]?.nome || null;
+    const menuResult = await pool.query(
+      `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, sm.ordem_menu
+       FROM modulos m
+       INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo
+       WHERE m.ativo
+       ORDER BY sm.ordem_menu, m.nome`,
+      [segmentoId]
+    );
+    res.json({
+      segmento_id: segmentoId,
+      segmento_nome: segmentoNome,
+      menu: (menuResult.rows || []).map((r) => ({ id: r.id, path: r.path, label_menu: r.label_menu || r.nome, slug: r.slug, icone: r.icone })),
+    });
+  } catch (err) {
+    console.error('[segment-menu]', err);
+    res.json({ segmento_id: null, segmento_nome: null, menu: [] });
+  }
+});
+
 // Request Password Reset (Solicitar reset de senha)
 app.post('/api/auth/request-password-reset', async (req, res) => {
   try {

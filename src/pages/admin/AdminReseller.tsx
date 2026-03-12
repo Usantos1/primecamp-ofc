@@ -30,8 +30,11 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useReseller, Company, Plan } from '@/hooks/useReseller';
+import { useSegments, type Segmento, type Modulo, type Recurso } from '@/hooks/useSegments';
 import { useAuth } from '@/contexts/AuthContext';
-import { Building2, Plus, Search, Edit, DollarSign, Users, AlertCircle } from 'lucide-react';
+import { Building2, Plus, Search, Edit, DollarSign, Users, AlertCircle, Layers, Box, KeyRound, GripVertical } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -60,6 +63,24 @@ export default function AdminReseller() {
     toggleUserActive
   } = useReseller();
 
+  const {
+    listSegmentos,
+    getSegmento,
+    createSegmento,
+    updateSegmento,
+    getSegmentoModulos,
+    updateSegmentoModulos,
+    getSegmentoRecursos,
+    updateSegmentoRecursos,
+    getSegmentoMenuPreview,
+    listModulos,
+    createModulo,
+    updateModulo,
+    listRecursos,
+    createRecurso,
+    updateRecurso,
+  } = useSegments();
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -79,7 +100,7 @@ export default function AdminReseller() {
     role: 'member',
     phone: ''
   });
-  const [formData, setFormData] = useState<Partial<Company> & { plan_id?: string; billing_cycle?: 'monthly' | 'yearly' }>({
+  const [formData, setFormData] = useState<Partial<Company> & { plan_id?: string; billing_cycle?: 'monthly' | 'yearly'; segmento_id?: string }>({
     name: '',
     cnpj: '',
     email: '',
@@ -90,6 +111,21 @@ export default function AdminReseller() {
     zip_code: '',
     status: 'trial'
   });
+
+  // Multi-segmento: estado para abas Segmentos, Módulos, Recursos
+  const [segmentos, setSegmentos] = useState<Segmento[]>([]);
+  const [selectedSegmento, setSelectedSegmento] = useState<Segmento | null>(null);
+  const [segmentoEditOpen, setSegmentoEditOpen] = useState(false);
+  const [segmentoForm, setSegmentoForm] = useState<Partial<Segmento>>({ nome: '', slug: '', descricao: '', icone: 'briefcase', cor: '#3b82f6', ativo: true });
+  const [segmentoTab, setSegmentoTab] = useState('info');
+  const [segmentoModulos, setSegmentoModulos] = useState<Modulo[]>([]);
+  const [segmentoRecursos, setSegmentoRecursos] = useState<{ modulos: Modulo[]; recursos: Recurso[] }>({ modulos: [], recursos: [] });
+  const [menuPreview, setMenuPreview] = useState<Modulo[]>([]);
+  const [modulosGlobal, setModulosGlobal] = useState<Modulo[]>([]);
+  const [recursosGlobal, setRecursosGlobal] = useState<Recurso[]>([]);
+  const [moduloForm, setModuloForm] = useState<Partial<Modulo>>({});
+  const [recursoForm, setRecursoForm] = useState<Partial<Recurso> & { modulo_id?: string }>({});
+  const [segmentosListKey, setSegmentosListKey] = useState(0);
 
   // Revenda: apenas admin da empresa principal (empresa 1) pode acessar
   useEffect(() => {
@@ -120,6 +156,32 @@ export default function AdminReseller() {
       loadPlans();
     }
   }, [user, isAdmin, profile]);
+
+  const loadSegmentos = async () => {
+    try {
+      const data = await listSegmentos();
+      setSegmentos(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setSegmentos([]);
+      toast.error(err?.message || 'Erro ao carregar segmentos. Verifique se a API está no mesmo banco onde rodou o script REVENDA_MULTI_SEGMENTO.sql.');
+    }
+  };
+  const loadModulosGlobal = async () => {
+    try {
+      const data = await listModulos();
+      setModulosGlobal(Array.isArray(data) ? data : []);
+    } catch (_) {
+      setModulosGlobal([]);
+    }
+  };
+  const loadRecursosGlobal = async () => {
+    try {
+      const data = await listRecursos();
+      setRecursosGlobal(Array.isArray(data) ? data : []);
+    } catch (_) {
+      setRecursosGlobal([]);
+    }
+  };
 
   const loadCompanies = async () => {
     try {
@@ -200,6 +262,7 @@ export default function AdminReseller() {
         email,
         plan_id: formData.plan_id || undefined,
         billing_cycle: formData.billing_cycle || 'monthly',
+        segmento_id: formData.segmento_id || undefined,
       };
       await createCompany(payload);
       toast.success(formData.plan_id ? 'Empresa e assinatura criadas com sucesso!' : 'Empresa criada com sucesso!');
@@ -214,7 +277,7 @@ export default function AdminReseller() {
   const handleUpdateCompany = async () => {
     if (!selectedCompany) return;
     try {
-      await updateCompany(selectedCompany.id, formData);
+      await updateCompany(selectedCompany.id, { ...formData, segmento_id: formData.segmento_id || null });
       toast.success('Empresa atualizada com sucesso!');
       setDialogOpen(false);
       resetForm();
@@ -261,6 +324,7 @@ export default function AdminReseller() {
     setFormData(prev => ({ ...prev, plan_id: '', billing_cycle: 'monthly' }));
     setDialogOpen(true);
     loadPlans();
+    loadSegmentos();
   };
 
   const openEditDialog = async (company: Company) => {
@@ -276,9 +340,11 @@ export default function AdminReseller() {
         city: fullCompany.city,
         state: fullCompany.state,
         zip_code: fullCompany.zip_code,
-        status: fullCompany.status
+        status: fullCompany.status,
+        segmento_id: (fullCompany as any).segmento_id ?? undefined
       });
       setDialogOpen(true);
+      loadSegmentos();
     } catch (err: any) {
       toast.error(err.message || 'Erro ao carregar empresa');
     }
@@ -435,6 +501,32 @@ export default function AdminReseller() {
             </CardContent>
           </Card>
         )}
+
+        <Tabs defaultValue="empresas" className="w-full" onValueChange={(v) => { if (v === 'segmentos') loadSegmentos(); if (v === 'modulos') loadModulosGlobal(); if (v === 'recursos') loadRecursosGlobal(); }}>
+          <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsTrigger value="empresas" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Empresas
+            </TabsTrigger>
+            <TabsTrigger value="planos" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Planos
+            </TabsTrigger>
+            <TabsTrigger value="segmentos" className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Segmentos
+            </TabsTrigger>
+            <TabsTrigger value="modulos" className="flex items-center gap-2">
+              <Box className="h-4 w-4" />
+              Módulos
+            </TabsTrigger>
+            <TabsTrigger value="recursos" className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4" />
+              Recursos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="empresas" className="space-y-4">
         {/* Filtros e ações */}
         <Card>
           <CardHeader>
@@ -504,16 +596,17 @@ export default function AdminReseller() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead>CNPJ</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Usuários</TableHead>
-                      <TableHead>Expira em</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
+                      <TableRow>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>CNPJ</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Segmento</TableHead>
+                        <TableHead>Plano</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Usuários</TableHead>
+                        <TableHead>Expira em</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
                   </TableHeader>
                   <TableBody>
                     {companies.map((company) => (
@@ -521,6 +614,13 @@ export default function AdminReseller() {
                         <TableCell className="font-medium">{company.name}</TableCell>
                         <TableCell>{company.cnpj || '-'}</TableCell>
                         <TableCell>{company.email}</TableCell>
+                        <TableCell>
+                          {(company as any).segmento_nome ? (
+                            <Badge variant="outline">{(company as any).segmento_nome}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {company.plan_name ? (
                             <Badge variant="outline">{company.plan_name}</Badge>
@@ -752,6 +852,28 @@ export default function AdminReseller() {
                       <SelectItem value="cancelled">Cancelada</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {segmentos.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="segmento_id">Segmento de negócio</Label>
+                  <Select
+                    value={formData.segmento_id || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, segmento_id: value === 'none' ? undefined : value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nenhum (padrão)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum (padrão)</SelectItem>
+                      {segmentos.filter((s) => s.ativo).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Define o menu e os recursos disponíveis para esta empresa.</p>
                 </div>
               )}
             </div>
@@ -1129,6 +1251,308 @@ export default function AdminReseller() {
                 Fechar
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+          </TabsContent>
+
+          <TabsContent value="planos" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Planos de assinatura</CardTitle>
+                <CardDescription>Gerencie os planos disponíveis para as empresas. Para criar ou editar, use o botão Gerenciar Planos na aba Empresas.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" onClick={() => { openPlansDialog(); }} className="mb-4">
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Abrir gerenciador de planos
+                </Button>
+                <div className="text-sm text-muted-foreground">Os planos são configurados no diálogo &quot;Gerenciar Planos&quot; da aba Empresas.</div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="segmentos" className="space-y-4" key={segmentosListKey}>
+            <Card>
+              <CardHeader>
+                <div className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Segmentos de negócio</CardTitle>
+                    <CardDescription>Configure nichos (Oficina Mecânica, Comércio, etc.) com módulos e recursos próprios.</CardDescription>
+                  </div>
+                  <Button onClick={async () => {
+                    setSegmentoForm({ nome: '', slug: '', descricao: '', icone: 'briefcase', cor: '#3b82f6', ativo: true });
+                    setSelectedSegmento(null);
+                    setSegmentoEditOpen(true);
+                    setSegmentoTab('info');
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo segmento
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {segmentos.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum segmento cadastrado. Execute <code className="text-xs bg-muted px-1 rounded">db/migrations/manual/REVENDA_MULTI_SEGMENTO.sql</code> para criar Oficina Mecânica e Comércio, ou crie um novo.
+                  </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {segmentos.map((seg) => (
+                      <Card key={seg.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={async () => {
+                        setSelectedSegmento(seg);
+                        setSegmentoForm({ nome: seg.nome, slug: seg.slug, descricao: seg.descricao ?? '', icone: seg.icone ?? 'briefcase', cor: seg.cor ?? '#3b82f6', ativo: seg.ativo });
+                        setSegmentoEditOpen(true);
+                        setSegmentoTab('info');
+                        try {
+                          const [mods, recs, menu] = await Promise.all([
+                            getSegmentoModulos(seg.id),
+                            getSegmentoRecursos(seg.id),
+                            getSegmentoMenuPreview(seg.id),
+                          ]);
+                          setSegmentoModulos(mods);
+                          setSegmentoRecursos(recs);
+                          setMenuPreview(menu);
+                        } catch (_) {}
+                      }}>
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-semibold">{seg.nome}</p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{seg.descricao || seg.slug}</p>
+                              <div className="flex gap-2 mt-2">
+                                <Badge variant="secondary">{seg.modulos_count ?? 0} módulos</Badge>
+                                <Badge variant="outline">{seg.recursos_count ?? 0} recursos</Badge>
+                              </div>
+                            </div>
+                            <Badge className={seg.ativo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}>{seg.ativo ? 'Ativo' : 'Inativo'}</Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="modulos" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Módulos do sistema</CardTitle>
+                <CardDescription>Cadastro global de módulos. A associação aos segmentos é feita na aba Segmentos.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Slug</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Path</TableHead>
+                        <TableHead>Menu</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {modulosGlobal.map((m) => (
+                        <TableRow key={m.id}>
+                          <TableCell className="font-medium">{m.nome}</TableCell>
+                          <TableCell>{m.slug}</TableCell>
+                          <TableCell>{m.categoria || '-'}</TableCell>
+                          <TableCell>{m.path || '-'}</TableCell>
+                          <TableCell>{m.label_menu || m.nome}</TableCell>
+                          <TableCell><Badge variant={m.ativo ? 'default' : 'secondary'}>{m.ativo ? 'Ativo' : 'Inativo'}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {modulosGlobal.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-4">Nenhum módulo. Execute REVENDA_MULTI_SEGMENTO.sql para popular.</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="recursos" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recursos por módulo</CardTitle>
+                <CardDescription>Recursos (ações) vinculados a cada módulo. A liberação por segmento é feita na aba Segmentos.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Módulo</TableHead>
+                        <TableHead>Recurso</TableHead>
+                        <TableHead>Slug</TableHead>
+                        <TableHead>Permissão</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recursosGlobal.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="text-muted-foreground">{r.modulo_nome || r.modulo_slug || '-'}</TableCell>
+                          <TableCell className="font-medium">{r.nome}</TableCell>
+                          <TableCell>{r.slug}</TableCell>
+                          <TableCell className="text-xs">{r.permission_key || '-'}</TableCell>
+                          <TableCell><Badge variant={r.ativo ? 'default' : 'secondary'}>{r.ativo ? 'Ativo' : 'Inativo'}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {recursosGlobal.length === 0 && (
+                  <p className="text-sm text-muted-foreground py-4">Nenhum recurso. Execute REVENDA_MULTI_SEGMENTO.sql para popular.</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Dialog Editar Segmento (4 abas) */}
+        <Dialog open={segmentoEditOpen} onOpenChange={setSegmentoEditOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>{selectedSegmento ? 'Editar segmento' : 'Novo segmento'}</DialogTitle>
+              <DialogDescription>
+                {selectedSegmento ? 'Altere as informações e os módulos/recursos do segmento.' : 'Preencha os dados do novo segmento.'}
+              </DialogDescription>
+            </DialogHeader>
+            <Tabs value={segmentoTab} onValueChange={setSegmentoTab} className="flex-1 overflow-hidden flex flex-col min-h-0">
+              <TabsList className="grid grid-cols-4">
+                <TabsTrigger value="info">Informações</TabsTrigger>
+                <TabsTrigger value="modulos">Módulos</TabsTrigger>
+                <TabsTrigger value="recursos">Recursos</TabsTrigger>
+                <TabsTrigger value="preview">Prévia do menu</TabsTrigger>
+              </TabsList>
+              <div className="overflow-y-auto flex-1 py-4 min-h-0">
+                <TabsContent value="info" className="mt-0 space-y-4">
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nome</Label>
+                        <Input value={segmentoForm.nome ?? ''} onChange={(e) => setSegmentoForm({ ...segmentoForm, nome: e.target.value })} placeholder="Ex: Oficina Mecânica" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Slug</Label>
+                        <Input value={segmentoForm.slug ?? ''} onChange={(e) => setSegmentoForm({ ...segmentoForm, slug: e.target.value })} placeholder="oficina_mecanica" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descrição</Label>
+                      <Input value={segmentoForm.descricao ?? ''} onChange={(e) => setSegmentoForm({ ...segmentoForm, descricao: e.target.value })} placeholder="Descrição do segmento" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Ícone (nome Lucide)</Label>
+                        <Input value={segmentoForm.icone ?? ''} onChange={(e) => setSegmentoForm({ ...segmentoForm, icone: e.target.value })} placeholder="car" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cor</Label>
+                        <Input type="color" className="h-10 w-20 p-1 cursor-pointer" value={segmentoForm.cor ?? '#3b82f6'} onChange={(e) => setSegmentoForm({ ...segmentoForm, cor: e.target.value })} />
+                        <span className="text-xs text-muted-foreground ml-2">{segmentoForm.cor}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={segmentoForm.ativo ?? true} onCheckedChange={(v) => setSegmentoForm({ ...segmentoForm, ativo: v })} />
+                      <Label>Ativo</Label>
+                    </div>
+                  </div>
+                  <DialogFooter className="pt-4">
+                    <Button variant="outline" onClick={() => setSegmentoEditOpen(false)}>Cancelar</Button>
+                    <Button onClick={async () => {
+                      try {
+                        if (selectedSegmento) {
+                          await updateSegmento(selectedSegmento.id, segmentoForm);
+                          toast.success('Segmento atualizado');
+                        } else {
+                          await createSegmento(segmentoForm);
+                          toast.success('Segmento criado');
+                        }
+                        setSegmentoEditOpen(false);
+                        loadSegmentos();
+                        setSegmentosListKey((k) => k + 1);
+                      } catch (err: any) {
+                        toast.error(err.message || 'Erro ao salvar');
+                      }
+                    }}>{selectedSegmento ? 'Atualizar' : 'Criar'}</Button>
+                  </DialogFooter>
+                </TabsContent>
+                <TabsContent value="modulos" className="mt-0">
+                  {selectedSegmento && (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-4">Ative os módulos que este segmento possui e defina a ordem no menu.</p>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {segmentoModulos.map((m, idx) => (
+                          <div key={m.id} className="flex items-center gap-3 p-2 rounded border">
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            <Switch
+                              checked={!!m.link_ativo}
+                              onCheckedChange={async (checked) => {
+                                const next = segmentoModulos.map((x) => ({
+                                  modulo_id: x.id,
+                                  ativo: x.id === m.id ? checked : !!x.link_ativo,
+                                  ordem_menu: x.link_ativo ? (x.ordem_menu ?? 0) : segmentoModulos.filter((y) => y.link_ativo).length,
+                                }));
+                                const withOrder = next.filter((n) => n.ativo).map((n, i) => ({ ...n, ordem_menu: i }));
+                                await updateSegmentoModulos(selectedSegmento.id, withOrder);
+                                const list = await getSegmentoModulos(selectedSegmento.id);
+                                setSegmentoModulos(list);
+                                getSegmentoMenuPreview(selectedSegmento.id).then(setMenuPreview);
+                                loadSegmentos();
+                              }}
+                            />
+                            <span className="flex-1 font-medium">{m.label_menu || m.nome}</span>
+                            <span className="text-xs text-muted-foreground">{m.path || m.slug}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">Ordem do menu: módulos ativos são exibidos na ordem definida no servidor (ordem_menu).</p>
+                    </>
+                  )}
+                  {!selectedSegmento && <p className="text-muted-foreground">Salve o segmento primeiro para configurar módulos.</p>}
+                </TabsContent>
+                <TabsContent value="recursos" className="mt-0">
+                  {selectedSegmento && (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-4">Recursos liberados para este segmento (por módulo).</p>
+                      <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                        {segmentoRecursos.modulos.map((mod) => (
+                          <div key={mod.id}>
+                            <p className="font-medium text-sm">{mod.nome}</p>
+                            <div className="pl-4 space-y-1">
+                              {segmentoRecursos.recursos.filter((r) => r.modulo_id === mod.id).map((r) => (
+                                <div key={r.id} className="flex items-center gap-2 text-sm">
+                                  <Switch checked={!!r.link_ativo} disabled />
+                                  <span>{r.nome}</span>
+                                  {r.permission_key && <span className="text-xs text-muted-foreground">({r.permission_key})</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">Os recursos seguem os módulos ativos do segmento. Para alterar, ative/desative módulos na aba Módulos.</p>
+                    </>
+                  )}
+                  {!selectedSegmento && <p className="text-muted-foreground">Salve o segmento primeiro para ver recursos.</p>}
+                </TabsContent>
+                <TabsContent value="preview" className="mt-0">
+                  <p className="text-sm text-muted-foreground mb-4">Como o menu do sistema aparecerá para empresas deste segmento:</p>
+                  <ul className="space-y-1 list-disc list-inside">
+                    {menuPreview.map((m, i) => (
+                      <li key={m.id}><strong>{m.label_menu || m.nome}</strong> — {m.path || m.slug}</li>
+                    ))}
+                  </ul>
+                  {menuPreview.length === 0 && selectedSegmento && <p className="text-muted-foreground">Nenhum módulo ativo no segmento.</p>}
+                </TabsContent>
+              </div>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
