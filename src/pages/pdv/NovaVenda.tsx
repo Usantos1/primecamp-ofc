@@ -31,6 +31,7 @@ import { Link } from 'react-router-dom';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { CartItem, PaymentFormData, PaymentMethod, PAYMENT_METHOD_LABELS, Quote, LIMITES_DESCONTO_PERFIL } from '@/types/pdv';
 import { currencyFormatters } from '@/utils/formatters';
+import { getDemoAwareErrorMessage } from '@/utils/demoMode';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
@@ -315,7 +316,7 @@ export default function NovaVenda() {
       setShowOpenCashDialog(false);
       setCashValorInicial('');
     } catch (error: any) {
-      toast({ title: 'Erro ao abrir caixa', description: error.message || 'Tente novamente', variant: 'destructive' });
+      toast({ title: 'Erro ao abrir caixa', description: getDemoAwareErrorMessage(error, 'Tente novamente'), variant: 'destructive' });
     } finally {
       setIsProcessingCash(false);
     }
@@ -338,7 +339,7 @@ export default function NovaVenda() {
       setCashDivergencia('');
       setCashJustificativa('');
     } catch (error: any) {
-      toast({ title: 'Erro ao fechar caixa', description: error.message || 'Tente novamente', variant: 'destructive' });
+      toast({ title: 'Erro ao fechar caixa', description: getDemoAwareErrorMessage(error, 'Tente novamente'), variant: 'destructive' });
     } finally {
       setIsProcessingCash(false);
     }
@@ -1346,10 +1347,10 @@ export default function NovaVenda() {
         }, 800);
     } catch (error: any) {
       console.error('Erro ao finalizar venda:', error);
-      toast({ 
-        title: 'Erro ao finalizar venda', 
-        description: error.message || 'Não foi possível finalizar a venda.',
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao finalizar venda',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível finalizar a venda.'),
+        variant: 'destructive'
       });
     } finally {
       setIsSaving(false);
@@ -1819,10 +1820,10 @@ export default function NovaVenda() {
           }, 800);
         } catch (error: any) {
           console.error('Erro ao finalizar venda automaticamente:', error);
-          toast({ 
-            title: 'Pagamento adicionado, mas erro ao finalizar', 
-            description: error.message || 'Finalize manualmente a venda.',
-            variant: 'destructive' 
+          toast({
+            title: 'Pagamento adicionado, mas erro ao finalizar',
+            description: getDemoAwareErrorMessage(error, 'Finalize manualmente a venda.'),
+            variant: 'destructive'
           });
         }
       }

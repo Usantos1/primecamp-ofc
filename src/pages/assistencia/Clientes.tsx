@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { getDemoAwareErrorMessage } from '@/utils/demoMode';
 import { STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
 
 const INITIAL_FORM: ClienteFormData = {
@@ -261,7 +262,11 @@ export default function Clientes() {
       setFormData(INITIAL_FORM);
     } catch (error: any) {
       console.error('Erro ao salvar cliente:', error);
-      toast({ title: 'Erro ao salvar cliente', description: error?.message || 'Tente novamente', variant: 'destructive' });
+      toast({
+        title: 'Erro ao salvar cliente',
+        description: getDemoAwareErrorMessage(error, 'Tente novamente'),
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -279,7 +284,11 @@ export default function Clientes() {
         }
       } catch (error: any) {
         console.error('Erro ao excluir cliente:', error);
-        toast({ title: 'Erro ao excluir', description: error?.message, variant: 'destructive' });
+        toast({
+          title: 'Erro ao excluir',
+          description: getDemoAwareErrorMessage(error, 'Tente novamente'),
+          variant: 'destructive'
+        });
       }
     }
   };
@@ -367,9 +376,9 @@ export default function Clientes() {
     } catch (error: any) {
       console.error('Erro ao salvar configuração:', error);
       toast({ 
-        title: 'Erro ao salvar', 
-        description: error.message || 'Não foi possível salvar a configuração.',
-        variant: 'destructive' 
+        title: 'Erro ao salvar',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível salvar a configuração.'),
+        variant: 'destructive'
       });
     }
   };

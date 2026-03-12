@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { currencyFormatters } from '@/utils/formatters';
+import { getDemoAwareErrorMessage } from '@/utils/demoMode';
 import { generateEtiquetaPDF, generateEtiquetasA4, EtiquetaData } from '@/utils/etiquetaGenerator';
 import { Produto } from '@/types/assistencia';
 import * as XLSX from 'xlsx';
@@ -529,7 +530,7 @@ export default function Produtos() {
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error?.message || 'Não foi possível inativar.',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível inativar.'),
         variant: 'destructive',
       });
     }
@@ -553,7 +554,7 @@ export default function Produtos() {
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error?.message || 'Não foi possível excluir.',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível excluir.'),
         variant: 'destructive',
       });
     }
@@ -623,7 +624,7 @@ export default function Produtos() {
       setQuantidadeEtiquetas(1);
     } catch (error: any) {
       console.error(error);
-      toast({ title: 'Erro ao gerar etiqueta', description: error?.message, variant: 'destructive' });
+      toast({ title: 'Erro ao gerar etiqueta', description: getDemoAwareErrorMessage(error, 'Tente novamente.'), variant: 'destructive' });
     }
   };
 
@@ -639,7 +640,7 @@ export default function Produtos() {
       setEditingProduto(null);
       setShowForm(false);
     } catch (error: any) {
-      toast({ title: 'Erro', description: error?.message || 'Erro ao salvar', variant: 'destructive' });
+      toast({ title: 'Erro', description: getDemoAwareErrorMessage(error, 'Erro ao salvar'), variant: 'destructive' });
       throw error;
     }
   };

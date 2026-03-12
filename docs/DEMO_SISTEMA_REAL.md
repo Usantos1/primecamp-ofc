@@ -104,7 +104,13 @@ Deve aparecer pelo menos `DEMO_EMAIL=...` e `DEMO_PASSWORD=...`.
 
 ### 3. Dados de exemplo (opcional)
 
-Para a demo ficar rica (OS, vendas, gráficos etc.), popule a **empresa demo** com dados reais: clientes, produtos, ordens de serviço, vendas PDV, movimentações de caixa. Pode fazer isso usando o próprio sistema logado como esse usuário demo.
+Para o dashboard da demo mostrar clientes, OS e vendas, rode o script de seed **na raiz do projeto** (após criar o usuário demo):
+
+```bash
+node server/scripts/seed-demo-data.js
+```
+
+O script insere na empresa "Ativa FIX - Demonstração": 5 clientes, 6 ordens de serviço (abertas e finalizadas) e 8 vendas de exemplo. Pode rodar mais de uma vez; ele evita conflito de números. Para mais dados, use o próprio sistema logado como usuário demo.
 
 ## Fluxo na landing
 

@@ -46,6 +46,7 @@ import { useOSImageReference } from '@/hooks/useOSImageReference';
 import { OSImageReferenceViewer } from '@/components/assistencia/OSImageReferenceViewer';
 import { CameraCapture } from '@/components/assistencia/CameraCapture';
 import { currencyFormatters, dateFormatters, parseJsonArray } from '@/utils/formatters';
+import { getDemoAwareErrorMessage } from '@/utils/demoMode';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -901,10 +902,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       toast({ title: 'Cliente cadastrado com sucesso!' });
     } catch (error: any) {
       console.error('Erro ao criar cliente:', error);
-      toast({ 
-        title: 'Erro ao cadastrar cliente', 
-        description: error?.message || 'Tente novamente',
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao cadastrar cliente',
+        description: getDemoAwareErrorMessage(error, 'Tente novamente'),
+        variant: 'destructive'
       });
     } finally {
       setIsCreatingCliente(false);
@@ -993,10 +994,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       toast({ title: 'Modelo cadastrado com sucesso!' });
     } catch (error: any) {
       console.error('Erro ao criar modelo:', error);
-      toast({ 
-        title: 'Erro ao cadastrar modelo', 
-        description: error?.message || 'Tente novamente',
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao cadastrar modelo',
+        description: getDemoAwareErrorMessage(error, 'Tente novamente'),
+        variant: 'destructive'
       });
     } finally {
       setIsCreatingModelo(false);
@@ -1779,10 +1780,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       }
     } catch (error: any) {
       console.error('Erro ao salvar OS:', error);
-      toast({ 
-        title: 'Erro ao salvar OS', 
-        description: error.message || 'Ocorreu um erro inesperado',
-        variant: 'destructive' 
+      toast({
+        title: 'Erro ao salvar OS',
+        description: getDemoAwareErrorMessage(error, 'Ocorreu um erro inesperado'),
+        variant: 'destructive'
       });
     } finally {
       setIsLoading(false);

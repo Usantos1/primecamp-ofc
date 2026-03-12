@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CashRegisterSessionsManager } from '@/components/financeiro/CashRegisterSessionsManager';
 import { usePermissions } from '@/hooks/usePermissions';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { getDemoAwareErrorMessage } from '@/utils/demoMode';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
@@ -175,7 +176,7 @@ export default function Caixa() {
     } catch (error: any) {
       toast({ 
         title: 'Erro ao abrir caixa', 
-        description: error.message || 'Tente novamente',
+        description: getDemoAwareErrorMessage(error, 'Tente novamente'),
         variant: 'destructive' 
       });
     } finally {
@@ -211,7 +212,7 @@ export default function Caixa() {
     } catch (error: any) {
       toast({ 
         title: 'Erro ao fechar caixa', 
-        description: error.message || 'Tente novamente',
+        description: getDemoAwareErrorMessage(error, 'Tente novamente'),
         variant: 'destructive' 
       });
     } finally {
@@ -244,7 +245,7 @@ export default function Caixa() {
     } catch (error: any) {
       toast({ 
         title: 'Erro ao registrar movimento', 
-        description: error.message || 'Tente novamente',
+        description: getDemoAwareErrorMessage(error, 'Tente novamente'),
         variant: 'destructive' 
       });
     } finally {
