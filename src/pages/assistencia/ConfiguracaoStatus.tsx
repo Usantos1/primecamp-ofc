@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useOSImageReference } from '@/hooks/useOSImageReference';
+import { getDemoAwareErrorMessage, isDemoSession } from '@/utils/demoMode';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -174,19 +175,16 @@ export default function ConfiguracaoStatusPage() {
         description: 'A imagem de referência foi atualizada.',
       });
     } catch (error: any) {
-      let errorMessage = error.message || 'Não foi possível fazer upload da imagem.';
-      
-      // Se for erro de bucket não encontrado, dar instruções detalhadas
-      if (error.code === 'BUCKET_NOT_FOUND' || error.message?.includes('bucket')) {
+      let errorMessage = getDemoAwareErrorMessage(error, 'Não foi possível fazer upload da imagem.');
+      if (!isDemoSession() && (error?.code === 'BUCKET_NOT_FOUND' || error?.message?.includes('bucket'))) {
         errorMessage = 'Bucket de armazenamento não encontrado. ' +
           'Acesse o Supabase Dashboard > Storage e crie o bucket "os-reference-images" como público.';
       }
-      
       toast({
         title: 'Erro ao enviar imagem',
         description: errorMessage,
         variant: 'destructive',
-        duration: 8000, // Mostrar por mais tempo para ler as instruções
+        duration: 8000,
       });
     } finally {
       // Limpar input
@@ -206,7 +204,7 @@ export default function ConfiguracaoStatusPage() {
     } catch (error: any) {
       toast({
         title: 'Erro ao remover imagem',
-        description: error.message || 'Não foi possível remover a imagem.',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível remover a imagem.'),
         variant: 'destructive',
       });
     }

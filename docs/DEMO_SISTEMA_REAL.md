@@ -102,15 +102,26 @@ grep -E '^DEMO_' .env
 
 Deve aparecer pelo menos `DEMO_EMAIL=...` e `DEMO_PASSWORD=...`.
 
-### 3. Dados de exemplo (opcional)
+### 3. Dados de exemplo (obrigatório para a demo ter conteúdo)
 
-Para o dashboard da demo mostrar clientes, OS e vendas, rode o script de seed **na raiz do projeto** (após criar o usuário demo):
+Sem este passo, a demo fica **sem clientes, sem OS e sem vendas** — o dashboard e as listas aparecem vazios. Na **raiz do projeto** (após criar o usuário demo), rode:
 
 ```bash
 node server/scripts/seed-demo-data.js
 ```
 
-O script insere na empresa "Ativa FIX - Demonstração": 5 clientes, 6 ordens de serviço (abertas e finalizadas) e 8 vendas de exemplo. Pode rodar mais de uma vez; ele evita conflito de números. Para mais dados, use o próprio sistema logado como usuário demo.
+O script insere na empresa "Ativa FIX - Demonstração":
+- **5 clientes** de teste  
+- **6 ordens de serviço** (abertas e finalizadas)  
+- **8 vendas** de exemplo  
+
+Pode rodar mais de uma vez; ele evita conflito de números. Para mais dados, use o próprio sistema logado como usuário demo.
+
+**Imagem de referência do aparelho:** na conta demo, o upload de imagem de referência não está disponível; ao tentar enviar, será exibida a mensagem amigável de conta demonstração.
+
+**Ordem na VPS (após deploy):**
+1. `node server/scripts/create-demo-user.js` — cria usuário e empresa demo.
+2. `node server/scripts/seed-demo-data.js` — popula clientes, OS e vendas de exemplo.
 
 ## Fluxo na landing
 
