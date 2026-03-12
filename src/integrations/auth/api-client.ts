@@ -88,9 +88,12 @@ class AuthAPIClient {
         return { error: { message: data.error || data.message || rawText || 'Erro ao fazer login' } };
       }
 
-      // Salvar token
+      // Salvar token e garantir que modo demo não fique ativo (banner só para quem entrou via /demo)
       if (data.token) {
         localStorage.setItem('auth_token', data.token);
+        try {
+          sessionStorage.removeItem('ativafix_demo_session');
+        } catch (_) {}
       }
 
       return { data: { user: data.user, token: data.token } };

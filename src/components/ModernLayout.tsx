@@ -14,6 +14,7 @@ import { DemoBanner } from "./DemoBanner"
 import { DemoFullscreenModal } from "./DemoFullscreenModal"
 import { useAuth } from "@/contexts/AuthContext"
 import { isDemoSession, DEMO_SESSION_KEY } from "@/utils/demoMode"
+import { CTA_WHATSAPP, CTA_MSG } from "@/pages/landing/constants"
 
 /** Apenas a empresa 1 (administradora) pode alterar nome e cores do sistema. */
 const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
@@ -46,7 +47,7 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
   }
 
   const handleDemoAssinar = () => {
-    navigate('/assinatura', { replace: true })
+    window.open(`${CTA_WHATSAPP}?text=${encodeURIComponent(CTA_MSG)}`, '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {

@@ -8,7 +8,7 @@ import { LandingBenefits } from './LandingBenefits';
 import { LandingDemonstracao } from './LandingDemonstracao';
 import { LandingCTA } from './LandingCTA';
 import { LandingFooter } from './LandingFooter';
-import { APP_URL } from './constants';
+import { APP_URL, CTA_WHATSAPP, CTA_MSG } from './constants';
 import { DemoFullscreenModalLP } from '@/components/DemoFullscreenModalLP';
 
 export default function LandingPage() {
@@ -24,14 +24,8 @@ export default function LandingPage() {
   }, []);
 
   const handleAssinar = () => {
-    const base =
-      typeof window !== 'undefined' &&
-      (window.location.hostname === 'ativafix.com' || window.location.hostname === 'www.ativafix.com')
-        ? APP_URL
-        : typeof window !== 'undefined'
-          ? window.location.origin
-          : APP_URL;
-    window.location.href = `${base}/assinatura`;
+    if (typeof window === 'undefined') return;
+    window.open(`${CTA_WHATSAPP}?text=${encodeURIComponent(CTA_MSG)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (

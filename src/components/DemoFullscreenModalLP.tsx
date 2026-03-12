@@ -17,11 +17,14 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
   const [secondsLeft, setSecondsLeft] = useState(DEMO_TIMER_SECONDS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showIframe, setShowIframe] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setSecondsLeft(DEMO_TIMER_SECONDS);
     setError(null);
+    setShowIframe(false);
   }, [open]);
 
   useEffect(() => {
@@ -36,6 +39,10 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
     }
   }, [open, secondsLeft, onClose]);
 
+  const handleAssinarWhatsApp = () => {
+    onAssinar();
+  };
+
   const handleEntrarDemo = async () => {
     setError(null);
     setLoading(true);
@@ -48,11 +55,13 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
       try {
         sessionStorage.setItem(DEMO_SESSION_KEY, '1');
       } catch {}
-      const base =
-        window.location.hostname === 'ativafix.com' || window.location.hostname === 'www.ativafix.com'
-          ? APP_URL
-          : window.location.origin;
-      window.location.href = `${base}/pdv`;
+      const isLPHost = window.location.hostname === 'ativafix.com' || window.location.hostname === 'www.ativafix.com';
+      if (isLPHost) {
+        window.location.href = `${APP_URL}/pdv`;
+        return;
+      }
+      setIframeUrl(`${window.location.origin}/pdv`);
+      setShowIframe(true);
     } catch (e: any) {
       setError(e?.message || 'Erro de conexão.');
     } finally {
@@ -61,6 +70,30 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
   };
 
   if (!open) return null;
+
+  if (showIframe && iframeUrl) {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col bg-[#030504]">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[#00F7A5]/20 bg-[#0B0F0D] shrink-0">
+          <span className="text-sm font-medium text-[#F5F7F6]">Demonstração — use o sistema abaixo</span>
+          <button
+            type="button"
+            onClick={() => { setShowIframe(false); setIframeUrl(''); onClose(); }}
+            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-[#F5F7F6]"
+            aria-label="Fechar demonstração"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <iframe
+          src={iframeUrl}
+          title="Ativa FIX Demonstração"
+          className="flex-1 w-full min-h-0 border-0"
+          allow="fullscreen"
+        />
+      </div>
+    );
+  }
 
   const m = Math.floor(secondsLeft / 60);
   const s = secondsLeft % 60;
@@ -72,7 +105,7 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 transition-colors text-[#F5F7F6]"
+          className="absolute top-4 right-4 p-2 rounded-xl hover:bg-white/10 transition-colors text-[#F5F7F6]"
           aria-label="Fechar"
         >
           <X className="w-5 h-5" />
@@ -110,21 +143,21 @@ export function DemoFullscreenModalLP({ open, onClose, onAssinar }: DemoFullscre
             <Button
               onClick={handleEntrarDemo}
               disabled={loading}
-              className="w-full h-12 text-base font-semibold bg-[#00F7A5] hover:bg-[#00C27F] text-[#030504]"
+              className="w-full h-12 rounded-xl text-base font-semibold bg-[#00F7A5] hover:bg-[#00C27F] text-[#030504]"
             >
               {loading ? 'Entrando...' : 'Entrar na demonstração'}
             </Button>
             <Button
-              onClick={onAssinar}
+              onClick={handleAssinarWhatsApp}
               variant="outline"
-              className="w-full h-12 text-base font-semibold border-[#00F7A5]/40 text-[#F5F7F6] hover:bg-[#00F7A5]/10"
+              className="w-full h-12 rounded-xl text-base font-semibold border-2 border-[#00F7A5] bg-transparent text-[#00F7A5] hover:bg-[#00F7A5]/10 hover:text-[#00F7A5]"
             >
               Assinar Agora
             </Button>
             <Button
               variant="ghost"
               onClick={onClose}
-              className="w-full h-11 text-base text-[#9AA4A0] hover:text-[#F5F7F6] hover:bg-white/5"
+              className="w-full h-11 rounded-xl text-base font-medium text-[#9AA4A0] hover:text-[#F5F7F6] hover:bg-white/5"
             >
               Fechar
             </Button>
