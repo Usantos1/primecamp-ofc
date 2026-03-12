@@ -1,7 +1,12 @@
 import { motion } from 'framer-motion';
+import { FlaskConical } from 'lucide-react';
 import { useAnimatedNumber } from './useAnimatedNumber';
 
-export function LandingVisualSistema() {
+interface LandingVisualSistemaProps {
+  onOpenDemo?: () => void;
+}
+
+export function LandingVisualSistema({ onOpenDemo }: LandingVisualSistemaProps) {
   const receita = useAnimatedNumber(317974, 2500, true, 0);
   const pdv = useAnimatedNumber(317974, 2600, true, 0);
   const os = useAnimatedNumber(0, 500, true, 0);
@@ -85,6 +90,27 @@ export function LandingVisualSistema() {
             </div>
           </div>
         </motion.div>
+
+        {onOpenDemo && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15 }}
+            className="flex flex-wrap justify-center gap-3 mt-10"
+          >
+            <motion.button
+              type="button"
+              onClick={onOpenDemo}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="landing-btn landing-btn-primary inline-flex items-center gap-2 px-6 py-3.5 font-semibold text-base border border-[#00F7A5]/40 rounded-xl"
+            >
+              <FlaskConical className="w-4 h-4 shrink-0" />
+              Experimentar o sistema
+            </motion.button>
+          </motion.div>
+        )}
       </div>
     </section>
   );

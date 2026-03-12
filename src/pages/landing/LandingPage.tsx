@@ -36,12 +36,12 @@ export default function LandingPage() {
       <LandingHeader onOpenDemo={openDemo} />
       <main>
         <LandingHero onOpenDemo={openDemo} />
-        <LandingProblem />
-        <LandingModulos />
-        <LandingVisualSistema />
-        <LandingFeatures />
+        <LandingProblem onOpenDemo={openDemo} />
+        <LandingModulos onOpenDemo={openDemo} />
+        <LandingVisualSistema onOpenDemo={openDemo} />
+        <LandingFeatures onOpenDemo={openDemo} />
         <LandingDemonstracao onOpenDemo={openDemo} />
-        <LandingBenefits />
+        <LandingBenefits onOpenDemo={openDemo} />
         <LandingCTA onOpenDemo={openDemo} />
         <LandingFooter />
       </main>

@@ -38,9 +38,9 @@ function CardDashboard() {
 
 function CardListaOS() {
   const items = [
-    { num: 721, aparelho: 'iPhone 12', cliente: 'João', status: 'Em andamento' },
-    { num: 720, aparelho: 'Moto G', cliente: 'Maria', status: 'Aguardando' },
-    { num: 719, aparelho: 'Samsung A50', cliente: 'Lucas', status: 'Finalizada' },
+    { num: 721, aparelho: 'iPhone 17 Pro', cliente: 'João', status: 'Em andamento' },
+    { num: 720, aparelho: 'Moto G86', cliente: 'Maria', status: 'Aguardando' },
+    { num: 719, aparelho: 'Samsung A56', cliente: 'Lucas', status: 'Finalizada' },
   ];
 
   return (
@@ -74,8 +74,8 @@ function CardAlerta() {
       className={`p-5 w-[280px] sm:w-[300px] shrink-0 ${CARD_BASE} border-[#00F7A5]/30`}
     >
       <div className="text-xs font-semibold text-[#00F7A5] uppercase tracking-wider mb-2">Alerta</div>
-      <div className="text-base font-semibold mb-1">OS #721 finalizada</div>
-      <div className="text-sm text-[#9AA4A0]">Cliente: João</div>
+      <div className="text-base font-semibold mb-1">OS #719 finalizada</div>
+      <div className="text-sm text-[#9AA4A0]">Cliente: Lucas</div>
       <div className="text-sm text-[#00F7A5] mt-1">Status: pronta para retirada</div>
     </motion.div>
   );
@@ -133,7 +133,7 @@ export function HeroVisualProof() {
       <div className="relative w-full max-w-[600px] min-h-[400px] sm:min-h-[460px] flex flex-col md:block items-center justify-center gap-5 md:gap-0 py-6">
         <div className="absolute top-0 left-0 z-30 flex flex-col gap-2 max-w-[220px]">
           <LiveNotification text="OS #722 criada" sub="Cliente: Ana • Entrada" delay={2500} />
-          <LiveNotification text="OS #721 finalizada" sub="Pronta para retirada" delay={5500} />
+          <LiveNotification text="OS #719 finalizada" sub="Pronta para retirada" delay={5500} />
         </div>
 
         <div className="hidden md:block absolute top-0 right-0 z-20">

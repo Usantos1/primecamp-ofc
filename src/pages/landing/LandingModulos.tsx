@@ -19,7 +19,12 @@ import {
   CreditCard,
   MessageCircle,
   Send,
+  FlaskConical,
 } from 'lucide-react';
+
+interface LandingModulosProps {
+  onOpenDemo?: () => void;
+}
 
 const MODULOS = [
   { nome: 'Ordens de Serviço', desc: 'Abertura, status, histórico e link para o cliente acompanhar.', Icon: FileCheck },
@@ -44,7 +49,7 @@ const MODULOS = [
   { nome: 'Integração Telegram', desc: 'Alertas e notificações via Telegram.', Icon: Send },
 ];
 
-export function LandingModulos() {
+export function LandingModulos({ onOpenDemo }: LandingModulosProps) {
   return (
     <section id="como-funciona" className="relative py-24 md:py-32 px-4 bg-[#07110D] scroll-mt-20">
       <div className="absolute inset-0 landing-bg-grid opacity-30" />
@@ -87,6 +92,27 @@ export function LandingModulos() {
             </motion.div>
           ))}
         </div>
+
+        {onOpenDemo && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15 }}
+            className="flex flex-wrap justify-center gap-3 mt-14"
+          >
+            <motion.button
+              type="button"
+              onClick={onOpenDemo}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="landing-btn landing-btn-primary inline-flex items-center gap-2 px-6 py-3.5 font-semibold text-base border border-[#00F7A5]/40 rounded-xl"
+            >
+              <FlaskConical className="w-4 h-4 shrink-0" />
+              Experimentar o sistema
+            </motion.button>
+          </motion.div>
+        )}
       </div>
     </section>
   );
