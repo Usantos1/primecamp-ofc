@@ -62,6 +62,8 @@ const Index = () => {
 
   // Verificar se é gestor/admin (só verifica se não estiver carregando)
   const isGestor = !permissionsLoading && (isAdmin || hasPermission('admin.view') || hasPermission('financeiro.view'));
+  // Relatórios/Financeiro no dashboard: só quem tem permissão de relatórios vê indicadores financeiros e tendência
+  const canSeeRelatorios = !permissionsLoading && (isAdmin || hasPermission('relatorios.view') || hasPermission('relatorios.financeiro'));
 
   // Período do gráfico → datas para a API do financeiro (mesmos dados reais do /financeiro)
   const { startDate: financeiroStart, endDate: financeiroEnd, periodStartDate, periodEndDate } = useMemo(() => {
@@ -252,7 +254,7 @@ const Index = () => {
   }, [trendPeriod, salesSummaryDay, financeiroDashboard?.tendencia, trendData, periodStartDate, periodEndDate]);
 
   // Se modo apresentação está ativo e é gestor, mostrar modo apresentação
-  if (config.presentationMode && isGestor && financialData && osData && alerts) {
+  if (config.presentationMode && canSeeRelatorios && financialData && osData && alerts) {
     return (
       <PresentationMode
         financialData={financialData}
@@ -286,11 +288,11 @@ const Index = () => {
   return (
     <ModernLayout 
       title="Dashboard" 
-      subtitle={isGestor ? "Visão geral e gestão" : "Acesso rápido às principais funcionalidades"}
+      subtitle={canSeeRelatorios ? "Visão geral e gestão" : "Acesso rápido às principais funcionalidades"}
     >
       <div className="flex flex-col min-h-0 md:h-full md:overflow-hidden">
         {/* Indicadores Financeiros + Alertas — mobile: 2 cols, toque confortável */}
-        {isGestor && financialData && (
+        {canSeeRelatorios && financialData && (
           <div className="flex-shrink-0 px-3 sm:px-3 md:px-0 pb-3 sm:pb-4 border-b border-gray-200 dark:border-gray-700 bg-background">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="text-base md:text-lg font-semibold">Indicadores Financeiros</h2>
@@ -394,7 +396,7 @@ const Index = () => {
                   return (
                     <div key={widget.id} className="w-full min-w-0">
                       <h2 className="text-base md:text-lg font-semibold mb-2 sm:mb-3">Ordens de Serviço</h2>
-                      <OSStatusCards data={osData} showValues={isGestor} />
+                      <OSStatusCards data={osData} showValues={canSeeRelatorios} />
                     </div>
                   );
 
@@ -402,7 +404,7 @@ const Index = () => {
                   return null;
 
                 case 'trend-charts':
-                  if (!isGestor) return null;
+                  if (!canSeeRelatorios) return null;
                   return (
                     <div key={widget.id} className="w-full min-w-0">
                       <TrendCharts

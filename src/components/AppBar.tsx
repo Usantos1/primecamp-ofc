@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface QuickNavItem {
   label: string;
@@ -61,6 +63,8 @@ export function AppBar() {
   const navigate = useNavigate();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const { isAdmin } = useAuth();
+  const { hasPermission } = usePermissions();
 
   // Determinar qual configuração usar baseado na rota atual
   const getQuickNavItems = (): QuickNavItem[] => {
@@ -82,7 +86,12 @@ export function AppBar() {
     return QUICK_NAV_CONFIG['/'] || [];
   };
 
-  const quickNavItems = getQuickNavItems();
+  let quickNavItems = getQuickNavItems();
+  // Ocultar aba Relatórios para quem não tem permissão (ex: vendedor, admin de assistência)
+  const canSeeRelatorios = isAdmin || hasPermission('relatorios.view') || hasPermission('relatorios.financeiro');
+  if (!canSeeRelatorios) {
+    quickNavItems = quickNavItems.filter((item) => item.path !== '/relatorios');
+  }
   const currentPath = location.pathname;
 
   // Se não houver itens, não mostrar

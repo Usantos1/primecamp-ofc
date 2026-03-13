@@ -71,8 +71,8 @@ export function AppSidebar() {
   // Verificar cache do localStorage (para acesso instantâneo)
   const cachedIsAdmin = localStorage.getItem('user_is_admin') === 'true';
   
-  // Usar QUALQUER indicador de admin disponível
-  const userIsAdmin = isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin;
+  // Só considerar admin depois que as permissões carregaram — evita flash de "todos os itens" e depois sumir
+  const userIsAdmin = !permissionsLoading && (isAdmin || isAdminAuth || isAdminDirect || cachedIsAdmin);
 
   // Buscar nome da empresa
   const { data: companyData } = useQuery({
@@ -108,7 +108,7 @@ export function AppSidebar() {
     enabled: !!user?.company_id,
     staleTime: 1000 * 60 * 5, // 5 min
   });
-  const { data: roleMenuData } = useQuery({
+  const { data: roleMenuData, isPending: roleMenuPending } = useQuery({
     queryKey: ['role-menu', user?.id],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
@@ -255,14 +255,16 @@ export function AppSidebar() {
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ];
-  // Relatórios/Financeiro/Painel de Alertas: sempre exigir permissão (vendedor não pode ver se não tiver no role)
-  const relatoriosItems = (useSegmentOrRoleList ? segmentByCategory.gestao : relatoriosItemsBase).filter(
-    (item) => {
-      if (item.path === "/relatorios") return checkPermission("relatorios.view");
-      if (item.path === "/financeiro" || item.path === "/painel-alertas") return checkPermission("relatorios.financeiro");
-      return useRoleMenu || !item.permission || checkPermission(item.permission);
-    }
-  );
+  // Só exibir Relatórios quando permissões e menu por cargo estiverem prontos (evita flash "todos" e depois sumir)
+  const menuNotReady = permissionsLoading || (!!user?.id && roleMenuPending);
+  const relatoriosItemsRaw = useSegmentOrRoleList ? segmentByCategory.gestao : relatoriosItemsBase;
+  const relatoriosItems = menuNotReady
+    ? []
+    : relatoriosItemsRaw.filter((item) => {
+        if (item.path === "/relatorios") return checkPermission("relatorios.view");
+        if (item.path === "/financeiro" || item.path === "/painel-alertas") return checkPermission("relatorios.financeiro");
+        return useRoleMenu || !item.permission || checkPermission(item.permission);
+      });
 
   // ═══════════════════════════════════════════════════════════════
   // GESTÃO - RH, Ponto (vazio quando menu por segmento; segmento não costuma ter categoria gestao para RH)
