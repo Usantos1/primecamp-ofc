@@ -1777,6 +1777,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           navigate(`/os/${novaOS.id}`, { replace: true });
         } else {
           // Assistência Técnica: abrir modal de checklist de entrada após criar OS
+          // Marcar currentOS para que, se o usuário fechar o checklist e salvar de novo, atualize a mesma OS em vez de criar outra
+          setCurrentOS(novaOS);
           queryClient.invalidateQueries({ queryKey: ['ordens_servico'] });
           setChecklistEntradaModalOSId(novaOS.id);
           setChecklistEntradaModalMarcados([]);
