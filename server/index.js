@@ -1346,53 +1346,88 @@ app.get('/api/me/segment-recursos', authenticateToken, async (req, res) => {
   }
 });
 
-// Menu e tela inicial por cargo (role): se o cargo tiver role_modulos, usa ordem e home_path do cargo
+// Menu e tela inicial por cargo (role): se o cargo tiver role_modulos, usa ordem e home_path do cargo.
+// Se o cargo for "vendedor" e não tiver role_modulos, retorna menu do segmento SEM PDV (vendedor não vê PDV por padrão).
 app.get('/api/me/role-menu', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.json({ menu: [], home_path: null });
+    const companyId = req.user?.company_id;
+    if (!userId) return res.json({ menu: [], home_path: null, role_display_name: null });
     const hasTable = await pool.query(
       `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'role_modulos'`
     );
-    if (hasTable.rows.length === 0) return res.json({ menu: [], home_path: null });
+    if (hasTable.rows.length === 0) return res.json({ menu: [], home_path: null, role_display_name: null });
     const upd = await pool.query(
       `SELECT role_id FROM user_position_departments WHERE user_id = $1 AND is_primary = true AND role_id IS NOT NULL LIMIT 1`,
       [userId]
     );
     const roleId = upd.rows[0]?.role_id;
-    if (!roleId) return res.json({ menu: [], home_path: null });
+    if (!roleId) return res.json({ menu: [], home_path: null, role_display_name: null });
+    const roleRow = await pool.query(
+      `SELECT name, display_name, home_path FROM roles WHERE id = $1`,
+      [roleId]
+    );
+    const roleName = (roleRow.rows[0]?.name || '').toLowerCase();
+    const roleDisplayName = roleRow.rows[0]?.display_name || roleRow.rows[0]?.name || null;
+    const home_path = roleRow.rows[0]?.home_path || null;
+    const isVendedor = roleName === 'vendedor' || roleDisplayName?.toLowerCase() === 'vendedor';
+
     const count = await pool.query(
       `SELECT 1 FROM role_modulos WHERE role_id = $1 AND ativo = true LIMIT 1`,
       [roleId]
     );
-    if (count.rows.length === 0) return res.json({ menu: [], home_path: null });
-    const menuResult = await pool.query(
-      `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, m.categoria, rm.ordem_menu
-       FROM role_modulos rm
-       INNER JOIN modulos m ON m.id = rm.modulo_id AND m.ativo
-       WHERE rm.role_id = $1 AND rm.ativo
-       ORDER BY rm.ordem_menu, m.nome`,
-      [roleId]
-    );
-    const roleRow = await pool.query(
-      `SELECT home_path FROM roles WHERE id = $1`,
-      [roleId]
-    );
-    const home_path = roleRow.rows[0]?.home_path || null;
-    res.json({
-      menu: (menuResult.rows || []).map((r) => ({
-        id: r.id,
-        path: r.path || '/',
-        label_menu: r.label_menu || r.nome,
-        slug: r.slug,
-        icone: r.icone,
-        categoria: r.categoria || 'operacao',
-      })),
-      home_path: home_path || null,
-    });
+    if (count.rows.length > 0) {
+      const menuResult = await pool.query(
+        `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, m.categoria, rm.ordem_menu
+         FROM role_modulos rm
+         INNER JOIN modulos m ON m.id = rm.modulo_id AND m.ativo
+         WHERE rm.role_id = $1 AND rm.ativo
+         ORDER BY rm.ordem_menu, m.nome`,
+        [roleId]
+      );
+      return res.json({
+        menu: (menuResult.rows || []).map((r) => ({
+          id: r.id,
+          path: r.path || '/',
+          label_menu: r.label_menu || r.nome,
+          slug: r.slug,
+          icone: r.icone,
+          categoria: r.categoria || 'operacao',
+        })),
+        home_path: home_path || null,
+        role_display_name: roleDisplayName,
+      });
+    }
+
+    // Cargo sem módulos configurados: vendedor recebe menu do segmento SEM PDV; outros recebem menu vazio (front usa segmento).
+    if (isVendedor && companyId) {
+      const comp = await pool.query('SELECT segmento_id FROM companies WHERE id = $1', [companyId]);
+      const segmentoId = comp.rows[0]?.segmento_id;
+      if (segmentoId) {
+        const menuResult = await pool.query(
+          `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, m.categoria, sm.ordem_menu
+           FROM modulos m
+           INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo = true
+           WHERE m.ativo AND (m.path IS NULL OR m.path != '/pdv')
+           ORDER BY sm.ordem_menu, m.nome`,
+          [segmentoId]
+        );
+        const menu = (menuResult.rows || []).map((r) => ({
+          id: r.id,
+          path: r.path || '/',
+          label_menu: r.label_menu || r.nome,
+          slug: r.slug,
+          icone: r.icone,
+          categoria: r.categoria || 'operacao',
+        }));
+        return res.json({ menu, home_path: home_path || null, role_display_name: roleDisplayName });
+      }
+    }
+
+    return res.json({ menu: [], home_path: null, role_display_name: roleDisplayName });
   } catch (err) {
     console.error('[role-menu]', err);
-    res.json({ menu: [], home_path: null });
+    res.json({ menu: [], home_path: null, role_display_name: null });
   }
 });
 

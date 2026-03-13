@@ -112,12 +112,16 @@ export function AppSidebar() {
     queryKey: ['role-menu', user?.id],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
-      if (!token) return { menu: [], home_path: null };
+      if (!token) return { menu: [], home_path: null, role_display_name: null };
       const res = await fetch(`${apiBase}/me/role-menu`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      return { menu: data.menu || [], home_path: data.home_path || null };
+      return {
+        menu: data.menu || [],
+        home_path: data.home_path || null,
+        role_display_name: data.role_display_name || null,
+      };
     },
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
@@ -127,6 +131,7 @@ export function AppSidebar() {
   const roleMenu = roleMenuData?.menu ?? [];
   const hasRoleMenu = Array.isArray(roleMenu) && roleMenu.length > 0;
   const homePath = roleMenuData?.home_path || null;
+  const roleDisplayName = roleMenuData?.role_display_name || null;
   // Administrador sempre vê o menu completo (segmento); não aplica menu restrito por cargo
   const useRoleMenu = hasRoleMenu && !userIsAdmin;
   const menuToUse = useRoleMenu ? roleMenu : segmentMenu;
@@ -425,7 +430,7 @@ export function AppSidebar() {
                     {profile?.display_name || user?.email?.split('@')[0]}
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate leading-tight uppercase tracking-wide">
-                    {companyName || (userIsAdmin ? "Administrador" : profile?.department || "Atendimento")}
+                    {roleDisplayName || (userIsAdmin ? "Administrador" : null) || companyName || profile?.department || "Atendimento"}
                   </p>
                 </div>
                 
