@@ -132,10 +132,10 @@ export function AppSidebar() {
   const hasRoleMenu = Array.isArray(roleMenu) && roleMenu.length > 0;
   const homePath = roleMenuData?.home_path || null;
   const roleDisplayName = roleMenuData?.role_display_name || null;
-  // Administrador sempre vê o menu completo (segmento); não aplica menu restrito por cargo
-  const useRoleMenu = hasRoleMenu && !userIsAdmin;
+  // Se o cargo tem "Módulos e menu" configurado, usa esse menu (inclusive para admin de empresa que não deve ver Orçamentos, etc.)
+  const useRoleMenu = hasRoleMenu;
   const menuToUse = useRoleMenu ? roleMenu : segmentMenu;
-  // Se for admin e o menu do segmento estiver vazio (ex.: localhost sem segmento), usar menu base completo
+  // Quando não há menu por cargo, usa lista do segmento (ou menu base se admin e segmento vazio)
   const useSegmentOrRoleList =
     (hasSegmentMenu || hasRoleMenu) && (hasSegmentMenu || !userIsAdmin);
   
@@ -255,8 +255,13 @@ export function AppSidebar() {
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ];
+  // Relatórios/Financeiro/Painel de Alertas: sempre exigir permissão (vendedor não pode ver se não tiver no role)
   const relatoriosItems = (useSegmentOrRoleList ? segmentByCategory.gestao : relatoriosItemsBase).filter(
-    item => useRoleMenu || !item.permission || checkPermission(item.permission)
+    (item) => {
+      if (item.path === "/relatorios") return checkPermission("relatorios.view");
+      if (item.path === "/financeiro" || item.path === "/painel-alertas") return checkPermission("relatorios.financeiro");
+      return useRoleMenu || !item.permission || checkPermission(item.permission);
+    }
   );
 
   // ═══════════════════════════════════════════════════════════════
