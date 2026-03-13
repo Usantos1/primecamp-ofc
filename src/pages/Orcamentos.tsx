@@ -21,8 +21,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Plus, List, Pencil, Trash2, FileDown, Printer } from 'lucide-react';
+import { FileText, Plus, List, Pencil, Trash2, FileDown, Printer, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { useCompanySegment } from '@/hooks/useCompanySegment';
 import { useThemeConfig } from '@/contexts/ThemeConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +39,12 @@ const TIPOS_ITEM = [
   { value: 'peca', label: 'Peça' },
   { value: 'mao_de_obra', label: 'Mão de obra' },
 ] as const;
+
+const DEFAULT_CONDICOES =
+  'Orçamento válido até a data indicada. Pagamento à vista ou parcelado conforme combinado. Peça sob encomenda sujeita a confirmação de disponibilidade.';
+
+const DEFAULT_GARANTIAS =
+  'Garantia de 90 dias em peças aplicadas. Mão de obra garantida por 30 dias para o mesmo defeito. Garantia não cobre desgaste natural ou mau uso.';
 
 interface QuoteRow {
   id: string;
@@ -69,6 +78,16 @@ interface FormItem {
   valor_unitario: number;
 }
 
+interface ProdutoOrcamento {
+  id: string;
+  nome: string;
+  codigo?: number | string;
+  codigo_barras?: string;
+  referencia?: string;
+  valor_venda?: number;
+  preco_venda?: number;
+}
+
 const emptyFormItem = (): FormItem => ({
   id: crypto.randomUUID(),
   tipo: 'peca',
@@ -99,6 +118,8 @@ export default function Orcamentos() {
   const [observacoes, setObservacoes] = useState('');
   const [formItems, setFormItems] = useState<FormItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [produtoSearchOpen, setProdutoSearchOpen] = useState(false);
+  const [produtoSearchTerm, setProdutoSearchTerm] = useState('');
 
   // Lista de orçamentos (oficina)
   const { data: quotesList = [], isLoading: loadingQuotes } = useQuery({
@@ -130,6 +151,41 @@ export default function Orcamentos() {
     enabled: isOficina && dialogOpen,
   });
 
+  // Produtos para busca (nome, referência, código)
+  const { data: produtosList = [] } = useQuery({
+    queryKey: ['produtos-orcamentos'],
+    queryFn: async () => {
+      const { data, error } = await from('produtos')
+        .select('id, nome, codigo, codigo_barras, referencia, valor_venda, preco_venda')
+        .order('nome', { ascending: true })
+        .limit(500)
+        .execute();
+      if (error) throw error;
+      return (data || []) as ProdutoOrcamento[];
+    },
+    enabled: isOficina && dialogOpen,
+  });
+
+  const addProdutoAsItem = (p: ProdutoOrcamento) => {
+    const nome = p.nome || '';
+    const valor = Number(p.valor_venda ?? p.preco_venda) || 0;
+    setFormItems((prev) => [...prev, { id: crypto.randomUUID(), tipo: 'peca', descricao: nome, quantidade: 1, valor_unitario: valor }]);
+    setProdutoSearchOpen(false);
+    setProdutoSearchTerm('');
+  };
+
+  const produtosFiltrados = useMemo(() => {
+    if (!produtoSearchTerm.trim()) return produtosList.slice(0, 30);
+    const t = produtoSearchTerm.toLowerCase().trim();
+    return produtosList.filter(
+      (p) =>
+        (p.nome || '').toLowerCase().includes(t) ||
+        String(p.codigo || '').toLowerCase().includes(t) ||
+        (p.referencia || '').toLowerCase().includes(t) ||
+        (p.codigo_barras || '').toLowerCase().includes(t)
+    ).slice(0, 30);
+  }, [produtosList, produtoSearchTerm]);
+
   const resetForm = () => {
     setEditingId(null);
     setConsumidorApenas(false);
@@ -138,8 +194,8 @@ export default function Orcamentos() {
     setVeiculoAno('');
     setVeiculoVersao('');
     setDataValidade('');
-    setCondicoesTexto('');
-    setGarantiasTexto('');
+    setCondicoesTexto(DEFAULT_CONDICOES);
+    setGarantiasTexto(DEFAULT_GARANTIAS);
     setObservacoes('');
     setFormItems([emptyFormItem()]);
   };
@@ -461,15 +517,15 @@ export default function Orcamentos() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar orçamento' : 'Novo orçamento'}</DialogTitle>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[92vh] overflow-y-auto p-6 sm:p-8">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg">{editingId ? 'Editar orçamento' : 'Novo orçamento'}</DialogTitle>
             <DialogDescription>
-              Preencha cliente (ou marque &quot;Apenas consumidor&quot;), veículo, itens (peças e mão de obra), validade, condições e garantias.
+              Cliente (ou consumidor), veículo, itens (busque por nome, ref. ou código ou digite), validade, condições e garantias.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-5 py-2">
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -523,21 +579,66 @@ export default function Orcamentos() {
               <Input type="date" value={dataValidade} onChange={(e) => setDataValidade(e.target.value)} />
             </div>
 
-            <div className="grid gap-2">
-              <div className="flex justify-between items-center">
-                <Label>Itens (peças e mão de obra)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                  + Item
-                </Button>
+            <div className="grid gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label className="text-sm font-medium">Itens (peças e mão de obra)</Label>
+                <div className="flex items-center gap-2">
+                  <Popover open={produtoSearchOpen} onOpenChange={setProdutoSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="sm" className="gap-2">
+                        <Search className="h-4 w-4" />
+                        Buscar produto (nome, ref., código)
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="z-[110] w-[min(90vw,400px)] p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder="Digite nome, referência ou código..."
+                          value={produtoSearchTerm}
+                          onValueChange={setProdutoSearchTerm}
+                        />
+                        <CommandList>
+                          <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {produtosFiltrados.map((p) => (
+                              <CommandItem
+                                key={p.id}
+                                value={`${p.nome} ${p.referencia || ''} ${p.codigo || ''}`}
+                                onSelect={() => addProdutoAsItem(p)}
+                                className="cursor-pointer"
+                              >
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-medium">{p.nome}</span>
+                                  {(p.referencia || p.codigo) && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {p.referencia && `Ref: ${p.referencia}`}
+                                      {p.referencia && p.codigo && ' · '}
+                                      {p.codigo != null && `Cód: ${p.codigo}`}
+                                      {(p.valor_venda != null || p.preco_venda != null) && ` · ${currencyFormatters.brl(Number(p.valor_venda ?? p.preco_venda))}`}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                    + Item manual
+                  </Button>
+                </div>
               </div>
-              <div className="rounded border divide-y max-h-48 overflow-y-auto">
+              <div className="rounded-md border divide-y max-h-64 overflow-y-auto bg-muted/20">
                 {formItems.map((item) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-2 p-2 items-end">
+                  <div key={item.id} className="grid grid-cols-12 gap-3 p-3 items-end">
                     <div className="col-span-12 sm:col-span-4">
                       <Input
-                        placeholder="Descrição"
+                        placeholder="Descrição do item"
                         value={item.descricao}
                         onChange={(e) => updateItem(item.id, { descricao: e.target.value })}
+                        className="min-h-10"
                       />
                     </div>
                     <div className="col-span-4 sm:col-span-2">
@@ -592,26 +693,28 @@ export default function Orcamentos() {
             </div>
 
             <div className="grid gap-2">
-              <Label>Condições (aparecem no PDF)</Label>
+              <Label className="text-sm font-medium">Condições (aparecem no PDF)</Label>
               <Textarea
-                placeholder="Ex: Orçamento válido até a data indicada. Pagamento à vista ou parcelado conforme combinado."
+                placeholder="Ajuste o texto das condições se necessário."
                 value={condicoesTexto}
                 onChange={(e) => setCondicoesTexto(e.target.value)}
-                rows={2}
+                rows={4}
+                className="resize-y min-h-[80px]"
               />
             </div>
             <div className="grid gap-2">
-              <Label>Garantias (aparecem no PDF)</Label>
+              <Label className="text-sm font-medium">Garantias (aparecem no PDF)</Label>
               <Textarea
-                placeholder="Ex: Garantia de 90 dias em peças. Mão de obra garantida por 30 dias."
+                placeholder="Ajuste o texto das garantias se necessário."
                 value={garantiasTexto}
                 onChange={(e) => setGarantiasTexto(e.target.value)}
-                rows={2}
+                rows={4}
+                className="resize-y min-h-[80px]"
               />
             </div>
             <div className="grid gap-2">
-              <Label>Observações</Label>
-              <Textarea placeholder="Observações internas" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={1} />
+              <Label className="text-sm font-medium">Observações</Label>
+              <Textarea placeholder="Observações internas" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={2} />
             </div>
           </div>
 

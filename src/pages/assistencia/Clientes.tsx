@@ -75,6 +75,7 @@ interface VeiculoFormRow {
 }
 
 const emptyVeiculoRow = (): VeiculoFormRow => ({
+  id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
   placa: '',
   marca_id: null,
   modelo_id: null,
@@ -1062,10 +1063,19 @@ export default function Clientes() {
                         </div>
                       </div>
                     ))}
-                    <Button type="button" variant="outline" size="sm" onClick={addVeiculoRow} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Adicionar veículo
-                    </Button>
+                    <div className="relative z-10 mt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); addVeiculoRow(); }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="gap-2 shrink-0"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Adicionar veículo
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

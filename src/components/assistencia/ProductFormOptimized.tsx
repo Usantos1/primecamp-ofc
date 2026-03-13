@@ -1084,7 +1084,7 @@ export function ProductFormOptimized({
                   
                   {/* Dialog para criar nova marca */}
                   <Dialog open={showNewMarcaDialog} onOpenChange={setShowNewMarcaDialog}>
-                    <DialogContent className="max-w-[95vw] sm:max-w-md rounded-xl p-4 sm:p-6">
+                    <DialogContent className="z-[110] max-w-[95vw] sm:max-w-md rounded-xl p-4 sm:p-6">
                       <DialogHeader>
                         <DialogTitle>Nova Marca</DialogTitle>
                       </DialogHeader>
@@ -1199,7 +1199,7 @@ export function ProductFormOptimized({
                   
                   {/* Dialog para criar novo modelo */}
                   <Dialog open={showNewModeloDialog} onOpenChange={setShowNewModeloDialog}>
-                    <DialogContent className="max-w-[95vw] sm:max-w-md rounded-xl p-4 sm:p-6">
+                    <DialogContent className="z-[110] max-w-[95vw] sm:max-w-md rounded-xl p-4 sm:p-6">
                       <DialogHeader>
                         <DialogTitle>Novo Modelo</DialogTitle>
                       </DialogHeader>
