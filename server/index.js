@@ -1400,7 +1400,7 @@ app.get('/api/me/role-menu', authenticateToken, async (req, res) => {
       });
     }
 
-    // Cargo sem módulos configurados: vendedor recebe menu do segmento SEM PDV; outros recebem menu vazio (front usa segmento).
+    // Cargo sem módulos configurados: vendedor recebe menu do segmento SEM PDV e SEM gestão (Relatórios, Financeiro, Painel de Alertas).
     if (isVendedor && companyId) {
       const comp = await pool.query('SELECT segmento_id FROM companies WHERE id = $1', [companyId]);
       const segmentoId = comp.rows[0]?.segmento_id;
@@ -1409,7 +1409,9 @@ app.get('/api/me/role-menu', authenticateToken, async (req, res) => {
           `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, m.categoria, sm.ordem_menu
            FROM modulos m
            INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo = true
-           WHERE m.ativo AND (m.path IS NULL OR m.path != '/pdv')
+           WHERE m.ativo
+             AND (m.path IS NULL OR m.path != '/pdv')
+             AND (m.categoria IS NULL OR m.categoria != 'gestao')
            ORDER BY sm.ordem_menu, m.nome`,
           [segmentoId]
         );
