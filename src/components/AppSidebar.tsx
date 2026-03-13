@@ -127,8 +127,12 @@ export function AppSidebar() {
   const roleMenu = roleMenuData?.menu ?? [];
   const hasRoleMenu = Array.isArray(roleMenu) && roleMenu.length > 0;
   const homePath = roleMenuData?.home_path || null;
-  const menuToUse = hasRoleMenu ? roleMenu : segmentMenu;
-  const useRoleMenu = hasRoleMenu;
+  // Administrador sempre vê o menu completo (segmento); não aplica menu restrito por cargo
+  const useRoleMenu = hasRoleMenu && !userIsAdmin;
+  const menuToUse = useRoleMenu ? roleMenu : segmentMenu;
+  // Se for admin e o menu do segmento estiver vazio (ex.: localhost sem segmento), usar menu base completo
+  const useSegmentOrRoleList =
+    (hasSegmentMenu || hasRoleMenu) && (hasSegmentMenu || !userIsAdmin);
   
   // Função para verificar permissão
   const checkPermission = (permission: string): boolean => {
@@ -222,7 +226,7 @@ export function AppSidebar() {
   }, [menuToUse, useRoleMenu]);
 
   const operacaoItemsFromSegment = segmentByCategory.operacao;
-  const operacaoItems = (hasSegmentMenu || hasRoleMenu ? operacaoItemsFromSegment : operacaoItemsBase).filter(
+  const operacaoItems = (useSegmentOrRoleList ? operacaoItemsFromSegment : operacaoItemsBase).filter(
     item => useRoleMenu || !item.permission || checkPermission(item.permission)
   );
 
@@ -234,7 +238,7 @@ export function AppSidebar() {
     { label: "Pedidos", path: "/pedidos", icon: List, exact: true, permission: "produtos.view" },
     { label: "Inventário", path: "/inventario", icon: Boxes, exact: true, permission: "produtos.view" },
   ];
-  const estoqueItems = (hasSegmentMenu || hasRoleMenu ? segmentByCategory.estoque : estoqueItemsBase).filter(
+  const estoqueItems = (useSegmentOrRoleList ? segmentByCategory.estoque : estoqueItemsBase).filter(
     item => useRoleMenu || !item.permission || checkPermission(item.permission)
   );
 
@@ -246,7 +250,7 @@ export function AppSidebar() {
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ];
-  const relatoriosItems = (hasSegmentMenu || hasRoleMenu ? segmentByCategory.gestao : relatoriosItemsBase).filter(
+  const relatoriosItems = (useSegmentOrRoleList ? segmentByCategory.gestao : relatoriosItemsBase).filter(
     item => useRoleMenu || !item.permission || checkPermission(item.permission)
   );
 
@@ -257,7 +261,7 @@ export function AppSidebar() {
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
   ];
-  const gestaoItems = (hasSegmentMenu || hasRoleMenu ? [] : gestaoItemsBase).filter(
+  const gestaoItems = (useSegmentOrRoleList ? [] : gestaoItemsBase).filter(
     item => useRoleMenu || !item.permission || checkPermission(item.permission)
   );
 

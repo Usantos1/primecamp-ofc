@@ -56,9 +56,9 @@ const Index = () => {
   });
   const homePath = roleMenuData?.home_path || null;
   useEffect(() => {
-    if (location.pathname !== '/' || !homePath || homePath === '/') return;
+    if (location.pathname !== '/' || !homePath || homePath === '/' || isAdmin) return;
     navigate(homePath, { replace: true });
-  }, [location.pathname, homePath, navigate]);
+  }, [location.pathname, homePath, navigate, isAdmin]);
 
   // Verificar se é gestor/admin (só verifica se não estiver carregando)
   const isGestor = !permissionsLoading && (isAdmin || hasPermission('admin.view') || hasPermission('financeiro.view'));
