@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { useReseller, Company, Plan } from '@/hooks/useReseller';
 import { useSegments, type Segmento, type Modulo, type Recurso } from '@/hooks/useSegments';
 import { useAuth } from '@/contexts/AuthContext';
-import { Building2, Plus, Search, Edit, DollarSign, Users, AlertCircle, Layers, Box, KeyRound, GripVertical } from 'lucide-react';
+import { Building2, Plus, Search, Edit, DollarSign, Users, AlertCircle, Layers, Box, KeyRound, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
@@ -1555,32 +1555,86 @@ export default function AdminReseller() {
                         <p className="text-sm text-muted-foreground py-4">Nenhum módulo disponível. Execute a migration REVENDA_MULTI_SEGMENTO.sql no banco ou verifique a conexão.</p>
                       ) : (
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {segmentoModulos.map((m, idx) => (
-                          <div key={m.id} className="flex items-center gap-3 p-2 rounded border">
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                            <Switch
-                              checked={!!m.link_ativo}
-                              onCheckedChange={async (checked) => {
-                                const next = segmentoModulos.map((x) => ({
-                                  modulo_id: x.id,
-                                  ativo: x.id === m.id ? checked : !!x.link_ativo,
-                                  ordem_menu: x.link_ativo ? (x.ordem_menu ?? 0) : segmentoModulos.filter((y) => y.link_ativo).length,
-                                }));
-                                const withOrder = next.filter((n) => n.ativo).map((n, i) => ({ ...n, ordem_menu: i }));
-                                await updateSegmentoModulos(selectedSegmento.id, withOrder);
-                                const list = await getSegmentoModulos(selectedSegmento.id);
-                                setSegmentoModulos(list);
-                                getSegmentoMenuPreview(selectedSegmento.id).then(setMenuPreview);
-                                loadSegmentos();
-                              }}
-                            />
-                            <span className="flex-1 font-medium">{m.label_menu || m.nome}</span>
-                            <span className="text-xs text-muted-foreground">{m.path || m.slug}</span>
-                          </div>
-                        ))}
+                        {(() => {
+                          const activeOrdered = segmentoModulos.filter((x) => x.link_ativo).sort((a, b) => (a.ordem_menu ?? 999) - (b.ordem_menu ?? 999));
+                          return segmentoModulos.map((m) => {
+                          const activeIndex = activeOrdered.findIndex((x) => x.id === m.id);
+                          const canMoveUp = m.link_ativo && activeIndex > 0;
+                          const canMoveDown = m.link_ativo && activeIndex >= 0 && activeIndex < activeOrdered.length - 1;
+                          return (
+                            <div key={m.id} className="flex items-center gap-2 p-2 rounded border">
+                              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <Switch
+                                checked={!!m.link_ativo}
+                                onCheckedChange={async (checked) => {
+                                  const next = segmentoModulos.map((x) => ({
+                                    modulo_id: x.id,
+                                    ativo: x.id === m.id ? checked : !!x.link_ativo,
+                                    ordem_menu: x.link_ativo ? (x.ordem_menu ?? 0) : segmentoModulos.filter((y) => y.link_ativo).length,
+                                  }));
+                                  const withOrder = next.filter((n) => n.ativo).map((n, i) => ({ ...n, ordem_menu: i }));
+                                  await updateSegmentoModulos(selectedSegmento.id, withOrder);
+                                  const list = await getSegmentoModulos(selectedSegmento.id);
+                                  setSegmentoModulos(list);
+                                  getSegmentoMenuPreview(selectedSegmento.id).then(setMenuPreview);
+                                  loadSegmentos();
+                                }}
+                              />
+                              <span className="flex-1 font-medium min-w-0 truncate">{m.path === '/inventario' ? 'Inventário' : (m.label_menu || m.nome)}</span>
+                              <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">{m.path || m.slug}</span>
+                              <div className="flex flex-col shrink-0">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  disabled={!canMoveUp}
+                                  aria-label="Subir"
+                                  onClick={async () => {
+                                    if (!canMoveUp || !selectedSegmento) return;
+                                    const newOrder = [...activeOrdered];
+                                    [newOrder[activeIndex - 1], newOrder[activeIndex]] = [newOrder[activeIndex], newOrder[activeIndex - 1]];
+                                    const withOrder = newOrder.map((mod, i) => ({ modulo_id: mod.id, ativo: true, ordem_menu: i }));
+                                    await updateSegmentoModulos(selectedSegmento.id, withOrder);
+                                    const list = await getSegmentoModulos(selectedSegmento.id);
+                                    setSegmentoModulos(list);
+                                    getSegmentoMenuPreview(selectedSegmento.id).then(setMenuPreview);
+                                    loadSegmentos();
+                                    toast.success('Ordem atualizada');
+                                  }}
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  disabled={!canMoveDown}
+                                  aria-label="Descer"
+                                  onClick={async () => {
+                                    if (!canMoveDown || !selectedSegmento) return;
+                                    const newOrder = [...activeOrdered];
+                                    [newOrder[activeIndex], newOrder[activeIndex + 1]] = [newOrder[activeIndex + 1], newOrder[activeIndex]];
+                                    const withOrder = newOrder.map((mod, i) => ({ modulo_id: mod.id, ativo: true, ordem_menu: i }));
+                                    await updateSegmentoModulos(selectedSegmento.id, withOrder);
+                                    const list = await getSegmentoModulos(selectedSegmento.id);
+                                    setSegmentoModulos(list);
+                                    getSegmentoMenuPreview(selectedSegmento.id).then(setMenuPreview);
+                                    loadSegmentos();
+                                    toast.success('Ordem atualizada');
+                                  }}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        });
+                        })()}
                       </div>
                       )}
-                      <p className="text-xs text-muted-foreground mt-2">Ordem do menu: módulos ativos são exibidos na ordem definida no servidor (ordem_menu).</p>
+                      <p className="text-xs text-muted-foreground mt-2">Ordem do menu: use as setas ↑↓ para reordenar; módulos ativos são exibidos na ordem definida (ordem_menu).</p>
                     </>
                   )}
                   {!selectedSegmento && <p className="text-muted-foreground">Salve o segmento primeiro para configurar módulos.</p>}
@@ -1624,7 +1678,7 @@ export default function AdminReseller() {
                     <>
                       <ul className="space-y-1 list-disc list-inside">
                         {menuPreview.map((m) => (
-                          <li key={m.id}><strong>{m.label_menu || m.nome}</strong> — {m.path || m.slug}</li>
+                          <li key={m.id}><strong>{m.path === '/inventario' ? 'Inventário' : (m.label_menu || m.nome)}</strong> — {m.path || m.slug}</li>
                         ))}
                       </ul>
                       {menuPreview.length === 0 && selectedSegmento && <p className="text-muted-foreground mt-2">Nenhum módulo ativo no segmento. Ative módulos na aba Módulos.</p>}
