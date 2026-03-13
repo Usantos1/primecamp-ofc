@@ -1415,12 +1415,14 @@ app.get('/api/roles/:roleId/menu-config', authenticateToken, async (req, res) =>
       );
       segmentoId = comp.rows[0]?.segmento_id || null;
     }
+    // Só incluir módulos que estão ativos no segmento da empresa (sm.ativo = true)
     const modulosResult = segmentoId
       ? await pool.query(
           `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, rm.ativo as link_ativo, rm.ordem_menu
-           FROM segmentos_modulos sm
-           INNER JOIN modulos m ON m.id = sm.modulo_id AND m.ativo AND sm.segmento_id = $2 AND sm.ativo
+           FROM modulos m
+           INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $2 AND sm.ativo = true
            LEFT JOIN role_modulos rm ON rm.modulo_id = m.id AND rm.role_id = $1
+           WHERE m.ativo
            ORDER BY COALESCE(rm.ordem_menu, sm.ordem_menu, 999), m.nome`,
           [roleId, segmentoId]
         )
@@ -1432,12 +1434,15 @@ app.get('/api/roles/:roleId/menu-config', authenticateToken, async (req, res) =>
            ORDER BY COALESCE(rm.ordem_menu, 999), m.nome`,
           [roleId]
         );
+    // Só incluir recursos de módulos ativos no segmento e recursos ativos no segmento (sr.ativo = true)
     const recursosResult = segmentoId
       ? await pool.query(
           `SELECT r.id, r.modulo_id, r.nome, r.slug, r.permission_key, rr.ativo as link_ativo
-           FROM segmentos_recursos sr
-           INNER JOIN recursos r ON r.id = sr.recurso_id AND r.ativo AND sr.segmento_id = $2 AND sr.ativo
+           FROM recursos r
+           INNER JOIN segmentos_modulos sm ON sm.modulo_id = r.modulo_id AND sm.segmento_id = $2 AND sm.ativo = true
+           INNER JOIN segmentos_recursos sr ON sr.recurso_id = r.id AND sr.segmento_id = $2 AND sr.ativo = true
            LEFT JOIN role_recursos rr ON rr.recurso_id = r.id AND rr.role_id = $1
+           WHERE r.ativo
            ORDER BY (SELECT COALESCE(rm.ordem_menu, 999) FROM role_modulos rm WHERE rm.role_id = $1 AND rm.modulo_id = r.modulo_id LIMIT 1), r.nome`,
           [roleId, segmentoId]
         )
