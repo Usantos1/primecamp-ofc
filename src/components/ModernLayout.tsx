@@ -46,6 +46,12 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const openPanel = () => setIsNotificationOpen(true)
+    window.addEventListener('open-notification-panel', openPanel)
+    return () => window.removeEventListener('open-notification-panel', openPanel)
+  }, [])
+
   const hideDemoBanner = isEmbeddedInLp()
 
   return (
@@ -65,6 +71,19 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
                   <h1 className="font-medium text-sm truncate text-foreground">{title}</h1>
                 </div>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative shrink-0"
+                onClick={() => setIsNotificationOpen(true)}
+              >
+                <Bell className="h-4 w-4" />
+                {notificationCount > 0 && (
+                  <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 min-w-4 p-0 flex items-center justify-center bg-red-500 text-white text-[10px]">
+                    {notificationCount}
+                  </Badge>
+                )}
+              </Button>
               <ThemeToggle variant="button" size="sm" className="shrink-0" />
             </div>
             <div className="min-h-0 min-w-0 overflow-x-auto overflow-y-hidden">

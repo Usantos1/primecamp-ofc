@@ -25,6 +25,7 @@ import {
   UserCog,
   RefreshCw,
   Star,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeConfig, getDefaultConfigByHost } from "@/contexts/ThemeConfigContext";
@@ -99,14 +100,19 @@ export function AppSidebar() {
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
       if (!token) return { menu: [] };
-      const res = await fetch(`${apiBase}/me/segment-menu`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      return { menu: data.menu || [], segmento_nome: data.segmento_nome };
+      try {
+        const res = await fetch(`${apiBase}/me/segment-menu`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const menu = Array.isArray(data?.menu) ? data.menu : [];
+        return { menu, segmento_nome: data?.segmento_nome };
+      } catch {
+        return { menu: [] };
+      }
     },
     enabled: !!user?.company_id,
-    staleTime: 1000 * 60 * 5, // 5 min
+    staleTime: 0, // sempre refetch para não usar menu de outra empresa em cache
   });
   const { data: roleMenuData, isPending: roleMenuPending } = useQuery({
     queryKey: ['role-menu', user?.id],
@@ -126,33 +132,17 @@ export function AppSidebar() {
     enabled: !!user?.id,
     staleTime: 1000 * 60 * 5,
   });
-  const segmentMenu = segmentMenuData?.menu ?? [];
-  const hasSegmentMenu = Array.isArray(segmentMenu) && segmentMenu.length > 0;
+  const segmentMenu = Array.isArray(segmentMenuData?.menu) ? segmentMenuData.menu : [];
+  const hasSegmentMenu = segmentMenu.length > 0;
   const roleMenu = roleMenuData?.menu ?? [];
   const hasRoleMenu = Array.isArray(roleMenu) && roleMenu.length > 0;
   const homePath = roleMenuData?.home_path || null;
   const roleDisplayName = roleMenuData?.role_display_name || null;
-  // Menu padrão quando empresa sem segmento — sempre menu limitado (estilo Assistência), mesmo que o cargo tenha menu
-  const DEFAULT_MENU_WHEN_NO_SEGMENT: { path: string; label_menu: string; icone?: string; categoria: string }[] = [
-    { path: "/", label_menu: "Dashboard", icone: "home", categoria: "operacao" },
-    { path: "/pdv", label_menu: "PDV", icone: "shopping-cart", categoria: "operacao" },
-    { path: "/pdv/vendas", label_menu: "Vendas", icone: "receipt", categoria: "operacao" },
-    { path: "/pdv/devolucoes", label_menu: "Devoluções", icone: "refresh-cw", categoria: "operacao" },
-    { path: "/os", label_menu: "Ordem de Serviço", icone: "wrench", categoria: "operacao" },
-    { path: "/pdv/caixa", label_menu: "Caixa", icone: "wallet", categoria: "operacao" },
-    { path: "/clientes", label_menu: "Clientes", icone: "users", categoria: "operacao" },
-    { path: "/produtos", label_menu: "Produtos", icone: "package", categoria: "estoque" },
-    { path: "/pedidos", label_menu: "Pedidos", icone: "list", categoria: "estoque" },
-    { path: "/inventario", label_menu: "Inventário", icone: "list", categoria: "estoque" },
-  ];
-  // Sem segmento (ou ainda carregando) = menu limitado; com segmento = menu da API
-  const usingDefaultSegment = !hasSegmentMenu;
-  const useRoleMenu = hasRoleMenu && hasSegmentMenu;
-  const menuToUse = hasSegmentMenu
-    ? (useRoleMenu ? roleMenu : segmentMenu)
-    : DEFAULT_MENU_WHEN_NO_SEGMENT;
-  // Usar lista filtrada; sem segmento = sempre padrão limitado (nunca lista completa)
-  const useSegmentOrRoleList = hasSegmentMenu || hasRoleMenu || usingDefaultSegment;
+  const useRoleMenu = hasRoleMenu;
+  const menuToUse = useRoleMenu ? roleMenu : segmentMenu;
+  // Com segmento/cargo = menu filtrado da API; sem segmento = lista base completa (todos os recursos)
+  const useSegmentOrRoleList =
+    (hasSegmentMenu || hasRoleMenu) && (hasSegmentMenu || !userIsAdmin);
   
   // Função para verificar permissão
   const checkPermission = (permission: string): boolean => {
@@ -270,12 +260,10 @@ export function AppSidebar() {
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ];
-  // Sem segmento (menu padrão): não exibir Relatórios/Financeiro/Alertas; com segmento/cargo segue lógica abaixo
   const roleMenuSettled = !user?.id || roleMenuData !== undefined;
   const menuNotReady = permissionsLoading || !roleMenuSettled;
-  const relatoriosItemsRaw = usingDefaultSegment
-    ? segmentByCategory.gestao
-    : user?.id
+  const relatoriosItemsRaw =
+    user?.id
       ? (hasRoleMenu ? segmentByCategory.gestao : relatoriosItemsBase)
       : (useSegmentOrRoleList ? segmentByCategory.gestao : relatoriosItemsBase);
   const relatoriosItems = menuNotReady
@@ -293,7 +281,7 @@ export function AppSidebar() {
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
   ];
-  const gestaoItems = (useSegmentOrRoleList || usingDefaultSegment ? [] : gestaoItemsBase).filter(
+  const gestaoItems = (useSegmentOrRoleList ? [] : gestaoItemsBase).filter(
     item => useRoleMenu || !item.permission || checkPermission(item.permission)
   );
 
@@ -421,6 +409,23 @@ export function AppSidebar() {
 
               {/* ══════ ADMINISTRAÇÃO ══════ */}
               {renderSection("Administração", Shield, adminItems)}
+
+              {/* Painel de Alertas — alertas por WhatsApp */}
+              {checkPermission('relatorios.financeiro') && (
+                <>
+                  {renderSeparator()}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Painel de Alertas">
+                      <NavLink to="/painel-alertas" end>
+                        <div className={getItemClasses('/painel-alertas', false)}>
+                          <Activity className="h-5 w-5 flex-shrink-0" />
+                          {!collapsed && <span className="text-sm font-medium">Painel de Alertas</span>}
+                        </div>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
+              )}
 
             </SidebarMenu>
           </SidebarGroupContent>
