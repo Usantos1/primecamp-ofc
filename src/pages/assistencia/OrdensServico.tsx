@@ -42,6 +42,7 @@ import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { PermissionGate } from '@/components/PermissionGate';
 import { useToast } from '@/hooks/use-toast';
+import { useCompanySegment } from '@/hooks/useCompanySegment';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -232,6 +233,8 @@ const PAGE_SIZE = 50;
 export default function OrdensServico() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { segmentoSlug } = useCompanySegment();
+  const isOficina = segmentoSlug === 'oficina_mecanica';
   
   // Tipos de campo de busca para OS
   type OSSearchFieldType = 'all' | 'numero' | 'cliente' | 'aparelho' | 'problema';
@@ -240,7 +243,7 @@ export default function OrdensServico() {
     all: 'Todos',
     numero: 'Nº OS',
     cliente: 'Cliente',
-    aparelho: 'Aparelho',
+    aparelho: isOficina ? 'Veículo' : 'Aparelho',
     problema: 'Problema',
   };
 
@@ -280,7 +283,7 @@ export default function OrdensServico() {
   const [exportUsarFiltrosAtuais, setExportUsarFiltrosAtuais] = useState(true);
   const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
   const [isExporting, setIsExporting] = useState(false);
-  const [exportColumns, setExportColumns] = useState([
+  const baseExportColumns = [
     { id: 'numero', label: 'Nº OS', checked: true },
     { id: 'situacao', label: 'Situação', checked: true },
     { id: 'status', label: 'Status', checked: true },
@@ -294,7 +297,13 @@ export default function OrdensServico() {
     { id: 'valor_pago', label: 'Valor Pago', checked: false },
     { id: 'imei', label: 'IMEI', checked: false },
     { id: 'observacoes', label: 'Observações', checked: false },
-  ]);
+  ];
+  const exportColumnsWithLabels = useMemo(() => baseExportColumns.map(col => ({
+    ...col,
+    label: col.id === 'aparelho' ? (isOficina ? 'Veículo' : 'Aparelho') : col.id === 'imei' ? (isOficina ? 'Placa' : 'IMEI') : col.label,
+  })), [isOficina]);
+  const [exportColumns, setExportColumns] = useState(exportColumnsWithLabels);
+  useEffect(() => { setExportColumns(prev => prev.map((col, i) => ({ ...col, label: exportColumnsWithLabels[i].label }))); }, [exportColumnsWithLabels]);
   
   // Hooks de dados
   const { ordens, isLoading, getEstatisticas, deleteOS: deleteOSMutation, updateOS, updateStatus } = useOrdensServico();
@@ -546,13 +555,13 @@ export default function OrdensServico() {
             }
             case 'cliente': row['Cliente'] = cliente?.nome || os.cliente_nome || ''; break;
             case 'telefone': row['Telefone'] = os.telefone_contato || cliente?.telefone || ''; break;
-            case 'aparelho': row['Aparelho'] = `${modelo?.nome || os.modelo_nome || ''} - ${marca?.nome || os.marca_nome || ''}`; break;
+            case 'aparelho': row[col.label] = `${modelo?.nome || os.modelo_nome || ''} - ${marca?.nome || os.marca_nome || ''}`; break;
             case 'problema': row['Problema'] = os.descricao_problema || ''; break;
             case 'data_entrada': row['Data Entrada'] = os.data_entrada ? dateFormatters.short(os.data_entrada) : ''; break;
             case 'previsao': row['Previsão'] = os.previsao_entrega ? dateFormatters.short(os.previsao_entrega) : ''; break;
             case 'valor': row['Valor'] = valorTotal; break;
             case 'valor_pago': row['Valor Pago'] = Number(os.valor_pago || 0); break;
-            case 'imei': row['IMEI'] = os.imei || ''; break;
+            case 'imei': row[col.label] = os.imei || ''; break;
             case 'observacoes': row['Observações'] = os.observacoes_internas || ''; break;
           }
         });

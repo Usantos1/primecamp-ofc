@@ -40,7 +40,8 @@ Se a pasta do projeto for outra (ex.: `/root/primecamp`), troque o primeiro `cd`
 Para a aba **Segmentos** em **https://app.ativafix.com/admin/revenda** funcionar (e sumir os 404 de `segmentos`, `modulos` e `segment-menu`):
 
 1. **Deploy do código** – o bloco acima já atualiza a API; `pm2 restart primecamp-api` ativa as rotas `/api/admin/revenda/segmentos`, `/api/admin/revenda/modulos` e `/api/me/segment-menu`.
-2. **Migration no banco de produção (uma vez)** – no PostgreSQL que a API usa em produção, execute o script `db/migrations/manual/REVENDA_MULTI_SEGMENTO.sql` (pgAdmin, DBeaver, `psql -f`, etc.). Sem isso a API devolve 503 ou lista vazia e o front mostra "Nenhum segmento cadastrado".
+2. **Migration no banco de produção (uma vez)** – no PostgreSQL que a API usa em produção, execute o script `db/migrations/manual/REVENDA_MULTI_SEGMENTO.sql` (pgAdmin, DBeaver, `psql -f`, etc.). Sem isso a API devolve 503 ou lista vazia e o front mostra "Nenhum segmento cadastrado".  
+   **Oficina Mecânica:** se o menu não mostrar **Orçamentos** (/orcamentos) ou a página não estiver disponível, execute também `db/migrations/manual/REVENDA_OFICINA_ADD_ORCAMENTOS.sql` no mesmo banco.
 
 **Se continuar 404 após o deploy:** na VPS confira se o código está atualizado (`cd /root/primecamp-ofc && git log -1 --oneline` deve mostrar o commit do multi-segmento) e se a API reiniciou (`pm2 restart primecamp-api`). Teste direto: `curl -s -o /dev/null -w "%{http_code}" https://api.ativafix.com/api/admin/revenda/segmentos` — com o código novo deve retornar 401 (não autenticado) e não 404.
 

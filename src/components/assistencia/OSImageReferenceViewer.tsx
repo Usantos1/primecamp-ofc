@@ -13,14 +13,19 @@ interface OSImageReferenceViewerProps {
   defects: string[]; // Array de strings no formato "x-y" ou similar
   onDefectsChange: (defects: string[]) => void;
   readOnly?: boolean;
+  /** 'veiculo' = oficina (veículo/carro); 'aparelho' = celular/equipamento */
+  variant?: 'aparelho' | 'veiculo';
 }
 
 export function OSImageReferenceViewer({ 
   imageUrl, 
   defects, 
   onDefectsChange,
-  readOnly = false 
+  readOnly = false,
+  variant = 'aparelho'
 }: OSImageReferenceViewerProps) {
+  const refLabel = variant === 'veiculo' ? 'veículo' : 'aparelho';
+  const configHint = variant === 'veiculo' ? 'Config. Status OS (imagem do veículo)' : 'Config. Status OS';
   const [defectPoints, setDefectPoints] = useState<DefectPoint[]>([]);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0, left: 0, top: 0 });
@@ -131,8 +136,8 @@ export function OSImageReferenceViewer({
     return (
       <div className="flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
         <X className="h-8 w-8 mb-2 opacity-50" />
-        <p className="text-xs">Nenhuma imagem de referência configurada</p>
-        <p className="text-xs mt-1">Configure em: Config. Status OS</p>
+        <p className="text-xs">Nenhuma imagem de referência do {refLabel} configurada</p>
+        <p className="text-xs mt-1">Configure em: {configHint}</p>
       </div>
     );
   }
@@ -149,7 +154,7 @@ export function OSImageReferenceViewer({
       <img
         ref={imageRef}
         src={imageUrl}
-        alt="Referência visual do aparelho (frente e verso)"
+        alt={`Referência visual do ${refLabel} (clique para marcar defeitos)`}
         className="max-w-full max-h-full w-auto h-auto object-contain select-none"
         style={{ maxWidth: '100%', maxHeight: '100%' }}
         draggable={false}

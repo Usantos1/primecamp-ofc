@@ -176,41 +176,59 @@ export function AppSidebar() {
     { label: "Caixa", path: "/pdv/caixa", icon: Wallet, exact: true, permission: "caixa.view" },
     { label: "Clientes", path: "/clientes", icon: UserCircle, exact: true, permission: "clientes.view" },
   ];
-  const operacaoItemsFromSegment = hasSegmentMenu
-    ? segmentMenu.map((m: { path: string; label_menu: string; slug?: string; icone?: string }) => ({
-        label: m.path === '/inventario' ? 'Inventário' : m.label_menu,
-        path: m.path || '/',
-        icon: iconMap[m.icone || ''] || Home,
-        exact: m.path === '/',
-        permission: undefined as string | undefined,
-      }))
-    : [];
+  // Helper: converte item do menu por segmento para MenuItem (sempre exact para evitar 2 ativos)
+  const toMenuItem = (m: { path: string; label_menu: string; slug?: string; icone?: string }) => ({
+    label: m.path === '/inventario' ? 'Inventário' : m.label_menu,
+    path: m.path || '/',
+    icon: iconMap[m.icone || ''] || Home,
+    exact: true as const, // só destaca o item da rota exata (evita PDV + Caixa juntos)
+    permission: undefined as string | undefined,
+  });
+
+  // Quando há menu por segmento: agrupar por categoria (Operação, Estoque, Relatórios/Gestão)
+  const segmentByCategory = React.useMemo(() => {
+    if (!hasSegmentMenu || segmentMenu.length === 0) return { operacao: [], estoque: [], gestao: [] };
+    const mapOne = (m: { path: string; label_menu: string; slug?: string; icone?: string }) => ({
+      label: m.path === '/inventario' ? 'Inventário' : m.label_menu,
+      path: m.path || '/',
+      icon: iconMap[m.icone || ''] || Home,
+      exact: true as const,
+      permission: undefined as string | undefined,
+    });
+    const cat = (m: { categoria?: string }) => m.categoria || 'operacao';
+    const operacao = segmentMenu.filter((m: { categoria?: string }) => cat(m) === 'operacao').map(mapOne);
+    const estoque = segmentMenu.filter((m: { categoria?: string }) => cat(m) === 'estoque').map(mapOne);
+    const gestao = segmentMenu.filter((m: { categoria?: string }) => cat(m) === 'gestao').map(mapOne);
+    return { operacao, estoque, gestao };
+  }, [hasSegmentMenu, segmentMenu]);
+
+  const operacaoItemsFromSegment = segmentByCategory.operacao;
   const operacaoItems = (hasSegmentMenu ? operacaoItemsFromSegment : operacaoItemsBase).filter(
     item => !item.permission || checkPermission(item.permission)
   );
 
   // ═══════════════════════════════════════════════════════════════
-  // ESTOQUE - Gestão de produtos (oculto quando menu por segmento)
+  // ESTOQUE - Gestão de produtos (menu segmento: itens com categoria estoque)
   // ═══════════════════════════════════════════════════════════════
   const estoqueItemsBase = [
     { label: "Produtos", path: "/produtos", icon: Package, exact: true, permission: "produtos.view" },
     { label: "Pedidos", path: "/pedidos", icon: List, exact: true, permission: "produtos.view" },
     { label: "Inventário", path: "/inventario", icon: Boxes, exact: true, permission: "produtos.view" },
   ];
-  const estoqueItems = (hasSegmentMenu ? [] : estoqueItemsBase).filter(item => !item.permission || checkPermission(item.permission));
+  const estoqueItems = (hasSegmentMenu ? segmentByCategory.estoque : estoqueItemsBase).filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // RELATÓRIOS - Todos os relatórios juntos (oculto quando menu por segmento)
+  // RELATÓRIOS - (menu segmento: itens com categoria gestao)
   // ═══════════════════════════════════════════════════════════════
   const relatoriosItemsBase = [
     { label: "Relatórios", path: "/relatorios", icon: Receipt, permission: "relatorios.view" },
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ];
-  const relatoriosItems = (hasSegmentMenu ? [] : relatoriosItemsBase).filter(item => !item.permission || checkPermission(item.permission));
+  const relatoriosItems = (hasSegmentMenu ? segmentByCategory.gestao : relatoriosItemsBase).filter(item => !item.permission || checkPermission(item.permission));
 
   // ═══════════════════════════════════════════════════════════════
-  // GESTÃO - RH, Metas (oculto quando menu por segmento)
+  // GESTÃO - RH, Ponto (vazio quando menu por segmento; segmento não costuma ter categoria gestao para RH)
   // ═══════════════════════════════════════════════════════════════
   const gestaoItemsBase = [
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },

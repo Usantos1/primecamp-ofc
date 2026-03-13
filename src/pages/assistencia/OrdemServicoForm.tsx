@@ -1619,7 +1619,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
 
     // Se "Possui senha" = SIM, a senha do aparelho é obrigatória
     if (formData.possui_senha_tipo === 'sim' && (!formData.senha_aparelho || String(formData.senha_aparelho).trim() === '')) {
-      camposFaltando.push('Senha do aparelho');
+      camposFaltando.push(isOficinaMecanica ? 'Chave ou código do veículo' : 'Senha do aparelho');
       camposFaltandoSet.add('senha_aparelho');
     }
 
@@ -2104,11 +2104,14 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
       const marca = marcas.find(m => m.id === os.marca_id);
       const modelo = modelos.find(m => m.id === os.modelo_id);
       
+      const isVeiculoMsg = os.tipo_aparelho === 'veiculo';
+      const eqLabelMsg = isVeiculoMsg ? 'Veículo' : 'Aparelho';
+      const condicoesMsg = isVeiculoMsg ? 'Os veículos não retirados' : 'Os aparelhos não retirados';
       const mensagem = `*ORDEM DE SERVIÇO #${os.numero}*
 
 *Cliente:* ${cliente?.nome || os.cliente_nome}
 *Telefone:* ${telefone}
-*Aparelho:* ${marca?.nome || ''} ${modelo?.nome || ''}
+*${eqLabelMsg}:* ${marca?.nome || ''} ${modelo?.nome || ''}
 *Problema:* ${os.descricao_problema}
 *Status:* ${STATUS_OS_LABELS[os.status as StatusOS]}
 *Data Entrada:* ${dateFormatters.short(os.data_entrada)}
@@ -2117,10 +2120,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 *Sobre a Garantia do Serviço:*
 1 - A Empresa oferece Garantia de 90 dias em peças usadas no conserto, contados a partir da data de entrega.
 2 - Não realizamos troca de peças danificadas por Mal Uso, Molhadas, Trincadas, Quebradas e riscadas.
-3 - O Aparelho só será devolvido mediante a apresentação desta ou documento do proprietário, guarde-a com cuidado.
+3 - O ${eqLabelMsg} só será devolvido mediante a apresentação desta ou documento do proprietário, guarde-a com cuidado.
 4 - Ao ligar para a loja, informe o número da Ordem de Serviço para melhor atendê-lo.
-5 - Os aparelhos não retirados em no máximo 30 dias serão acrescido despesas de armazenamento de 6% ao mês.
-6 - Os aparelhos não retirados em até 90 dias a partir da data da comunicação para sua retirada, serão descartados.`;
+5 - ${condicoesMsg} em no máximo 30 dias serão acrescido despesas de armazenamento de 6% ao mês.
+6 - ${condicoesMsg} em até 90 dias a partir da data da comunicação para sua retirada, serão descartados.`;
 
       // Formatar número para API do Ativa CRM
       // A API espera: número com código do país SEM o +, apenas dígitos
@@ -3153,20 +3156,20 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">IMEI</Label>
+                      <Label className="text-xs font-medium text-gray-600">{isOficinaMecanica ? 'Placa' : 'IMEI'}</Label>
                       <Input
                         value={formData.imei}
                         onChange={(e) => setFormData(prev => ({ ...prev, imei: e.target.value }))}
-                        placeholder="Digite o IMEI"
+                        placeholder={isOficinaMecanica ? 'Ex: ABC-1D23' : 'Digite o IMEI'}
                         className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Nº Série</Label>
+                      <Label className="text-xs font-medium text-gray-600">{isOficinaMecanica ? 'Chassis' : 'Nº Série'}</Label>
                       <Input
                         value={formData.numero_serie}
                         onChange={(e) => setFormData(prev => ({ ...prev, numero_serie: e.target.value }))}
-                        placeholder="Número de série"
+                        placeholder={isOficinaMecanica ? 'Número do chassi (opcional)' : 'Número de série'}
                         className="h-10 text-sm border-gray-200 rounded-lg"
                       />
                     </div>
@@ -3199,7 +3202,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Deixou aparelho</Label>
+                      <Label className="text-xs font-medium text-gray-600">{isOficinaMecanica ? 'Deixou veículo' : 'Deixou aparelho'}</Label>
                       <Select 
                         value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
                         onValueChange={(v) => {
@@ -3285,7 +3288,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('condicoes_equipamento') && "font-bold text-red-600")}>Condições do Equipamento *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('condicoes_equipamento') && "font-bold text-red-600")}>{isOficinaMecanica ? 'Condições do veículo *' : 'Condições do Equipamento *'}</Label>
                         {camposFaltandoState.has('condicoes_equipamento') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3302,7 +3305,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             });
                           }
                         }}
-                        placeholder="Estado físico do aparelho: riscos, trincas, amassados..."
+                        placeholder={isOficinaMecanica ? 'Estado físico do veículo: riscos, amassados, quilometragem...' : 'Estado físico do aparelho: riscos, trincas, amassados...'}
                         rows={3}
                         className={cn("resize-none text-sm border-gray-200 rounded-lg min-h-[80px]", camposFaltandoState.has('condicoes_equipamento') && "border-red-500 border-2 bg-red-50")}
                         required
@@ -3398,7 +3401,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       }}
                     >
                       <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('possui_senha') && "border-red-500 border-2 bg-red-50")}>
-                        <SelectValue placeholder="Selecione se o aparelho possui senha">
+                        <SelectValue placeholder={isOficinaMecanica ? 'Selecione se o veículo possui chave/senha' : 'Selecione se o aparelho possui senha'}>
                           {formData.possui_senha_tipo === 'sim' && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && 'SIM - DESLIZAR (DESENHO)'}
                           {formData.possui_senha_tipo === 'nao' && 'NÃO'}
@@ -3419,10 +3422,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     {formData.possui_senha_tipo === 'sim' && (
                       <div className="space-y-1">
                         <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('senha_aparelho') && "font-bold text-red-600")}>
-                          Senha do aparelho *
+                          {isOficinaMecanica ? 'Chave ou código do veículo *' : 'Senha do aparelho *'}
                         </Label>
                         {camposFaltandoState.has('senha_aparelho') && (
-                          <p className="text-xs text-red-600">Preencha a senha quando &quot;Possui senha&quot; for SIM.</p>
+                          <p className="text-xs text-red-600">{isOficinaMecanica ? 'Preencha quando "Possui senha/chave" for SIM.' : 'Preencha a senha quando "Possui senha" for SIM.'}</p>
                         )}
                         <Input
                           type="text"
@@ -3433,7 +3436,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               setCamposFaltandoState(prev => { const next = new Set(prev); next.delete('senha_aparelho'); return next; });
                             }
                           }}
-                          placeholder="Digite a senha do aparelho"
+                          placeholder={isOficinaMecanica ? 'Chave ou código (ex.: chave reserva)' : 'Digite a senha do aparelho'}
                           className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('senha_aparelho') && "border-red-500 border-2 bg-red-50")}
                         />
                       </div>
@@ -3461,13 +3464,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
                   <div className="border-t border-gray-100 pt-4">
-                    <Label className="text-xs font-medium text-gray-600 mb-2 block">Referência Visual do Aparelho</Label>
+                    <Label className="text-xs font-medium text-gray-600 mb-2 block">{isOficinaMecanica ? 'Referência Visual do Veículo' : 'Referência Visual do Aparelho'}</Label>
                     <div className="h-[220px] flex items-center justify-center bg-gray-50/50 rounded-xl border border-gray-200 p-2">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
                         onDefectsChange={(defects) => setFormData(prev => ({ ...prev, areas_defeito: defects }))}
                         readOnly={false}
+                        variant={isOficinaMecanica ? 'veiculo' : 'aparelho'}
                       />
                     </div>
                     <div className="flex items-center justify-between mt-2 px-1">
@@ -6187,7 +6191,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           <DialogHeader>
             <DialogTitle>Checklist de Saída - OS #{currentOS?.numero}</DialogTitle>
             <DialogDescription>
-              Marque os itens verificados antes de finalizar a manutenção. O aparelho será aprovado ou reprovado com base neste checklist.
+              Marque os itens verificados antes de finalizar a manutenção. O {isOficinaMecanica ? 'veículo' : 'aparelho'} será aprovado ou reprovado com base neste checklist.
             </DialogDescription>
           </DialogHeader>
 
@@ -6271,7 +6275,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Resultado do Checklist</CardTitle>
-                <CardDescription>O aparelho foi aprovado ou reprovado no checklist de saída?</CardDescription>
+                <CardDescription>O {isOficinaMecanica ? 'veículo' : 'aparelho'} foi aprovado ou reprovado no checklist de saída?</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-4">

@@ -66,6 +66,7 @@ import Relatorios from "./pages/Relatorios";
 import Pedidos from "./pages/Pedidos";
 import Inventario from "./pages/Inventario";
 import Orcamentos from "./pages/Orcamentos";
+import Veiculos from "./pages/Veiculos";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
 import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
@@ -256,6 +257,8 @@ const App = () => {
               {/* Redirect antigo /pdv/os para /os */}
               <Route path="/pdv/os" element={<Navigate to="/os" replace />} />
               <Route path="/pdv/os/*" element={<Navigate to="/os" replace />} />
+              {/* Veículos (oficina / assistência) */}
+              <Route path="/veiculos" element={<PermissionRoute permission="clientes.view"><Veiculos /></PermissionRoute>} />
               <Route path="/clientes" element={<PermissionRoute permission="clientes.view"><AssistenciaClientes /></PermissionRoute>} />
               <Route path="/pdv/clientes" element={<Navigate to="/clientes" replace />} />
               <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />

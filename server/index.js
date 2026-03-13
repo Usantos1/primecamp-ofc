@@ -1288,7 +1288,7 @@ app.get('/api/me/segment-menu', authenticateToken, async (req, res) => {
     const segmentoNome = seg.rows[0]?.nome || null;
     const segmentoSlug = seg.rows[0]?.slug || null;
     const menuResult = await pool.query(
-      `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, sm.ordem_menu
+      `SELECT m.id, m.nome, m.slug, m.path, m.label_menu, m.icone, m.categoria, sm.ordem_menu
        FROM modulos m
        INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo
        WHERE m.ativo
@@ -1299,7 +1299,7 @@ app.get('/api/me/segment-menu', authenticateToken, async (req, res) => {
       segmento_id: segmentoId,
       segmento_nome: segmentoNome,
       segmento_slug: segmentoSlug,
-      menu: (menuResult.rows || []).map((r) => ({ id: r.id, path: r.path, label_menu: r.label_menu || r.nome, slug: r.slug, icone: r.icone })),
+      menu: (menuResult.rows || []).map((r) => ({ id: r.id, path: r.path, label_menu: r.label_menu || r.nome, slug: r.slug, icone: r.icone, categoria: r.categoria || 'operacao' })),
     });
   } catch (err) {
     console.error('[segment-menu]', err);

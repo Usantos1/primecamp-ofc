@@ -409,7 +409,7 @@ export default function MarcasModelos() {
               <Input 
                 value={marcaNome} 
                 onChange={(e) => setMarcaNome(e.target.value)} 
-                placeholder="Ex: Samsung, Apple, Motorola..."
+                placeholder={isOficina ? "Ex: Fiat, Volkswagen, Chevrolet..." : "Ex: Samsung, Apple, Motorola..."}
                 className="h-9 md:h-10 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800"
               />
             </div>
@@ -457,7 +457,7 @@ export default function MarcasModelos() {
               <Input 
                 value={modeloNome} 
                 onChange={(e) => setModeloNome(e.target.value)} 
-                placeholder="Ex: iPhone 15, Galaxy S24, Moto G84..."
+                placeholder={isOficina ? "Ex: Uno, Gol, Onix, Civic..." : "Ex: iPhone 15, Galaxy S24, Moto G84..."}
                 className="h-9 md:h-10 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800"
               />
             </div>

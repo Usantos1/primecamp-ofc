@@ -24,6 +24,10 @@ export interface OSPDFData {
 
 export async function generateOSPDF(data: OSPDFData): Promise<string> {
   const { os, clienteNome, clienteCpf, clienteEndereco, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, imagemReferenciaUrl, areasDefeito } = data;
+  const isVeiculo = os.tipo_aparelho === 'veiculo';
+  const eqLabel = isVeiculo ? 'VEÍCULO' : 'EQUIPAMENTO';
+  const placaOuImei = isVeiculo ? 'Placa' : 'IMEI';
+  const condicoesTexto = isVeiculo ? 'Veículos não retirados' : 'Aparelhos não retirados';
 
   // Gerar QR Code
   let qrCodeImg = '';
@@ -75,7 +79,7 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
 
     imagemReferenciaHtml = `
       <div style="text-align: center;">
-        <div style="font-weight: bold; font-size: 8px; margin-bottom: 1px;">Ref. Aparelho${defectPoints.length > 0 ? ` • ${defectPoints.length} defeitos` : ''}</div>
+        <div style="font-weight: bold; font-size: 8px; margin-bottom: 1px;">Ref. ${isVeiculo ? 'Veículo' : 'Aparelho'}${defectPoints.length > 0 ? ` • ${defectPoints.length} defeitos` : ''}</div>
         <div style="position: relative; display: inline-block; max-width: 100%;">
           <img src="${imagemReferenciaUrl}" style="max-width: 100%; max-height: 80px; object-fit: contain; border: 1px solid #000; display: block;" alt="Ref" />
           ${defectMarkers ? `
@@ -167,9 +171,9 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
             <div style="font-size: 7px;">End: ${clienteEndereco || '—'}</div>
           </td>
           <td style="padding: 2px 3px; border: 1px solid #000; width: 50%; vertical-align: top;">
-            <div style="font-weight: bold; font-size: 10px; margin-bottom: 1px;">EQUIPAMENTO</div>
+            <div style="font-weight: bold; font-size: 10px; margin-bottom: 1px;">${eqLabel}</div>
             <div style="font-size: 9px;">${os.tipo_aparelho || '-'} ${marcaNome || os.marca_nome || ''} ${modeloNome || os.modelo_nome || ''}</div>
-            ${os.imei ? `<div style="font-size: 8px;">IMEI: ${os.imei}</div>` : ''}
+            ${os.imei ? `<div style="font-size: 8px;">${placaOuImei}: ${os.imei}</div>` : ''}
             ${os.numero_serie ? `<div style="font-size: 8px;">Série: ${os.numero_serie}</div>` : ''}
             ${os.cor ? `<div style="font-size: 8px;">Cor: <strong>${os.cor}</strong></div>` : ''}
           </td>
@@ -242,8 +246,8 @@ export async function generateOSPDF(data: OSPDFData): Promise<string> {
               <div>2. Não trocamos peças por mal uso.</div>
               <div>3. Apresente este comprovante para retirada.</div>
               <div>4. Informe o número da OS ao ligar.</div>
-              <div>5. Aparelhos não retirados em 30 dias terão taxa de 6% ao mês.</div>
-              <div>6. Aparelhos não retirados em 90 dias serão descartados.</div>
+              <div>5. ${condicoesTexto} em 30 dias terão taxa de 6% ao mês.</div>
+              <div>6. ${condicoesTexto} em 90 dias serão descartados.</div>
             </div>
           </td>
           ${qrCodeImg ? `

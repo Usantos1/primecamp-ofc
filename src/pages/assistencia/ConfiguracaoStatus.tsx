@@ -22,11 +22,16 @@ import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCompanySegment } from '@/hooks/useCompanySegment';
 
 export default function ConfiguracaoStatusPage() {
+  const { segmentoSlug } = useCompanySegment();
+  const isOficina = segmentoSlug === 'oficina_mecanica';
   const { configuracoes, isLoadingConfig, loadConfiguracoes, updateConfig, createConfig, deleteConfig } = useConfiguracaoStatus();
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const refLabel = isOficina ? 'Veículo' : 'Aparelho';
+  const refDesc = isOficina ? 'vista do veículo (ex.: carro por ângulo)' : 'frente e verso do aparelho';
   const { imageUrl, uploading, uploadImage, deleteImage } = useOSImageReference();
   const { itemsEntradaAll, itemsSaidaAll, createItem, updateItem, deleteItem, isLoading: isLoadingChecklist } = useChecklistConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -308,10 +313,10 @@ export default function ConfiguracaoStatusPage() {
         <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
           <CardTitle className="flex items-center gap-2 text-base md:text-lg">
             <ImageIcon className="h-4 w-4 md:h-5 md:w-5" />
-            Imagem de Referência do Aparelho
+            Imagem de Referência do {refLabel}
           </CardTitle>
           <CardDescription className="text-xs md:text-sm">
-            Configure uma imagem única (frente e verso) que será exibida como referência visual em todas as OS
+            {isOficina ? 'Configure uma imagem do veículo que será exibida como referência visual nas OS (ex.: carro por ângulo).' : 'Configure uma imagem única (frente e verso) que será exibida como referência visual em todas as OS'}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-3 md:p-6 space-y-3 md:space-y-4">
@@ -320,7 +325,7 @@ export default function ConfiguracaoStatusPage() {
               <div className="flex items-center justify-center bg-muted/20 rounded-lg border-2 border-dashed border-gray-300 p-3 md:p-4">
                 <img
                   src={imageUrl}
-                  alt="Referência visual do aparelho (frente e verso)"
+                  alt={`Referência visual do ${refLabel.toLowerCase()} (${refDesc})`}
                   className="max-w-full max-h-48 md:max-h-64 w-auto h-auto object-contain"
                 />
               </div>
@@ -353,7 +358,7 @@ export default function ConfiguracaoStatusPage() {
                   Nenhuma imagem de referência configurada
                 </p>
                 <p className="text-[10px] md:text-xs text-muted-foreground">
-                  Faça upload de uma imagem PNG ou JPG (máx. 2MB) contendo frente e verso do aparelho
+                  Faça upload de uma imagem PNG ou JPG (máx. 2MB) contendo {refDesc}
                 </p>
               </div>
               <Button
@@ -818,12 +823,12 @@ export default function ConfiguracaoStatusPage() {
             </TabsContent>
 
             <TabsContent value="imagem" className="space-y-4 md:space-y-6">
-          {/* Seção: Imagem de Referência do Aparelho */}
+          {/* Seção: Imagem de Referência do Aparelho/Veículo */}
           <Card className="border-2 border-gray-300">
             <CardHeader className="pb-2 md:pb-3 pt-3 md:pt-6">
               <CardTitle className="flex items-center gap-2 text-base md:text-lg">
                 <ImageIcon className="h-4 w-4 md:h-5 md:w-5" />
-                Imagem de Referência do Aparelho
+                Imagem de Referência do {refLabel}
               </CardTitle>
               <CardDescription className="text-xs md:text-sm">
                 Configure uma imagem única (frente e verso) que será exibida como referência visual em todas as OS
@@ -835,7 +840,7 @@ export default function ConfiguracaoStatusPage() {
                   <div className="flex items-center justify-center bg-muted/20 rounded-lg border-2 border-dashed border-gray-300 p-3 md:p-4">
                     <img
                       src={imageUrl}
-                      alt="Referência visual do aparelho (frente e verso)"
+                      alt={`Referência visual do ${refLabel.toLowerCase()} (${refDesc})`}
                       className="max-w-full max-h-48 md:max-h-64 w-auto h-auto object-contain"
                     />
                   </div>
@@ -868,7 +873,7 @@ export default function ConfiguracaoStatusPage() {
                       Nenhuma imagem de referência configurada
                     </p>
                     <p className="text-[10px] md:text-xs text-muted-foreground">
-                      Faça upload de uma imagem PNG ou JPG (máx. 2MB) contendo frente e verso do aparelho
+                      Faça upload de uma imagem PNG ou JPG (máx. 2MB) contendo {refDesc}
                     </p>
                   </div>
                   <Button
