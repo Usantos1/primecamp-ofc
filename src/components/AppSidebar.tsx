@@ -132,9 +132,7 @@ export function AppSidebar() {
   const hasRoleMenu = Array.isArray(roleMenu) && roleMenu.length > 0;
   const homePath = roleMenuData?.home_path || null;
   const roleDisplayName = roleMenuData?.role_display_name || null;
-  // Se o cargo tem "Módulos e menu" configurado, usa esse menu
-  const useRoleMenu = hasRoleMenu;
-  // Menu padrão quando empresa sem segmento (ex.: PRIME CAMP LTDA) — mesmo conjunto do segmento Assistência
+  // Menu padrão quando empresa sem segmento — sempre menu limitado (estilo Assistência), mesmo que o cargo tenha menu
   const DEFAULT_MENU_WHEN_NO_SEGMENT: { path: string; label_menu: string; icone?: string; categoria: string }[] = [
     { path: "/", label_menu: "Dashboard", icone: "home", categoria: "operacao" },
     { path: "/pdv", label_menu: "PDV", icone: "shopping-cart", categoria: "operacao" },
@@ -147,18 +145,14 @@ export function AppSidebar() {
     { path: "/pedidos", label_menu: "Pedidos", icone: "list", categoria: "estoque" },
     { path: "/inventario", label_menu: "Inventário", icone: "list", categoria: "estoque" },
   ];
-  const segmentLoaded = segmentMenuData !== undefined;
-  const usingDefaultSegment = segmentLoaded && !hasSegmentMenu && !hasRoleMenu;
-  const menuToUse = useRoleMenu
-    ? roleMenu
-    : hasSegmentMenu
-      ? segmentMenu
-      : segmentLoaded
-        ? DEFAULT_MENU_WHEN_NO_SEGMENT
-        : segmentMenu;
-  // Usar lista filtrada (segmento, cargo ou padrão) em vez da lista completa; sem segmento = menu padrão (Assistência)
-  const useSegmentOrRoleList =
-    hasSegmentMenu || hasRoleMenu || usingDefaultSegment;
+  // Sem segmento (ou ainda carregando) = menu limitado; com segmento = menu da API
+  const usingDefaultSegment = !hasSegmentMenu;
+  const useRoleMenu = hasRoleMenu && hasSegmentMenu;
+  const menuToUse = hasSegmentMenu
+    ? (useRoleMenu ? roleMenu : segmentMenu)
+    : DEFAULT_MENU_WHEN_NO_SEGMENT;
+  // Usar lista filtrada; sem segmento = sempre padrão limitado (nunca lista completa)
+  const useSegmentOrRoleList = hasSegmentMenu || hasRoleMenu || usingDefaultSegment;
   
   // Função para verificar permissão
   const checkPermission = (permission: string): boolean => {
@@ -276,11 +270,12 @@ export function AppSidebar() {
     { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
     { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
   ];
-  // Com usuário logado: só exibir após menu por cargo ter respondido; nunca mostrar lista base antes disso (evita flash)
+  // Sem segmento (menu padrão): não exibir Relatórios/Financeiro/Alertas; com segmento/cargo segue lógica abaixo
   const roleMenuSettled = !user?.id || roleMenuData !== undefined;
   const menuNotReady = permissionsLoading || !roleMenuSettled;
-  const relatoriosItemsRaw =
-    user?.id
+  const relatoriosItemsRaw = usingDefaultSegment
+    ? segmentByCategory.gestao
+    : user?.id
       ? (hasRoleMenu ? segmentByCategory.gestao : relatoriosItemsBase)
       : (useSegmentOrRoleList ? segmentByCategory.gestao : relatoriosItemsBase);
   const relatoriosItems = menuNotReady
@@ -298,7 +293,7 @@ export function AppSidebar() {
     { label: "Recursos Humanos", path: "/rh", icon: Users, permission: "rh.view" },
     { label: "Ponto Eletrônico", path: "/ponto", icon: Clock, permission: "rh.ponto" },
   ];
-  const gestaoItems = (useSegmentOrRoleList ? [] : gestaoItemsBase).filter(
+  const gestaoItems = (useSegmentOrRoleList || usingDefaultSegment ? [] : gestaoItemsBase).filter(
     item => useRoleMenu || !item.permission || checkPermission(item.permission)
   );
 
@@ -462,7 +457,7 @@ export function AppSidebar() {
                     {profile?.display_name || user?.email?.split('@')[0]}
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate leading-tight uppercase tracking-wide">
-                    {roleDisplayName || (userIsAdmin ? "Administrador" : null) || companyName || profile?.department || "Atendimento"}
+                    {companyName || roleDisplayName || (userIsAdmin ? "Administrador" : null) || profile?.department || "Atendimento"}
                   </p>
                 </div>
                 
