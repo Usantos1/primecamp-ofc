@@ -1402,8 +1402,17 @@ app.get('/api/me/role-menu', authenticateToken, async (req, res) => {
           [roleId]
         );
       }
+      let menuRows = menuResult.rows || [];
+      if (isVendedor) {
+        const bloqueadosVendedor = ['/pdv', '/orcamentos', '/relatorios', '/financeiro', '/painel-alertas'];
+        menuRows = menuRows.filter((r) => {
+          const p = (r.path || '').replace(/\/$/, '') || '/';
+          const bloqueado = bloqueadosVendedor.includes(p) || (r.categoria || '') === 'gestao';
+          return !bloqueado;
+        });
+      }
       return res.json({
-        menu: (menuResult.rows || []).map((r) => ({
+        menu: menuRows.map((r) => ({
           id: r.id,
           path: r.path || '/',
           label_menu: r.label_menu || r.nome,
@@ -1426,7 +1435,7 @@ app.get('/api/me/role-menu', authenticateToken, async (req, res) => {
            FROM modulos m
            INNER JOIN segmentos_modulos sm ON sm.modulo_id = m.id AND sm.segmento_id = $1 AND sm.ativo = true
            WHERE m.ativo
-             AND (m.path IS NULL OR m.path != '/pdv')
+             AND (m.path IS NULL OR (m.path != '/pdv' AND m.path != '/orcamentos'))
              AND (m.categoria IS NULL OR m.categoria != 'gestao')
            ORDER BY sm.ordem_menu, m.nome`,
           [segmentoId]
