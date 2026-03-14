@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { FlaskConical } from 'lucide-react';
 import { HeroVisualProof } from './HeroVisualProof';
 
-const VALUE_LINE = 'OS • PDV • Estoque • Financeiro • Relatórios • Alertas';
+const VALUE_LINE = 'PDV • OS • Estoque • Gestão • Financeiro • Relógio de ponto • Relatórios • Alertas';
 
 interface LandingHeroProps {
   onOpenDemo?: () => void;
@@ -21,20 +21,26 @@ export function LandingHero({ onOpenDemo }: LandingHeroProps) {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight text-[#F5F7F6] mb-6"
+          className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl font-extrabold leading-[1.15] tracking-tight text-[#F5F7F6] mb-4"
         >
-          A maioria das assistências trabalha no improviso.
-          <br />
-          <span className="text-[#00F7A5]">As que crescem trabalham com sistema.</span>
+          O improviso faz sua assistência perder dinheiro todos os dias.
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.5 }}
-          className="text-lg sm:text-xl text-[#9AA4A0] mb-4"
+          className="text-lg sm:text-xl text-[#9AA4A0] mb-2 max-w-lg leading-snug"
         >
-          Ordens de serviço organizadas. Estoque controlado. Financeiro claro. Alertas automáticos no WhatsApp.
+          Ordem de Serviço no papel, cliente cobrando status, peça sumindo, risco de entregar aparelho errado e lucro desaparecendo no meio de taxa, despesa e desorganização.
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-base sm:text-lg text-[#00F7A5] font-medium mb-3 max-w-lg"
+        >
+          O Ativa FIX coloca ordem na sua assistência com controle de OS, estoque, vendas, caixa e financeiro em um só lugar.
         </motion.p>
 
         <motion.p
@@ -61,7 +67,7 @@ export function LandingHero({ onOpenDemo }: LandingHeroProps) {
               className="landing-btn landing-btn-primary inline-flex items-center justify-center gap-3 px-8 py-4 font-bold text-base border border-[#00F7A5]/40 rounded-full w-full sm:w-auto"
             >
               <FlaskConical className="w-5 h-5 shrink-0" />
-              Testar o Sistema
+              Testar grátis
             </motion.button>
           </motion.div>
         )}
