@@ -1642,13 +1642,16 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     try {
       const tecnico = formData.tecnico_id ? getColaboradorById(formData.tecnico_id) : null;
       
-      // Atualizar se já existe OS em tela (edição por URL ou OS recém-criada antes de concluir o checklist)
-      if (currentOS) {
+      // ID da OS já existente: em memória (currentOS) OU só na URL (evita create duplicado se o cache ainda não carregou)
+      const existingOsId = currentOS?.id ?? (isEditing && id ? id : undefined);
+
+      // Atualizar se já existe OS (edição por URL, cache atrasado ou OS recém-criada antes do checklist)
+      if (existingOsId) {
         // Marcar orçamento como autorizado se houver valores
         const temOrcamento = (formData.orcamento_desconto && formData.orcamento_desconto > 0) || 
                             (formData.orcamento_parcelado && formData.orcamento_parcelado > 0);
         
-        const osAtualizada = await updateOS(currentOS.id, {
+        const osAtualizada = await updateOS(existingOsId, {
           ...formData,
           orcamento_parcelado: formData.orcamento_parcelado ?? 0,
           orcamento_desconto: formData.orcamento_desconto ?? 0,

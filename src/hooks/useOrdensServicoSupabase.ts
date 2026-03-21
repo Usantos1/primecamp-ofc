@@ -218,9 +218,48 @@ export function useOrdensServicoSupabase() {
   const updateOS = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<OrdemServico> }): Promise<OrdemServico> => {
       // Campos UUID: enviar null em vez de "" para evitar "invalid input syntax for type uuid"
-      const UUID_FIELDS = ['cliente_id', 'marca_id', 'modelo_id', 'tecnico_id', 'company_id'];
+      const UUID_FIELDS = [
+        'cliente_id',
+        'marca_id',
+        'modelo_id',
+        'tecnico_id',
+        'company_id',
+        'checklist_entrada_realizado_por_id',
+        'checklist_saida_realizado_por_id',
+        'vendedor_id',
+        'atendente_id',
+        'created_by',
+      ];
       const sanitized = { ...data };
       for (const key of UUID_FIELDS) {
+        if (key in sanitized && (sanitized as any)[key] === '') {
+          (sanitized as any)[key] = null;
+        }
+      }
+
+      // timestamptz: "" quebra o Postgres ("invalid input syntax for type timestamp with time zone")
+      const TIMESTAMPTZ_FIELDS = [
+        'checklist_entrada_realizado_em',
+        'checklist_saida_realizado_em',
+        'created_at',
+        'updated_at',
+      ];
+      for (const key of TIMESTAMPTZ_FIELDS) {
+        if (key in sanitized && (sanitized as any)[key] === '') {
+          (sanitized as any)[key] = null;
+        }
+      }
+
+      // DATE / TIME: "" também pode falhar em updates vindos do formulário
+      // Não incluir data_entrada: NOT NULL no banco; "" não deve vir do form em update típico
+      const DATE_FIELDS = ['previsao_entrega', 'data_conclusao', 'data_entrega', 'data_saida'];
+      for (const key of DATE_FIELDS) {
+        if (key in sanitized && (sanitized as any)[key] === '') {
+          (sanitized as any)[key] = null;
+        }
+      }
+      const TIME_FIELDS = ['hora_entrada', 'hora_previsao'];
+      for (const key of TIME_FIELDS) {
         if (key in sanitized && (sanitized as any)[key] === '') {
           (sanitized as any)[key] = null;
         }
