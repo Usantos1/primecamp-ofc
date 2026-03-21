@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +17,7 @@ import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import { useToast } from '@/hooks/use-toast';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 import { Lock, Plus, Minus } from 'lucide-react';
+import { SALE_STATUS_LABELS, type SaleStatus } from '@/types/pdv';
 
 type CashSession = {
   id: string;
@@ -41,17 +43,22 @@ interface Props {
 }
 
 function labelForma(forma: string) {
-  const f = (forma || '').toLowerCase();
+  const f = (forma || '').toLowerCase().replace(/\s+/g, '_');
   switch (f) {
     case 'dinheiro': return 'Dinheiro';
     case 'pix': return 'PIX';
+    case 'pix_samup': return 'PIX Samup';
     case 'debito': return 'Débito';
     case 'credito': return 'Crédito';
     case 'credito_parcelado': return 'Crédito parcelado';
     case 'link_pagamento': return 'Link';
     case 'carteira_digital': return 'Carteira';
+    case 'fiado': return 'Fiado';
+    case 'adiantamento_os': return 'Adiantamento OS';
     case 'adiantamento os': return 'Adiantamento OS';
-    default: return forma || 'Outros';
+    default:
+      if (!forma?.trim()) return '—';
+      return forma.replace(/_/g, ' ');
   }
 }
 
@@ -150,6 +157,64 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
   const selectedSessionId = selected?.id ?? '';
   const { movements, addMovement } = useCashMovements(selectedSessionId);
 
+  /** Vendas da sessão aberta no modal (lista detalhada com pagamentos) */
+  const { data: sessionSalesRows = [], isLoading: loadingSessionSales } = useQuery({
+    queryKey: ['cash-session-sales-detail', selectedSessionId],
+    enabled: !!selectedSessionId,
+    queryFn: async () => {
+      const { data: salesRows, error } = await from('sales')
+        .select(
+          'id, numero, created_at, cliente_nome, subtotal, desconto_total, total, status, sale_origin, ordem_servico_id'
+        )
+        .eq('cash_register_session_id', selectedSessionId)
+        .order('created_at', { ascending: false })
+        .execute();
+      if (error) {
+        console.warn('Erro ao buscar vendas da sessão:', error);
+        return [];
+      }
+      const rawSales = (salesRows || []) as {
+        id: string;
+        numero?: number;
+        created_at?: string;
+        cliente_nome?: string | null;
+        subtotal?: number;
+        desconto_total?: number;
+        total?: number;
+        status?: string;
+        sale_origin?: string | null;
+        ordem_servico_id?: string | null;
+      }[];
+      const sales = rawSales.filter(
+        (s) => s.status && !['draft', 'canceled', 'refunded', 'partial_refund'].includes(s.status)
+      );
+      const ids = sales.map((s) => s.id).filter(Boolean);
+      let payments: {
+        sale_id: string;
+        forma_pagamento?: string;
+        valor?: number;
+        troco?: number;
+        parcelas?: number | null;
+        status?: string;
+      }[] = [];
+      if (ids.length > 0) {
+        const payRes = await from('payments')
+          .select('sale_id, forma_pagamento, valor, troco, parcelas, status')
+          .in('sale_id', ids)
+          .execute();
+        payments = (payRes.data || []) as typeof payments;
+      }
+      const bySale: Record<string, typeof payments> = {};
+      payments.forEach((p) => {
+        if (p.status && p.status !== 'confirmed') return;
+        if (!bySale[p.sale_id]) bySale[p.sale_id] = [];
+        bySale[p.sale_id].push(p);
+      });
+      return sales.map((s) => ({ sale: s, payments: bySale[s.id] || [] }));
+    },
+    staleTime: 15 * 1000,
+  });
+
   useEffect(() => {
     setShowCloseForm(false);
     setShowMovementForm(false);
@@ -177,6 +242,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
       setValorFinal('');
       setJustificativa('');
       queryClient.invalidateQueries({ queryKey: ['cash-register-sessions-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-session-sales-detail'] });
     } catch (e: any) {
       toast({ title: e?.message || 'Erro ao fechar caixa', variant: 'destructive' });
     } finally {
@@ -202,6 +268,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
       setMovementValor('');
       setMovementMotivo('');
       queryClient.invalidateQueries({ queryKey: ['cash-register-sessions-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-session-sales-detail'] });
     } catch (e: any) {
       toast({ title: e?.message || 'Erro ao registrar', variant: 'destructive' });
     } finally {
@@ -397,13 +464,13 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
       </CardContent>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl w-[min(96vw,1152px)] max-h-[92vh] flex flex-col gap-0 p-6 overflow-hidden">
+          <DialogHeader className="shrink-0 pr-8">
             <DialogTitle>Detalhes do Caixa #{selected?.numero ?? '-'}</DialogTitle>
           </DialogHeader>
 
           {selected && (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground">Operador(a)</div>
@@ -437,7 +504,7 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                 </div>
               </div>
 
-              <div className="border rounded-lg p-4">
+              <div className="border rounded-lg p-4 shrink-0">
                 <div className="font-semibold mb-2">Totais por forma de pagamento</div>
                 {selected.totais_forma_pagamento && Object.keys(selected.totais_forma_pagamento).length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -450,6 +517,94 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">Sem totais registrados (caixa ainda aberto ou não conferido)</div>
+                )}
+              </div>
+
+              <div className="border rounded-lg overflow-hidden flex flex-col min-h-[200px]">
+                <div className="px-4 py-3 border-b bg-muted/40 font-semibold shrink-0">
+                  Vendas nesta sessão ({sessionSalesRows.length})
+                </div>
+                {loadingSessionSales ? (
+                  <div className="p-6 text-sm text-muted-foreground">Carregando vendas…</div>
+                ) : sessionSalesRows.length === 0 ? (
+                  <div className="p-6 text-sm text-muted-foreground">Nenhuma venda vinculada a esta sessão de caixa.</div>
+                ) : (
+                  <ScrollArea className="h-[min(45vh,440px)] w-full">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[72px]">Nº</TableHead>
+                          <TableHead className="w-[130px]">Data / hora</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead className="w-[72px] text-center">Origem</TableHead>
+                          <TableHead className="w-[88px] text-center">Status</TableHead>
+                          <TableHead className="text-right w-[100px]">Subtotal</TableHead>
+                          <TableHead className="text-right w-[90px]">Desconto</TableHead>
+                          <TableHead className="text-right w-[100px] font-semibold">Total</TableHead>
+                          <TableHead className="min-w-[220px]">Formas de pagamento</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sessionSalesRows.map(({ sale: s, payments: pays }) => {
+                          const sub = Number(s.subtotal ?? 0);
+                          const desc = Number(s.desconto_total ?? 0);
+                          const tot = Number(s.total ?? 0);
+                          const st = (s.status || '') as SaleStatus;
+                          const statusLabel = SALE_STATUS_LABELS[st] || s.status || '—';
+                          return (
+                            <TableRow key={s.id}>
+                              <TableCell className="font-mono text-sm">#{s.numero ?? '—'}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                {s.created_at ? dateFormatters.short(s.created_at) : '—'}
+                              </TableCell>
+                              <TableCell className="max-w-[200px]">
+                                <span className="line-clamp-2 font-medium">{s.cliente_nome?.trim() || '—'}</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                  {s.sale_origin === 'OS' ? 'OS' : 'PDV'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{statusLabel}</span>
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">{fmt(sub)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-amber-700 dark:text-amber-400">
+                                {desc > 0 ? `−${fmt(desc)}` : fmt(0)}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">{fmt(tot)}</TableCell>
+                              <TableCell>
+                                {pays.length === 0 ? (
+                                  <span className="text-xs text-muted-foreground">Sem pagamentos confirmados</span>
+                                ) : (
+                                  <ul className="space-y-1.5 text-xs">
+                                    {pays.map((p, idx) => {
+                                      const v = Number(p.valor || 0);
+                                      const troco = Number(p.troco || 0);
+                                      const forma = labelForma(p.forma_pagamento || '');
+                                      const parcelas = p.parcelas && p.parcelas > 1 ? ` · ${p.parcelas}x` : '';
+                                      const ehDinheiro = (p.forma_pagamento || '').toLowerCase() === 'dinheiro';
+                                      return (
+                                        <li key={idx} className="border-l-2 border-primary/40 pl-2">
+                                          <span className="font-medium">{forma}</span>
+                                          <span className="text-muted-foreground"> · </span>
+                                          <span className="tabular-nums font-semibold">{fmt(v)}</span>
+                                          {parcelas}
+                                          {ehDinheiro && troco > 0 && (
+                                            <span className="text-muted-foreground"> · Troco {fmt(troco)}</span>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
                 )}
               </div>
 
