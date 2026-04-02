@@ -27,14 +27,6 @@ interface DRECompleteProps {
   valuesVisible?: boolean;
 }
 
-// Função para extrair custo da observação
-const extractCusto = (observacoes: string | null): number => {
-  if (!observacoes) return 0;
-  const custoMatch = observacoes.match(/Custo:\s*R\$\s*([\d.,]+)/i);
-  if (!custoMatch) return 0;
-  return parseFloat(custoMatch[1].replace(/\./g, '').replace(',', '.')) || 0;
-};
-
 export function DREComplete({
   month,
   startDate,
@@ -53,14 +45,14 @@ export function DREComplete({
   const transactions: any[] = [];
   const categories: any[] = [];
 
-  // Buscar vendas do período (incluindo observacoes para extrair custo)
+  // Buscar vendas do período
   const { data: sales = [], isLoading: salesLoading } = useQuery({
     queryKey: ['sales-dre', startDate, endDate],
     queryFn: async () => {
       try {
         let q = from('sales')
-          .select('id, total, observacoes, created_at')
-          .eq('status', 'paid');
+          .select('id, total, ordem_servico_id, created_at')
+          .in('status', ['paid', 'partial']);
         
         if (startDate && endDate && startDate !== '' && endDate !== '') {
           q = q.gte('created_at', startDate).lte('created_at', endDate + 'T23:59:59');
@@ -77,6 +69,97 @@ export function DREComplete({
         return [];
       }
     },
+  });
+
+  const salesIds = React.useMemo(
+    () => (Array.isArray(sales) ? sales.map((s: any) => s.id).filter(Boolean) : []),
+    [sales]
+  );
+  const ordemServicoIds = React.useMemo(
+    () =>
+      (Array.isArray(sales) ? sales.map((s: any) => s.ordem_servico_id).filter(Boolean) : []).filter(
+        (id: any, idx: number, arr: any[]) => arr.indexOf(id) === idx
+      ),
+    [sales]
+  );
+
+  // Itens de venda (PDV/OS) para calcular custo real por produto
+  const { data: saleItems = [] } = useQuery({
+    queryKey: ['sale-items-dre', salesIds],
+    queryFn: async () => {
+      if (salesIds.length === 0) return [];
+      try {
+        const { data, error } = await from('sale_items')
+          .select('id, sale_id, produto_id, quantidade')
+          .in('sale_id', salesIds)
+          .execute();
+        if (error) {
+          console.warn('Erro ao buscar sale_items DRE:', error);
+          return [];
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar sale_items DRE:', err);
+        return [];
+      }
+    },
+    enabled: salesIds.length > 0,
+  });
+
+  // Itens de OS (peças) para garantir CMV de peças quando não houver sale_items vinculado
+  const { data: osItems = [] } = useQuery({
+    queryKey: ['os-items-dre', ordemServicoIds],
+    queryFn: async () => {
+      if (ordemServicoIds.length === 0) return [];
+      try {
+        const { data, error } = await from('os_items')
+          .select('id, ordem_servico_id, tipo, produto_id, quantidade, valor_unitario, valor_total')
+          .in('ordem_servico_id', ordemServicoIds)
+          .execute();
+        if (error) {
+          console.warn('Erro ao buscar os_items DRE:', error);
+          return [];
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar os_items DRE:', err);
+        return [];
+      }
+    },
+    enabled: ordemServicoIds.length > 0,
+  });
+
+  const produtoIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    (Array.isArray(saleItems) ? saleItems : []).forEach((item: any) => {
+      if (item?.produto_id) ids.add(item.produto_id);
+    });
+    (Array.isArray(osItems) ? osItems : []).forEach((item: any) => {
+      if (item?.produto_id) ids.add(item.produto_id);
+    });
+    return Array.from(ids);
+  }, [saleItems, osItems]);
+
+  const { data: produtos = [] } = useQuery({
+    queryKey: ['produtos-custo-dre', produtoIds],
+    queryFn: async () => {
+      if (produtoIds.length === 0) return [];
+      try {
+        const { data, error } = await from('produtos')
+          .select('id, vi_custo, valor_compra')
+          .in('id', produtoIds)
+          .execute();
+        if (error) {
+          console.warn('Erro ao buscar custos de produtos DRE:', error);
+          return [];
+        }
+        return data || [];
+      } catch (err) {
+        console.warn('Erro ao buscar custos de produtos DRE:', err);
+        return [];
+      }
+    },
+    enabled: produtoIds.length > 0,
   });
   
   // Buscar contas pagas no período (filtrar por payment_date se existir, caso contrário due_date)
@@ -126,6 +209,15 @@ export function DREComplete({
     const validSales = Array.isArray(sales) ? sales : [];
     const validBills = Array.isArray(billsPaid) ? billsPaid : [];
     const validTransactions = Array.isArray(transactions) ? transactions : [];
+    const validSaleItems = Array.isArray(saleItems) ? saleItems : [];
+    const validOsItems = Array.isArray(osItems) ? osItems : [];
+    const validProdutos = Array.isArray(produtos) ? produtos : [];
+    const produtoCustoMap = new Map<string, number>(
+      validProdutos.map((p: any) => [
+        p.id,
+        Number(p.vi_custo ?? p.valor_compra ?? 0) || 0,
+      ])
+    );
     
     // RECEITA BRUTA DE VENDAS
     const receitaBrutaVendas = validSales.reduce((sum: number, s: any) => {
@@ -133,11 +225,43 @@ export function DREComplete({
       return sum + (isNaN(valor) ? 0 : valor);
     }, 0);
     
-    // CMV - Custo das Mercadorias Vendidas (extraído da observação)
-    const cmv = validSales.reduce((sum: number, s: any) => {
-      const valor = extractCusto(s.observacoes);
-      return sum + (isNaN(valor) ? 0 : valor);
+    // CMV - Custo das mercadorias vendidas:
+    // 1) custo real de sale_items (produto vendido)
+    // 2) peças de OS (os_items) apenas quando a venda OS não tiver sale_items vinculados, evitando duplicidade
+    const cmvSaleItems = validSaleItems.reduce((sum: number, item: any) => {
+      const qtd = Number(item.quantidade || 0);
+      const custoUnit = item.produto_id ? (produtoCustoMap.get(item.produto_id) || 0) : 0;
+      if (isNaN(qtd)) return sum;
+      return sum + qtd * custoUnit;
     }, 0);
+
+    const salesComItens = new Set<string>(
+      validSaleItems.map((item: any) => item.sale_id).filter(Boolean)
+    );
+    const osSemSaleItems = new Set<string>(
+      validSales
+        .filter((s: any) => s.ordem_servico_id && !salesComItens.has(s.id))
+        .map((s: any) => s.ordem_servico_id)
+    );
+
+    const cmvOsPecas = validOsItems.reduce((sum: number, item: any) => {
+      if (!item?.ordem_servico_id || !osSemSaleItems.has(item.ordem_servico_id)) return sum;
+      const tipo = String(item.tipo || '').toLowerCase();
+      const isPeca = tipo.includes('peca') || tipo.includes('peça') || !!item.produto_id;
+      if (!isPeca) return sum;
+
+      const qtd = Number(item.quantidade || 0);
+      if (item.produto_id) {
+        const custoUnit = produtoCustoMap.get(item.produto_id) || 0;
+        return sum + (isNaN(qtd) ? 0 : qtd * custoUnit);
+      }
+
+      // Fallback para peça sem produto_id: usa valor informado no item
+      const valorItem = Number(item.valor_total ?? ((Number(item.valor_unitario || 0) || 0) * (isNaN(qtd) ? 0 : qtd)));
+      return sum + (isNaN(valorItem) ? 0 : valorItem);
+    }, 0);
+
+    const cmv = cmvSaleItems + cmvOsPecas;
     
     // LUCRO BRUTO
     const lucroBruto = receitaBrutaVendas - cmv;
@@ -201,7 +325,9 @@ export function DREComplete({
       impostos,
       lucroLiquido,
       salesCount: validSales.length,
-      billsCount: validBills.length
+      billsCount: validBills.length,
+      saleItemsCount: validSaleItems.length,
+      osItemsCount: validOsItems.length,
     });
     
     return {
@@ -223,7 +349,7 @@ export function DREComplete({
       margemLiquida,
       totalReceitas,
     };
-  }, [transactions, sales, billsPaid]);
+  }, [transactions, sales, billsPaid, saleItems, osItems, produtos]);
 
   return (
     <Card className="rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden min-w-0">
