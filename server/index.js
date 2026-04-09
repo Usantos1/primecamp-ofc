@@ -3573,16 +3573,41 @@ app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, as
       // Reatribuição obrigatória para entidades de caixa:
       // algumas bases mantêm operador_id como NOT NULL e/ou FK com ON DELETE SET NULL.
       // Sem reatribuir, a exclusão do usuário falha por violação de constraint.
-      const fallbackOperatorId = req.user?.id;
+      let fallbackOperatorId = req.user?.id;
+      if (!fallbackOperatorId || fallbackOperatorId === userId) {
+        const fallbackUser = await client.query(
+          `SELECT id
+           FROM users
+           WHERE id <> $1
+           ORDER BY created_at ASC
+           LIMIT 1`,
+          [userId]
+        );
+        fallbackOperatorId = fallbackUser.rows[0]?.id || null;
+      }
+
       if (fallbackOperatorId && fallbackOperatorId !== userId) {
         await client.query(
           'UPDATE cash_movements SET operador_id = $1 WHERE operador_id = $2',
           [fallbackOperatorId, userId]
-        ).catch(() => {});
+        );
         await client.query(
           'UPDATE cash_register_sessions SET operador_id = $1 WHERE operador_id = $2',
           [fallbackOperatorId, userId]
-        ).catch(() => {});
+        );
+      }
+
+      // Segurança adicional: se ainda restarem movimentos com o operador a excluir,
+      // interrompe com mensagem clara para evitar erro de NOT NULL no DELETE.
+      const pendingCashRefs = await client.query(
+        'SELECT COUNT(*)::int AS total FROM cash_movements WHERE operador_id = $1',
+        [userId]
+      ).catch(() => ({ rows: [{ total: 0 }] }));
+      const pendingCashTotal = pendingCashRefs.rows[0]?.total || 0;
+      if (pendingCashTotal > 0) {
+        throw new Error(
+          `Não foi possível reatribuir ${pendingCashTotal} movimentos de caixa do usuário. Exclua/feche os caixas desse operador antes de excluir o usuário.`
+        );
       }
 
       // Descobrir todas as FKs que apontam para users(id) e limpar referências automaticamente.
