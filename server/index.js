@@ -3570,6 +3570,21 @@ app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, as
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
 
+      // Reatribuição obrigatória para entidades de caixa:
+      // algumas bases mantêm operador_id como NOT NULL e/ou FK com ON DELETE SET NULL.
+      // Sem reatribuir, a exclusão do usuário falha por violação de constraint.
+      const fallbackOperatorId = req.user?.id;
+      if (fallbackOperatorId && fallbackOperatorId !== userId) {
+        await client.query(
+          'UPDATE cash_movements SET operador_id = $1 WHERE operador_id = $2',
+          [fallbackOperatorId, userId]
+        ).catch(() => {});
+        await client.query(
+          'UPDATE cash_register_sessions SET operador_id = $1 WHERE operador_id = $2',
+          [fallbackOperatorId, userId]
+        ).catch(() => {});
+      }
+
       // Descobrir todas as FKs que apontam para users(id) e limpar referências automaticamente.
       // Estratégia: se coluna aceita NULL -> UPDATE para NULL; caso contrário -> DELETE da linha referenciada.
       const fkRefs = await client.query(`
