@@ -3667,16 +3667,41 @@ app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, as
       await client.query('DELETE FROM user_permissions WHERE user_id = $1', [userId]).catch(() => {});
       await client.query('DELETE FROM user_position_departments WHERE user_id = $1', [userId]).catch(() => {});
 
-      // Deletar usuário da tabela users
+      // Deletar usuário da tabela users.
+      // Em bases antigas, podem existir vínculos de caixa que bloqueiam DELETE físico.
+      // Nesses casos, aplicamos "arquivamento" (anonimiza + remove company_id)
+      // para que o usuário suma da empresa atual sem quebrar integridade histórica.
+      let usedArchiveFallback = false;
       if (userResult.rows.length > 0) {
-        await client.query('DELETE FROM users WHERE id = $1', [userId]);
+        try {
+          await client.query('DELETE FROM users WHERE id = $1', [userId]);
+        } catch (deleteErr) {
+          const isCashConstraintIssue =
+            deleteErr?.code === '23502' ||
+            String(deleteErr?.message || '').toLowerCase().includes('cash_movements') ||
+            String(deleteErr?.message || '').toLowerCase().includes('operador_id');
+
+          if (!isCashConstraintIssue) throw deleteErr;
+
+          const archivedEmail = `deleted_${userId}_${Date.now()}@arquivado.local`;
+          await client.query(
+            `UPDATE users
+             SET email = $1,
+                 company_id = NULL,
+                 updated_at = NOW()
+             WHERE id = $2`,
+            [archivedEmail, userId]
+          );
+          usedArchiveFallback = true;
+        }
       }
 
       await client.query('COMMIT');
       console.log('[API] Usuário deletado com sucesso:', {
         userId,
         email: userResult.rows[0]?.email || null,
-        cleanupWarnings: cleanupWarnings.length
+        cleanupWarnings: cleanupWarnings.length,
+        archived: usedArchiveFallback
       });
 
       if (cleanupWarnings.length > 0) {
