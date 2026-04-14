@@ -4,7 +4,7 @@
 
 # --- Banco de dados (mesmo .env da API em /root/primecamp-ofc/.env) ---
 DB_HOST=72.62.106.76
-DB_NAME=banco_gestao
+DB_NAME=postgres
 DB_USER=postgres
 DB_PASSWORD=AndinhoSurf2015@
 DB_PORT=5432
@@ -33,7 +33,7 @@ psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 
   -f "$PROJ/db/migrations/manual/OS_FOLLOWUP_POS_VENDA.sql"
 
 # Linha única (alternativa):
-# PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -p 5432 -U postgres -d banco_gestao -v ON_ERROR_STOP=1 -f /root/primecamp-ofc/db/migrations/manual/OS_FOLLOWUP_POS_VENDA.sql
+# PGPASSWORD='AndinhoSurf2015@' psql -h 72.62.106.76 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /root/primecamp-ofc/db/migrations/manual/OS_FOLLOWUP_POS_VENDA.sql
 
 # =============================================================================
 # 3) Dependências e reinício da API (PM2)
