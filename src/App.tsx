@@ -58,7 +58,7 @@ import JobApplicationSteps from "./pages/JobApplicationSteps";
 import JobSuccess from "./pages/JobSuccess";
 import JobPortal from "./pages/JobPortal";
 import JobApplicationStatus from "./pages/JobApplicationStatus";
-import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, MarcasModelos as AssistenciaMarcasModelos, ConfiguracaoStatus as AssistenciaConfiguracaoStatus } from "./pages/assistencia";
+import { OrdensServico as AssistenciaOS, OrdemServicoForm, Clientes as AssistenciaClientes, Produtos as AssistenciaProdutos, PDV, MarcasModelos as AssistenciaMarcasModelos, ConfiguracaoStatus as AssistenciaConfiguracaoStatus, FollowupPosVendaConfig } from "./pages/assistencia";
 import Vendas from "./pages/pdv/Vendas";
 import NovaVenda from "./pages/pdv/NovaVenda";
 import Caixa from "./pages/pdv/Caixa";
@@ -263,6 +263,7 @@ const App = () => {
               <Route path="/pdv/clientes" element={<Navigate to="/clientes" replace />} />
               <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />
               <Route path="/pdv/configuracao-status" element={<PermissionRoute permission="os.config.status"><AssistenciaConfiguracaoStatus /></PermissionRoute>} />
+              <Route path="/pdv/followup-pos-venda" element={<PermissionRoute permission="os.config.status"><FollowupPosVendaConfig /></PermissionRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

@@ -33,6 +33,15 @@ try {
   console.error('[Server] Painel de Alertas não carregado. Rode db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql no banco:', e.message);
 }
 
+let osPosVendaFollowupRoutes = null;
+try {
+  const followMod = await import('./routes/osPosVendaFollowup.js');
+  osPosVendaFollowupRoutes = followMod.default;
+  console.log('[Server] Módulo follow-up pós-venda carregado');
+} catch (e) {
+  console.warn('[Server] Follow-up pós-venda: rotas não carregadas:', e.message);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -389,6 +398,10 @@ try {
     });
     console.log('[Server] ⚠️ Painel de Alertas: usando stub 503 (migração não aplicada ou erro no carregamento)');
   }
+  if (osPosVendaFollowupRoutes) {
+    app.use('/api/os-pos-venda-followup', authenticateToken, osPosVendaFollowupRoutes);
+    console.log('[Server] ✅ Rotas de follow-up pós-venda em /api/os-pos-venda-followup');
+  }
   console.log('[Server] ✅ Rotas de financeiro/IA registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora
@@ -402,6 +415,25 @@ try {
       console.error('[Server] Erro ao verificar inadimplentes:', error);
     }
   }, 60 * 60 * 1000); // 1 hora
+
+  // Follow-up WhatsApp pós-venda (OS faturada): processar fila a cada 1 minuto
+  if (osPosVendaFollowupRoutes) {
+    setInterval(() => {
+      import('./jobs/osPosVendaFollowupWorker.js')
+        .then((m) => m.runOsPosVendaFollowupTick(pool))
+        .then((r) => {
+          if (r?.processed > 0) {
+            console.log('[OS Follow-up Worker]', r);
+          }
+        })
+        .catch((err) => {
+          if (!String(err.message || err).includes('does not exist')) {
+            console.error('[OS Follow-up Worker]', err.message || err);
+          }
+        });
+    }, 60 * 1000);
+    console.log('[Server] ✅ Worker follow-up pós-venda agendado (1 min)');
+  }
   
   // Jobs de financeiro/IA (assíncrono para não bloquear)
   (async () => {

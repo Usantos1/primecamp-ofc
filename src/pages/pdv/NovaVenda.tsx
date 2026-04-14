@@ -41,6 +41,7 @@ import { updatePrintStatus } from '@/utils/printUtils';
 import { VoucherPayment } from '@/components/pdv/VoucherPayment';
 import { useRefunds } from '@/hooks/useRefunds';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
+import { scheduleOsPosVendaFollowup } from '@/utils/osPosVendaFollowupSchedule';
 
 const PDV_SEARCH_FIELD_KEY = 'primecamp_pdv_search_field';
 
@@ -1390,6 +1391,7 @@ export default function NovaVenda() {
           try {
             await updateOSStatus(saleData.ordem_servico_id, 'entregue_faturada');
             console.log(`OS #${saleData.ordem_servico_id} finalizada automaticamente após finalização da venda`);
+            void scheduleOsPosVendaFollowup(saleData.ordem_servico_id);
           } catch (osError: any) {
             console.error('Erro ao finalizar OS:', osError);
             // Não bloquear a venda se houver erro ao finalizar a OS
@@ -1834,6 +1836,7 @@ export default function NovaVenda() {
                 const novoStatus = 'entregue_faturada'; // Status customizado
                 await updateOSStatus(updatedSale.ordem_servico_id, novoStatus);
                 console.log(`OS #${os.numero} mudada para ${novoStatus} automaticamente após faturamento`);
+                void scheduleOsPosVendaFollowup(updatedSale.ordem_servico_id);
                 
                 // Enviar mensagem configurada do status (config global por empresa, API)
                 try {
@@ -3575,6 +3578,7 @@ _PrimeCamp Assistência Técnica_`;
                   if (os) {
                     await updateOSStatus(updatedSale.ordem_servico_id, 'entregue_faturada');
                     console.log(`OS #${os.numero} mudada para entregue_faturada automaticamente após pagamento via voucher`);
+                    void scheduleOsPosVendaFollowup(updatedSale.ordem_servico_id);
                     
                     // Enviar mensagem configurada (config global por empresa, API)
                     try {

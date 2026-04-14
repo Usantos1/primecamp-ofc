@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Users, Package, Wrench, UserCircle, Calendar, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Users, Package, Wrench, UserCircle, Calendar, AlertCircle, CheckCircle2, MessageCircle } from 'lucide-react';
 import { useOrdensServicoSupabase as useOrdensServico } from '@/hooks/useOrdensServicoSupabase';
 import { useProdutosSupabase as useProdutos } from '@/hooks/useProdutosSupabase';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
@@ -161,6 +161,27 @@ export default function PDV() {
             </CardContent>
           </Card>
         </div>
+
+        {hasPermission('os.config.status') && (
+          <div className="px-4 md:px-0">
+            <Card
+              className="border-2 border-emerald-200 dark:border-emerald-900 cursor-pointer hover:shadow-md transition-all"
+              onClick={() => navigate('/pdv/followup-pos-venda')}
+            >
+              <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-sm md:text-base flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-emerald-600" />
+                  Follow-up pós-venda (WhatsApp)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <p className="text-xs md:text-sm text-muted-foreground">
+                  Mensagem automática após faturar OS no PDV — regra de horário e texto configuráveis.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Informações Adicionais */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 px-4 md:px-0">

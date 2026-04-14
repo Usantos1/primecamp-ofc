@@ -1,0 +1,75 @@
+# =============================================================================
+# Deploy: Follow-up pós-venda (WhatsApp) + SQL — VPS
+# Nenhuma senha neste arquivo: use variáveis de ambiente ou arquivo .env no servidor.
+# =============================================================================
+
+# --- 0) No servidor, defina (uma vez por sessão) ou use o .env já existente da API ---
+# Exemplo (substitua pelos seus valores reais no shell, NÃO commite isso):
+#   export PGHOST="seu_host_postgres"
+#   export PGPORT="5432"
+#   export PGUSER="postgres"
+#   export PGPASSWORD="***"          # ou: export PGPASSWORD=$(grep DB_PASSWORD /root/primecamp-ofc/.env | cut -d= -f2-)
+#   export PGDATABASE="banco_gestao"
+
+# Alternativa: se já tiver DATABASE_URL no .env:
+#   export DATABASE_URL="postgresql://USUARIO:SENHA@HOST:5432/NOME_DB"
+
+# Diretório do projeto na VPS (ajuste se for outro caminho):
+PROJ="/root/primecamp-ofc"
+
+# =============================================================================
+# 1) Atualizar código
+# =============================================================================
+cd "$PROJ"
+git pull origin main
+
+# =============================================================================
+# 2) Rodar a migration SQL (follow-up pós-venda)
+# =============================================================================
+# Opção A — com variáveis PG* (recomendado; senha só no ambiente):
+psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$PROJ/db/migrations/manual/OS_FOLLOWUP_POS_VENDA.sql"
+
+# Opção B — com DATABASE_URL:
+# psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$PROJ/db/migrations/manual/OS_FOLLOWUP_POS_VENDA.sql"
+
+# =============================================================================
+# 3) Dependências e reinício da API (PM2)
+# =============================================================================
+cd "$PROJ/server"
+npm install
+cd "$PROJ"
+pm2 restart primecamp-api
+pm2 logs primecamp-api --lines 40
+
+# Deve aparecer algo como:
+#   Rotas de follow-up pós-venda em /api/os-pos-venda-followup
+#   Worker follow-up pós-venda agendado (1 min)
+
+# =============================================================================
+# 4) Build do frontend e publicação (ajuste pastas www se necessário)
+# =============================================================================
+cd "$PROJ"
+npm install
+npm run build
+
+for WWW in /var/www/ativafix /var/www/primecamp.cloud; do
+  if [ -d "$WWW" ]; then
+    sudo rm -rf "$WWW"/*
+    sudo cp -r dist/* "$WWW"/
+    sudo chown -R www-data:www-data "$WWW"
+  fi
+done
+sudo systemctl reload nginx
+
+# =============================================================================
+# 5) Teste rápido (opcional, sem banco — só lógica Node)
+# =============================================================================
+cd "$PROJ"
+node server/scripts/os-followup-selftest.mjs
+
+# =============================================================================
+# 6) No sistema (após deploy)
+# =============================================================================
+# - Integrações: token Ativa CRM configurado.
+# - PDV → card "Follow-up pós-venda" ou URL: /pdv/followup-pos-venda
+# - Salvar a configuração pelo menos uma vez para gravar settings no banco.
