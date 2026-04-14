@@ -48,6 +48,11 @@ function relationMissing(error, relationName) {
   return msg.includes('does not exist') && msg.includes(relationName);
 }
 
+function columnMissing(error, columnName) {
+  const msg = String(error?.message || error || '');
+  return msg.includes('does not exist') && msg.includes(columnName);
+}
+
 /** Formas de pagamento (payments confirmados em vendas pagas no período da venda) */
 router.get('/payment-methods', async (req, res) => {
   const companyId = requireCompany(req, res);
@@ -138,20 +143,39 @@ router.get('/purchases-suppliers', async (req, res) => {
       [companyId, range.start, range.end]
     );
 
-    const fornecedoresOs = await pool.query(
-      `SELECT COALESCE(f.nome, NULLIF(TRIM(oi.fornecedor_nome), ''), '(Sem fornecedor)') AS fornecedor,
-              COUNT(oi.id)::int AS itens_count,
-              COALESCE(SUM(oi.valor_total), 0)::numeric AS valor_total
-       FROM os_items oi
-       INNER JOIN ordens_servico o ON o.id = oi.ordem_servico_id
-       LEFT JOIN fornecedores f ON f.id = oi.fornecedor_id AND (f.company_id = $1 OR f.company_id IS NULL)
-       WHERE o.company_id = $1
-         AND oi.created_at >= $2::timestamptz
-         AND oi.created_at <= $3::timestamptz
-       GROUP BY 1
-       ORDER BY valor_total DESC`,
-      [companyId, range.start, range.end]
-    );
+    let fornecedoresOs;
+    try {
+      fornecedoresOs = await pool.query(
+        `SELECT COALESCE(f.nome, NULLIF(TRIM(oi.fornecedor_nome), ''), '(Sem fornecedor)') AS fornecedor,
+                COUNT(oi.id)::int AS itens_count,
+                COALESCE(SUM(oi.valor_total), 0)::numeric AS valor_total
+         FROM os_items oi
+         INNER JOIN ordens_servico o ON o.id = oi.ordem_servico_id
+         LEFT JOIN fornecedores f ON f.id = oi.fornecedor_id AND (f.company_id = $1 OR f.company_id IS NULL)
+         WHERE o.company_id = $1
+           AND oi.created_at >= $2::timestamptz
+           AND oi.created_at <= $3::timestamptz
+         GROUP BY 1
+         ORDER BY valor_total DESC`,
+        [companyId, range.start, range.end]
+      );
+    } catch (e) {
+      if (!columnMissing(e, 'fornecedor_nome')) throw e;
+      fornecedoresOs = await pool.query(
+        `SELECT COALESCE(f.nome, '(Sem fornecedor)') AS fornecedor,
+                COUNT(oi.id)::int AS itens_count,
+                COALESCE(SUM(oi.valor_total), 0)::numeric AS valor_total
+         FROM os_items oi
+         INNER JOIN ordens_servico o ON o.id = oi.ordem_servico_id
+         LEFT JOIN fornecedores f ON f.id = oi.fornecedor_id AND (f.company_id = $1 OR f.company_id IS NULL)
+         WHERE o.company_id = $1
+           AND oi.created_at >= $2::timestamptz
+           AND oi.created_at <= $3::timestamptz
+         GROUP BY 1
+         ORDER BY valor_total DESC`,
+        [companyId, range.start, range.end]
+      );
+    }
 
     res.json({
       success: true,
