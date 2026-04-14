@@ -263,7 +263,8 @@ const App = () => {
               <Route path="/pdv/clientes" element={<Navigate to="/clientes" replace />} />
               <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />
               <Route path="/pdv/configuracao-status" element={<PermissionRoute permission="os.config.status"><AssistenciaConfiguracaoStatus /></PermissionRoute>} />
-              <Route path="/pdv/followup-pos-venda" element={<PermissionRoute permission="os.config.status"><FollowupPosVendaConfig /></PermissionRoute>} />
+              <Route path="/pos-venda" element={<PermissionRoute permission="relatorios.financeiro"><FollowupPosVendaConfig /></PermissionRoute>} />
+              <Route path="/pdv/followup-pos-venda" element={<PermissionRoute permission="relatorios.financeiro"><Navigate to="/pos-venda" replace /></PermissionRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

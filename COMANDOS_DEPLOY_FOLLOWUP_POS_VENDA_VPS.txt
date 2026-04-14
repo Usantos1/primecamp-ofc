@@ -74,5 +74,5 @@ node server/scripts/os-followup-selftest.mjs
 # 6) No sistema (após deploy)
 # =============================================================================
 # - Integrações: token Ativa CRM configurado.
-# - PDV → card "Follow-up pós-venda" ou URL: /pdv/followup-pos-venda
+# - Menu Relatórios → Pós-venda ou URL: /pos-venda (redirect de /pdv/followup-pos-venda)
 # - Salvar a configuração pelo menos uma vez para gravar settings no banco.

@@ -41,6 +41,7 @@ const FINANCEIRO_NAV_ITEMS: QuickNavItem[] = [
 // Configuração de navegação rápida por rota
 const QUICK_NAV_CONFIG: Record<string, QuickNavItem[]> = {
   '/financeiro': FINANCEIRO_NAV_ITEMS,
+  '/pos-venda': FINANCEIRO_NAV_ITEMS,
   '/pdv': PDV_NAV_ITEMS,
   '/pdv/vendas': PDV_NAV_ITEMS,
   '/pdv/venda': PDV_NAV_ITEMS,

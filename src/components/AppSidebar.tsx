@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Star,
   Bell,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useThemeConfig, getDefaultConfigByHost } from "@/contexts/ThemeConfigContext";
@@ -256,9 +257,10 @@ export function AppSidebar() {
   // RELATÓRIOS - (menu segmento: itens com categoria gestao)
   // ═══════════════════════════════════════════════════════════════
   const relatoriosItemsBase = [
-    { label: "Relatórios", path: "/relatorios", icon: Receipt, permission: "relatorios.view" },
-    { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro" },
-    { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro" },
+    { label: "Relatórios", path: "/relatorios", icon: Receipt, permission: "relatorios.view", exact: false as const },
+    { label: "Financeiro", path: "/financeiro", icon: BarChart3, permission: "relatorios.financeiro", exact: false as const },
+    { label: "Pós-venda", path: "/pos-venda", icon: MessageCircle, permission: "relatorios.financeiro", exact: true as const },
+    { label: "Painel de Alertas", path: "/painel-alertas", icon: Activity, permission: "relatorios.financeiro", exact: false as const },
   ];
   const roleMenuSettled = !user?.id || roleMenuData !== undefined;
   const menuNotReady = permissionsLoading || !roleMenuSettled;
@@ -275,7 +277,7 @@ export function AppSidebar() {
     ? []
     : relatoriosItemsRaw.filter((item) => {
         if (item.path === "/relatorios") return checkPermission("relatorios.view");
-        if (item.path === "/financeiro" || item.path === "/painel-alertas") return checkPermission("relatorios.financeiro");
+        if (item.path === "/financeiro" || item.path === "/painel-alertas" || item.path === "/pos-venda") return checkPermission("relatorios.financeiro");
         return useRoleMenu || !item.permission || checkPermission(item.permission);
       });
 

@@ -16,9 +16,6 @@ export const DEFAULT_TEMPLATE = `Olá, {cliente}. Tudo bem?
 Passando para saber como está sua experiência após o serviço realizado no aparelho.
 Está tudo certo com o funcionamento?`;
 
-export const DEFAULT_GOOGLE_TEXT =
-  'Se puder, sua avaliação no Google ajuda muito nossa empresa.';
-
 function randomDelaySeconds() {
   return Math.floor(Math.random() * (RANDOM_DELAY_MAX_SECONDS + 1));
 }
@@ -108,8 +105,6 @@ export function mergeSettingsResponse(row) {
       timezone: 'America/Sao_Paulo',
       template_key: 'default',
       template_mensagem: DEFAULT_TEMPLATE,
-      solicitar_avaliacao_google: true,
-      texto_avaliacao_google: DEFAULT_GOOGLE_TEXT,
     };
   }
   return {
@@ -118,21 +113,11 @@ export function mergeSettingsResponse(row) {
     timezone: row.timezone,
     template_key: row.template_key,
     template_mensagem: row.template_mensagem || DEFAULT_TEMPLATE,
-    solicitar_avaliacao_google: row.solicitar_avaliacao_google,
-    texto_avaliacao_google: row.texto_avaliacao_google || DEFAULT_GOOGLE_TEXT,
   };
 }
 
 export async function upsertSettings(client, companyId, body) {
-  const {
-    ativo,
-    tipo_regra_envio,
-    timezone,
-    template_key,
-    template_mensagem,
-    solicitar_avaliacao_google,
-    texto_avaliacao_google,
-  } = body;
+  const { ativo, tipo_regra_envio, timezone, template_key, template_mensagem } = body || {};
 
   const rule =
     tipo_regra_envio === FOLLOWUP_RULES.AFTER_24H
@@ -143,15 +128,15 @@ export async function upsertSettings(client, companyId, body) {
     `INSERT INTO os_pos_venda_followup_settings (
        company_id, ativo, tipo_regra_envio, timezone, template_key,
        template_mensagem, solicitar_avaliacao_google, texto_avaliacao_google
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ) VALUES ($1,$2,$3,$4,$5,$6, false, '')
      ON CONFLICT (company_id) DO UPDATE SET
        ativo = EXCLUDED.ativo,
        tipo_regra_envio = EXCLUDED.tipo_regra_envio,
        timezone = EXCLUDED.timezone,
        template_key = EXCLUDED.template_key,
        template_mensagem = EXCLUDED.template_mensagem,
-       solicitar_avaliacao_google = EXCLUDED.solicitar_avaliacao_google,
-       texto_avaliacao_google = EXCLUDED.texto_avaliacao_google,
+       solicitar_avaliacao_google = false,
+       texto_avaliacao_google = '',
        updated_at = now()`,
     [
       companyId,
@@ -160,23 +145,15 @@ export async function upsertSettings(client, companyId, body) {
       timezone || 'America/Sao_Paulo',
       template_key || 'default',
       template_mensagem ?? DEFAULT_TEMPLATE,
-      solicitar_avaliacao_google !== false,
-      texto_avaliacao_google ?? DEFAULT_GOOGLE_TEXT,
     ]
   );
 }
 
-/**
- * Monta mensagem final (template + bloco Google opcional).
- */
+/** Monta mensagem final a partir do template configurado. */
 export function buildMessageFromSettings(settingsRow, vars) {
   const base = mergeSettingsResponse(settingsRow);
   const tmpl = base.template_mensagem || DEFAULT_TEMPLATE;
-  let msg = renderFollowupTemplate(tmpl, vars);
-  if (base.solicitar_avaliacao_google && base.texto_avaliacao_google) {
-    msg = `${msg.trim()}\n\n${base.texto_avaliacao_google.trim()}`;
-  }
-  return msg;
+  return renderFollowupTemplate(tmpl, vars).trim();
 }
 
 /**

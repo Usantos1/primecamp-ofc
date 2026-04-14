@@ -31,8 +31,6 @@ type Settings = {
   timezone: string;
   template_key: string;
   template_mensagem: string;
-  solicitar_avaliacao_google: boolean;
-  texto_avaliacao_google: string;
 };
 
 type JobRow = {
@@ -61,8 +59,6 @@ export default function FollowupPosVendaConfig() {
     timezone: 'America/Sao_Paulo',
     template_key: 'default',
     template_mensagem: DEFAULT_TEMPLATE,
-    solicitar_avaliacao_google: true,
-    texto_avaliacao_google: 'Se puder, sua avaliação no Google ajuda muito nossa empresa.',
   });
   const [jobs, setJobs] = useState<JobRow[]>([]);
 
@@ -79,11 +75,8 @@ export default function FollowupPosVendaConfig() {
     for (const [k, v] of Object.entries(vars)) {
       msg = msg.replaceAll(`{${k}}`, v);
     }
-    if (settings.solicitar_avaliacao_google && settings.texto_avaliacao_google) {
-      msg = `${msg.trim()}\n\n${settings.texto_avaliacao_google.trim()}`;
-    }
-    return msg;
-  }, [settings]);
+    return msg.trim();
+  }, [settings.template_mensagem]);
 
   const load = async () => {
     setLoading(true);
@@ -92,7 +85,7 @@ export default function FollowupPosVendaConfig() {
       const headers: HeadersInit = { Authorization: `Bearer ${token}` };
       const [sRes, jRes] = await Promise.all([
         fetch(`${getApiUrl()}/os-pos-venda-followup/settings`, { headers }),
-        fetch(`${getApiUrl()}/os-pos-venda-followup/jobs?limit=40`, { headers }),
+        fetch(`${getApiUrl()}/os-pos-venda-followup/jobs?limit=50`, { headers }),
       ]);
       if (sRes.ok) {
         const data = await sRes.json();
@@ -102,10 +95,6 @@ export default function FollowupPosVendaConfig() {
           timezone: data.timezone || 'America/Sao_Paulo',
           template_key: data.template_key || 'default',
           template_mensagem: data.template_mensagem || DEFAULT_TEMPLATE,
-          solicitar_avaliacao_google: data.solicitar_avaliacao_google !== false,
-          texto_avaliacao_google:
-            data.texto_avaliacao_google ||
-            'Se puder, sua avaliação no Google ajuda muito nossa empresa.',
         });
       }
       if (jRes.ok) {
@@ -159,157 +148,143 @@ export default function FollowupPosVendaConfig() {
 
   return (
     <ModernLayout
-      title="Follow-up pós-venda (WhatsApp)"
-      subtitle="Mensagem automática após faturar a OS pelo PDV. Requer token Ativa CRM em Integrações."
+      title="Pós-venda"
+      subtitle="Mensagem automática de acompanhamento no WhatsApp após o faturamento da OS no PDV. Requer integração Ativa CRM configurada."
     >
-      <div className="space-y-6 max-w-4xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Configuração
-            </CardTitle>
-            <CardDescription>
-              O envio não é imediato: usa a regra escolhida mais um intervalo aleatório de até 30 minutos
-              para distribuir os disparos. Uma mensagem por OS faturada.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <Label htmlFor="ativo">Follow-up automático</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Só agenda após você salvar esta tela pelo menos uma vez no banco.
-                    </p>
+      <div className="w-full max-w-[min(100%,1200px)] mx-auto px-2 sm:px-4 lg:px-6 space-y-6 pb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            <Card className="border shadow-sm">
+              <CardHeader className="space-y-1 pb-4">
+                <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 shrink-0 text-primary" />
+                  Mensagem e disparo
+                </CardTitle>
+                <CardDescription className="text-sm leading-relaxed max-w-prose">
+                  O envio não é imediato: aplica-se a regra de horário escolhida e um intervalo aleatório de até 30
+                  minutos para distribuir os disparos. Uma mensagem por OS faturada.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-                  <Switch
-                    id="ativo"
-                    checked={settings.ativo}
-                    onCheckedChange={(v) => setSettings((s) => ({ ...s, ativo: v }))}
-                  />
-                </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border bg-muted/30 p-4">
+                      <div className="space-y-1 min-w-0">
+                        <Label htmlFor="ativo">Automação ativa</Label>
+                        <p className="text-sm text-muted-foreground">
+                          É necessário salvar pelo menos uma vez para gravar no banco e passar a agendar envios.
+                        </p>
+                      </div>
+                      <Switch
+                        id="ativo"
+                        checked={settings.ativo}
+                        onCheckedChange={(v) => setSettings((s) => ({ ...s, ativo: v }))}
+                        className="shrink-0"
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Regra de envio</Label>
-                  <Select
-                    value={settings.tipo_regra_envio}
-                    onValueChange={(v: 'NEXT_DAY_10AM' | 'AFTER_24H') =>
-                      setSettings((s) => ({ ...s, tipo_regra_envio: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NEXT_DAY_10AM">
-                        Dia seguinte às 10:00 (fuso {settings.timezone})
-                      </SelectItem>
-                      <SelectItem value="AFTER_24H">24 horas após o faturamento</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div className="space-y-2">
+                      <Label>Momento do disparo</Label>
+                      <Select
+                        value={settings.tipo_regra_envio}
+                        onValueChange={(v: 'NEXT_DAY_10AM' | 'AFTER_24H') =>
+                          setSettings((s) => ({ ...s, tipo_regra_envio: v }))
+                        }
+                      >
+                        <SelectTrigger className="w-full max-w-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NEXT_DAY_10AM">
+                            Dia seguinte às 10:00 ({settings.timezone})
+                          </SelectItem>
+                          <SelectItem value="AFTER_24H">24 horas após o faturamento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Mensagem (template)</Label>
-                  <Textarea
-                    rows={8}
-                    value={settings.template_mensagem}
-                    onChange={(e) => setSettings((s) => ({ ...s, template_mensagem: e.target.value }))}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Variáveis: {VARS.join(', ')}
-                  </p>
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template">Texto da mensagem</Label>
+                      <Textarea
+                        id="template"
+                        rows={10}
+                        value={settings.template_mensagem}
+                        onChange={(e) => setSettings((s) => ({ ...s, template_mensagem: e.target.value }))}
+                        className="font-mono text-sm min-h-[200px] w-full"
+                        placeholder={DEFAULT_TEMPLATE}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Variáveis disponíveis: {VARS.join(' · ')}
+                      </p>
+                    </div>
 
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <Label>Incluir pedido de avaliação no Google</Label>
-                    <p className="text-sm text-muted-foreground">Texto adicionado ao final da mensagem.</p>
-                  </div>
-                  <Switch
-                    checked={settings.solicitar_avaliacao_google}
-                    onCheckedChange={(v) =>
-                      setSettings((s) => ({ ...s, solicitar_avaliacao_google: v }))
-                    }
-                  />
-                </div>
-
-                {settings.solicitar_avaliacao_google && (
-                  <div className="space-y-2">
-                    <Label>Texto da avaliação Google</Label>
-                    <Textarea
-                      rows={2}
-                      value={settings.texto_avaliacao_google}
-                      onChange={(e) =>
-                        setSettings((s) => ({ ...s, texto_avaliacao_google: e.target.value }))
-                      }
-                    />
-                  </div>
+                    <Button onClick={save} disabled={saving} size="lg" className="w-full sm:w-auto">
+                      {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Salvar configuração
+                    </Button>
+                  </>
                 )}
+              </CardContent>
+            </Card>
+          </div>
 
-                <Card className="bg-muted/40">
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-sm">Prévia</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <pre className="text-sm whitespace-pre-wrap font-sans">{preview}</pre>
-                  </CardContent>
-                </Card>
+          <div className="space-y-6 xl:sticky xl:top-4 xl:self-start">
+            <Card className="border shadow-sm bg-muted/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Prévia</CardTitle>
+                <CardDescription>Exemplo com dados fictícios</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-foreground border rounded-md p-4 bg-background max-h-[min(50vh,420px)] overflow-y-auto">
+                  {preview}
+                </pre>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-                <Button onClick={save} disabled={saving}>
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Salvar
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
+        <Card className="border shadow-sm w-full">
           <CardHeader>
-            <CardTitle className="text-base">Histórico recente</CardTitle>
-            <CardDescription>Últimos agendamentos e envios da empresa.</CardDescription>
+            <CardTitle className="text-base sm:text-lg">Histórico recente</CardTitle>
+            <CardDescription>Agendamentos e envios desta empresa.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto -mx-2 sm:mx-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>OS (id)</TableHead>
-                  <TableHead>Agendado</TableHead>
-                  <TableHead>Enviado</TableHead>
-                  <TableHead>Obs.</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">OS (id)</TableHead>
+                  <TableHead className="whitespace-nowrap">Agendado</TableHead>
+                  <TableHead className="whitespace-nowrap">Enviado</TableHead>
+                  <TableHead className="min-w-[140px]">Obs.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-muted-foreground text-center">
+                    <TableCell colSpan={5} className="text-muted-foreground text-center py-8">
                       Nenhum registro ainda.
                     </TableCell>
                   </TableRow>
                 ) : (
                   jobs.map((j) => (
                     <TableRow key={j.id}>
-                      <TableCell>{statusBadge(j.status)}</TableCell>
-                      <TableCell className="font-mono text-xs max-w-[120px] truncate">
+                      <TableCell className="align-middle">{statusBadge(j.status)}</TableCell>
+                      <TableCell className="font-mono text-xs max-w-[140px] truncate align-middle">
                         {j.ordem_servico_id}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs whitespace-nowrap align-middle">
                         {j.scheduled_at ? new Date(j.scheduled_at).toLocaleString('pt-BR') : '—'}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs whitespace-nowrap align-middle">
                         {j.sent_at ? new Date(j.sent_at).toLocaleString('pt-BR') : '—'}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                        {j.error_message || j.skip_reason || '—'}
+                      <TableCell className="text-xs text-muted-foreground align-middle max-w-[280px]">
+                        <span className="line-clamp-2">{j.error_message || j.skip_reason || '—'}</span>
                       </TableCell>
                     </TableRow>
                   ))
