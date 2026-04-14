@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ModernLayout } from '@/components/ModernLayout';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,16 +18,53 @@ import {
   User,
   BarChart3,
   Wrench,
+  CreditCard,
+  Package,
+  Truck,
+  Warehouse,
+  ClipboardList,
+  RotateCcw,
+  Users,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSalesSummary, useTechnicianProductivity, ReportFilters } from '@/hooks/useReports';
+import { useServerReportsQueries } from '@/hooks/useServerReports';
+import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardExecutivo } from '@/hooks/useFinanceiro';
 import { useCargos } from '@/hooks/useCargos';
 import { TrendCharts } from '@/components/dashboard/TrendCharts';
 import { currencyFormatters } from '@/utils/formatters';
 import { getStoredValuesVisible, ValuesVisibilityToggle, MASKED_VALUE } from '@/components/dashboard/FinancialCards';
-import { PAYMENT_METHOD_LABELS } from '@/types/pdv';
+import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@/types/pdv';
 import type { DashboardTrendData } from '@/hooks/useDashboardData';
+
+type ReportTabId =
+  | 'summary'
+  | 'productivity'
+  | 'payments'
+  | 'products'
+  | 'purchases'
+  | 'stock'
+  | 'assistencia'
+  | 'refunds'
+  | 'clients'
+  | 'audit';
+
+function numVal(v: string | number | null | undefined): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function paymentLabel(code: string) {
+  return PAYMENT_METHOD_LABELS[code as PaymentMethod] ?? code;
+}
+
+function queryErr(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'string') return e;
+  return 'Erro ao carregar';
+}
 
 export default function Relatorios() {
   const [startDate, setStartDate] = useState<Date | undefined>(() => {
@@ -39,9 +76,11 @@ export default function Relatorios() {
   const [technicianId, setTechnicianId] = useState<string>('all');
   const [saleOrigin, setSaleOrigin] = useState<'PDV' | 'OS' | 'all'>('all');
   const [paymentMethod, setPaymentMethod] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'summary' | 'productivity'>('summary');
+  const [activeTab, setActiveTab] = useState<ReportTabId>('summary');
   const [valuesVisible, setValuesVisible] = useState(getStoredValuesVisible);
   const fmt = (n: number) => (valuesVisible ? currencyFormatters.brl(n) : MASKED_VALUE);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
 
   const filters: ReportFilters = useMemo(
     () => ({
@@ -58,6 +97,12 @@ export default function Relatorios() {
   const { data: productivity, isLoading: isLoadingProductivity } = useTechnicianProductivity(filters);
   const { tecnicos, isLoading: isLoadingTecnicos } = useCargos();
   const { data: financeiroDashboard } = useDashboardExecutivo(filters.startDate, filters.endDate);
+
+  const serverReports = useServerReportsQueries(filters.startDate, filters.endDate, activeTab, !!isAdmin);
+
+  useEffect(() => {
+    if (!isAdmin && activeTab === 'audit') setActiveTab('summary');
+  }, [isAdmin, activeTab]);
 
   const paymentMethods = [
     { value: 'all', label: 'Todas' },
@@ -276,32 +321,36 @@ export default function Relatorios() {
 
         {/* Conteúdo com Tabs — overflow-visible e espaço inferior para não cortar o widget */}
         <div className="w-full min-w-0 overflow-visible">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'summary' | 'productivity')} className="space-y-4 overflow-visible">
-            <TabsList className="h-auto grid w-full grid-cols-2 gap-2 p-2 pb-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl min-h-[3.25rem] items-center justify-items-center overflow-visible bg-muted/40 mb-1 shadow-sm">
-              <TabsTrigger
-                value="summary"
-                className={cn(
-                  "w-full min-h-11 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all",
-                  "data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm",
-                  "dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100",
-                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
-                )}
-              >
-                <BarChart3 className="h-4 w-4 shrink-0" />
-                <span className="truncate text-center">Resumo Geral</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="productivity"
-                className={cn(
-                  "w-full min-h-11 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all",
-                  "data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm",
-                  "dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100",
-                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
-                )}
-              >
-                <User className="h-4 w-4 shrink-0" />
-                <span className="truncate text-center">Produtividade por Técnico</span>
-              </TabsTrigger>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ReportTabId)} className="space-y-4 overflow-visible">
+            <TabsList className="h-auto flex w-full flex-wrap gap-2 p-2 pb-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl items-stretch justify-start overflow-x-auto overflow-y-visible bg-muted/40 mb-1 shadow-sm">
+              {(
+                [
+                  ['summary', BarChart3, 'Resumo geral'],
+                  ['productivity', User, 'Produtividade'],
+                  ['payments', CreditCard, 'Pagamentos'],
+                  ['products', Package, 'Produtos'],
+                  ['purchases', Truck, 'Compras / fornec.'],
+                  ['stock', Warehouse, 'Estoque'],
+                  ['assistencia', ClipboardList, 'Assistência'],
+                  ['refunds', RotateCcw, 'Devoluções'],
+                  ['clients', Users, 'Clientes'],
+                  ...(isAdmin ? [['audit', Shield, 'Auditoria']] as const : []),
+                ] as const
+              ).map(([id, Icon, label]) => (
+                <TabsTrigger
+                  key={id}
+                  value={id}
+                  className={cn(
+                    'min-h-11 flex-1 min-w-[8.5rem] max-w-[14rem] rounded-lg font-semibold flex items-center justify-center gap-2 transition-all px-2',
+                    'data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm',
+                    'dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100',
+                    'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md'
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate text-center text-xs sm:text-sm">{label}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             <TabsContent value="summary" className="space-y-4 mt-4 overflow-visible min-h-0">
@@ -423,6 +472,503 @@ export default function Relatorios() {
                 </Card>
               )}
             </TabsContent>
+
+            <TabsContent value="payments" className="space-y-4 mt-4 min-w-0">
+              {serverReports.paymentMethods.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.paymentMethods.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.paymentMethods.error)}
+                </p>
+              ) : (
+                <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Formas de pagamento</CardTitle>
+                    <CardDescription>
+                      Pagamentos confirmados em vendas finalizadas (PDV + OS), pelo período da venda.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Forma</TableHead>
+                          <TableHead className="text-right">Qtd. lançamentos</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(serverReports.paymentMethods.data?.length ?? 0) === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                              Nenhum pagamento no período.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          serverReports.paymentMethods.data!.map((row) => (
+                            <TableRow key={row.forma_pagamento}>
+                              <TableCell className="font-medium">{paymentLabel(row.forma_pagamento)}</TableCell>
+                              <TableCell className="text-right">{row.payment_count}</TableCell>
+                              <TableCell className="text-right font-semibold">{fmt(numVal(row.total_amount))}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="products" className="space-y-4 mt-4 min-w-0">
+              {serverReports.topProducts.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.topProducts.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.topProducts.error)}
+                </p>
+              ) : (
+                <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Produtos mais vendidos</CardTitle>
+                    <CardDescription>Itens em vendas com status pago/parcial no período.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-right">Quantidade</TableHead>
+                          <TableHead className="text-right">Receita</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(serverReports.topProducts.data?.length ?? 0) === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                              Nenhum item no período.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          serverReports.topProducts.data!.map((row, i) => (
+                            <TableRow key={`${row.produto_id ?? 'x'}-${i}`}>
+                              <TableCell className="font-medium max-w-[240px] truncate" title={row.produto_nome}>
+                                {row.produto_nome}
+                              </TableCell>
+                              <TableCell className="text-right">{Number(row.qty).toLocaleString('pt-BR')}</TableCell>
+                              <TableCell className="text-right font-semibold">{fmt(numVal(row.revenue))}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="purchases" className="space-y-4 mt-4 min-w-0">
+              {serverReports.purchases.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.purchases.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.purchases.error)}
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Pedidos de compra</CardTitle>
+                      <CardDescription>
+                        Pedidos de entrada no estoque. O cadastro atual não vincula fornecedor ao pedido; use a tabela
+                        abaixo para visão por fornecedor nas peças da OS.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Recebido</TableHead>
+                            <TableHead>Data</TableHead>
+                            <TableHead className="text-right">Valor compra (itens)</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(serverReports.purchases.data?.pedidos.length ?? 0) === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                                Nenhum pedido no período.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            serverReports.purchases.data!.pedidos.map((p) => (
+                              <TableRow key={p.id}>
+                                <TableCell className="font-medium max-w-[200px] truncate" title={p.nome}>
+                                  {p.nome}
+                                </TableCell>
+                                <TableCell>{p.recebido ? 'Sim' : 'Não'}</TableCell>
+                                <TableCell className="text-xs whitespace-nowrap">
+                                  {p.created_at ? new Date(p.created_at).toLocaleString('pt-BR') : '—'}
+                                </TableCell>
+                                <TableCell className="text-right">{fmt(numVal(p.valor_compra_total))}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Peças em OS por fornecedor</CardTitle>
+                      <CardDescription>Agregado por fornecedor cadastrado ou nome informado no item (período pelo item).</CardDescription>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Fornecedor</TableHead>
+                            <TableHead className="text-right">Itens</TableHead>
+                            <TableHead className="text-right">Valor total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(serverReports.purchases.data?.fornecedores_os.length ?? 0) === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                                Nenhum item de OS no período.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            serverReports.purchases.data!.fornecedores_os.map((r) => (
+                              <TableRow key={r.fornecedor}>
+                                <TableCell className="font-medium">{r.fornecedor}</TableCell>
+                                <TableCell className="text-right">{r.itens_count}</TableCell>
+                                <TableCell className="text-right font-semibold">{fmt(numVal(r.valor_total))}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="stock" className="space-y-4 mt-4 min-w-0">
+              {serverReports.stock.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.stock.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.stock.error)}
+                </p>
+              ) : (
+                <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Movimentações de estoque</CardTitle>
+                    <CardDescription>Registros de produto_movimentacoes para produtos da sua empresa.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Produto</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Motivo</TableHead>
+                          <TableHead className="text-right">Δ qtd</TableHead>
+                          <TableHead>Usuário</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(serverReports.stock.data?.length ?? 0) === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                              Nenhuma movimentação no período.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          serverReports.stock.data!.map((m) => (
+                            <TableRow key={m.id}>
+                              <TableCell className="text-xs whitespace-nowrap">
+                                {m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : '—'}
+                              </TableCell>
+                              <TableCell className="max-w-[160px] truncate" title={m.produto_nome}>
+                                {m.produto_nome}
+                              </TableCell>
+                              <TableCell className="text-xs">{m.tipo}</TableCell>
+                              <TableCell className="text-xs max-w-[140px] truncate" title={m.motivo ?? ''}>
+                                {m.motivo ?? '—'}
+                              </TableCell>
+                              <TableCell className="text-right">{m.quantidade_delta ?? '—'}</TableCell>
+                              <TableCell className="text-xs">{m.user_nome ?? '—'}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="assistencia" className="space-y-4 mt-4 min-w-0">
+              {serverReports.osOverview.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.osOverview.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.osOverview.error)}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
+                      <CardContent className="p-4">
+                        <p className="text-xs text-muted-foreground font-semibold">Total de OS (criadas no período)</p>
+                        <p className="text-2xl font-bold mt-1">{serverReports.osOverview.data?.totals.total_os ?? 0}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
+                      <CardContent className="p-4">
+                        <p className="text-xs text-muted-foreground font-semibold">Soma valor_total (campo OS)</p>
+                        <p className="text-2xl font-bold mt-1">
+                          {fmt(numVal(serverReports.osOverview.data?.totals.valor_total_orcado))}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Por status</CardTitle>
+                      <CardDescription>Contagem de ordens de serviço criadas no período.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Quantidade</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(serverReports.osOverview.data?.by_status.length ?? 0) === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                                Nenhuma OS no período.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            serverReports.osOverview.data!.by_status.map((r) => (
+                              <TableRow key={r.status}>
+                                <TableCell className="font-medium">{r.status}</TableCell>
+                                <TableCell className="text-right">{r.cnt}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="refunds" className="space-y-4 mt-4 min-w-0">
+              {serverReports.refunds.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.refunds.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.refunds.error)}
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Por status</CardTitle>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Qtd</TableHead>
+                            <TableHead className="text-right">Valor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(serverReports.refunds.data?.by_status.length ?? 0) === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                                Nenhuma devolução no período.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            serverReports.refunds.data!.by_status.map((r) => (
+                              <TableRow key={r.status}>
+                                <TableCell className="font-medium">{r.status}</TableCell>
+                                <TableCell className="text-right">{r.cnt}</TableCell>
+                                <TableCell className="text-right">{fmt(numVal(r.valor))}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Por motivo</CardTitle>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Motivo</TableHead>
+                            <TableHead className="text-right">Qtd</TableHead>
+                            <TableHead className="text-right">Valor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(serverReports.refunds.data?.by_reason.length ?? 0) === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                                —
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            serverReports.refunds.data!.by_reason.map((r) => (
+                              <TableRow key={r.reason}>
+                                <TableCell className="font-medium max-w-[220px] truncate" title={r.reason}>
+                                  {r.reason}
+                                </TableCell>
+                                <TableCell className="text-right">{r.cnt}</TableCell>
+                                <TableCell className="text-right">{fmt(numVal(r.valor))}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="clients" className="space-y-4 mt-4 min-w-0">
+              {serverReports.clients.isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+              ) : serverReports.clients.isError ? (
+                <p className="text-sm text-destructive text-center py-8">
+                  {queryErr(serverReports.clients.error)}
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground font-semibold">Novos cadastros (clientes)</p>
+                      <p className="text-2xl font-bold mt-1">{serverReports.clients.data?.novos_clientes ?? 0}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground font-semibold">Clientes distintos (compras)</p>
+                      <p className="text-2xl font-bold mt-1">{serverReports.clients.data?.clientes_compra_distintos ?? 0}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl">
+                    <CardContent className="p-4">
+                      <p className="text-xs text-muted-foreground font-semibold">Vendas finalizadas c/ cliente</p>
+                      <p className="text-2xl font-bold mt-1">{serverReports.clients.data?.vendas_finalizadas ?? 0}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
+
+            {isAdmin && (
+              <TabsContent value="audit" className="space-y-4 mt-4 min-w-0">
+                {serverReports.audit.isLoading ? (
+                  <p className="text-sm text-muted-foreground text-center py-12">Carregando…</p>
+                ) : serverReports.audit.isError ? (
+                  <p className="text-sm text-destructive text-center py-8">
+                    {queryErr(serverReports.audit.error)}
+                  </p>
+                ) : (
+                  <div className="space-y-6">
+                    <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Atividade de usuários</CardTitle>
+                        <CardDescription>Resumo por tipo de ação (user_activity_logs).</CardDescription>
+                      </CardHeader>
+                      <CardContent className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tipo / ação</TableHead>
+                              <TableHead className="text-right">Ocorrências</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(serverReports.audit.data?.user_activity.length ?? 0) === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                                  Nenhum registro no período.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              serverReports.audit.data!.user_activity.map((r, i) => (
+                                <TableRow key={`ua-${i}-${r.tipo}`}>
+                                  <TableCell className="font-medium max-w-[280px] truncate" title={r.tipo}>
+                                    {r.tipo}
+                                  </TableCell>
+                                  <TableCell className="text-right">{r.cnt}</TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Auditoria</CardTitle>
+                        <CardDescription>Resumo por tipo (audit_logs).</CardDescription>
+                      </CardHeader>
+                      <CardContent className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead className="text-right">Ocorrências</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {(serverReports.audit.data?.audit_logs.length ?? 0) === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={2} className="text-center text-muted-foreground py-8">
+                                  Nenhum registro no período.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              serverReports.audit.data!.audit_logs.map((r, i) => (
+                                <TableRow key={`al-${i}-${r.tipo}`}>
+                                  <TableCell className="font-medium max-w-[280px] truncate" title={r.tipo}>
+                                    {r.tipo}
+                                  </TableCell>
+                                  <TableCell className="text-right">{r.cnt}</TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>

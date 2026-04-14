@@ -19,6 +19,7 @@ import resellerRoutes from './routes/reseller.js';
 import paymentsRoutes from './routes/payments.js';
 import dashboardRoutes from './routes/dashboard.js';
 import refundsRoutes from './routes/refunds.js';
+import reportsRoutes from './routes/reports.js';
 import paymentMethodsRoutes from './routes/paymentMethods.js';
 import financeiroRoutes from './routes/financeiro.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
@@ -378,6 +379,9 @@ try {
   // Registrar rotas de devoluções e vales (COM autenticação)
   app.use('/api/refunds', authenticateToken, refundsRoutes);
   console.log('[Server] ✅ Rotas de devoluções registradas com sucesso');
+
+  app.use('/api/reports', authenticateToken, reportsRoutes);
+  console.log('[Server] ✅ Rotas de relatórios registradas em /api/reports');
   
   // Registrar rotas de formas de pagamento (COM autenticação)
   app.use('/api/payment-methods', authenticateToken, paymentMethodsRoutes);
