@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { authAPI } from '@/integrations/auth/api-client';
 import { getApiUrl } from '@/utils/apiUrl';
 import {
   Sale, SaleFormData, SaleItem, SaleItemFormData,
@@ -15,17 +16,19 @@ import {
 } from '@/types/pdv';
 
 async function fireAlertSafely(
-  token: string | undefined,
+  token: string | undefined | null,
   codigo_alerta: string,
   payload: Record<string, unknown>
 ) {
-  if (!token || !codigo_alerta) return;
+  const t =
+    (typeof token === 'string' && token.trim()) || authAPI.getToken() || undefined;
+  if (!t || !codigo_alerta) return;
   try {
     const res = await fetch(`${getApiUrl()}/alerts/fire`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${t}`,
       },
       body: JSON.stringify({ codigo_alerta, payload }),
     });
@@ -1355,7 +1358,7 @@ export function useCashRegister() {
       console.error('Erro ao fechar caixa:', error);
       throw error;
     }
-  }, [currentSession]);
+  }, [currentSession, user, profile, auth?.session?.token]);
 
   return {
     currentSession,
