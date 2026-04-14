@@ -779,6 +779,8 @@ router.get('/dre/:periodo', async (req, res) => {
       const hasBillsCompany = (await pool.query(`
         SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bills_to_pay' AND column_name = 'company_id'
       `)).rows.length > 0;
+      // Não somar compras de estoque: custo já entra no CMV quando a mercadoria vende
+      const dreBillExclude = `AND TRIM(COALESCE(description, '')) NOT ILIKE 'Entrada de estoque%'`;
       const despesasQuery = hasBillsCompany
         ? `
         SELECT COALESCE(SUM(amount), 0) as despesas
@@ -788,6 +790,7 @@ router.get('/dre/:periodo', async (req, res) => {
             (payment_date IS NOT NULL AND payment_date >= $2 AND payment_date <= $3)
             OR (payment_date IS NULL AND due_date >= $2 AND due_date <= $3)
           )
+          ${dreBillExclude}
       `
         : `
         SELECT COALESCE(SUM(amount), 0) as despesas
@@ -797,6 +800,7 @@ router.get('/dre/:periodo', async (req, res) => {
             (payment_date IS NOT NULL AND payment_date >= $1 AND payment_date <= $2)
             OR (payment_date IS NULL AND due_date >= $1 AND due_date <= $2)
           )
+          ${dreBillExclude}
       `;
       const despesasResult = hasBillsCompany
         ? await pool.query(despesasQuery, [companyId, startDate, endDate])

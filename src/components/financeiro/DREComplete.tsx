@@ -10,6 +10,7 @@ import { DateFilterBar } from '@/components/financeiro/DateFilterBar';
 import { useQuery } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { cn } from '@/lib/utils';
+import { isBillExcludedFromDRE } from '@/utils/dreBillFilters';
 
 type DateFilterType = 'today' | 'week' | 'month' | 'all' | 'custom';
 
@@ -280,8 +281,9 @@ export function DREComplete({
     const despesasFixas: Record<string, number> = {};
     const despesasVariaveis: Record<string, number> = {};
     
-    // Contas pagas - agrupar por descrição
+    // Contas pagas - agrupar por descrição (exceto apropriação de estoque: CMV cobre na venda)
     validBills.forEach((bill: any) => {
+      if (isBillExcludedFromDRE(bill.description)) return;
       const descricao = bill.description || 'Outras Despesas';
       const valor = Number(bill.amount || 0);
       const valorValido = isNaN(valor) ? 0 : valor;
