@@ -160,20 +160,20 @@ export function useServerReportsQueries(
 
   const paymentMethods = useQuery({
     queryKey: ['server-report', 'payment-methods', startDate, endDate],
-    queryFn: async () => (await getJson(`/api/reports/payment-methods?${qs}`)).rows as PaymentMethodRow[],
+    queryFn: async () => (await getJson(`/reports/payment-methods?${qs}`)).rows as PaymentMethodRow[],
     enabled: base && activeTab === 'payments',
   });
 
   const topProducts = useQuery({
     queryKey: ['server-report', 'top-products', startDate, endDate],
-    queryFn: async () => (await getJson(`/api/reports/top-products?${qs}&limit=50`)).rows as TopProductRow[],
+    queryFn: async () => (await getJson(`/reports/top-products?${qs}&limit=50`)).rows as TopProductRow[],
     enabled: base && activeTab === 'products',
   });
 
   const purchases = useQuery({
     queryKey: ['server-report', 'purchases', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/purchases-suppliers?${qs}`);
+      const d = await getJson(`/reports/purchases-suppliers?${qs}`);
       return {
         pedidos: d.pedidos as PedidoRow[],
         fornecedores_os: d.fornecedores_os as FornecedorOsRow[],
@@ -184,14 +184,14 @@ export function useServerReportsQueries(
 
   const stock = useQuery({
     queryKey: ['server-report', 'stock', startDate, endDate],
-    queryFn: async () => (await getJson(`/api/reports/stock-movements?${qs}&limit=400`)).rows as StockMovRow[],
+    queryFn: async () => (await getJson(`/reports/stock-movements?${qs}&limit=400`)).rows as StockMovRow[],
     enabled: base && activeTab === 'stock',
   });
 
   const osOverview = useQuery({
     queryKey: ['server-report', 'os', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/os-overview?${qs}`);
+      const d = await getJson(`/reports/os-overview?${qs}`);
       return {
         by_status: d.by_status as OsStatusRow[],
         totals: d.totals as { total_os: number; valor_total_orcado: string | number },
@@ -203,7 +203,7 @@ export function useServerReportsQueries(
   const refunds = useQuery({
     queryKey: ['server-report', 'refunds', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/refunds-summary?${qs}`);
+      const d = await getJson(`/reports/refunds-summary?${qs}`);
       return {
         by_status: d.by_status as { status: string; cnt: number; valor: string | number }[],
         by_reason: d.by_reason as { reason: string; cnt: number; valor: string | number }[],
@@ -215,7 +215,7 @@ export function useServerReportsQueries(
   const clients = useQuery({
     queryKey: ['server-report', 'clients', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/clients-summary?${qs}`);
+      const d = await getJson(`/reports/clients-summary?${qs}`);
       return {
         novos_clientes: d.novos_clientes as number,
         clientes_compra_distintos: d.clientes_compra_distintos as number,
@@ -228,7 +228,7 @@ export function useServerReportsQueries(
   const cash = useQuery({
     queryKey: ['server-report', 'cash', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/cash-overview?${qs}`);
+      const d = await getJson(`/reports/cash-overview?${qs}`);
       return {
         totals: d.totals as CashTotals,
         by_operator: d.by_operator as CashOperatorRow[],
@@ -242,7 +242,7 @@ export function useServerReportsQueries(
   const cancellations = useQuery({
     queryKey: ['server-report', 'cancellations', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/sales-cancellations?${qs}`);
+      const d = await getJson(`/reports/sales-cancellations?${qs}`);
       return {
         totals: d.totals as {
           canceled_sales: number;
@@ -264,7 +264,7 @@ export function useServerReportsQueries(
   const followup = useQuery({
     queryKey: ['server-report', 'followup', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/post-sales-followup?${qs}`);
+      const d = await getJson(`/reports/post-sales-followup?${qs}`);
       return {
         totals: d.totals as FollowupTotals,
         by_status: d.by_status as FollowupStatusRow[],
@@ -278,7 +278,7 @@ export function useServerReportsQueries(
   const audit = useQuery({
     queryKey: ['server-report', 'audit', startDate, endDate],
     queryFn: async () => {
-      const d = await getJson(`/api/reports/audit-activity?${qs}`);
+      const d = await getJson(`/reports/audit-activity?${qs}`);
       return {
         user_activity: d.user_activity as { tipo: string; cnt: number }[],
         audit_logs: d.audit_logs as { tipo: string; cnt: number }[],

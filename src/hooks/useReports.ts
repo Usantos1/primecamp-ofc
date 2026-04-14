@@ -207,12 +207,12 @@ export function useTechnicianProductivity(filters: ReportFilters = {}) {
 
       // Buscar profiles usando user_id (que corresponde ao technician_id)
       const { data: technicians } = await from('profiles')
-        .select('user_id, display_name, email')
+        .select('user_id, display_name')
         .in('user_id', technicianUserIds)
         .execute();
 
       const techniciansMap = new Map(
-        (technicians || []).map(t => [t.user_id, t.display_name || t.email || 'Técnico'])
+        (technicians || []).map(t => [t.user_id, t.display_name || 'Técnico'])
       );
 
       // Buscar itens das vendas para calcular receita de serviços vs produtos
