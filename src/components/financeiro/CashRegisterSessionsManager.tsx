@@ -37,7 +37,8 @@ type CashSession = {
 };
 
 interface Props {
-  dateFilter: 'today' | 'week' | 'month' | 'all' | 'custom';
+  /** Quando omitido (ex.: chamadas legadas), usa o mesmo padrão da página Financeiro: últimos 30 dias. */
+  dateFilter?: 'today' | 'week' | 'month' | 'all' | 'custom';
   customDateStart?: Date;
   customDateEnd?: Date;
   statusFilter?: 'all' | 'open' | 'closed';
@@ -140,7 +141,13 @@ async function enrichSessionsWithEsperado(list: CashSession[]): Promise<CashSess
   });
 }
 
-export function CashRegisterSessionsManager({ dateFilter, customDateStart, customDateEnd, statusFilter = 'all', valuesVisible = true }: Props) {
+export function CashRegisterSessionsManager({
+  dateFilter = 'month',
+  customDateStart,
+  customDateEnd,
+  statusFilter = 'all',
+  valuesVisible = true,
+}: Props) {
   const { user, profile, isAdmin } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -566,8 +573,23 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent className="max-w-6xl w-[min(96vw,1152px)] max-h-[92vh] flex flex-col gap-0 p-6 overflow-hidden">
-          <DialogHeader className="shrink-0 pr-8">
-            <DialogTitle>Detalhes do Caixa #{selected?.numero ?? '-'}</DialogTitle>
+          <DialogHeader className="shrink-0 pr-8 space-y-0">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <DialogTitle className="text-left">Detalhes do Caixa #{selected?.numero ?? '-'}</DialogTitle>
+              {selected ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 shrink-0 gap-1 sm:self-center"
+                  disabled={loadingSessionSales}
+                  onClick={() => void handlePrintExtratoTermico()}
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir extrato (térmica)
+                </Button>
+              ) : null}
+            </div>
           </DialogHeader>
 
           {selected && (
@@ -619,19 +641,6 @@ export function CashRegisterSessionsManager({ dateFilter, customDateStart, custo
                 ) : (
                   <div className="text-sm text-muted-foreground">Sem totais registrados (caixa ainda aberto ou não conferido)</div>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="gap-1"
-                    disabled={loadingSessionSales}
-                    onClick={() => void handlePrintExtratoTermico()}
-                  >
-                    <Printer className="h-4 w-4" />
-                    Imprimir extrato (térmica)
-                  </Button>
-                </div>
               </div>
 
               <div className="border rounded-lg overflow-hidden flex flex-col min-h-[200px]">
