@@ -97,12 +97,16 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
     const base = getApiUrl();
     const url = new URL('theme-config', base.endsWith('/') ? base : base + '/');
     url.searchParams.set('host', host);
+    url.searchParams.set('_ts', String(Date.now()));
     const token = localStorage.getItem('auth_token');
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-      const res = await fetch(url.toString(), { headers });
+      const res = await fetch(url.toString(), {
+        headers,
+        cache: 'no-store',
+      });
       if (!res.ok) return;
       const data = await res.json().catch(() => null);
       setConfig((prev) => mergeIncomingConfig(prev, data));

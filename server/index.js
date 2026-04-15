@@ -3293,6 +3293,10 @@ function themeConfigKey(host) {
 // Com Authorization: retorna tema da empresa (company_id); senão usa ?host= para tema do domínio
 app.get('/api/theme-config', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     let companyId = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -3349,6 +3353,10 @@ app.get('/api/theme-config', async (req, res) => {
 // POST /api/theme-config — salvar tema (autenticado); por empresa (company_id) para que cada empresa tenha suas cores/nome/logo
 app.post('/api/theme-config', authenticateToken, async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     const { companyName, logo, logoAlt, colors, navigationVariant } = req.body;
     const key = req.companyId
       ? `theme_config_company_${req.companyId}`

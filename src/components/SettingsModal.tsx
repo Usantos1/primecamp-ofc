@@ -102,7 +102,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           button: buttonColor,
         },
       };
-      const { error } = await apiClient.post('/theme-config', payload);
+      const { data, error } = await apiClient.post('/theme-config', payload);
 
       // Aplica na interface em qualquer caso (nome e logo mudam na sessão atual)
       updateConfig(newConfig);
@@ -120,6 +120,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           toast.error(error?.message || (error as { message?: string })?.message || 'Erro ao salvar tema na VPS');
         }
       } else {
+        if (data?.config) {
+          updateConfig(data.config);
+        }
         await refreshConfig();
         toast.success('Configurações salvas. O tema foi atualizado na VPS para todos os dispositivos.');
       }
