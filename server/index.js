@@ -204,13 +204,14 @@ const authenticateToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    const tokenUserId = decoded.id || decoded.userId || decoded.sub;
     
     // CRÍTICO: company_id SEMPRE do banco — nunca confiar no token para isolamento entre empresas
     // Se o usuário existe no banco e company_id está NULL, não usar token (evita ver dados de outra empresa)
     try {
       const userResult = await pool.query(
         'SELECT company_id FROM users WHERE id = $1',
-        [decoded.id]
+        [tokenUserId]
       );
       if (userResult.rows.length > 0) {
         const dbCompanyId = userResult.rows[0].company_id;
