@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 // Tabs removidas - formulário único sem abas
 import { 
   Plus, Search, Edit, Trash2, Phone, Mail, MapPin, User, ExternalLink, Wrench, ShoppingCart, Cake, Settings, Upload,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, Car
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, Car, RefreshCcw, Send, CalendarClock, Ban
 } from 'lucide-react';
 import { ImportarClientes } from '@/components/ImportarClientes';
 import { useClientesSupabase as useClientes } from '@/hooks/useClientesSupabase';
@@ -29,6 +29,43 @@ import { useCompanySegment } from '@/hooks/useCompanySegment';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { getDemoAwareErrorMessage } from '@/utils/demoMode';
 import { STATUS_OS_LABELS, STATUS_OS_COLORS } from '@/types/assistencia';
+import { apiClient } from '@/integrations/api/client';
+
+interface BirthdayConfig {
+  mensagem: string;
+  horario: string;
+  ativo: boolean;
+  timezone?: string;
+}
+
+interface BirthdayJob {
+  id: string;
+  cliente_id: string;
+  cliente_nome: string | null;
+  cliente_whatsapp: string | null;
+  cliente_telefone: string | null;
+  cliente_telefone2: string | null;
+  data_nascimento: string | null;
+  telefone: string | null;
+  status: 'pendente' | 'agendado' | 'enviado' | 'erro' | 'cancelado';
+  scheduled_at: string;
+  sent_at: string | null;
+  error_message: string | null;
+  skip_reason: string | null;
+  mensagem_preview: string | null;
+  source_date: string;
+}
+
+interface BirthdayJobsResponse {
+  jobs: BirthdayJob[];
+  summary: {
+    total_jobs: number;
+    pending_jobs: number;
+    sent_jobs: number;
+    error_jobs: number;
+    cancelled_jobs: number;
+  };
+}
 
 const INITIAL_FORM: ClienteFormData = {
   tipo_pessoa: 'fisica',
@@ -102,11 +139,16 @@ export default function Clientes() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAniversarioConfig, setShowAniversarioConfig] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [aniversarioConfig, setAniversarioConfig] = useState({
+  const [aniversarioConfig, setAniversarioConfig] = useState<BirthdayConfig>({
     mensagem: '🎉 *Feliz Aniversário!*\n\nOlá {nome}! 🎂\n\nHoje é um dia muito especial! Desejamos um feliz aniversário repleto de alegria, saúde e muitas realizações!\n\nQue este novo ano de vida seja cheio de momentos especiais e conquistas!\n\nParabéns! 🎈🎁',
     horario: '09:00',
-    ativo: true,
+    ativo: false,
+    timezone: 'America/Sao_Paulo',
   });
+  const [birthdayJobFilter, setBirthdayJobFilter] = useState<'all' | 'agendado' | 'enviado' | 'erro' | 'cancelado'>('all');
+  const [birthdaySaving, setBirthdaySaving] = useState(false);
+  const [birthdaySyncing, setBirthdaySyncing] = useState(false);
+  const [birthdayProcessing, setBirthdayProcessing] = useState(false);
   
   const { 
     clientes, 
@@ -123,6 +165,21 @@ export default function Clientes() {
     pageSize,
   } = useClientes(50);
   const { toast } = useToast();
+
+  const { data: birthdayJobsData, refetch: refetchBirthdayJobs, isFetching: loadingBirthdayJobs } = useQuery({
+    queryKey: ['birthday-message-jobs', birthdayJobFilter],
+    queryFn: async () => {
+      const query = new URLSearchParams({
+        limit: '100',
+        status: birthdayJobFilter,
+        period: 'today',
+      });
+      const { data, error } = await apiClient.get(`/birthday-messages/jobs?${query.toString()}`);
+      if (error) throw new Error(typeof error === 'string' ? error : 'Erro ao carregar agendamentos');
+      return (data || { jobs: [], summary: {} }) as BirthdayJobsResponse;
+    },
+    enabled: showAniversarioConfig,
+  });
   
   // Estado para clientes da busca no servidor
   const [searchResults, setSearchResults] = useState<Cliente[]>([]);
@@ -431,85 +488,53 @@ export default function Clientes() {
     }
   };
 
-  // Carregar configuração de aniversário
   const loadAniversarioConfig = async () => {
     try {
-      const { data, error } = await from('kv_store_2c4defad')
-        .select('value')
-        .eq('key', 'aniversario_config')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao carregar configuração:', error);
-        return;
+      const { data, error } = await apiClient.get('/birthday-messages/settings');
+      if (error) {
+        throw new Error(typeof error === 'string' ? error : 'Erro ao carregar configuração');
       }
-
-      if (data?.value) {
-        setAniversarioConfig(data.value);
-      }
+      setAniversarioConfig({
+        mensagem: data?.template_mensagem || aniversarioConfig.mensagem,
+        horario: data?.horario_envio || '09:00',
+        ativo: !!data?.ativo,
+        timezone: data?.timezone || 'America/Sao_Paulo',
+      });
     } catch (error) {
       console.error('Erro ao carregar configuração de aniversário:', error);
+      toast({
+        title: 'Erro ao carregar configuração',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível carregar a configuração de aniversário.'),
+        variant: 'destructive',
+      });
     }
   };
 
-  // Salvar configuração de aniversário
+  const handleOpenAniversarioConfig = async () => {
+    await loadAniversarioConfig();
+    setShowAniversarioConfig(true);
+  };
+
   const handleSaveAniversarioConfig = async () => {
     try {
-      // Salvar configuração
-      // TODO: Implementar upsert na API quando necessário
-      // Por enquanto, usar insert simples
-      const { error: configError } = await from('kv_store_2c4defad')
-        .insert({
-          key: 'aniversario_config',
-          value: aniversarioConfig,
-        });
-
-      if (configError) throw configError;
-
-      // Se o envio automático estiver ativado, atualizar o cron job
-      if (aniversarioConfig.ativo && aniversarioConfig.horario) {
-        try {
-          // 🚫 Supabase RPC removido - TODO: implementar na API quando necessário
-          // const { data: cronResult, error: cronError } = await supabase.rpc(
-          //   'atualizar_cron_aniversario',
-          //   { horario_brt: aniversarioConfig.horario }
-          // );
-          
-          // Por enquanto, apenas logar que seria necessário atualizar o cron
-          console.log('Cron job precisa ser atualizado manualmente:', aniversarioConfig.horario);
-          
-          // Simular sucesso para não quebrar o fluxo
-          const cronError = null;
-          const cronResult = null;
-
-          if (cronError) {
-            console.warn('Erro ao atualizar cron job (pode não ter permissão):', cronError);
-            // Não falha o salvamento se o cron job não atualizar
-            toast({ 
-              title: 'Configuração salva!', 
-              description: 'A mensagem foi salva, mas o cron job pode precisar ser atualizado manualmente.' 
-            });
-          } else {
-            console.log('Cron job atualizado:', cronResult);
-            toast({ 
-              title: 'Configuração salva!', 
-              description: 'A mensagem de aniversário e o agendamento foram atualizados com sucesso.' 
-            });
-          }
-        } catch (cronErr: any) {
-          console.warn('Erro ao atualizar cron job:', cronErr);
-          toast({ 
-            title: 'Configuração salva!', 
-            description: 'A mensagem foi salva, mas o cron job pode precisar ser atualizado manualmente.' 
-          });
-        }
-      } else {
-        toast({ 
-          title: 'Configuração salva!', 
-          description: 'A mensagem de aniversário foi atualizada com sucesso.' 
-        });
+      setBirthdaySaving(true);
+      const payload = {
+        ativo: aniversarioConfig.ativo,
+        horario_envio: aniversarioConfig.horario,
+        timezone: aniversarioConfig.timezone || 'America/Sao_Paulo',
+        template_mensagem: aniversarioConfig.mensagem,
+      };
+      const { error } = await apiClient.put('/birthday-messages/settings', payload);
+      if (error) {
+        throw new Error(typeof error === 'string' ? error : (error as any)?.message || 'Erro ao salvar configuração');
       }
-
+      await refetchBirthdayJobs();
+      toast({
+        title: 'Configuração salva!',
+        description: aniversarioConfig.ativo
+          ? 'O agendamento automático de aniversários foi atualizado e sincronizado.'
+          : 'As mensagens de aniversário foram desativadas para esta empresa.',
+      });
       setShowAniversarioConfig(false);
     } catch (error: any) {
       console.error('Erro ao salvar configuração:', error);
@@ -518,7 +543,100 @@ export default function Clientes() {
         description: getDemoAwareErrorMessage(error, 'Não foi possível salvar a configuração.'),
         variant: 'destructive'
       });
+    } finally {
+      setBirthdaySaving(false);
     }
+  };
+
+  const handleSyncBirthdayJobs = async () => {
+    try {
+      setBirthdaySyncing(true);
+      const { data, error } = await apiClient.post('/birthday-messages/sync', {});
+      if (error) {
+        throw new Error(typeof error === 'string' ? error : (error as any)?.message || 'Erro ao sincronizar');
+      }
+      await refetchBirthdayJobs();
+      toast({
+        title: 'Agendamentos sincronizados',
+        description: `${data?.created || 0} agendados, ${data?.duplicates || 0} já existentes.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao sincronizar',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível gerar os agendamentos de aniversário.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setBirthdaySyncing(false);
+    }
+  };
+
+  const handleProcessBirthdayJobs = async () => {
+    try {
+      setBirthdayProcessing(true);
+      const { data, error } = await apiClient.post('/birthday-messages/process', {});
+      if (error) {
+        throw new Error(typeof error === 'string' ? error : (error as any)?.message || 'Erro ao processar envios');
+      }
+      await refetchBirthdayJobs();
+      toast({
+        title: 'Fila processada',
+        description: `${data?.sent || 0} enviados, ${data?.errors || 0} com erro.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao processar fila',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível processar a fila de aniversário.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setBirthdayProcessing(false);
+    }
+  };
+
+  const handleRescheduleBirthdayJob = async (job: BirthdayJob) => {
+    try {
+      const { error } = await apiClient.patch(`/birthday-messages/jobs/${job.id}`, {
+        status: 'agendado',
+        telefone: job.telefone || job.cliente_whatsapp || job.cliente_telefone || job.cliente_telefone2 || '',
+      });
+      if (error) {
+        throw new Error(typeof error === 'string' ? error : (error as any)?.message || 'Erro ao reagendar');
+      }
+      await refetchBirthdayJobs();
+      toast({ title: 'Agendamento atualizado!', description: 'A mensagem voltou para a fila de envio.' });
+    } catch (error) {
+      toast({
+        title: 'Erro ao reagendar',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível reagendar a mensagem.'),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteBirthdayJob = async (jobId: string) => {
+    try {
+      const { error } = await apiClient.delete(`/birthday-messages/jobs/${jobId}`);
+      if (error) {
+        throw new Error(typeof error === 'string' ? error : (error as any)?.message || 'Erro ao remover');
+      }
+      await refetchBirthdayJobs();
+      toast({ title: 'Agendamento removido!' });
+    } catch (error) {
+      toast({
+        title: 'Erro ao remover',
+        description: getDemoAwareErrorMessage(error, 'Não foi possível remover o agendamento.'),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const birthdaySummary = birthdayJobsData?.summary || {
+    total_jobs: 0,
+    pending_jobs: 0,
+    sent_jobs: 0,
+    error_jobs: 0,
+    cancelled_jobs: 0,
   };
 
   return (
@@ -550,6 +668,19 @@ export default function Clientes() {
               <Plus className="h-5 w-5" />
             </Button>
           </div>
+          <Button
+            onClick={handleOpenAniversarioConfig}
+            variant="outline"
+            className="h-11 min-h-[44px] w-full justify-between rounded-xl border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 touch-manipulation"
+          >
+            <span className="flex items-center gap-2">
+              <Cake className="h-4 w-4" />
+              <span>Painel de aniversários</span>
+            </span>
+            <Badge variant="secondary" className="bg-white/80 text-amber-800">
+              Hoje
+            </Badge>
+          </Button>
           <Select value={searchField} onValueChange={(v) => setSearchField(v as SearchFieldType)}>
             <SelectTrigger className="h-11 min-h-[44px] w-full text-sm border-input rounded-xl touch-manipulation [&>span]:truncate">
               <SelectValue placeholder="Buscar por" />
@@ -590,8 +721,8 @@ export default function Clientes() {
             <Button onClick={() => setShowImportDialog(true)} variant="outline" size="sm" className="gap-2 h-9">
               <Upload className="h-4 w-4" /><span>Importar</span>
             </Button>
-            <Button onClick={async () => { await loadAniversarioConfig(); setShowAniversarioConfig(true); }} variant="outline" size="sm" className="gap-2 h-9">
-              <Cake className="h-4 w-4" /><span>Config. Aniversário</span>
+            <Button onClick={handleOpenAniversarioConfig} variant="outline" size="sm" className="gap-2 h-9 border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100">
+              <Cake className="h-4 w-4" /><span>Painel Aniversários</span>
             </Button>
           </div>
         </div>
@@ -1160,6 +1291,9 @@ export default function Clientes() {
                 <Cake className="h-5 w-5" />
                 Configuração de Mensagem de Aniversário
               </DialogTitle>
+              <DialogDescription>
+                Configure o envio automático e acompanhe quais clientes possuem mensagem agendada para hoje.
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2 md:py-4">
@@ -1202,6 +1336,156 @@ export default function Clientes() {
                   onCheckedChange={(checked) => setAniversarioConfig(prev => ({ ...prev, ativo: checked }))}
                 />
               </div>
+
+              <div className="grid gap-3 md:grid-cols-4">
+                <Card className="border border-emerald-200">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground">Agendadas</p>
+                    <p className="text-2xl font-semibold">{birthdaySummary.pending_jobs}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border border-blue-200">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground">Enviadas hoje</p>
+                    <p className="text-2xl font-semibold">{birthdaySummary.sent_jobs}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border border-amber-200">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground">Com erro</p>
+                    <p className="text-2xl font-semibold">{birthdaySummary.error_jobs}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border border-rose-200">
+                  <CardContent className="p-3">
+                    <p className="text-xs text-muted-foreground">Canceladas</p>
+                    <p className="text-2xl font-semibold">{birthdaySummary.cancelled_jobs}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-lg border border-gray-200 p-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Fila de aniversários</p>
+                  <p className="text-xs text-muted-foreground">
+                    Gere os agendamentos do dia e acompanhe o status de envio por cliente.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={birthdayJobFilter} onValueChange={(value) => setBirthdayJobFilter(value as typeof birthdayJobFilter)}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Filtrar status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="agendado">Agendados</SelectItem>
+                      <SelectItem value="enviado">Enviados</SelectItem>
+                      <SelectItem value="erro">Com erro</SelectItem>
+                      <SelectItem value="cancelado">Cancelados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={handleSyncBirthdayJobs} disabled={birthdaySyncing}>
+                    <RefreshCcw className="mr-2 h-4 w-4" />
+                    {birthdaySyncing ? 'Sincronizando...' : 'Sincronizar'}
+                  </Button>
+                  <Button variant="outline" onClick={handleProcessBirthdayJobs} disabled={birthdayProcessing}>
+                    <Send className="mr-2 h-4 w-4" />
+                    {birthdayProcessing ? 'Processando...' : 'Processar fila'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Agendado</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Mensagem</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingBirthdayJobs ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                          Carregando agendamentos...
+                        </TableCell>
+                      </TableRow>
+                    ) : birthdayJobsData?.jobs?.length ? (
+                      birthdayJobsData.jobs.map((job) => (
+                        <TableRow key={job.id}>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="font-medium">{job.cliente_nome || 'Cliente sem nome'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Nasc.: {job.data_nascimento ? dateFormatters.short(job.data_nascimento) : '-'}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{job.telefone || job.cliente_whatsapp || job.cliente_telefone || '-'}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <p>{job.scheduled_at ? new Date(job.scheduled_at).toLocaleString('pt-BR') : '-'}</p>
+                              {job.sent_at && (
+                                <p className="text-xs text-muted-foreground">
+                                  Enviado: {new Date(job.sent_at).toLocaleString('pt-BR')}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <Badge
+                                variant={job.status === 'enviado' ? 'default' : job.status === 'erro' ? 'destructive' : 'secondary'}
+                              >
+                                {job.status}
+                              </Badge>
+                              {(job.error_message || job.skip_reason) && (
+                                <p className="max-w-[220px] text-xs text-muted-foreground">
+                                  {job.error_message || job.skip_reason}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[260px]">
+                            <p className="line-clamp-3 text-xs text-muted-foreground">{job.mensagem_preview || '-'}</p>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRescheduleBirthdayJob(job)}
+                                title="Reagendar"
+                              >
+                                <CalendarClock className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => handleDeleteBirthdayJob(job.id)}
+                                title="Remover"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                          Nenhum cliente com mensagem agendada para o filtro selecionado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
             <DialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
@@ -1214,9 +1498,10 @@ export default function Clientes() {
               </Button>
               <Button 
                 onClick={handleSaveAniversarioConfig}
+                disabled={birthdaySaving}
                 className="w-full sm:w-auto h-9 md:h-10 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0"
               >
-                Salvar Configuração
+                {birthdaySaving ? 'Salvando...' : 'Salvar Configuração'}
               </Button>
             </DialogFooter>
           </DialogContent>

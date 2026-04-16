@@ -43,6 +43,15 @@ try {
   console.warn('[Server] Follow-up pós-venda: rotas não carregadas:', e.message);
 }
 
+let birthdayMessagesRoutes = null;
+try {
+  const birthdayMod = await import('./routes/birthdayMessages.js');
+  birthdayMessagesRoutes = birthdayMod.default;
+  console.log('[Server] Módulo mensagens de aniversário carregado');
+} catch (e) {
+  console.warn('[Server] Mensagens de aniversário: rotas não carregadas:', e.message);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -407,6 +416,10 @@ try {
     app.use('/api/os-pos-venda-followup', authenticateToken, osPosVendaFollowupRoutes);
     console.log('[Server] ✅ Rotas de follow-up pós-venda em /api/os-pos-venda-followup');
   }
+  if (birthdayMessagesRoutes) {
+    app.use('/api/birthday-messages', authenticateToken, birthdayMessagesRoutes);
+    console.log('[Server] ✅ Rotas de mensagens de aniversário em /api/birthday-messages');
+  }
   console.log('[Server] ✅ Rotas de financeiro/IA registradas com sucesso');
   
   // Job para verificar inadimplentes a cada hora
@@ -438,6 +451,24 @@ try {
         });
     }, 60 * 1000);
     console.log('[Server] ✅ Worker follow-up pós-venda agendado (1 min)');
+  }
+
+  if (birthdayMessagesRoutes) {
+    setInterval(() => {
+      import('./jobs/birthdayMessageWorker.js')
+        .then((m) => m.runBirthdayMessageTick(pool))
+        .then((r) => {
+          if ((r?.sync?.created || 0) > 0 || (r?.process?.processed || 0) > 0) {
+            console.log('[Birthday Message Worker]', r);
+          }
+        })
+        .catch((err) => {
+          if (!String(err.message || err).includes('does not exist')) {
+            console.error('[Birthday Message Worker]', err.message || err);
+          }
+        });
+    }, 60 * 1000);
+    console.log('[Server] ✅ Worker de mensagens de aniversário agendado (1 min)');
   }
   
   // Jobs de financeiro/IA (assíncrono para não bloquear)
@@ -6297,6 +6328,45 @@ const initApiTables = async () => {
       CREATE INDEX IF NOT EXISTS idx_api_tokens_criado_por ON api_tokens(criado_por);
       CREATE INDEX IF NOT EXISTS idx_api_access_logs_token_id ON api_access_logs(token_id);
       CREATE INDEX IF NOT EXISTS idx_api_access_logs_created_at ON api_access_logs(created_at);
+
+      CREATE TABLE IF NOT EXISTS birthday_message_settings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        ativo BOOLEAN NOT NULL DEFAULT false,
+        horario_envio VARCHAR(5) NOT NULL DEFAULT '09:00',
+        timezone VARCHAR(64) NOT NULL DEFAULT 'America/Sao_Paulo',
+        template_mensagem TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CONSTRAINT birthday_message_settings_company_unique UNIQUE (company_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_birthday_message_settings_company ON birthday_message_settings(company_id);
+
+      CREATE TABLE IF NOT EXISTS birthday_message_jobs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL,
+        telefone TEXT,
+        mensagem_renderizada TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'agendado',
+        scheduled_at TIMESTAMPTZ NOT NULL,
+        sent_at TIMESTAMPTZ,
+        source_date DATE NOT NULL,
+        template_key VARCHAR(64) NOT NULL DEFAULT 'birthday-default',
+        error_message TEXT,
+        skip_reason TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        CONSTRAINT birthday_message_jobs_status_check CHECK (status IN ('pendente', 'agendado', 'enviado', 'erro', 'cancelado')),
+        CONSTRAINT birthday_message_jobs_company_cliente_date_unique UNIQUE (company_id, cliente_id, source_date)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_birthday_message_jobs_due
+        ON birthday_message_jobs(status, scheduled_at)
+        WHERE status IN ('pendente', 'agendado');
+      CREATE INDEX IF NOT EXISTS idx_birthday_message_jobs_company_created ON birthday_message_jobs(company_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_birthday_message_jobs_company_date ON birthday_message_jobs(company_id, source_date DESC);
     `);
     
     // Verificar se as tabelas foram criadas
