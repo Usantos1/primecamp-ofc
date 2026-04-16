@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,110 +10,131 @@ interface Permission {
   category: string;
 }
 
-interface UserPermission {
-  permission_id: string;
-  granted: boolean;
-  permission?: Permission;
+// ═══════════════════════════════════════════════════════════════
+// DEFINIÇÃO DOS MÓDULOS DO SISTEMA (fonte de verdade)
+// ═══════════════════════════════════════════════════════════════
+
+export interface PermissionModule {
+  key: string;
+  label: string;
+  description: string;
+  permissions: { key: string; label: string }[];
 }
 
-interface RolePermission {
-  permission_id: string;
-  permission?: Permission;
-}
+export const SYSTEM_MODULES: PermissionModule[] = [
+  {
+    key: 'dashboard', label: 'Dashboard', description: 'Painel inicial e gestão',
+    permissions: [
+      { key: 'dashboard.view', label: 'Visualizar dashboard' },
+      { key: 'dashboard.gestao', label: 'Dashboard de gestão' },
+    ],
+  },
+  {
+    key: 'vendas', label: 'Vendas / PDV', description: 'Ponto de venda e gestão de vendas',
+    permissions: [
+      { key: 'vendas.view', label: 'Visualizar vendas' },
+      { key: 'vendas.create', label: 'Criar vendas' },
+      { key: 'vendas.edit', label: 'Editar vendas' },
+      { key: 'vendas.manage', label: 'Gerenciar vendas (devoluções, cupom)' },
+      { key: 'vendas.delete', label: 'Excluir vendas' },
+    ],
+  },
+  {
+    key: 'caixa', label: 'Caixa', description: 'Controle de caixa e movimentações',
+    permissions: [
+      { key: 'caixa.view', label: 'Visualizar caixa' },
+      { key: 'caixa.open', label: 'Abrir caixa' },
+      { key: 'caixa.close', label: 'Fechar caixa' },
+      { key: 'caixa.sangria', label: 'Realizar sangria' },
+      { key: 'caixa.suprimento', label: 'Realizar suprimento' },
+    ],
+  },
+  {
+    key: 'os', label: 'Ordem de Serviço', description: 'Ordens de serviço e assistência',
+    permissions: [
+      { key: 'os.view', label: 'Visualizar ordens de serviço' },
+      { key: 'os.create', label: 'Criar ordens de serviço' },
+      { key: 'os.edit', label: 'Editar ordens de serviço' },
+      { key: 'os.delete', label: 'Excluir ordens de serviço' },
+      { key: 'os.config.status', label: 'Configurar status de OS' },
+    ],
+  },
+  {
+    key: 'clientes', label: 'Clientes', description: 'Cadastro e gestão de clientes',
+    permissions: [
+      { key: 'clientes.view', label: 'Visualizar clientes' },
+      { key: 'clientes.create', label: 'Cadastrar clientes' },
+      { key: 'clientes.edit', label: 'Editar clientes' },
+      { key: 'clientes.delete', label: 'Excluir clientes' },
+    ],
+  },
+  {
+    key: 'produtos', label: 'Produtos / Estoque', description: 'Catálogo, estoque e inventário',
+    permissions: [
+      { key: 'produtos.view', label: 'Visualizar produtos' },
+      { key: 'produtos.create', label: 'Cadastrar produtos' },
+      { key: 'produtos.edit', label: 'Editar produtos' },
+      { key: 'produtos.manage', label: 'Gerenciar estoque (marcas, modelos, inventário)' },
+    ],
+  },
+  {
+    key: 'financeiro', label: 'Financeiro', description: 'Módulo financeiro completo',
+    permissions: [
+      { key: 'financeiro.view', label: 'Visualizar financeiro' },
+      { key: 'financeiro.create', label: 'Criar lançamentos' },
+      { key: 'financeiro.edit', label: 'Editar lançamentos' },
+      { key: 'financeiro.delete', label: 'Excluir lançamentos' },
+    ],
+  },
+  {
+    key: 'relatorios', label: 'Relatórios', description: 'Relatórios e análises',
+    permissions: [
+      { key: 'relatorios.view', label: 'Visualizar relatórios' },
+      { key: 'relatorios.vendas', label: 'Relatórios de vendas' },
+      { key: 'relatorios.financeiro', label: 'Relatórios financeiros' },
+      { key: 'relatorios.geral', label: 'Relatórios gerais' },
+    ],
+  },
+  {
+    key: 'pos_venda', label: 'Pós-venda', description: 'Acompanhamento e follow-up de clientes',
+    permissions: [
+      { key: 'pos_venda.view', label: 'Visualizar pós-venda' },
+      { key: 'pos_venda.manage', label: 'Gerenciar mensagens de pós-venda' },
+      { key: 'pos_venda.config', label: 'Configurar pós-venda' },
+    ],
+  },
+  {
+    key: 'alertas', label: 'Alertas', description: 'Painel de alertas automáticos',
+    permissions: [
+      { key: 'alertas.view', label: 'Visualizar alertas' },
+      { key: 'alertas.config', label: 'Configurar alertas' },
+    ],
+  },
+  {
+    key: 'admin', label: 'Administração', description: 'Configurações e gestão do sistema',
+    permissions: [
+      { key: 'admin.view', label: 'Acesso administrativo geral' },
+      { key: 'admin.config', label: 'Configurações do sistema' },
+      { key: 'admin.users', label: 'Gerenciar usuários' },
+      { key: 'admin.logs', label: 'Visualizar logs' },
+      { key: 'admin.timeclock', label: 'Administrar ponto eletrônico' },
+      { key: 'admin.disc', label: 'Administrar avaliação DISC' },
+    ],
+  },
+  {
+    key: 'rh', label: 'Recursos Humanos', description: 'Gestão de equipe e RH',
+    permissions: [
+      { key: 'rh.view', label: 'Visualizar RH' },
+      { key: 'rh.ponto', label: 'Registrar ponto eletrônico' },
+      { key: 'rh.manage', label: 'Gerenciar equipe e departamentos' },
+    ],
+  },
+];
 
-// ═══════════════════════════════════════════════════════════════
-// MAPEAMENTO DE PERMISSÕES POR FUNÇÃO
-// Cada função tem acesso a diferentes áreas do sistema
-// ═══════════════════════════════════════════════════════════════
-const ROLE_PERMISSIONS: Record<string, string[]> = {
-  // ADMINISTRADOR - Acesso total (tratado separadamente)
-  admin: ['*'],
-  
-  // GERENTE - Quase tudo, exceto configurações críticas
-  gerente: [
-    'dashboard.view', 'dashboard.gestao',
-    'vendas.view', 'vendas.create', 'vendas.edit', 'vendas.manage',
-    'caixa.view', 'caixa.open', 'caixa.close', 'caixa.sangria', 'caixa.suprimento',
-    'os.view', 'os.create', 'os.edit',
-    'produtos.view', 'produtos.create', 'produtos.edit',
-    'clientes.view', 'clientes.create', 'clientes.edit',
-    'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
-    'rh.view', 'rh.ponto',
-    'admin.users',
-  ],
-  
-  // SUPERVISOR - Supervisão de equipe e operações
-  supervisor: [
-    'dashboard.view', 'dashboard.gestao',
-    'vendas.view', 'vendas.create', 'vendas.edit',
-    'caixa.view', 'caixa.open', 'caixa.close',
-    'os.view', 'os.create', 'os.edit',
-    'produtos.view',
-    'clientes.view', 'clientes.create', 'clientes.edit',
-    'relatorios.vendas',
-    'rh.view', 'rh.ponto',
-  ],
-  
-  // VENDEDOR - Vendas e atendimento
-  vendedor: [
-    'dashboard.view',
-    'vendas.view', 'vendas.create',
-    'caixa.view',
-    'os.view', 'os.create',
-    'produtos.view',
-    'clientes.view', 'clientes.create',
-    'rh.ponto',
-  ],
-  
-  // OPERADOR DE CAIXA - Apenas caixa e PDV
-  caixa: [
-    'dashboard.view',
-    'vendas.view', 'vendas.create',
-    'caixa.view', 'caixa.open', 'caixa.close',
-    'produtos.view',
-    'clientes.view',
-    'rh.ponto',
-  ],
-  
-  // ESTOQUISTA - Gestão de estoque
-  estoquista: [
-    'dashboard.view',
-    'produtos.view', 'produtos.create', 'produtos.edit',
-    'os.view',
-    'rh.ponto',
-  ],
-  
-  // FINANCEIRO - Relatórios e contas
-  financeiro: [
-    'dashboard.view', 'dashboard.gestao',
-    'vendas.view',
-    'caixa.view',
-    'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
-    'clientes.view',
-    'rh.ponto',
-  ],
-  
-  // ATENDENTE - Atendimento e vendas (sem acesso financeiro)
-  atendente: [
-    'dashboard.view',
-    'vendas.view', 'vendas.create',
-    'caixa.view',
-    'clientes.view', 'clientes.create',
-    'os.view', 'os.create',
-    'produtos.view',
-    'rh.ponto',
-  ],
-  
-  // MEMBRO - Acesso mínimo
-  member: [
-    'dashboard.view',
-    'rh.ponto',
-    'calendario.view',
-  ],
-};
+export const ALL_PERMISSION_KEYS = SYSTEM_MODULES.flatMap(m => m.permissions.map(p => p.key));
 
-// Cache de permissões por usuário/role para evitar N requisições quando vários componentes montam
-const PERMISSIONS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+// Cache global
+const PERMISSIONS_CACHE_TTL_MS = 5 * 60 * 1000;
 let permissionsCache: { key: string; permissions: Set<string>; timestamp: number } | null = null;
 
 export function usePermissions() {
@@ -121,56 +142,24 @@ export function usePermissions() {
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Enquanto auth estiver carregando, manter loading
-    if (authLoading) {
-      setLoading(true);
-      return;
-    }
+  const isAdminRole = useMemo(() => {
+    if (!profile?.role) return false;
+    const role = profile.role.toLowerCase();
+    return role === 'admin' || role === 'administrador' || role === 'administrator';
+  }, [profile?.role]);
 
-    // Auth terminou mas não tem usuário - não autenticado
-    if (!user) {
-      setPermissions(new Set());
-      setLoading(false);
-      return;
-    }
-
-    // Usuário existe mas perfil ainda não carregou - aguardar
-    if (!profile) {
-      setLoading(true);
-      return;
-    }
-
-    // Tudo pronto - carregar permissões
-    loadPermissions();
-
-    // Ouvir eventos de mudança de permissões
-    const handlePermissionsChange = () => {
-      permissionsCache = null; // invalidar cache ao mudar permissões
-      loadPermissions();
-    };
-
-    window.addEventListener('permissions-changed', handlePermissionsChange);
-    
-    return () => {
-      window.removeEventListener('permissions-changed', handlePermissionsChange);
-    };
-  }, [user, profile, authLoading]);
-
-  const loadPermissions = async () => {
+  const loadPermissions = useCallback(async () => {
     if (!user || !profile) return;
     const userRole = (profile.role || 'member').toLowerCase();
     const cacheKey = `${user.id}-${userRole}`;
 
     try {
-      // Se for admin, não precisa buscar no banco — evita requisições extras
-      if (userRole === 'admin' || userRole === 'administrador' || userRole === 'administrator') {
+      if (isAdminRole) {
         setPermissions(new Set(['*']));
         setLoading(false);
         return;
       }
 
-      // Usar cache para evitar várias requisições quando vários componentes montam
       if (permissionsCache?.key === cacheKey && (Date.now() - permissionsCache.timestamp) < PERMISSIONS_CACHE_TTL_MS) {
         setPermissions(permissionsCache.permissions);
         setLoading(false);
@@ -178,182 +167,126 @@ export function usePermissions() {
       }
 
       setLoading(true);
-
       const permSet = new Set<string>();
 
-      if (import.meta.env?.DEV) {
-        console.log('[usePermissions] Carregando permissões para role:', userRole);
-      }
+      // Buscar role no banco pelo nome (aceita variações)
+      const roleSynonyms: Record<string, string[]> = {
+        vendedor: ['vendedor', 'sales'],
+        sales: ['sales', 'vendedor'],
+        gerente: ['gerente', 'manager'],
+        manager: ['manager', 'gerente'],
+        financeiro: ['financeiro', 'financial'],
+        atendente: ['atendente', 'attendant'],
+        caixa: ['caixa', 'cashier'],
+        estoquista: ['estoquista', 'stock'],
+        tecnico: ['tecnico', 'technical'],
+        visualizador: ['visualizador', 'viewer'],
+        member: ['member', 'membro'],
+        membro: ['membro', 'member'],
+        employee: ['employee', 'funcionario'],
+      };
 
-      // ═══════════════════════════════════════════════════════════════
-      // CARREGAR PERMISSÕES DA TABELA role_permissions (DO BANCO DE DADOS)
-      // ═══════════════════════════════════════════════════════════════
-      try {
-        // Mapear role do perfil para possíveis nomes no banco (código, display name, etc.)
-        const roleMapping: Record<string, string[]> = {
-          'vendedor': ['sales', 'vendedor', 'vendas', 'vendedores'],
-          'sales': ['sales', 'vendedor', 'vendas', 'vendedores'],
-          'vendas': ['sales', 'vendas', 'vendedor', 'vendedores'],
-          'administrador': ['admin', 'administrador', 'administrator'],
-          'admin': ['admin', 'administrador', 'administrator'],
-          'gerente': ['gerente', 'manager'],
-          'financeiro': ['financeiro', 'financial'],
-          'atendente': ['atendente', 'attendant'],
-          'caixa': ['caixa', 'cashier'],
-          'estoquista': ['estoquista', 'stock'],
-          'member': ['member', 'membro'],
-          'membro': ['member', 'membro'],
-        };
-        const exactRole = (profile?.role || '').trim();
-        const seen = new Set<string>();
-        const add = (r: string) => {
-          const k = String(r).toLowerCase();
-          if (!k || seen.has(k)) return;
+      const exactRole = (profile.role || '').trim();
+      const seen = new Set<string>();
+      const rolesToTry: string[] = [];
+      for (const r of [exactRole, userRole, ...(roleSynonyms[userRole] || [])]) {
+        const k = r.toLowerCase();
+        if (k && !seen.has(k)) {
           seen.add(k);
-        };
-        [exactRole, userRole, ...(roleMapping[userRole] || [userRole])].filter(Boolean).forEach(add);
-        const rolesToTry = Array.from(seen);
-        console.log('[usePermissions] Tentando buscar role com variações:', rolesToTry);
-        
-        let roleData = null;
-        for (const roleName of rolesToTry) {
-          const { data, error } = await from('roles')
-            .select('id, name')
-            .ilike('name', roleName)
-            .maybeSingle();
-          
-          if (error) {
-            console.warn(`[usePermissions] Erro ao buscar role "${roleName}":`, error);
-            continue;
-          }
-          
-          if (data) {
-            roleData = data;
-            console.log(`[usePermissions] ✅ Role encontrado: ${data.name} (ID: ${data.id})`);
-            break;
-          }
+          rolesToTry.push(k);
         }
-
-        if (roleData?.id) {
-          // Buscar permissões associadas ao role
-          const { data: rolePermsData, error: rolePermsError } = await from('role_permissions')
-            .select('permission_id')
-            .eq('role_id', roleData.id)
-            .execute();
-
-          if (rolePermsError) {
-            console.warn('[usePermissions] Erro ao buscar role_permissions:', rolePermsError);
-          } else if (rolePermsData && rolePermsData.length > 0) {
-            console.log(`[usePermissions] Encontradas ${rolePermsData.length} permissões associadas ao role`);
-            
-            // Buscar detalhes das permissões
-            const permissionIds = rolePermsData.map((rp: any) => rp.permission_id);
-            const { data: permsData, error: permsError } = await from('permissions')
-              .select('resource, action')
-              .in('id', permissionIds)
-              .execute();
-
-            if (permsError) {
-              console.warn('[usePermissions] Erro ao buscar detalhes das permissões:', permsError);
-            } else if (permsData) {
-              const permissionAliases: Record<string, string[]> = {
-                'sales.view': ['vendas.view'], 'sales.create': ['vendas.create'], 'sales.edit': ['vendas.edit'], 'sales.manage': ['vendas.manage'],
-                'sales.delete': ['vendas.delete'],
-                // OS / Assistência: app usa "os.view" no menu e rotas; banco pode ter ordens_servico ou service_orders
-                'ordens_servico.view': ['os.view'], 'ordens_servico.create': ['os.create'], 'ordens_servico.edit': ['os.edit'],
-                'ordens_servico.delete': ['os.delete'], 'ordens_servico.list': ['os.view'],
-                'ordens_servico.config.status': ['os.config.status'],
-                'service_orders.view': ['os.view'], 'service_orders.create': ['os.create'], 'service_orders.edit': ['os.edit'],
-                'os.list': ['os.view'],
-              };
-              permsData.forEach((perm: any) => {
-                const permKey = `${perm.resource}.${perm.action}`;
-                permSet.add(permKey);
-                (permissionAliases[permKey] || []).forEach((alias) => permSet.add(alias));
-              });
-              console.log('[usePermissions] Total de permissões carregadas do banco:', permSet.size);
-            }
-          } else {
-            console.warn('[usePermissions] Nenhuma permissão encontrada no banco para o role:', roleData.name);
-          }
-        } else {
-          console.warn('[usePermissions] Role não encontrado no banco. Role do profile:', userRole);
-        }
-      } catch (e) {
-        console.warn('Erro ao buscar permissões do role no banco:', e);
       }
 
-      // ═══════════════════════════════════════════════════════════════
-      // FALLBACK: Se não encontrou permissões no banco, usar objeto hardcoded
-      // ═══════════════════════════════════════════════════════════════
-      if (permSet.size === 0) {
-        console.warn('[usePermissions] Nenhuma permissão encontrada no banco, usando fallback hardcoded');
-        const rolePermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['member'] || [];
-        rolePermissions.forEach(p => permSet.add(p));
-        console.log(`[usePermissions] Permissões do fallback (${rolePermissions.length}):`, rolePermissions);
+      let roleData: { id: string; name: string } | null = null;
+      for (const roleName of rolesToTry) {
+        const { data, error } = await from('roles')
+          .select('id, name')
+          .ilike('name', roleName)
+          .maybeSingle();
+        if (error) continue;
+        if (data) { roleData = data; break; }
       }
 
-      // Buscar permissões customizadas do usuário (override)
-      try {
-        const { data: userPerms, error: userPermsError } = await from('user_permissions')
-          .select('permission_id, granted')
-          .eq('user_id', user?.id)
+      if (roleData?.id) {
+        const { data: rolePermsData } = await from('role_permissions')
+          .select('permission_id')
+          .eq('role_id', roleData.id)
           .execute();
 
-        if (userPermsError) {
-          console.warn('Erro ao buscar user_permissions:', userPermsError);
-        } else if (userPerms && userPerms.length > 0) {
-          // Buscar detalhes das permissões
-          const permissionIds = userPerms.map((up: any) => up.permission_id);
-          const { data: permsData, error: permsError } = await from('permissions')
+        if (rolePermsData && rolePermsData.length > 0) {
+          const permissionIds = rolePermsData.map((rp: any) => rp.permission_id);
+          const { data: permsData } = await from('permissions')
             .select('resource, action')
             .in('id', permissionIds)
             .execute();
 
-          if (permsError) {
-            console.warn('Erro ao buscar detalhes das permissões do usuário:', permsError);
-          } else if (permsData) {
-            // Criar mapa de permission_id para permissão
+          if (permsData) {
+            permsData.forEach((perm: any) => {
+              permSet.add(`${perm.resource}.${perm.action}`);
+            });
+          }
+        }
+      }
+
+      // Se nenhuma permissão veio do banco, dar pelo menos dashboard.view e rh.ponto
+      if (permSet.size === 0) {
+        permSet.add('dashboard.view');
+        permSet.add('rh.ponto');
+      }
+
+      // Overrides por usuário
+      try {
+        const { data: userPerms } = await from('user_permissions')
+          .select('permission_id, granted')
+          .eq('user_id', user.id)
+          .execute();
+
+        if (userPerms && userPerms.length > 0) {
+          const permissionIds = userPerms.map((up: any) => up.permission_id);
+          const { data: permsData } = await from('permissions')
+            .select('id, resource, action')
+            .in('id', permissionIds)
+            .execute();
+
+          if (permsData) {
             const permMap = new Map(permsData.map((p: any) => [p.id, p]));
-            
             userPerms.forEach((up: any) => {
               const perm = permMap.get(up.permission_id);
               if (perm) {
                 const permKey = `${perm.resource}.${perm.action}`;
                 if (up.granted === false) {
-                  // Remover permissão negada
                   permSet.delete(permKey);
                 } else if (up.granted === true) {
-                  // Adicionar permissão concedida
                   permSet.add(permKey);
                 }
               }
             });
           }
         }
-      } catch (e) {
-        // Tabela user_permissions pode não existir
-        console.warn('Erro ao buscar permissões customizadas do usuário:', e);
-      }
+      } catch (_) { /* user_permissions pode não existir */ }
 
-      if (import.meta.env?.DEV) {
-        console.log(`[usePermissions] ✅ Permissões finais carregadas (${permSet.size}):`, Array.from(permSet));
-      }
       permissionsCache = { key: cacheKey, permissions: permSet, timestamp: Date.now() };
       setPermissions(permSet);
     } catch (error) {
-      console.error('[usePermissions] ❌ Erro ao carregar permissões:', error);
+      console.error('[usePermissions] Erro ao carregar permissões:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, profile, isAdminRole]);
 
-  // Verificar se é admin (aceita variações)
-  const isAdminRole = useMemo(() => {
-    if (!profile?.role) return false;
-    const role = profile.role.toLowerCase();
-    return role === 'admin' || role === 'administrador' || role === 'administrator';
-  }, [profile?.role]);
+  useEffect(() => {
+    if (authLoading) { setLoading(true); return; }
+    if (!user) { setPermissions(new Set()); setLoading(false); return; }
+    if (!profile) { setLoading(true); return; }
+    loadPermissions();
+
+    const handleChange = () => {
+      permissionsCache = null;
+      loadPermissions();
+    };
+    window.addEventListener('permissions-changed', handleChange);
+    return () => window.removeEventListener('permissions-changed', handleChange);
+  }, [user, profile, authLoading, loadPermissions]);
 
   const hasPermission = useMemo(() => {
     return (permission: string): boolean => {
@@ -390,4 +323,3 @@ export function usePermissions() {
     refresh: loadPermissions,
   };
 }
-

@@ -24,21 +24,5 @@
       "purpose": "any maskable"
     }
   ],
-  "prefer_related_applications": false,
-  "shortcuts": [
-    {
-      "name": "Ponto Eletrônico",
-      "short_name": "Ponto",
-      "description": "Registrar ponto",
-      "url": "/ponto",
-      "icons": [{ "src": "/favicon-ativafix.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "NPS",
-      "short_name": "NPS",
-      "description": "Pesquisa de satisfação",
-      "url": "/nps",
-      "icons": [{ "src": "/favicon-ativafix.png", "sizes": "96x96" }]
-    }
-  ]
+  "prefer_related_applications": false
 }

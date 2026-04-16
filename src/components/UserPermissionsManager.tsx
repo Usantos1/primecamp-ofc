@@ -520,11 +520,20 @@ export function UserPermissionsManager({ userId, onClose, onSave }: Props) {
   }, {} as Record<string, Permission[]>);
 
   const categoryLabels: Record<string, string> = {
-    pdv: 'PDV - Vendas',
-    assistencia: 'Assistência Técnica',
+    dashboard: 'Dashboard',
+    vendas: 'Vendas / PDV',
+    caixa: 'Caixa',
+    os: 'Ordem de Serviço',
     clientes: 'Clientes',
+    produtos: 'Produtos / Estoque',
+    financeiro: 'Financeiro',
+    relatorios: 'Relatórios',
+    pos_venda: 'Pós-venda',
+    alertas: 'Alertas',
     admin: 'Administração',
     rh: 'Recursos Humanos',
+    pdv: 'PDV - Vendas',
+    assistencia: 'Assistência Técnica',
     gestao: 'Gestão',
   };
 

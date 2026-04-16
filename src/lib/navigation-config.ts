@@ -123,9 +123,9 @@ export const estoqueItemsBase: NavigationItem[] = [
 
 export const relatoriosItemsBase: NavigationItem[] = [
   { label: 'Relatórios', description: 'Indicadores e análises operacionais do negócio', path: '/relatorios', icon: Receipt, permission: 'relatorios.view', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
-  { label: 'Financeiro', description: 'Visão financeira com DRE, contas e fluxo', path: '/financeiro', icon: BarChart3, permission: 'relatorios.financeiro', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
-  { label: 'Pós-venda', description: 'Automação e histórico de acompanhamento ao cliente', path: '/pos-venda', icon: MessageCircle, permission: 'relatorios.financeiro', exact: true, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
-  { label: 'Painel de Alertas', description: 'Configurar e acompanhar alertas automáticos', path: '/painel-alertas', icon: Activity, permission: 'relatorios.financeiro', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
+  { label: 'Financeiro', description: 'Visão financeira com DRE, contas e fluxo', path: '/financeiro', icon: BarChart3, permission: 'financeiro.view', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
+  { label: 'Pós-venda', description: 'Automação e histórico de acompanhamento ao cliente', path: '/pos-venda', icon: MessageCircle, permission: 'pos_venda.view', exact: true, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
+  { label: 'Painel de Alertas', description: 'Configurar e acompanhar alertas automáticos', path: '/painel-alertas', icon: Activity, permission: 'alertas.view', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
 ];
 
 export const gestaoItemsBase: NavigationItem[] = [

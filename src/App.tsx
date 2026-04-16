@@ -207,7 +207,7 @@ const App = () => {
               <Route path="/perfil" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/ponto" element={<PermissionRoute permission="rh.ponto"><TimeClock /></PermissionRoute>} />
             <Route path="/logs" element={<ProtectedRoute><UserLogs /></ProtectedRoute>} />
-            <Route path="/teste-disc" element={<PermissionRoute permission="disc.view"><DiscTest /></PermissionRoute>} />
+            <Route path="/teste-disc" element={<PermissionRoute permission="admin.disc"><DiscTest /></PermissionRoute>} />
               <Route path="/produtos" element={<PermissionRoute permission="produtos.view"><AssistenciaProdutos /></PermissionRoute>} />
               <Route path="/pedidos" element={<PermissionRoute permission="produtos.view"><Pedidos /></PermissionRoute>} />
               <Route path="/inventario" element={<PermissionRoute permission="produtos.view"><Inventario /></PermissionRoute>} />
@@ -231,20 +231,20 @@ const App = () => {
               <Route path="/cupom/:id" element={<CupomView />} />
               
               {/* Sistema IA-First Financeiro */}
-              <Route path="/financeiro" element={<PermissionRoute permission="relatorios.financeiro"><DashboardExecutivo /></PermissionRoute>} />
-              <Route path="/financeiro/dashboard" element={<PermissionRoute permission="relatorios.financeiro"><DashboardExecutivo /></PermissionRoute>} />
-              <Route path="/financeiro/dre" element={<PermissionRoute permission="relatorios.financeiro"><DRE /></PermissionRoute>} />
-              <Route path="/financeiro/planejamento-anual" element={<PermissionRoute permission="relatorios.financeiro"><PlanejamentoAnual /></PermissionRoute>} />
-              <Route path="/financeiro/precificacao" element={<PermissionRoute permission="relatorios.financeiro"><FluxoDeCaixa /></PermissionRoute>} />
-              <Route path="/financeiro/fluxo-de-caixa" element={<PermissionRoute permission="relatorios.financeiro"><FluxoDeCaixa /></PermissionRoute>} />
-              <Route path="/financeiro/caixa" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroCaixaPage /></PermissionRoute>} />
-              <Route path="/financeiro/contas" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroContasPage /></PermissionRoute>} />
-              <Route path="/financeiro/transacoes" element={<PermissionRoute permission="relatorios.financeiro"><FinanceiroTransacoesPage /></PermissionRoute>} />
-              <Route path="/financeiro/categorias" element={<PermissionRoute permission="relatorios.financeiro"><CategoriasFinanceiras /></PermissionRoute>} />
-              <Route path="/painel-alertas" element={<PermissionRoute permission="relatorios.financeiro"><Navigate to="/painel-alertas/configuracoes" replace /></PermissionRoute>} />
-              <Route path="/painel-alertas/configuracoes" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasConfig /></PermissionRoute>} />
-              <Route path="/painel-alertas/alertas/:categoria" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasCategoria /></PermissionRoute>} />
-              <Route path="/painel-alertas/historico" element={<PermissionRoute permission="relatorios.financeiro"><PainelAlertasHistorico /></PermissionRoute>} />
+              <Route path="/financeiro" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><DashboardExecutivo /></PermissionRoute>} />
+              <Route path="/financeiro/dashboard" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><DashboardExecutivo /></PermissionRoute>} />
+              <Route path="/financeiro/dre" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><DRE /></PermissionRoute>} />
+              <Route path="/financeiro/planejamento-anual" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><PlanejamentoAnual /></PermissionRoute>} />
+              <Route path="/financeiro/precificacao" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><FluxoDeCaixa /></PermissionRoute>} />
+              <Route path="/financeiro/fluxo-de-caixa" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><FluxoDeCaixa /></PermissionRoute>} />
+              <Route path="/financeiro/caixa" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><FinanceiroCaixaPage /></PermissionRoute>} />
+              <Route path="/financeiro/contas" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><FinanceiroContasPage /></PermissionRoute>} />
+              <Route path="/financeiro/transacoes" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><FinanceiroTransacoesPage /></PermissionRoute>} />
+              <Route path="/financeiro/categorias" element={<PermissionRoute permission={["financeiro.view", "relatorios.financeiro"]}><CategoriasFinanceiras /></PermissionRoute>} />
+              <Route path="/painel-alertas" element={<PermissionRoute permission="alertas.view"><Navigate to="/painel-alertas/configuracoes" replace /></PermissionRoute>} />
+              <Route path="/painel-alertas/configuracoes" element={<PermissionRoute permission="alertas.config"><PainelAlertasConfig /></PermissionRoute>} />
+              <Route path="/painel-alertas/alertas/:categoria" element={<PermissionRoute permission="alertas.view"><PainelAlertasCategoria /></PermissionRoute>} />
+              <Route path="/painel-alertas/historico" element={<PermissionRoute permission="alertas.view"><PainelAlertasHistorico /></PermissionRoute>} />
               
               {/* Orçamentos (oficina / assistência) */}
               <Route path="/orcamentos" element={<PermissionRoute permission="os.view"><Orcamentos /></PermissionRoute>} />
@@ -265,8 +265,8 @@ const App = () => {
               <Route path="/pdv/clientes" element={<Navigate to="/clientes" replace />} />
               <Route path="/pdv/marcas-modelos" element={<PermissionRoute permission="produtos.manage"><AssistenciaMarcasModelos /></PermissionRoute>} />
               <Route path="/pdv/configuracao-status" element={<PermissionRoute permission="os.config.status"><AssistenciaConfiguracaoStatus /></PermissionRoute>} />
-              <Route path="/pos-venda" element={<PermissionRoute permission="relatorios.financeiro"><FollowupPosVendaConfig /></PermissionRoute>} />
-              <Route path="/pdv/followup-pos-venda" element={<PermissionRoute permission="relatorios.financeiro"><Navigate to="/pos-venda" replace /></PermissionRoute>} />
+              <Route path="/pos-venda" element={<PermissionRoute permission="pos_venda.view"><FollowupPosVendaConfig /></PermissionRoute>} />
+              <Route path="/pdv/followup-pos-venda" element={<PermissionRoute permission="pos_venda.view"><Navigate to="/pos-venda" replace /></PermissionRoute>} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

@@ -63,12 +63,10 @@ export function PermissionRoute({
     : hasPermission(permission);
   const showAccessDenied = !hasAccess && !redirectTo;
 
-  // Redirecionar para login após alguns segundos quando mostrar "Acesso negado"
-  // SEMPRE chamar o hook (não após return), senão "Rendered more hooks than during the previous render"
   useEffect(() => {
     if (!showAccessDenied) return;
     redirectTimeoutRef.current = setTimeout(() => {
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
     }, REDIRECT_DELAY_SECONDS * 1000);
     return () => {
       if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
@@ -106,7 +104,7 @@ export function PermissionRoute({
               peça ao administrador para ajustar suas permissões.
             </p>
             <p className="text-xs text-muted-foreground">
-              Redirecionando para o login em {REDIRECT_DELAY_SECONDS} segundos…
+              Redirecionando para a página inicial em {REDIRECT_DELAY_SECONDS} segundos…
             </p>
           </CardContent>
         </Card>

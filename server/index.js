@@ -23,6 +23,7 @@ import reportsRoutes from './routes/reports.js';
 import paymentMethodsRoutes from './routes/paymentMethods.js';
 import financeiroRoutes from './routes/financeiro.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
+import { requirePermission, invalidateAllPermissionCache } from './middleware/permissionMiddleware.js';
 
 // Painel de Alertas: carregamento dinâmico para não derrubar o servidor se tabelas não existirem
 let alertsRoutes = null;
@@ -296,7 +297,7 @@ app.get('/theme-config/ok', (req, res) => {
 
 // POST - Gerar códigos em massa para produtos sem código (autenticado) — apenas da empresa
 // IMPORTANTE: Esta rota deve estar ANTES do middleware global que pula /api/functions/*
-app.post('/api/functions/gerar-codigos-produtos', authenticateToken, async (req, res) => {
+app.post('/api/functions/gerar-codigos-produtos', authenticateToken, requirePermission('produtos.manage'), async (req, res) => {
   try {
     if (!req.companyId) {
       return res.status(403).json({ error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
@@ -1646,7 +1647,7 @@ app.get('/api/roles/:roleId/menu-config', authenticateToken, async (req, res) =>
   }
 });
 
-app.put('/api/roles/:roleId/menu-config', authenticateToken, async (req, res) => {
+app.put('/api/roles/:roleId/menu-config', authenticateToken, requirePermission('admin.users'), async (req, res) => {
   try {
     const roleId = req.params.roleId;
     const { modulos = [], recursos = [], home_path } = req.body || {};
@@ -3382,7 +3383,7 @@ app.get('/api/theme-config', async (req, res) => {
 });
 
 // POST /api/theme-config — salvar tema (autenticado); por empresa (company_id) para que cada empresa tenha suas cores/nome/logo
-app.post('/api/theme-config', authenticateToken, async (req, res) => {
+app.post('/api/theme-config', authenticateToken, requirePermission('admin.config'), async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -3502,7 +3503,7 @@ const requireAdmin = async (req, res, next) => {
 };
 
 // POST /api/functions/admin-get-user
-app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/functions/admin-get-user', authenticateToken, requirePermission('admin.users'), async (req, res) => {
   try {
     const userId = req.body?.userId || req.body?.body?.userId;
 
@@ -3540,7 +3541,7 @@ app.post('/api/functions/admin-get-user', authenticateToken, requireAdmin, async
 });
 
 // POST /api/functions/admin-update-user
-app.post('/api/functions/admin-update-user', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/functions/admin-update-user', authenticateToken, requirePermission('admin.users'), async (req, res) => {
   try {
     const rawBody = req.body?.body && typeof req.body.body === 'object' ? req.body.body : req.body;
     const { userId, email, password } = rawBody || {};
@@ -3623,7 +3624,7 @@ app.post('/api/functions/admin-update-user', authenticateToken, requireAdmin, as
 });
 
 // POST /api/functions/admin-delete-user
-app.post('/api/functions/admin-delete-user', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/functions/admin-delete-user', authenticateToken, requirePermission('admin.users'), async (req, res) => {
   const quoteIdent = (ident) => `"${String(ident).replace(/"/g, '""')}"`;
   try {
     const userId = req.body?.userId || req.body?.body?.userId;
@@ -4887,7 +4888,7 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
 });
 
 // POST /api/functions/import-produtos - Importar produtos em lote
-app.post('/api/functions/import-produtos', authenticateToken, async (req, res) => {
+app.post('/api/functions/import-produtos', authenticateToken, requirePermission('produtos.manage'), async (req, res) => {
   try {
     const { produtos, opcoes } = req.body;
     
@@ -5042,7 +5043,7 @@ app.post('/api/functions/import-produtos', authenticateToken, async (req, res) =
 });
 
 // POST /api/functions/import-clientes - Importar clientes em lote
-app.post('/api/functions/import-clientes', authenticateToken, async (req, res) => {
+app.post('/api/functions/import-clientes', authenticateToken, requirePermission('clientes.create'), async (req, res) => {
   try {
     const { clientes, opcoes } = req.body;
     
