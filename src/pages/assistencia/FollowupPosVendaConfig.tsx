@@ -377,9 +377,6 @@ export default function FollowupPosVendaConfig() {
                       <TableCell className="align-middle">
                         <div className="min-w-[110px]">
                           <div className="font-medium">OS #{j.numero_os ?? '—'}</div>
-                          <div className="text-xs text-muted-foreground font-mono truncate max-w-[160px]" title={j.ordem_servico_id}>
-                            {j.ordem_servico_id}
-                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="align-middle">

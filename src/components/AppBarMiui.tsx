@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ export function AppBarMiui() {
   const navigate = useNavigate();
   const { allItems } = useNavigationItems();
   const { config } = useThemeConfig();
+  const [menuOpen, setMenuOpen] = useState(false);
   const logoUrl =
     config.logo || getDefaultConfigByHost().logo || 'https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png';
 
@@ -78,9 +80,16 @@ export function AppBarMiui() {
         );
       })}
 
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-11 shrink-0 rounded-full px-3.5 text-sm font-medium hover:bg-emerald-50/80 dark:hover:bg-emerald-950/20">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-11 min-w-[110px] shrink-0 rounded-full px-4 text-sm font-medium hover:bg-emerald-50/80 dark:hover:bg-emerald-950/20"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             Menu
             <ChevronDown className="ml-2 h-4 w-4" />
           </Button>

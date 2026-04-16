@@ -306,6 +306,12 @@ function diferencaEmMinutos(dataA: string, dataB: string): number {
   return Math.abs(timestampA - timestampB) / 60000;
 }
 
+function ehAjusteEspelhadoDeOS(mov: EstoqueMovimentacao): boolean {
+  if (mov.ref_tipo !== 'Ajuste') return false;
+  if (mov.ref_numero > 0) return true;
+  return /^((Saída|Entrada):\s*)?Estoque:\s*\d+\s*\([+-]?\d+\)\s*=\s*\d+$/i.test((mov.descricao || '').trim());
+}
+
 /**
  * Busca movimentações de estoque relacionadas ao produto (OS e Vendas)
  */
@@ -610,10 +616,22 @@ async function buscarMovimentacoesEstoque(produtoId: string): Promise<EstoqueMov
       console.warn('Tabela refund_items não encontrada ou erro:', e);
     }
 
-    // Ordenar por data decrescente
-    movimentacoes.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    const movimentacoesFiltradas = movimentacoes.filter((mov) => {
+      if (!ehAjusteEspelhadoDeOS(mov)) {
+        return true;
+      }
 
-    return movimentacoes;
+      return !movimentacoes.some((outraMov) =>
+        (outraMov.ref_tipo === 'OS' || outraMov.ref_tipo === 'Devolução OS') &&
+        outraMov.quantidade_delta === mov.quantidade_delta &&
+        diferencaEmMinutos(outraMov.data, mov.data) <= 5
+      );
+    });
+
+    // Ordenar por data decrescente
+    movimentacoesFiltradas.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+    return movimentacoesFiltradas;
   } catch (error) {
     console.error('Erro ao buscar movimentações:', error);
     return [];

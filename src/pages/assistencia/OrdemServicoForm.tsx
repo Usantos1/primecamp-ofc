@@ -1198,7 +1198,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
                 });
                 return;
               }
-              await updateProduto(produto.id, payload);
+              await updateProduto(produto.id, payload, { skipMovementLog: true });
               try {
                 const houveSaida = diferenca > 0;
                 await from('produto_movimentacoes')
@@ -1255,7 +1255,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
               estoqueAtual = produto.quantidade || 0;
               payload = { quantidade: Math.max(0, estoqueAtual - itemForm.quantidade) };
             }
-            await updateProduto(produto.id, payload);
+            await updateProduto(produto.id, payload, { skipMovementLog: true });
             try {
               await from('produto_movimentacoes')
                 .insert({
