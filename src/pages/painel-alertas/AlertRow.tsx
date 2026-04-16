@@ -58,12 +58,14 @@ export function AlertRow({
 }) {
   const ativoDefault = config?.ativo ?? catalogItem.ativo_por_padrao ?? false;
   const templateDefault = config?.template_mensagem ?? catalogItem.template_padrao ?? '';
+  const templateOriginal = catalogItem.template_padrao ?? '';
   const [ativo, setAtivo] = useState(ativoDefault);
   const [template, setTemplate] = useState(templateDefault);
   const [previewText, setPreviewText] = useState('');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const vars = catalogItem.variaveis_disponiveis ?? [];
+  const isTemplateModified = template !== templateOriginal;
 
   useEffect(() => {
     setAtivo(config?.ativo ?? catalogItem.ativo_por_padrao ?? false);
@@ -131,15 +133,31 @@ export function AlertRow({
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
           placeholder="Use variáveis como {cliente}, {numero_os}, {valor}..."
-          rows={4}
-          className="resize-none font-mono text-sm"
+          rows={6}
+          className="resize-y min-h-[120px] font-mono text-sm"
         />
-        {vars.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Variáveis: {vars.map((v) => `{${v}}`).join(', ')}
-          </p>
-        )}
+        <div className="flex items-center justify-between">
+          {vars.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Variáveis: {vars.map((v) => `{${v}}`).join(', ')}
+            </p>
+          )}
+          {isTemplateModified && templateOriginal && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-xs h-6 px-2"
+              onClick={() => setTemplate(templateOriginal)}
+            >
+              Restaurar padrão
+            </Button>
+          )}
+        </div>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Envia via <strong>WhatsApp</strong> para os números configurados em <strong>Configurações</strong> do painel.
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={handlePreview}>
           Pré-visualizar
