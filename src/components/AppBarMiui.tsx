@@ -86,8 +86,12 @@ export function AppBarMiui() {
             type="button"
             variant="ghost"
             size="sm"
-            className="h-11 min-w-[110px] shrink-0 rounded-full px-4 text-sm font-medium hover:bg-emerald-50/80 dark:hover:bg-emerald-950/20"
-            onPointerDown={(e) => e.stopPropagation()}
+            className="relative z-20 h-11 min-w-[118px] shrink-0 rounded-full border border-emerald-200/80 bg-white px-4 text-sm font-medium shadow-sm hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setMenuOpen((prev) => !prev);
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             Menu
