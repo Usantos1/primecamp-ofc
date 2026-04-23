@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AppBarMiui } from "@/components/AppBarMiui";
+import { AppBarMiuiContext } from "@/components/AppBarMiuiContext";
 
 interface HeaderMiuiProps {
   notificationCount: number;
@@ -66,6 +67,10 @@ export function HeaderMiui({
             </Button>
           )}
           {headerActions}
+        </div>
+
+        <div className="mt-2 min-h-0 min-w-0 overflow-x-auto overflow-y-hidden">
+          <AppBarMiuiContext />
         </div>
       </div>
     </header>
