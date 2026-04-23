@@ -8,7 +8,7 @@ DB_USER=postgres
 DB_PASSWORD=AndinhoSurf2015@
 DB_PORT=5432
 DB_SSL=false
-
+  
 # 1. Atualizar código do repositório
 cd /root/primecamp-ofc
 git pull origin main
@@ -28,3 +28,14 @@ curl -X OPTIONS https://api.ativafix.com/api/functions/job-application-submit \
 
 # Ou usar o script automatizado:
 # bash DEPLOY_VPS.sh
+
+# ===================================================
+# FRONTEND (app.ativafix.com) — barra MIUI, DRE, etc.
+# Mudanças em .tsx só entram na nuvem após build + copiar dist.
+# ===================================================
+#
+# cd /root/primecamp-ofc
+# git pull origin main
+# bash scripts/deploy/DEPLOY_FRONTEND.sh
+#
+# Depois no navegador: Ctrl+Shift+R (hard refresh)

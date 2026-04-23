@@ -3,6 +3,22 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useNavigationItems } from '@/hooks/useNavigationItems';
 
+/** Prefixos onde a barra contextual deve aparecer (paridade com AppBar antigo). */
+const MODULE_TOOLBAR_PREFIXES = [
+  '/financeiro',
+  '/pos-venda',
+  '/pdv',
+  '/os',
+  '/clientes',
+  '/produtos',
+] as const;
+
+function pathMatchesModuleToolbar(pathname: string): boolean {
+  return MODULE_TOOLBAR_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+}
+
 /**
  * Barra secundária MIUI com atalhos contextuais (ex.: dentro de /financeiro
  * mostra DRE, Planejamento, Fluxo de Caixa, Contas, Transações etc.).
@@ -11,16 +27,11 @@ import { useNavigationItems } from '@/hooks/useNavigationItems';
 export function AppBarMiuiContext() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { quickNavItems, allItems } = useNavigationItems();
+  const { quickNavItems } = useNavigationItems();
 
   if (!quickNavItems || quickNavItems.length <= 1) return null;
 
-  // Só exibe quando há rotas contextuais que NÃO estão já cobertas pelo menu global
-  // (evita duplicar na home). Se ao menos um item do quickNav não estiver no menu
-  // global, vale a pena mostrar a barra para o usuário alcançar as rotas do módulo.
-  const globalPaths = new Set(allItems.map((i) => i.path));
-  const hasContextOnlyItem = quickNavItems.some((i) => !globalPaths.has(i.path));
-  if (!hasContextOnlyItem && location.pathname === '/') return null;
+  if (!pathMatchesModuleToolbar(location.pathname)) return null;
 
   const currentPath = location.pathname;
 
