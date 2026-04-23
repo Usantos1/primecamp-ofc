@@ -9,6 +9,11 @@ export function AppBar() {
   const { quickNavItems } = useNavigationItems();
   const currentPath = location.pathname;
 
+  // Menu financeiro fica em `ModernLayout` (faixa única); evita duplicar com AppBar clássico.
+  if (currentPath.startsWith('/financeiro')) {
+    return null;
+  }
+
   // Se não houver itens, não mostrar
   if (quickNavItems.length === 0) {
     return null;

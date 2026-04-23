@@ -39,3 +39,7 @@ curl -X OPTIONS https://api.ativafix.com/api/functions/job-application-submit \
 # bash scripts/deploy/DEPLOY_FRONTEND.sh
 #
 # Depois no navegador: Ctrl+Shift+R (hard refresh)
+#
+# Conferir se o deploy REALMENTE subiu (data + commit do último build na VPS):
+# curl -s https://app.ativafix.com/build-info.txt
+# Deve mostrar deployed_at recente e o hash do commit (ex.: 2555aef...).

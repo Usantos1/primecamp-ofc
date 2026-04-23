@@ -28,6 +28,11 @@ if [ ! -d "dist" ]; then
 fi
 
 echo ""
+echo "3b️⃣ Gravando build-info.txt (confira em https://app.ativafix.com/build-info.txt após o deploy)..."
+echo "deployed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ) commit=$(git rev-parse HEAD) branch=$(git rev-parse --abbrev-ref HEAD)" > dist/build-info.txt
+cat dist/build-info.txt
+
+echo ""
 echo "4️⃣ Fazendo backup dos arquivos antigos..."
 sudo mkdir -p /var/www/html.backup
 sudo cp -r /var/www/html/* /var/www/html.backup/ 2>/dev/null || true

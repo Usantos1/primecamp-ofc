@@ -45,8 +45,8 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
   const { config } = useThemeConfig()
   const isAdminCompany = user?.company_id === ADMIN_COMPANY_ID
   const isMiuiNavigation = config.navigationVariant === 'miui'
-  const showFinanceiroMiuiNav =
-    isMiuiNavigation && location.pathname.startsWith('/financeiro')
+  /** Sempre que estiver no módulo financeiro (MIUI ou barra clássica). */
+  const showFinanceiroSubnav = location.pathname.startsWith('/financeiro')
   const canOpenSettings = isAdminCompany ? hasPermission('admin.config') : (isAdmin || hasPermission('admin.config'))
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export function ModernLayout({ children, title, subtitle, headerActions }: Moder
               />
             )}
 
-            {showFinanceiroMiuiNav && <FinanceiroNavMenu variant="embedded" />}
+            {showFinanceiroSubnav && <FinanceiroNavMenu variant="embedded" />}
 
             {/* Main Content — mobile: página rola; desktop: scroll interno */}
             <main className="flex-1 flex flex-col min-h-0 overflow-x-hidden overflow-y-auto md:overflow-hidden">
