@@ -329,7 +329,16 @@ export async function dispatch(options) {
   if (!ativo) return { sent: false, error: 'Alerta desativado para esta empresa' };
 
   const template = (alertConf && alertConf.template_mensagem) || catalogRow.template_padrao || '';
-  let mensagem = renderTemplate(template, payload);
+
+  // Compat: caixa.fechado — se o front antigo não enviou 'usuario_caixa', usa 'usuario' como fallback.
+  const payloadFinal = { ...payload };
+  if (codigoAlerta === 'caixa.fechado') {
+    if (payloadFinal.usuario_caixa == null || String(payloadFinal.usuario_caixa).trim() === '') {
+      payloadFinal.usuario_caixa = payloadFinal.usuario || '';
+    }
+  }
+
+  let mensagem = renderTemplate(template, payloadFinal);
 
   // Compatibilidade: garante dados essenciais de OS aberta mesmo com template antigo/customizado.
   if (codigoAlerta === 'os.criada') {
@@ -349,6 +358,9 @@ export async function dispatch(options) {
       mensagem += `${sep}${b('Acompanhamento:')} ${linkOs}`;
     }
   }
+
+  // Compat final: remove placeholders não resolvidos tipo [usuario_caixa] vindos de payloads antigos.
+  mensagem = mensagem.replace(/\[[a-z_][a-z0-9_]*\]/gi, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n');
 
   if (!mensagem.trim()) return { sent: false, error: 'Template vazio' };
 
