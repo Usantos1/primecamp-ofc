@@ -7,6 +7,21 @@ import { dispatch, createWhatsAppSender } from './alertService.js';
 
 const WA_BLOCK_MAX = 3600;
 
+/** Texto legível da pergunta (JSON de job_surveys pode usar title, question, label, etc.). */
+function questionDisplayLabel(q, indexZeroBased) {
+  const fromFields = [q.title, q.question, q.label, q.text, q.name, q.prompt];
+  for (const c of fromFields) {
+    if (c != null && String(c).trim()) return String(c).trim();
+  }
+  const sid = q.id != null ? String(q.id).trim() : '';
+  // IDs tipo timestamp (só dígitos) não são enunciados — evita "• *1754930438559*"
+  if (sid && /^\d{8,}$/.test(sid)) {
+    return `Pergunta ${indexZeroBased + 1}`;
+  }
+  if (sid) return sid;
+  return `Pergunta ${indexZeroBased + 1}`;
+}
+
 /**
  * Monta texto pergunta → resposta a partir de job_surveys.questions e do JSON responses.
  */
@@ -18,18 +33,21 @@ export function formatQuestionsAnswersForWhatsApp(surveyRow, responsesObj) {
     const entries = Object.entries(raw);
     if (entries.length === 0) return '(nenhuma resposta registrada)';
     return entries
-      .map(([k, v]) => {
+      .map(([k, v], i) => {
         const val = Array.isArray(v) ? v.join(', ') : String(v ?? '').trim();
-        return `• *${k}*\n${val || '(vazio)'}`;
+        const keyLabel = /^\d{8,}$/.test(String(k).trim()) ? `Pergunta ${i + 1}` : k;
+        return `• *${keyLabel}*\n${val || '(vazio)'}`;
       })
       .join('\n\n');
   }
 
   const parts = [];
-  for (const q of questions) {
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
     const id = q.id;
-    const title = (q.title || String(id) || 'Pergunta').trim();
+    const title = questionDisplayLabel(q, i);
     let val = raw[id];
+    if (val == null && id != null) val = raw[String(id)];
     if (val == null || val === '') val = '(sem resposta)';
     else if (Array.isArray(val)) val = val.join(', ');
     else val = String(val).trim() || '(sem resposta)';
