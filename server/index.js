@@ -24,6 +24,7 @@ import paymentMethodsRoutes from './routes/paymentMethods.js';
 import financeiroRoutes from './routes/financeiro.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
 import { requirePermission, invalidateAllPermissionCache } from './middleware/permissionMiddleware.js';
+import { notifyAdminsNewJobCandidate } from './services/jobCandidateNotify.js';
 
 // Painel de Alertas: carregamento dinâmico para não derrubar o servidor se tabelas não existirem
 let alertsRoutes = null;
@@ -787,7 +788,7 @@ app.post('/api/public/candidatura', async (req, res) => {
     
     // Buscar a vaga para pegar o company_id
     const surveyResult = await pool.query(
-      'SELECT id, company_id, is_active FROM job_surveys WHERE id = $1',
+      'SELECT * FROM job_surveys WHERE id = $1',
       [survey_id]
     );
     
@@ -800,6 +801,7 @@ app.post('/api/public/candidatura', async (req, res) => {
     }
     
     const companyId = surveyResult.rows[0].company_id;
+    const surveyRow = surveyResult.rows[0];
     
     // Inserir candidatura
     const insertResult = await pool.query(`
@@ -817,6 +819,10 @@ app.post('/api/public/candidatura', async (req, res) => {
       data: response,
       protocol 
     });
+
+    void notifyAdminsNewJobCandidate(pool, { surveyRow, responseRow: response }).catch((e) =>
+      console.error('[RH] notify public/candidatura:', e)
+    );
   } catch (error) {
     console.error('[Public] Erro ao submeter candidatura:', error);
     res.status(500).json({ error: error.message });
@@ -1089,6 +1095,10 @@ app.post('/api/functions/job-application-submit', async (req, res) => {
       job_response_id: response.id,
       data: response
     });
+
+    void notifyAdminsNewJobCandidate(pool, { surveyRow: survey, responseRow: response }).catch((e) =>
+      console.error('[RH] notify job-application-submit:', e)
+    );
   } catch (error) {
     console.error('[Functions] Erro ao submeter candidatura:', error);
     res.status(500).json({ error: error.message });
