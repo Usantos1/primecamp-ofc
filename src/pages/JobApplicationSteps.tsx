@@ -226,8 +226,6 @@ export default function JobApplicationSteps() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [dynamicQuestions, setDynamicQuestions] = useState<Question[]>([]);
-  const [loadingDynamic, setLoadingDynamic] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [showDiscPrompt, setShowDiscPrompt] = useState(false);
   const [jobResponseId, setJobResponseId] = useState<string | null>(null);
@@ -543,63 +541,14 @@ export default function JobApplicationSteps() {
           typeof data.daily_schedule === 'object' && data.daily_schedule !== null
             ? (data.daily_schedule as { [key: string]: { start: string; end: string } })
             : {},
-        dynamic_questions: Array.isArray((data as any).dynamic_questions) ? (data as any).dynamic_questions : [],
       };
 
       setSurvey(normalizedSurvey);
-      if (normalizedSurvey.is_active === false) {
-        return;
-      }
-      fetchDynamicQuestions(normalizedSurvey);
     } catch (error) {
       console.error("Erro ao buscar formulário:", error);
       navigate("/404");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchDynamicQuestions = async (baseSurvey: any) => {
-    try {
-      setLoadingDynamic(true);
-      const { data, error } = await apiClient.invokeFunction('generate-dynamic-questions', {
-        survey: {
-          id: baseSurvey.id,
-          title: baseSurvey.title,
-          position_title: baseSurvey.position_title,
-          description: baseSurvey.description,
-          department: baseSurvey.department,
-          requirements: baseSurvey.requirements,
-          work_modality: baseSurvey.work_modality,
-          contract_type: baseSurvey.contract_type,
-          seniority: (baseSurvey as any).seniority,
-        },
-        base_questions: baseSurvey.questions || [],
-      });
-
-      if (error) {
-        console.error('Erro ao gerar perguntas dinâmicas:', error);
-        return;
-      }
-
-      const generated = Array.isArray(data?.dynamic_questions) ? data.dynamic_questions : [];
-      setDynamicQuestions(generated);
-      setSurvey((prev) => {
-        if (!prev) return prev;
-        const mapped = generated.map((q: any, idx: number) => ({
-          id: q.id || `dyn-${idx}`,
-          title: q.title || q.question || 'Pergunta personalizada',
-          description: q.description || 'Pergunta adaptada para esta vaga',
-          type: q.type || 'textarea',
-          required: typeof q.required === 'boolean' ? q.required : true,
-          options: q.options || [],
-        }));
-        return { ...prev, questions: [...prev.questions, ...mapped] };
-      });
-    } catch (err) {
-      console.error('Erro ao buscar perguntas dinâmicas:', err);
-    } finally {
-      setLoadingDynamic(false);
     }
   };
 
@@ -619,10 +568,10 @@ export default function JobApplicationSteps() {
   const progressPercentage = ((safeCurrentStep + 1) / totalSteps) * 100;
 
   useEffect(() => {
-    if (!loadingDynamic && currentStep !== safeCurrentStep) {
+    if (currentStep !== safeCurrentStep) {
       setCurrentStep(safeCurrentStep);
     }
-  }, [currentStep, loadingDynamic, safeCurrentStep]);
+  }, [currentStep, safeCurrentStep]);
 
   /* ---------- validação ---------- */
   const validateStep = (stepIndex: number) => {
@@ -1349,18 +1298,6 @@ export default function JobApplicationSteps() {
 
       {/* Conteúdo Principal */}
       <main className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
-        {/* Mensagem de perguntas dinâmicas */}
-        {loadingDynamic && (
-          <div className="mb-4 p-3 rounded-lg text-sm text-center" style={{ backgroundColor: 'hsl(var(--job-card))', color: 'hsl(var(--job-text-muted))' }}>
-            <div className="animate-pulse">⚡ Gerando perguntas personalizadas para esta vaga...</div>
-          </div>
-        )}
-        {!loadingDynamic && dynamicQuestions.length > 0 && (
-          <div className="mb-4 p-3 rounded-lg text-sm text-center" style={{ backgroundColor: 'hsl(var(--job-badge))', color: 'hsl(var(--job-text-muted))' }}>
-            ✨ Adicionamos {dynamicQuestions.length} perguntas personalizadas para esta vaga.
-          </div>
-        )}
-        
         {/* Card do Formulário */}
         <Card 
           className="form-card shadow-lg border-0 overflow-hidden"
