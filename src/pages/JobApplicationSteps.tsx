@@ -211,6 +211,11 @@ const formatCEP = (v: string) => {
 };
 const isValidCEP = (v: string) => /^\d{5}-?\d{3}$/.test(v);
 const isValidEmail = (v: string) => /\S+@\S+\.\S+/.test(v);
+const clampStepIndex = (step: number, totalSteps: number) => {
+  const maxStep = Math.max(totalSteps - 1, 0);
+  if (!Number.isFinite(step)) return 0;
+  return Math.min(Math.max(Math.trunc(step), 0), maxStep);
+};
 
 export default function JobApplicationSteps() {
   const { slug } = useParams();
@@ -374,6 +379,7 @@ export default function JobApplicationSteps() {
           }
         }
 
+        const totalDraftSteps = (survey.questions?.length || 0) + 1;
         const payload = {
           survey_id: survey.id,
           email: emailToSave,
@@ -386,7 +392,7 @@ export default function JobApplicationSteps() {
           instagram: formData.instagram?.trim() || null,
           linkedin: formData.linkedin?.trim() || null,
           responses: formData.responses || {},
-          current_step: currentStep,
+          current_step: clampStepIndex(currentStep, totalDraftSteps),
           form_data: formData
         };
 
@@ -485,8 +491,9 @@ export default function JobApplicationSteps() {
               responses: { ...parsed.responses, ...(backendDraft.responses || {}) }
             };
             
+            const restoredStep = Number(backendDraft.current_step);
             setFormData(mergedData);
-            setCurrentStep(backendDraft.current_step || 0);
+            setCurrentStep(Number.isFinite(restoredStep) ? Math.max(Math.trunc(restoredStep), 0) : 0);
             setDraftId(backendDraft.id);
             setLastSaved(new Date(backendDraft.last_saved_at));
             
@@ -607,7 +614,15 @@ export default function JobApplicationSteps() {
   ];
 
   const totalSteps = steps.length;
-  const progressPercentage = ((currentStep + 1) / totalSteps) * 100;
+  const safeCurrentStep = clampStepIndex(currentStep, totalSteps);
+  const activeStep = steps[safeCurrentStep] || steps[0];
+  const progressPercentage = ((safeCurrentStep + 1) / totalSteps) * 100;
+
+  useEffect(() => {
+    if (!loadingDynamic && currentStep !== safeCurrentStep) {
+      setCurrentStep(safeCurrentStep);
+    }
+  }, [currentStep, loadingDynamic, safeCurrentStep]);
 
   /* ---------- validação ---------- */
   const validateStep = (stepIndex: number) => {
@@ -653,7 +668,7 @@ export default function JobApplicationSteps() {
 
   /* ---------- navegação ---------- */
   const handleNext = () => {
-    const isValid = validateStep(currentStep);
+    const isValid = validateStep(safeCurrentStep);
     if (!isValid) {
       toast({ 
         title: "Atenção", 
@@ -662,10 +677,10 @@ export default function JobApplicationSteps() {
       });
       return;
     }
-    if (currentStep < totalSteps - 1) setCurrentStep((s) => s + 1);
+    if (safeCurrentStep < totalSteps - 1) setCurrentStep(safeCurrentStep + 1);
     else handleSubmit();
   };
-  const handlePrevious = () => currentStep > 0 && setCurrentStep((s) => s - 1);
+  const handlePrevious = () => safeCurrentStep > 0 && setCurrentStep(safeCurrentStep - 1);
 
 
   const handleResponseChange = (questionId: string, value: string | string[]) => {
@@ -682,7 +697,7 @@ export default function JobApplicationSteps() {
       return;
     }
 
-    if (!validateStep(currentStep)) {
+    if (!validateStep(safeCurrentStep)) {
       toast({
         title: "Atenção",
         description: "Confira os campos obrigatórios desta etapa antes de enviar.",
@@ -1367,7 +1382,7 @@ export default function JobApplicationSteps() {
           
           <CardHeader className="text-center pb-4 pt-6">
             <CardTitle className="text-xl sm:text-2xl flex items-center justify-center gap-2 sm:gap-3" style={{ color: 'hsl(var(--job-text))' }}>
-              {currentStep === 0 ? (
+              {safeCurrentStep === 0 ? (
                 <>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))` }}>
                     <User className="h-5 w-5 text-white" />
@@ -1379,7 +1394,7 @@ export default function JobApplicationSteps() {
                   <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(var(--job-gradient-start)), hsl(var(--job-gradient-end)))` }}>
                     <FileText className="h-5 w-5 text-white" />
                   </div>
-                  <span>{steps[currentStep].title}</span>
+                  <span>{activeStep.title}</span>
                 </>
               )}
             </CardTitle>
@@ -1399,7 +1414,7 @@ export default function JobApplicationSteps() {
                   }
                 >
                 {/* key por etapa evita conflito de portal (removeChild) ao trocar de passo com Select aberto */}
-                {currentStep === 0 ? (
+                {safeCurrentStep === 0 ? (
                   <div key="step-0">
                     {/* Aviso de Privacidade LGPD */}
                     <div className="mb-4 p-4 rounded-lg border" style={{ 
@@ -1560,8 +1575,8 @@ export default function JobApplicationSteps() {
                     </div>
                   </div>
                 ) : (
-                  <div key={`step-${currentStep}`} className="max-w-2xl mx-auto">
-                    {"question" in steps[currentStep] && renderQuestion((steps[currentStep] as any).question)}
+                  <div key={`step-${safeCurrentStep}`} className="max-w-2xl mx-auto">
+                    {"question" in activeStep && renderQuestion(activeStep.question)}
                   </div>
                 )}
                 </ErrorBoundary>
@@ -1613,23 +1628,23 @@ export default function JobApplicationSteps() {
                     <button
                       key={idx}
                       aria-label={`Ir para etapa ${idx + 1}`}
-                      onClick={() => idx <= currentStep && setCurrentStep(idx)}
-                      disabled={idx > currentStep}
+                      onClick={() => idx <= safeCurrentStep && setCurrentStep(idx)}
+                      disabled={idx > safeCurrentStep}
                       className={`step-indicator w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                        idx === currentStep 
+                        idx === safeCurrentStep 
                           ? 'active text-white shadow-md' 
-                          : idx < currentStep 
+                          : idx < safeCurrentStep 
                             ? 'text-white opacity-80 cursor-pointer' 
                             : 'opacity-40 cursor-not-allowed'
                       }`}
                       style={{ 
-                        backgroundColor: idx <= currentStep 
+                        backgroundColor: idx <= safeCurrentStep 
                           ? 'hsl(var(--job-primary))' 
                           : 'hsl(var(--job-card-border))',
-                        color: idx <= currentStep ? 'white' : 'hsl(var(--job-text-muted))'
+                        color: idx <= safeCurrentStep ? 'white' : 'hsl(var(--job-text-muted))'
                       }}
                     >
-                      {idx < currentStep ? (
+                      {idx < safeCurrentStep ? (
                         <CheckCircle className="w-4 h-4" />
                       ) : (
                         idx + 1
@@ -1640,7 +1655,7 @@ export default function JobApplicationSteps() {
 
                 {/* Info da etapa */}
                 <div className="flex justify-between items-center text-xs sm:text-sm mb-4 flex-wrap gap-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
-                  <span className="font-medium">Etapa {currentStep + 1} de {totalSteps}</span>
+                  <span className="font-medium">Etapa {safeCurrentStep + 1} de {totalSteps}</span>
                   <div className="flex items-center gap-3">
                     {saving && (
                       <span className="flex items-center gap-1.5">
@@ -1665,7 +1680,7 @@ export default function JobApplicationSteps() {
                   <Button
                     variant="outline"
                     onClick={handlePrevious}
-                    disabled={currentStep === 0}
+                    disabled={safeCurrentStep === 0}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-11 sm:h-12 px-4 sm:px-6 text-sm font-medium border-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-40"
                     style={{ borderColor: 'hsl(var(--job-card-border))' }}
                   >
@@ -1686,13 +1701,13 @@ export default function JobApplicationSteps() {
                       <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full shrink-0" aria-hidden />
                     ) : null}
                     <span>
-                      {submitting && currentStep === totalSteps - 1
+                      {submitting && safeCurrentStep === totalSteps - 1
                         ? 'Enviando…'
-                        : currentStep === totalSteps - 1
+                        : safeCurrentStep === totalSteps - 1
                           ? 'Enviar Candidatura'
                           : 'Próxima'}
                     </span>
-                    {!submitting && (currentStep === totalSteps - 1 ? <Send className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
+                    {!submitting && (safeCurrentStep === totalSteps - 1 ? <Send className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}
                   </Button>
                 </div>
               </div>
