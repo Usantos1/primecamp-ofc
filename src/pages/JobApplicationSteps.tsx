@@ -1188,27 +1188,19 @@ export default function JobApplicationSteps() {
             <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: 'hsl(var(--job-badge))' }}>
               <Info className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: 'hsl(var(--job-primary))' }} />
               <div className="text-sm space-y-1" style={{ color: 'hsl(var(--job-text-muted))' }}>
-                <p>Nossa equipe já está analisando sua candidatura.</p>
-                <p>Entraremos em contato em até 5 dias úteis através do email informado.</p>
+                <p>Sua candidatura já está em análise.</p>
+                <p>Seu perfil ficará salvo em nosso banco de talentos e, caso haja compatibilidade com esta ou futuras vagas, entraremos em contato pelo e-mail ou WhatsApp informado.</p>
+                <p>Obrigado pelo interesse em fazer parte da nossa equipe.</p>
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setShowAlreadyAppliedModal(false)}
               style={{ borderColor: 'hsl(var(--job-card-border))' }}
             >
               Fechar
-            </Button>
-            <Button
-              onClick={() => {
-                setShowAlreadyAppliedModal(false);
-                navigate('/vagas');
-              }}
-              style={{ backgroundColor: 'hsl(var(--job-primary))', color: 'white' }}
-            >
-              Ver Outras Vagas
             </Button>
           </DialogFooter>
         </DialogContent>
