@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type WheelEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,6 +118,21 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
   const [iaProvider, setIaProvider] = useState<'openai'>('openai');
   const [iaApiKey, setIaApiKey] = useState<string>('');
   const [iaModel, setIaModel] = useState<string>('gpt-4.1-mini');
+
+  const handleScrollablePanelWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (element.scrollHeight <= element.clientHeight || event.deltaY === 0) return;
+
+    const isScrollingDown = event.deltaY > 0;
+    const isAtTop = element.scrollTop <= 0;
+    const isAtBottom = Math.ceil(element.scrollTop + element.clientHeight) >= element.scrollHeight;
+
+    if ((isScrollingDown && !isAtBottom) || (!isScrollingDown && !isAtTop)) {
+      event.preventDefault();
+      event.stopPropagation();
+      element.scrollTop += event.deltaY;
+    }
+  };
   const [aiApprovingId, setAiApprovingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
@@ -1376,7 +1391,10 @@ export const AdminJobSurveysManager = ({ surveyId }: AdminJobSurveysManagerProps
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div
+                className="space-y-2 max-h-96 overflow-y-auto overscroll-contain"
+                onWheel={handleScrollablePanelWheel}
+              >
                 {drafts
                   .filter((draft: any) => {
                     if (!draftSearchTerm) return true;
