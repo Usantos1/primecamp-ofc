@@ -1760,16 +1760,17 @@ app.post('/api/auth/request-password-reset', async (req, res) => {
 
     const resetLink = `${process.env.FRONTEND_URL || 'https://app.ativafix.com'}/reset-password?access_token=${resetToken}`;
 
-    // Enviar email (em desenvolvimento, só loga; em produção, envia de verdade)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[API][DEV] Link de reset para ${user.email}: ${resetLink}`);
-    } else {
+    // Enviar email se SMTP estiver configurado; caso contrário, loga o link para debug
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       try {
         await sendPasswordResetEmail({ to: user.email, resetLink, name: user.name || null });
       } catch (mailErr) {
         console.error('[API] Falha ao enviar email de reset:', mailErr.message);
-        // Não expor erro de SMTP para o cliente — a mensagem genérica já foi enviada
+        // Log do link como fallback para não bloquear o fluxo
+        console.log(`[API][MAIL_FALLBACK] Link de reset para ${user.email}: ${resetLink}`);
       }
+    } else {
+      console.log(`[API][NO_SMTP] Link de reset para ${user.email}: ${resetLink}`);
     }
 
     res.json({ message: 'Se o email existir, um link de redefinição será enviado' });
