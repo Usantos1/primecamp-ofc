@@ -180,6 +180,37 @@ export default function Clientes() {
     },
     enabled: showAniversarioConfig,
   });
+
+  const { data: birthdayUpcomingData, refetch: refetchBirthdayUpcoming, isFetching: loadingBirthdayUpcoming } = useQuery({
+    queryKey: ['birthday-upcoming', 'month'],
+    queryFn: async () => {
+      const { data, error } = await apiClient.get('/birthday-messages/upcoming?period=month');
+      if (error) throw new Error(typeof error === 'string' ? error : 'Erro ao carregar aniversariantes do mês');
+      return (data || { total: 0, clientes: [], today: '' }) as {
+        total: number;
+        today: string;
+        period: string;
+        clientes: Array<{
+          id: string;
+          nome: string;
+          whatsapp: string | null;
+          telefone: string | null;
+          telefone2: string | null;
+          email: string | null;
+          data_nascimento: string;
+          dia: number;
+          mes: number;
+          job_id: string | null;
+          job_status: string | null;
+          scheduled_at: string | null;
+          sent_at: string | null;
+          error_message: string | null;
+          skip_reason: string | null;
+        }>;
+      };
+    },
+    enabled: showAniversarioConfig,
+  });
   
   // Estado para clientes da busca no servidor
   const [searchResults, setSearchResults] = useState<Cliente[]>([]);
@@ -555,11 +586,23 @@ export default function Clientes() {
       if (error) {
         throw new Error(typeof error === 'string' ? error : (error as any)?.message || 'Erro ao sincronizar');
       }
-      await refetchBirthdayJobs();
-      toast({
-        title: 'Agendamentos sincronizados',
-        description: `${data?.created || 0} agendados, ${data?.duplicates || 0} já existentes.`,
-      });
+      await Promise.all([refetchBirthdayJobs(), refetchBirthdayUpcoming()]);
+      const encontrados = data?.clientes_encontrados ?? 0;
+      const criados = data?.created ?? 0;
+      const duplicados = data?.duplicates ?? 0;
+      const cancelados = data?.cancelled ?? 0;
+
+      if (encontrados === 0) {
+        toast({
+          title: 'Nenhum aniversariante hoje',
+          description: 'Nenhum cliente cadastrado faz aniversário hoje. Veja a lista do mês abaixo.',
+        });
+      } else {
+        toast({
+          title: 'Agendamentos sincronizados',
+          description: `${encontrados} aniversariante(s) hoje · ${criados} agendado(s), ${duplicados} já existente(s)${cancelados ? `, ${cancelados} cancelado(s) (telefone inválido)` : ''}.`,
+        });
+      }
     } catch (error) {
       toast({
         title: 'Erro ao sincronizar',
@@ -1480,11 +1523,102 @@ export default function Clientes() {
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                           Nenhum cliente com mensagem agendada para o filtro selecionado.
+                          {(birthdayUpcomingData?.total ?? 0) > 0 && (
+                            <span className="block mt-1 text-xs">
+                              Existem {birthdayUpcomingData?.total} aniversariante(s) no mês — veja a lista abaixo.
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* Aniversariantes do mês — independe do agendamento de hoje */}
+              <div className="rounded-lg border border-gray-200">
+                <div className="flex flex-col gap-2 border-b border-gray-200 p-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Aniversariantes do mês</p>
+                    <p className="text-xs text-muted-foreground">
+                      Lista de clientes com aniversário no mês corrente — útil para conferir antes da data.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {loadingBirthdayUpcoming ? '...' : (birthdayUpcomingData?.total ?? 0)} cliente(s)
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={() => refetchBirthdayUpcoming()} disabled={loadingBirthdayUpcoming}>
+                      <RefreshCcw className="mr-1 h-3.5 w-3.5" />
+                      Atualizar
+                    </Button>
+                  </div>
+                </div>
+                <div className="max-h-[280px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[90px]">Dia</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Telefone</TableHead>
+                        <TableHead>Status (hoje)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loadingBirthdayUpcoming ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                            Carregando aniversariantes...
+                          </TableCell>
+                        </TableRow>
+                      ) : (birthdayUpcomingData?.clientes?.length ?? 0) > 0 ? (
+                        birthdayUpcomingData!.clientes.map((c) => {
+                          const tel = c.whatsapp || c.telefone || c.telefone2 || '';
+                          const isHoje = (() => {
+                            try {
+                              const today = birthdayUpcomingData?.today;
+                              if (!today) return false;
+                              const [, m, d] = today.split('-').map((v) => parseInt(v, 10));
+                              return m === c.mes && d === c.dia;
+                            } catch { return false; }
+                          })();
+                          return (
+                            <TableRow key={c.id} className={isHoje ? 'bg-amber-50/60 dark:bg-amber-950/20' : ''}>
+                              <TableCell className="font-medium">
+                                {String(c.dia).padStart(2, '0')}/{String(c.mes).padStart(2, '0')}
+                                {isHoje && <Badge className="ml-1 bg-amber-500 text-white text-[10px] px-1 py-0">Hoje</Badge>}
+                              </TableCell>
+                              <TableCell>
+                                <div className="space-y-0.5">
+                                  <p className="text-sm">{c.nome || 'Sem nome'}</p>
+                                  {c.email && <p className="text-[11px] text-muted-foreground">{c.email}</p>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm">{tel || <span className="text-xs text-muted-foreground">-</span>}</TableCell>
+                              <TableCell>
+                                {c.job_status ? (
+                                  <Badge variant={c.job_status === 'enviado' ? 'default' : c.job_status === 'erro' ? 'destructive' : 'secondary'} className="text-[11px]">
+                                    {c.job_status}
+                                  </Badge>
+                                ) : isHoje ? (
+                                  <span className="text-[11px] text-muted-foreground">Clique em "Sincronizar" para agendar</span>
+                                ) : (
+                                  <span className="text-[11px] text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                            Nenhum cliente com aniversário no mês corrente.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
 

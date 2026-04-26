@@ -13,6 +13,7 @@ import {
   syncBirthdayJobs,
   processDueBirthdayMessages,
   syncBirthdayJobsForCompany,
+  listBirthdayClients,
   normalizeWhatsappNumber,
 } from '../services/birthdayMessageService.js';
 
@@ -56,13 +57,24 @@ router.put('/settings', async (req, res) => {
   try {
     await upsertBirthdaySettings(pool, req.companyId, req.body || {});
     const row = await getBirthdaySettingsRow(pool, req.companyId);
-    const syncResult = await syncBirthdayJobsForCompany(pool, req.companyId);
+    const syncResult = await syncBirthdayJobsForCompany(pool, req.companyId, { force: true });
     res.json({
       ...mergeBirthdaySettingsResponse(row),
       sync: syncResult,
     });
   } catch (error) {
     console.error('[Birthday Messages] PUT settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/upcoming', async (req, res) => {
+  try {
+    const period = req.query.period ? String(req.query.period) : 'month';
+    const result = await listBirthdayClients(pool, req.companyId, { period });
+    res.json(result);
+  } catch (error) {
+    console.error('[Birthday Messages] GET upcoming:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -227,7 +239,7 @@ router.delete('/jobs/:id', async (req, res) => {
 
 router.post('/sync', async (req, res) => {
   try {
-    const result = await syncBirthdayJobs(pool, req.companyId);
+    const result = await syncBirthdayJobs(pool, req.companyId, { force: true });
     res.json(result);
   } catch (error) {
     console.error('[Birthday Messages] POST sync:', error);

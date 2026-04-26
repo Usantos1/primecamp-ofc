@@ -141,17 +141,34 @@ function buildBirthdayMessage(settingsRow, cliente, companyName, scheduledAt) {
   return renderBirthdayTemplate(settings.template_mensagem || DEFAULT_BIRTHDAY_TEMPLATE, vars);
 }
 
-export async function syncBirthdayJobsForCompany(pool, companyId) {
+export async function syncBirthdayJobsForCompany(pool, companyId, options = {}) {
+  const { force = false } = options;
   const client = await pool.connect();
   try {
     const settings = await getBirthdaySettingsRow(client, companyId);
-    if (!settings || !settings.ativo) {
-      return { company_id: companyId, created: 0, duplicates: 0, cancelled: 0, skipped: 0 };
+    // Se NÃO foi forçado (chamada do worker automático) e empresa está inativa, pular.
+    // Sync manual (force=true) sempre roda, para o usuário enxergar a fila de hoje.
+    if (!force && (!settings || !settings.ativo)) {
+      return {
+        company_id: companyId,
+        created: 0,
+        duplicates: 0,
+        cancelled: 0,
+        skipped: 0,
+        clientes_encontrados: 0,
+        inativo: true,
+      };
     }
 
-    const timeZone = settings.timezone || 'America/Sao_Paulo';
+    const effectiveSettings = settings || {
+      horario_envio: '09:00',
+      timezone: 'America/Sao_Paulo',
+      template_mensagem: DEFAULT_BIRTHDAY_TEMPLATE,
+    };
+
+    const timeZone = effectiveSettings.timezone || 'America/Sao_Paulo';
     const localDate = formatLocalDateParts(new Date(), timeZone);
-    const scheduledAt = computeScheduledAtForToday(timeZone, settings.horario_envio);
+    const scheduledAt = computeScheduledAtForToday(timeZone, effectiveSettings.horario_envio);
     const companyResult = await client.query('SELECT name FROM companies WHERE id = $1', [companyId]);
     const companyName = companyResult.rows[0]?.name || '';
 
@@ -160,7 +177,7 @@ export async function syncBirthdayJobsForCompany(pool, companyId) {
        FROM clientes
        WHERE company_id = $1
          AND data_nascimento IS NOT NULL
-         AND (situacao IS NULL OR situacao <> 'inativo')
+         AND (situacao IS NULL OR situacao = '' OR situacao <> 'inativo')
          AND EXTRACT(MONTH FROM data_nascimento) = $2
          AND EXTRACT(DAY FROM data_nascimento) = $3`,
       [companyId, localDate.month, localDate.day]
@@ -172,12 +189,14 @@ export async function syncBirthdayJobsForCompany(pool, companyId) {
       duplicates: 0,
       cancelled: 0,
       skipped: 0,
+      clientes_encontrados: clientesResult.rows.length,
+      data_referencia: localDate.sourceDate,
     };
 
     for (const cliente of clientesResult.rows) {
       const rawPhone = resolveClientPhone(cliente);
       const normalized = normalizeWhatsappNumber(rawPhone);
-      const message = buildBirthdayMessage(settings, cliente, companyName, scheduledAt);
+      const message = buildBirthdayMessage(effectiveSettings, cliente, companyName, scheduledAt);
       const status = normalized.ok ? 'agendado' : 'cancelado';
       const insertResult = await client.query(
         `INSERT INTO birthday_message_jobs (
@@ -213,7 +232,8 @@ export async function syncBirthdayJobsForCompany(pool, companyId) {
   }
 }
 
-export async function syncBirthdayJobs(pool, companyId = null) {
+export async function syncBirthdayJobs(pool, companyId = null, options = {}) {
+  const { force = false } = options;
   const client = await pool.connect();
   try {
     let companyIds = [];
@@ -227,20 +247,105 @@ export async function syncBirthdayJobs(pool, companyId = null) {
       );
       companyIds = result.rows.map((row) => row.company_id).filter(Boolean);
     }
-    const totals = { companies: companyIds.length, created: 0, duplicates: 0, cancelled: 0, skipped: 0 };
+    const totals = {
+      companies: companyIds.length,
+      created: 0,
+      duplicates: 0,
+      cancelled: 0,
+      skipped: 0,
+      clientes_encontrados: 0,
+    };
     const details = [];
     for (const currentCompanyId of companyIds) {
-      const result = await syncBirthdayJobsForCompany(pool, currentCompanyId);
+      const result = await syncBirthdayJobsForCompany(pool, currentCompanyId, { force });
       details.push(result);
       totals.created += result.created;
       totals.duplicates += result.duplicates;
       totals.cancelled += result.cancelled;
       totals.skipped += result.skipped;
+      totals.clientes_encontrados += (result.clientes_encontrados || 0);
     }
     return { ...totals, details };
   } finally {
     client.release();
   }
+}
+
+/**
+ * Lista os aniversariantes do mês atual (ou de qualquer período curto), com o
+ * status do agendamento de hoje quando existir. Útil para o usuário enxergar
+ * todos os clientes que vão fazer aniversário, mesmo antes de sincronizar.
+ */
+export async function listBirthdayClients(pool, companyId, options = {}) {
+  const { period = 'month', timezone = 'America/Sao_Paulo', limit = 200 } = options;
+  const localDate = formatLocalDateParts(new Date(), timezone);
+
+  const filters = [
+    `c.company_id = $1`,
+    `c.data_nascimento IS NOT NULL`,
+    `(c.situacao IS NULL OR c.situacao = '' OR c.situacao <> 'inativo')`,
+  ];
+  const params = [companyId];
+
+  if (period === 'today') {
+    params.push(localDate.month, localDate.day);
+    filters.push(`EXTRACT(MONTH FROM c.data_nascimento) = $2`);
+    filters.push(`EXTRACT(DAY FROM c.data_nascimento) = $3`);
+  } else if (period === 'upcoming30') {
+    // próximos 30 dias considerando rollover de mês
+    filters.push(`(
+      to_date(
+        to_char(now() AT TIME ZONE $2, 'YYYY') ||
+        lpad(EXTRACT(MONTH FROM c.data_nascimento)::text, 2, '0') ||
+        lpad(EXTRACT(DAY FROM c.data_nascimento)::text, 2, '0'),
+        'YYYYMMDD'
+      ) BETWEEN (now() AT TIME ZONE $2)::date
+            AND ((now() AT TIME ZONE $2)::date + interval '30 days')::date
+    )`);
+    params.push(timezone);
+  } else {
+    // default: mês atual
+    params.push(localDate.month);
+    filters.push(`EXTRACT(MONTH FROM c.data_nascimento) = $2`);
+  }
+
+  params.push(limit);
+  const limitIdx = params.length;
+
+  const result = await pool.query(
+    `SELECT
+       c.id,
+       c.nome,
+       c.whatsapp,
+       c.telefone,
+       c.telefone2,
+       c.email,
+       c.data_nascimento,
+       EXTRACT(DAY FROM c.data_nascimento)::int  AS dia,
+       EXTRACT(MONTH FROM c.data_nascimento)::int AS mes,
+       j.id     AS job_id,
+       j.status AS job_status,
+       j.scheduled_at,
+       j.sent_at,
+       j.error_message,
+       j.skip_reason
+     FROM clientes c
+     LEFT JOIN birthday_message_jobs j
+       ON j.cliente_id = c.id
+      AND j.company_id = c.company_id
+      AND j.source_date = (now() AT TIME ZONE 'America/Sao_Paulo')::date
+     WHERE ${filters.join(' AND ')}
+     ORDER BY EXTRACT(MONTH FROM c.data_nascimento), EXTRACT(DAY FROM c.data_nascimento), c.nome
+     LIMIT $${limitIdx}`,
+    params
+  );
+
+  return {
+    period,
+    today: localDate.sourceDate,
+    total: result.rows.length,
+    clientes: result.rows,
+  };
 }
 
 export async function processDueBirthdayMessages(pool, batchSize = 25, companyId = null) {
