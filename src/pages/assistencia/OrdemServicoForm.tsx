@@ -3209,10 +3209,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           <TabsContent value="dados" className="flex-1 min-h-0 overflow-auto scrollbar-thin p-2 md:p-3">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="border border-gray-200/80 shadow-sm rounded-xl bg-white">
-                <CardHeader className="py-3 px-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
+              <Card className="border border-gray-200/80 dark:border-gray-800 shadow-sm rounded-xl bg-white dark:bg-card">
+                <CardHeader className="py-3 px-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-muted/30 rounded-t-xl">
                   <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <CardTitle className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-blue-600" />
                       Dados da OS
                     </CardTitle>
@@ -3236,7 +3236,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <div className="space-y-1.5 md:col-span-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('cliente') && "font-bold text-red-600")}>Cliente *</Label>
+                          <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('cliente') && "font-bold text-red-600")}>Cliente *</Label>
                           {camposFaltandoState.has('cliente') && (
                             <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                           )}
@@ -3251,7 +3251,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 "px-2 py-0.5 text-[10px] rounded-full transition-colors",
                                 clienteSearchField === 'nome' 
                                   ? "bg-blue-600 text-white" 
-                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                               )}
                             >
                               Nome
@@ -3263,7 +3263,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 "px-2 py-0.5 text-[10px] rounded-full transition-colors",
                                 clienteSearchField === 'cpf_cnpj' 
                                   ? "bg-blue-600 text-white" 
-                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                               )}
                             >
                               CPF
@@ -3275,7 +3275,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                 "px-2 py-0.5 text-[10px] rounded-full transition-colors",
                                 clienteSearchField === 'telefone' 
                                   ? "bg-blue-600 text-white" 
-                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                               )}
                             >
                               Telefone
@@ -3302,8 +3302,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }}
                           onFocus={() => setShowClienteSearch(true)}
                           className={cn(
-                            "pl-10 pr-10 h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg",
-                            selectedCliente ? "bg-green-50 border-green-300 text-green-800 font-medium" : ""
+                            "pl-10 pr-10 h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg",
+                            selectedCliente ? "bg-green-50 dark:bg-green-950/40 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200 font-medium" : ""
                           )}
                         />
                         {/* Loading indicator */}
@@ -3330,7 +3330,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       {/* Dropdown de clientes em portal para não ser cortado pelo overflow do tab */}
                       {clienteDropdownRect && createPortal(
                         <div
-                          className="fixed z-[100] min-w-0 max-h-48 overflow-auto bg-white border border-gray-200 rounded-lg shadow-lg"
+                          className="fixed z-[100] min-w-0 max-h-48 overflow-auto bg-white dark:bg-card border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg"
                           style={{
                             top: clienteDropdownRect.top,
                             left: clienteDropdownRect.left,
@@ -3382,7 +3382,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('telefone') && "font-bold text-red-600")}>Telefone *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('telefone') && "font-bold text-red-600")}>Telefone *</Label>
                         {camposFaltandoState.has('telefone') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3400,7 +3400,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }
                         }}
                         placeholder="(99) 99999-9999"
-                        className={cn("h-10 text-sm border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg", camposFaltandoState.has('telefone') && "border-red-500 border-2 bg-red-50")}
+                        className={cn("h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg", camposFaltandoState.has('telefone') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
@@ -3436,7 +3436,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('marca') && "font-bold text-red-600")}>Marca *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('marca') && "font-bold text-red-600")}>Marca *</Label>
                         {camposFaltandoState.has('marca') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3458,7 +3458,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }
                         }}
                       >
-                        <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('marca') && "border-red-500 border-2 bg-red-50")}>
+                        <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('marca') && "border-red-500 border-2 bg-red-50")}>
                           <SelectValue placeholder="Selecione a marca">
                             {formData.marca_id && marcas.length > 0 
                               ? (marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome || '')
@@ -3478,7 +3478,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('modelo') && "font-bold text-red-600")}>Modelo *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('modelo') && "font-bold text-red-600")}>Modelo *</Label>
                         {camposFaltandoState.has('modelo') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3489,7 +3489,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <Button
                               type="button"
                               variant="outline"
-                              className={cn("w-full h-10 text-sm border-gray-200 rounded-lg justify-between font-normal", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")}
+                              className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg justify-between font-normal", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")}
                               disabled={!formData.marca_id}
                             >
                               <span className="truncate">
@@ -3559,21 +3559,21 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">{isOficinaMecanica ? 'Placa' : 'IMEI'}</Label>
+                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Placa' : 'IMEI'}</Label>
                       <Input
                         value={formData.imei}
                         onChange={(e) => setFormData(prev => ({ ...prev, imei: e.target.value }))}
                         placeholder={isOficinaMecanica ? 'Ex: ABC-1D23' : 'Digite o IMEI'}
-                        className="h-10 text-sm border-gray-200 rounded-lg"
+                        className="h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">{isOficinaMecanica ? 'Chassis' : 'Nº Série'}</Label>
+                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Chassis' : 'Nº Série'}</Label>
                       <Input
                         value={formData.numero_serie}
                         onChange={(e) => setFormData(prev => ({ ...prev, numero_serie: e.target.value }))}
                         placeholder={isOficinaMecanica ? 'Número do chassi (opcional)' : 'Número de série'}
-                        className="h-10 text-sm border-gray-200 rounded-lg"
+                        className="h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg"
                       />
                     </div>
                   </div>
@@ -3582,7 +3582,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('cor') && "font-bold text-red-600")}>Cor *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('cor') && "font-bold text-red-600")}>Cor *</Label>
                         {camposFaltandoState.has('cor') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3600,12 +3600,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }
                         }}
                         placeholder="Ex: Preto, Branco"
-                        className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('cor') && "border-red-500 border-2 bg-red-50")}
+                        className={cn("h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('cor') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">{isOficinaMecanica ? 'Deixou veículo' : 'Deixou aparelho'}</Label>
+                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Deixou veículo' : 'Deixou aparelho'}</Label>
                       <Select 
                         value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
                         onValueChange={(v) => {
@@ -3616,7 +3616,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }));
                         }}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 rounded-lg">
+                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg">
                           <SelectValue placeholder="Selecione">
                             {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'AGENDADO' : 'NÃO'}
                           </SelectValue>
@@ -3630,7 +3630,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('previsao_entrega') && "font-bold text-red-600")}>Previsão Entrega *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('previsao_entrega') && "font-bold text-red-600")}>Previsão Entrega *</Label>
                         {camposFaltandoState.has('previsao_entrega') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3648,17 +3648,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             });
                           }
                         }}
-                        className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('previsao_entrega') && "border-red-500 border-2 bg-red-50")}
+                        className={cn("h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('previsao_entrega') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600">Hora</Label>
+                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">Hora</Label>
                       <Input
                         type="time"
                         value={formData.hora_previsao || '18:00'}
                         onChange={(e) => setFormData(prev => ({ ...prev, hora_previsao: e.target.value }))}
-                        className="h-10 text-sm border-gray-200 rounded-lg"
+                        className="h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg"
                       />
                     </div>
                   </div>
@@ -3667,7 +3667,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('descricao_problema') && "font-bold text-red-600")}>Descrição do Problema *</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('descricao_problema') && "font-bold text-red-600")}>Descrição do Problema *</Label>
                         {camposFaltandoState.has('descricao_problema') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3686,12 +3686,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }}
                         placeholder="Descreva detalhadamente o problema relatado pelo cliente..."
                         rows={3}
-                        className={cn("resize-none text-sm border-gray-200 rounded-lg min-h-[80px]", camposFaltandoState.has('descricao_problema') && "border-red-500 border-2 bg-red-50")}
+                        className={cn("resize-none text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg min-h-[80px]", camposFaltandoState.has('descricao_problema') && "border-red-500 border-2 bg-red-50")}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('condicoes_equipamento') && "font-bold text-red-600")}>{isOficinaMecanica ? 'Condições do veículo *' : 'Condições do Equipamento *'}</Label>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('condicoes_equipamento') && "font-bold text-red-600")}>{isOficinaMecanica ? 'Condições do veículo *' : 'Condições do Equipamento *'}</Label>
                         {camposFaltandoState.has('condicoes_equipamento') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3710,31 +3710,31 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }}
                         placeholder={isOficinaMecanica ? 'Estado físico do veículo: riscos, amassados, quilometragem...' : 'Estado físico do aparelho: riscos, trincas, amassados...'}
                         rows={3}
-                        className={cn("resize-none text-sm border-gray-200 rounded-lg min-h-[80px]", camposFaltandoState.has('condicoes_equipamento') && "border-red-500 border-2 bg-red-50")}
+                        className={cn("resize-none text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg min-h-[80px]", camposFaltandoState.has('condicoes_equipamento') && "border-red-500 border-2 bg-red-50")}
                         required
                       />
                     </div>
                   </div>
 
                   {/* Orçamento Pré Autorizado */}
-                  <div className="p-3 bg-gray-50/80 rounded-lg border border-gray-100">
+                  <div className="p-3 bg-gray-50/80 dark:bg-muted/30 rounded-lg border border-gray-100 dark:border-gray-800">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <Label className="text-xs font-semibold text-gray-700">Orçamento Pré-Autorizado</Label>
+                      <Label className="text-xs font-semibold text-gray-700 dark:text-gray-200">Orçamento Pré-Autorizado</Label>
                       <div className="flex items-center gap-2">
                         <Checkbox
                           id="apenas-orcamento"
                           checked={!!formData.apenas_orcamento}
                           onCheckedChange={(checked) => setFormData(prev => ({ ...prev, apenas_orcamento: !!checked }))}
-                          className="h-3 w-3 shrink-0 rounded border-gray-400"
+                          className="h-3 w-3 shrink-0 rounded border-gray-400 dark:border-gray-600"
                         />
-                        <Label htmlFor="apenas-orcamento" className="text-[11px] text-gray-600 cursor-pointer">
+                        <Label htmlFor="apenas-orcamento" className="text-[11px] text-gray-600 dark:text-gray-300 cursor-pointer">
                           Realizar Orçamento
                         </Label>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[11px] text-gray-500">Cartão até 6x</Label>
+                        <Label className="text-[11px] text-gray-500 dark:text-gray-400">Cartão até 6x</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -3747,11 +3747,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setFormData(prev => ({ ...prev, orcamento_parcelado: numValue }));
                           }}
                           placeholder="R$ 0,00"
-                          className="h-10 text-sm border-gray-200 rounded-lg"
+                          className="h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px] text-gray-500">Dinheiro ou PIX</Label>
+                        <Label className="text-[11px] text-gray-500 dark:text-gray-400">Dinheiro ou PIX</Label>
                         <Input
                           type="number"
                           inputMode="decimal"
@@ -3764,7 +3764,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             setFormData(prev => ({ ...prev, orcamento_desconto: numValue }));
                           }}
                           placeholder="R$ 0,00"
-                          className="h-10 text-sm border-gray-200 rounded-lg"
+                          className="h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg"
                         />
                       </div>
                     </div>
@@ -3773,9 +3773,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha/Chave e Áreas com Defeito (veículo: só chave/código e referência; celular: senha + deslizar + referência) */}
-              <Card className="border border-gray-200/80 shadow-sm rounded-xl bg-white">
-                <CardHeader className="py-3 px-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
-                  <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <Card className="border border-gray-200/80 dark:border-gray-800 shadow-sm rounded-xl bg-white dark:bg-card">
+                <CardHeader className="py-3 px-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-muted/30 rounded-t-xl">
+                  <CardTitle className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-orange-500" />
                     {isOficinaMecanica ? 'Chave/Código e Defeitos' : 'Senha e Defeitos'}
                   </CardTitle>
@@ -3784,7 +3784,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   {/* Seção Senha/Chave — obrigatório; oficina: só chave/código (sem opção deslizar) */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('possui_senha') && "font-bold text-red-600")}>
+                      <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('possui_senha') && "font-bold text-red-600")}>
                         {isOficinaMecanica ? 'Possui chave ou código? *' : 'Possui senha *'}
                       </Label>
                       {camposFaltandoState.has('possui_senha') && (
@@ -3805,7 +3805,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }
                       }}
                     >
-                      <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('possui_senha') && "border-red-500 border-2 bg-red-50")}>
+                      <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('possui_senha') && "border-red-500 border-2 bg-red-50")}>
                         <SelectValue placeholder={isOficinaMecanica ? 'Selecione se deixou chave/código do veículo' : 'Selecione se o aparelho possui senha'}>
                           {(formData.possui_senha_tipo === 'sim' || (isOficinaMecanica && formData.possui_senha_tipo === 'deslizar')) && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && !isOficinaMecanica && 'SIM - DESLIZAR (DESENHO)'}
@@ -3826,7 +3826,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     {/* Senha - Campo de texto quando SIM (obrigatório) */}
                     {formData.possui_senha_tipo === 'sim' && (
                       <div className="space-y-1">
-                        <Label className={cn("text-xs font-medium text-gray-600", camposFaltandoState.has('senha_aparelho') && "font-bold text-red-600")}>
+                        <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('senha_aparelho') && "font-bold text-red-600")}>
                           {isOficinaMecanica ? 'Chave ou código do veículo *' : 'Senha do aparelho *'}
                         </Label>
                         {camposFaltandoState.has('senha_aparelho') && (
@@ -3842,7 +3842,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             }
                           }}
                           placeholder={isOficinaMecanica ? 'Chave ou código (ex.: chave reserva)' : 'Digite a senha do aparelho'}
-                          className={cn("h-10 text-sm border-gray-200 rounded-lg", camposFaltandoState.has('senha_aparelho') && "border-red-500 border-2 bg-red-50")}
+                          className={cn("h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('senha_aparelho') && "border-red-500 border-2 bg-red-50")}
                         />
                       </div>
                     )}
@@ -3861,16 +3861,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           value={formData.senha_aparelho}
                           onChange={(e) => setFormData(prev => ({ ...prev, senha_aparelho: e.target.value }))}
                           placeholder="Senha adicional (opcional)"
-                          className="h-10 text-sm border-gray-200 rounded-lg"
+                          className="h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg"
                         />
                       </div>
                     )}
                   </div>
 
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <Label className="text-xs font-medium text-gray-600 mb-2 block">{isOficinaMecanica ? 'Referência Visual do Veículo' : 'Referência Visual do Aparelho'}</Label>
-                    <div className="h-[220px] flex items-center justify-center bg-gray-50/50 rounded-xl border border-gray-200 p-2">
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2 block">{isOficinaMecanica ? 'Referência Visual do Veículo' : 'Referência Visual do Aparelho'}</Label>
+                    <div className="h-[220px] flex items-center justify-center bg-gray-50/50 dark:bg-muted/30 rounded-xl border border-gray-200 dark:border-gray-700 p-2">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
@@ -3880,7 +3880,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="flex items-center justify-between mt-2 px-1">
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         Clique para marcar defeitos ({formData.areas_defeito?.length || 0})
                       </p>
                       {formData.areas_defeito && formData.areas_defeito.length > 0 && (
@@ -3890,7 +3890,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             e.stopPropagation();
                             setFormData(prev => ({ ...prev, areas_defeito: [] }));
                           }}
-                          className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded px-2 py-1 transition-colors flex items-center gap-1"
+                          className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded px-2 py-1 transition-colors flex items-center gap-1"
                           title="Limpar todos os defeitos"
                         >
                           <Trash2 className="h-3 w-3" />
