@@ -588,14 +588,16 @@ export default function JobApplicationSteps() {
       if (!formData.phone.trim()) newErrors.phone = "Telefone é obrigatório";
       if (formData.phone && !isValidBRPhone(formData.phone)) newErrors.phone = "Telefone inválido";
 
-      if (!formData.age.trim()) newErrors.age = "Idade é obrigatória";
-      if (formData.age) {
+      // Idade opcional: só valida o formato se a pessoa preencher.
+      if (formData.age?.trim()) {
         const n = parseInt(formData.age, 10);
-        if (Number.isNaN(n) || n < 16 || n > 100) newErrors.age = "Idade inválida";
+        if (Number.isNaN(n) || n < 16 || n > 100) newErrors.age = "Idade inválida (16 a 100)";
       }
 
-      if (!formData.cep.trim()) newErrors.cep = "CEP é obrigatório";
-      else if (!isValidCEP(formData.cep)) newErrors.cep = "CEP inválido (ex.: 13050-120)";
+      // CEP opcional: só valida o formato se a pessoa preencher.
+      if (formData.cep?.trim() && !isValidCEP(formData.cep)) {
+        newErrors.cep = "CEP inválido (ex.: 13050-120)";
+      }
     } else {
       const questionIndex = stepIndex - 1;
       const question = survey?.questions[questionIndex];
@@ -620,13 +622,44 @@ export default function JobApplicationSteps() {
   };
 
   /* ---------- navegação ---------- */
+  // Ordem dos campos no Step 0 — usada pra rolar até o primeiro campo com erro
+  const PERSONAL_FIELD_ORDER = ['name', 'email', 'phone', 'age', 'cep'] as const;
+
+  const focusFirstError = (currentErrors: Record<string, string>) => {
+    if (typeof window === 'undefined') return;
+    const ids = safeCurrentStep === 0
+      ? PERSONAL_FIELD_ORDER.filter((id) => currentErrors[id])
+      : Object.keys(currentErrors);
+    const firstId = ids[0];
+    if (!firstId) return;
+    // Pequeno delay para o React renderizar o estado de erro antes do scroll/focus.
+    requestAnimationFrame(() => {
+      const el = document.getElementById(firstId);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      try {
+        (el as HTMLInputElement).focus({ preventScroll: true });
+      } catch {
+        // alguns componentes (ex.: Select) não aceitam focus direto — ignora.
+      }
+    });
+  };
+
   const handleNext = () => {
     const isValid = validateStep(safeCurrentStep);
     if (!isValid) {
-      toast({ 
-        title: "Atenção", 
-        description: "Por favor, responda a pergunta obrigatória antes de continuar.", 
-        variant: "destructive" 
+      const description = safeCurrentStep === 0
+        ? 'Preencha os campos destacados em vermelho para continuar.'
+        : 'Por favor, responda a pergunta obrigatória antes de continuar.';
+      toast({
+        title: 'Atenção',
+        description,
+        variant: 'destructive',
+      });
+      // Rola até o primeiro campo com erro (ajuda principalmente no mobile).
+      setErrors((current) => {
+        focusFirstError(current);
+        return current;
       });
       return;
     }
@@ -1417,7 +1450,7 @@ export default function JobApplicationSteps() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="age" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>Idade *</Label>
+                        <Label htmlFor="age" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>Idade</Label>
                         <Input
                           id="age"
                           type="number"
@@ -1433,7 +1466,7 @@ export default function JobApplicationSteps() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="cep" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>CEP *</Label>
+                        <Label htmlFor="cep" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>CEP</Label>
                         <Input
                           id="cep"
                           inputMode="numeric"
