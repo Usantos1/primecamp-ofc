@@ -4933,6 +4933,242 @@ Retorne APENAS um JSON válido (sem markdown, sem texto adicional) com a seguint
   }
 });
 
+// POST /api/functions/generate-os-with-ai - Gerar Ordem de Serviço a partir de texto livre/transcrição com IA
+app.post('/api/functions/generate-os-with-ai', authenticateToken, async (req, res) => {
+  try {
+    const requestData = req.body?.body || req.body || {};
+    const {
+      prompt,
+      tipo_negocio,
+      tipo_aparelho_padrao,
+      contexto = {},
+    } = requestData;
+
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      return res.status(400).json({ error: 'O campo "prompt" é obrigatório.' });
+    }
+
+    const promptText = String(prompt).trim().slice(0, 6000);
+    const isOficina = tipo_negocio === 'oficina_mecanica';
+
+    // Buscar API Key da OpenAI por empresa (mesmo padrão dos demais endpoints de IA)
+    const integrationKey = req.companyId ? `integration_settings_${req.companyId}` : 'integration_settings';
+    const tokenResult = await pool.query(
+      `SELECT value FROM kv_store_2c4defad WHERE key = $1`,
+      [integrationKey]
+    );
+
+    let openaiApiKey = null;
+    let openaiModel = 'gpt-4o-mini';
+    if (tokenResult.rows.length > 0 && tokenResult.rows[0].value) {
+      const value = tokenResult.rows[0].value;
+      const settings = typeof value === 'string' ? JSON.parse(value) : value;
+      openaiApiKey = settings.aiApiKey;
+      const configuredModel = settings.aiModel || 'gpt-4o-mini';
+      const validModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'o1', 'o1-mini', 'o1-preview', 'o3-mini'];
+      if (validModels.includes(configuredModel)) {
+        openaiModel = configuredModel;
+      } else {
+        console.warn(`[Generate OS AI] Modelo inválido '${configuredModel}'. Usando fallback 'gpt-4o-mini'.`);
+        openaiModel = 'gpt-4o-mini';
+      }
+    }
+
+    if (!openaiApiKey) {
+      return res.status(400).json({
+        error: 'API Key da OpenAI não configurada',
+        message: 'Configure a API Key em Integrações > OpenAI'
+      });
+    }
+
+    // Listas de marcas/modelos do sistema (limitadas) para ajudar a IA a escolher exatamente
+    const marcasContexto = Array.isArray(contexto.marcas)
+      ? contexto.marcas.filter(Boolean).slice(0, 80).join(', ')
+      : '';
+    const modelosContexto = Array.isArray(contexto.modelos)
+      ? contexto.modelos.filter(Boolean).slice(0, 200).join(', ')
+      : '';
+
+    const tipoAparelhoSugerido = tipo_aparelho_padrao
+      || (isOficina ? 'veiculo' : 'celular');
+
+    const today = new Date();
+    const dataHojeISO = today.toISOString().slice(0, 10);
+
+    const sistemaPrompt = isOficina
+      ? 'Você é um assistente especialista em oficinas mecânicas e atendimento de clientes. Extraia informações estruturadas a partir da fala/texto livre da atendente para preencher uma Ordem de Serviço.'
+      : 'Você é um assistente especialista em assistência técnica de eletrônicos (celulares, tablets, notebooks) e atendimento de clientes. Extraia informações estruturadas a partir da fala/texto livre da atendente para preencher uma Ordem de Serviço.';
+
+    const userPrompt = `Hoje é ${dataHojeISO}. Tipo de negócio: ${isOficina ? 'Oficina Mecânica' : 'Assistência Técnica'}.
+
+Texto livre / transcrição da atendente:
+"""
+${promptText}
+"""
+
+${marcasContexto ? `Marcas cadastradas no sistema (use EXATAMENTE um destes nomes quando houver correspondência razoável): ${marcasContexto}\n` : ''}${modelosContexto ? `Modelos cadastrados no sistema (use EXATAMENTE estes nomes quando houver correspondência razoável; o nome pode incluir a marca à frente): ${modelosContexto}\n` : ''}
+INSTRUÇÕES:
+- Retorne APENAS um JSON válido (sem markdown, sem texto extra) com o seguinte formato:
+{
+  "os": {
+    "tipo_aparelho": "${tipoAparelhoSugerido}",
+    "marca_nome": "string ou ''",
+    "modelo_nome": "string ou ''",
+    "imei": "string ou ''",
+    "numero_serie": "string ou ''",
+    "cor": "string ou ''",
+    "descricao_problema": "string com defeito relatado",
+    "condicoes_equipamento": "string com condições/observações de entrada",
+    "previsao_entrega": "yyyy-mm-dd ou ''",
+    "hora_previsao": "HH:mm ou ''",
+    "observacoes": "string ou ''",
+    "orcamento_parcelado": número (>=0) ou 0,
+    "orcamento_desconto": número (>=0) ou 0,
+    "apenas_orcamento": true|false
+  },
+  "itens_sugeridos": [
+    {
+      "tipo": "peca" | "servico" | "mao_de_obra",
+      "descricao": "string clara",
+      "quantidade": número (>=1),
+      "valor_unitario": número (>=0),
+      "desconto": número (>=0),
+      "garantia": número em dias (>=0)
+    }
+  ],
+  "alertas": ["string", "..."]
+}
+
+REGRAS:
+- Não invente dados. Se um campo não foi mencionado claramente, deixe vazio ('') ou 0.
+- Para datas relativas ("amanhã", "sexta", "em 3 dias"), calcule a partir de ${dataHojeISO} e devolva no formato yyyy-mm-dd.
+- Para horários ("às 5 da tarde", "17h", "meio dia"), devolva HH:mm em 24h.
+- "orcamento_desconto" representa o valor à vista (dinheiro/PIX). "orcamento_parcelado" representa o valor parcelado (até 6x).
+- "apenas_orcamento" deve ser true se o cliente vai apenas receber um orçamento, sem deixar o aparelho ainda autorizado.
+- Em "itens_sugeridos", inclua peças e serviços citados explicitamente (com valor unitário); se não houver itens claros, devolva [].
+- Em "alertas", inclua observações para a atendente revisar (ex.: "Valor não citado, confirmar com cliente.", "Modelo dito como 'iPhone' sem versão — confirmar.").
+- A linguagem é português do Brasil.`;
+
+    const modelsRequiringTemp1 = ['o1', 'o1-mini', 'o1-preview', 'o3', 'o3-mini', 'gpt-5'];
+    const requiresTemp1 = modelsRequiringTemp1.some(m => openaiModel.includes(m));
+    const modelsRequiringCompletionTokens = ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o1-preview', 'o3-mini', 'gpt-5'];
+    const requiresCompletionTokens = modelsRequiringCompletionTokens.some(m => openaiModel.includes(m));
+
+    const requestBody = {
+      model: openaiModel,
+      messages: [
+        { role: 'system', content: sistemaPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: requiresTemp1 ? 1 : 0.3,
+    };
+
+    if (requiresCompletionTokens) {
+      requestBody.max_completion_tokens = 1500;
+    } else {
+      requestBody.max_tokens = 1500;
+    }
+
+    console.log('[Generate OS AI] Chamando OpenAI:', { model: openaiModel, promptLen: promptText.length });
+
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      let errorData = {};
+      try { errorData = JSON.parse(errorText); } catch { errorData = { message: errorText }; }
+      console.error('[OpenAI] Erro na API (generate-os-with-ai):', openaiResponse.status, errorData);
+      return res.status(500).json({
+        error: 'Erro ao chamar API da OpenAI',
+        details: errorData.error?.message || errorData.message || 'Erro desconhecido',
+        status: openaiResponse.status,
+      });
+    }
+
+    const openaiData = await openaiResponse.json();
+    const rawContent = openaiData.choices?.[0]?.message?.content || '';
+
+    if (!rawContent.trim()) {
+      console.error('[Generate OS AI] Resposta vazia da OpenAI. Modelo:', openaiModel);
+      return res.status(500).json({
+        error: 'A IA não retornou dados',
+        details: `O modelo ${openaiModel} retornou resposta vazia.`,
+      });
+    }
+
+    let parsed = null;
+    try {
+      const cleaned = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch (parseError) {
+      console.error('[Generate OS AI] Erro ao parsear JSON:', parseError, 'Raw:', rawContent.substring(0, 500));
+      return res.status(500).json({
+        error: 'Erro ao processar resposta da IA',
+        details: 'A IA não retornou um JSON válido. Tente novamente.',
+      });
+    }
+
+    // Sanitização defensiva
+    const safeOS = (parsed && typeof parsed === 'object' && parsed.os && typeof parsed.os === 'object') ? parsed.os : {};
+    const safeItens = Array.isArray(parsed?.itens_sugeridos) ? parsed.itens_sugeridos : [];
+    const safeAlertas = Array.isArray(parsed?.alertas) ? parsed.alertas.map(a => String(a)).slice(0, 20) : [];
+
+    const tiposValidos = new Set(['peca', 'servico', 'mao_de_obra']);
+    const itensSanitizados = safeItens
+      .filter(it => it && typeof it === 'object')
+      .map(it => ({
+        tipo: tiposValidos.has(String(it.tipo)) ? String(it.tipo) : 'servico',
+        descricao: String(it.descricao || '').trim().slice(0, 300),
+        quantidade: Number(it.quantidade) > 0 ? Number(it.quantidade) : 1,
+        valor_unitario: Number(it.valor_unitario) >= 0 ? Number(it.valor_unitario) : 0,
+        desconto: Number(it.desconto) > 0 ? Number(it.desconto) : 0,
+        garantia: Number(it.garantia) > 0 ? Number(it.garantia) : 90,
+      }))
+      .filter(it => it.descricao !== '');
+
+    const result = {
+      os: {
+        tipo_aparelho: typeof safeOS.tipo_aparelho === 'string' ? safeOS.tipo_aparelho : tipoAparelhoSugerido,
+        marca_nome: typeof safeOS.marca_nome === 'string' ? safeOS.marca_nome.trim() : '',
+        modelo_nome: typeof safeOS.modelo_nome === 'string' ? safeOS.modelo_nome.trim() : '',
+        imei: typeof safeOS.imei === 'string' ? safeOS.imei.trim() : '',
+        numero_serie: typeof safeOS.numero_serie === 'string' ? safeOS.numero_serie.trim() : '',
+        cor: typeof safeOS.cor === 'string' ? safeOS.cor.trim() : '',
+        descricao_problema: typeof safeOS.descricao_problema === 'string' ? safeOS.descricao_problema.trim() : '',
+        condicoes_equipamento: typeof safeOS.condicoes_equipamento === 'string' ? safeOS.condicoes_equipamento.trim() : '',
+        previsao_entrega: typeof safeOS.previsao_entrega === 'string' ? safeOS.previsao_entrega.trim() : '',
+        hora_previsao: typeof safeOS.hora_previsao === 'string' ? safeOS.hora_previsao.trim() : '',
+        observacoes: typeof safeOS.observacoes === 'string' ? safeOS.observacoes.trim() : '',
+        orcamento_parcelado: Number(safeOS.orcamento_parcelado) >= 0 ? Number(safeOS.orcamento_parcelado) : 0,
+        orcamento_desconto: Number(safeOS.orcamento_desconto) >= 0 ? Number(safeOS.orcamento_desconto) : 0,
+        apenas_orcamento: typeof safeOS.apenas_orcamento === 'boolean' ? safeOS.apenas_orcamento : false,
+      },
+      itens_sugeridos: itensSanitizados,
+      alertas: safeAlertas,
+    };
+
+    console.log('[Generate OS AI] Sucesso:', {
+      itens: result.itens_sugeridos.length,
+      alertas: result.alertas.length,
+      hasMarca: !!result.os.marca_nome,
+      hasModelo: !!result.os.modelo_nome,
+    });
+
+    return res.json({ data: result });
+  } catch (error) {
+    console.error('[Generate OS AI] Erro:', error);
+    return res.status(500).json({ error: error.message || 'Erro ao gerar OS com IA' });
+  }
+});
+
 // POST /api/functions/import-produtos - Importar produtos em lote
 app.post('/api/functions/import-produtos', authenticateToken, requirePermission('produtos.manage'), async (req, res) => {
   try {

@@ -21,7 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Save, X, Plus, Search, Phone, Printer, Send, Trash2, Edit,
   User, Smartphone, FileText, Check, AlertTriangle, Package, DollarSign, Download, ArrowLeft, Image, Upload, Settings, ChevronDown, ChevronUp,
-  CreditCard, Wallet, QrCode, Banknote, History, MessageCircle
+  CreditCard, Wallet, QrCode, Banknote, History, MessageCircle, Sparkles, Mic, MicOff, Loader2
 } from 'lucide-react';
 import { 
   useOrdensServico, useClientes, useMarcasModelos, 
@@ -66,6 +66,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanySegment } from '@/hooks/useCompanySegment';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
 import { useRegisterPagamentoOS } from '@/hooks/usePDV';
+import { apiClient } from '@/integrations/api/client';
 
 interface OrdemServicoFormProps {
   osId?: string;
@@ -551,6 +552,57 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     grade_cor: '' as string,
   });
   const [editingItem, setEditingItem] = useState<ItemOS | null>(null);
+
+  // ==================== IA: Gerar OS com IA ====================
+  type AISuggestedItem = {
+    tempId: string;
+    tipo: 'peca' | 'servico' | 'mao_de_obra';
+    descricao: string;
+    quantidade: number;
+    valor_unitario: number;
+    desconto?: number;
+    garantia?: number;
+  };
+  type AIGenerationResult = {
+    os?: {
+      tipo_aparelho?: string;
+      marca_nome?: string;
+      modelo_nome?: string;
+      imei?: string;
+      numero_serie?: string;
+      cor?: string;
+      descricao_problema?: string;
+      condicoes_equipamento?: string;
+      previsao_entrega?: string;
+      hora_previsao?: string;
+      observacoes?: string;
+      orcamento_parcelado?: number;
+      orcamento_desconto?: number;
+      apenas_orcamento?: boolean;
+    };
+    itens_sugeridos?: Array<Omit<AISuggestedItem, 'tempId'>>;
+    alertas?: string[];
+  };
+  const [showAiOSDialog, setShowAiOSDialog] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiPreview, setAiPreview] = useState<AIGenerationResult | null>(null);
+  const [aiAlertas, setAiAlertas] = useState<string[]>([]);
+  const [aiSuggestedItems, setAiSuggestedItems] = useState<AISuggestedItem[]>([]);
+  const [aiIsRecording, setAiIsRecording] = useState(false);
+  const [aiSpeechSupported, setAiSpeechSupported] = useState(false);
+  const aiSpeechRecognitionRef = useRef<any>(null);
+  const aiPromptBaseRef = useRef<string>('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setAiSpeechSupported(!!SpeechRecognition);
+    return () => {
+      try { aiSpeechRecognitionRef.current?.stop(); } catch {}
+      aiSpeechRecognitionRef.current = null;
+    };
+  }, []);
 
   // Itens e pagamentos (apenas para edição)
   // Usar um ID temporário se a OS ainda não foi criada
@@ -1561,6 +1613,288 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   // Estado para campos faltando (para destacar visualmente)
   const [camposFaltandoState, setCamposFaltandoState] = useState<Set<string>>(new Set());
 
+  // ==================== IA: Helpers ====================
+  const generateTempItemId = () => {
+    if (typeof crypto !== 'undefined' && (crypto as any).randomUUID) {
+      return `ai-${(crypto as any).randomUUID()}`;
+    }
+    return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  };
+
+  const handleOpenAiOSDialog = () => {
+    setAiPrompt('');
+    setAiPreview(null);
+    setAiAlertas([]);
+    setShowAiOSDialog(true);
+  };
+
+  const handleCloseAiOSDialog = () => {
+    if (aiIsRecording) {
+      try { aiSpeechRecognitionRef.current?.stop(); } catch {}
+      setAiIsRecording(false);
+    }
+    setShowAiOSDialog(false);
+  };
+
+  const handleAiToggleRecording = () => {
+    const w = window as any;
+    const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast({
+        title: 'Reconhecimento de voz indisponível',
+        description: 'Seu navegador não suporta a Web Speech API. Use o Chrome/Edge.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (aiIsRecording) {
+      try { aiSpeechRecognitionRef.current?.stop(); } catch {}
+      setAiIsRecording(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      aiPromptBaseRef.current = aiPrompt ? `${aiPrompt.trim()} ` : '';
+
+      recognition.onresult = (event: any) => {
+        let finalText = '';
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal) finalText += res[0].transcript;
+          else interimText += res[0].transcript;
+        }
+        if (finalText) {
+          aiPromptBaseRef.current = `${aiPromptBaseRef.current}${finalText} `;
+        }
+        setAiPrompt(`${aiPromptBaseRef.current}${interimText}`.replace(/\s+/g, ' '));
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('[AI OS] Speech recognition error:', event.error);
+        setAiIsRecording(false);
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          toast({
+            title: 'Erro no microfone',
+            description: event.error || 'Falha ao reconhecer voz.',
+            variant: 'destructive',
+          });
+        }
+      };
+
+      recognition.onend = () => {
+        setAiIsRecording(false);
+      };
+
+      aiSpeechRecognitionRef.current = recognition;
+      recognition.start();
+      setAiIsRecording(true);
+    } catch (err: any) {
+      console.error('[AI OS] Erro ao iniciar reconhecimento:', err);
+      toast({
+        title: 'Não foi possível iniciar o microfone',
+        description: err?.message || 'Verifique as permissões do navegador.',
+        variant: 'destructive',
+      });
+      setAiIsRecording(false);
+    }
+  };
+
+  const findMarcaIdByNome = (nome?: string): string | undefined => {
+    if (!nome) return undefined;
+    const norm = nome.trim().toLowerCase();
+    if (!norm) return undefined;
+    const exact = marcas.find(m => m.nome.toLowerCase() === norm);
+    if (exact) return exact.id;
+    const partial = marcas.find(m => m.nome.toLowerCase().includes(norm) || norm.includes(m.nome.toLowerCase()));
+    return partial?.id;
+  };
+
+  const findModeloIdByNome = (nome?: string, marcaId?: string): string | undefined => {
+    if (!nome) return undefined;
+    const norm = nome.trim().toLowerCase();
+    if (!norm) return undefined;
+    const escopo = marcaId ? modelos.filter(m => m.marca_id === marcaId) : modelos;
+    const exact = escopo.find(m => m.nome.toLowerCase() === norm);
+    if (exact) return exact.id;
+    const partial = escopo.find(m => m.nome.toLowerCase().includes(norm) || norm.includes(m.nome.toLowerCase()));
+    return partial?.id;
+  };
+
+  const handleGenerateOSWithAI = async () => {
+    const promptText = aiPrompt.trim();
+    if (!promptText) {
+      toast({
+        title: 'Descreva o atendimento',
+        description: 'Digite ou dite algo antes de gerar a OS com IA.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (aiIsRecording) {
+      try { aiSpeechRecognitionRef.current?.stop(); } catch {}
+      setAiIsRecording(false);
+    }
+
+    setAiLoading(true);
+    setAiPreview(null);
+    setAiAlertas([]);
+
+    try {
+      const marcasContext = marcas.slice(0, 80).map(m => m.nome);
+      const modelosContext = modelos.slice(0, 200).map(m => {
+        const marcaNome = marcas.find(b => b.id === m.marca_id)?.nome || '';
+        return marcaNome ? `${marcaNome} ${m.nome}` : m.nome;
+      });
+
+      const { data, error } = await apiClient.invokeFunction('generate-os-with-ai', {
+        body: {
+          prompt: promptText,
+          tipo_negocio: isOficinaMecanica ? 'oficina_mecanica' : 'assistencia_tecnica',
+          tipo_aparelho_padrao: formData.tipo_aparelho,
+          contexto: {
+            marcas: marcasContext,
+            modelos: modelosContext,
+          },
+        },
+      });
+
+      if (error) {
+        const msg = typeof error === 'string'
+          ? error
+          : (error as any)?.message || (error as any)?.data?.error || 'Erro ao gerar OS com IA';
+        throw new Error(msg);
+      }
+
+      const payload = (data?.data || data) as AIGenerationResult;
+      const osPayload = payload?.os || {};
+      const itensSugeridos = Array.isArray(payload?.itens_sugeridos) ? payload.itens_sugeridos : [];
+      const alertas: string[] = Array.isArray(payload?.alertas) ? [...payload.alertas] : [];
+
+      const matchedMarcaId = findMarcaIdByNome(osPayload.marca_nome);
+      const matchedModeloId = findModeloIdByNome(osPayload.modelo_nome, matchedMarcaId);
+
+      if (osPayload.marca_nome && !matchedMarcaId) {
+        alertas.push(`Marca "${osPayload.marca_nome}" não encontrada — selecione manualmente.`);
+      }
+      if (osPayload.modelo_nome && !matchedModeloId) {
+        alertas.push(`Modelo "${osPayload.modelo_nome}" não encontrado — selecione manualmente.`);
+      }
+
+      setFormData(prev => {
+        const next = { ...prev };
+        if (osPayload.tipo_aparelho) next.tipo_aparelho = osPayload.tipo_aparelho;
+        if (matchedMarcaId) next.marca_id = matchedMarcaId;
+        if (matchedModeloId) next.modelo_id = matchedModeloId;
+        if (osPayload.imei) next.imei = osPayload.imei;
+        if (osPayload.numero_serie) next.numero_serie = osPayload.numero_serie;
+        if (osPayload.cor) next.cor = osPayload.cor;
+        if (osPayload.descricao_problema) next.descricao_problema = osPayload.descricao_problema;
+        if (osPayload.condicoes_equipamento) next.condicoes_equipamento = osPayload.condicoes_equipamento;
+        if (osPayload.previsao_entrega && /^\d{4}-\d{2}-\d{2}$/.test(osPayload.previsao_entrega)) {
+          next.previsao_entrega = osPayload.previsao_entrega;
+        } else if (osPayload.previsao_entrega) {
+          alertas.push(`Previsão de entrega "${osPayload.previsao_entrega}" em formato inválido — ajuste manualmente.`);
+        }
+        if (osPayload.hora_previsao && /^\d{2}:\d{2}$/.test(osPayload.hora_previsao)) {
+          next.hora_previsao = osPayload.hora_previsao;
+        }
+        if (osPayload.observacoes) next.observacoes = osPayload.observacoes;
+        if (typeof osPayload.orcamento_parcelado === 'number' && osPayload.orcamento_parcelado > 0) {
+          next.orcamento_parcelado = osPayload.orcamento_parcelado;
+        }
+        if (typeof osPayload.orcamento_desconto === 'number' && osPayload.orcamento_desconto > 0) {
+          next.orcamento_desconto = osPayload.orcamento_desconto;
+        }
+        if (typeof osPayload.apenas_orcamento === 'boolean') {
+          next.apenas_orcamento = osPayload.apenas_orcamento;
+        }
+        return next;
+      });
+
+      const novosItens: AISuggestedItem[] = itensSugeridos
+        .filter(it => it && (it.descricao || '').trim() !== '')
+        .map(it => ({
+          tempId: generateTempItemId(),
+          tipo: (['peca', 'servico', 'mao_de_obra'].includes(String(it.tipo)) ? it.tipo : 'servico') as AISuggestedItem['tipo'],
+          descricao: String(it.descricao || '').trim(),
+          quantidade: Number(it.quantidade) > 0 ? Number(it.quantidade) : 1,
+          valor_unitario: Number(it.valor_unitario) >= 0 ? Number(it.valor_unitario) : 0,
+          desconto: Number(it.desconto) > 0 ? Number(it.desconto) : 0,
+          garantia: Number(it.garantia) > 0 ? Number(it.garantia) : 90,
+        }));
+
+      setAiSuggestedItems(prev => [...prev, ...novosItens]);
+      setAiPreview({ os: osPayload, itens_sugeridos: itensSugeridos, alertas });
+      setAiAlertas(alertas);
+
+      toast({
+        title: 'OS gerada com IA',
+        description: 'Revise os campos preenchidos e os itens sugeridos antes de salvar.',
+      });
+    } catch (err: any) {
+      console.error('[AI OS] Erro ao gerar OS com IA:', err);
+      toast({
+        title: 'Erro ao gerar OS com IA',
+        description: err?.message || 'Não foi possível gerar a OS com IA. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleRemoveSuggestedItem = (tempId: string) => {
+    setAiSuggestedItems(prev => prev.filter(it => it.tempId !== tempId));
+  };
+
+  const handleUpdateSuggestedItem = (tempId: string, patch: Partial<AISuggestedItem>) => {
+    setAiSuggestedItems(prev => prev.map(it => (it.tempId === tempId ? { ...it, ...patch } : it)));
+  };
+
+  const handleAddSuggestedItemToOS = async (item: AISuggestedItem) => {
+    const targetOsId = currentOS?.id || (isEditing ? id : undefined);
+    if (!targetOsId) {
+      toast({
+        title: 'Salve a OS primeiro',
+        description: 'Salve a OS para adicionar os itens sugeridos pela IA.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const valor_total = Math.max(0, (item.quantidade * item.valor_unitario) - (item.desconto || 0));
+      await addItem({
+        tipo: item.tipo,
+        descricao: item.descricao,
+        quantidade: item.quantidade,
+        valor_unitario: item.valor_unitario,
+        valor_minimo: 0,
+        desconto: item.desconto || 0,
+        valor_total,
+        garantia: item.garantia || 90,
+        colaborador_id: user?.id || undefined,
+        colaborador_nome: currentUserNome || undefined,
+      } as any);
+      handleRemoveSuggestedItem(item.tempId);
+      toast({ title: 'Item adicionado à OS' });
+    } catch (err: any) {
+      console.error('[AI OS] Falha ao adicionar item sugerido:', err);
+      toast({
+        title: 'Erro ao adicionar item',
+        description: err?.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Salvar OS
   const handleSubmit = async () => {
     // Prevenir múltiplos cliques
@@ -1714,7 +2048,38 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
         }
         
         toast({ title: `OS #${novaOS.numero} criada!` });
-        
+
+        // Persistir itens sugeridos pela IA (rascunho local) na OS recém-criada
+        if (aiSuggestedItems.length > 0) {
+          try {
+            for (const item of aiSuggestedItems) {
+              const valor_total = Math.max(0, (item.quantidade * item.valor_unitario) - (item.desconto || 0));
+              await addItem({
+                tipo: item.tipo,
+                descricao: item.descricao,
+                quantidade: item.quantidade,
+                valor_unitario: item.valor_unitario,
+                valor_minimo: 0,
+                desconto: item.desconto || 0,
+                valor_total,
+                garantia: item.garantia || 90,
+                colaborador_id: user?.id || undefined,
+                colaborador_nome: currentUserNome || undefined,
+              } as any);
+            }
+            const qtd = aiSuggestedItems.length;
+            setAiSuggestedItems([]);
+            toast({ title: `${qtd} ${qtd === 1 ? 'item adicionado' : 'itens adicionados'} pela IA` });
+          } catch (errItems: any) {
+            console.error('[AI OS] Erro ao adicionar itens sugeridos pela IA após criar OS:', errItems);
+            toast({
+              title: 'Atenção',
+              description: 'A OS foi criada, mas alguns itens sugeridos pela IA não puderam ser adicionados automaticamente.',
+              variant: 'destructive',
+            });
+          }
+        }
+
         // Enviar mensagem do status "OS Aberta" se configurado (nova OS já nasce com status aberta)
         try {
           const statusInicial = novaOS.status || 'aberta';
@@ -2846,10 +3211,24 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               {/* Widget 1: Dados do Cliente e Aparelho */}
               <Card className="border border-gray-200/80 shadow-sm rounded-xl bg-white">
                 <CardHeader className="py-3 px-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">
-                  <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    Dados da OS
-                  </CardTitle>
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      Dados da OS
+                    </CardTitle>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleOpenAiOSDialog}
+                      className="h-8 px-3 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white text-xs font-medium shadow-sm flex items-center gap-1.5 shrink-0"
+                      aria-label="Gerar OS com inteligência artificial"
+                      title="Gerar OS com IA"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span className="hidden sm:inline">Gerar OS com IA</span>
+                      <span className="sm:hidden">IA</span>
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4 p-4">
                   {/* Cliente */}
@@ -3523,6 +3902,158 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </CardContent>
               </Card>
             </div>
+
+            {/* Itens sugeridos pela IA (rascunho — revisão antes de salvar) */}
+            {(aiSuggestedItems.length > 0 || aiAlertas.length > 0) && (
+              <Card className="border border-violet-200/80 shadow-sm rounded-xl bg-gradient-to-br from-violet-50/60 to-fuchsia-50/40 dark:from-violet-950/30 dark:to-fuchsia-950/20 mt-4">
+                <CardHeader className="py-3 px-4 border-b border-violet-100 dark:border-violet-900 rounded-t-xl">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-sm font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+                      Sugestões da IA — revise antes de salvar
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-900 dark:text-violet-200 dark:border-violet-700">
+                        Rascunho
+                      </Badge>
+                      {aiSuggestedItems.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAiSuggestedItems([])}
+                          className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                          title="Descartar todos os itens sugeridos"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          Descartar todos
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 space-y-3">
+                  {aiAlertas.length > 0 && (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1"
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold">
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Pontos para revisar</span>
+                      </div>
+                      <ul className="list-disc pl-5 space-y-0.5">
+                        {aiAlertas.map((al, idx) => (
+                          <li key={`alerta-ai-${idx}`}>{al}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {aiSuggestedItems.length > 0 && (
+                    <div className="space-y-2">
+                      {aiSuggestedItems.map((item) => {
+                        const subtotal = Math.max(0, (item.quantidade * item.valor_unitario) - (item.desconto || 0));
+                        const tipoLabel = item.tipo === 'peca' ? 'Peça' : item.tipo === 'mao_de_obra' ? 'Mão de Obra' : 'Serviço';
+                        const targetOsId = currentOS?.id || (isEditing ? id : undefined);
+                        return (
+                          <div
+                            key={item.tempId}
+                            className="rounded-lg border border-violet-200 dark:border-violet-800 bg-white dark:bg-background p-3 space-y-2"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-violet-300 text-violet-700 dark:border-violet-700 dark:text-violet-300">
+                                    {tipoLabel}
+                                  </Badge>
+                                </div>
+                                <Input
+                                  value={item.descricao}
+                                  onChange={(e) => handleUpdateSuggestedItem(item.tempId, { descricao: e.target.value })}
+                                  className="h-8 text-sm"
+                                  aria-label="Descrição do item sugerido"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveSuggestedItem(item.tempId)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 shrink-0"
+                                aria-label="Remover item sugerido"
+                                title="Remover item"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-medium text-gray-600 dark:text-gray-400">Qtd</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={item.quantidade}
+                                  onChange={(e) => handleUpdateSuggestedItem(item.tempId, { quantidade: Math.max(1, Number(e.target.value) || 1) })}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-medium text-gray-600 dark:text-gray-400">Valor unit.</Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={item.valor_unitario}
+                                  onChange={(e) => handleUpdateSuggestedItem(item.tempId, { valor_unitario: Math.max(0, Number(e.target.value) || 0) })}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-medium text-gray-600 dark:text-gray-400">Desconto</Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={item.desconto || 0}
+                                  onChange={(e) => handleUpdateSuggestedItem(item.tempId, { desconto: Math.max(0, Number(e.target.value) || 0) })}
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-medium text-gray-600 dark:text-gray-400">Subtotal</Label>
+                                <div className="h-8 text-sm font-semibold flex items-center px-2 rounded-md bg-violet-100/60 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">
+                                  {currencyFormatters.brl(subtotal)}
+                                </div>
+                              </div>
+                            </div>
+                            {targetOsId && (
+                              <div className="flex justify-end">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleAddSuggestedItemToOS(item)}
+                                  disabled={isAddingItem}
+                                  className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1" />
+                                  Adicionar à OS
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {!currentOS?.id && !isEditing && (
+                        <p className="text-xs text-violet-700 dark:text-violet-300 italic mt-2">
+                          Os itens serão adicionados automaticamente quando você salvar a OS.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Tab Checklist */}
@@ -5462,6 +5993,21 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </>
                 )}
 
+                {!isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenAiOSDialog}
+                    className="min-h-[44px] sm:h-8 rounded-lg sm:rounded px-3 text-xs sm:text-sm border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-950 touch-manipulation shrink-0 flex items-center gap-1.5"
+                    aria-label="Gerar OS com inteligência artificial"
+                    title="Gerar OS com IA"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" aria-hidden="true" />
+                    <span className="whitespace-nowrap">Gerar com IA</span>
+                  </Button>
+                )}
+
                 <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg sm:rounded min-h-[44px] sm:h-8 px-4 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90 text-xs sm:text-sm touch-manipulation shrink-0">
                   <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 shrink-0" />
                   <span>Salvar</span>
@@ -5470,6 +6016,165 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
             </div>
           </div>
         </Tabs>
+
+        {/* Dialog: Gerar OS com IA */}
+        <Dialog
+          open={showAiOSDialog}
+          onOpenChange={(open) => {
+            if (!open) handleCloseAiOSDialog();
+            else setShowAiOSDialog(true);
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-violet-600" aria-hidden="true" />
+                Gerar OS com IA
+              </DialogTitle>
+              <DialogDescription>
+                Descreva (ou dite) o atendimento — modelo do aparelho, defeito, valor, prazo, observações.
+                A IA vai sugerir os campos da OS e itens para você revisar antes de salvar.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-auto space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="ai-os-prompt" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Descrição do atendimento
+                </Label>
+                <div className="relative">
+                  <Textarea
+                    id="ai-os-prompt"
+                    value={aiPrompt}
+                    onChange={(e) => {
+                      setAiPrompt(e.target.value);
+                      aiPromptBaseRef.current = e.target.value ? `${e.target.value}` : '';
+                    }}
+                    placeholder={
+                      isOficinaMecanica
+                        ? 'Ex: Cliente trouxe um Honda Civic 2018 prata, placa ABC1D23. Reclama de barulho no freio dianteiro. Orçamento de R$ 450 pra trocar pastilhas e disco. Entrega na sexta às 17h.'
+                        : 'Ex: iPhone 13 Pro preto, IMEI 123456789012345. Tela trincada, touch funcionando. Orçamento R$ 850 só dinheiro/PIX, R$ 950 parcelado em até 6x. Entrega em 3 dias úteis.'
+                    }
+                    rows={8}
+                    className="resize-none pr-12 text-sm leading-relaxed"
+                    aria-describedby="ai-os-prompt-help"
+                    disabled={aiLoading}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={aiIsRecording ? 'destructive' : 'outline'}
+                    onClick={handleAiToggleRecording}
+                    disabled={aiLoading || !aiSpeechSupported}
+                    className={cn(
+                      'absolute right-2 bottom-2 h-9 w-9 p-0 rounded-full shadow-sm',
+                      aiIsRecording && 'animate-pulse',
+                    )}
+                    aria-label={aiIsRecording ? 'Parar gravação de voz' : 'Gravar com microfone'}
+                    aria-pressed={aiIsRecording}
+                    title={
+                      !aiSpeechSupported
+                        ? 'Reconhecimento de voz não suportado neste navegador'
+                        : aiIsRecording
+                          ? 'Parar gravação'
+                          : 'Falar (português do Brasil)'
+                    }
+                  >
+                    {aiIsRecording ? (
+                      <MicOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Mic className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+                <p id="ai-os-prompt-help" className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {aiIsRecording
+                    ? 'Gravando… clique no microfone novamente para parar.'
+                    : aiSpeechSupported
+                      ? 'Dica: use o microfone para ditar em português (Chrome ou Edge).'
+                      : 'Microfone indisponível neste navegador. Você pode digitar a descrição.'}
+                </p>
+              </div>
+
+              {aiPreview && (
+                <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-3 text-xs space-y-2">
+                  <div className="font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                    Prévia aplicada ao formulário
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-gray-700 dark:text-gray-300">
+                    {aiPreview.os?.marca_nome && (
+                      <div><span className="font-medium">Marca:</span> {aiPreview.os.marca_nome}</div>
+                    )}
+                    {aiPreview.os?.modelo_nome && (
+                      <div><span className="font-medium">Modelo:</span> {aiPreview.os.modelo_nome}</div>
+                    )}
+                    {aiPreview.os?.cor && (
+                      <div><span className="font-medium">Cor:</span> {aiPreview.os.cor}</div>
+                    )}
+                    {aiPreview.os?.imei && (
+                      <div><span className="font-medium">IMEI:</span> {aiPreview.os.imei}</div>
+                    )}
+                    {aiPreview.os?.previsao_entrega && (
+                      <div><span className="font-medium">Previsão:</span> {aiPreview.os.previsao_entrega} {aiPreview.os.hora_previsao || ''}</div>
+                    )}
+                    {typeof aiPreview.os?.orcamento_desconto === 'number' && aiPreview.os.orcamento_desconto > 0 && (
+                      <div><span className="font-medium">Orç. à vista:</span> {currencyFormatters.brl(aiPreview.os.orcamento_desconto)}</div>
+                    )}
+                    {typeof aiPreview.os?.orcamento_parcelado === 'number' && aiPreview.os.orcamento_parcelado > 0 && (
+                      <div><span className="font-medium">Orç. parcelado:</span> {currencyFormatters.brl(aiPreview.os.orcamento_parcelado)}</div>
+                    )}
+                  </div>
+                  {aiPreview.os?.descricao_problema && (
+                    <div className="text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Problema:</span> {aiPreview.os.descricao_problema}
+                    </div>
+                  )}
+                  {Array.isArray(aiPreview.itens_sugeridos) && aiPreview.itens_sugeridos.length > 0 && (
+                    <div className="text-gray-700 dark:text-gray-300">
+                      <span className="font-medium">Itens sugeridos:</span> {aiPreview.itens_sugeridos.length}
+                    </div>
+                  )}
+                  {aiAlertas.length > 0 && (
+                    <div className="text-amber-800 dark:text-amber-300">
+                      <span className="font-medium">Alertas:</span> {aiAlertas.length}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseAiOSDialog}
+                disabled={aiLoading}
+              >
+                {aiPreview ? 'Fechar' : 'Cancelar'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleGenerateOSWithAI}
+                disabled={aiLoading || !aiPrompt.trim()}
+                className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white"
+                aria-busy={aiLoading}
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
+                    {aiPreview ? 'Gerar novamente' : 'Criar com IA'}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog para adicionar/editar item */}
         <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
