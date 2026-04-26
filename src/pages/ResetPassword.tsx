@@ -207,7 +207,7 @@ const ResetPassword = () => {
                     disabled={loading}
                     required
                     minLength={6}
-                    className="h-[44px] rounded-2xl border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-[44px] rounded-full border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                   <button
                     type="button"
@@ -257,7 +257,7 @@ const ResetPassword = () => {
                     disabled={loading}
                     required
                     minLength={6}
-                    className="h-[44px] rounded-2xl border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-[44px] rounded-full border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                   <button
                     type="button"

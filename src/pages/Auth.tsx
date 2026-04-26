@@ -221,7 +221,7 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   required
-                  className="h-[44px] rounded-2xl border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-[44px] rounded-full border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
@@ -242,7 +242,7 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
                   required
-                  className="h-[44px] rounded-2xl border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-[44px] rounded-full border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
                 <button
                   type="button"
@@ -326,7 +326,7 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   required
-                  className="h-[44px] rounded-2xl border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-[44px] rounded-full border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
