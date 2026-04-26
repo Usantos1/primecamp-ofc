@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import DashboardGestao from "./pages/DashboardGestao";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import DemoLoginPage from "./pages/DemoLoginPage";
 import Admin from "./pages/Admin";
 import PendingApproval from "./pages/PendingApproval";
@@ -143,9 +144,9 @@ const App = () => {
             <Route path="/termos-de-uso" element={<TermosDeUso />} />
             <Route path="/politica-de-privacidade" element={<PoliticaPrivacidade />} />
             <Route path="/lp" element={<LandingPage />} />
-            {/* Rotas removidas -> 404 */}
-            <Route path="/reset-password" element={<NotFound />} />
-            <Route path="/reset-senha" element={<NotFound />} />
+            {/* Redefinição de senha */}
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-senha" element={<ResetPassword />} />
             <Route path="/recuperar-acesso" element={<NotFound />} />
             <Route path="/process-analytics" element={<NotFound />} />
             <Route path="/processos/*" element={<NotFound />} />

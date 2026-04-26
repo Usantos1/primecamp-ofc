@@ -218,7 +218,7 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   required
-                  className="h-[40px] rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-[40px] rounded-full border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
@@ -237,7 +237,7 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
                     required
-                    className="h-[40px] rounded-lg border-slate-200 bg-white px-3 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    className="h-[40px] rounded-full border-slate-200 bg-white px-4 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                   <button
                     type="button"
@@ -251,33 +251,44 @@ const Auth = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    id="remember-login"
+                    type="button"
+                    role="checkbox"
+                    aria-checked={rememberLogin}
+                    aria-label="Salvar login"
+                    onClick={() => setRememberLogin((checked) => !checked)}
+                    className={`flex h-4 w-4 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                      rememberLogin
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-slate-400 bg-white text-transparent dark:border-slate-500 dark:bg-slate-900"
+                    }`}
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                  <Label
+                    onClick={() => setRememberLogin((checked) => !checked)}
+                    className="cursor-pointer text-xs font-normal text-emerald-500"
+                  >
+                    Salvar login
+                  </Label>
+                </div>
+
                 <button
-                  id="remember-login"
                   type="button"
-                  role="checkbox"
-                  aria-checked={rememberLogin}
-                  aria-label="Salvar login"
-                  onClick={() => setRememberLogin((checked) => !checked)}
-                  className={`flex h-4 w-4 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
-                    rememberLogin
-                      ? "border-emerald-500 bg-emerald-500 text-white"
-                      : "border-slate-400 bg-white text-transparent dark:border-slate-500 dark:bg-slate-900"
-                  }`}
+                  onClick={() => setAuthMode("reset")}
+                  className="inline-flex items-center text-xs font-semibold text-[#75c7ad] transition-colors hover:text-[#4da989] hover:underline"
                 >
-                  <Check className="h-3 w-3" />
+                  <KeyRound className="mr-1 h-4 w-4 text-amber-400" />
+                  Esqueci minha senha
                 </button>
-                <Label
-                  onClick={() => setRememberLogin((checked) => !checked)}
-                  className="cursor-pointer text-xs font-normal text-emerald-500"
-                >
-                  Salvar login
-                </Label>
               </div>
 
               <Button
                 type="submit"
-                className="h-[34px] w-full rounded-lg bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                className="h-[34px] w-full rounded-full bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
                 disabled={loading || lockSecondsLeft > 0}
               >
                 {loading ? (
@@ -291,15 +302,6 @@ const Auth = () => {
                   "Entrar"
                 )}
               </Button>
-
-              <button
-                type="button"
-                onClick={() => setAuthMode("reset")}
-                className="inline-flex items-center text-xs font-semibold text-[#75c7ad] transition-colors hover:text-[#4da989] hover:underline"
-              >
-                <KeyRound className="mr-1 h-4 w-4 text-amber-400" />
-                Esqueci minha senha
-              </button>
             </form>
           ) : (
             <form onSubmit={handlePasswordReset} className="space-y-4">
@@ -324,13 +326,13 @@ const Auth = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   required
-                  className="h-[40px] rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="h-[40px] rounded-full border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
               <Button
                 type="submit"
-                className="h-[34px] w-full rounded-lg bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                className="h-[34px] w-full rounded-full bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
                 disabled={loading}
               >
                 {loading ? (

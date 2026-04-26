@@ -25,6 +25,7 @@ import financeiroRoutes from './routes/financeiro.js';
 import { checkSubscription, checkAndBlockOverdueCompanies } from './middleware/subscriptionMiddleware.js';
 import { requirePermission, invalidateAllPermissionCache } from './middleware/permissionMiddleware.js';
 import { notifyAdminsNewJobCandidate } from './services/jobCandidateNotify.js';
+import { sendPasswordResetEmail } from './mailer.js';
 
 // Painel de Alertas: carregamento dinâmico para não derrubar o servidor se tabelas não existirem
 let alertsRoutes = null;
@@ -1757,17 +1758,21 @@ app.post('/api/auth/request-password-reset', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    // TODO: Enviar email com link de reset usando nodemailer ou serviço de email
-    // Por enquanto, apenas retornar o token (em desenvolvimento)
     const resetLink = `${process.env.FRONTEND_URL || 'https://app.ativafix.com'}/reset-password?access_token=${resetToken}`;
-    
-    console.log(`[API] Link de reset gerado para ${user.email}: ${resetLink}`);
 
-    res.json({ 
-      message: 'Se o email existir, um link de redefinição será enviado',
-      // Em desenvolvimento, retornar o link (remover em produção)
-      ...(process.env.NODE_ENV === 'development' && { resetLink })
-    });
+    // Enviar email (em desenvolvimento, só loga; em produção, envia de verdade)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[API][DEV] Link de reset para ${user.email}: ${resetLink}`);
+    } else {
+      try {
+        await sendPasswordResetEmail({ to: user.email, resetLink, name: user.name || null });
+      } catch (mailErr) {
+        console.error('[API] Falha ao enviar email de reset:', mailErr.message);
+        // Não expor erro de SMTP para o cliente — a mensagem genérica já foi enviada
+      }
+    }
+
+    res.json({ message: 'Se o email existir, um link de redefinição será enviado' });
   } catch (error) {
     console.error('Erro ao solicitar reset de senha:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });

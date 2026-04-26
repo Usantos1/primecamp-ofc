@@ -224,9 +224,10 @@ class AuthAPIClient {
     }
   }
 
-  async resetPassword(email: string): Promise<AuthResponse> {
+  /** Solicita o envio do email de redefinição de senha. */
+  async requestPasswordReset(email: string): Promise<AuthResponse> {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/reset-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/request-password-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -235,12 +236,34 @@ class AuthAPIClient {
       const data = await response.json();
 
       if (!response.ok) {
-        return { error: { message: data.error || data.message || 'Erro ao resetar senha' } };
+        return { error: { message: data.error || data.message || 'Erro ao solicitar redefinição de senha' } };
       }
 
       return { data: {} };
     } catch (error: any) {
-      console.error('[Auth] Erro no reset de senha:', error);
+      console.error('[Auth] Erro ao solicitar reset de senha:', error);
+      return { error: { message: error.message || 'Erro de conexão' } };
+    }
+  }
+
+  /** Redefine a senha usando o token recebido por email. */
+  async confirmPasswordReset(token: string, password: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: { message: data.error || data.message || 'Erro ao redefinir senha' } };
+      }
+
+      return { data: {} };
+    } catch (error: any) {
+      console.error('[Auth] Erro ao confirmar reset de senha:', error);
       return { error: { message: error.message || 'Erro de conexão' } };
     }
   }
