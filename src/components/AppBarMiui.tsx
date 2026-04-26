@@ -65,7 +65,7 @@ export function AppBarMiui() {
             size="sm"
             onClick={() => navigate(item.path)}
             className={cn(
-              'h-10 shrink-0 rounded-full border px-3 text-xs font-medium shadow-sm sm:h-11 sm:px-4 sm:text-sm',
+              'hidden h-10 shrink-0 rounded-full border px-3 text-xs font-medium shadow-sm sm:inline-flex sm:h-11 sm:px-4 sm:text-sm',
               isActive
                 ? 'border-[hsl(var(--sidebar-primary,var(--primary)))] bg-[hsl(var(--sidebar-primary,var(--primary)))] text-white hover:opacity-95'
                 : 'border-emerald-200/80 bg-white text-foreground hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20'
@@ -90,7 +90,7 @@ export function AppBarMiui() {
             type="button"
             variant="ghost"
             size="sm"
-            className="relative z-20 h-10 min-w-[82px] shrink-0 rounded-full border border-emerald-200/80 bg-white px-3 text-xs font-medium shadow-sm hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20 sm:h-11 sm:min-w-[118px] sm:px-4 sm:text-sm"
+            className="relative z-20 h-9 min-w-[86px] shrink-0 rounded-full border border-emerald-200/80 bg-white px-3 text-xs font-medium shadow-sm hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20 sm:h-11 sm:min-w-[118px] sm:px-4 sm:text-sm"
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -105,14 +105,14 @@ export function AppBarMiui() {
             }}
           >
             Menu
-            <ChevronDown className="ml-2 h-4 w-4" />
+            <ChevronDown className="ml-1.5 h-3.5 w-3.5 sm:ml-2 sm:h-4 sm:w-4" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          align="start"
+          align="end"
           side="bottom"
-          sideOffset={12}
-          avoidCollisions={false}
+          sideOffset={8}
+          collisionPadding={8}
           onOpenAutoFocus={(event) => event.preventDefault()}
           className="w-[calc(100vw-1rem)] max-w-[360px] max-h-[72vh] overflow-y-auto rounded-[28px] border border-border/70 bg-background p-3 opacity-100 shadow-[0_18px_50px_rgba(16,24,40,0.18)] scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent dark:bg-slate-950 dark:scrollbar-thumb-emerald-900"
         >

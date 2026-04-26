@@ -61,13 +61,13 @@ export function HeaderMiui({
             )}
           </div>
 
-          <div className="hidden sm:block">
+          <div className="shrink-0">
             <ThemeToggle variant="button" size="sm" />
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="hidden shrink-0 rounded-2xl h-9 w-9 p-0 sm:inline-flex"
+            className="shrink-0 rounded-2xl h-9 w-9 p-0"
             onClick={() => setValuesVisible(!valuesVisible)}
             title={valuesVisible ? "Ocultar valores em R$" : "Exibir valores em R$"}
             aria-label={valuesVisible ? "Ocultar valores em reais" : "Exibir valores em reais"}
