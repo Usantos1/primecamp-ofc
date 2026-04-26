@@ -21,9 +21,9 @@ interface ThemeConfig {
 // Cores fixas do sistema — uma vez definidas valem para todos os usuários (AppBar, Sidebar, Botões)
 const SYSTEM_PRIMARY_HSL = '0 100% 47%';
 
-const defaultConfigPrimeCamp: ThemeConfig = {
-  logo: "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png",
-  logoAlt: "Prime Camp Logo",
+const defaultConfigAtivaFix: ThemeConfig = {
+  logo: "/logo-ativafix.png",
+  logoAlt: "Ativa FIX",
   colors: {
     primary: SYSTEM_PRIMARY_HSL,
     primaryForeground: '0 0% 100%',
@@ -32,35 +32,35 @@ const defaultConfigPrimeCamp: ThemeConfig = {
     sidebar: SYSTEM_PRIMARY_HSL,
     button: SYSTEM_PRIMARY_HSL,
   },
-  companyName: 'Prime Camp',
+  companyName: 'Ativa FIX',
   navigationVariant: 'miui',
 };
 
 /** Na tela de login e padrão: logo e cores da empresa 1 (sem amarelo). API pode sobrescrever com tema salvo. */
 export function getDefaultConfigByHost(): ThemeConfig {
-  if (typeof window === 'undefined') return defaultConfigPrimeCamp;
+  if (typeof window === 'undefined') return defaultConfigAtivaFix;
   const h = window.location.hostname;
   const isAtivaFix = h === 'ativafix.com' || h === 'www.ativafix.com' || h === 'app.ativafix.com' || h === 'localhost' || h === '127.0.0.1';
   if (isAtivaFix) {
     const origin = window.location.origin;
     return {
-      ...defaultConfigPrimeCamp,
-      logo: defaultConfigPrimeCamp.logo || `${origin}/logo-ativafix.png`,
-      logoAlt: defaultConfigPrimeCamp.logoAlt || 'Logo',
-      companyName: defaultConfigPrimeCamp.companyName || 'Sistema de Processos',
+      ...defaultConfigAtivaFix,
+      logo: defaultConfigAtivaFix.logo || `${origin}/logo-ativafix.png`,
+      logoAlt: defaultConfigAtivaFix.logoAlt || 'Logo',
+      companyName: defaultConfigAtivaFix.companyName || 'Sistema de Processos',
       colors: {
-        ...defaultConfigPrimeCamp.colors,
-        primary: defaultConfigPrimeCamp.colors.primary,
-        accent: defaultConfigPrimeCamp.colors.accent,
-        sidebar: defaultConfigPrimeCamp.colors.sidebar ?? defaultConfigPrimeCamp.colors.primary,
-        button: defaultConfigPrimeCamp.colors.button ?? defaultConfigPrimeCamp.colors.primary,
+        ...defaultConfigAtivaFix.colors,
+        primary: defaultConfigAtivaFix.colors.primary,
+        accent: defaultConfigAtivaFix.colors.accent,
+        sidebar: defaultConfigAtivaFix.colors.sidebar ?? defaultConfigAtivaFix.colors.primary,
+        button: defaultConfigAtivaFix.colors.button ?? defaultConfigAtivaFix.colors.primary,
       },
     };
   }
-  return defaultConfigPrimeCamp;
+  return defaultConfigAtivaFix;
 }
 
-const defaultConfig = defaultConfigPrimeCamp;
+const defaultConfig = defaultConfigAtivaFix;
 
 interface ThemeConfigContextType {
   config: ThemeConfig;

@@ -37,7 +37,7 @@ export function ModernLayout({ children, headerActions }: ModernLayoutProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [notificationCount, setNotificationCount] = useState(3)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const { user, profile } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const { hasPermission, isAdmin } = usePermissions()
   const isAdminCompany = user?.company_id === ADMIN_COMPANY_ID
   /** Sempre que estiver no módulo financeiro (MIUI ou barra clássica). */
@@ -69,8 +69,11 @@ export function ModernLayout({ children, headerActions }: ModernLayoutProps) {
               canOpenSettings={canOpenSettings}
               onOpenNotifications={() => setIsNotificationOpen(true)}
               onOpenSettings={() => setIsSettingsOpen(true)}
+              onSignOut={signOut}
               headerActions={headerActions}
               profileName={profile?.display_name}
+              profileAvatarUrl={profile?.avatar_url}
+              userEmail={user?.email}
               currentTime={currentTime}
             />
 

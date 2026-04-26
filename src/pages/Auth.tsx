@@ -5,35 +5,50 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, LogIn, UserPlus, Phone, Palette, Eye, EyeOff } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Check, Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import { useThemeConfig, getDefaultConfigByHost } from "@/contexts/ThemeConfigContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+
+const LOGIN_BACKGROUND_URL =
+  "https://img.freepik.com/fotos-gratis/nuvens-brancas-dramaticas-e-ceu-azul-da-vista-da-janela-do-aviao-fundo-colorido-do-por-do-sol-cloudscape_90220-1209.jpg";
+const SUPPORT_WHATSAPP_NUMBER = "5519991979912";
+const SUPPORT_WHATSAPP_URL = `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  "Olá, preciso de ajuda para acessar o Ativa FIX."
+)}`;
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error && error.message ? error.message : fallback;
+};
 
 const Auth = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { setTheme } = useTheme();
   const { config } = useThemeConfig();
-  const logoUrl = config.logo || getDefaultConfigByHost().logo || "https://primecamp.com.br/wp-content/uploads/2025/07/Design-sem-nome-4.png";
+  const logoUrl = getDefaultConfigByHost().logo || "/logo-ativafix.png";
+  const currentYear = new Date().getFullYear();
 
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => localStorage.getItem("auth_remembered_email") || "");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState("light");
+  const [rememberLogin, setRememberLogin] = useState(() => Boolean(localStorage.getItem("auth_remembered_email")));
+  const [authMode, setAuthMode] = useState<"signin" | "reset">("signin");
   // Bloqueio de novas tentativas após 429 (muitas tentativas) — evita enviar mais requisições e piorar o bloqueio
   const [lockLoginUntil, setLockLoginUntil] = useState<number | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [showSignupConfirm, setShowSignupConfirm] = useState(false);
+  const [showSupportBubble, setShowSupportBubble] = useState(false);
+
+  useEffect(() => {
+    if (rememberLogin && email.trim()) {
+      localStorage.setItem("auth_remembered_email", email.trim());
+      return;
+    }
+
+    if (!rememberLogin) {
+      localStorage.removeItem("auth_remembered_email");
+    }
+  }, [email, rememberLogin]);
 
   useEffect(() => {
     // Se já está autenticado, redirecionar
@@ -41,6 +56,15 @@ const Auth = () => {
       navigate("/");
     }
   }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    const showTimer = window.setTimeout(() => setShowSupportBubble(true), 2500);
+    const hideTimer = window.setTimeout(() => setShowSupportBubble(false), 8500);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
 
   // Contagem regressiva do bloqueio de login (atualiza a cada segundo)
   const [lockSecondsLeft, setLockSecondsLeft] = useState(0);
@@ -87,10 +111,16 @@ const Auth = () => {
         description: "Bem-vindo de volta!",
       });
 
+      if (rememberLogin) {
+        localStorage.setItem("auth_remembered_email", email.trim());
+      } else {
+        localStorage.removeItem("auth_remembered_email");
+      }
+
       window.location.href = "/";
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Auth] Erro no login:", error);
-      const msg = error?.message || "Email ou senha incorretos.";
+      const msg = getErrorMessage(error, "Email ou senha incorretos.");
       const isTooManyRequests = typeof msg === "string" && (msg.includes("Muitas tentativas") || msg.includes("429"));
       if (isTooManyRequests) {
         setLockLoginUntil(Date.now() + 45 * 1000); // 45 segundos (evita novo 429 ao tentar de novo)
@@ -98,74 +128,6 @@ const Auth = () => {
       toast({
         title: "Erro no login",
         description: msg,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || !confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      console.log('[Auth] Tentando criar conta via API PostgreSQL:', { email });
-      
-      await authAPI.signup({
-        email,
-        password,
-        display_name: displayName || email,
-        phone: phone || undefined,
-      });
-
-      setTheme(selectedTheme);
-      toast({
-        title: "Cadastro realizado",
-        description: "Conta criada com sucesso! Você já pode fazer login.",
-      });
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      setDisplayName("");
-      setPhone("");
-      setSelectedTheme("light");
-      
-      // Recarregar página para atualizar AuthContext
-      window.location.href = "/";
-    } catch (error: any) {
-      console.error('[Auth] Erro no cadastro:', error);
-      toast({
-        title: "Erro no cadastro",
-        description: error.message?.includes("já está cadastrado") || error.message?.includes("already registered")
-          ? "Este email já está cadastrado. Tente fazer login."
-          : error.message || "Erro inesperado ao criar conta",
         variant: "destructive",
       });
     } finally {
@@ -196,11 +158,12 @@ const Auth = () => {
         description: "Se o email existir, você receberá um link para redefinir sua senha.",
       });
       setEmail("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Auth] Erro ao solicitar reset:', error);
+      const msg = getErrorMessage(error, "Erro ao enviar email de redefinição");
       toast({
         title: "Erro",
-        description: error.message || "Erro ao enviar email de redefinição",
+        description: msg,
         variant: "destructive",
       });
     } finally {
@@ -210,246 +173,226 @@ const Auth = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/50 p-4 relative">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle variant="button" size="sm" aria-label="Alternar tema claro/escuro" />
+    <div
+      className="relative flex min-h-screen flex-col overflow-hidden bg-slate-950 bg-cover bg-center bg-no-repeat text-slate-700 dark:text-slate-200"
+      style={{ backgroundImage: `url(${LOGIN_BACKGROUND_URL})` }}
+    >
+      <div className="absolute inset-0 bg-slate-950/30 dark:bg-slate-950/60" aria-hidden="true" />
+
+      <div className="absolute right-4 top-4 z-20 rounded-full bg-white/90 shadow-lg backdrop-blur dark:bg-slate-900/90">
+        <ThemeToggle variant="button" size="sm" />
       </div>
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <img src={logoUrl} alt={config.logoAlt || "Logo"} className="h-16 w-auto max-w-[200px] object-contain" loading="lazy" decoding="async" />
+
+      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+        <section className="w-full max-w-[372px] rounded-[18px] bg-white px-7 py-8 shadow-2xl dark:bg-slate-900 sm:px-8 sm:py-9">
+          <div className="mb-7 flex justify-center">
+            <img
+              src={logoUrl}
+              alt={config.logoAlt || config.companyName || "Ativa FIX"}
+              className="h-16 w-auto max-w-[225px] object-contain"
+              loading="eager"
+              decoding="async"
+            />
           </div>
-          <CardTitle className="text-2xl font-bold">{config.companyName || 'Sistema de Processos'}</CardTitle>
-          <CardDescription>Faça login ou crie sua conta para continuar</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-              <TabsTrigger value="reset">Redefinir Senha</TabsTrigger>
-            </TabsList>
 
-            {/* Login */}
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+          {authMode === "signin" ? (
+            <form onSubmit={handleSignIn} className="space-y-5">
+              <div className="group relative pt-2">
+                <Label
+                  htmlFor="signin-email"
+                  className="absolute left-3 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  Email *
+                </Label>
+                <Input
+                  id="signin-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                  className="h-[40px] rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="group relative pt-2">
+                <Label
+                  htmlFor="signin-password"
+                  className="absolute left-3 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  Senha *
+                </Label>
+                <div className="relative">
                   <Input
-                    id="signin-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="signin-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
                     required
+                    className="h-[40px] rounded-lg border-slate-200 bg-white px-3 pr-11 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-slate-700 focus:outline-none dark:text-slate-300 dark:hover:text-white"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="signin-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
-                      required
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                      tabIndex={-1}
-                      aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading || lockSecondsLeft > 0}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Entrando...
-                    </>
-                  ) : lockSecondsLeft > 0 ? (
-                    <>Aguarde {lockSecondsLeft} s para tentar de novo</>
-                  ) : (
-                    <>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Entrar
-                    </>
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
+              </div>
 
-            {/* Cadastro */}
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome (opcional)</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Seu nome"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-phone">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      Celular (opcional)
-                    </div>
-                  </Label>
-                  <Input
-                    id="signup-phone"
-                    type="tel"
-                    placeholder="(11) 99999-9999"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="signup-password"
-                      type={showSignupPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
-                      required
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSignupPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                      tabIndex={-1}
-                      aria-label={showSignupPassword ? "Ocultar senha" : "Exibir senha"}
-                    >
-                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-confirm">Confirmar Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="signup-confirm"
-                      type={showSignupConfirm ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      disabled={loading}
-                      required
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSignupConfirm((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                      tabIndex={-1}
-                      aria-label={showSignupConfirm ? "Ocultar senha" : "Exibir senha"}
-                    >
-                      {showSignupConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="theme-select">
-                    <div className="flex items-center gap-2">
-                      <Palette className="h-4 w-4" />
-                      Tema
-                    </div>
-                  </Label>
-                  <Select value={selectedTheme} onValueChange={setSelectedTheme} disabled={loading}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Escolha um tema" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="light">Claro</SelectItem>
-                      <SelectItem value="dark">Escuro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Criando conta...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Criar Conta
-                    </>
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  id="remember-login"
+                  type="button"
+                  role="checkbox"
+                  aria-checked={rememberLogin}
+                  aria-label="Salvar login"
+                  onClick={() => setRememberLogin((checked) => !checked)}
+                  className={`flex h-4 w-4 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                    rememberLogin
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-slate-400 bg-white text-transparent dark:border-slate-500 dark:bg-slate-900"
+                  }`}
+                >
+                  <Check className="h-3 w-3" />
+                </button>
+                <Label
+                  onClick={() => setRememberLogin((checked) => !checked)}
+                  className="cursor-pointer text-xs font-normal text-emerald-500"
+                >
+                  Salvar login
+                </Label>
+              </div>
 
-            {/* Redefinir Senha */}
-            <TabsContent value="reset">
-              <form onSubmit={handlePasswordReset} className="space-y-4">
-                <p className="text-sm text-muted-foreground text-center mb-4">
-                  Digite seu email para receber um link de redefinição de senha
+              <Button
+                type="submit"
+                className="h-[34px] w-full rounded-lg bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                disabled={loading || lockSecondsLeft > 0}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : lockSecondsLeft > 0 ? (
+                  <>Aguarde {lockSecondsLeft} s para tentar de novo</>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setAuthMode("reset")}
+                className="inline-flex items-center text-xs font-semibold text-[#75c7ad] transition-colors hover:text-[#4da989] hover:underline"
+              >
+                <KeyRound className="mr-1 h-4 w-4 text-amber-400" />
+                Esqueci minha senha
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="text-center">
+                <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Recuperar senha</h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                  Digite seu email para receber um link de redefinição.
                 </p>
-                <div className="space-y-2">
-                  <Label htmlFor="reset-email">Email</Label>
-                  <Input
-                    id="reset-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Enviando...
-                    </>
-                  ) : (
-                    "Enviar Link de Redefinição"
-                  )}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              </div>
+
+              <div className="group relative pt-2">
+                <Label
+                  htmlFor="reset-email"
+                  className="absolute left-3 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-300"
+                >
+                  Email *
+                </Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  required
+                  className="h-[40px] rounded-lg border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-none hover:border-emerald-400 focus-visible:border-emerald-400 focus-visible:ring-0 focus-visible:ring-offset-0 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="h-[34px] w-full rounded-lg bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Enviar link de redefinição"
+                )}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => setAuthMode("signin")}
+                className="text-sm font-semibold text-[#75c7ad] transition-colors hover:text-[#4da989] hover:underline"
+              >
+                Voltar para o login
+              </button>
+            </form>
+          )}
+        </section>
+      </main>
+
+      <footer className="relative z-10 pb-4 text-center text-[11px] text-white/65">
+        <div className="mb-1 flex justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => navigate("/politica-de-privacidade")}
+            className="underline-offset-2 hover:text-white hover:underline"
+          >
+            Política de Privacidade
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/termos-de-uso")}
+            className="underline-offset-2 hover:text-white hover:underline"
+          >
+            Termos de Uso
+          </button>
+        </div>
+        <p>© {currentYear} Ativa FIX. Todos os direitos reservados.</p>
+      </footer>
+
+      <a
+        href={SUPPORT_WHATSAPP_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="fixed bottom-5 right-5 z-20 flex items-end gap-2"
+        aria-label="Abrir suporte no WhatsApp"
+      >
+        <span
+          className={`mb-1 hidden rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xl transition-all duration-300 sm:inline ${
+            showSupportBubble ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0 pointer-events-none"
+          }`}
+        >
+          Como podemos ajudar?
+        </span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] shadow-xl transition-transform hover:scale-105">
+          <img src="/whatsapp-logo.png" alt="" className="h-8 w-8 object-contain" />
+        </span>
+      </a>
     </div>
   );
 };
