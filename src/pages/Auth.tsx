@@ -208,7 +208,7 @@ const Auth = () => {
               <div className="group relative">
                 <label
                   htmlFor="signin-email"
-                  className="absolute left-4 top-0 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-0 z-10 h-auto min-h-0 min-w-0 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Email *
                 </label>
@@ -229,7 +229,7 @@ const Auth = () => {
               <div className="group relative">
                 <label
                   htmlFor="signin-password"
-                  className="absolute left-4 top-0 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-0 z-10 h-auto min-h-0 min-w-0 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Senha *
                 </label>
@@ -313,7 +313,7 @@ const Auth = () => {
               <div className="group relative">
                 <label
                   htmlFor="reset-email"
-                  className="absolute left-4 top-0 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-0 z-10 h-auto min-h-0 min-w-0 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Email *
                 </label>
