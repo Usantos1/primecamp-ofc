@@ -237,7 +237,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
             <div className="space-y-2">
               <Label>Origem das Vendas</Label>
               <Select value={saleOrigin} onValueChange={(value: 'PDV' | 'OS') => setSaleOrigin(value)}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-full">
                   <SelectValue placeholder="Selecione a origem" />
                 </SelectTrigger>
                 <SelectContent>
@@ -256,6 +256,7 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
                 value={observacao}
                 onChange={(e) => setObservacao(e.target.value)}
                 placeholder="Ex: Importação do sistema anterior"
+                className="rounded-full"
               />
             </div>
 
@@ -355,10 +356,10 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
         <DialogFooter>
           {step === 'input' && (
             <>
-              <Button variant="outline" onClick={() => handleClose(false)}>
+              <Button variant="outline" className="rounded-full" onClick={() => handleClose(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleParsear} disabled={!texto.trim()}>
+              <Button className="rounded-full" onClick={handleParsear} disabled={!texto.trim()}>
                 <FileText className="h-4 w-4 mr-2" />
                 Analisar Texto
               </Button>
@@ -367,10 +368,10 @@ export function ImportarVendasRetroativas({ open, onOpenChange, onSuccess }: Imp
 
           {step === 'preview' && (
             <>
-              <Button variant="outline" onClick={() => setStep('input')}>
+              <Button variant="outline" className="rounded-full" onClick={() => setStep('input')}>
                 Voltar
               </Button>
-              <Button onClick={handleImportar} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={handleImportar} className="rounded-full bg-green-600 hover:bg-green-700">
                 <Upload className="h-4 w-4 mr-2" />
                 Importar {vendasParsed.length} Vendas
               </Button>

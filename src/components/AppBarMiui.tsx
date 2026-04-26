@@ -38,16 +38,16 @@ export function AppBarMiui() {
   }, {});
 
   return (
-    <div className="flex w-full items-center gap-2">
+    <div className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pr-1 scrollbar-none sm:gap-2">
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="flex shrink-0 items-center px-1 py-0.5 transition-opacity hover:opacity-90"
+        className="flex shrink-0 items-center px-0.5 py-0.5 transition-opacity hover:opacity-90 sm:px-1"
       >
         <img
           src={logoUrl}
           alt={config.logoAlt || 'Logo'}
-          className="h-12 w-auto object-contain max-w-[170px]"
+          className="h-9 w-auto max-w-[116px] object-contain sm:h-12 sm:max-w-[170px]"
         />
       </button>
 
@@ -65,14 +65,21 @@ export function AppBarMiui() {
             size="sm"
             onClick={() => navigate(item.path)}
             className={cn(
-              'h-11 shrink-0 rounded-full border px-4 text-sm font-medium shadow-sm',
+              'h-10 shrink-0 rounded-full border px-3 text-xs font-medium shadow-sm sm:h-11 sm:px-4 sm:text-sm',
               isActive
                 ? 'border-[hsl(var(--sidebar-primary,var(--primary)))] bg-[hsl(var(--sidebar-primary,var(--primary)))] text-white hover:opacity-95'
                 : 'border-emerald-200/80 bg-white text-foreground hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20'
             )}
           >
-            <Icon className="mr-2 h-4 w-4" />
-            <span className="truncate">{item.label}</span>
+            <Icon className="mr-1.5 h-4 w-4 sm:mr-2" />
+            {item.path === '/os' ? (
+              <>
+                <span className="sm:hidden">OS</span>
+                <span className="hidden truncate sm:inline">{item.label}</span>
+              </>
+            ) : (
+              <span className="truncate">{item.label}</span>
+            )}
           </Button>
         );
       })}
@@ -83,11 +90,7 @@ export function AppBarMiui() {
             type="button"
             variant="ghost"
             size="sm"
-            className="relative z-20 h-11 min-w-[118px] shrink-0 rounded-full border border-emerald-200/80 bg-white px-4 text-sm font-medium shadow-sm hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
+            className="relative z-20 h-10 min-w-[82px] shrink-0 rounded-full border border-emerald-200/80 bg-white px-3 text-xs font-medium shadow-sm hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20 sm:h-11 sm:min-w-[118px] sm:px-4 sm:text-sm"
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -111,7 +114,7 @@ export function AppBarMiui() {
           sideOffset={12}
           avoidCollisions={false}
           onOpenAutoFocus={(event) => event.preventDefault()}
-          className="w-[360px] max-h-[72vh] overflow-y-auto rounded-[28px] border border-border/70 bg-background p-3 opacity-100 shadow-[0_18px_50px_rgba(16,24,40,0.18)] scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent dark:bg-slate-950 dark:scrollbar-thumb-emerald-900"
+          className="w-[calc(100vw-1rem)] max-w-[360px] max-h-[72vh] overflow-y-auto rounded-[28px] border border-border/70 bg-background p-3 opacity-100 shadow-[0_18px_50px_rgba(16,24,40,0.18)] scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent dark:bg-slate-950 dark:scrollbar-thumb-emerald-900"
         >
           {Object.entries(groupedItems).map(([groupLabel, items], index) => (
             <div key={groupLabel} className="min-w-0">
@@ -166,7 +169,7 @@ export function AppBarMiui() {
       <Button
         type="button"
         variant="ghost"
-        className="h-11 w-11 shrink-0 rounded-full border border-emerald-200/80 bg-white p-0 text-emerald-600 shadow-sm hover:bg-emerald-50 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20"
+        className="hidden h-11 w-11 shrink-0 rounded-full border border-emerald-200/80 bg-white p-0 text-emerald-600 shadow-sm hover:bg-emerald-50 dark:border-emerald-900/40 dark:bg-slate-950 dark:hover:bg-emerald-950/20 sm:inline-flex"
         aria-label="Busca rápida"
         title="Busca rápida (Ctrl+K)"
         onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}

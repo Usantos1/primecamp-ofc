@@ -245,14 +245,14 @@ export default function Relatorios() {
       title="Relatórios"
       subtitle="Vendas, tendências e produtividade"
     >
-      <div className="flex flex-col gap-3 md:gap-4 pb-6">
+      <div className="flex flex-col gap-3 md:gap-4 pb-6 [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full [&_[role=tab]]:rounded-full">
         {/* Filtros */}
         <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm flex-shrink-0">
           <CardContent className="p-3 md:p-4">
             <div className="md:hidden grid grid-cols-2 gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 text-xs justify-start border-gray-300 dark:border-gray-600">
+                  <Button variant="outline" size="sm" className="h-9 rounded-full text-xs justify-start border-gray-300 dark:border-gray-600">
                     <Calendar className="h-3 w-3 mr-1" />
                     {startDate ? format(startDate, 'dd/MM', { locale: ptBR }) : 'Início'}
                   </Button>
@@ -263,7 +263,7 @@ export default function Relatorios() {
               </Popover>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 text-xs justify-start border-gray-300 dark:border-gray-600">
+                  <Button variant="outline" size="sm" className="h-9 rounded-full text-xs justify-start border-gray-300 dark:border-gray-600">
                     <Calendar className="h-3 w-3 mr-1" />
                     {endDate ? format(endDate, 'dd/MM', { locale: ptBR }) : 'Fim'}
                   </Button>
@@ -273,7 +273,7 @@ export default function Relatorios() {
                 </PopoverContent>
               </Popover>
               <Select value={saleOrigin} onValueChange={(v: 'PDV' | 'OS' | 'all') => setSaleOrigin(v)}>
-                <SelectTrigger className="h-9 text-xs border-gray-300 dark:border-gray-600">
+                <SelectTrigger className="h-9 rounded-full text-xs border-gray-300 dark:border-gray-600">
                   <SelectValue placeholder="Origem" />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,7 +283,7 @@ export default function Relatorios() {
                 </SelectContent>
               </Select>
               <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger className="h-9 text-xs border-gray-300 dark:border-gray-600">
+                <SelectTrigger className="h-9 rounded-full text-xs border-gray-300 dark:border-gray-600">
                   <SelectValue placeholder="Pagamento" />
                 </SelectTrigger>
                 <SelectContent>
@@ -298,7 +298,7 @@ export default function Relatorios() {
                 <Label className="text-xs font-semibold">Data Início</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal h-10 border-gray-300 dark:border-gray-600', !startDate && 'text-muted-foreground')}>
+                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal h-10 rounded-full border-gray-300 dark:border-gray-600', !startDate && 'text-muted-foreground')}>
                       <Calendar className="mr-2 h-4 w-4" />
                       <span className="truncate">{startDate ? format(startDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Data'}</span>
                     </Button>
@@ -312,7 +312,7 @@ export default function Relatorios() {
                 <Label className="text-xs font-semibold">Data Fim</Label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal h-10 border-gray-300 dark:border-gray-600', !endDate && 'text-muted-foreground')}>
+                    <Button variant="outline" className={cn('w-full justify-start text-left font-normal h-10 rounded-full border-gray-300 dark:border-gray-600', !endDate && 'text-muted-foreground')}>
                       <Calendar className="mr-2 h-4 w-4" />
                       <span className="truncate">{endDate ? format(endDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Data'}</span>
                     </Button>
@@ -325,7 +325,7 @@ export default function Relatorios() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Origem</Label>
                 <Select value={saleOrigin} onValueChange={(v: 'PDV' | 'OS' | 'all') => setSaleOrigin(v)}>
-                  <SelectTrigger className="h-10 border-gray-300 dark:border-gray-600">
+                  <SelectTrigger className="h-10 rounded-full border-gray-300 dark:border-gray-600">
                     <SelectValue placeholder="Todas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -338,7 +338,7 @@ export default function Relatorios() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Técnico</Label>
                 <Select value={technicianId} onValueChange={setTechnicianId} disabled={isLoadingTecnicos}>
-                  <SelectTrigger className="h-10 border-gray-300 dark:border-gray-600">
+                  <SelectTrigger className="h-10 rounded-full border-gray-300 dark:border-gray-600">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -352,7 +352,7 @@ export default function Relatorios() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Forma de Pagamento</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger className="h-10 border-gray-300 dark:border-gray-600">
+                  <SelectTrigger className="h-10 rounded-full border-gray-300 dark:border-gray-600">
                     <SelectValue placeholder="Todas" />
                   </SelectTrigger>
                   <SelectContent>
@@ -391,7 +391,7 @@ export default function Relatorios() {
                   key={id}
                   value={id}
                   className={cn(
-                    'min-h-11 flex-1 min-w-[8.5rem] max-w-[14rem] rounded-lg font-semibold flex items-center justify-center gap-2 transition-all px-2',
+                    'min-h-11 flex-1 min-w-[8.5rem] max-w-[14rem] rounded-full font-semibold flex items-center justify-center gap-2 transition-all px-2',
                     'data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm',
                     'dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100',
                     'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md'

@@ -168,7 +168,7 @@ export default function RH() {
 
   return (
     <ModernLayout title="Recursos Humanos" subtitle="Gestão completa de pessoas e desenvolvimento">
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0 [&_button]:rounded-full [&_input]:rounded-full">
         {/* Busca e Filtros */}
         <Card className="border-2">
           <CardContent className="p-4">
@@ -180,7 +180,7 @@ export default function RH() {
                   placeholder="Buscar módulo ou funcionalidade..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 rounded-full"
                 />
               </div>
               
@@ -188,7 +188,7 @@ export default function RH() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm transition-all ${
+                  className={`px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all ${
                     selectedCategory === 'all'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-gray-300 hover:border-gray-400'
@@ -202,7 +202,7 @@ export default function RH() {
                     <button
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
-                      className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm transition-all flex items-center gap-2 ${
+                      className={`px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all flex items-center gap-2 ${
                         selectedCategory === category.id
                           ? `bg-primary text-primary-foreground border-primary`
                           : 'border-gray-300 hover:border-gray-400'

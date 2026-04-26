@@ -675,7 +675,7 @@ export default function Devolucoes() {
       title="Devoluções e Vouchers"
       subtitle="Gerencie devoluções, trocas e cupons de crédito"
     >
-      <div className="flex flex-col gap-3 md:gap-6 pb-8 min-w-0">
+      <div className="flex flex-col gap-3 md:gap-6 pb-8 min-w-0 [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full">
         {/* Estatísticas — mobile: compactos */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-4">
           <Card className="rounded-lg md:rounded-lg touch-manipulation">
@@ -1016,7 +1016,7 @@ export default function Devolucoes() {
 
       {/* Dialog de Detalhes do Voucher */}
       <Dialog open={voucherDialogOpen} onOpenChange={setVoucherDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full">
           <DialogHeader>
             <DialogTitle>Detalhes do Voucher</DialogTitle>
           </DialogHeader>
@@ -1071,7 +1071,7 @@ export default function Devolucoes() {
 
       {/* Dialog de Detalhes da Devolução */}
       <Dialog open={refundDetailsOpen} onOpenChange={setRefundDetailsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
@@ -1257,7 +1257,7 @@ export default function Devolucoes() {
           setApprovalAction(null);
         }
       }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -1300,7 +1300,7 @@ export default function Devolucoes() {
           navigate('/pdv/devolucoes', { replace: true });
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />

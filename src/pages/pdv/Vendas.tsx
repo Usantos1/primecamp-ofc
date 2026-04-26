@@ -666,7 +666,7 @@ export default function Vendas() {
       title="Vendas"
       subtitle="Gerenciamento de vendas do PDV"
     >
-      <div className="flex flex-col gap-3 md:gap-3 pb-8 min-w-0">
+      <div className="flex flex-col gap-3 md:gap-3 pb-8 min-w-0 [&_button]:rounded-full [&_input]:rounded-full">
         {/* Estatísticas — Mobile: grid 2 colunas, toque confortável */}
         <div className="md:hidden grid grid-cols-2 sm:grid-cols-3 gap-2 shrink-0">
           <div className="flex items-center justify-between gap-2 min-h-[44px] px-3 py-2.5 bg-green-50 dark:bg-green-950/30 rounded-xl border border-green-200 dark:border-green-800 touch-manipulation">
@@ -833,7 +833,7 @@ export default function Vendas() {
                     onClick={() => navigate('/pdv/devolucoes')} 
                     size="sm"
                     variant="ghost"
-                    className="gap-1 h-9 min-h-[44px] md:min-h-0 text-muted-foreground hover:text-foreground rounded-xl md:rounded-md touch-manipulation"
+                    className="gap-1 h-9 min-h-[44px] md:min-h-0 text-muted-foreground hover:text-foreground rounded-full touch-manipulation"
                     title="Devoluções e Vouchers"
                   >
                     <ReceiptText className="h-4 w-4" />
@@ -843,7 +843,7 @@ export default function Vendas() {
                     onClick={() => setImportDialogOpen(true)} 
                     size="sm"
                     variant="outline"
-                    className="gap-2 h-9 min-h-[44px] md:min-h-0 rounded-xl md:rounded-md touch-manipulation"
+                    className="gap-2 h-9 min-h-[44px] md:min-h-0 rounded-full touch-manipulation"
                   >
                     <Upload className="h-4 w-4" />
                     <span className="text-xs hidden sm:inline">Importar</span>
@@ -851,7 +851,7 @@ export default function Vendas() {
                   <Button 
                     onClick={() => navigate('/pdv/venda/nova')} 
                     size="sm"
-                    className="gap-2 h-9 min-h-[44px] md:min-h-0 bg-blue-600 hover:bg-blue-700 text-white rounded-xl md:rounded-md touch-manipulation"
+                    className="gap-2 h-9 min-h-[44px] md:min-h-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full touch-manipulation"
                   >
                     <Plus className="h-4 w-4" />
                     <span className="text-xs">Nova Venda</span>
@@ -869,12 +869,12 @@ export default function Vendas() {
                   placeholder="Buscar por nº venda, cliente..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-11 min-h-[44px] md:h-10 md:min-h-0 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 rounded-xl md:rounded-md touch-manipulation"
+                  className="pl-9 h-11 min-h-[44px] md:h-10 md:min-h-0 text-base md:text-sm border-2 border-gray-300 dark:border-gray-600 rounded-full touch-manipulation"
                 />
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:flex-1 md:flex-initial">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-11 min-h-[44px] md:h-10 md:min-h-0 text-sm border-2 border-gray-300 dark:border-gray-600 rounded-xl md:rounded-md touch-manipulation [&>span]:truncate">
+                  <SelectTrigger className="w-full sm:w-[180px] h-11 min-h-[44px] md:h-10 md:min-h-0 text-sm border-2 border-gray-300 dark:border-gray-600 rounded-full touch-manipulation [&>span]:truncate">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -893,7 +893,7 @@ export default function Vendas() {
                     <Button 
                       variant="outline" 
                       className={cn(
-                        "w-full sm:w-[220px] h-11 min-h-[44px] md:h-10 md:min-h-0 text-sm border-2 border-gray-300 dark:border-gray-600 justify-start text-left font-normal rounded-xl md:rounded-md touch-manipulation",
+                        "w-full sm:w-[220px] h-11 min-h-[44px] md:h-10 md:min-h-0 text-sm border-2 border-gray-300 dark:border-gray-600 justify-start text-left font-normal rounded-full touch-manipulation",
                         dateFilter === 'custom' && customDateStart && customDateEnd && "text-foreground"
                       )}
                     >
@@ -919,6 +919,7 @@ export default function Vendas() {
                       <Button 
                         variant={dateFilter === 'today' ? 'default' : 'outline'} 
                         size="sm"
+                        className="rounded-full"
                         onClick={() => { setDateFilter('today'); setShowDatePicker(false); }}
                       >
                         Hoje
@@ -926,6 +927,7 @@ export default function Vendas() {
                       <Button 
                         variant={dateFilter === 'week' ? 'default' : 'outline'} 
                         size="sm"
+                        className="rounded-full"
                         onClick={() => { setDateFilter('week'); setShowDatePicker(false); }}
                       >
                         7 dias
@@ -933,6 +935,7 @@ export default function Vendas() {
                       <Button 
                         variant={dateFilter === 'month' ? 'default' : 'outline'} 
                         size="sm"
+                        className="rounded-full"
                         onClick={() => { setDateFilter('month'); setShowDatePicker(false); }}
                       >
                         30 dias
@@ -940,6 +943,7 @@ export default function Vendas() {
                       <Button 
                         variant={dateFilter === 'all' ? 'default' : 'outline'} 
                         size="sm"
+                        className="rounded-full"
                         onClick={() => { setDateFilter('all'); setShowDatePicker(false); }}
                       >
                         Todos
@@ -961,7 +965,7 @@ export default function Vendas() {
                               setCustomDateStart(new Date(e.target.value + 'T00:00:00'));
                             }
                           }}
-                          className="h-8 text-sm"
+                          className="h-8 rounded-full text-sm"
                         />
                       </div>
                       <div>
@@ -974,12 +978,12 @@ export default function Vendas() {
                               setCustomDateEnd(new Date(e.target.value + 'T23:59:59'));
                             }
                           }}
-                          className="h-8 text-sm"
+                          className="h-8 rounded-full text-sm"
                         />
                       </div>
                     </div>
                     <Button 
-                      className="w-full" 
+                      className="w-full rounded-full" 
                       size="sm"
                       disabled={!customDateStart || !customDateEnd}
                       onClick={() => { 
@@ -1287,7 +1291,7 @@ export default function Vendas() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-10 w-10 min-h-[44px] rounded-xl touch-manipulation"
+                              className="h-10 w-10 min-h-[44px] rounded-full touch-manipulation"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 await handleViewSale(sale);
@@ -1301,7 +1305,7 @@ export default function Vendas() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-10 w-10 min-h-[44px] rounded-xl touch-manipulation"
+                                  className="h-10 w-10 min-h-[44px] rounded-full touch-manipulation"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(`/pdv/venda/${sale.id}/editar`);
@@ -1313,7 +1317,7 @@ export default function Vendas() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-10 w-10 min-h-[44px] rounded-xl text-destructive hover:text-destructive touch-manipulation"
+                                  className="h-10 w-10 min-h-[44px] rounded-full text-destructive hover:text-destructive touch-manipulation"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleOpenDeleteDialog(sale, e);
@@ -1327,7 +1331,7 @@ export default function Vendas() {
                             {!sale.is_draft && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="icon" className="h-10 w-10 min-h-[44px] rounded-xl touch-manipulation" aria-label="Mais opções">
+                                  <Button variant="ghost" size="icon" className="h-10 w-10 min-h-[44px] rounded-full touch-manipulation" aria-label="Mais opções">
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -1420,7 +1424,7 @@ export default function Vendas() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-10 min-h-[44px] w-10 p-0 sm:h-9 sm:w-auto sm:min-h-0 sm:gap-1 sm:px-3 rounded-xl sm:rounded-md touch-manipulation"
+                        className="h-10 min-h-[44px] w-10 p-0 sm:h-9 sm:w-auto sm:min-h-0 sm:gap-1 sm:px-3 rounded-full touch-manipulation"
                         onClick={() => setPage(p => Math.max(1, p - 1))}
                         disabled={page <= 1}
                         aria-label="Página anterior"
@@ -1434,7 +1438,7 @@ export default function Vendas() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-10 min-h-[44px] w-10 p-0 sm:h-9 sm:w-auto sm:min-h-0 sm:gap-1 sm:px-3 rounded-xl sm:rounded-md touch-manipulation"
+                        className="h-10 min-h-[44px] w-10 p-0 sm:h-9 sm:w-auto sm:min-h-0 sm:gap-1 sm:px-3 rounded-full touch-manipulation"
                         onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                         disabled={page >= totalPages}
                         aria-label="Próxima página"
@@ -1630,7 +1634,7 @@ export default function Vendas() {
             <Button 
               variant="outline" 
               onClick={() => setPreviewDialogOpen(false)}
-              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+              className="w-full sm:w-auto h-9 md:h-10 rounded-full border-2 border-gray-300"
             >
               Fechar
             </Button>
@@ -1642,7 +1646,7 @@ export default function Vendas() {
                     setPreviewDialogOpen(false);
                     navigate(`/pdv/venda/${previewSale.id}`);
                   }}
-                  className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+                  className="w-full sm:w-auto h-9 md:h-10 rounded-full border-2 border-gray-300"
                 >
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
@@ -1654,7 +1658,7 @@ export default function Vendas() {
                       await handlePrintCupom(previewSale);
                     }
                   }}
-                  className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+                  className="w-full sm:w-auto h-9 md:h-10 rounded-full border-2 border-gray-300"
                 >
                   <Printer className="h-4 w-4 mr-2" />
                   Imprimir
@@ -1726,7 +1730,7 @@ export default function Vendas() {
                   setDeleteMotivo('');
                 }
               }}
-              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+              className="w-full sm:w-auto h-9 md:h-10 rounded-full border-2 border-gray-300"
             >
               Cancelar
             </AlertDialogCancel>
@@ -1737,7 +1741,7 @@ export default function Vendas() {
                 handleConfirmDelete(e);
               }}
               disabled={isDeleting || (!selectedSaleToDelete?.is_draft && !deleteMotivo.trim())}
-              className="w-full sm:w-auto h-9 md:h-10 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto h-9 md:h-10 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
             </AlertDialogAction>
@@ -1782,14 +1786,14 @@ export default function Vendas() {
           <AlertDialogFooter className="flex-col sm:flex-row gap-2 pt-3 md:pt-4">
             <AlertDialogCancel 
               disabled={isCanceling}
-              className="w-full sm:w-auto h-9 md:h-10 border-2 border-gray-300"
+              className="w-full sm:w-auto h-9 md:h-10 rounded-full border-2 border-gray-300"
             >
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmCancel}
               disabled={isCanceling || !cancelMotivo.trim()}
-              className="w-full sm:w-auto h-9 md:h-10 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto h-9 md:h-10 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isCanceling ? (
                 'Processando...'
@@ -1829,13 +1833,13 @@ export default function Vendas() {
             />
           </div>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2 pt-3">
-            <AlertDialogCancel disabled={isRejecting} onClick={() => { setRequestToReject(null); setRejectMotivo(''); }}>
+            <AlertDialogCancel className="rounded-full" disabled={isRejecting} onClick={() => { setRequestToReject(null); setRejectMotivo(''); }}>
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRejectRequest}
               disabled={isRejecting || !rejectMotivo.trim()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isRejecting ? 'Rejeitando...' : 'Rejeitar solicitação'}
             </AlertDialogAction>
