@@ -1,16 +1,52 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { authAPI } from "@/integrations/auth/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import { getDefaultConfigByHost } from "@/contexts/ThemeConfigContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LOGIN_BACKGROUND_URL =
   "https://img.freepik.com/fotos-gratis/nuvens-brancas-dramaticas-e-ceu-azul-da-vista-da-janela-do-aviao-fundo-colorido-do-por-do-sol-cloudscape_90220-1209.jpg";
+
+/** Decodifica o payload do JWT sem verificar assinatura (só pra exibir email). */
+const decodeJwtPayload = (token: string): Record<string, string> | null => {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+};
+
+/** Mascara email: larissamanusts@gmail.com → l***@gmail.com */
+const maskEmail = (email: string): string => {
+  const [user, domain] = email.split("@");
+  if (!domain) return email;
+  return `${user[0]}***@${domain}`;
+};
+
+type PasswordStrength = { level: 0 | 1 | 2 | 3 | 4; label: string; color: string };
+
+const getPasswordStrength = (pwd: string): PasswordStrength => {
+  if (!pwd) return { level: 0, label: "", color: "" };
+  let score = 0;
+  if (pwd.length >= 6) score++;
+  if (pwd.length >= 10) score++;
+  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) score++;
+  const map: PasswordStrength[] = [
+    { level: 0, label: "", color: "" },
+    { level: 1, label: "Fraca", color: "bg-red-500" },
+    { level: 2, label: "Razoável", color: "bg-amber-400" },
+    { level: 3, label: "Boa", color: "bg-emerald-400" },
+    { level: 4, label: "Forte", color: "bg-emerald-600" },
+  ];
+  return map[score] ?? map[1];
+};
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -22,12 +58,18 @@ const ResetPassword = () => {
   // Suporta ?access_token= (padrão do backend) ou ?token= como fallback
   const token = searchParams.get("access_token") || searchParams.get("token") || "";
 
+  const tokenPayload = useMemo(() => decodeJwtPayload(token), [token]);
+  const emailFromToken = tokenPayload?.email || "";
+  const maskedEmail = emailFromToken ? maskEmail(emailFromToken) : "";
+
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  const strength = useMemo(() => getPasswordStrength(password), [password]);
 
   // Redireciona pra /login se não há token na URL
   useEffect(() => {
@@ -137,16 +179,21 @@ const ResetPassword = () => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="text-center">
-                <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Criar nova senha</h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
-                  Digite e confirme a sua nova senha.
-                </p>
+                <h1 className="flex items-center justify-center gap-2 text-lg font-semibold text-slate-800 dark:text-slate-100">
+                  <KeyRound className="h-5 w-5 text-amber-400" />
+                  Definir nova senha
+                </h1>
+                {maskedEmail && (
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Conta: <span className="font-medium text-slate-700 dark:text-slate-300">{maskedEmail}</span>
+                  </p>
+                )}
               </div>
 
               {/* Nova senha */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="new-password" className="pl-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Nova senha
+                  Nova senha *
                 </Label>
                 <div className="relative">
                   <Input
@@ -170,12 +217,31 @@ const ResetPassword = () => {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+
+                {/* Barra de força da senha */}
+                {password.length > 0 && (
+                  <div className="mt-1 flex items-center gap-2 px-1">
+                    <div className="flex flex-1 gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                            i <= strength.level ? strength.color : "bg-slate-200 dark:bg-slate-700"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 w-14 text-right">
+                      {strength.label}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Confirmar senha */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="confirm-password" className="pl-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Confirmar senha
+                  Confirmar senha *
                 </Label>
                 <div className="relative">
                   <Input
