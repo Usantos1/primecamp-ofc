@@ -192,12 +192,12 @@ const ResetPassword = () => {
 
               {/* Nova senha */}
               <div className="group relative pt-2.5">
-                <Label
+                <label
                   htmlFor="new-password"
-                  className="absolute left-4 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-2.5 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Nova senha *
-                </Label>
+                </label>
                 <div className="relative">
                   <Input
                     id="new-password"
@@ -242,12 +242,12 @@ const ResetPassword = () => {
 
               {/* Confirmar senha */}
               <div className="group relative pt-2.5">
-                <Label
+                <label
                   htmlFor="confirm-password"
-                  className="absolute left-4 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-2.5 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Confirmar senha *
-                </Label>
+                </label>
                 <div className="relative">
                   <Input
                     id="confirm-password"

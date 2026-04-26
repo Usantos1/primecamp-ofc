@@ -203,18 +203,20 @@ const Auth = () => {
           </div>
 
           {authMode === "signin" ? (
-            <form onSubmit={handleSignIn} className="space-y-5">
-              {/* Email — label flutua sobre a borda superior do input */}
+            <form onSubmit={handleSignIn} className="space-y-5" autoComplete="on">
+              {/* Email */}
               <div className="group relative pt-2.5">
-                <Label
+                <label
                   htmlFor="signin-email"
-                  className="absolute left-4 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-2.5 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Email *
-                </Label>
+                </label>
                 <Input
                   id="signin-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
@@ -225,16 +227,18 @@ const Auth = () => {
 
               {/* Senha */}
               <div className="group relative pt-2.5">
-                <Label
+                <label
                   htmlFor="signin-password"
-                  className="absolute left-4 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-2.5 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Senha *
-                </Label>
+                </label>
                 <div className="relative">
                   <Input
                     id="signin-password"
+                    name="password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loading}
@@ -254,43 +258,37 @@ const Auth = () => {
               </div>
 
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    id="remember-login"
-                    type="button"
-                    role="checkbox"
-                    aria-checked={rememberLogin}
-                    aria-label="Salvar login"
-                    onClick={() => setRememberLogin((checked) => !checked)}
-                    className={`flex h-4 w-4 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
-                      rememberLogin
-                        ? "border-emerald-500 bg-emerald-500 text-white"
-                        : "border-slate-400 bg-white text-transparent dark:border-slate-500 dark:bg-slate-900"
-                    }`}
-                  >
+                <button
+                  id="remember-login"
+                  type="button"
+                  role="checkbox"
+                  aria-checked={rememberLogin}
+                  onClick={() => setRememberLogin((v) => !v)}
+                  className="flex items-center gap-2 focus:outline-none"
+                >
+                  <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                    rememberLogin
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-slate-400 bg-white text-transparent dark:border-slate-500 dark:bg-slate-900"
+                  }`}>
                     <Check className="h-3 w-3" />
-                  </button>
-                  <Label
-                    onClick={() => setRememberLogin((checked) => !checked)}
-                    className="cursor-pointer text-xs font-normal text-emerald-500"
-                  >
-                    Salvar login
-                  </Label>
-                </div>
+                  </span>
+                  <span className="text-xs font-normal text-emerald-500">Salvar login</span>
+                </button>
 
                 <button
                   type="button"
                   onClick={() => setAuthMode("reset")}
-                  className="inline-flex items-center text-xs font-semibold text-[#75c7ad] transition-colors hover:text-[#4da989] hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#75c7ad] transition-colors hover:text-[#4da989] hover:underline"
                 >
-                  <KeyRound className="mr-1 h-4 w-4 text-amber-400" />
+                  <KeyRound className="h-4 w-4 text-amber-400" />
                   Esqueci minha senha
                 </button>
               </div>
 
               <Button
                 type="submit"
-                className="h-[34px] w-full rounded-full bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                className="h-[44px] w-full rounded-full bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
                 disabled={loading || lockSecondsLeft > 0}
               >
                 {loading ? (
@@ -315,15 +313,17 @@ const Auth = () => {
               </div>
 
               <div className="group relative pt-2.5">
-                <Label
+                <label
                   htmlFor="reset-email"
-                  className="absolute left-4 top-0 z-10 bg-white px-1 text-[11px] font-medium text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
+                  className="absolute left-4 top-2.5 z-10 -translate-y-1/2 bg-white px-1 text-[11px] font-medium leading-none text-slate-500 transition-colors group-hover:text-emerald-500 group-focus-within:text-emerald-500 dark:bg-slate-900 dark:text-slate-400"
                 >
                   Email *
-                </Label>
+                </label>
                 <Input
                   id="reset-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
