@@ -185,7 +185,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
               <CardTitle className="text-base sm:text-lg">Contas a Receber</CardTitle>
               <CardDescription className="text-xs sm:text-sm">Gerencie os recebimentos pendentes</CardDescription>
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto rounded-xl sm:rounded-md touch-manipulation shrink-0">
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto rounded-full touch-manipulation shrink-0">
               <Plus className="h-4 w-4" />
               Nova Conta a Receber
             </Button>
@@ -194,11 +194,11 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
       <CardContent className="space-y-4 min-w-0">
         {/* Resumo — mobile: 2 colunas */}
         <div className="grid grid-cols-2 gap-2 sm:gap-4 min-w-0">
-          <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
+          <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
             <p className="text-sm text-muted-foreground">A Receber</p>
             <p className="text-xl font-bold text-warning">{fmt(totalPendente)}</p>
           </div>
-          <div className="p-4 rounded-lg bg-success/10 border border-success/30">
+          <div className="p-4 rounded-xl bg-success/10 border border-success/30">
             <p className="text-sm text-muted-foreground">Recebido</p>
             <p className="text-xl font-bold text-success">{fmt(totalPago)}</p>
           </div>
@@ -214,14 +214,14 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
                 placeholder="Cliente ou ID..."
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                className="pl-9 min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
               />
             </div>
           </div>
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Período</Label>
             <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
@@ -236,7 +236,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Status</Label>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -262,7 +262,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
               {paginatedAccounts.map((account) => (
                 <div
                   key={account.id}
-                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -304,7 +304,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
                 </div>
               ))}
             </div>
-            <div className="hidden md:block border rounded-lg overflow-x-auto min-w-0">
+            <div className="hidden md:block border rounded-2xl overflow-x-auto min-w-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -365,7 +365,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
                   <Button
                     variant="outline"
                     size="sm"
-                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                    className="min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
                   >
@@ -376,7 +376,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
                   <Button
                     variant="outline"
                     size="sm"
-                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                    className="min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
                   >
@@ -392,7 +392,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
 
       {/* Dialog de pagamento */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle>Confirmar Recebimento</DialogTitle>
             <DialogDescription>
@@ -444,7 +444,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
 
       {/* Dialog de visualização */}
       <Dialog open={!!viewingAccount} onOpenChange={() => setViewingAccount(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg rounded-2xl">
           <DialogHeader>
             <DialogTitle>Detalhes da Conta</DialogTitle>
           </DialogHeader>
@@ -480,7 +480,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
                 )}
               </div>
               {viewingAccount.observacoes && (
-                <div className="p-3 bg-muted/30 rounded-lg">
+                <div className="p-3 bg-muted/30 rounded-2xl">
                   <p className="text-sm text-muted-foreground mb-1">Observações:</p>
                   <p className="text-sm">{viewingAccount.observacoes}</p>
                 </div>
@@ -492,7 +492,7 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
 
       {/* Dialog de criação */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg rounded-2xl">
           <DialogHeader>
             <DialogTitle>Nova Conta a Receber</DialogTitle>
             <DialogDescription>
@@ -532,13 +532,13 @@ export function AccountsReceivableManager({ month, valuesVisible = true }: Accou
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 p-3 border rounded-lg">
+              <div className="flex items-center space-x-2 p-3 border rounded-2xl">
                 <input
                   type="checkbox"
                   id="recurring-receivable"
                   checked={formData.recurring}
                   onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                  className="h-4 w-4 rounded-full border-gray-300 cursor-pointer"
                 />
                 <Label htmlFor="recurring-receivable" className="cursor-pointer font-medium">
                   Conta recorrente

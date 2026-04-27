@@ -60,7 +60,7 @@ function WalletSaldoCard({
   const displaySaldo = valuesVisible ? currencyFormatters.brl(saldo) : MASKED_VALUE;
   if (compact) {
     return (
-      <Card className="overflow-hidden min-w-0 flex-1 basis-0 min-h-0 flex flex-col rounded-lg">
+      <Card className="overflow-hidden min-w-0 flex-1 basis-0 min-h-0 flex flex-col rounded-xl">
         <CardHeader className="pb-0 pt-1.5 px-2 sm:pt-2">
           <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
             <Wallet className="h-3 w-3 flex-shrink-0" />
@@ -436,7 +436,7 @@ export function CaixaGeral({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'min-h-[44px] sm:h-8 w-full min-w-[140px] sm:w-[160px] text-xs justify-start font-normal rounded-xl sm:rounded-md touch-manipulation',
+                    'min-h-[44px] sm:h-8 w-full min-w-[140px] sm:w-[160px] text-xs justify-start font-normal rounded-xl touch-manipulation',
                     dateFilter === 'custom' && customDateStart && customDateEnd && 'text-foreground'
                   )}
                 >
@@ -500,7 +500,7 @@ export function CaixaGeral({
                 if (v === 'all' || v === 'open' || v === 'closed') setStatusFilter(v);
               }}
             >
-              <SelectTrigger id="caixa-status" className="min-h-[44px] sm:h-8 w-[100px] text-xs rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger id="caixa-status" className="min-h-[44px] sm:h-8 w-[100px] text-xs rounded-full touch-manipulation">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -514,7 +514,7 @@ export function CaixaGeral({
             <Button
               variant="outline"
               size="sm"
-              className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 p-0 shrink-0 rounded-xl sm:rounded-md touch-manipulation"
+              className="min-h-[44px] min-w-[44px] sm:h-8 sm:w-8 p-0 shrink-0 rounded-full touch-manipulation"
               onClick={() => setValuesVisible(!valuesVisible)}
               title={valuesVisible ? 'Ocultar valores' : 'Exibir valores'}
               aria-label={valuesVisible ? 'Ocultar valores em reais' : 'Exibir valores em reais'}
@@ -522,11 +522,11 @@ export function CaixaGeral({
               {valuesVisible ? <Eye className="h-4 w-4 text-muted-foreground" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="min-h-[44px] sm:h-8 text-xs rounded-xl sm:rounded-md touch-manipulation shrink-0" onClick={() => setShowRetiradaDialog(true)}>
+          <Button variant="outline" size="sm" className="min-h-[44px] sm:h-8 text-xs rounded-full touch-manipulation shrink-0" onClick={() => setShowRetiradaDialog(true)}>
             <MinusCircle className="h-3.5 w-3.5 mr-1" />
             Retirar
           </Button>
-          <Button variant="outline" size="sm" className="min-h-[44px] sm:h-8 text-xs rounded-xl sm:rounded-md touch-manipulation shrink-0" onClick={() => refetch()} disabled={isLoading}>
+          <Button variant="outline" size="sm" className="min-h-[44px] sm:h-8 text-xs rounded-full touch-manipulation shrink-0" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={cn('h-3.5 w-3.5 mr-1', isLoading && 'animate-spin')} />
             Atualizar
           </Button>
@@ -593,7 +593,7 @@ export function CaixaGeral({
               <p className="text-sm text-muted-foreground">Entradas e saídas por forma de pagamento — valores líquidos (após taxas de cada forma de pagamento).</p>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-x-auto">
+              <div className="rounded-xl border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

@@ -103,9 +103,9 @@ export default function PlanejamentoAnual() {
             <div className="flex items-end gap-3">
               <div className="space-y-1 flex-1 max-w-xs">
                 <Label className="text-xs font-semibold text-muted-foreground">Ano</Label>
-                <Skeleton className="h-10 w-full rounded-lg" />
+                <Skeleton className="h-10 w-full rounded-xl" />
               </div>
-              <Skeleton className="h-10 w-40 rounded-lg" />
+              <Skeleton className="h-10 w-40 rounded-xl" />
             </div>
           </Card>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -147,7 +147,7 @@ export default function PlanejamentoAnual() {
               <CardTitle className="text-lg font-bold">Observações</CardTitle>
               <CardDescription>Anotações e observações sobre o planejamento</CardDescription>
             </CardHeader>
-            <CardContent><Skeleton className="min-h-[120px] w-full rounded" /></CardContent>
+            <CardContent><Skeleton className="min-h-[120px] w-full rounded-xl" /></CardContent>
           </Card>
         </div>
       </ModernLayout>
@@ -171,13 +171,13 @@ export default function PlanejamentoAnual() {
                 max={2100}
                 value={ano}
                 onChange={(e) => setAno(Math.max(2020, Math.min(2100, parseInt(e.target.value) || anoAtual)))}
-                className="min-h-[44px] sm:h-10 border-2 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-lg touch-manipulation"
+                className="min-h-[44px] sm:h-10 border-2 border-gray-300 dark:border-gray-600 rounded-xl touch-manipulation"
               />
             </div>
             <Button
               onClick={handleSalvar}
               disabled={salvarPlanejamento.isPending}
-              className="min-h-[44px] sm:h-10 rounded-xl sm:rounded-md bg-green-600 hover:bg-green-700 touch-manipulation"
+              className="min-h-[44px] sm:h-10 rounded-full bg-green-600 hover:bg-green-700 touch-manipulation"
             >
               <Save className="h-4 w-4 mr-2" />
               Salvar Planejamento
@@ -199,7 +199,7 @@ export default function PlanejamentoAnual() {
                 value={receitaPlanejada}
                 onChange={setReceitaPlanejada}
                 showCurrency
-                className="text-lg sm:text-2xl font-bold border-2 border-gray-300 focus:border-primary min-h-[44px] sm:h-12 rounded-lg touch-manipulation"
+                className="text-lg sm:text-2xl font-bold border-2 border-gray-300 focus:border-primary min-h-[44px] sm:h-12 rounded-xl touch-manipulation"
                 placeholder="0,00"
               />
             </CardContent>
@@ -217,7 +217,7 @@ export default function PlanejamentoAnual() {
                 value={despesasPlanejadas}
                 onChange={setDespesasPlanejadas}
                 showCurrency
-                className="text-lg sm:text-2xl font-bold border-2 border-gray-300 focus:border-primary min-h-[44px] sm:h-12 rounded-lg touch-manipulation"
+                className="text-lg sm:text-2xl font-bold border-2 border-gray-300 focus:border-primary min-h-[44px] sm:h-12 rounded-xl touch-manipulation"
                 placeholder="0,00"
               />
             </CardContent>

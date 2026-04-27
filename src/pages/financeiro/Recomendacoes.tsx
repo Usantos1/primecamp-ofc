@@ -113,7 +113,7 @@ export default function Recomendacoes() {
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Tipo</label>
               <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
-                <SelectTrigger className="h-10 rounded-lg border-[3px] border-gray-400">
+                <SelectTrigger className="h-10 rounded-full border-[3px] border-gray-400">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -126,7 +126,7 @@ export default function Recomendacoes() {
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Status</label>
               <Select value={statusFiltro} onValueChange={setStatusFiltro}>
-                <SelectTrigger className="h-10 rounded-lg border-[3px] border-gray-400">
+                <SelectTrigger className="h-10 rounded-full border-[3px] border-gray-400">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -157,7 +157,7 @@ export default function Recomendacoes() {
                   <CardContent>
                     <div className="space-y-3">
                       {(recs as any[]).map((rec: any) => (
-                        <div key={rec.id} className="p-4 border-[3px] border-gray-300 rounded-lg">
+                        <div key={rec.id} className="p-4 border-[3px] border-gray-300 rounded-xl">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
@@ -167,7 +167,7 @@ export default function Recomendacoes() {
                               </div>
                               <p className="text-sm text-muted-foreground mb-2">{rec.descricao}</p>
                               {rec.acao_sugerida && (
-                                <div className="bg-blue-50 p-2 rounded border-[2px] border-blue-200">
+                                <div className="bg-blue-50 p-2 rounded-xl border-[2px] border-blue-200">
                                   <p className="text-xs font-semibold text-blue-900 mb-1">Ação Sugerida:</p>
                                   <p className="text-sm text-blue-800">{rec.acao_sugerida}</p>
                                 </div>
@@ -213,7 +213,7 @@ export default function Recomendacoes() {
                 <div className="space-y-3">
                   {(recomendacoes || []).length > 0 ? (
                     (recomendacoes || []).map((rec: any) => (
-                      <div key={rec.id} className="p-4 border-[3px] border-gray-300 rounded-lg">
+                      <div key={rec.id} className="p-4 border-[3px] border-gray-300 rounded-xl">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
@@ -223,7 +223,7 @@ export default function Recomendacoes() {
                             </div>
                             <p className="text-sm text-muted-foreground mb-2">{rec.descricao}</p>
                             {rec.acao_sugerida && (
-                              <div className="bg-blue-50 p-2 rounded border-[2px] border-blue-200">
+                              <div className="bg-blue-50 p-2 rounded-xl border-[2px] border-blue-200">
                                 <p className="text-xs font-semibold text-blue-900 mb-1">Ação Sugerida:</p>
                                 <p className="text-sm text-blue-800">{rec.acao_sugerida}</p>
                               </div>

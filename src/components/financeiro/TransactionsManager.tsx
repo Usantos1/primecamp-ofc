@@ -407,7 +407,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
             <CardTitle className="text-base sm:text-lg">Transações</CardTitle>
             <CardDescription className="text-xs sm:text-sm">Histórico de entradas e saídas</CardDescription>
           </div>
-          <Button onClick={handleOpenDialog} className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto rounded-xl sm:rounded-md touch-manipulation shrink-0">
+          <Button onClick={handleOpenDialog} className="gap-2 min-h-[44px] sm:min-h-0 w-full sm:w-auto rounded-full touch-manipulation shrink-0">
             <Plus className="h-4 w-4" />
             Nova Transação
           </Button>
@@ -416,24 +416,24 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
       <CardContent className="space-y-4 min-w-0">
         {/* Resumo — mobile: 2 colunas */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 min-w-0">
-          <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200">
             <p className="text-xs text-muted-foreground">Total Custo</p>
             <p className="text-lg font-bold text-red-600">{fmt(totalCusto)}</p>
           </div>
-          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
             <p className="text-xs text-muted-foreground">Total Vendas</p>
             <p className="text-lg font-bold text-blue-600">{fmt(totalVenda)}</p>
           </div>
-          <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
+          <div className="p-3 rounded-xl bg-orange-50 border border-orange-200">
             <p className="text-xs text-muted-foreground">Total Despesas</p>
             <p className="text-lg font-bold text-orange-600">{fmt(totalDespesas)}</p>
           </div>
-          <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+          <div className="p-3 rounded-xl bg-green-50 border border-green-200">
             <p className="text-xs text-muted-foreground">Total Lucro</p>
             <p className="text-lg font-bold text-green-600">{fmt(totalLucro)}</p>
           </div>
           <div className={cn(
-            "p-3 rounded-lg border",
+            "p-3 rounded-xl border",
             totalEntradas - totalSaidas >= 0 
               ? "bg-primary/10 border-primary/30" 
               : "bg-destructive/10 border-destructive/30"
@@ -456,11 +456,11 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
               placeholder="Buscar transações..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+              className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl touch-manipulation"
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+            <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -547,7 +547,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
               ))}
             </div>
             {/* Desktop: tabela com scroll horizontal */}
-            <div className="hidden md:block border rounded-lg overflow-x-auto min-w-0">
+            <div className="hidden md:block border rounded-xl overflow-x-auto min-w-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -649,7 +649,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
                   <Button
                     variant="outline"
                     size="sm"
-                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                    className="min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
@@ -661,7 +661,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
                   <Button
                     variant="outline"
                     size="sm"
-                    className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                    className="min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                   >

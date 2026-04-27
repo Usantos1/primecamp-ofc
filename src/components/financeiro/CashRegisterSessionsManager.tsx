@@ -510,7 +510,7 @@ export function CashRegisterSessionsManager({
               : 'Nenhuma sessão de caixa encontrada no período selecionado.'}
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-xl overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -595,39 +595,39 @@ export function CashRegisterSessionsManager({
           {selected && (
             <div className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Operador(a)</div>
                   <div className="font-semibold">{selected.operador_nome || '-'}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Abertura</div>
                   <div className="font-semibold">{selected.opened_at ? dateFormatters.long(selected.opened_at) : '-'}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Fechamento</div>
                   <div className="font-semibold">{selected.closed_at ? dateFormatters.long(selected.closed_at) : '-'}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Diferença</div>
                   <div className="font-bold">{fmt(Number(selected.divergencia || 0))}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Inicial</div>
                   <div className="font-semibold">{fmt(Number(selected.valor_inicial || 0))}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Esperado</div>
                   <div className="font-semibold">{fmt(Number(selected.valor_esperado ?? selected.valor_inicial ?? 0))}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <div className="text-xs text-muted-foreground">Final</div>
                   <div className="font-semibold">{fmt(Number(selected.valor_final ?? 0))}</div>
                 </div>
               </div>
 
-              <div className="border rounded-lg p-4 shrink-0">
+              <div className="border rounded-xl p-4 shrink-0">
                 <div className="font-semibold mb-2">Totais por forma de pagamento</div>
                 {selected.totais_forma_pagamento && Object.keys(selected.totais_forma_pagamento).length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -642,7 +642,7 @@ export function CashRegisterSessionsManager({
                   <div className="text-sm text-muted-foreground">Sem totais registrados (caixa ainda aberto ou não conferido)</div>
                 )}
                 {isAdmin ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2">
                     <span className="text-xs font-medium text-muted-foreground">Conferência</span>
                     <Button
                       type="button"
@@ -659,7 +659,7 @@ export function CashRegisterSessionsManager({
                 ) : null}
               </div>
 
-              <div className="border rounded-lg overflow-hidden flex flex-col min-h-[200px]">
+              <div className="border rounded-xl overflow-hidden flex flex-col min-h-[200px]">
                 <div className="px-4 py-3 border-b bg-muted/40 font-semibold shrink-0">
                   Vendas nesta sessão ({sessionSalesRows.length})
                 </div>
@@ -748,7 +748,7 @@ export function CashRegisterSessionsManager({
               </div>
 
               {selected.status === 'open' && isAdmin && (
-                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                <div className="border rounded-xl p-4 space-y-4 bg-muted/30">
                   <div className="font-semibold">Ações do administrador</div>
                   <div className="flex flex-wrap gap-2">
                     {!showCloseForm && !showMovementForm && (
@@ -777,7 +777,7 @@ export function CashRegisterSessionsManager({
                     )}
                   </div>
                   {showCloseForm && (
-                    <div className="space-y-2 p-3 border rounded-lg">
+                    <div className="space-y-2 p-3 border rounded-xl">
                       <Label>Valor final no caixa (R$)</Label>
                       <Input type="text" inputMode="decimal" placeholder="0,00" value={valorFinal} onChange={(e) => setValorFinal(e.target.value)} />
                       <Label>Justificativa (opcional)</Label>
@@ -800,7 +800,7 @@ export function CashRegisterSessionsManager({
                     </div>
                   )}
                   {showMovementForm && (
-                    <div className="space-y-2 p-3 border rounded-lg">
+                    <div className="space-y-2 p-3 border rounded-xl">
                       <Label>{movementType === 'sangria' ? 'Valor da sangria (R$)' : 'Valor do suprimento (R$)'}</Label>
                       <Input type="text" inputMode="decimal" placeholder="0,00" value={movementValor} onChange={(e) => setMovementValor(e.target.value)} />
                       <Label>Motivo (opcional)</Label>
@@ -814,7 +814,7 @@ export function CashRegisterSessionsManager({
                   {movements.length > 0 && (
                     <div>
                       <div className="font-medium mb-2">Movimentos desta sessão</div>
-                      <div className="border rounded overflow-hidden">
+                      <div className="border rounded-xl overflow-hidden">
                         <Table>
                           <TableHeader>
                             <TableRow>

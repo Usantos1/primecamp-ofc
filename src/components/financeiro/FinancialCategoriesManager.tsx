@@ -179,7 +179,7 @@ export function FinancialCategoriesManager() {
       </CardHeader>
       <CardContent>
         {hasDuplicates && (
-          <div className="mb-4 p-3 border border-orange-200 bg-orange-50 rounded-lg flex items-start gap-2">
+          <div className="mb-4 p-3 border border-orange-200 bg-orange-50 rounded-xl flex items-start gap-2">
             <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-orange-900">Categorias duplicadas encontradas</p>
@@ -193,7 +193,7 @@ export function FinancialCategoriesManager() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
-          <div className="border rounded-lg overflow-auto">
+          <div className="border rounded-xl overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>

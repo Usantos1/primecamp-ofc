@@ -78,7 +78,7 @@ export default function FinanceiroRelatoriosPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedReport('dre')}
-                  className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm ${
+                  className={`px-4 py-2 rounded-full border-2 font-semibold text-sm ${
                     selectedReport === 'dre'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-gray-400 hover:border-gray-600'
@@ -88,7 +88,7 @@ export default function FinanceiroRelatoriosPage() {
                 </button>
                 <button
                   onClick={() => setSelectedReport('fluxo')}
-                  className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm ${
+                  className={`px-4 py-2 rounded-full border-2 font-semibold text-sm ${
                     selectedReport === 'fluxo'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-gray-400 hover:border-gray-600'
@@ -98,7 +98,7 @@ export default function FinanceiroRelatoriosPage() {
                 </button>
                 <button
                   onClick={() => setSelectedReport('graficos')}
-                  className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm ${
+                  className={`px-4 py-2 rounded-full border-2 font-semibold text-sm ${
                     selectedReport === 'graficos'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-gray-400 hover:border-gray-600'

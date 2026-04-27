@@ -83,7 +83,7 @@ export default function DashboardExecutivo() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl sm:rounded-lg border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
                       !periodoInicio && "text-muted-foreground"
                     )}
                   >
@@ -105,7 +105,7 @@ export default function DashboardExecutivo() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl sm:rounded-lg border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
                       !periodoFim && "text-muted-foreground"
                     )}
                   >
@@ -227,7 +227,7 @@ export default function DashboardExecutivo() {
               <div className="space-y-2">
                 {recomendacoesCriticas.length > 0 ? (
                   recomendacoesCriticas.map((rec: any) => (
-                    <div key={rec.id} className="p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg touch-manipulation">
+                    <div key={rec.id} className="p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl touch-manipulation">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className="text-sm font-semibold">{rec.titulo}</p>
@@ -265,7 +265,7 @@ export default function DashboardExecutivo() {
             <CardContent>
               <div className="space-y-2 max-h-[320px] sm:max-h-[400px] overflow-y-auto min-w-0">
                 {dashboard.topProdutos.map((produto, index) => (
-                  <div key={produto.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg min-h-[44px] sm:min-h-0">
+                  <div key={produto.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl min-h-[44px] sm:min-h-0">
                     <div className="flex items-center gap-3 flex-1">
                       <Badge variant="outline" className="font-bold">
                         #{index + 1}
@@ -301,7 +301,7 @@ export default function DashboardExecutivo() {
             <CardContent>
               <div className="space-y-2 max-h-[320px] sm:max-h-[400px] overflow-y-auto min-w-0">
                 {dashboard.topVendedores.map((vendedor, index) => (
-                  <div key={vendedor.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-lg min-h-[44px] sm:min-h-0">
+                  <div key={vendedor.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl min-h-[44px] sm:min-h-0">
                     <div className="flex items-center gap-3 flex-1">
                       <Badge variant="outline" className="font-bold">
                         #{index + 1}

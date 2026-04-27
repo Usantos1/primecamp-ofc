@@ -57,7 +57,7 @@ export function DashboardSkeleton() {
 
             {/* Gráfico principal + secundários (TrendCharts) */}
             <div className="space-y-4 w-full min-w-0">
-              <Card className="border-2 border-gray-300 dark:border-gray-600 shadow-sm w-full min-w-0 overflow-hidden">
+              <Card className="border-2 border-gray-300 dark:border-gray-600 shadow-sm w-full min-w-0 overflow-hidden rounded-2xl">
                 <CardHeader className="pb-2 sm:pb-3 pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6 border-b-2 border-gray-200 dark:border-gray-700">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -69,17 +69,17 @@ export function DashboardSkeleton() {
                 <CardContent className="p-3 sm:p-4 md:p-6">
                   {/* Gráfico principal - mesma altura do TrendCharts */}
                   <div className="w-full min-h-[200px] sm:min-h-[240px] md:min-h-[260px] mb-4">
-                    <Skeleton className="h-full w-full rounded-md" />
+                    <Skeleton className="h-full w-full rounded-xl" />
                   </div>
                   {/* Gráficos secundários */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="min-h-[160px]">
                       <Skeleton className="h-4 w-24 mb-2" />
-                      <Skeleton className="h-[160px] w-full rounded-md" />
+                      <Skeleton className="h-[160px] w-full rounded-xl" />
                     </div>
                     <div className="min-h-[160px]">
                       <Skeleton className="h-4 w-24 mb-2" />
-                      <Skeleton className="h-[160px] w-full rounded-md" />
+                      <Skeleton className="h-[160px] w-full rounded-xl" />
                     </div>
                   </div>
                 </CardContent>

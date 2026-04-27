@@ -82,7 +82,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'today' ? 'default' : 'outline'}
               size="sm"
-              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('today')}
             >
               Hoje
@@ -90,7 +90,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'week' ? 'default' : 'outline'}
               size="sm"
-              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('week')}
             >
               7 dias
@@ -98,7 +98,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'month' ? 'default' : 'outline'}
               size="sm"
-              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('month')}
             >
               30 dias
@@ -106,7 +106,7 @@ export function DateFilterBar({
             <Button
               variant={dateFilter === 'all' ? 'default' : 'outline'}
               size="sm"
-              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
+              className="min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs px-3"
               onClick={() => handleFilterChange('all')}
             >
               Todos
@@ -120,7 +120,7 @@ export function DateFilterBar({
                 variant={dateFilter === 'custom' && customDateStart && customDateEnd ? 'default' : 'outline'}
                 size="sm"
                 className={cn(
-                  "min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs sm:text-xs justify-start text-left font-normal border-2 w-full sm:w-auto",
+                  "min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl touch-manipulation text-xs sm:text-xs justify-start text-left font-normal border-2 w-full sm:w-auto",
                   dateFilter === 'custom' && customDateStart && customDateEnd && "bg-primary text-primary-foreground"
                 )}
               >
@@ -157,7 +157,7 @@ export function DateFilterBar({
                           }
                         }
                       }}
-                      className="min-h-[44px] sm:h-8 rounded-lg touch-manipulation text-sm"
+                      className="min-h-[44px] sm:h-8 rounded-xl touch-manipulation text-sm"
                     />
                   </div>
                   <div>
@@ -175,7 +175,7 @@ export function DateFilterBar({
                           }
                         }
                       }}
-                      className="min-h-[44px] sm:h-8 rounded-lg touch-manipulation text-sm"
+                      className="min-h-[44px] sm:h-8 rounded-xl touch-manipulation text-sm"
                     />
                   </div>
                 </div>

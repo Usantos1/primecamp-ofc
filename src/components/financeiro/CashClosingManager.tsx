@@ -125,7 +125,7 @@ export function CashClosingManager({ month }: CashClosingManagerProps) {
             action={{ label: 'Fechar Caixa', onClick: handleOpenDialog }}
           />
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-xl overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -311,7 +311,7 @@ export function CashClosingManager({ month }: CashClosingManagerProps) {
             </div>
 
             {/* Resumo */}
-            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+            <div className="p-4 bg-muted/50 rounded-xl space-y-2">
               <h4 className="font-medium mb-3">Resumo</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <span className="text-muted-foreground">Total de Vendas:</span>
@@ -387,11 +387,11 @@ export function CashClosingManager({ month }: CashClosingManagerProps) {
           {viewingClosing && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <p className="text-sm text-muted-foreground">Total Vendas</p>
                   <p className="text-xl font-bold text-primary">{currencyFormatters.brl(viewingClosing.total_sales)}</p>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="p-3 bg-muted/50 rounded-xl">
                   <p className="text-sm text-muted-foreground">Diferença</p>
                   <p className={cn("text-xl font-bold", getDifferenceColor(viewingClosing.difference))}>
                     {currencyFormatters.brl(viewingClosing.difference || 0)}
@@ -431,7 +431,7 @@ export function CashClosingManager({ month }: CashClosingManagerProps) {
               </div>
 
               {viewingClosing.notes && (
-                <div className="p-3 bg-muted/30 rounded-lg">
+                <div className="p-3 bg-muted/30 rounded-xl">
                   <p className="text-sm text-muted-foreground mb-1">Observações:</p>
                   <p className="text-sm">{viewingClosing.notes}</p>
                 </div>

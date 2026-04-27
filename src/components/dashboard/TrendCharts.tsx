@@ -51,7 +51,7 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label, valuesVisible }: CustomTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white dark:bg-gray-900 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg text-sm">
+    <div className="bg-white dark:bg-gray-900 p-3 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg text-sm">
       <p className="font-semibold mb-2">{label}</p>
       {payload.map((entry, index) => (
         <p key={index} style={{ color: entry.color }} className="flex items-center gap-2">
@@ -113,12 +113,12 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
 
   return (
     <div className="space-y-4 w-full min-w-0 overflow-hidden">
-      <Card className="border-2 border-gray-300 dark:border-gray-600 shadow-sm w-full min-w-0 overflow-hidden rounded-xl md:rounded-lg">
+      <Card className="border-2 border-gray-300 dark:border-gray-600 shadow-sm w-full min-w-0 overflow-hidden rounded-2xl">
         <CardHeader className="pb-2 sm:pb-3 pt-3 sm:pt-4 md:pt-6 px-3 sm:px-4 md:px-6 border-b-2 border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-xl">
-                <div className="p-1.5 md:p-2 rounded-lg bg-gradient-to-br from-emerald-100 to-rose-100 dark:from-emerald-900/30 dark:to-rose-900/30 border border-gray-200 dark:border-gray-600 flex-shrink-0">
+                <div className="p-1.5 md:p-2 rounded-full bg-gradient-to-br from-emerald-100 to-rose-100 dark:from-emerald-900/30 dark:to-rose-900/30 border border-gray-200 dark:border-gray-600 flex-shrink-0">
                   <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <span className="truncate">Tendência de Vendas</span>
@@ -127,7 +127,7 @@ export function TrendCharts({ data, valuesVisible = true, period = 'week', onPer
             </div>
             {showPeriodInCard && (
               <Select value={period} onValueChange={(v) => onPeriodChange(v as TrendPeriod)}>
-                <SelectTrigger className="w-[110px] sm:w-[120px] h-8 text-xs sm:text-sm border-gray-300 dark:border-gray-600">
+                <SelectTrigger className="w-[110px] sm:w-[120px] h-8 text-xs sm:text-sm border-gray-300 dark:border-gray-600 rounded-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

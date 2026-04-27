@@ -312,7 +312,7 @@ const Index = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] w-11 sm:h-9 sm:w-9 sm:min-h-0 shrink-0 border-gray-300 dark:border-gray-600 rounded-xl sm:rounded-md touch-manipulation"
+                  className="h-11 min-h-[44px] w-11 sm:h-9 sm:w-9 sm:min-h-0 shrink-0 border-gray-300 dark:border-gray-600 rounded-full touch-manipulation"
                   onClick={() => { refetch(); refetchFinanceiro(); }}
                   title="Atualizar dados"
                   aria-label="Atualizar dashboard"

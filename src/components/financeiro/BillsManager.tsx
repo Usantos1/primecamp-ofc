@@ -549,7 +549,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
             <CardTitle className="text-base sm:text-lg">Contas a Pagar</CardTitle>
             <CardDescription className="text-xs sm:text-sm">Gerencie suas despesas fixas e variáveis</CardDescription>
           </div>
-          <Button onClick={() => handleOpenDialog()} className="gap-2 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation w-full sm:w-auto shrink-0">
+          <Button onClick={() => handleOpenDialog()} className="gap-2 min-h-[44px] sm:min-h-0 rounded-full touch-manipulation w-full sm:w-auto shrink-0">
             <Plus className="h-4 w-4" />
             Nova Conta
           </Button>
@@ -566,14 +566,14 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
                 placeholder="Descrição ou fornecedor..."
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                className="pl-9 min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
               />
             </div>
           </div>
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Período</Label>
             <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
                 <Filter className="h-4 w-4 mr-2 shrink-0" />
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
@@ -589,7 +589,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Status</Label>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -603,7 +603,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Tipo</Label>
             <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger className="w-full sm:w-[150px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -616,7 +616,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
           <div className="flex flex-col gap-1.5 min-w-0">
             <Label className="text-xs text-muted-foreground">Categoria</Label>
             <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}>
-              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation">
+              <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-full touch-manipulation">
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -646,7 +646,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               {paginatedBills.map((bill) => (
                 <div
                   key={bill.id}
-                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -703,7 +703,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               ))}
             </div>
             {/* Desktop: tabela com scroll horizontal se necessário */}
-            <div className="hidden md:block border rounded-lg overflow-x-auto min-w-0">
+            <div className="hidden md:block border rounded-2xl overflow-x-auto min-w-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -785,7 +785,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               <Button
                 variant="outline"
                 size="sm"
-                className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                className="min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
               >
@@ -798,7 +798,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
               <Button
                 variant="outline"
                 size="sm"
-                className="min-h-[44px] sm:min-h-0 rounded-xl sm:rounded-md touch-manipulation"
+                className="min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
               >
@@ -812,7 +812,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
 
       {/* Dialog de criação/edição */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col rounded-2xl">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{editingBill ? 'Editar Conta' : 'Nova Conta a Pagar'}</DialogTitle>
             <DialogDescription>
@@ -910,13 +910,13 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center space-x-2 p-3 border rounded-lg">
+              <div className="flex items-center space-x-2 p-3 border rounded-2xl">
                 <input
                   type="checkbox"
                   id="recurring"
                   checked={formData.recurring}
                   onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                  className="h-4 w-4 rounded-full border-gray-300 cursor-pointer"
                 />
                 <Label htmlFor="recurring" className="cursor-pointer font-medium">
                   Conta recorrente (criar múltiplas)
@@ -1014,7 +1014,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
                     </Button>
                   </div>
                 </div>
-                <div className="border rounded-lg overflow-hidden max-h-[280px] overflow-y-auto">
+                <div className="border rounded-2xl overflow-hidden max-h-[280px] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1098,7 +1098,7 @@ export function BillsManager({ month, startDate, endDate, valuesVisible = true }
 
       {/* Dialog de pagamento */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle>Confirmar Pagamento</DialogTitle>
             <DialogDescription>

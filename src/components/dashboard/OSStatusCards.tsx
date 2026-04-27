@@ -63,7 +63,7 @@ export function OSStatusCards({ data, showValues = false }: OSStatusCardsProps) 
         return (
           <Card
             key={card.title}
-            className="border-2 border-gray-300 dark:border-gray-600 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.99] rounded-xl md:rounded-lg min-h-[52px] sm:min-h-[56px] md:min-h-0 touch-manipulation"
+            className="border-2 border-gray-300 dark:border-gray-600 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.99] rounded-2xl min-h-[52px] sm:min-h-[56px] md:min-h-0 touch-manipulation"
             onClick={() => navigate(card.path)}
           >
             <CardHeader className="pb-2 pt-2 px-3 sm:py-2 sm:px-3 flex flex-row items-center justify-between gap-2">

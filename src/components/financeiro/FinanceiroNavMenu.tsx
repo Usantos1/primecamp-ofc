@@ -51,7 +51,7 @@ export function FinanceiroNavMenu({ variant = 'card' }: FinanceiroNavMenuProps) 
             variant={isActive ? 'default' : 'outline'}
             size="sm"
             className={cn(
-              'h-9 px-3 text-xs font-semibold border-[2px] rounded-lg',
+              'h-9 px-3 text-xs font-semibold border-[2px] rounded-full',
               isActive
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'border-gray-400 hover:border-gray-600',

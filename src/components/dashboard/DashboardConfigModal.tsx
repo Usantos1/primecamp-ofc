@@ -126,13 +126,13 @@ export function DashboardConfigModal({ open, onOpenChange }: DashboardConfigModa
                 <p className="text-xs text-muted-foreground">
                   Ative ou desative widgets e organize a ordem de exibição
                 </p>
-                <div className="space-y-2 border-2 border-gray-300 rounded-lg p-3 bg-gray-50/50">
+                <div className="space-y-2 border-2 border-gray-300 rounded-2xl p-3 bg-gray-50/50">
                   {localConfig.widgets
                     .sort((a, b) => a.order - b.order)
                     .map((widget, index) => (
                       <div
                         key={widget.id}
-                        className="flex items-center justify-between p-3 bg-white border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+                        className="flex items-center justify-between p-3 bg-white border-2 border-gray-200 rounded-2xl hover:border-blue-300 transition-colors"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <GripVertical className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -178,7 +178,7 @@ export function DashboardConfigModal({ open, onOpenChange }: DashboardConfigModa
             {/* Tab: Modo Apresentação */}
             <TabsContent value="presentation" className="mt-4 space-y-4">
               <div className="space-y-4">
-                <div className="p-4 border-2 border-gray-300 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50">
+                <div className="p-4 border-2 border-gray-300 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex-1">
                       <Label htmlFor="presentation-mode" className="text-sm font-semibold flex items-center gap-2">
@@ -198,7 +198,7 @@ export function DashboardConfigModal({ open, onOpenChange }: DashboardConfigModa
                     />
                   </div>
                   {localConfig.presentationMode && (
-                    <div className="mt-3 p-3 bg-white/80 rounded border border-purple-200">
+                    <div className="mt-3 p-3 bg-white/80 rounded-2xl border border-purple-200">
                       <p className="text-xs text-purple-700">
                         <strong>Dica:</strong> Use a tecla ESC ou o botão no canto superior direito para sair do modo apresentação.
                       </p>
@@ -211,7 +211,7 @@ export function DashboardConfigModal({ open, onOpenChange }: DashboardConfigModa
             {/* Tab: Atualização Automática */}
             <TabsContent value="refresh" className="mt-4 space-y-4">
               <div className="space-y-4">
-                <div className="p-4 border-2 border-gray-300 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50">
+                <div className="p-4 border-2 border-gray-300 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -234,7 +234,7 @@ export function DashboardConfigModal({ open, onOpenChange }: DashboardConfigModa
                     </div>
 
                     {localConfig.autoRefreshEnabled && localConfig.presentationMode && (
-                      <div className="mt-4 space-y-3 p-3 bg-white/80 rounded border border-green-200">
+                      <div className="mt-4 space-y-3 p-3 bg-white/80 rounded-2xl border border-green-200">
                         <Label htmlFor="refresh-interval" className="text-sm font-medium">
                           Intervalo de Atualização
                         </Label>
@@ -282,7 +282,7 @@ export function DashboardConfigModal({ open, onOpenChange }: DashboardConfigModa
                     )}
 
                     {localConfig.autoRefreshEnabled && !localConfig.presentationMode && (
-                      <div className="mt-3 p-3 bg-yellow-50 rounded border border-yellow-200">
+                      <div className="mt-3 p-3 bg-yellow-50 rounded-2xl border border-yellow-200">
                         <p className="text-xs text-yellow-700">
                           <strong>Atenção:</strong> A atualização automática só funciona no Modo Apresentação (TV). 
                           Ative o Modo Apresentação primeiro.

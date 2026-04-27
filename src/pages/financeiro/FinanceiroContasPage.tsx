@@ -20,14 +20,14 @@ export default function FinanceiroContasPage() {
       <div className="flex flex-col gap-4 pb-8 min-w-0">
         <div className="space-y-3 flex-1 flex flex-col min-h-0 min-w-0">
           {/* Tabs — mobile: toque confortável */}
-          <Card className="flex-shrink-0 rounded-xl overflow-hidden">
+          <Card className="flex-shrink-0 rounded-2xl overflow-hidden">
             <CardContent className="p-2 sm:p-3">
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={activeTab === 'pagar' ? 'default' : 'ghost'}
                   size="sm"
                   className={cn(
-                    'min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs md:text-sm',
+                    'min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs md:text-sm',
                     activeTab === 'pagar' && 'bg-red-600 hover:bg-red-700 text-white'
                   )}
                   onClick={() => setActiveTab('pagar')}
@@ -39,7 +39,7 @@ export default function FinanceiroContasPage() {
                   variant={activeTab === 'receber' ? 'default' : 'ghost'}
                   size="sm"
                   className={cn(
-                    'min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation text-xs md:text-sm',
+                    'min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs md:text-sm',
                     activeTab === 'receber' && 'bg-green-600 hover:bg-green-700 text-white'
                   )}
                   onClick={() => setActiveTab('receber')}

@@ -102,7 +102,7 @@ export function DashboardPeriodFilter({
           aria-expanded={open}
           className={cn(
             'w-[130px] sm:w-[140px] justify-between text-xs sm:text-sm border-gray-300 dark:border-gray-600',
-            'min-h-[44px] h-11 sm:min-h-0 sm:h-8 rounded-xl sm:rounded-md touch-manipulation',
+            'min-h-[44px] h-11 sm:min-h-0 sm:h-8 rounded-full touch-manipulation',
             triggerClassName
           )}
         >
@@ -110,7 +110,7 @@ export function DashboardPeriodFilter({
           <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={cn('w-auto p-0', className)} align="end" sideOffset={4}>
+      <PopoverContent className={cn('w-auto p-0 rounded-2xl overflow-hidden', className)} align="end" sideOffset={4}>
         <div className="flex flex-col sm:flex-row max-h-[70vh] sm:max-h-[520px]">
           <div className="border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700 min-w-[200px] max-h-[320px] sm:max-h-none overflow-y-auto">
             <div className="py-1">
@@ -120,7 +120,7 @@ export function DashboardPeriodFilter({
                   type="button"
                   onClick={() => handleSelectFixed(opt.value)}
                   className={cn(
-                    'w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/80 transition-colors',
+                    'mx-1 w-[calc(100%-0.5rem)] rounded-xl flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/80 transition-colors',
                     value === opt.value && 'bg-primary/10 text-primary font-medium'
                   )}
                 >
@@ -132,7 +132,7 @@ export function DashboardPeriodFilter({
                 type="button"
                 onClick={handleSelectPersonalizar}
                 className={cn(
-                  'w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/80 transition-colors',
+                  'mx-1 w-[calc(100%-0.5rem)] rounded-xl flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted/80 transition-colors',
                   (value === 'custom' || editingCustom) && 'bg-primary/10 text-primary font-medium'
                 )}
               >

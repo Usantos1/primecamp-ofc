@@ -59,7 +59,7 @@ export default function Precificacao() {
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground">Produto</Label>
               <Select value={produtoSelecionado} onValueChange={setProdutoSelecionado}>
-                <SelectTrigger className="h-10 rounded-lg border-[3px] border-gray-400">
+                <SelectTrigger className="h-10 rounded-full border-[3px] border-gray-400">
                   <SelectValue placeholder="Selecione um produto" />
                 </SelectTrigger>
                 <SelectContent>
@@ -79,7 +79,7 @@ export default function Precificacao() {
                 max={500}
                 value={margemDesejada}
                 onChange={(e) => setMargemDesejada(parseFloat(e.target.value) || 50)}
-                className="h-10 rounded-lg border-[3px] border-gray-400"
+                className="h-10 rounded-xl border-[3px] border-gray-400"
               />
             </div>
             <div className="flex items-end">
@@ -163,7 +163,7 @@ export default function Precificacao() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Preço Sugerido */}
-              <div className="p-4 bg-blue-50 rounded-lg border-[2px] border-blue-200">
+              <div className="p-4 bg-blue-50 rounded-xl border-[2px] border-blue-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-blue-900 mb-1">Preço Sugerido</p>
@@ -187,12 +187,12 @@ export default function Precificacao() {
               {/* Análise Histórica */}
               {resultado.analise_historica?.preco_medio && (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 rounded-lg border-[2px] border-gray-200">
+                  <div className="p-3 bg-gray-50 rounded-xl border-[2px] border-gray-200">
                     <p className="text-xs font-semibold text-muted-foreground mb-1">Preço Médio Histórico</p>
                     <p className="text-lg font-bold">{currencyFormatters.brl(resultado.analise_historica.preco_medio)}</p>
                   </div>
                   {resultado.analise_historica.margem_media && (
-                    <div className="p-3 bg-gray-50 rounded-lg border-[2px] border-gray-200">
+                    <div className="p-3 bg-gray-50 rounded-xl border-[2px] border-gray-200">
                       <p className="text-xs font-semibold text-muted-foreground mb-1">Margem Média Histórica</p>
                       <p className="text-lg font-bold">{resultado.analise_historica.margem_media.toFixed(1)}%</p>
                     </div>
@@ -201,7 +201,7 @@ export default function Precificacao() {
               )}
               
               {/* Estatísticas */}
-              <div className="p-3 bg-gray-50 rounded-lg border-[2px] border-gray-200">
+              <div className="p-3 bg-gray-50 rounded-xl border-[2px] border-gray-200">
                 <p className="text-xs font-semibold text-muted-foreground mb-1">Vendas (últimos 30 dias)</p>
                 <p className="text-lg font-bold">{resultado.vendas_ultimos_30_dias} vendas</p>
               </div>
@@ -211,7 +211,7 @@ export default function Precificacao() {
                 <div className="space-y-2">
                   <p className="text-sm font-semibold">Recomendações da IA:</p>
                   {resultado.sugestoes.map((sugestao: any, index: number) => (
-                    <div key={index} className={`p-3 rounded-lg border-[2px] ${
+                    <div key={index} className={`p-3 rounded-xl border-[2px] ${
                       sugestao.tipo === 'aumento' ? 'bg-green-50 border-green-200' :
                       sugestao.tipo === 'reducao' ? 'bg-orange-50 border-orange-200' :
                       'bg-yellow-50 border-yellow-200'

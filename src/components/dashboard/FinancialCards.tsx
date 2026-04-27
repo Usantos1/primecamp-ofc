@@ -175,11 +175,11 @@ export function FinancialCards({ data, financeiroKpis, valuesVisible = true, inl
     return (
       <Card
         key={card.title}
-        className={`border-2 border-gray-300 dark:border-gray-600 shadow-sm hover:shadow-md transition-all min-w-0 touch-manipulation ${compact ? 'py-1 px-2 rounded-xl min-h-[72px] sm:min-h-0 sm:rounded-lg' : 'rounded-lg'}`}
+        className={`border-2 border-gray-300 dark:border-gray-600 shadow-sm hover:shadow-md transition-all min-w-0 touch-manipulation ${compact ? 'py-1 px-2 rounded-2xl min-h-[72px] sm:min-h-0' : 'rounded-2xl'}`}
       >
         <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${compact ? 'pb-1 pt-2 px-2 sm:pt-2' : 'pb-2 pt-3 px-3 sm:px-4'}`}>
           <CardTitle className={`font-semibold flex items-center gap-1 sm:gap-1.5 min-w-0 ${compact ? 'text-xs sm:text-xs' : 'text-xs sm:text-sm'}`}>
-            <span className={`rounded-lg flex items-center justify-center text-white flex-shrink-0 ${card.color} ${compact ? 'h-6 w-6 sm:h-7 sm:w-7' : 'h-8 w-8 sm:h-9 sm:w-9'}`}>
+            <span className={`rounded-full flex items-center justify-center text-white flex-shrink-0 ${card.color} ${compact ? 'h-6 w-6 sm:h-7 sm:w-7' : 'h-8 w-8 sm:h-9 sm:w-9'}`}>
               <Icon className={compact ? 'h-3 w-3 sm:h-3.5 sm:w-3.5' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'} />
             </span>
             <span className="truncate">{card.title}</span>

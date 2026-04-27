@@ -295,7 +295,7 @@ export function AdminDashboard() {
             {overview.topPlans.map((plan: any, index: number) => (
               <div 
                 key={plan.code}
-                className="bg-background/50 p-4 rounded-lg text-center"
+                className="bg-background/50 p-4 rounded-2xl text-center"
               >
                 <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center text-lg font-bold ${
                   index === 0 ? 'bg-yellow-500 text-black' :
@@ -323,7 +323,7 @@ export function AdminDashboard() {
             {Object.entries(overview.subscriptions.byStatus).map(([status, count]) => (
               <div 
                 key={status} 
-                className="flex items-center gap-2 bg-background/50 px-4 py-2 rounded-lg"
+                className="flex items-center gap-2 bg-background/50 px-4 py-2 rounded-2xl"
               >
                 <span className={`w-3 h-3 rounded-full ${
                   status === 'active' ? 'bg-green-500' :

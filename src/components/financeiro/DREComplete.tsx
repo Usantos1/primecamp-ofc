@@ -376,7 +376,7 @@ export function DREComplete({
         </div>
       </CardHeader>
       <CardContent className="min-w-0">
-        <div className="border-2 border-gray-200 dark:border-gray-600 rounded-lg overflow-x-auto min-w-0">
+        <div className="border-2 border-gray-200 dark:border-gray-600 rounded-xl overflow-x-auto min-w-0">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -557,26 +557,26 @@ export function DREComplete({
 
         {/* Indicadores */}
         <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="p-3 bg-green-50 rounded-lg text-center border border-green-200">
+          <div className="p-3 bg-green-50 rounded-xl text-center border border-green-200">
             <p className="text-xs text-muted-foreground">Receita Bruta</p>
             <p className="text-lg font-bold text-green-600">{fmt(dreData.receitaBrutaVendas)}</p>
           </div>
-          <div className="p-3 bg-orange-50 rounded-lg text-center border border-orange-200">
+          <div className="p-3 bg-orange-50 rounded-xl text-center border border-orange-200">
             <p className="text-xs text-muted-foreground">Custo (CMV)</p>
             <p className="text-lg font-bold text-orange-600">{fmt(dreData.cmv)}</p>
           </div>
-          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
+          <div className="p-3 bg-red-50 rounded-xl text-center border border-red-200">
             <p className="text-xs text-muted-foreground">Despesas</p>
             <p className="text-lg font-bold text-red-600">{fmt(dreData.totalDespesasOperacionais)}</p>
           </div>
-          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
+          <div className="p-3 bg-red-50 rounded-xl text-center border border-red-200">
             <p className="text-xs text-muted-foreground">Custo total de despesas</p>
             <p className="text-lg font-bold text-red-600">
               {fmt(dreData.impostos + dreData.cmv + dreData.totalDespesasOperacionais)}
             </p>
           </div>
           <div className={cn(
-            "p-3 rounded-lg text-center border",
+            "p-3 rounded-xl text-center border",
             dreData.lucroLiquido >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
           )}>
             <p className="text-xs text-muted-foreground">Lucro Líquido</p>

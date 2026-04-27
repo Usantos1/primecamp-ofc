@@ -328,7 +328,7 @@ export default function FluxoDeCaixa() {
                   key={value}
                   variant={quickRange === value ? 'default' : 'outline'}
                   size="sm"
-                  className="min-h-[44px] sm:min-h-0 sm:h-9 rounded-xl sm:rounded-md touch-manipulation text-xs px-3"
+                  className="min-h-[44px] sm:min-h-0 sm:h-9 rounded-full touch-manipulation text-xs px-3"
                   onClick={() => applyQuick(value)}
                 >
                   {label}
@@ -345,7 +345,7 @@ export default function FluxoDeCaixa() {
                     setStartDate(e.target.value);
                     setQuickRange('custom');
                   }}
-                  className="min-h-[44px] sm:h-9 w-full sm:w-36 rounded-lg touch-manipulation"
+                  className="min-h-[44px] sm:h-9 w-full sm:w-36 rounded-xl touch-manipulation"
                 />
               </div>
               <div className="space-y-1 flex-1 min-w-0">
@@ -357,7 +357,7 @@ export default function FluxoDeCaixa() {
                     setEndDate(e.target.value);
                     setQuickRange('custom');
                   }}
-                  className="min-h-[44px] sm:h-9 w-full sm:w-36 rounded-lg touch-manipulation"
+                  className="min-h-[44px] sm:h-9 w-full sm:w-36 rounded-xl touch-manipulation"
                 />
               </div>
             </div>
