@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Bell, X, AlertTriangle, CheckCircle, Info, Clock, LayoutDashboard, FileBarChart, Wrench, ShoppingCart } from 'lucide-react';
+import { Bell, X, AlertTriangle, CheckCircle, Info, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -42,19 +41,13 @@ function setDismissedId(id: string, add: boolean) {
   else set.delete(id);
   try {
     localStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]));
-  } catch {}
+  } catch {
+    // localStorage pode estar indisponível em navegação privada.
+  }
 }
-
-const QUICK_LINKS = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/relatorios', label: 'Relatórios', icon: FileBarChart },
-  { to: '/os', label: 'Ordens de Serviço', icon: Wrench },
-  { to: '/pdv', label: 'PDV / Vendas', icon: ShoppingCart },
-] as const;
 
 export function NotificationPanel({ isOpen, onClose, onNotificationChange }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const savedNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
@@ -182,13 +175,15 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end items-stretch">
-      <div className="w-full max-w-md h-full max-h-[calc(100dvh-2rem)] bg-background border-l shadow-lg overflow-hidden flex flex-col notification-panel">
-        <Card className="flex flex-col min-h-0 flex-1 rounded-none border-0">
-          <CardHeader className="flex-shrink-0 border-b">
+    <div className="notification-panel fixed right-2 top-14 z-50 w-[calc(100vw-1rem)] max-w-[360px] sm:right-4 sm:top-16">
+      <Card className="max-h-[min(520px,calc(100dvh-5rem))] overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-[0_18px_50px_rgba(16,24,40,0.18)] dark:bg-slate-950">
+        <div className="flex max-h-[min(520px,calc(100dvh-5rem))] min-h-0 flex-col">
+          <CardHeader className="flex-shrink-0 border-b px-4 py-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30">
+                  <Bell className="h-4 w-4" />
+                </span>
                 Notificações
                 {notifications.filter(n => !n.read).length > 0 && (
                   <Badge className="bg-red-500 text-white">
@@ -198,48 +193,48 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
               </CardTitle>
               <div className="flex items-center gap-2">
                 {notifications.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearAll}>
-                    Limpar tudo
+                  <Button variant="ghost" size="sm" className="h-8 rounded-full px-3 text-xs" onClick={clearAll}>
+                    Marcar lidas
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={onClose}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0 flex flex-col flex-1 min-h-0 overflow-hidden">
-            <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent dark:scrollbar-thumb-emerald-900">
               {notifications.length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-muted-foreground">
+                <div className="flex h-44 items-center justify-center text-muted-foreground">
                   <div className="text-center">
-                    <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Nenhuma notificação</p>
+                    <Bell className="mx-auto mb-2 h-8 w-8 opacity-40" />
+                    <p className="text-sm">Nenhuma notificação</p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="p-2">
                   {notifications.map(notification => (
                     <div
                       key={notification.id}
-                      className={`p-4 border-b cursor-pointer transition-colors ${
+                      className={`cursor-pointer rounded-2xl p-3 transition-colors ${
                         notification.read 
-                          ? 'bg-background opacity-60' 
-                          : 'bg-muted/30 hover:bg-muted/50'
+                          ? 'bg-background opacity-70' 
+                          : 'bg-muted/40 hover:bg-muted/60'
                       }`}
                       onClick={() => markAsRead(notification.id)}
                     >
                       <div className="flex items-start gap-3">
                         {getNotificationIcon(notification.type)}
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-medium">{notification.title}</h4>
-                            <div className="flex items-center gap-1">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="min-w-0 flex-1 truncate text-sm font-semibold">{notification.title}</h4>
+                            <div className="flex shrink-0 items-center gap-1">
                               {getNotificationBadge(notification.type)}
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-6 w-6 p-0"
+                                className="h-6 w-6 rounded-full p-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   deleteNotification(notification.id);
@@ -249,7 +244,7 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
                               </Button>
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">
                             {notification.message}
                           </p>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -263,26 +258,9 @@ export function NotificationPanel({ isOpen, onClose, onNotificationChange }: Not
                 </div>
               )}
             </div>
-            <div className="flex-shrink-0 border-t p-3 bg-muted/20">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Recursos úteis</p>
-              <div className="grid grid-cols-2 gap-2">
-                {QUICK_LINKS.map(({ to, label, icon: Icon }) => (
-                  <Button
-                    key={to}
-                    variant="outline"
-                    size="sm"
-                    className="justify-start h-8 text-xs"
-                    onClick={() => { navigate(to); onClose(); }}
-                  >
-                    <Icon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            </div>
           </CardContent>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 }
