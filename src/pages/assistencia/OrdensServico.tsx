@@ -654,20 +654,20 @@ export default function OrdensServico() {
         </div>
 
         {/* Desktop: Cards de estatísticas */}
-        <div className="hidden md:flex flex-wrap justify-center gap-2 shrink-0 mb-3">
+        <div className="hidden md:grid md:grid-cols-8 gap-2 shrink-0 mb-3">
           {statsCards.map((card) => (
             <Card 
               key={card.filter}
               className={cn(
-                `border-l-4 border-${card.color}-500 cursor-pointer hover:shadow-md transition-all`,
+                `border-2 border-${card.color}-500 cursor-pointer hover:shadow-md transition-all rounded-full overflow-hidden`,
                 statusFilter === card.filter ? `bg-${card.color}-50 dark:bg-${card.color}-950/20 ring-2 ring-${card.color}-400` : 'bg-white dark:bg-gray-900',
-                'w-[calc(25%-0.5rem)] lg:w-[calc(12.5%-0.5rem)] min-w-[100px]'
+                'min-w-0'
               )}
               onClick={() => setStatusFilter(card.filter)}
             >
-              <CardContent className="py-2 px-3">
-                <p className={`text-xs text-${card.color}-600 font-medium`}>{card.label}</p>
-                <p className={`text-xl font-bold text-${card.color}-600`}>{card.value}</p>
+              <CardContent className="flex h-11 items-center justify-between gap-2 py-0 px-4 min-w-0">
+                <p className={`text-xs text-${card.color}-600 font-medium truncate`}>{card.label}</p>
+                <p className={`text-lg font-bold text-${card.color}-600 tabular-nums shrink-0`}>{card.value}</p>
               </CardContent>
             </Card>
           ))}
