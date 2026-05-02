@@ -112,8 +112,8 @@ export default function Pedidos() {
 
         {/* Filtros */}
         {!loading && pedidos.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-sm">
+          <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+            <div className="relative w-full md:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Buscar por nome, criador ou produto..."
@@ -125,8 +125,9 @@ export default function Pedidos() {
             <Tabs
               value={statusFilter}
               onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+              className="w-full md:w-auto"
             >
-              <TabsList className="grid grid-cols-3 w-full sm:w-auto">
+              <TabsList className="grid grid-cols-3 w-full md:w-auto rounded-full border-2 border-gray-300 dark:border-gray-700 p-1">
                 <TabsTrigger value="todos" className="text-xs sm:text-sm">
                   Todos
                 </TabsTrigger>

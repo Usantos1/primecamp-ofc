@@ -168,9 +168,9 @@ export default function RH() {
 
   return (
     <ModernLayout title="Recursos Humanos" subtitle="Gestão completa de pessoas e desenvolvimento">
-      <div className="space-y-4 md:space-y-6 px-1 md:px-0 [&_button]:rounded-full [&_input]:rounded-full">
+      <div className="space-y-4 md:space-y-6 px-1 md:px-0 [&_button]:rounded-full [&_input]:rounded-full [&_badge]:rounded-full">
         {/* Busca e Filtros */}
-        <Card className="border-2">
+        <Card className="border-2 rounded-2xl md:rounded-full overflow-hidden">
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
               {/* Campo de Busca */}
@@ -188,7 +188,7 @@ export default function RH() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all ${
+                  className={`px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all min-h-10 ${
                     selectedCategory === 'all'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-gray-300 hover:border-gray-400'
@@ -202,7 +202,7 @@ export default function RH() {
                     <button
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
-                      className={`px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all flex items-center gap-2 ${
+                      className={`px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all flex items-center gap-2 min-h-10 ${
                         selectedCategory === category.id
                           ? `bg-primary text-primary-foreground border-primary`
                           : 'border-gray-300 hover:border-gray-400'
@@ -232,7 +232,7 @@ export default function RH() {
                 <div className="flex items-center gap-2">
                   <CategoryIcon className={`h-5 w-5 ${category.color}`} />
                   <h2 className="text-lg font-bold">{category.label}</h2>
-                  <Badge variant="secondary" className="ml-2">
+                  <Badge variant="secondary" className="ml-2 rounded-full">
                     {sectionsInCategory.length}
                   </Badge>
                 </div>
@@ -242,19 +242,19 @@ export default function RH() {
                     return (
                       <Card
                         key={section.path}
-                        className="border-2 border-gray-300 shadow-sm hover:shadow-lg hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group"
+                        className="border-2 border-gray-300 rounded-2xl shadow-sm hover:shadow-lg hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group overflow-hidden"
                         onClick={() => navigate(section.path)}
                       >
                         <CardHeader className="pb-3 pt-4 px-4">
                           <div className="flex items-start gap-3">
-                            <div className={`p-2.5 rounded-lg bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm group-hover:scale-110 transition-transform`}>
+                            <div className={`p-2.5 rounded-full bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm group-hover:scale-110 transition-transform`}>
                               <Icon className={`h-5 w-5 ${section.color}`} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2 mb-1">
                                 <CardTitle className="text-base font-semibold">{section.title}</CardTitle>
                                 {section.badge && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs rounded-full">
                                     {section.badge}
                                   </Badge>
                                 )}
@@ -278,19 +278,19 @@ export default function RH() {
               return (
                 <Card
                   key={section.path}
-                  className="border-2 border-gray-300 shadow-sm hover:shadow-lg hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group"
+                  className="border-2 border-gray-300 rounded-2xl shadow-sm hover:shadow-lg hover:border-gray-400 transition-all duration-200 cursor-pointer active:scale-[0.98] group overflow-hidden"
                   onClick={() => navigate(section.path)}
                 >
                   <CardHeader className="pb-3 pt-4 px-4">
                     <div className="flex items-start gap-3">
-                      <div className={`p-2.5 rounded-lg bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm group-hover:scale-110 transition-transform`}>
+                      <div className={`p-2.5 rounded-full bg-gradient-to-br ${section.color.replace('text-', 'from-').replace('-600', '-100').replace('-700', '-100').replace('-800', '-100')} to-white border-2 border-gray-200 shadow-sm group-hover:scale-110 transition-transform`}>
                         <Icon className={`h-5 w-5 ${section.color}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <CardTitle className="text-base font-semibold">{section.title}</CardTitle>
                           {section.badge && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs rounded-full">
                               {section.badge}
                             </Badge>
                           )}
@@ -307,7 +307,7 @@ export default function RH() {
 
         {/* Mensagem quando não há resultados */}
         {filteredSections.length === 0 && (
-          <Card>
+          <Card className="rounded-2xl overflow-hidden">
             <CardContent className="py-8 text-center">
               <p className="text-muted-foreground">
                 Nenhum módulo encontrado com os filtros selecionados.

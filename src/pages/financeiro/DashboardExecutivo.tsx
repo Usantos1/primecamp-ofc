@@ -74,7 +74,7 @@ export default function DashboardExecutivo() {
     >
       <div className="flex flex-col gap-4 pb-8 min-w-0">
         {/* Filtros — mobile: toque confortável */}
-        <Card className="flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm p-3 sm:p-4 min-w-0">
+        <Card className="flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-2xl md:rounded-full shadow-sm p-3 sm:p-4 min-w-0 overflow-hidden">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold text-muted-foreground">Período Início</Label>
@@ -83,7 +83,7 @@ export default function DashboardExecutivo() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-full border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
                       !periodoInicio && "text-muted-foreground"
                     )}
                   >
@@ -105,7 +105,7 @@ export default function DashboardExecutivo() {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-xl border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:h-10 rounded-full border-2 border-gray-300 dark:border-gray-600 touch-manipulation",
                       !periodoFim && "text-muted-foreground"
                     )}
                   >
@@ -124,60 +124,60 @@ export default function DashboardExecutivo() {
         </Card>
         
         {/* KPIs Principais — mobile: 2 colunas */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-w-0">
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold">Receita Total</CardTitle>
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{fmt(dashboard.kpis.totalGeral)}</div>
-              <p className="text-xs text-muted-foreground">
-                {dashboard.kpis.quantidadePDV + dashboard.kpis.quantidadeOS} vendas
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold">Vendas PDV</CardTitle>
-              <ShoppingCart className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{fmt(dashboard.kpis.totalPDV)}</div>
-              <p className="text-xs text-muted-foreground">
-                {dashboard.kpis.quantidadePDV} vendas ({percentPDV.toFixed(1)}%)
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold">Vendas OS</CardTitle>
-              <Wrench className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{fmt(dashboard.kpis.totalOS)}</div>
-              <p className="text-xs text-muted-foreground">
-                {dashboard.kpis.quantidadeOS} vendas ({percentOS.toFixed(1)}%)
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm touch-manipulation min-w-0">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold">Ticket Médio</CardTitle>
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {fmt((dashboard.kpis.ticketMedioPDV + dashboard.kpis.ticketMedioOS) / 2)}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 min-w-0">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-2xl lg:rounded-full shadow-sm touch-manipulation min-w-0 overflow-hidden">
+            <CardContent className="flex h-16 items-center justify-between gap-3 px-4 py-0 min-w-0">
+              <DollarSign className="h-5 w-5 text-muted-foreground shrink-0" />
+              <div className="min-w-0 flex-1 lg:flex lg:items-center lg:justify-between lg:gap-2">
+                <CardTitle className="text-sm font-bold truncate">Receita Total</CardTitle>
+                <div className="text-lg font-bold tabular-nums truncate lg:shrink-0">{fmt(dashboard.kpis.totalGeral)}</div>
+                <p className="text-xs text-muted-foreground lg:hidden">
+                  {dashboard.kpis.quantidadePDV + dashboard.kpis.quantidadeOS} vendas
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {valuesVisible
-                  ? `PDV: ${currencyFormatters.brl(dashboard.kpis.ticketMedioPDV)} | OS: ${currencyFormatters.brl(dashboard.kpis.ticketMedioOS)}`
-                  : 'PDV: R$ ••••••• | OS: R$ •••••••'}
-              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-2 border-blue-300 dark:border-blue-700 rounded-2xl lg:rounded-full shadow-sm touch-manipulation min-w-0 overflow-hidden">
+            <CardContent className="flex h-16 items-center justify-between gap-3 px-4 py-0 min-w-0">
+              <ShoppingCart className="h-5 w-5 text-blue-600 shrink-0" />
+              <div className="min-w-0 flex-1 lg:flex lg:items-center lg:justify-between lg:gap-2">
+                <CardTitle className="text-sm font-bold truncate">Vendas PDV</CardTitle>
+                <div className="text-lg font-bold tabular-nums truncate lg:shrink-0">{fmt(dashboard.kpis.totalPDV)}</div>
+                <p className="text-xs text-muted-foreground lg:hidden">
+                  {dashboard.kpis.quantidadePDV} vendas ({percentPDV.toFixed(1)}%)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-2 border-emerald-300 dark:border-emerald-700 rounded-2xl lg:rounded-full shadow-sm touch-manipulation min-w-0 overflow-hidden">
+            <CardContent className="flex h-16 items-center justify-between gap-3 px-4 py-0 min-w-0">
+              <Wrench className="h-5 w-5 text-emerald-600 shrink-0" />
+              <div className="min-w-0 flex-1 lg:flex lg:items-center lg:justify-between lg:gap-2">
+                <CardTitle className="text-sm font-bold truncate">Vendas OS</CardTitle>
+                <div className="text-lg font-bold tabular-nums truncate lg:shrink-0">{fmt(dashboard.kpis.totalOS)}</div>
+                <p className="text-xs text-muted-foreground lg:hidden">
+                  {dashboard.kpis.quantidadeOS} vendas ({percentOS.toFixed(1)}%)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-2 border-purple-300 dark:border-purple-700 rounded-2xl lg:rounded-full shadow-sm touch-manipulation min-w-0 overflow-hidden">
+            <CardContent className="flex h-16 items-center justify-between gap-3 px-4 py-0 min-w-0">
+              <TrendingUp className="h-5 w-5 text-purple-600 shrink-0" />
+              <div className="min-w-0 flex-1 lg:flex lg:items-center lg:justify-between lg:gap-2">
+                <CardTitle className="text-sm font-bold truncate">Ticket Médio</CardTitle>
+                <div className="text-lg font-bold tabular-nums truncate lg:shrink-0">
+                  {fmt((dashboard.kpis.ticketMedioPDV + dashboard.kpis.ticketMedioOS) / 2)}
+                </div>
+                <p className="text-xs text-muted-foreground lg:hidden truncate">
+                  {valuesVisible
+                    ? `PDV: ${currencyFormatters.brl(dashboard.kpis.ticketMedioPDV)} | OS: ${currencyFormatters.brl(dashboard.kpis.ticketMedioOS)}`
+                    : 'PDV: R$ ••••••• | OS: R$ •••••••'}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -185,7 +185,7 @@ export default function DashboardExecutivo() {
         {/* Gráfico de Tendência e Alertas */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
           {/* Gráfico de Tendência — responsivo */}
-          <Card className="lg:col-span-2 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm overflow-hidden min-w-0">
+          <Card className="lg:col-span-2 border-2 border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm overflow-hidden min-w-0">
             <CardHeader className="pb-2">
               <CardTitle className="text-base sm:text-lg font-bold">Tendência de Vendas</CardTitle>
               <CardDescription className="text-xs sm:text-sm">Evolução diária de vendas (PDV vs OS)</CardDescription>
@@ -215,7 +215,7 @@ export default function DashboardExecutivo() {
           </Card>
           
           {/* Alertas Críticos */}
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -227,7 +227,7 @@ export default function DashboardExecutivo() {
               <div className="space-y-2">
                 {recomendacoesCriticas.length > 0 ? (
                   recomendacoesCriticas.map((rec: any) => (
-                    <div key={rec.id} className="p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl touch-manipulation">
+                    <div key={rec.id} className="p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl touch-manipulation">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
                           <p className="text-sm font-semibold">{rec.titulo}</p>
@@ -235,7 +235,7 @@ export default function DashboardExecutivo() {
                             {rec.descricao}
                           </p>
                         </div>
-                        <Badge variant={rec.prioridade >= 9 ? 'destructive' : 'default'}>
+                        <Badge variant={rec.prioridade >= 9 ? 'destructive' : 'default'} className="rounded-full">
                           {rec.prioridade}/10
                         </Badge>
                       </div>
@@ -254,7 +254,7 @@ export default function DashboardExecutivo() {
         {/* Top Produtos e Top Vendedores */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
           {/* Top 10 Produtos */}
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm min-w-0 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
                 <Package className="h-5 w-5 shrink-0" />
@@ -265,9 +265,9 @@ export default function DashboardExecutivo() {
             <CardContent>
               <div className="space-y-2 max-h-[320px] sm:max-h-[400px] overflow-y-auto min-w-0">
                 {dashboard.topProdutos.map((produto, index) => (
-                  <div key={produto.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl min-h-[44px] sm:min-h-0">
+                  <div key={produto.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl min-h-[44px] sm:min-h-0">
                     <div className="flex items-center gap-3 flex-1">
-                      <Badge variant="outline" className="font-bold">
+                      <Badge variant="outline" className="font-bold rounded-full">
                         #{index + 1}
                       </Badge>
                       <div className="flex-1 min-w-0">
@@ -290,7 +290,7 @@ export default function DashboardExecutivo() {
           </Card>
           
           {/* Top 10 Vendedores */}
-          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
+          <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm min-w-0 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
                 <Users className="h-5 w-5 shrink-0" />
@@ -301,9 +301,9 @@ export default function DashboardExecutivo() {
             <CardContent>
               <div className="space-y-2 max-h-[320px] sm:max-h-[400px] overflow-y-auto min-w-0">
                 {dashboard.topVendedores.map((vendedor, index) => (
-                  <div key={vendedor.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-xl min-h-[44px] sm:min-h-0">
+                  <div key={vendedor.id} className="flex items-center justify-between p-2 sm:p-2.5 border-2 border-gray-200 dark:border-gray-600 rounded-2xl min-h-[44px] sm:min-h-0">
                     <div className="flex items-center gap-3 flex-1">
-                      <Badge variant="outline" className="font-bold">
+                      <Badge variant="outline" className="font-bold rounded-full">
                         #{index + 1}
                       </Badge>
                       <div className="flex-1 min-w-0">

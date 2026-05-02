@@ -74,7 +74,7 @@ export function DateFilterBar({
   };
 
   return (
-    <Card className={cn("flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0", className)}>
+    <Card className={cn("flex-shrink-0 border-2 border-gray-300 dark:border-gray-600 rounded-2xl md:rounded-full shadow-sm min-w-0 overflow-hidden", className)}>
       <CardContent className="p-3">
         <div className="flex flex-wrap items-center gap-2">
           {/* Botões de filtro rápido — mobile: toque confortável */}
@@ -120,7 +120,7 @@ export function DateFilterBar({
                 variant={dateFilter === 'custom' && customDateStart && customDateEnd ? 'default' : 'outline'}
                 size="sm"
                 className={cn(
-                  "min-h-[44px] sm:min-h-0 sm:h-8 rounded-xl touch-manipulation text-xs sm:text-xs justify-start text-left font-normal border-2 w-full sm:w-auto",
+                  "min-h-[44px] sm:min-h-0 sm:h-8 rounded-full touch-manipulation text-xs sm:text-xs justify-start text-left font-normal border-2 w-full sm:w-auto",
                   dateFilter === 'custom' && customDateStart && customDateEnd && "bg-primary text-primary-foreground"
                 )}
               >
@@ -157,7 +157,7 @@ export function DateFilterBar({
                           }
                         }
                       }}
-                      className="min-h-[44px] sm:h-8 rounded-xl touch-manipulation text-sm"
+                      className="min-h-[44px] sm:h-8 rounded-full touch-manipulation text-sm"
                     />
                   </div>
                   <div>
@@ -175,7 +175,7 @@ export function DateFilterBar({
                           }
                         }
                       }}
-                      className="min-h-[44px] sm:h-8 rounded-xl touch-manipulation text-sm"
+                      className="min-h-[44px] sm:h-8 rounded-full touch-manipulation text-sm"
                     />
                   </div>
                 </div>

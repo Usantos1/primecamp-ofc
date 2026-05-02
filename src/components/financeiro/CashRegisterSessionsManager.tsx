@@ -20,6 +20,7 @@ import { Lock, Plus, Minus, Printer } from 'lucide-react';
 import { SALE_STATUS_LABELS, type SaleStatus } from '@/types/pdv';
 import { printTermica } from '@/utils/pdfGenerator';
 import { buildCashClosingTermicaHtml } from '@/utils/cashClosingTermicaGenerator';
+import { cn } from '@/lib/utils';
 
 type CashSession = {
   id: string;
@@ -476,7 +477,7 @@ export function CashRegisterSessionsManager({
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="rounded-2xl overflow-hidden">
         <CardHeader>
           <CardTitle>Caixas (Sessões)</CardTitle>
         </CardHeader>
@@ -486,14 +487,14 @@ export function CashRegisterSessionsManager({
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl overflow-hidden">
       <CardHeader>
         <div className="flex flex-col gap-2">
           <CardTitle>Caixas (Sessões)</CardTitle>
           {Object.keys(totalsByMethod).length > 0 && (
             <div className="flex flex-wrap gap-2">
               {Object.entries(totalsByMethod).map(([forma, valor]) => (
-                <Badge key={forma} variant="outline" className="gap-2">
+                <Badge key={forma} variant="outline" className="gap-2 rounded-full px-3 py-1">
                   <span className="font-medium">{labelForma(forma)}:</span>
                   <span className="font-bold">{fmt(valor)}</span>
                 </Badge>
@@ -510,7 +511,7 @@ export function CashRegisterSessionsManager({
               : 'Nenhuma sessão de caixa encontrada no período selecionado.'}
           </div>
         ) : (
-          <div className="border rounded-xl overflow-hidden">
+          <div className="border rounded-2xl overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -533,7 +534,7 @@ export function CashRegisterSessionsManager({
                     <TableCell className="font-medium">#{s.numero ?? '-'}</TableCell>
                     <TableCell>{s.operador_nome || '-'}</TableCell>
                     <TableCell>
-                      <Badge className={s.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      <Badge className={cn('rounded-full', s.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800')}>
                         {s.status === 'open' ? 'Aberto' : 'Fechado'}
                       </Badge>
                     </TableCell>
@@ -549,7 +550,7 @@ export function CashRegisterSessionsManager({
                       {s.totais_forma_pagamento && Object.keys(s.totais_forma_pagamento).length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {Object.entries(s.totais_forma_pagamento).map(([forma, valor]) => (
-                            <Badge key={forma} variant="outline" className="text-xs">
+                            <Badge key={forma} variant="outline" className="text-xs rounded-full">
                               {labelForma(forma)} {fmt(Number(valor || 0))}
                             </Badge>
                           ))}
@@ -559,7 +560,7 @@ export function CashRegisterSessionsManager({
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelected(s); }}>
+                      <Button variant="outline" size="sm" className="rounded-full" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelected(s); }}>
                         Ver
                       </Button>
                     </TableCell>
@@ -595,33 +596,33 @@ export function CashRegisterSessionsManager({
           {selected && (
             <div className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1 -mr-1">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Operador(a)</div>
                   <div className="font-semibold">{selected.operador_nome || '-'}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Abertura</div>
                   <div className="font-semibold">{selected.opened_at ? dateFormatters.long(selected.opened_at) : '-'}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Fechamento</div>
                   <div className="font-semibold">{selected.closed_at ? dateFormatters.long(selected.closed_at) : '-'}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Diferença</div>
                   <div className="font-bold">{fmt(Number(selected.divergencia || 0))}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Inicial</div>
                   <div className="font-semibold">{fmt(Number(selected.valor_inicial || 0))}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Esperado</div>
                   <div className="font-semibold">{fmt(Number(selected.valor_esperado ?? selected.valor_inicial ?? 0))}</div>
                 </div>
-                <div className="p-3 bg-muted/50 rounded-xl">
+                <div className="p-3 bg-muted/50 rounded-2xl md:rounded-full">
                   <div className="text-xs text-muted-foreground">Final</div>
                   <div className="font-semibold">{fmt(Number(selected.valor_final ?? 0))}</div>
                 </div>

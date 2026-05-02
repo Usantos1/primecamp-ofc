@@ -354,7 +354,7 @@ export function DREComplete({
   }, [transactions, sales, billsPaid, saleItems, osItems, produtos]);
 
   return (
-    <Card className="rounded-xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden min-w-0">
+    <Card className="rounded-2xl border-2 border-gray-300 dark:border-gray-600 overflow-hidden min-w-0">
       <CardHeader className="pb-2">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-4">
           <div className="min-w-0">
@@ -370,13 +370,13 @@ export function DREComplete({
               onCustomDateStartChange={onCustomDateStartChange}
               onCustomDateEndChange={onCustomDateEndChange}
               onDatesChange={onDatesChange}
-              className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm flex-shrink-0 w-full sm:w-auto min-w-0"
+              className="border-2 border-gray-300 dark:border-gray-600 rounded-2xl md:rounded-full shadow-sm flex-shrink-0 w-full sm:w-auto min-w-0"
             />
           )}
         </div>
       </CardHeader>
       <CardContent className="min-w-0">
-        <div className="border-2 border-gray-200 dark:border-gray-600 rounded-xl overflow-x-auto min-w-0">
+        <div className="border-2 border-gray-200 dark:border-gray-600 rounded-2xl overflow-x-auto min-w-0">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -556,32 +556,32 @@ export function DREComplete({
         </div>
 
         {/* Indicadores */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="p-3 bg-green-50 rounded-xl text-center border border-green-200">
-            <p className="text-xs text-muted-foreground">Receita Bruta</p>
-            <p className="text-lg font-bold text-green-600">{fmt(dreData.receitaBrutaVendas)}</p>
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
+          <div className="flex h-14 items-center justify-between gap-2 bg-green-50 rounded-2xl md:rounded-full border-2 border-green-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Receita Bruta</p>
+            <p className="text-lg font-bold text-green-600 tabular-nums shrink-0">{fmt(dreData.receitaBrutaVendas)}</p>
           </div>
-          <div className="p-3 bg-orange-50 rounded-xl text-center border border-orange-200">
-            <p className="text-xs text-muted-foreground">Custo (CMV)</p>
-            <p className="text-lg font-bold text-orange-600">{fmt(dreData.cmv)}</p>
+          <div className="flex h-14 items-center justify-between gap-2 bg-orange-50 rounded-2xl md:rounded-full border-2 border-orange-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Custo (CMV)</p>
+            <p className="text-lg font-bold text-orange-600 tabular-nums shrink-0">{fmt(dreData.cmv)}</p>
           </div>
-          <div className="p-3 bg-red-50 rounded-xl text-center border border-red-200">
-            <p className="text-xs text-muted-foreground">Despesas</p>
-            <p className="text-lg font-bold text-red-600">{fmt(dreData.totalDespesasOperacionais)}</p>
+          <div className="flex h-14 items-center justify-between gap-2 bg-red-50 rounded-2xl md:rounded-full border-2 border-red-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Despesas</p>
+            <p className="text-lg font-bold text-red-600 tabular-nums shrink-0">{fmt(dreData.totalDespesasOperacionais)}</p>
           </div>
-          <div className="p-3 bg-red-50 rounded-xl text-center border border-red-200">
-            <p className="text-xs text-muted-foreground">Custo total de despesas</p>
-            <p className="text-lg font-bold text-red-600">
+          <div className="flex h-14 items-center justify-between gap-2 bg-red-50 rounded-2xl md:rounded-full border-2 border-red-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Custo total</p>
+            <p className="text-lg font-bold text-red-600 tabular-nums shrink-0">
               {fmt(dreData.impostos + dreData.cmv + dreData.totalDespesasOperacionais)}
             </p>
           </div>
           <div className={cn(
-            "p-3 rounded-xl text-center border",
+            "flex h-14 items-center justify-between gap-2 rounded-2xl md:rounded-full border-2 px-4 min-w-0 col-span-2 md:col-span-1",
             dreData.lucroLiquido >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
           )}>
-            <p className="text-xs text-muted-foreground">Lucro Líquido</p>
+            <p className="text-xs text-muted-foreground truncate">Lucro Líquido</p>
             <p className={cn(
-              "text-lg font-bold",
+              "text-lg font-bold tabular-nums shrink-0",
               dreData.lucroLiquido >= 0 ? 'text-green-700' : 'text-red-700'
             )}>
               {fmt(dreData.lucroLiquido)}

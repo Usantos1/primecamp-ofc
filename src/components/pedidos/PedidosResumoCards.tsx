@@ -56,27 +56,27 @@ export function PedidosResumoCards({ pedidos }: Props) {
   }, [pedidos]);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
       {metrics.map((m) => {
         const Icon = m.icon;
         return (
           <Card
             key={m.label}
-            className="rounded-xl border-2 border-gray-300 dark:border-gray-700 px-3 py-3 sm:px-4 sm:py-3.5 flex items-center gap-3 min-w-0"
+            className="rounded-2xl md:rounded-full border-2 border-gray-300 dark:border-gray-700 px-3 md:px-4 py-0 h-14 flex items-center gap-3 min-w-0 overflow-hidden"
           >
             <div
               className={cn(
-                'h-10 w-10 sm:h-11 sm:w-11 rounded-lg flex items-center justify-center shrink-0',
+                'h-9 w-9 rounded-full flex items-center justify-center shrink-0',
                 m.iconClass
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4" />
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 md:flex md:items-center md:justify-between md:gap-2">
               <p className="text-[11px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wide truncate">
                 {m.label}
               </p>
-              <p className="text-base sm:text-lg font-bold text-foreground tabular-nums truncate">
+              <p className="text-base sm:text-lg font-bold text-foreground tabular-nums truncate md:shrink-0">
                 {m.value}
               </p>
             </div>

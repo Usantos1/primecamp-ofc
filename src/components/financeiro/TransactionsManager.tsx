@@ -400,7 +400,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
   }
 
   return (
-    <Card className="overflow-hidden min-w-0">
+    <Card className="overflow-hidden min-w-0 rounded-2xl">
       <CardHeader className="pb-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="min-w-0">
@@ -416,31 +416,31 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
       <CardContent className="space-y-4 min-w-0">
         {/* Resumo — mobile: 2 colunas */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 min-w-0">
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200">
-            <p className="text-xs text-muted-foreground">Total Custo</p>
-            <p className="text-lg font-bold text-red-600">{fmt(totalCusto)}</p>
+          <div className="flex h-14 items-center justify-between gap-2 rounded-2xl md:rounded-full bg-red-50 border-2 border-red-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Total Custo</p>
+            <p className="text-lg font-bold text-red-600 tabular-nums shrink-0">{fmt(totalCusto)}</p>
           </div>
-          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
-            <p className="text-xs text-muted-foreground">Total Vendas</p>
-            <p className="text-lg font-bold text-blue-600">{fmt(totalVenda)}</p>
+          <div className="flex h-14 items-center justify-between gap-2 rounded-2xl md:rounded-full bg-blue-50 border-2 border-blue-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Total Vendas</p>
+            <p className="text-lg font-bold text-blue-600 tabular-nums shrink-0">{fmt(totalVenda)}</p>
           </div>
-          <div className="p-3 rounded-xl bg-orange-50 border border-orange-200">
-            <p className="text-xs text-muted-foreground">Total Despesas</p>
-            <p className="text-lg font-bold text-orange-600">{fmt(totalDespesas)}</p>
+          <div className="flex h-14 items-center justify-between gap-2 rounded-2xl md:rounded-full bg-orange-50 border-2 border-orange-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Total Despesas</p>
+            <p className="text-lg font-bold text-orange-600 tabular-nums shrink-0">{fmt(totalDespesas)}</p>
           </div>
-          <div className="p-3 rounded-xl bg-green-50 border border-green-200">
-            <p className="text-xs text-muted-foreground">Total Lucro</p>
-            <p className="text-lg font-bold text-green-600">{fmt(totalLucro)}</p>
+          <div className="flex h-14 items-center justify-between gap-2 rounded-2xl md:rounded-full bg-green-50 border-2 border-green-200 px-4 min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Total Lucro</p>
+            <p className="text-lg font-bold text-green-600 tabular-nums shrink-0">{fmt(totalLucro)}</p>
           </div>
           <div className={cn(
-            "p-3 rounded-xl border",
+            "flex h-14 items-center justify-between gap-2 rounded-2xl md:rounded-full border-2 px-4 min-w-0 col-span-2 md:col-span-1",
             totalEntradas - totalSaidas >= 0 
               ? "bg-primary/10 border-primary/30" 
               : "bg-destructive/10 border-destructive/30"
           )}>
-            <p className="text-xs text-muted-foreground">Saldo (Entradas - Saídas)</p>
+            <p className="text-xs text-muted-foreground truncate">Saldo</p>
             <p className={cn(
-              "text-lg font-bold",
+              "text-lg font-bold tabular-nums shrink-0",
               totalEntradas - totalSaidas >= 0 ? "text-primary" : "text-destructive"
             )}>
               {fmt(totalEntradas - totalSaidas)}
@@ -449,14 +449,14 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
         </div>
 
         {/* Filtros — mobile: toque confortável */}
-        <div className="flex flex-col sm:flex-row gap-3 min-w-0">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center min-w-0">
           <div className="relative flex-1 min-w-0 max-w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Buscar transações..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 min-h-[44px] sm:min-h-0 rounded-xl touch-manipulation"
+              className="pl-9 min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -486,7 +486,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
               {paginatedTransactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-card p-3 min-w-0"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -494,7 +494,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                         <span className="text-xs text-muted-foreground">{dateFormatters.short(transaction.date)}</span>
                         <Badge className={cn(
-                          'text-[10px]',
+                          'text-[10px] rounded-full',
                           transaction.source === 'bill'
                             ? 'bg-orange-100 text-orange-700 border-orange-300'
                             : transaction.type === 'entrada'
@@ -547,7 +547,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
               ))}
             </div>
             {/* Desktop: tabela com scroll horizontal */}
-            <div className="hidden md:block border rounded-xl overflow-x-auto min-w-0">
+            <div className="hidden md:block border rounded-2xl overflow-x-auto min-w-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -567,6 +567,7 @@ export function TransactionsManager({ month, startDate, endDate, valuesVisible =
                       <TableCell>{dateFormatters.short(transaction.date)}</TableCell>
                       <TableCell>
                         <Badge className={cn(
+                          'rounded-full',
                           transaction.source === 'bill'
                             ? 'bg-orange-100 text-orange-700 border-orange-300'
                             : transaction.type === 'entrada'

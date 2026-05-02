@@ -245,9 +245,9 @@ export default function Relatorios() {
       title="Relatórios"
       subtitle="Vendas, tendências e produtividade"
     >
-      <div className="flex flex-col gap-3 md:gap-4 pb-6 [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full [&_[role=tab]]:rounded-full">
+      <div className="flex flex-col gap-3 md:gap-4 pb-6 [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full [&_[role=tab]]:rounded-full [&_.rounded-xl]:rounded-2xl [&_badge]:rounded-full">
         {/* Filtros */}
-        <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm flex-shrink-0">
+        <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-2xl shadow-sm flex-shrink-0 overflow-hidden">
           <CardContent className="p-3 md:p-4">
             <div className="md:hidden grid grid-cols-2 gap-2">
               <Popover>
@@ -293,7 +293,7 @@ export default function Relatorios() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="hidden md:grid grid-cols-5 gap-3 items-end">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 items-end">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Data Início</Label>
                 <Popover>
@@ -369,7 +369,7 @@ export default function Relatorios() {
         {/* Conteúdo com Tabs — overflow-visible e espaço inferior para não cortar o widget */}
         <div className="w-full min-w-0 overflow-visible">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 overflow-visible">
-            <TabsList className="h-auto flex w-full flex-wrap gap-2 p-2 pb-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl items-stretch justify-start overflow-x-auto overflow-y-visible bg-muted/40 mb-1 shadow-sm">
+            <TabsList className="h-auto grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-7 gap-2 p-2 border-2 border-gray-300 dark:border-gray-600 rounded-2xl items-stretch overflow-visible bg-muted/40 mb-1 shadow-sm">
               {(
                 [
                   ['summary', BarChart3, 'Resumo geral'],
@@ -391,7 +391,7 @@ export default function Relatorios() {
                   key={id}
                   value={id}
                   className={cn(
-                    'min-h-11 flex-1 min-w-[8.5rem] max-w-[14rem] rounded-full font-semibold flex items-center justify-center gap-2 transition-all px-2',
+                    'min-h-11 w-full min-w-0 rounded-full font-semibold flex items-center justify-center gap-2 transition-all px-2',
                     'data-[state=inactive]:bg-gray-200 data-[state=inactive]:text-gray-800 data-[state=inactive]:shadow-sm',
                     'dark:data-[state=inactive]:bg-gray-700 dark:data-[state=inactive]:text-gray-100',
                     'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md'
@@ -412,52 +412,44 @@ export default function Relatorios() {
               {isLoadingSummary ? (
                 <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Carregando...</div>
               ) : summary ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0">
-                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
-                    <CardContent className="p-4 min-w-0">
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-muted-foreground font-semibold truncate">Total PDV</p>
-                          <p className="text-lg font-bold text-blue-700 dark:text-blue-400 mt-1 truncate" title={fmt(summary.totalPDV)}>{fmt(summary.totalPDV)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{summary.countPDV} {summary.countPDV === 1 ? 'venda' : 'vendas'}</p>
-                        </div>
-                        <ShoppingCart className="h-8 w-8 text-blue-500 opacity-50 flex-shrink-0" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 min-w-0">
+                  <Card className="border-2 border-blue-300 dark:border-blue-700 rounded-2xl md:rounded-full shadow-sm min-w-0 overflow-hidden">
+                    <CardContent className="flex h-14 items-center justify-between gap-3 px-4 py-0 min-w-0">
+                      <ShoppingCart className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                      <div className="min-w-0 flex-1 md:flex md:items-center md:justify-between md:gap-2">
+                        <p className="text-xs text-muted-foreground font-semibold truncate">Total PDV</p>
+                        <p className="text-lg font-bold text-blue-700 dark:text-blue-400 tabular-nums truncate md:shrink-0" title={fmt(summary.totalPDV)}>{fmt(summary.totalPDV)}</p>
+                        <p className="text-xs text-muted-foreground md:hidden">{summary.countPDV} {summary.countPDV === 1 ? 'venda' : 'vendas'}</p>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
-                    <CardContent className="p-4 min-w-0">
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-muted-foreground font-semibold truncate">Total OS</p>
-                          <p className="text-lg font-bold text-green-700 dark:text-green-400 mt-1 truncate" title={fmt(summary.totalOS)}>{fmt(summary.totalOS)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{summary.countOS} {summary.countOS === 1 ? 'OS' : 'OS'}</p>
-                        </div>
-                        <Wrench className="h-8 w-8 text-green-500 opacity-50 flex-shrink-0" />
+                  <Card className="border-2 border-green-300 dark:border-green-700 rounded-2xl md:rounded-full shadow-sm min-w-0 overflow-hidden">
+                    <CardContent className="flex h-14 items-center justify-between gap-3 px-4 py-0 min-w-0">
+                      <Wrench className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <div className="min-w-0 flex-1 md:flex md:items-center md:justify-between md:gap-2">
+                        <p className="text-xs text-muted-foreground font-semibold truncate">Total OS</p>
+                        <p className="text-lg font-bold text-green-700 dark:text-green-400 tabular-nums truncate md:shrink-0" title={fmt(summary.totalOS)}>{fmt(summary.totalOS)}</p>
+                        <p className="text-xs text-muted-foreground md:hidden">{summary.countOS} OS</p>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
-                    <CardContent className="p-4 min-w-0">
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-muted-foreground font-semibold truncate">Total Geral</p>
-                          <p className="text-lg font-bold text-purple-700 dark:text-purple-400 mt-1 truncate" title={fmt(summary.totalGeral)}>{fmt(summary.totalGeral)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{summary.countGeral} {summary.countGeral === 1 ? 'venda' : 'vendas'}</p>
-                        </div>
-                        <DollarSign className="h-8 w-8 text-purple-500 opacity-50 flex-shrink-0" />
+                  <Card className="border-2 border-purple-300 dark:border-purple-700 rounded-2xl md:rounded-full shadow-sm min-w-0 overflow-hidden">
+                    <CardContent className="flex h-14 items-center justify-between gap-3 px-4 py-0 min-w-0">
+                      <DollarSign className="h-5 w-5 text-purple-500 flex-shrink-0" />
+                      <div className="min-w-0 flex-1 md:flex md:items-center md:justify-between md:gap-2">
+                        <p className="text-xs text-muted-foreground font-semibold truncate">Total Geral</p>
+                        <p className="text-lg font-bold text-purple-700 dark:text-purple-400 tabular-nums truncate md:shrink-0" title={fmt(summary.totalGeral)}>{fmt(summary.totalGeral)}</p>
+                        <p className="text-xs text-muted-foreground md:hidden">{summary.countGeral} {summary.countGeral === 1 ? 'venda' : 'vendas'}</p>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="border-2 border-gray-300 dark:border-gray-600 rounded-xl shadow-sm min-w-0 overflow-hidden">
-                    <CardContent className="p-4 min-w-0">
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-muted-foreground font-semibold truncate">% PDV</p>
-                          <p className="text-lg font-bold text-orange-700 dark:text-orange-400 mt-1">{summary.percentPDV.toFixed(1)}%</p>
-                          <p className="text-xs text-muted-foreground mt-1">% OS: {summary.percentOS.toFixed(1)}%</p>
-                        </div>
-                        <TrendingUp className="h-8 w-8 text-orange-500 opacity-50 flex-shrink-0" />
+                  <Card className="border-2 border-orange-300 dark:border-orange-700 rounded-2xl md:rounded-full shadow-sm min-w-0 overflow-hidden">
+                    <CardContent className="flex h-14 items-center justify-between gap-3 px-4 py-0 min-w-0">
+                      <TrendingUp className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                      <div className="min-w-0 flex-1 md:flex md:items-center md:justify-between md:gap-2">
+                        <p className="text-xs text-muted-foreground font-semibold truncate">% PDV</p>
+                        <p className="text-lg font-bold text-orange-700 dark:text-orange-400 tabular-nums md:shrink-0">{summary.percentPDV.toFixed(1)}%</p>
+                        <p className="text-xs text-muted-foreground md:hidden">% OS: {summary.percentOS.toFixed(1)}%</p>
                       </div>
                     </CardContent>
                   </Card>

@@ -60,15 +60,13 @@ function WalletSaldoCard({
   const displaySaldo = valuesVisible ? currencyFormatters.brl(saldo) : MASKED_VALUE;
   if (compact) {
     return (
-      <Card className="overflow-hidden min-w-0 flex-1 basis-0 min-h-0 flex flex-col rounded-xl">
-        <CardHeader className="pb-0 pt-1.5 px-2 sm:pt-2">
-          <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
-            <Wallet className="h-3 w-3 flex-shrink-0" />
+      <Card className="overflow-hidden min-w-0 flex-1 basis-0 h-14 rounded-full border-2 flex items-center">
+        <CardContent className="flex w-full items-center justify-between gap-2 px-4 py-0 min-w-0">
+          <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate min-w-0">
+            <Wallet className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="truncate">{name}</span>
           </CardTitle>
-        </CardHeader>
-        <CardContent className="px-2 pb-1.5 sm:pb-2 pt-0 flex-1 flex flex-col justify-end min-h-0">
-          <p className={cn('text-xs sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
+          <p className={cn('text-xs sm:text-base font-bold tabular-nums truncate shrink-0', isNegative ? 'text-destructive' : 'text-foreground')}>
             {displaySaldo}
           </p>
         </CardContent>
@@ -115,24 +113,22 @@ function SaldoCard({
   const displayTaxa = valuesVisible ? currencyFormatters.brl(taxa) : MASKED_VALUE;
   if (compact) {
     return (
-      <Card className="overflow-hidden min-w-0 min-w-[100px] flex-1 basis-0 min-h-[72px] flex flex-col">
-        <CardHeader className="pb-0.5 pt-2 px-2">
-          <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate">
-            <Banknote className="h-3 w-3 flex-shrink-0" />
+      <Card className="overflow-hidden min-w-0 min-w-[120px] flex-1 basis-0 h-14 rounded-full border-2 flex items-center">
+        <CardContent className="flex w-full items-center justify-between gap-2 px-4 py-0 min-w-0">
+          <CardTitle className="text-[10px] sm:text-xs font-medium text-muted-foreground flex items-center gap-1 truncate min-w-0">
+            <Banknote className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="truncate">{labelForma(forma, paymentMethods)}</span>
           </CardTitle>
-        </CardHeader>
-        <CardContent className="px-2 pb-2 pt-0 flex-1 flex flex-col justify-end min-h-[2.5rem]">
-          <p className={cn('text-sm sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
-            {displaySaldo}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-0.5 min-h-[1rem] line-clamp-2 break-words">
-            {(bruto > 0 || taxa !== 0) ? (
-              <>Bruto {displayBruto}{taxa > 0 && <> · −{displayTaxa}</>}</>
-            ) : (
-              <span className="invisible">—</span>
+          <div className="text-right min-w-0 shrink-0">
+            <p className={cn('text-sm sm:text-base font-bold tabular-nums truncate', isNegative ? 'text-destructive' : 'text-foreground')}>
+              {displaySaldo}
+            </p>
+            {(bruto > 0 || taxa !== 0) && (
+              <p className="hidden xl:block text-[10px] text-muted-foreground truncate">
+                Bruto {displayBruto}{taxa > 0 && <> · −{displayTaxa}</>}
+              </p>
             )}
-          </p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -423,7 +419,7 @@ export function CaixaGeral({
   }, [formasComSaldo, saldoPorForma]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 [&_button]:rounded-full [&_input]:rounded-full [&_[role=combobox]]:rounded-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold shrink-0">Caixa geral (tesouraria)</h2>
         {/* Único bloco de filtros: Período + Status + ações — mobile: wrap e toque confortável */}
@@ -436,7 +432,7 @@ export function CaixaGeral({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    'min-h-[44px] sm:h-8 w-full min-w-[140px] sm:w-[160px] text-xs justify-start font-normal rounded-xl touch-manipulation',
+                    'min-h-[44px] sm:h-9 w-full min-w-[140px] sm:w-[160px] text-xs justify-start font-normal rounded-full touch-manipulation',
                     dateFilter === 'custom' && customDateStart && customDateEnd && 'text-foreground'
                   )}
                 >
@@ -542,9 +538,9 @@ export function CaixaGeral({
               <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Carteiras (saldo real)
             </h3>
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 min-w-0">
               {walletList.map((w) => (
-                <div key={w.id} className="min-w-0 w-full sm:w-[min(100%,200px)]">
+                <div key={w.id} className="min-w-0">
                   <WalletSaldoCard
                     name={w.name}
                     saldo={round2(saldoPorWallet[w.id] ?? 0)}
@@ -558,9 +554,9 @@ export function CaixaGeral({
 
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">Por forma de pagamento</h3>
-            <div className="flex flex-wrap justify-center gap-2 min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2 min-w-0">
               {formasComSaldo.map((forma) => (
-                <div key={forma} className="w-[min(100%,140px)] sm:w-[min(100%,160px)]">
+                <div key={forma} className="min-w-0">
                   <SaldoCard
                     forma={forma}
                     saldo={round2(saldoPorForma[forma] ?? 0)}
@@ -575,19 +571,19 @@ export function CaixaGeral({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 text-sm">
-            <span className="flex items-center gap-1 text-muted-foreground">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+            <span className="flex h-10 items-center gap-2 rounded-full border px-4 text-muted-foreground min-w-0">
               <TrendingDown className="h-4 w-4 text-destructive" /> Sangrias totais: <strong className="text-foreground">{valuesVisible ? currencyFormatters.brl(sangriaTotal) : MASKED_VALUE}</strong>
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
+            <span className="flex h-10 items-center gap-2 rounded-full border px-4 text-muted-foreground min-w-0">
               <TrendingUp className="h-4 w-4 text-green-600" /> Suprimentos totais: <strong className="text-foreground">{valuesVisible ? currencyFormatters.brl(suprimentoTotal) : MASKED_VALUE}</strong>
             </span>
-            <span className="font-semibold tabular-nums">
+            <span className="flex h-10 items-center rounded-full border px-4 font-semibold tabular-nums min-w-0">
               Saldo geral: {valuesVisible ? currencyFormatters.brl(totalGeral) : MASKED_VALUE}
             </span>
           </div>
 
-          <Card>
+          <Card className="rounded-2xl overflow-hidden">
             <CardHeader>
               <CardTitle className="text-base">Espelho (movimentos)</CardTitle>
               <p className="text-sm text-muted-foreground">Entradas e saídas por forma de pagamento — valores líquidos (após taxas de cada forma de pagamento).</p>
