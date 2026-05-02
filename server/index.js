@@ -480,6 +480,26 @@ try {
     }, 60 * 1000);
     console.log('[Server] ✅ Worker de mensagens de aniversário agendado (1 min)');
   }
+
+  if (alertsRoutes) {
+    const runBillAlerts = () => {
+      import('./jobs/billAlertWorker.js')
+        .then((m) => m.runBillAlertTick(pool))
+        .then((r) => {
+          if ((r?.processed || 0) > 0) {
+            console.log('[Bill Alert Worker]', r);
+          }
+        })
+        .catch((err) => {
+          if (!String(err.message || err).includes('does not exist')) {
+            console.error('[Bill Alert Worker]', err.message || err);
+          }
+        });
+    };
+    setTimeout(runBillAlerts, 10 * 1000);
+    setInterval(runBillAlerts, 15 * 60 * 1000);
+    console.log('[Server] ✅ Worker de alertas de contas a pagar agendado (15 min)');
+  }
   
   // Jobs de financeiro/IA (assíncrono para não bloquear)
   (async () => {
