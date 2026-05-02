@@ -63,6 +63,15 @@ dotenv.config({ path: join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const MAX_SAFE_TIMEOUT_MS = 2_147_000_000; // Limite do setTimeout em Node.js (~24,8 dias)
+
+function scheduleLongTimeout(callback, delayMs) {
+  const delay = Math.max(0, Number(delayMs) || 0);
+  if (delay > MAX_SAFE_TIMEOUT_MS) {
+    return setTimeout(() => scheduleLongTimeout(callback, delay - MAX_SAFE_TIMEOUT_MS), MAX_SAFE_TIMEOUT_MS);
+  }
+  return setTimeout(callback, delay);
+}
 
 // Trust proxy para funcionar corretamente atrás do Nginx
 app.set('trust proxy', 1);
@@ -517,7 +526,7 @@ try {
       proximaMeiaNoite.setHours(24, 0, 0, 0);
       const msAteMeiaNoite = proximaMeiaNoite.getTime() - agora.getTime();
       
-      setTimeout(() => {
+      scheduleLongTimeout(() => {
         financeiroJobs.criarSnapshotDiarioVendas();
         financeiroJobs.gerarRecomendacoesEstoque();
         
@@ -528,25 +537,28 @@ try {
         }, 24 * 60 * 60 * 1000);
       }, msAteMeiaNoite);
       
-      // Análise mensal (dia 1 de cada mês, às 01:00)
-      const proximoDia1 = new Date(agora);
-      proximoDia1.setDate(1);
-      proximoDia1.setHours(1, 0, 0, 0);
-      if (proximoDia1 <= agora) {
-        proximoDia1.setMonth(proximoDia1.getMonth() + 1);
-      }
-      const msAteDia1 = proximoDia1.getTime() - agora.getTime();
-      
-      setTimeout(() => {
-        financeiroJobs.calcularAnaliseMensalProdutos();
-        financeiroJobs.calcularAnaliseMensalVendedores();
-        
-        // Depois, executar mensalmente (aproximado - 30 dias)
-        setInterval(() => {
-          financeiroJobs.calcularAnaliseMensalProdutos();
-          financeiroJobs.calcularAnaliseMensalVendedores();
-        }, 30 * 24 * 60 * 60 * 1000);
-      }, msAteDia1);
+      // Análise mensal (dia 1 de cada mês, às 01:00). Não usar setInterval de 30 dias:
+      // esse intervalo ultrapassa o limite seguro do Node e pode disparar em loop.
+      const scheduleNextMonthlyAnalysis = () => {
+        const now = new Date();
+        const nextRun = new Date(now);
+        nextRun.setDate(1);
+        nextRun.setHours(1, 0, 0, 0);
+        if (nextRun <= now) {
+          nextRun.setMonth(nextRun.getMonth() + 1);
+        }
+
+        const delayMs = nextRun.getTime() - now.getTime();
+        console.log(`[Server] Próxima análise mensal financeira agendada para ${nextRun.toISOString()}`);
+
+        scheduleLongTimeout(async () => {
+          await financeiroJobs.calcularAnaliseMensalProdutos().catch(e => console.error('[Financeiro Jobs] Erro mensal:', e));
+          await financeiroJobs.calcularAnaliseMensalVendedores().catch(e => console.error('[Financeiro Jobs] Erro mensal:', e));
+          scheduleNextMonthlyAnalysis();
+        }, delayMs);
+      };
+
+      scheduleNextMonthlyAnalysis();
       
       console.log('[Server] ✅ Jobs de financeiro/IA agendados');
     } catch (error) {
