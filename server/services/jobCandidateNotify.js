@@ -109,7 +109,7 @@ export async function notifyAdminsNewJobCandidate(pool, { surveyRow, responseRow
   }
 
   try {
-    const sender = createWhatsAppSender(pool, companyId);
+    const sender = createWhatsAppSender(pool, companyId, { tokenKind: 'sensitive' });
     const result = await dispatch({
       companyId,
       codigoAlerta: 'rh.nova_candidatura',

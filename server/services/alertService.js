@@ -452,16 +452,21 @@ export { pool as alertPool };
  * Ex.: const sender = createWhatsAppSender(pool, companyId);
  *      await dispatch({ companyId, codigoAlerta: 'os.criada', payload: {...}, sendMessage: sender, db: pool });
  */
-export function createWhatsAppSender(poolOrClient, companyId) {
+export function createWhatsAppSender(poolOrClient, companyId, options = {}) {
   const fetch = typeof globalThis.fetch === 'function' ? globalThis.fetch : null;
+  const tokenKind = options.tokenKind === 'sensitive' ? 'sensitive' : 'common';
+  const tokenField = tokenKind === 'sensitive' ? 'ativaCrmSensitiveToken' : 'ativaCrmToken';
+  const tokenError = tokenKind === 'sensitive'
+    ? 'Token sensível do Ativa CRM não configurado. Configure em Integrações > CRM.'
+    : 'Token do Ativa CRM não configurado. Configure em Integrações.';
   return async function sendMessage(number, body) {
     const key = `integration_settings_${companyId}`;
     const res = await poolOrClient.query(
       'SELECT value FROM kv_store_2c4defad WHERE key = $1',
       [key]
     );
-    const token = res.rows[0]?.value?.ativaCrmToken || null;
-    if (!token) return { ok: false, error: 'Token do Ativa CRM não configurado. Configure em Integrações.' };
+    const token = res.rows[0]?.value?.[tokenField] || null;
+    if (!token) return { ok: false, error: tokenError };
     if (!fetch) return { ok: false, error: 'Fetch não disponível' };
     const formattedNumber = String(number).replace(/\D/g, '');
     if (!formattedNumber) return { ok: false, error: 'Número inválido' };

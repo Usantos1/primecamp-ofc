@@ -21,6 +21,7 @@ type TabValue = (typeof TAB_VALUES)[number];
 
 interface IntegrationSettings {
   ativaCrmToken: string;
+  ativaCrmSensitiveToken: string;
   webhookUrl: string;
   aiProvider?: 'openai';
   aiApiKey?: string;
@@ -42,6 +43,7 @@ export default function Integration() {
   }, [tabParam, navigate]);
   const [settings, setSettings] = useState<IntegrationSettings>({
     ativaCrmToken: '',
+    ativaCrmSensitiveToken: '',
     webhookUrl: '',
     aiProvider: 'openai',
     aiApiKey: '',
@@ -131,6 +133,7 @@ export default function Integration() {
         const v = data.value as Record<string, unknown>;
         setSettings({
           ativaCrmToken: (v.ativaCrmToken as string) ?? '',
+          ativaCrmSensitiveToken: (v.ativaCrmSensitiveToken as string) ?? '',
           webhookUrl: (v.webhookUrl as string) ?? '',
           aiProvider: (v.aiProvider as 'openai') ?? 'openai',
           aiApiKey: (v.aiApiKey as string) ?? '',
@@ -304,16 +307,36 @@ export default function Integration() {
               </div>
             </div>
           </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="ativaCrmToken">Token de Acesso Ativa CRM</Label>
+                <Label htmlFor="ativaCrmToken">Token de Acesso Ativa CRM - Clientes e OS</Label>
                 <Input
                   id="ativaCrmToken"
                   type="password"
-                  placeholder="Bearer token para API do Ativa CRM"
+                  placeholder="Bearer token para mensagens comuns"
                   value={settings.ativaCrmToken}
                   onChange={(e) => setSettings({...settings, ativaCrmToken: e.target.value})}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Usado para mensagens comuns ao cliente, abertura/andamento de OS e demais envios operacionais.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ativaCrmSensitiveToken">Token Ativa CRM - Financeiro e Alertas Sensíveis</Label>
+                <Input
+                  id="ativaCrmSensitiveToken"
+                  type="password"
+                  placeholder="Bearer token do celular restrito para alertas"
+                  value={settings.ativaCrmSensitiveToken}
+                  onChange={(e) => setSettings({...settings, ativaCrmSensitiveToken: e.target.value})}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Usado exclusivamente pelo Painel de Alertas, incluindo financeiro, RH e dados internos. Configure aqui um WhatsApp que vendedores não acessam.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <p className="text-xs text-muted-foreground mb-2">
                   Obtenha seu token em:{' '}
                   <a href="https://app.ativacrm.com/connections" target="_blank" rel="noopener noreferrer" className="text-primary underline">
@@ -328,7 +351,7 @@ export default function Integration() {
                     className="w-full h-auto"
                   />
                 </div>
-                {settings.ativaCrmToken && (
+                {(settings.ativaCrmToken || settings.ativaCrmSensitiveToken) && (
                   <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
                     <p className="text-xs text-amber-700 dark:text-amber-300">
                       ⚠️ <strong>Importante:</strong> Certifique-se de configurar um WhatsApp padrão no Ativa CRM 

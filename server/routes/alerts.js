@@ -50,7 +50,7 @@ router.use(requireCompanyId);
 
 /** Envio via WhatsApp usando o serviço central (Ativa CRM). */
 function sendViaWhatsApp(companyId, number, body) {
-  const sender = createWhatsAppSender(pool, companyId);
+  const sender = createWhatsAppSender(pool, companyId, { tokenKind: 'sensitive' });
   return sender(number, body);
 }
 
@@ -215,7 +215,7 @@ router.post('/fire', async (req, res) => {
       return res.status(400).json({ error: 'codigo_alerta é obrigatório (ex.: os.criada, caixa.fechado)' });
     }
     const companyId = req.companyId;
-    const sendMessage = createWhatsAppSender(pool, companyId);
+    const sendMessage = createWhatsAppSender(pool, companyId, { tokenKind: 'sensitive' });
     const result = await dispatch({
       companyId,
       codigoAlerta,
