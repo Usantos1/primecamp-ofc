@@ -8984,6 +8984,83 @@ app.get('/api/api-logs', authenticateToken, async (req, res) => {
 // ENDPOINTS PÚBLICOS (com API Token)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function normalizeProductSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[{}[\]()"']/g, ' ')
+    .replace(/[?!.:,;|/\\_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function extractProductModelSearchTerms(value) {
+  const normalized = normalizeProductSearchText(value);
+  if (!normalized) return [];
+
+  const terms = new Set();
+  const add = (term) => {
+    const clean = normalizeProductSearchText(term)
+      .replace(/\b(modelo|aparelho|celular|smartphone)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (clean.length >= 2) terms.add(clean);
+  };
+
+  const patterns = [
+    /\biphone\s+(?:se\s*)?(?:\d{1,2}|x|xr|xs)(?:\s+(?:pro|max|mini|plus|ultra))*\b/gi,
+    /\bipad\s+(?:\d{1,2}|air|mini|pro)(?:\s+\d{1,2})?\b/gi,
+    /\bgalaxy\s+(?:a|s|m|j|note|z)\s*\d{1,3}\s*(?:e|s|plus|ultra|fe|5g)?\b/gi,
+    /\bsamsung\s+(?:a|s|m|j|note|z)\s*\d{1,3}\s*(?:e|s|plus|ultra|fe|5g)?\b/gi,
+    /\bmoto\s+(?:g|e)\s*\d{1,3}\s*(?:play|plus|power|stylus|5g)?\b/gi,
+    /\bmotorola\s+(?:g|e)\s*\d{1,3}\s*(?:play|plus|power|stylus|5g)?\b/gi,
+    /\bredmi\s+(?:note\s*)?\d{1,2}\s*(?:pro|plus|s|c|a|5g)?\b/gi,
+    /\bpoco\s+[a-z]\s*\d{1,2}\s*(?:pro|plus|5g)?\b/gi,
+  ];
+
+  patterns.forEach((pattern) => {
+    for (const match of normalized.matchAll(pattern)) {
+      add(match[0]);
+    }
+  });
+
+  if (terms.size === 0) {
+    let cleaned = normalized
+      .replace(/\b(quero|queria|gostaria|preciso|pode|poderia|me|passar|fazer|ver|saber|um|uma|o|a|os|as|de|da|do|das|dos|para|pra|pro|por|favor|orcamento|orcamento|preco|valor|quanto|custa|troca|trocar|trocada|conserto|reparo|arrumar|tela|display|vidro|touch|bateria|teste|listar|consulta|consultar|tem|chegou|chegar)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const keywordMatch = cleaned.match(/\b(iphone|ipad|galaxy|samsung|moto|motorola|redmi|poco)\b/);
+    if (keywordMatch?.index !== undefined) {
+      cleaned = cleaned.slice(keywordMatch.index).trim();
+    }
+
+    const words = cleaned.split(/\s+/).filter(Boolean).slice(0, 4).join(' ');
+    add(words);
+  }
+
+  add(normalized);
+  return Array.from(terms).slice(0, 5);
+}
+
+function appendProductTextSearchFilter(sql, params, paramIndex, terms, columns = ['p.modelo', 'p.nome']) {
+  const searchTerms = Array.isArray(terms) ? terms.filter(Boolean) : [];
+  if (searchTerms.length === 0) return { sql, paramIndex };
+
+  const clauses = searchTerms.map((term) => {
+    const placeholders = columns.map((column) => `${column} ILIKE $${paramIndex}`).join(' OR ');
+    params.push(`%${term}%`);
+    paramIndex++;
+    return `(${placeholders})`;
+  });
+
+  return {
+    sql: `${sql} AND (${clauses.join(' OR ')})`,
+    paramIndex,
+  };
+}
+
 // GET - Buscar produtos (API pública)
 app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
   try {
@@ -9010,6 +9087,9 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     if (!req.companyId) {
       return res.status(403).json({ success: false, error: 'Token sem empresa vinculada. Associe o token a uma empresa.' });
     }
+    const buscaTerms = busca ? extractProductModelSearchTerms(busca) : [];
+    const modeloTerms = modelo ? extractProductModelSearchTerms(modelo) : [];
+
     let query = `
       SELECT 
         p.id,
@@ -9024,19 +9104,15 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     // Filtros
     if (busca) {
-      query += ` AND (
-        p.nome ILIKE $${paramIndex} OR 
-        p.referencia ILIKE $${paramIndex} OR
-        p.modelo ILIKE $${paramIndex}
-      )`;
-      params.push(`%${busca}%`);
-      paramIndex++;
+      const filter = appendProductTextSearchFilter(query, params, paramIndex, buscaTerms, ['p.nome', 'p.referencia', 'p.modelo']);
+      query = filter.sql;
+      paramIndex = filter.paramIndex;
     }
     
     if (modelo) {
-      query += ` AND (p.modelo ILIKE $${paramIndex} OR p.nome ILIKE $${paramIndex})`;
-      params.push(`%${modelo}%`);
-      paramIndex++;
+      const filter = appendProductTextSearchFilter(query, params, paramIndex, modeloTerms);
+      query = filter.sql;
+      paramIndex = filter.paramIndex;
     }
     
     if (marca) {
@@ -9137,14 +9213,14 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     // Aplicar os mesmos filtros da query principal
     if (busca) {
-      countQuery += ` AND (p.nome ILIKE $${countParamIndex} OR p.referencia ILIKE $${countParamIndex} OR p.modelo ILIKE $${countParamIndex})`;
-      countParams.push(`%${busca}%`);
-      countParamIndex++;
+      const filter = appendProductTextSearchFilter(countQuery, countParams, countParamIndex, buscaTerms, ['p.nome', 'p.referencia', 'p.modelo']);
+      countQuery = filter.sql;
+      countParamIndex = filter.paramIndex;
     }
     if (modelo) {
-      countQuery += ` AND (p.modelo ILIKE $${countParamIndex} OR p.nome ILIKE $${countParamIndex})`;
-      countParams.push(`%${modelo}%`);
-      countParamIndex++;
+      const filter = appendProductTextSearchFilter(countQuery, countParams, countParamIndex, modeloTerms);
+      countQuery = filter.sql;
+      countParamIndex = filter.paramIndex;
     }
     if (marca) {
       countQuery += ` AND p.marca ILIKE $${countParamIndex}`;
@@ -9333,8 +9409,8 @@ app.get('/api/v1/docs', (req, res) => {
         path: "/produtos",
         description: "Buscar produtos com filtros",
         parameters: {
-          busca: "Busca geral (descrição, código, referência, código de barras)",
-          modelo: "Filtrar por modelo do aparelho",
+          busca: "Busca geral. Aceita frase natural e extrai termos úteis, como 'tela iphone 11'",
+          modelo: "Filtrar por modelo do aparelho. Aceita frase natural, como 'quero orçamento para troca de tela do iphone 11'",
           marca: "Filtrar por marca",
           grupo: "Filtrar por grupo/categoria",
           codigo: "Buscar por código exato",
@@ -9351,7 +9427,7 @@ app.get('/api/v1/docs', (req, res) => {
           ordenar: "Campo para ordenação (descricao, codigo, preco_venda, quantidade)",
           ordem: "Direção da ordenação (asc, desc)"
         },
-        example: "/produtos?modelo=iPhone%2015&limit=10"
+        example: "/produtos?modelo=quero%20orcamento%20para%20troca%20de%20tela%20do%20iphone%2011&limit=10"
       },
       {
         method: "GET",
@@ -9379,7 +9455,7 @@ app.get('/api/v1/docs', (req, res) => {
       javascript: `fetch('https://api.ativafix.com/api/v1/produtos?modelo=iPhone 15', {
   headers: { 'Authorization': 'Bearer SEU_TOKEN' }
 }).then(r => r.json()).then(console.log)`,
-      ai_agent: `Use esta API quando o cliente perguntar sobre preços, disponibilidade ou características de produtos. Exemplo: "Qual o preço da tela do iPhone 15?" -> GET /produtos?modelo=iPhone 15&busca=tela`
+      ai_agent: `Use esta API quando o cliente perguntar sobre preços, disponibilidade ou características de produtos. Exemplo: "Qual o preço da tela do iPhone 11?" -> GET /produtos?modelo=quero%20orcamento%20para%20troca%20de%20tela%20do%20iphone%2011`
     }
   });
 });
