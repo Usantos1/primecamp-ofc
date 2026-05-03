@@ -275,6 +275,26 @@ function getDefaultReportEndDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatDateInputBr(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return value || '';
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function parseDateInputBr(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function brDateToIso(value: string) {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return '';
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
 export default function Integration() {
   const { tab: tabParam } = useParams<{ tab?: string }>();
   const navigate = useNavigate();
@@ -338,6 +358,10 @@ export default function Integration() {
   const [metaReportWarning, setMetaReportWarning] = useState<string | null>(null);
   const [metaReportStartDate, setMetaReportStartDate] = useState(getDefaultReportStartDate);
   const [metaReportEndDate, setMetaReportEndDate] = useState(getDefaultReportEndDate);
+  const [metaReportStartInput, setMetaReportStartInput] = useState(() => formatDateInputBr(getDefaultReportStartDate()));
+  const [metaReportEndInput, setMetaReportEndInput] = useState(() => formatDateInputBr(getDefaultReportEndDate()));
+  const [metaPeriodOpen, setMetaPeriodOpen] = useState(false);
+  const [googlePeriodOpen, setGooglePeriodOpen] = useState(false);
   const [googleLogs, setGoogleLogs] = useState<GoogleAdsEventLog[]>([]);
   const [googleLogsWarning, setGoogleLogsWarning] = useState<string | null>(null);
   const [googleReport, setGoogleReport] = useState<GoogleAdsReport | null>(null);
@@ -539,6 +563,24 @@ export default function Integration() {
       setGoogleReportWarning('Erro ao carregar relatório do Google Ads');
     }
   }, [metaReportEndDate, metaReportStartDate]);
+
+  const setReportPeriod = useCallback((startDate: string, endDate: string) => {
+    setMetaReportStartDate(startDate);
+    setMetaReportEndDate(endDate);
+    setMetaReportStartInput(formatDateInputBr(startDate));
+    setMetaReportEndInput(formatDateInputBr(endDate));
+  }, []);
+
+  const applyReportPeriodInputs = useCallback(() => {
+    const startDate = brDateToIso(metaReportStartInput);
+    const endDate = brDateToIso(metaReportEndInput);
+    if (!startDate || !endDate) {
+      toast.error('Informe as datas no formato dd/mm/aaaa.');
+      return false;
+    }
+    setReportPeriod(startDate, endDate);
+    return true;
+  }, [metaReportEndInput, metaReportStartInput, setReportPeriod]);
 
   useEffect(() => {
     if (currentTab === 'meta') {
@@ -1324,7 +1366,7 @@ export default function Integration() {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Popover>
+                      <Popover open={metaPeriodOpen} onOpenChange={setMetaPeriodOpen}>
                         <PopoverTrigger asChild>
                           <Button type="button" variant="outline" size="sm" className="gap-2">
                             <CalendarDays className="h-4 w-4" />
@@ -1343,18 +1385,20 @@ export default function Integration() {
                               <Label htmlFor="metaReportStartDate" className="text-xs">Data inicial</Label>
                               <Input
                                 id="metaReportStartDate"
-                                type="date"
-                                value={metaReportStartDate}
-                                onChange={(event) => setMetaReportStartDate(event.target.value)}
+                                inputMode="numeric"
+                                placeholder="dd/mm/aaaa"
+                                value={metaReportStartInput}
+                                onChange={(event) => setMetaReportStartInput(parseDateInputBr(event.target.value))}
                               />
                             </div>
                             <div className="space-y-1.5">
                               <Label htmlFor="metaReportEndDate" className="text-xs">Data final</Label>
                               <Input
                                 id="metaReportEndDate"
-                                type="date"
-                                value={metaReportEndDate}
-                                onChange={(event) => setMetaReportEndDate(event.target.value)}
+                                inputMode="numeric"
+                                placeholder="dd/mm/aaaa"
+                                value={metaReportEndInput}
+                                onChange={(event) => setMetaReportEndInput(parseDateInputBr(event.target.value))}
                               />
                             </div>
                           </div>
@@ -1363,18 +1407,21 @@ export default function Integration() {
                               const endDate = getDefaultReportEndDate();
                               const startDate = new Date();
                               startDate.setDate(startDate.getDate() - 6);
-                              setMetaReportStartDate(startDate.toISOString().slice(0, 10));
-                              setMetaReportEndDate(endDate);
+                              setReportPeriod(startDate.toISOString().slice(0, 10), endDate);
                             }}>
                               7 dias
                             </Button>
                             <Button type="button" variant="outline" size="sm" onClick={() => {
-                              setMetaReportStartDate(getDefaultReportStartDate());
-                              setMetaReportEndDate(getDefaultReportEndDate());
+                              setReportPeriod(getDefaultReportStartDate(), getDefaultReportEndDate());
                             }}>
                               30 dias
                             </Button>
-                            <Button type="button" size="sm" onClick={loadMetaReport}>
+                            <Button type="button" size="sm" onClick={() => {
+                              if (applyReportPeriodInputs()) {
+                                setMetaPeriodOpen(false);
+                                void loadMetaReport();
+                              }
+                            }}>
                               Aplicar
                             </Button>
                           </div>
@@ -1388,7 +1435,7 @@ export default function Integration() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-xs text-muted-foreground">
-                    Período exibido: {metaReport?.period?.startDate || metaReportStartDate} até {metaReport?.period?.endDate || metaReportEndDate}
+                    Período exibido: {formatDateInputBr(metaReport?.period?.startDate || metaReportStartDate)} até {formatDateInputBr(metaReport?.period?.endDate || metaReportEndDate)}
                   </p>
                   {metaReportWarning === 'META_REPORT_TABLES_MISSING' ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
@@ -1803,7 +1850,7 @@ export default function Integration() {
                         </CardDescription>
                       </div>
                       <div className="flex gap-2">
-                        <Popover>
+                        <Popover open={googlePeriodOpen} onOpenChange={setGooglePeriodOpen}>
                           <PopoverTrigger asChild>
                             <Button type="button" variant="outline" size="sm" className="gap-2">
                               <CalendarDays className="h-4 w-4" />
@@ -1820,22 +1867,46 @@ export default function Integration() {
                                 <Label htmlFor="googleReportStartDate" className="text-xs">Data inicial</Label>
                                 <Input
                                   id="googleReportStartDate"
-                                  type="date"
-                                  value={metaReportStartDate}
-                                  onChange={(event) => setMetaReportStartDate(event.target.value)}
+                                  inputMode="numeric"
+                                  placeholder="dd/mm/aaaa"
+                                  value={metaReportStartInput}
+                                  onChange={(event) => setMetaReportStartInput(parseDateInputBr(event.target.value))}
                                 />
                               </div>
                               <div className="space-y-1.5">
                                 <Label htmlFor="googleReportEndDate" className="text-xs">Data final</Label>
                                 <Input
                                   id="googleReportEndDate"
-                                  type="date"
-                                  value={metaReportEndDate}
-                                  onChange={(event) => setMetaReportEndDate(event.target.value)}
+                                  inputMode="numeric"
+                                  placeholder="dd/mm/aaaa"
+                                  value={metaReportEndInput}
+                                  onChange={(event) => setMetaReportEndInput(parseDateInputBr(event.target.value))}
                                 />
                               </div>
                             </div>
-                            <Button type="button" size="sm" onClick={loadGoogleReport}>Aplicar</Button>
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => {
+                                const endDate = getDefaultReportEndDate();
+                                const startDate = new Date();
+                                startDate.setDate(startDate.getDate() - 6);
+                                setReportPeriod(startDate.toISOString().slice(0, 10), endDate);
+                              }}>
+                                7 dias
+                              </Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => {
+                                setReportPeriod(getDefaultReportStartDate(), getDefaultReportEndDate());
+                              }}>
+                                30 dias
+                              </Button>
+                              <Button type="button" size="sm" onClick={() => {
+                                if (applyReportPeriodInputs()) {
+                                  setGooglePeriodOpen(false);
+                                  void loadGoogleReport();
+                                }
+                              }}>
+                                Aplicar
+                              </Button>
+                            </div>
                           </PopoverContent>
                         </Popover>
                         <Button type="button" variant="outline" size="sm" onClick={() => {
@@ -1849,7 +1920,7 @@ export default function Integration() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-xs text-muted-foreground">
-                      Período exibido: {googleReport?.period?.startDate || metaReportStartDate} até {googleReport?.period?.endDate || metaReportEndDate}
+                      Período exibido: {formatDateInputBr(googleReport?.period?.startDate || metaReportStartDate)} até {formatDateInputBr(googleReport?.period?.endDate || metaReportEndDate)}
                     </p>
                     {googleReportWarning === 'GOOGLE_ADS_EVENT_LOGS_MISSING' ? (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
