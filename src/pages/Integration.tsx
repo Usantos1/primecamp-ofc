@@ -12,7 +12,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
-import { Activity, BadgeDollarSign, CheckCircle2, Megaphone, MessageSquare, MousePointerClick, Send, Settings, ShieldCheck, Paperclip, Key, Plug } from 'lucide-react';
+import { getApiUrl } from '@/utils/apiUrl';
+import { Activity, BadgeDollarSign, CheckCircle2, Copy, Megaphone, MessageSquare, MousePointerClick, Send, Settings, ShieldCheck, Paperclip, Key, Plug } from 'lucide-react';
 import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ApiManager } from '@/components/ApiManager';
@@ -93,6 +94,7 @@ interface IntegrationSettings {
     sendOsPurchase: boolean;
     sendPdvPurchase: boolean;
     sendClientLead: boolean;
+    webhookSecret: string;
   };
 }
 
@@ -116,6 +118,23 @@ interface MetaAdsEventLog {
   created_at: string;
 }
 
+interface AtivaCrmWebhookEvent {
+  id: string;
+  event_id: string;
+  contact_name?: string | null;
+  contact_phone?: string | null;
+  message_text?: string | null;
+  direction?: string | null;
+  ctwa_clid?: string | null;
+  campaign_id?: string | null;
+  campaign_name?: string | null;
+  ad_id?: string | null;
+  source_url?: string | null;
+  meta_status?: 'pendente' | 'enviado' | 'erro' | 'ignorado' | null;
+  meta_error_message?: string | null;
+  created_at: string;
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
   if (error && typeof error === 'object') {
@@ -124,6 +143,13 @@ function getErrorMessage(error: unknown, fallback: string) {
     if (typeof candidate.message === 'string') return candidate.message;
   }
   return fallback;
+}
+
+function createWebhookSecret() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return `${Date.now()}${Math.random()}`.replace(/\D/g, '').slice(0, 32);
 }
 
 export default function Integration() {
@@ -154,6 +180,7 @@ export default function Integration() {
       sendOsPurchase: true,
       sendPdvPurchase: false,
       sendClientLead: false,
+      webhookSecret: createWebhookSecret(),
     },
   });
   const [loading, setLoading] = useState(false);
@@ -161,6 +188,8 @@ export default function Integration() {
   const [testMessage, setTestMessage] = useState('Teste de integração WhatsApp');
   const [metaLogs, setMetaLogs] = useState<MetaAdsEventLog[]>([]);
   const [metaLogsWarning, setMetaLogsWarning] = useState<string | null>(null);
+  const [ativaCrmEvents, setAtivaCrmEvents] = useState<AtivaCrmWebhookEvent[]>([]);
+  const [ativaCrmEventsWarning, setAtivaCrmEventsWarning] = useState<string | null>(null);
   
   // Configurações do Telegram
   const {
@@ -251,6 +280,7 @@ export default function Integration() {
             sendOsPurchase: ((v.metaAds as IntegrationSettings['metaAds'])?.sendOsPurchase as boolean) ?? true,
             sendPdvPurchase: ((v.metaAds as IntegrationSettings['metaAds'])?.sendPdvPurchase as boolean) ?? false,
             sendClientLead: ((v.metaAds as IntegrationSettings['metaAds'])?.sendClientLead as boolean) ?? false,
+            webhookSecret: ((v.metaAds as IntegrationSettings['metaAds'])?.webhookSecret as string) ?? createWebhookSecret(),
           },
         });
       }
@@ -277,11 +307,25 @@ export default function Integration() {
     }
   }, []);
 
+  const loadAtivaCrmEvents = useCallback(async () => {
+    try {
+      const result = await apiClient.get('/ativa-crm/webhook-events?limit=8');
+      if (result.error) throw result.error;
+      const payload = result.data as { data?: AtivaCrmWebhookEvent[]; warning?: string };
+      setAtivaCrmEvents(Array.isArray(payload?.data) ? payload.data : []);
+      setAtivaCrmEventsWarning(payload?.warning || null);
+    } catch (error) {
+      console.error('Erro ao carregar eventos Ativa CRM:', error);
+      setAtivaCrmEventsWarning('Erro ao carregar eventos do Ativa CRM');
+    }
+  }, []);
+
   useEffect(() => {
     if (currentTab === 'meta') {
       void loadMetaLogs();
+      void loadAtivaCrmEvents();
     }
-  }, [currentTab, loadMetaLogs]);
+  }, [currentTab, loadMetaLogs, loadAtivaCrmEvents]);
 
   const saveSettings = async () => {
     if (!isAdmin) {
@@ -389,9 +433,32 @@ export default function Integration() {
         sendOsPurchase: prev.metaAds?.sendOsPurchase ?? true,
         sendPdvPurchase: prev.metaAds?.sendPdvPurchase ?? false,
         sendClientLead: prev.metaAds?.sendClientLead ?? false,
+        webhookSecret: prev.metaAds?.webhookSecret ?? createWebhookSecret(),
         ...patch,
       },
     }));
+  };
+
+  const metaWebhookUrl = user?.company_id && settings.metaAds?.webhookSecret
+    ? `${getApiUrl().replace(/\/$/, '')}/webhook/ativa-crm/${user.company_id}/${settings.metaAds.webhookSecret}`
+    : '';
+
+  const copyMetaWebhookUrl = async () => {
+    if (!metaWebhookUrl) {
+      toast.error('Salve a integração para gerar a URL do webhook.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(metaWebhookUrl);
+      toast.success('URL do webhook copiada!');
+    } catch {
+      toast.error('Não foi possível copiar a URL do webhook.');
+    }
+  };
+
+  const regenerateWebhookSecret = () => {
+    updateMetaAds({ webhookSecret: createWebhookSecret() });
+    toast.info('Novo segredo gerado. Salve as configurações antes de usar a URL.');
   };
 
   const testMetaAdsIntegration = async () => {
@@ -879,6 +946,34 @@ export default function Integration() {
                     </div>
                   </div>
 
+                  <div className="space-y-3 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                    <div>
+                      <p className="text-sm font-semibold text-blue-950">Webhook Ativa CRM para Leads</p>
+                      <p className="text-xs text-blue-800">
+                        Configure esta URL no Ativa CRM para receber conversas e enviar `Lead` para Meta quando o switch Cliente criado / Lead estiver ligado.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={metaWebhookUrl || 'Salve a configuração para gerar a URL'}
+                        className="bg-white font-mono text-xs"
+                      />
+                      <Button type="button" variant="outline" onClick={copyMetaWebhookUrl}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copiar
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={regenerateWebhookSecret}>
+                        Gerar novo segredo
+                      </Button>
+                      <p className="text-xs text-blue-800">
+                        Ao gerar novo segredo, a URL antiga deixa de funcionar depois de salvar.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="flex flex-wrap gap-2">
                     <Button onClick={saveSettings} disabled={loading}>
                       <Settings className="h-4 w-4 mr-2" />
@@ -913,6 +1008,74 @@ export default function Integration() {
                         <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
                       </div>
                     ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">Leads recebidos do Ativa CRM</CardTitle>
+                        <CardDescription>
+                          Payload bruto fica salvo em `ativa_crm_webhook_events` para mapear CTWA/campanha depois.
+                        </CardDescription>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={loadAtivaCrmEvents}>
+                        Atualizar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {ativaCrmEventsWarning === 'ATIVA_CRM_WEBHOOK_EVENTS_MISSING' ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        Rode a migration `db/migrations/manual/ATIVA_CRM_WEBHOOK_EVENTS.sql` na VPS para receber eventos do Ativa CRM.
+                      </div>
+                    ) : ativaCrmEvents.length === 0 ? (
+                      <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                        Nenhum lead recebido ainda. Configure a URL acima no Ativa CRM e envie uma mensagem de teste.
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[320px] pr-3">
+                        <div className="space-y-2">
+                          {ativaCrmEvents.map((event) => {
+                            const statusClass = event.meta_status === 'enviado'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : event.meta_status === 'erro'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-slate-100 text-slate-700';
+                            return (
+                              <div key={event.id} className="rounded-lg border bg-background p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium">
+                                      {event.contact_name || event.contact_phone || 'Lead WhatsApp'}
+                                    </p>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {event.message_text || event.event_id}
+                                    </p>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${statusClass}`}>
+                                    {event.meta_status || 'pendente'}
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  <span>{event.direction || 'inbound'}</span>
+                                  {event.ctwa_clid && <span>ctwa</span>}
+                                  {(event.campaign_name || event.campaign_id) && <span>{event.campaign_name || event.campaign_id}</span>}
+                                  {event.ad_id && <span>ad: {event.ad_id}</span>}
+                                  <span>{new Date(event.created_at).toLocaleString('pt-BR')}</span>
+                                </div>
+                                {event.meta_error_message && (
+                                  <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">
+                                    {event.meta_error_message}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
                   </CardContent>
                 </Card>
 

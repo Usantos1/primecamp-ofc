@@ -385,6 +385,346 @@ function shouldSendMetaOsPurchaseFromSaleRow(row) {
     && row.status === 'paid';
 }
 
+function isMissingAtivaCrmWebhookTable(error) {
+  return error?.code === '42P01' || String(error?.message || '').includes('ativa_crm_webhook_events');
+}
+
+function stableEventHash(value) {
+  return crypto.createHash('sha256').update(JSON.stringify(value || {})).digest('hex').slice(0, 32);
+}
+
+function findFirstDeep(value, keys, maxDepth = 6) {
+  const wanted = new Set(keys.map((key) => String(key).toLowerCase()));
+  const seen = new Set();
+
+  function visit(node, depth) {
+    if (node == null || depth > maxDepth) return undefined;
+    if (typeof node !== 'object') return undefined;
+    if (seen.has(node)) return undefined;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = visit(item, depth + 1);
+        if (found !== undefined && found !== null && found !== '') return found;
+      }
+      return undefined;
+    }
+
+    for (const [key, child] of Object.entries(node)) {
+      if (wanted.has(key.toLowerCase()) && child !== undefined && child !== null && child !== '') {
+        return child;
+      }
+    }
+
+    for (const child of Object.values(node)) {
+      const found = visit(child, depth + 1);
+      if (found !== undefined && found !== null && found !== '') return found;
+    }
+
+    return undefined;
+  }
+
+  return visit(value, 0);
+}
+
+function normalizeWebhookText(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') return value.trim() || null;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return null;
+}
+
+function parseWebhookBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'sim', 'yes'].includes(normalized)) return true;
+    if (['false', '0', 'nao', 'não', 'no'].includes(normalized)) return false;
+  }
+  return undefined;
+}
+
+function parseWebhookJsonObject(value) {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function extractAtivaCrmWebhookData(payload) {
+  const contact = payload?.contact || payload?.customer || payload?.lead || payload?.data?.contact || {};
+  const ticket = payload?.ticket || payload?.conversation || payload?.chat || payload?.data?.ticket || {};
+  const firstMessage = Array.isArray(payload?.messages) ? payload.messages[0] : null;
+  const parsedMessageData = parseWebhookJsonObject(payload?.messages_0_dataJson);
+  const rawInfo = payload?.rawMessage?.Info || payload?.rawMessage?.info || parsedMessageData?.event?.Info || {};
+  const referral = payload?.referral || payload?.message?.referral || firstMessage?.referral || parsedMessageData?.referral || findFirstDeep(payload, ['referral']);
+
+  const messageText = normalizeWebhookText(
+    payload?.messages_0_body ||
+    payload?.rawMessage_Message_conversation ||
+    payload?.rawMessage_RawMessage_conversation ||
+    parsedMessageData?.event?.Message?.conversation ||
+    parsedMessageData?.event?.RawMessage?.conversation ||
+    firstMessage?.body ||
+    firstMessage?.text ||
+    payload?.message?.body ||
+    payload?.message?.text ||
+    payload?.body ||
+    payload?.text ||
+    payload?.ticket?.lastMessage ||
+    findFirstDeep(payload, ['messageText', 'message_text', 'lastMessage', 'body', 'text', 'message'])
+  );
+
+  const contactName = normalizeWebhookText(
+    payload?.contact_name ||
+    payload?.rawMessage_Info_PushName ||
+    parsedMessageData?.contactName ||
+    parsedMessageData?.event?.Info?.PushName ||
+    contact.name ||
+    contact.nome ||
+    rawInfo.PushName ||
+    payload?.name ||
+    payload?.nome ||
+    findFirstDeep(payload, ['contactName', 'pushName', 'name', 'nome'])
+  );
+
+  const contactPhone = normalizePhoneForMeta(
+    payload?.contact_number ||
+    payload?.rawMessage_Info_Sender ||
+    payload?.rawMessage_MessageSource_Sender ||
+    payload?.messages_0_remoteJid ||
+    parsedMessageData?.event?.Info?.Sender ||
+    parsedMessageData?.event?.MessageSource?.Sender ||
+    contact.number ||
+    contact.phone ||
+    contact.telefone ||
+    contact.whatsapp ||
+    rawInfo.Sender ||
+    payload?.number ||
+    payload?.phone ||
+    payload?.telefone ||
+    payload?.whatsapp ||
+    findFirstDeep(payload, ['number', 'phone', 'telefone', 'whatsapp', 'sender', 'from'])
+  );
+
+  const messageId = normalizeWebhookText(
+    payload?.messages_0_id ||
+    payload?.rawMessage_Info_ID ||
+    parsedMessageData?.event?.Info?.ID ||
+    firstMessage?.id ||
+    payload?.message?.id ||
+    payload?.rawMessage?.key?.id ||
+    findFirstDeep(payload, ['message_id', 'messageId'])
+  );
+  const ticketId = normalizeWebhookText(payload?.ticket_id || payload?.messages_0_ticketId || ticket.id || payload?.conversation_id || findFirstDeep(payload, ['ticket_id', 'ticketId']));
+  const conversationId = normalizeWebhookText(
+    payload?.messages_0_remoteJid ||
+    payload?.rawMessage_Info_Chat ||
+    payload?.rawMessage_MessageSource_Chat ||
+    parsedMessageData?.event?.Info?.Chat ||
+    parsedMessageData?.event?.MessageSource?.Chat ||
+    ticket.uuid ||
+    ticket.id ||
+    payload?.conversationId ||
+    payload?.conversation_id ||
+    findFirstDeep(payload, ['conversation_id', 'conversationId', 'chat_id'])
+  );
+  const eventId = messageId || (ticketId && messageText ? `${ticketId}:${stableEventHash(messageText)}` : null) || stableEventHash(payload);
+  const fromMe = parseWebhookBoolean(
+    payload?.messages_0_fromMe ??
+    payload?.rawMessage_Info_IsFromMe ??
+    payload?.rawMessage_MessageSource_IsFromMe ??
+    parsedMessageData?.event?.Info?.IsFromMe ??
+    parsedMessageData?.event?.MessageSource?.IsFromMe ??
+    findFirstDeep(payload, ['fromMe', 'from_me', 'isFromMe'])
+  );
+
+  return {
+    eventId,
+    conversationId,
+    ticketId,
+    messageId,
+    contactName,
+    contactPhone,
+    messageText,
+    direction: fromMe === true ? 'outbound' : 'inbound',
+    ctwaClid: normalizeWebhookText(
+      payload?.ctwa_clid ||
+      payload?.rawMessage_Message_contextInfo_externalAdReply_ctwaClid ||
+      payload?.rawMessage_RawMessage_contextInfo_externalAdReply_ctwaClid ||
+      referral?.ctwa_clid ||
+      referral?.ctwaClid ||
+      findFirstDeep(payload, ['ctwa_clid', 'ctwaClid'])
+    ),
+    sourceUrl: normalizeWebhookText(
+      payload?.source_url ||
+      payload?.rawMessage_Message_contextInfo_externalAdReply_sourceUrl ||
+      payload?.rawMessage_RawMessage_contextInfo_externalAdReply_sourceUrl ||
+      referral?.source_url ||
+      referral?.sourceUrl ||
+      referral?.source_url ||
+      findFirstDeep(payload, ['source_url', 'sourceUrl', 'source'])
+    ),
+    campaignId: normalizeWebhookText(payload?.campaign_id || payload?.rawMessage_Message_contextInfo_externalAdReply_campaignId || referral?.campaign_id || findFirstDeep(payload, ['campaign_id', 'campaignId'])),
+    campaignName: normalizeWebhookText(payload?.campaign_name || payload?.rawMessage_Message_contextInfo_externalAdReply_campaignName || referral?.campaign_name || findFirstDeep(payload, ['campaign_name', 'campaignName', 'campaign'])),
+    adsetId: normalizeWebhookText(payload?.adset_id || payload?.rawMessage_Message_contextInfo_externalAdReply_adsetId || referral?.adset_id || findFirstDeep(payload, ['adset_id', 'adsetId'])),
+    adId: normalizeWebhookText(payload?.ad_id || payload?.rawMessage_Message_contextInfo_externalAdReply_adId || referral?.ad_id || findFirstDeep(payload, ['ad_id', 'adId'])),
+    utmSource: normalizeWebhookText(payload?.utm_source || findFirstDeep(payload, ['utm_source'])),
+    utmMedium: normalizeWebhookText(payload?.utm_medium || findFirstDeep(payload, ['utm_medium'])),
+    utmCampaign: normalizeWebhookText(payload?.utm_campaign || findFirstDeep(payload, ['utm_campaign'])),
+  };
+}
+
+async function isMetaClientLeadEnabled(companyId) {
+  const settings = await getIntegrationSettings(companyId);
+  const meta = settings.metaAds || {};
+  return (meta.enabled === true || settings.metaAdsEnabled === true) && meta.sendClientLead === true;
+}
+
+async function insertAtivaCrmWebhookEvent(companyId, payload, req) {
+  const extracted = extractAtivaCrmWebhookData(payload);
+  const headers = {
+    'content-type': req.get('content-type'),
+    'user-agent': req.get('user-agent'),
+    'x-real-ip': req.get('x-real-ip') || req.ip,
+  };
+
+  const values = [
+    companyId,
+    extracted.eventId,
+    extracted.conversationId,
+    extracted.ticketId,
+    extracted.messageId,
+    extracted.contactName,
+    extracted.contactPhone,
+    extracted.messageText,
+    extracted.direction,
+    extracted.ctwaClid,
+    extracted.sourceUrl,
+    extracted.campaignId,
+    extracted.campaignName,
+    extracted.adsetId,
+    extracted.adId,
+    extracted.utmSource,
+    extracted.utmMedium,
+    extracted.utmCampaign,
+    JSON.stringify(payload),
+    JSON.stringify(headers),
+    req.ip,
+  ];
+
+  const insertResult = await pool.query(`
+    INSERT INTO public.ativa_crm_webhook_events (
+      company_id, event_id, conversation_id, ticket_id, message_id,
+      contact_name, contact_phone, message_text, direction,
+      ctwa_clid, source_url, campaign_id, campaign_name, adset_id, ad_id,
+      utm_source, utm_medium, utm_campaign, raw_payload, headers, ip_origem
+    )
+    VALUES (
+      $1, $2, $3, $4, $5,
+      $6, $7, $8, $9,
+      $10, $11, $12, $13, $14, $15,
+      $16, $17, $18, $19::jsonb, $20::jsonb, $21
+    )
+    ON CONFLICT (company_id, event_id) DO NOTHING
+    RETURNING *
+  `, values);
+
+  if (insertResult.rows[0]) return { event: insertResult.rows[0], duplicate: false };
+
+  const existingResult = await pool.query(
+    'SELECT * FROM public.ativa_crm_webhook_events WHERE company_id = $1 AND event_id = $2 LIMIT 1',
+    [companyId, extracted.eventId]
+  );
+  return { event: existingResult.rows[0], duplicate: true };
+}
+
+async function markAtivaCrmWebhookMetaStatus(eventId, status, patch = {}) {
+  if (!eventId) return;
+  try {
+    await pool.query(`
+      UPDATE public.ativa_crm_webhook_events
+      SET meta_status = $2,
+          meta_event_id = COALESCE($3, meta_event_id),
+          meta_error_message = $4
+      WHERE id = $1
+    `, [eventId, status, patch.metaEventId || null, patch.errorMessage || null]);
+  } catch (error) {
+    console.warn('[AtivaCRM Webhook] Não foi possível atualizar status Meta:', error.message);
+  }
+}
+
+async function sendMetaLeadForAtivaCrmWebhook(event) {
+  if (!event || event.direction === 'outbound') {
+    if (event?.id) await markAtivaCrmWebhookMetaStatus(event.id, 'ignorado', { errorMessage: 'Mensagem enviada pela empresa' });
+    return { skipped: true, reason: 'outbound' };
+  }
+
+  if (!event.contact_phone && !event.contact_name) {
+    await markAtivaCrmWebhookMetaStatus(event.id, 'ignorado', { errorMessage: 'Sem telefone/nome para matching' });
+    return { skipped: true, reason: 'missing_user_data' };
+  }
+
+  if (!await isMetaClientLeadEnabled(event.company_id)) {
+    await markAtivaCrmWebhookMetaStatus(event.id, 'ignorado', { errorMessage: 'Envio de Lead desativado' });
+    return { skipped: true, reason: 'lead_disabled' };
+  }
+
+  const [firstName, ...lastNameParts] = String(event.contact_name || '').trim().split(/\s+/).filter(Boolean);
+  const userData = {};
+  const phoneHash = hashSha256(event.contact_phone);
+  const firstNameHash = hashSha256(firstName);
+  const lastNameHash = hashSha256(lastNameParts.join(' '));
+  if (phoneHash) userData.ph = [phoneHash];
+  if (firstNameHash) userData.fn = [firstNameHash];
+  if (lastNameHash) userData.ln = [lastNameHash];
+
+  const leadKey = event.contact_phone || event.conversation_id || event.ticket_id || event.event_id;
+  const metaEventId = `ativa_crm_lead_${event.company_id}_${stableEventHash(leadKey)}`;
+  const metaEvent = {
+    event_name: 'Lead',
+    event_time: Math.floor(new Date(event.created_at || Date.now()).getTime() / 1000),
+    event_id: metaEventId,
+    action_source: 'chat',
+    user_data: userData,
+    custom_data: {
+      content_name: 'Lead WhatsApp Ativa CRM',
+      content_category: 'WhatsApp',
+      ctwa_clid: event.ctwa_clid || undefined,
+      source_url: event.source_url || undefined,
+      campaign_id: event.campaign_id || undefined,
+      campaign_name: event.campaign_name || event.utm_campaign || undefined,
+      adset_id: event.adset_id || undefined,
+      ad_id: event.ad_id || undefined,
+      conversation_id: event.conversation_id || undefined,
+      ticket_id: event.ticket_id || undefined,
+    },
+  };
+
+  try {
+    const result = await sendMetaEvent(event.company_id, metaEvent, {
+      eventType: 'ativa_crm_lead',
+      source: 'ativa_crm_webhook',
+    });
+
+    await markAtivaCrmWebhookMetaStatus(event.id, result?.skipped ? 'ignorado' : 'enviado', {
+      metaEventId,
+      errorMessage: result?.skipped ? result.reason : null,
+    });
+    return result;
+  } catch (error) {
+    await markAtivaCrmWebhookMetaStatus(event.id, 'erro', { metaEventId, errorMessage: error.message });
+    throw error;
+  }
+}
+
 // Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -4046,6 +4386,99 @@ app.get('/api/meta-ads/logs', authenticateToken, async (req, res) => {
       return res.json({ success: true, data: [], warning: 'META_ADS_EVENT_LOGS_MISSING' });
     }
     console.error('[Meta Ads] Erro ao listar logs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/webhook/ativa-crm/:companyId/:secret', async (req, res) => {
+  const { companyId, secret } = req.params;
+  try {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId)) {
+      return res.status(404).json({ success: false, error: 'Webhook inválido' });
+    }
+
+    const settings = await getIntegrationSettings(companyId);
+    const meta = settings.metaAds || {};
+    if (!meta.webhookSecret || secret !== meta.webhookSecret) {
+      return res.status(403).json({ success: false, error: 'Webhook não autorizado' });
+    }
+
+    const { event, duplicate } = await insertAtivaCrmWebhookEvent(companyId, req.body || {}, req);
+    if (!event) {
+      return res.status(500).json({ success: false, error: 'Evento não foi registrado' });
+    }
+
+    let metaResult = { skipped: true, reason: duplicate ? 'duplicate_webhook_event' : 'not_processed' };
+    if (!duplicate) {
+      try {
+        metaResult = await sendMetaLeadForAtivaCrmWebhook(event);
+      } catch (metaError) {
+        console.error('[AtivaCRM Webhook] Lead recebido, mas falhou ao enviar para Meta:', metaError.message);
+        metaResult = { skipped: false, error: metaError.message };
+      }
+    }
+
+    res.json({
+      success: true,
+      event_id: event.event_id,
+      duplicate,
+      meta: metaResult,
+    });
+  } catch (error) {
+    if (isMissingAtivaCrmWebhookTable(error)) {
+      return res.status(503).json({
+        success: false,
+        error: 'Tabela de webhook Ativa CRM ausente. Rode db/migrations/manual/ATIVA_CRM_WEBHOOK_EVENTS.sql.',
+      });
+    }
+    console.error('[AtivaCRM Webhook] Erro ao processar webhook:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/ativa-crm/webhook-events', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50);
+    const result = await pool.query(`
+      SELECT
+        id,
+        event_id,
+        conversation_id,
+        ticket_id,
+        message_id,
+        contact_name,
+        contact_phone,
+        message_text,
+        direction,
+        ctwa_clid,
+        source_url,
+        campaign_id,
+        campaign_name,
+        adset_id,
+        ad_id,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        meta_event_id,
+        meta_status,
+        meta_error_message,
+        created_at
+      FROM public.ativa_crm_webhook_events
+      WHERE company_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `, [req.companyId, limit]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    if (isMissingAtivaCrmWebhookTable(error)) {
+      return res.json({ success: true, data: [], warning: 'ATIVA_CRM_WEBHOOK_EVENTS_MISSING' });
+    }
+    console.error('[AtivaCRM Webhook] Erro ao listar eventos:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
