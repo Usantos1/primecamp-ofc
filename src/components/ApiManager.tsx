@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useApiTokens, ApiToken, API_PERMISSIONS } from '@/hooks/useApiTokens';
+import { useEffect, useMemo, useState } from 'react';
+import { useApiTokens, ApiAccessLog, ApiToken, API_PERMISSIONS } from '@/hooks/useApiTokens';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,8 +31,59 @@ import {
   ChevronRight,
   ExternalLink,
   RefreshCw,
+  Search,
   Zap
 } from 'lucide-react';
+
+const LOGS_PER_PAGE = 25;
+
+function buildTokenUsageSummaryLog(token: ApiToken): ApiAccessLog {
+  return {
+    id: `usage-summary-${token.id}`,
+    token_id: token.id,
+    token_nome: token.nome,
+    endpoint: 'Histórico do token',
+    method: 'INFO',
+    ip_address: '-',
+    user_agent: 'Resumo gerado a partir do contador de uso do token',
+    query_params: {
+      uso_count: token.uso_count,
+      ultimo_uso: token.ultimo_uso,
+      observacao: 'As respostas completas passam a aparecer para novas chamadas registradas em api_access_logs.',
+    },
+    response_body: JSON.stringify({
+      tipo: 'resumo_historico',
+      token: token.nome,
+      total_requisicoes: token.uso_count,
+      ultimo_uso: token.ultimo_uso,
+      aviso: 'Este token tem uso histórico, mas os detalhes por requisição não foram armazenados antes dos logs detalhados. Faça uma nova chamada para ver endpoint, filtros e resposta completa.',
+    }),
+    created_at: token.ultimo_uso || token.created_at,
+    is_summary: true,
+  };
+}
+
+function formatLogQuerySummary(queryParams: Record<string, unknown> | undefined) {
+  if (!queryParams || Object.keys(queryParams).length === 0) return 'Sem parâmetros';
+
+  return Object.entries(queryParams)
+    .filter(([, value]) => value !== undefined && value !== null && String(value) !== '')
+    .slice(0, 3)
+    .map(([key, value]) => `${key}: ${String(value)}`)
+    .join(' · ') || 'Sem parâmetros';
+}
+
+function stringifyJson(value: unknown) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
+  }
+  return JSON.stringify(value, null, 2);
+}
 
 export function ApiManager() {
   const { 
@@ -41,7 +92,7 @@ export function ApiManager() {
     createToken, 
     updateToken, 
     deleteToken, 
-    fetchLogs,
+    fetchAllLogs,
     isCreating 
   } = useApiTokens();
 
@@ -49,8 +100,16 @@ export function ApiManager() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedToken, setSelectedToken] = useState<ApiToken | null>(null);
   const [showTokenValue, setShowTokenValue] = useState<Record<string, boolean>>({});
-  const [tokenLogs, setTokenLogs] = useState<any[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [apiLogs, setApiLogs] = useState<ApiAccessLog[]>([]);
+  const [apiLogsTotal, setApiLogsTotal] = useState(0);
+  const [apiLogsError, setApiLogsError] = useState<string | null>(null);
+  const [loadingApiLogs, setLoadingApiLogs] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<ApiAccessLog | null>(null);
+  const [logSearch, setLogSearch] = useState('');
+  const [logTokenFilter, setLogTokenFilter] = useState('all');
+  const [logStatusFilter, setLogStatusFilter] = useState('all');
+  const [logPage, setLogPage] = useState(1);
+  const [logsRefreshKey, setLogsRefreshKey] = useState(0);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -87,35 +146,84 @@ export function ApiManager() {
     navigator.clipboard.writeText(token);
   };
 
-  const handleViewLogs = async (token: ApiToken) => {
-    setSelectedToken(token);
-    setLoadingLogs(true);
-    const logs = await fetchLogs(token.id);
-    setTokenLogs(logs);
-    setLoadingLogs(false);
+  const handleViewLogs = (token: ApiToken) => {
+    setLogTokenFilter(token.id);
+    setLogPage(1);
+    setSelectedLog(null);
   };
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.ativafix.com/api';
+  const logOffset = (logPage - 1) * LOGS_PER_PAGE;
+  const totalLogPages = Math.max(1, Math.ceil(apiLogsTotal / LOGS_PER_PAGE));
+  const selectedLogToken = useMemo(
+    () => tokens.find((token) => token.id === logTokenFilter) || null,
+    [logTokenFilter, tokens]
+  );
+  const selectedLogQuery = useMemo(() => stringifyJson(selectedLog?.query_params), [selectedLog]);
+  const selectedLogResponse = useMemo(() => stringifyJson(selectedLog?.response_body), [selectedLog]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLogs() {
+      setLoadingApiLogs(true);
+      const result = await fetchAllLogs({
+        search: logSearch,
+        token_id: logTokenFilter,
+        token_ids: logTokenFilter === 'all' ? tokens.map((token) => token.id) : undefined,
+        status: logStatusFilter,
+        limit: LOGS_PER_PAGE,
+        offset: logOffset,
+      });
+
+      if (!cancelled) {
+        const shouldShowUsageSummary =
+          selectedLogToken &&
+          selectedLogToken.uso_count > 0 &&
+          logPage === 1 &&
+          !logSearch &&
+          logStatusFilter === 'all' &&
+          result.rows.length === 0;
+        const rows = shouldShowUsageSummary ? [buildTokenUsageSummaryLog(selectedLogToken)] : result.rows;
+
+        setApiLogs(rows);
+        setApiLogsTotal(shouldShowUsageSummary ? 1 : result.total);
+        setApiLogsError(shouldShowUsageSummary ? null : result.error || null);
+        setSelectedLog((current) => current && rows.some((log) => log.id === current.id) ? current : null);
+        setLoadingApiLogs(false);
+      }
+    }
+
+    loadLogs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAllLogs, logOffset, logPage, logSearch, logStatusFilter, logTokenFilter, logsRefreshKey, selectedLogToken, tokens]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Tokens de API
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Gerencie tokens para integração com sistemas externos e agentes de IA
-          </p>
-        </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Token
-        </Button>
-      </div>
-
+    <div className="space-y-4">
+      <Card className="overflow-hidden border-border/80 shadow-sm">
+        <CardContent className="p-4">
+          <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(520px,2fr)]">
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-background p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="flex items-center gap-2 text-lg font-semibold">
+                      <Key className="h-5 w-5 shrink-0" />
+                      Tokens de API
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Gerencie tokens para integração com sistemas externos e agentes de IA
+                    </p>
+                  </div>
+                  <Button size="sm" className="h-8 shrink-0 rounded-full px-3 text-xs" onClick={() => setShowCreateDialog(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Novo Token
+                  </Button>
+                </div>
+              </div>
       {/* Documentação Rápida */}
       <Collapsible>
         <Card className="border-blue-200 bg-blue-50/50">
@@ -320,6 +428,7 @@ export function ApiManager() {
                     <Switch
                       checked={token.ativo}
                       onCheckedChange={() => handleToggleActive(token)}
+                      aria-label={token.ativo ? 'Desativar token' : 'Ativar token'}
                     />
                     <Button
                       variant="ghost"
@@ -343,6 +452,285 @@ export function ApiManager() {
           ))
         )}
       </div>
+        </div>
+
+        <Card className="flex min-h-[580px] max-h-[calc(100dvh-13rem)] flex-col overflow-hidden xl:h-[calc(100dvh-13rem)] xl:self-start">
+          <CardHeader className="shrink-0 space-y-2 border-b p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Activity className="h-4 w-4" />
+                  Logs da API
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Consulte chamadas, filtros usados e a resposta completa.
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() => {
+                  setSelectedLog(null);
+                  setLogPage(1);
+                  setLogsRefreshKey((value) => value + 1);
+                }}
+                disabled={loadingApiLogs}
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingApiLogs ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="h-9 pl-9 text-xs"
+                placeholder="Buscar endpoint, token, resposta..."
+                value={logSearch}
+                onChange={(event) => {
+                  setLogSearch(event.target.value);
+                  setLogPage(1);
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                value={logTokenFilter}
+                onChange={(event) => {
+                  setLogTokenFilter(event.target.value);
+                  setLogPage(1);
+                  setSelectedLog(null);
+                }}
+              >
+                <option value="all">Todos os tokens</option>
+                {tokens.map((token) => (
+                  <option key={token.id} value={token.id}>
+                    {token.nome}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-xs"
+                value={logStatusFilter}
+                onChange={(event) => {
+                  setLogStatusFilter(event.target.value);
+                  setLogPage(1);
+                  setSelectedLog(null);
+                }}
+              >
+                <option value="all">Todos os status</option>
+                <option value="success">Sucesso 2xx</option>
+                <option value="error">Erros 4xx/5xx</option>
+                <option value="200">Status 200</option>
+                <option value="404">Status 404</option>
+                <option value="500">Status 500</option>
+              </select>
+            </div>
+          </CardHeader>
+
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-3">
+              {loadingApiLogs ? (
+                <div className="flex flex-1 items-center justify-center py-8 text-sm text-muted-foreground">
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Carregando logs...
+                </div>
+              ) : apiLogsError ? (
+                <div className="flex flex-1 flex-col items-center justify-center space-y-3 py-10 text-center text-sm text-destructive">
+                  <p>Erro ao carregar logs da API.</p>
+                  <p className="mx-auto max-w-[320px] text-xs text-muted-foreground">
+                    {apiLogsError}
+                  </p>
+                </div>
+              ) : apiLogs.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center space-y-3 py-10 text-center text-sm text-muted-foreground">
+                  <p>Nenhum log encontrado.</p>
+                  <p className="mx-auto max-w-[320px] text-xs">
+                    Os logs aparecem quando integrações ou agentes fazem chamadas reais usando um token da API.
+                  </p>
+                </div>
+              ) : (
+                <ScrollArea className="h-full min-h-0 flex-1 pr-2">
+                  <div className="space-y-2">
+                    {apiLogs.map((log) => {
+                      const isError = (log.response_status || 0) >= 400;
+                      const querySummary = formatLogQuerySummary(log.query_params);
+
+                      return (
+                        <button
+                          key={log.id}
+                          type="button"
+                          className={`w-full rounded-xl border p-3 text-left transition hover:bg-muted/70 ${
+                            selectedLog?.id === log.id ? 'border-primary bg-primary/5' : 'bg-background'
+                          }`}
+                          onClick={() => setSelectedLog(log)}
+                        >
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <div className="min-w-0 space-y-1.5">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {log.method}
+                                </Badge>
+                                {log.is_summary && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Resumo
+                                  </Badge>
+                                )}
+                                <code className="truncate text-xs">{log.endpoint}</code>
+                              </div>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {querySummary}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="truncate">{log.token_nome || 'Token'}</span>
+                                <span>{format(new Date(log.created_at), 'dd/MM HH:mm')}</span>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {log.response_status && (
+                                <Badge variant={isError ? 'destructive' : 'secondary'} className="text-xs">
+                                  {log.response_status}
+                                </Badge>
+                              )}
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+
+              <div className="mt-2 flex shrink-0 items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
+                <span>
+                  {apiLogsTotal} registros
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLogPage((page) => Math.max(1, page - 1))}
+                    disabled={logPage <= 1 || loadingApiLogs}
+                  >
+                    Anterior
+                  </Button>
+                  <span>
+                    {logPage}/{totalLogPages}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLogPage((page) => Math.min(totalLogPages, page + 1))}
+                    disabled={logPage >= totalLogPages || loadingApiLogs}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={selectedLog !== null} onOpenChange={(open) => !open && setSelectedLog(null)}>
+        <DialogContent className="max-h-[92dvh] max-w-6xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Detalhes da requisição
+            </DialogTitle>
+            <DialogDescription className="break-all">
+              {selectedLog ? `${selectedLog.method} ${selectedLog.endpoint} · ${format(new Date(selectedLog.created_at), 'dd/MM/yyyy HH:mm:ss')}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedLog && (
+            <div className="grid max-h-[calc(92dvh-92px)] gap-0 overflow-hidden lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.7fr)]">
+              <div className="space-y-4 overflow-y-auto border-r p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{selectedLog.method}</Badge>
+                  {selectedLog.response_status && (
+                    <Badge variant={(selectedLog.response_status || 0) >= 400 ? 'destructive' : 'secondary'}>
+                      {selectedLog.response_status}
+                    </Badge>
+                  )}
+                  {selectedLog.is_summary && <Badge variant="secondary">Histórico</Badge>}
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Endpoint</p>
+                  <code className="block break-all rounded-md bg-muted p-2 text-xs">{selectedLog.endpoint}</code>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Token</p>
+                  <p className="text-sm">{selectedLog.token_nome || 'Token'}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Origem</p>
+                  <p className="break-all text-xs text-muted-foreground">
+                    {selectedLog.ip_address} · {selectedLog.user_agent || 'Sem user agent'}
+                  </p>
+                </div>
+
+                {selectedLog.is_summary && (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    Este item resume o contador antigo do token. Logs com endpoint, filtros e resposta completa aparecem para novas chamadas da API.
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">Query params</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => navigator.clipboard.writeText(selectedLogQuery || '{}')}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <pre className="max-h-[280px] overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">
+                    {selectedLogQuery || '{}'}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="flex min-h-0 flex-col p-5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">
+                    Resposta completa {selectedLog.response_status ? `(${selectedLog.response_status})` : ''}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(selectedLogResponse || '')}
+                  >
+                    <Copy className="mr-2 h-3.5 w-3.5" />
+                    Copiar JSON
+                  </Button>
+                </div>
+                <pre className="min-h-[520px] flex-1 overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-100 whitespace-pre-wrap break-all">
+                  {selectedLogResponse || 'Sem corpo de resposta salvo.'}
+                </pre>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Criar Token */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -451,101 +839,6 @@ export function ApiManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Dialog Logs */}
-      <Dialog open={selectedToken !== null && !showDeleteDialog} onOpenChange={() => setSelectedToken(null)}>
-        <DialogContent className="max-w-6xl max-h-[95vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Activity className="h-5 w-5" />
-              Logs de Acesso - {selectedToken?.nome}
-            </DialogTitle>
-            <DialogDescription className="text-sm">
-              Últimas 100 requisições feitas com este token
-            </DialogDescription>
-          </DialogHeader>
-
-          <ScrollArea className="h-[75vh] min-h-[360px]">
-            {loadingLogs ? (
-              <div className="flex items-center justify-center py-8 text-base">
-                <RefreshCw className="h-5 w-5 animate-spin mr-2" />
-                Carregando logs...
-              </div>
-            ) : tokenLogs.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8 text-base">
-                Nenhum acesso registrado ainda
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {tokenLogs.map((log) => {
-                  const payloadStr = log.request_body
-                    ? (typeof log.request_body === 'string' ? log.request_body : JSON.stringify(log.request_body, null, 2))
-                    : (log.query_params && Object.keys(log.query_params).length > 0 ? JSON.stringify(log.query_params, null, 2) : null);
-                  const responseStr = log.response_body
-                    ? (typeof log.response_body === 'string' ? log.response_body : JSON.stringify(log.response_body, null, 2))
-                    : null;
-                  return (
-                    <div key={log.id} className="p-4 border rounded text-base">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-sm">{log.method}</Badge>
-                          <code className="text-sm">{log.endpoint}</code>
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          {format(new Date(log.created_at), 'dd/MM HH:mm:ss')}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 text-sm text-muted-foreground">
-                        IP: {log.ip_address} • {log.user_agent?.substring(0, 50)}...
-                      </div>
-                      {payloadStr && (
-                        <div className="mt-2.5">
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">Payload (Requisição):</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
-                              onClick={() => navigator.clipboard.writeText(payloadStr)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <pre className="text-xs bg-muted p-3 rounded max-h-52 overflow-auto whitespace-pre-wrap break-all">
-                            {payloadStr}
-                          </pre>
-                        </div>
-                      )}
-                      {responseStr && (
-                        <div className="mt-2.5">
-                          <div className="flex items-center justify-between gap-2 mb-1.5">
-                            <span className="text-xs font-medium text-muted-foreground">
-                              Resposta {log.response_status && `(${log.response_status})`}:
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
-                              onClick={() => navigator.clipboard.writeText(responseStr)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <pre className="text-xs bg-green-50 dark:bg-green-950 p-3 rounded max-h-52 overflow-auto whitespace-pre-wrap break-all">
-                            {responseStr}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

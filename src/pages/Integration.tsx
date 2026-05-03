@@ -6,18 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
-import { MessageSquare, Send, Settings, Webhook, Paperclip, Key, Plug } from 'lucide-react';
+import { Activity, BadgeDollarSign, CheckCircle2, Megaphone, MessageSquare, MousePointerClick, Send, Settings, ShieldCheck, Paperclip, Key, Plug } from 'lucide-react';
 import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ApiManager } from '@/components/ApiManager';
 
-const TAB_VALUES = ['api', 'crm', 'telegram', 'ia'] as const;
+const TAB_VALUES = ['api', 'crm', 'telegram', 'ia', 'meta'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
+
+const integrationTabClassName = [
+  'group flex h-11 items-center gap-2 rounded-full border border-emerald-200/80 bg-white px-4 py-2',
+  'text-sm font-semibold text-slate-700 shadow-sm transition-all duration-200',
+  'hover:border-emerald-300 hover:bg-emerald-50/80 hover:text-emerald-800',
+  'data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-600 data-[state=active]:text-white',
+].join(' ');
 
 const OPENAI_MODELS = [
   { value: 'gpt-5.5', label: 'GPT-5.5 (mais avançado)' },
@@ -34,6 +42,42 @@ const OPENAI_MODELS = [
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
 ] as const;
 
+const META_EVENTS = [
+  {
+    title: 'OS faturada',
+    description: 'Envia Purchase com valor, telefone, nome e modelo do aparelho.',
+  },
+  {
+    title: 'Venda PDV paga',
+    description: 'Preparado para ativar depois como Purchase de balcão.',
+  },
+  {
+    title: 'Cliente criado',
+    description: 'Pode virar Lead ou CompleteRegistration para públicos.',
+  },
+  {
+    title: 'Atendimento iniciado',
+    description: 'Pode alimentar Lead quando um contato entra pelo CRM.',
+  },
+] as const;
+
+const META_PAYLOAD_EXAMPLE = `{
+  "event_name": "Purchase",
+  "action_source": "system_generated",
+  "user_data": {
+    "ph": ["sha256(telefone_com_55)"],
+    "fn": ["sha256(primeiro_nome)"],
+    "ln": ["sha256_sobrenome"]
+  },
+  "custom_data": {
+    "currency": "BRL",
+    "value": 650,
+    "content_name": "Apple iPhone 11",
+    "content_category": "Ordem de Serviço",
+    "order_id": "OS-1234"
+  }
+}`;
+
 interface IntegrationSettings {
   ativaCrmToken: string;
   ativaCrmSensitiveToken: string;
@@ -41,6 +85,15 @@ interface IntegrationSettings {
   aiProvider?: 'openai';
   aiApiKey?: string;
   aiModel?: string;
+  metaAds?: {
+    enabled: boolean;
+    pixelId: string;
+    accessToken: string;
+    testEventCode: string;
+    sendOsPurchase: boolean;
+    sendPdvPurchase: boolean;
+    sendClientLead: boolean;
+  };
 }
 
 interface WhatsAppTestResponse {
@@ -48,6 +101,19 @@ interface WhatsAppTestResponse {
   success?: boolean;
   message?: string;
   error?: string;
+}
+
+interface MetaAdsEventLog {
+  id: string;
+  event_id: string;
+  event_name: string;
+  event_type: string;
+  source: string;
+  status: 'pendente' | 'enviando' | 'enviado' | 'erro' | 'ignorado';
+  attempts: number;
+  error_message?: string | null;
+  sent_at?: string | null;
+  created_at: string;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -79,11 +145,22 @@ export default function Integration() {
     webhookUrl: '',
     aiProvider: 'openai',
     aiApiKey: '',
-    aiModel: 'gpt-4.1-mini'
+    aiModel: 'gpt-4.1-mini',
+    metaAds: {
+      enabled: false,
+      pixelId: '',
+      accessToken: '',
+      testEventCode: '',
+      sendOsPurchase: true,
+      sendPdvPurchase: false,
+      sendClientLead: false,
+    },
   });
   const [loading, setLoading] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('Teste de integração WhatsApp');
+  const [metaLogs, setMetaLogs] = useState<MetaAdsEventLog[]>([]);
+  const [metaLogsWarning, setMetaLogsWarning] = useState<string | null>(null);
   
   // Configurações do Telegram
   const {
@@ -165,7 +242,16 @@ export default function Integration() {
           webhookUrl: (v.webhookUrl as string) ?? '',
           aiProvider: (v.aiProvider as 'openai') ?? 'openai',
           aiApiKey: (v.aiApiKey as string) ?? '',
-          aiModel: (v.aiModel as string) ?? 'gpt-4.1-mini'
+          aiModel: (v.aiModel as string) ?? 'gpt-4.1-mini',
+          metaAds: {
+            enabled: ((v.metaAds as IntegrationSettings['metaAds'])?.enabled as boolean) ?? false,
+            pixelId: ((v.metaAds as IntegrationSettings['metaAds'])?.pixelId as string) ?? '',
+            accessToken: ((v.metaAds as IntegrationSettings['metaAds'])?.accessToken as string) ?? '',
+            testEventCode: ((v.metaAds as IntegrationSettings['metaAds'])?.testEventCode as string) ?? '',
+            sendOsPurchase: ((v.metaAds as IntegrationSettings['metaAds'])?.sendOsPurchase as boolean) ?? true,
+            sendPdvPurchase: ((v.metaAds as IntegrationSettings['metaAds'])?.sendPdvPurchase as boolean) ?? false,
+            sendClientLead: ((v.metaAds as IntegrationSettings['metaAds'])?.sendClientLead as boolean) ?? false,
+          },
         });
       }
     } catch (error) {
@@ -177,6 +263,25 @@ export default function Integration() {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  const loadMetaLogs = useCallback(async () => {
+    try {
+      const result = await apiClient.get('/meta-ads/logs?limit=8');
+      if (result.error) throw result.error;
+      const payload = result.data as { data?: MetaAdsEventLog[]; warning?: string };
+      setMetaLogs(Array.isArray(payload?.data) ? payload.data : []);
+      setMetaLogsWarning(payload?.warning || null);
+    } catch (error) {
+      console.error('Erro ao carregar logs Meta Ads:', error);
+      setMetaLogsWarning('Erro ao carregar histórico da Meta Ads');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentTab === 'meta') {
+      void loadMetaLogs();
+    }
+  }, [currentTab, loadMetaLogs]);
 
   const saveSettings = async () => {
     if (!isAdmin) {
@@ -273,6 +378,45 @@ export default function Integration() {
     }
   };
 
+  const updateMetaAds = (patch: Partial<NonNullable<IntegrationSettings['metaAds']>>) => {
+    setSettings(prev => ({
+      ...prev,
+      metaAds: {
+        enabled: prev.metaAds?.enabled ?? false,
+        pixelId: prev.metaAds?.pixelId ?? '',
+        accessToken: prev.metaAds?.accessToken ?? '',
+        testEventCode: prev.metaAds?.testEventCode ?? '',
+        sendOsPurchase: prev.metaAds?.sendOsPurchase ?? true,
+        sendPdvPurchase: prev.metaAds?.sendPdvPurchase ?? false,
+        sendClientLead: prev.metaAds?.sendClientLead ?? false,
+        ...patch,
+      },
+    }));
+  };
+
+  const testMetaAdsIntegration = async () => {
+    if (!settings.metaAds?.pixelId || !settings.metaAds?.accessToken) {
+      toast.error('Informe Pixel ID e Access Token antes de testar.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await apiClient.post('/meta-ads/test-event', {
+        value: 1,
+        content_name: 'Evento de teste Ativa Fix',
+      });
+
+      if (result.error) throw result.error;
+      toast.success('Evento de teste enviado para a Meta. Confira no Test Events do Pixel.');
+      void loadMetaLogs();
+    } catch (error) {
+      toast.error(`Erro ao enviar evento de teste: ${getErrorMessage(error, 'Erro desconhecido')}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const setTab = (value: string) => {
     const tab = value as TabValue;
     if (TAB_VALUES.includes(tab)) navigate(`/integracoes/${tab}`);
@@ -299,22 +443,41 @@ export default function Integration() {
     >
       <div className="h-full overflow-y-auto overflow-x-hidden -mx-2 md:-mx-4 px-2 md:px-4">
         <Tabs value={currentTab} onValueChange={setTab} className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="api" className="flex items-center gap-2">
+          <TabsList className="mx-auto mb-4 flex h-auto w-fit flex-wrap justify-center gap-2 rounded-full border border-emerald-100 bg-white p-2 text-slate-700 shadow-sm">
+            <TabsTrigger
+              value="api"
+              className={integrationTabClassName}
+            >
               <Key className="h-4 w-4" />
               API Externa
             </TabsTrigger>
-            <TabsTrigger value="crm" className="flex items-center gap-2">
+            <TabsTrigger
+              value="crm"
+              className={integrationTabClassName}
+            >
               <MessageSquare className="h-4 w-4" />
-              CRM
+              Ativa CRM
             </TabsTrigger>
-            <TabsTrigger value="telegram" className="flex items-center gap-2">
+            <TabsTrigger
+              value="telegram"
+              className={integrationTabClassName}
+            >
               <Paperclip className="h-4 w-4" />
               Telegram
             </TabsTrigger>
-            <TabsTrigger value="ia" className="flex items-center gap-2">
+            <TabsTrigger
+              value="ia"
+              className={integrationTabClassName}
+            >
               <Plug className="h-4 w-4" />
-              IA
+              OpenAI
+            </TabsTrigger>
+            <TabsTrigger
+              value="meta"
+              className={integrationTabClassName}
+            >
+              <Megaphone className="h-4 w-4" />
+              Meta Ads
             </TabsTrigger>
           </TabsList>
 
@@ -605,33 +768,231 @@ export default function Integration() {
           </CardContent>
         </Card>
 
-        {/* Webhook Configuration */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Webhook className="h-5 w-5" />
-              <div>
-                <CardTitle>Configuração de Webhook</CardTitle>
-                <CardDescription>
-                  URL para receber notificações de eventos externos
-                </CardDescription>
+          </TabsContent>
+
+          {/* Tab Meta Ads */}
+          <TabsContent value="meta" className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Megaphone className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <CardTitle>Meta Ads / Conversions API</CardTitle>
+                        <CardDescription>
+                          Envie conversões offline em tempo real quando uma OS for faturada.
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={settings.metaAds?.enabled ?? false}
+                      onCheckedChange={(enabled) => updateMetaAds({ enabled })}
+                      aria-label="Ativar integração Meta Ads"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="metaPixelId">Pixel ID</Label>
+                      <Input
+                        id="metaPixelId"
+                        placeholder="Ex: 123456789012345"
+                        value={settings.metaAds?.pixelId ?? ''}
+                        onChange={(e) => updateMetaAds({ pixelId: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="metaTestEventCode">Código de teste (opcional)</Label>
+                      <Input
+                        id="metaTestEventCode"
+                        placeholder="TEST12345"
+                        value={settings.metaAds?.testEventCode ?? ''}
+                        onChange={(e) => updateMetaAds({ testEventCode: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="metaAccessToken">Access Token da Conversions API</Label>
+                    <Input
+                      id="metaAccessToken"
+                      type="password"
+                      placeholder="Cole aqui o token gerado no Events Manager"
+                      value={settings.metaAds?.accessToken ?? ''}
+                      onChange={(e) => updateMetaAds({ accessToken: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Gere no Meta Events Manager em Pixel → Configurações → Conversions API. Dados pessoais são enviados com SHA-256 no backend.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-lg border bg-blue-50/60 p-3">
+                      <BadgeDollarSign className="mb-2 h-4 w-4 text-blue-700" />
+                      <p className="text-sm font-semibold">Evento principal</p>
+                      <p className="text-xs text-muted-foreground">Purchase para OS faturada</p>
+                    </div>
+                    <div className="rounded-lg border bg-emerald-50/60 p-3">
+                      <ShieldCheck className="mb-2 h-4 w-4 text-emerald-700" />
+                      <p className="text-sm font-semibold">Dados tratados</p>
+                      <p className="text-xs text-muted-foreground">Nome e telefone com hash SHA-256</p>
+                    </div>
+                    <div className="rounded-lg border bg-violet-50/60 p-3">
+                      <MousePointerClick className="mb-2 h-4 w-4 text-violet-700" />
+                      <p className="text-sm font-semibold">Atribuição</p>
+                      <p className="text-xs text-muted-foreground">Ajuda campanhas a otimizar por faturamento real</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Enviar OS faturada automaticamente</p>
+                        <p className="text-xs text-muted-foreground">Dispara quando uma venda de OS fica paga.</p>
+                      </div>
+                      <Switch
+                        checked={settings.metaAds?.sendOsPurchase ?? true}
+                        onCheckedChange={(sendOsPurchase) => updateMetaAds({ sendOsPurchase })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Venda PDV paga</p>
+                        <p className="text-xs text-muted-foreground">Preparado para ativar em uma próxima etapa.</p>
+                      </div>
+                      <Switch
+                        checked={settings.metaAds?.sendPdvPurchase ?? false}
+                        onCheckedChange={(sendPdvPurchase) => updateMetaAds({ sendPdvPurchase })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">Cliente criado / Lead</p>
+                        <p className="text-xs text-muted-foreground">Preparado para públicos de prospecção.</p>
+                      </div>
+                      <Switch
+                        checked={settings.metaAds?.sendClientLead ?? false}
+                        onCheckedChange={(sendClientLead) => updateMetaAds({ sendClientLead })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={saveSettings} disabled={loading}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Salvar Configurações
+                    </Button>
+                    <Button type="button" variant="outline" onClick={testMetaAdsIntegration} disabled={loading}>
+                      <Send className="h-4 w-4 mr-2" />
+                      Enviar evento de teste
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                      Eventos planejados
+                    </CardTitle>
+                    <CardDescription>
+                      O primeiro já fica ativo para OS faturada; os demais ficam mapeados para evolução.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {META_EVENTS.map((item) => (
+                      <div key={item.title} className="rounded-lg border bg-background p-3">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <p className="text-sm font-medium">{item.title}</p>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">Últimos envios</CardTitle>
+                        <CardDescription>
+                          Histórico salvo em `meta_ads_event_logs`.
+                        </CardDescription>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={loadMetaLogs}>
+                        Atualizar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {metaLogsWarning === 'META_ADS_EVENT_LOGS_MISSING' ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        Rode a migration `db/migrations/manual/META_ADS_EVENT_LOGS.sql` na VPS para exibir e gravar o histórico.
+                      </div>
+                    ) : metaLogs.length === 0 ? (
+                      <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                        Nenhum evento enviado ainda. Salve as configurações e use o botão de teste.
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[280px] pr-3">
+                        <div className="space-y-2">
+                          {metaLogs.map((log) => {
+                            const statusClass = log.status === 'enviado'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : log.status === 'erro'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-slate-100 text-slate-700';
+                            return (
+                              <div key={log.id} className="rounded-lg border bg-background p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium">{log.event_name}</p>
+                                    <p className="truncate text-xs text-muted-foreground">{log.event_id}</p>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${statusClass}`}>
+                                    {log.status}
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  <span>{log.event_type}</span>
+                                  <span>tentativas: {log.attempts}</span>
+                                  <span>{new Date(log.created_at).toLocaleString('pt-BR')}</span>
+                                </div>
+                                {log.error_message && (
+                                  <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">
+                                    {log.error_message}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Payload enviado para Meta</CardTitle>
+                    <CardDescription>
+                      Exemplo resumido. O backend monta e envia o JSON com dados sensíveis hasheados.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="max-h-[360px] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+                      {META_PAYLOAD_EXAMPLE}
+                    </pre>
+                  </CardContent>
+                </Card>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>URL do Webhook (somente leitura)</Label>
-              <Input
-                readOnly
-                value={`https://api.ativafix.com/api/webhook`}
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Configure esta URL no Ativa CRM para receber notificações automáticas
-              </p>
-            </div>
-          </CardContent>
-        </Card>
           </TabsContent>
         </Tabs>
       </div>

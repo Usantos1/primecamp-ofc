@@ -131,6 +131,260 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
+function normalizeMetaValue(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function hashSha256(value) {
+  const normalized = normalizeMetaValue(value);
+  if (!normalized) return undefined;
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+function normalizePhoneForMeta(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.startsWith('55') ? digits : `55${digits}`;
+}
+
+async function getIntegrationSettings(companyId) {
+  const keys = companyId ? [`integration_settings_${companyId}`, 'integration_settings'] : ['integration_settings'];
+  for (const key of keys) {
+    const result = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [key]);
+    if (result.rows[0]?.value) return result.rows[0].value;
+  }
+  return {};
+}
+
+function isMissingMetaLogsTable(error) {
+  return error?.code === '42P01' || String(error?.message || '').includes('meta_ads_event_logs');
+}
+
+async function beginMetaEventLog(companyId, event, context = {}) {
+  try {
+    const insertResult = await pool.query(`
+      INSERT INTO public.meta_ads_event_logs (
+        company_id, event_id, event_name, event_type, source, sale_id, ordem_servico_id,
+        status, attempts, last_attempt_at, request_payload
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'enviando', 1, now(), $8::jsonb)
+      ON CONFLICT (event_id) DO NOTHING
+      RETURNING id, status, attempts
+    `, [
+      companyId,
+      event.event_id,
+      event.event_name,
+      context.eventType || 'os_purchase',
+      context.source || 'system',
+      context.saleId || null,
+      context.ordemServicoId || null,
+      JSON.stringify(event),
+    ]);
+
+    if (insertResult.rows[0]) {
+      return { shouldSend: true, logId: insertResult.rows[0].id };
+    }
+
+    const existingResult = await pool.query(
+      'SELECT id, status, attempts FROM public.meta_ads_event_logs WHERE event_id = $1 LIMIT 1',
+      [event.event_id]
+    );
+    const existing = existingResult.rows[0];
+    if (!existing || existing.status === 'enviado' || Number(existing.attempts || 0) >= 3) {
+      return { shouldSend: false, logId: existing?.id, reason: existing?.status === 'enviado' ? 'already_sent' : 'max_attempts' };
+    }
+
+    const retryResult = await pool.query(`
+      UPDATE public.meta_ads_event_logs
+      SET status = 'enviando',
+          attempts = attempts + 1,
+          last_attempt_at = now(),
+          error_message = NULL,
+          request_payload = $2::jsonb
+      WHERE id = $1
+      RETURNING id
+    `, [existing.id, JSON.stringify(event)]);
+
+    return { shouldSend: true, logId: retryResult.rows[0]?.id || existing.id };
+  } catch (error) {
+    if (isMissingMetaLogsTable(error)) {
+      console.warn('[Meta Ads] Tabela meta_ads_event_logs ausente. Rode db/migrations/manual/META_ADS_EVENT_LOGS.sql na VPS.');
+      return { shouldSend: true, logId: null, missingTable: true };
+    }
+    throw error;
+  }
+}
+
+async function finishMetaEventLog(logId, status, payload = {}) {
+  if (!logId) return;
+  try {
+    await pool.query(`
+      UPDATE public.meta_ads_event_logs
+      SET status = $2,
+          sent_at = CASE WHEN $2 = 'enviado' THEN now() ELSE sent_at END,
+          response_payload = COALESCE($3::jsonb, response_payload),
+          error_message = $4
+      WHERE id = $1
+    `, [
+      logId,
+      status,
+      payload.response ? JSON.stringify(payload.response) : null,
+      payload.errorMessage || null,
+    ]);
+  } catch (error) {
+    console.warn('[Meta Ads] Não foi possível atualizar log:', error.message);
+  }
+}
+
+async function sendMetaEvent(companyId, event, context = {}) {
+  if (!fetch) {
+    console.warn('[Meta Ads] fetch indisponível no runtime atual.');
+    return { skipped: true, reason: 'fetch_unavailable' };
+  }
+
+  const settings = await getIntegrationSettings(companyId);
+  const meta = settings.metaAds || {};
+  const enabled = meta.enabled === true || settings.metaAdsEnabled === true;
+  const pixelId = meta.pixelId || settings.metaPixelId;
+  const accessToken = meta.accessToken || settings.metaAccessToken;
+  const testEventCode = meta.testEventCode || settings.metaTestEventCode;
+
+  if (!enabled || !pixelId || !accessToken) {
+    return { skipped: true, reason: 'not_configured' };
+  }
+
+  const log = await beginMetaEventLog(companyId, event, context);
+  if (!log.shouldSend) {
+    console.log('[Meta Ads] Evento ignorado por idempotência:', { event_id: event.event_id, reason: log.reason });
+    return { skipped: true, reason: log.reason };
+  }
+
+  const body = {
+    data: [event],
+    ...(testEventCode ? { test_event_code: testEventCode } : {}),
+  };
+
+  const response = await fetch(`https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error('[Meta Ads] Erro ao enviar evento:', data);
+    const errorMessage = data?.error?.message || `Meta Ads retornou status ${response.status}`;
+    await finishMetaEventLog(log.logId, 'erro', { response: data, errorMessage });
+    throw new Error(errorMessage);
+  }
+
+  await finishMetaEventLog(log.logId, 'enviado', { response: data });
+  console.log('[Meta Ads] Evento enviado:', { event_name: event.event_name, event_id: event.event_id, response: data });
+  return data;
+}
+
+async function isMetaOsPurchaseEnabled(companyId) {
+  const settings = await getIntegrationSettings(companyId);
+  const meta = settings.metaAds || {};
+  return (meta.enabled === true || settings.metaAdsEnabled === true) && meta.sendOsPurchase !== false;
+}
+
+async function buildMetaOsPurchaseEvent(saleId) {
+  const saleResult = await pool.query(`
+    SELECT
+      s.id,
+      s.numero,
+      s.company_id,
+      s.total,
+      s.total_pago,
+      s.finalized_at,
+      s.created_at,
+      s.cliente_nome AS sale_cliente_nome,
+      s.cliente_telefone AS sale_cliente_telefone,
+      s.ordem_servico_id,
+      os.numero AS os_numero,
+      os.cliente_nome AS os_cliente_nome,
+      os.cliente_telefone AS os_cliente_telefone,
+      os.modelo_nome,
+      os.marca_nome,
+      os.descricao_problema,
+      os.valor_total
+    FROM public.sales s
+    LEFT JOIN public.ordens_servico os ON os.id = s.ordem_servico_id
+    WHERE s.id = $1
+    LIMIT 1
+  `, [saleId]);
+
+  const sale = saleResult.rows[0];
+  if (!sale || !sale.ordem_servico_id) return null;
+
+  const customerName = sale.os_cliente_nome || sale.sale_cliente_nome || '';
+  const phone = normalizePhoneForMeta(sale.os_cliente_telefone || sale.sale_cliente_telefone || '');
+  const [firstName, ...lastNameParts] = customerName.trim().split(/\s+/).filter(Boolean);
+  const modelName = [sale.marca_nome, sale.modelo_nome].filter(Boolean).join(' ') || sale.modelo_nome || 'Ordem de Serviço';
+  const value = Number(sale.total_pago || sale.total || sale.valor_total || 0);
+  const eventTime = Math.floor(new Date(sale.finalized_at || sale.created_at || Date.now()).getTime() / 1000);
+
+  const userData = {};
+  const phoneHash = hashSha256(phone);
+  const firstNameHash = hashSha256(firstName);
+  const lastNameHash = hashSha256(lastNameParts.join(' '));
+  if (phoneHash) userData.ph = [phoneHash];
+  if (firstNameHash) userData.fn = [firstNameHash];
+  if (lastNameHash) userData.ln = [lastNameHash];
+
+  return {
+    companyId: sale.company_id,
+    saleId: sale.id,
+    ordemServicoId: sale.ordem_servico_id,
+    event: {
+      event_name: 'Purchase',
+      event_time: eventTime,
+      event_id: `os_purchase_${sale.id}`,
+      action_source: 'system_generated',
+      user_data: userData,
+      custom_data: {
+        currency: 'BRL',
+        value,
+        order_id: String(sale.os_numero || sale.numero || sale.id),
+        content_name: modelName,
+        content_category: 'Ordem de Serviço',
+        contents: [
+          {
+            id: sale.ordem_servico_id,
+            quantity: 1,
+            item_price: value,
+          },
+        ],
+        descricao_problema: sale.descricao_problema || undefined,
+      },
+    },
+  };
+}
+
+async function sendMetaOsPurchaseForSale(saleId) {
+  try {
+    const payload = await buildMetaOsPurchaseEvent(saleId);
+    if (!payload) return;
+    if (!await isMetaOsPurchaseEnabled(payload.companyId)) return;
+    await sendMetaEvent(payload.companyId, payload.event, {
+      eventType: 'os_purchase',
+      source: 'os_billing',
+      saleId: payload.saleId,
+      ordemServicoId: payload.ordemServicoId,
+    });
+  } catch (error) {
+    console.error('[Meta Ads] Falha ao enviar conversão de OS:', error.message);
+  }
+}
+
+function shouldSendMetaOsPurchaseFromSaleRow(row) {
+  return row
+    && row.ordem_servico_id
+    && row.sale_origin === 'OS'
+    && row.status === 'paid';
+}
+
 // Middlewares
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -2577,6 +2831,16 @@ app.post('/api/insert/:table', async (req, res) => {
 
     console.log(`[Insert] ${tableName}:`, keysToUse, Array.isArray(data) ? `(batch ${rowsToInsert.length})` : '(single)');
     const result = await pool.query(sql, values);
+
+    const isFinalizingSale = data?.status === 'paid' || data?.is_draft === false || data?.finalized_at;
+    if (tableNameOnly.toLowerCase() === 'sales' && isFinalizingSale) {
+      result.rows
+        .filter(shouldSendMetaOsPurchaseFromSaleRow)
+        .forEach((row) => {
+          void sendMetaOsPurchaseForSale(row.id);
+        });
+    }
+
     res.json({ data: Array.isArray(data) ? result.rows : result.rows[0], rows: result.rows });
   } catch (error) {
     console.error('Erro ao inserir:', error);
@@ -3051,6 +3315,15 @@ app.post('/api/update/:table', async (req, res) => {
     
     const result = await pool.query(sql, params);
     console.log(`[Update] Query executada com sucesso, ${result.rowCount} linhas afetadas`);
+
+    if (tableNameOnly.toLowerCase() === 'sales') {
+      result.rows
+        .filter(shouldSendMetaOsPurchaseFromSaleRow)
+        .forEach((row) => {
+          void sendMetaOsPurchaseForSale(row.id);
+        });
+    }
+
     res.json({ data: result.rows, rows: result.rows, count: result.rowCount });
   } catch (error) {
     console.error('❌ Erro ao atualizar:', error);
@@ -3690,6 +3963,90 @@ app.post('/api/whatsapp/send', async (req, res) => {
   } catch (error) {
     console.error('[WhatsApp] Erro:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/meta-ads/test-event', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const phone = normalizePhoneForMeta(req.body?.phone || '5599999999999');
+    const value = Number(req.body?.value || 1);
+    const event = {
+      event_name: 'Purchase',
+      event_time: now,
+      event_id: `meta_test_${req.companyId}_${now}`,
+      action_source: 'system_generated',
+      user_data: {
+        ph: [hashSha256(phone)],
+      },
+      custom_data: {
+        currency: 'BRL',
+        value,
+        order_id: `TEST-${now}`,
+        content_name: req.body?.content_name || 'Evento de teste Ativa Fix',
+        content_category: 'Teste',
+      },
+    };
+
+    const result = await sendMetaEvent(req.companyId, event, {
+      eventType: 'test',
+      source: 'manual_test',
+    });
+    if (result?.skipped) {
+      return res.status(400).json({
+        success: false,
+        error: 'Meta Ads não configurado ou desativado.',
+        reason: result.reason,
+      });
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Meta Ads] Erro no evento de teste:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/meta-ads/logs', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+    const result = await pool.query(`
+      SELECT
+        id,
+        event_id,
+        event_name,
+        event_type,
+        source,
+        sale_id,
+        ordem_servico_id,
+        status,
+        attempts,
+        last_attempt_at,
+        sent_at,
+        error_message,
+        response_payload,
+        created_at
+      FROM public.meta_ads_event_logs
+      WHERE company_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `, [req.companyId, limit]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    if (isMissingMetaLogsTable(error)) {
+      return res.json({ success: true, data: [], warning: 'META_ADS_EVENT_LOGS_MISSING' });
+    }
+    console.error('[Meta Ads] Erro ao listar logs:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -6923,7 +7280,7 @@ const validateApiToken = async (req, res, next) => {
           req.headers['user-agent'], 
           JSON.stringify(req.query),
           res.statusCode,
-          JSON.stringify(body).substring(0, 5000) // Limitar a 5000 caracteres
+          JSON.stringify(body)
         ]
       ).catch(err => console.error('[API Log] Erro ao salvar log:', err));
       
@@ -7192,6 +7549,141 @@ app.get('/api/api-tokens/:id/logs', authenticateToken, async (req, res) => {
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[API Tokens] Erro ao buscar logs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET - Logs de acesso de todos os tokens da empresa, com busca e paginação
+app.get('/api/api-logs', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.' });
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const search = String(req.query.search || '').trim();
+    const tokenId = String(req.query.token_id || '').trim();
+    const method = String(req.query.method || '').trim().toUpperCase();
+    const status = String(req.query.status || '').trim();
+
+    const where = [
+      `(t.company_id = $1 OR (t.company_id IS NULL AND t.criado_por IN (SELECT id FROM users WHERE company_id = $1)))`
+    ];
+    const params = [req.companyId];
+    let idx = 2;
+
+    if (tokenId && tokenId !== 'all') {
+      where.push(`l.token_id = $${idx}`);
+      params.push(tokenId);
+      idx++;
+    }
+
+    if (method && method !== 'ALL') {
+      where.push(`UPPER(l.method) = $${idx}`);
+      params.push(method);
+      idx++;
+    }
+
+    if (status && status !== 'all') {
+      if (status === 'success') {
+        where.push(`COALESCE(l.response_status, 0) >= 200 AND COALESCE(l.response_status, 0) < 300`);
+      } else if (status === 'error') {
+        where.push(`COALESCE(l.response_status, 0) >= 400`);
+      } else if (/^\d{3}$/.test(status)) {
+        where.push(`l.response_status = $${idx}`);
+        params.push(parseInt(status, 10));
+        idx++;
+      }
+    }
+
+    if (search) {
+      where.push(`(
+        l.endpoint ILIKE $${idx}
+        OR l.method ILIKE $${idx}
+        OR l.ip_address ILIKE $${idx}
+        OR l.user_agent ILIKE $${idx}
+        OR l.query_params::text ILIKE $${idx}
+        OR l.response_body ILIKE $${idx}
+        OR t.nome ILIKE $${idx}
+      )`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) AS total
+       FROM api_access_logs l
+       INNER JOIN api_tokens t ON t.id = l.token_id
+       ${whereSql}`,
+      params
+    );
+
+    const result = await pool.query(
+      `SELECT
+          l.*,
+          t.nome AS token_nome
+       FROM api_access_logs l
+       INNER JOIN api_tokens t ON t.id = l.token_id
+       ${whereSql}
+       ORDER BY l.created_at DESC
+       LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, limit, offset]
+    );
+
+    if (result.rows.length === 0 && offset === 0 && !search && !method && (!status || status === 'all') && tokenId && tokenId !== 'all') {
+      const tokenResult = await pool.query(
+        `SELECT id, nome, uso_count, ultimo_uso, created_at
+         FROM api_tokens t
+         WHERE t.id = $1
+           AND (t.company_id = $2 OR (t.company_id IS NULL AND t.criado_por IN (SELECT id FROM users WHERE company_id = $2)))`,
+        [tokenId, req.companyId]
+      );
+
+      const token = tokenResult.rows[0];
+      if (token && Number(token.uso_count || 0) > 0) {
+        return res.json({
+          success: true,
+          data: [{
+            id: `usage-summary-${token.id}`,
+            token_id: token.id,
+            token_nome: token.nome,
+            endpoint: 'Histórico do token',
+            method: 'INFO',
+            ip_address: '-',
+            user_agent: 'Resumo gerado a partir do contador de uso do token',
+            query_params: {
+              uso_count: token.uso_count,
+              ultimo_uso: token.ultimo_uso,
+              observacao: 'As respostas completas passam a ser exibidas para novas chamadas registradas em api_access_logs.',
+            },
+            response_status: null,
+            response_body: JSON.stringify({
+              tipo: 'resumo_historico',
+              token: token.nome,
+              total_requisicoes: token.uso_count,
+              ultimo_uso: token.ultimo_uso,
+              aviso: 'Este token possui uso histórico, mas os detalhes por requisição não foram armazenados antes da ativação dos logs detalhados. Faça uma nova chamada na API para ver endpoint, filtros e resposta completa.',
+            }),
+            created_at: token.ultimo_uso || token.created_at || new Date().toISOString(),
+            is_summary: true,
+          }],
+          total: 1,
+          limit,
+          offset,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: result.rows,
+      total: parseInt(countResult.rows[0]?.total || '0', 10),
+      limit,
+      offset,
+    });
+  } catch (error) {
+    console.error('[API Logs] Erro ao buscar logs:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

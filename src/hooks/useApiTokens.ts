@@ -20,14 +20,34 @@ export interface ApiToken {
 export interface ApiAccessLog {
   id: string;
   token_id: string;
+  token_nome?: string;
   endpoint: string;
   method: string;
   ip_address: string;
   user_agent: string;
-  query_params: Record<string, any>;
+  query_params: Record<string, unknown>;
   response_status?: number;
   response_body?: string;
   created_at: string;
+  is_summary?: boolean;
+}
+
+export interface ApiLogsFilters {
+  search?: string;
+  token_id?: string;
+  token_ids?: string[];
+  method?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ApiLogsResult {
+  rows: ApiAccessLog[];
+  total: number;
+  limit: number;
+  offset: number;
+  error?: string;
 }
 
 export interface CreateTokenData {
@@ -35,6 +55,40 @@ export interface CreateTokenData {
   descricao?: string;
   permissoes?: string[];
   expires_at?: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function filterLegacyLogs(rows: ApiAccessLog[], filters: ApiLogsFilters) {
+  let filteredRows = rows;
+  const search = filters.search?.trim().toLowerCase();
+  if (search) {
+    filteredRows = filteredRows.filter((log) => {
+      const haystack = [
+        log.endpoint,
+        log.method,
+        log.ip_address,
+        log.user_agent,
+        JSON.stringify(log.query_params || {}),
+        log.response_body || '',
+        log.token_nome || '',
+      ].join(' ').toLowerCase();
+      return haystack.includes(search);
+    });
+  }
+
+  if (filters.status && filters.status !== 'all') {
+    filteredRows = filteredRows.filter((log) => {
+      const status = Number(log.response_status || 0);
+      if (filters.status === 'success') return status >= 200 && status < 300;
+      if (filters.status === 'error') return status >= 400;
+      return status === Number(filters.status);
+    });
+  }
+
+  return filteredRows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 export function useApiTokens() {
@@ -71,8 +125,8 @@ export function useApiTokens() {
       queryClient.invalidateQueries({ queryKey: ['api-tokens'] });
       toast({ title: 'Token criado com sucesso!' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro ao criar token', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro ao criar token', description: getErrorMessage(error, 'Erro desconhecido'), variant: 'destructive' });
     },
   });
 
@@ -89,8 +143,8 @@ export function useApiTokens() {
       queryClient.invalidateQueries({ queryKey: ['api-tokens'] });
       toast({ title: 'Token atualizado!' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro ao atualizar token', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro ao atualizar token', description: getErrorMessage(error, 'Erro desconhecido'), variant: 'destructive' });
     },
   });
 
@@ -106,8 +160,8 @@ export function useApiTokens() {
       queryClient.invalidateQueries({ queryKey: ['api-tokens'] });
       toast({ title: 'Token excluído!' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro ao excluir token', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro ao excluir token', description: getErrorMessage(error, 'Erro desconhecido'), variant: 'destructive' });
     },
   });
 
@@ -126,6 +180,74 @@ export function useApiTokens() {
     }
   }, []);
 
+  const fetchAllLogs = useCallback(async (filters: ApiLogsFilters = {}): Promise<ApiLogsResult> => {
+    try {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value) !== '') {
+          params.set(key, String(value));
+        }
+      });
+
+      const query = params.toString();
+      const response = await apiClient.get<{
+        success: boolean;
+        data: ApiAccessLog[];
+        total: number;
+        limit: number;
+        offset: number;
+      }>(`/api-logs${query ? `?${query}` : ''}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      return {
+        rows: Array.isArray(response.data?.data) ? response.data.data : [],
+        total: response.data?.total || 0,
+        limit: response.data?.limit || filters.limit || 20,
+        offset: response.data?.offset || filters.offset || 0,
+      };
+    } catch (error) {
+      console.error('Erro ao buscar logs da API:', error);
+      const tokenIds = filters.token_id && filters.token_id !== 'all'
+        ? [filters.token_id]
+        : filters.token_ids || [];
+
+      if (tokenIds.length > 0) {
+        try {
+          const limit = filters.limit || 20;
+          const offset = filters.offset || 0;
+          const legacyLimit = Math.max(100, offset + limit);
+          const responses = await Promise.all(
+            tokenIds.map((id) => apiClient.get<{ success: boolean; data: ApiAccessLog[] }>(`/api-tokens/${id}/logs?limit=${legacyLimit}`))
+          );
+          const rows = responses.flatMap((response) => (
+            response.error || !Array.isArray(response.data?.data) ? [] : response.data.data
+          ));
+          const filteredRows = filterLegacyLogs(rows, filters);
+
+          return {
+            rows: filteredRows.slice(offset, offset + limit),
+            total: filteredRows.length,
+            limit,
+            offset,
+          };
+        } catch (legacyError) {
+          console.error('Erro ao buscar logs pela rota legada:', legacyError);
+        }
+      }
+
+      return {
+        rows: [],
+        total: 0,
+        limit: filters.limit || 20,
+        offset: filters.offset || 0,
+        error: getErrorMessage(error, 'Erro ao buscar logs da API'),
+      };
+    }
+  }, []);
+
   return {
     tokens,
     isLoading,
@@ -134,6 +256,7 @@ export function useApiTokens() {
     updateToken: updateMutation.mutateAsync,
     deleteToken: deleteMutation.mutateAsync,
     fetchLogs,
+    fetchAllLogs,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
