@@ -4414,6 +4414,124 @@ app.get('/api/meta-ads/logs', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/api/meta-ads/report', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+    const now = new Date();
+    const defaultStartDate = new Date(now);
+    defaultStartDate.setDate(defaultStartDate.getDate() - (days - 1));
+    defaultStartDate.setHours(0, 0, 0, 0);
+
+    const requestedStart = req.query.startDate ? new Date(`${req.query.startDate}T00:00:00.000Z`) : defaultStartDate;
+    const requestedEnd = req.query.endDate ? new Date(`${req.query.endDate}T23:59:59.999Z`) : now;
+    const startDate = Number.isNaN(requestedStart.getTime()) ? defaultStartDate : requestedStart;
+    const endDate = Number.isNaN(requestedEnd.getTime()) ? now : requestedEnd;
+    const cappedEndDate = endDate < startDate ? startDate : endDate;
+
+    const [leadSummary, purchaseSummary, dailySummary] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE direction = 'inbound')::int AS inbound,
+          COUNT(*) FILTER (WHERE direction = 'outbound')::int AS outbound,
+          COUNT(*) FILTER (WHERE meta_status = 'enviado')::int AS enviado,
+          COUNT(*) FILTER (WHERE meta_status = 'erro')::int AS erro,
+          COUNT(*) FILTER (WHERE meta_status = 'ignorado')::int AS ignorado,
+          COUNT(*) FILTER (WHERE ctwa_clid IS NOT NULL OR campaign_id IS NOT NULL OR campaign_name IS NOT NULL OR ad_id IS NOT NULL)::int AS com_campanha,
+          COUNT(DISTINCT NULLIF(contact_phone, ''))::int AS contatos_unicos
+        FROM public.ativa_crm_webhook_events
+        WHERE company_id = $1
+          AND created_at >= $2::timestamptz
+          AND created_at <= $3::timestamptz
+      `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
+      pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE event_name = 'Purchase')::int AS total,
+          COUNT(*) FILTER (WHERE event_name = 'Purchase' AND status = 'enviado')::int AS enviado,
+          COUNT(*) FILTER (WHERE event_name = 'Purchase' AND status = 'erro')::int AS erro,
+          COALESCE(SUM(
+            CASE
+              WHEN event_name = 'Purchase'
+               AND status = 'enviado'
+               AND (request_payload->'custom_data'->>'value') ~ '^[0-9]+(\\.[0-9]+)?$'
+              THEN (request_payload->'custom_data'->>'value')::numeric
+              ELSE 0
+            END
+          ), 0)::numeric AS valor_enviado
+        FROM public.meta_ads_event_logs
+        WHERE company_id = $1
+          AND created_at >= $2::timestamptz
+          AND created_at <= $3::timestamptz
+          AND source <> 'manual_test'
+      `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
+      pool.query(`
+        WITH dias AS (
+          SELECT generate_series(
+            date_trunc('day', $2::timestamptz),
+            date_trunc('day', $3::timestamptz),
+            interval '1 day'
+          )::date AS dia
+        ),
+        leads AS (
+          SELECT date_trunc('day', created_at)::date AS dia, COUNT(*)::int AS total
+          FROM public.ativa_crm_webhook_events
+          WHERE company_id = $1
+            AND created_at >= $2::timestamptz
+            AND created_at <= $3::timestamptz
+          GROUP BY 1
+        ),
+        purchases AS (
+          SELECT date_trunc('day', created_at)::date AS dia, COUNT(*)::int AS total
+          FROM public.meta_ads_event_logs
+          WHERE company_id = $1
+            AND created_at >= $2::timestamptz
+            AND created_at <= $3::timestamptz
+            AND source <> 'manual_test'
+            AND event_name = 'Purchase'
+          GROUP BY 1
+        )
+        SELECT
+          dias.dia,
+          COALESCE(leads.total, 0)::int AS leads,
+          COALESCE(purchases.total, 0)::int AS purchases
+        FROM dias
+        LEFT JOIN leads ON leads.dia = dias.dia
+        LEFT JOIN purchases ON purchases.dia = dias.dia
+        ORDER BY dias.dia DESC
+        LIMIT 14
+      `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
+    ]);
+
+    res.json({
+      success: true,
+      days,
+      period: {
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: cappedEndDate.toISOString().slice(0, 10),
+      },
+      leads: leadSummary.rows[0] || {},
+      purchases: purchaseSummary.rows[0] || {},
+      daily: dailySummary.rows,
+    });
+  } catch (error) {
+    if (isMissingMetaLogsTable(error) || isMissingAtivaCrmWebhookTable(error)) {
+      return res.json({
+        success: true,
+        warning: 'META_REPORT_TABLES_MISSING',
+        leads: {},
+        purchases: {},
+        daily: [],
+      });
+    }
+    console.error('[Meta Ads] Erro ao gerar relatório:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/webhook/ativa-crm/:companyId/:secret', async (req, res) => {
   const { companyId, secret } = req.params;
   try {

@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
 import { getApiUrl } from '@/utils/apiUrl';
-import { Activity, BadgeDollarSign, CheckCircle2, Copy, Megaphone, MessageSquare, MousePointerClick, Send, Settings, ShieldCheck, Paperclip, Key, Plug } from 'lucide-react';
+import { Activity, BadgeDollarSign, BarChart3, CalendarDays, CheckCircle2, Copy, Megaphone, MessageSquare, MousePointerClick, Send, Settings, ShieldCheck, Paperclip, Key, Plug } from 'lucide-react';
 import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ApiManager } from '@/components/ApiManager';
@@ -135,6 +136,36 @@ interface AtivaCrmWebhookEvent {
   created_at: string;
 }
 
+interface MetaAdsReport {
+  days?: number;
+  warning?: string;
+  period?: {
+    startDate?: string;
+    endDate?: string;
+  };
+  leads?: {
+    total?: number;
+    inbound?: number;
+    outbound?: number;
+    enviado?: number;
+    erro?: number;
+    ignorado?: number;
+    com_campanha?: number;
+    contatos_unicos?: number;
+  };
+  purchases?: {
+    total?: number;
+    enviado?: number;
+    erro?: number;
+    valor_enviado?: string | number;
+  };
+  daily?: Array<{
+    dia: string;
+    leads: number;
+    purchases: number;
+  }>;
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
   if (error && typeof error === 'object') {
@@ -150,6 +181,37 @@ function createWebhookSecret() {
     return crypto.randomUUID().replace(/-/g, '');
   }
   return `${Date.now()}${Math.random()}`.replace(/\D/g, '').slice(0, 32);
+}
+
+function formatReportNumber(value: unknown) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number.toLocaleString('pt-BR') : '0';
+}
+
+function formatReportCurrency(value: unknown) {
+  const number = Number(value || 0);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number.isFinite(number) ? number : 0);
+}
+
+function getLeadMessagePreview(message?: string | null) {
+  const cleanMessage = (message || '').replace(/\s+/g, ' ').trim();
+  if (!cleanMessage) return 'Sem mensagem registrada';
+
+  const firstPhrase = cleanMessage.split(/[.!?\n]/)[0]?.trim() || cleanMessage;
+  return firstPhrase.length > 90 ? `${firstPhrase.slice(0, 90)}...` : firstPhrase;
+}
+
+function getDefaultReportStartDate() {
+  const date = new Date();
+  date.setDate(date.getDate() - 29);
+  return date.toISOString().slice(0, 10);
+}
+
+function getDefaultReportEndDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export default function Integration() {
@@ -190,6 +252,10 @@ export default function Integration() {
   const [metaLogsWarning, setMetaLogsWarning] = useState<string | null>(null);
   const [ativaCrmEvents, setAtivaCrmEvents] = useState<AtivaCrmWebhookEvent[]>([]);
   const [ativaCrmEventsWarning, setAtivaCrmEventsWarning] = useState<string | null>(null);
+  const [metaReport, setMetaReport] = useState<MetaAdsReport | null>(null);
+  const [metaReportWarning, setMetaReportWarning] = useState<string | null>(null);
+  const [metaReportStartDate, setMetaReportStartDate] = useState(getDefaultReportStartDate);
+  const [metaReportEndDate, setMetaReportEndDate] = useState(getDefaultReportEndDate);
   
   // Configurações do Telegram
   const {
@@ -320,12 +386,30 @@ export default function Integration() {
     }
   }, []);
 
+  const loadMetaReport = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        startDate: metaReportStartDate,
+        endDate: metaReportEndDate,
+      });
+      const result = await apiClient.get(`/meta-ads/report?${params.toString()}`);
+      if (result.error) throw result.error;
+      const payload = result.data as MetaAdsReport;
+      setMetaReport(payload || null);
+      setMetaReportWarning(payload?.warning || null);
+    } catch (error) {
+      console.error('Erro ao carregar relatório Meta Ads:', error);
+      setMetaReportWarning('Erro ao carregar relatório da Meta Ads');
+    }
+  }, [metaReportEndDate, metaReportStartDate]);
+
   useEffect(() => {
     if (currentTab === 'meta') {
+      void loadMetaReport();
       void loadMetaLogs();
       void loadAtivaCrmEvents();
     }
-  }, [currentTab, loadMetaLogs, loadAtivaCrmEvents]);
+  }, [currentTab, loadMetaReport, loadMetaLogs, loadAtivaCrmEvents]);
 
   const saveSettings = async () => {
     if (!isAdmin) {
@@ -840,7 +924,8 @@ export default function Integration() {
           {/* Tab Meta Ads */}
           <TabsContent value="meta" className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-              <Card>
+              <div className="space-y-6">
+                <Card>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -987,7 +1072,6 @@ export default function Integration() {
                 </CardContent>
               </Card>
 
-              <div className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -1010,6 +1094,184 @@ export default function Integration() {
                     ))}
                   </CardContent>
                 </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Payload enviado para Meta</CardTitle>
+                    <CardDescription>
+                      Exemplo resumido. O backend monta e envia o JSON com dados sensíveis hasheados.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="max-h-[300px] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-100 whitespace-pre-wrap">
+                      {META_PAYLOAD_EXAMPLE}
+                    </pre>
+                  </CardContent>
+                </Card>
+
+              </div>
+
+              <div className="space-y-6">
+                <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <BarChart3 className="h-4 w-4 text-emerald-600" />
+                        Relatório Meta Ads
+                      </CardTitle>
+                      <CardDescription>
+                        Filtre leads e purchases enviados por período.
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="sm" className="gap-2">
+                            <CalendarDays className="h-4 w-4" />
+                            Período
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-80 space-y-3">
+                          <div>
+                            <p className="text-sm font-medium">Filtrar período</p>
+                            <p className="text-xs text-muted-foreground">
+                              Escolha as datas para atualizar o relatório.
+                            </p>
+                          </div>
+                          <div className="grid gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="metaReportStartDate" className="text-xs">Data inicial</Label>
+                              <Input
+                                id="metaReportStartDate"
+                                type="date"
+                                value={metaReportStartDate}
+                                onChange={(event) => setMetaReportStartDate(event.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="metaReportEndDate" className="text-xs">Data final</Label>
+                              <Input
+                                id="metaReportEndDate"
+                                type="date"
+                                value={metaReportEndDate}
+                                onChange={(event) => setMetaReportEndDate(event.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => {
+                              const endDate = getDefaultReportEndDate();
+                              const startDate = new Date();
+                              startDate.setDate(startDate.getDate() - 6);
+                              setMetaReportStartDate(startDate.toISOString().slice(0, 10));
+                              setMetaReportEndDate(endDate);
+                            }}>
+                              7 dias
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => {
+                              setMetaReportStartDate(getDefaultReportStartDate());
+                              setMetaReportEndDate(getDefaultReportEndDate());
+                            }}>
+                              30 dias
+                            </Button>
+                            <Button type="button" size="sm" onClick={loadMetaReport}>
+                              Aplicar
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      <Button type="button" variant="outline" size="sm" onClick={loadMetaReport}>
+                        Atualizar
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Período exibido: {metaReport?.period?.startDate || metaReportStartDate} até {metaReport?.period?.endDate || metaReportEndDate}
+                  </p>
+                  {metaReportWarning === 'META_REPORT_TABLES_MISSING' ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                      Rode as migrations `META_ADS_EVENT_LOGS.sql` e `ATIVA_CRM_WEBHOOK_EVENTS.sql` na VPS para gerar relatórios.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-lg border bg-background p-3">
+                          <p className="text-xs text-muted-foreground">Leads recebidos</p>
+                          <p className="mt-1 text-2xl font-semibold">{formatReportNumber(metaReport?.leads?.total)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatReportNumber(metaReport?.leads?.contatos_unicos)} contatos únicos
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-background p-3">
+                          <p className="text-xs text-muted-foreground">Leads enviados</p>
+                          <p className="mt-1 text-2xl font-semibold text-emerald-700">{formatReportNumber(metaReport?.leads?.enviado)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatReportNumber(metaReport?.leads?.erro)} com erro
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-background p-3">
+                          <p className="text-xs text-muted-foreground">Purchases</p>
+                          <p className="mt-1 text-2xl font-semibold">{formatReportNumber(metaReport?.purchases?.enviado)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatReportNumber(metaReport?.purchases?.erro)} com erro
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-background p-3">
+                          <p className="text-xs text-muted-foreground">Valor enviado</p>
+                          <p className="mt-1 text-2xl font-semibold text-blue-700">{formatReportCurrency(metaReport?.purchases?.valor_enviado)}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Somente purchases enviados</p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-[1fr_1.2fr]">
+                        <div className="rounded-lg border bg-muted/20 p-3">
+                          <p className="text-sm font-medium">Origem dos leads</p>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                            <div className="rounded-md bg-background p-2">
+                              <span className="text-xs text-muted-foreground">Inbound</span>
+                              <p className="font-semibold">{formatReportNumber(metaReport?.leads?.inbound)}</p>
+                            </div>
+                            <div className="rounded-md bg-background p-2">
+                              <span className="text-xs text-muted-foreground">Outbound</span>
+                              <p className="font-semibold">{formatReportNumber(metaReport?.leads?.outbound)}</p>
+                            </div>
+                            <div className="rounded-md bg-background p-2">
+                              <span className="text-xs text-muted-foreground">Com campanha</span>
+                              <p className="font-semibold">{formatReportNumber(metaReport?.leads?.com_campanha)}</p>
+                            </div>
+                            <div className="rounded-md bg-background p-2">
+                              <span className="text-xs text-muted-foreground">Ignorados</span>
+                              <p className="font-semibold">{formatReportNumber(metaReport?.leads?.ignorado)}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border bg-muted/20 p-3">
+                          <p className="text-sm font-medium">Movimento recente</p>
+                          <div className="mt-3 space-y-2">
+                            {(metaReport?.daily || []).slice(0, 7).map((item) => (
+                              <div key={item.dia} className="flex items-center justify-between gap-3 rounded-md bg-background px-3 py-2 text-xs">
+                                <span className="font-medium">{new Date(item.dia).toLocaleDateString('pt-BR')}</span>
+                                <span className="text-muted-foreground">
+                                  {item.leads} leads · {item.purchases} purchases
+                                </span>
+                              </div>
+                            ))}
+                            {(metaReport?.daily || []).length === 0 && (
+                              <p className="rounded-md bg-background p-3 text-xs text-muted-foreground">
+                                Ainda não há dados suficientes para o resumo diário.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
 
                 <Card>
                   <CardHeader>
@@ -1043,15 +1305,20 @@ export default function Integration() {
                               : event.meta_status === 'erro'
                                 ? 'bg-red-100 text-red-700'
                                 : 'bg-slate-100 text-slate-700';
+                            const leadName = event.contact_name || 'Lead WhatsApp';
+                            const leadPhone = event.contact_phone || 'Telefone não informado';
                             return (
                               <div key={event.id} className="rounded-lg border bg-background p-3">
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="min-w-0">
-                                    <p className="truncate text-sm font-medium">
-                                      {event.contact_name || event.contact_phone || 'Lead WhatsApp'}
-                                    </p>
-                                    <p className="truncate text-xs text-muted-foreground">
-                                      {event.message_text || event.event_id}
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      <p className="truncate text-sm font-medium">{leadName}</p>
+                                      <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                        {leadPhone}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                      Primeira mensagem: {getLeadMessagePreview(event.message_text)}
                                     </p>
                                   </div>
                                   <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${statusClass}`}>
@@ -1141,19 +1408,6 @@ export default function Integration() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Payload enviado para Meta</CardTitle>
-                    <CardDescription>
-                      Exemplo resumido. O backend monta e envia o JSON com dados sensíveis hasheados.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <pre className="max-h-[360px] overflow-auto rounded-md bg-slate-950 p-4 text-xs text-slate-100 whitespace-pre-wrap">
-                      {META_PAYLOAD_EXAMPLE}
-                    </pre>
-                  </CardContent>
-                </Card>
               </div>
             </div>
           </TabsContent>
