@@ -160,6 +160,227 @@ function isMissingMetaLogsTable(error) {
   return error?.code === '42P01' || String(error?.message || '').includes('meta_ads_event_logs');
 }
 
+function isMissingGoogleLogsTable(error) {
+  return error?.code === '42P01' || String(error?.message || '').includes('google_ads_event_logs');
+}
+
+function formatGoogleAdsDateTime(value) {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  const iso = Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+  return iso.replace('T', ' ').replace(/\.\d{3}Z$/, '+00:00');
+}
+
+function normalizeGoogleCustomerId(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function getGoogleConversionActionResource(customerId, conversionAction) {
+  const raw = String(conversionAction || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('customers/')) return raw;
+  return `customers/${normalizeGoogleCustomerId(customerId)}/conversionActions/${raw.replace(/\D/g, '')}`;
+}
+
+function buildGoogleUserIdentifiers(data = {}) {
+  const identifiers = [];
+  const phone = normalizePhoneForMeta(data.phone || data.telefone);
+  const email = normalizeMetaValue(data.email);
+  const firstName = normalizeMetaValue(data.firstName || data.first_name);
+  const lastName = normalizeMetaValue(data.lastName || data.last_name);
+  const postalCode = String(data.postalCode || data.cep || '').replace(/\D/g, '');
+
+  const hashedPhoneNumber = hashSha256(phone);
+  const hashedEmail = hashSha256(email);
+  if (hashedPhoneNumber) identifiers.push({ hashedPhoneNumber });
+  if (hashedEmail) identifiers.push({ hashedEmail });
+  if (firstName || lastName || postalCode) {
+    const addressInfo = {
+      countryCode: 'BR',
+      ...(hashSha256(firstName) ? { hashedFirstName: hashSha256(firstName) } : {}),
+      ...(hashSha256(lastName) ? { hashedLastName: hashSha256(lastName) } : {}),
+      ...(postalCode ? { postalCode } : {}),
+    };
+    identifiers.push({ addressInfo });
+  }
+  return identifiers;
+}
+
+async function beginGoogleAdsEventLog(companyId, conversion, context = {}) {
+  try {
+    const insertResult = await pool.query(`
+      INSERT INTO public.google_ads_event_logs (
+        company_id, event_id, event_name, event_type, source, sale_id, ordem_servico_id, ativa_crm_event_id,
+        status, attempts, last_attempt_at, request_payload
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'enviando', 1, now(), $9::jsonb)
+      ON CONFLICT (event_id) DO NOTHING
+      RETURNING id, status, attempts
+    `, [
+      companyId,
+      conversion.eventId,
+      conversion.eventName,
+      context.eventType || 'conversion',
+      context.source || 'system',
+      context.saleId || null,
+      context.ordemServicoId || null,
+      context.ativaCrmEventId || null,
+      JSON.stringify(conversion),
+    ]);
+
+    if (insertResult.rows[0]) {
+      return { shouldSend: true, logId: insertResult.rows[0].id };
+    }
+
+    const existingResult = await pool.query(
+      'SELECT id, status, attempts FROM public.google_ads_event_logs WHERE event_id = $1 LIMIT 1',
+      [conversion.eventId]
+    );
+    const existing = existingResult.rows[0];
+    if (!existing || existing.status === 'enviado' || Number(existing.attempts || 0) >= 3) {
+      return { shouldSend: false, logId: existing?.id, reason: existing?.status === 'enviado' ? 'already_sent' : 'max_attempts' };
+    }
+
+    const retryResult = await pool.query(`
+      UPDATE public.google_ads_event_logs
+      SET status = 'enviando',
+          attempts = attempts + 1,
+          last_attempt_at = now(),
+          error_message = NULL,
+          request_payload = $2::jsonb
+      WHERE id = $1
+      RETURNING id
+    `, [existing.id, JSON.stringify(conversion)]);
+
+    return { shouldSend: true, logId: retryResult.rows[0]?.id || existing.id };
+  } catch (error) {
+    if (isMissingGoogleLogsTable(error)) {
+      console.warn('[Google Ads] Tabela google_ads_event_logs ausente. Rode db/migrations/manual/GOOGLE_ADS_EVENT_LOGS.sql na VPS.');
+      return { shouldSend: true, logId: null, missingTable: true };
+    }
+    throw error;
+  }
+}
+
+async function finishGoogleAdsEventLog(logId, status, payload = {}) {
+  if (!logId) return;
+  try {
+    await pool.query(`
+      UPDATE public.google_ads_event_logs
+      SET status = $2,
+          sent_at = CASE WHEN $2 = 'enviado' THEN now() ELSE sent_at END,
+          response_payload = COALESCE($3::jsonb, response_payload),
+          error_message = $4
+      WHERE id = $1
+    `, [
+      logId,
+      status,
+      payload.response ? JSON.stringify(payload.response) : null,
+      payload.errorMessage || null,
+    ]);
+  } catch (error) {
+    console.warn('[Google Ads] Não foi possível atualizar log:', error.message);
+  }
+}
+
+async function getGoogleAdsAccessToken(googleAds) {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: googleAds.clientId || '',
+      client_secret: googleAds.clientSecret || '',
+      refresh_token: googleAds.refreshToken || '',
+      grant_type: 'refresh_token',
+    }).toString(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.access_token) {
+    throw new Error(data?.error_description || data?.error || `OAuth Google retornou status ${response.status}`);
+  }
+  return data.access_token;
+}
+
+async function sendGoogleAdsConversion(companyId, conversion, context = {}) {
+  if (!fetch) {
+    console.warn('[Google Ads] fetch indisponível no runtime atual.');
+    return { skipped: true, reason: 'fetch_unavailable' };
+  }
+
+  const settings = await getIntegrationSettings(companyId);
+  const googleAds = settings.googleAds || {};
+  const customerId = normalizeGoogleCustomerId(googleAds.customerId);
+  const developerToken = String(googleAds.developerToken || '').trim();
+
+  if (!googleAds.enabled || !customerId || !developerToken || !googleAds.clientId || !googleAds.clientSecret || !googleAds.refreshToken) {
+    return { skipped: true, reason: 'not_configured' };
+  }
+
+  if (!conversion.conversionAction) {
+    return { skipped: true, reason: 'conversion_action_missing' };
+  }
+
+  const log = await beginGoogleAdsEventLog(companyId, conversion, context);
+  if (!log.shouldSend) {
+    console.log('[Google Ads] Conversão ignorada por idempotência:', { event_id: conversion.eventId, reason: log.reason });
+    return { skipped: true, reason: log.reason };
+  }
+
+  try {
+    const accessToken = await getGoogleAdsAccessToken(googleAds);
+    const body = {
+      conversions: [
+        {
+          conversionAction: getGoogleConversionActionResource(customerId, conversion.conversionAction),
+          conversionDateTime: formatGoogleAdsDateTime(conversion.conversionDateTime || new Date()),
+          orderId: conversion.orderId || conversion.eventId,
+          currencyCode: conversion.currencyCode || 'BRL',
+          ...(conversion.value !== undefined ? { conversionValue: Number(conversion.value || 0) } : {}),
+          ...(conversion.gclid ? { gclid: conversion.gclid } : {}),
+          ...(conversion.gbraid ? { gbraid: conversion.gbraid } : {}),
+          ...(conversion.wbraid ? { wbraid: conversion.wbraid } : {}),
+          ...(Array.isArray(conversion.userIdentifiers) && conversion.userIdentifiers.length > 0 ? { userIdentifiers: conversion.userIdentifiers } : {}),
+          ...(conversion.customVariables || {}),
+        },
+      ],
+      partialFailure: true,
+      validateOnly: googleAds.validateOnly === true,
+    };
+
+    const response = await fetch(`https://googleads.googleapis.com/v18/customers/${customerId}:uploadClickConversions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': developerToken,
+        ...(googleAds.loginCustomerId ? { 'login-customer-id': normalizeGoogleCustomerId(googleAds.loginCustomerId) } : {}),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    const partialFailureMessage = data?.partialFailureError?.message;
+    if (!response.ok || partialFailureMessage) {
+      const errorMessage = partialFailureMessage || data?.error?.message || `Google Ads retornou status ${response.status}`;
+      await finishGoogleAdsEventLog(log.logId, 'erro', { response: data, errorMessage });
+      throw new Error(errorMessage);
+    }
+
+    await finishGoogleAdsEventLog(log.logId, 'enviado', { response: data });
+    console.log('[Google Ads] Conversão enviada:', { event_name: conversion.eventName, event_id: conversion.eventId, response: data });
+    return data;
+  } catch (error) {
+    await finishGoogleAdsEventLog(log.logId, 'erro', { errorMessage: error.message });
+    throw error;
+  }
+}
+
+async function isGoogleAdsEventEnabled(companyId, flag) {
+  const settings = await getIntegrationSettings(companyId);
+  const googleAds = settings.googleAds || {};
+  return googleAds.enabled === true && googleAds[flag] === true;
+}
+
 async function beginMetaEventLog(companyId, event, context = {}) {
   try {
     const insertResult = await pool.query(`
@@ -401,11 +622,137 @@ async function sendMetaOsPurchaseForSale(saleId) {
   }
 }
 
+function buildGooglePurchaseConversionFromMetaPayload(payload, conversionAction, eventType) {
+  if (!payload?.event || !conversionAction) return null;
+  const event = payload.event;
+  const userData = event.user_data || {};
+  const customData = event.custom_data || {};
+  const userIdentifiers = [];
+  if (Array.isArray(userData.ph)) {
+    userData.ph.forEach((hashedPhoneNumber) => {
+      if (hashedPhoneNumber) userIdentifiers.push({ hashedPhoneNumber });
+    });
+  }
+  if (Array.isArray(userData.em)) {
+    userData.em.forEach((hashedEmail) => {
+      if (hashedEmail) userIdentifiers.push({ hashedEmail });
+    });
+  }
+
+  return {
+    eventName: eventType === 'pdv_purchase' ? 'PDV Purchase' : 'OS Purchase',
+    eventId: `google_${eventType}_${payload.saleId}`,
+    conversionAction,
+    conversionDateTime: new Date((event.event_time || Math.floor(Date.now() / 1000)) * 1000),
+    orderId: String(customData.order_id || payload.saleId),
+    value: Number(customData.value || 0),
+    currencyCode: customData.currency || 'BRL',
+    userIdentifiers,
+  };
+}
+
+async function buildGooglePdvPurchaseConversion(saleId, conversionAction) {
+  if (!conversionAction) return null;
+  const saleResult = await pool.query(`
+    SELECT
+      s.id,
+      s.numero,
+      s.company_id,
+      s.total,
+      s.total_pago,
+      s.finalized_at,
+      s.created_at,
+      s.cliente_id,
+      s.cliente_nome,
+      s.cliente_telefone,
+      s.cliente_cpf_cnpj,
+      c.email AS cliente_email,
+      c.cep AS cliente_cep
+    FROM public.sales s
+    LEFT JOIN public.clientes c ON c.id = s.cliente_id
+    WHERE s.id = $1
+      AND s.sale_origin = 'PDV'
+    LIMIT 1
+  `, [saleId]);
+
+  const sale = saleResult.rows[0];
+  if (!sale) return null;
+  const [firstName, ...lastNameParts] = String(sale.cliente_nome || '').trim().split(/\s+/).filter(Boolean);
+  const value = Number(sale.total_pago || sale.total || 0);
+  return {
+    companyId: sale.company_id,
+    saleId: sale.id,
+    conversion: {
+      eventName: 'PDV Purchase',
+      eventId: `google_pdv_purchase_${sale.id}`,
+      conversionAction,
+      conversionDateTime: new Date(sale.finalized_at || sale.created_at || Date.now()),
+      orderId: String(sale.numero || sale.id),
+      value,
+      currencyCode: 'BRL',
+      userIdentifiers: buildGoogleUserIdentifiers({
+        phone: sale.cliente_telefone,
+        email: sale.cliente_email,
+        firstName,
+        lastName: lastNameParts.join(' '),
+        postalCode: sale.cliente_cep,
+      }),
+    },
+  };
+}
+
+async function sendGoogleAdsPurchaseForSale(saleId) {
+  try {
+    const saleOriginResult = await pool.query('SELECT company_id, sale_origin FROM public.sales WHERE id = $1 LIMIT 1', [saleId]);
+    const saleOriginRow = saleOriginResult.rows[0];
+    if (!saleOriginRow) return;
+
+    const settings = await getIntegrationSettings(saleOriginRow.company_id);
+    const googleAds = settings.googleAds || {};
+    const isPdv = saleOriginRow.sale_origin === 'PDV';
+    const flag = isPdv ? 'sendPdvPurchase' : 'sendOsPurchase';
+    if (!googleAds.enabled || googleAds[flag] !== true) return;
+
+    const conversionAction = isPdv ? googleAds.pdvPurchaseConversionAction : googleAds.osPurchaseConversionAction;
+    let companyId = saleOriginRow.company_id;
+    let ordemServicoId = null;
+    let conversion = null;
+
+    if (isPdv) {
+      const pdvPayload = await buildGooglePdvPurchaseConversion(saleId, conversionAction);
+      if (!pdvPayload) return;
+      companyId = pdvPayload.companyId;
+      conversion = pdvPayload.conversion;
+    } else {
+      const payload = await buildMetaOsPurchaseEvent(saleId);
+      if (!payload) return;
+      companyId = payload.companyId;
+      ordemServicoId = payload.ordemServicoId;
+      conversion = buildGooglePurchaseConversionFromMetaPayload(payload, conversionAction, 'os_purchase');
+    }
+
+    if (!conversion) return;
+
+    await sendGoogleAdsConversion(companyId, conversion, {
+      eventType: isPdv ? 'pdv_purchase' : 'os_purchase',
+      source: isPdv ? 'pdv_sale' : 'os_billing',
+      saleId,
+      ordemServicoId,
+    });
+  } catch (error) {
+    console.error('[Google Ads] Falha ao enviar conversão de venda:', error.message);
+  }
+}
+
 function shouldSendMetaOsPurchaseFromSaleRow(row) {
   return row
     && row.ordem_servico_id
     && row.sale_origin === 'OS'
     && row.status === 'paid';
+}
+
+function shouldSendGooglePurchaseFromSaleRow(row) {
+  return row && row.status === 'paid';
 }
 
 function isMissingAtivaCrmWebhookTable(error) {
@@ -746,6 +1093,98 @@ async function sendMetaLeadForAtivaCrmWebhook(event) {
     await markAtivaCrmWebhookMetaStatus(event.id, 'erro', { metaEventId, errorMessage: error.message });
     throw error;
   }
+}
+
+function detectAtivaCrmLeadStage(event) {
+  const payload = event?.raw_payload || {};
+  const statusValue = normalizeWebhookText(
+    payload?.lead_status ||
+    payload?.status ||
+    payload?.ticket_status ||
+    payload?.qualification_status ||
+    payload?.stage ||
+    findFirstDeep(payload, ['lead_status', 'ticket_status', 'qualification_status', 'status', 'stage'])
+  );
+  const reason = normalizeWebhookText(
+    payload?.lost_reason ||
+    payload?.disqualification_reason ||
+    payload?.motivo_perda ||
+    findFirstDeep(payload, ['lost_reason', 'disqualification_reason', 'motivo_perda', 'reason'])
+  );
+  const tagsValue = findFirstDeep(payload, ['tags', 'tag', 'tag_name', 'tagName', 'labels', 'etiquetas']);
+  const tagsText = Array.isArray(tagsValue)
+    ? tagsValue.map((tag) => typeof tag === 'object' ? (tag.name || tag.nome || tag.title || tag.id || '') : String(tag)).join(' ')
+    : normalizeWebhookText(tagsValue) || '';
+  const text = `${statusValue || ''} ${reason || ''} ${tagsText}`.toLowerCase();
+
+  if (/(desqual|perdido|perda|sem interesse|invalido|inválido|spam|cancelado|nao qual|não qual)/i.test(text)) {
+    return 'disqualified';
+  }
+  if (/(qualificado|qualified|hot|quente|oportunidade|orcamento|orçamento|negociacao|negociação)/i.test(text)) {
+    return 'qualified';
+  }
+  return 'lead';
+}
+
+async function isGoogleAdsLeadEnabled(companyId, stage) {
+  const settings = await getIntegrationSettings(companyId);
+  const googleAds = settings.googleAds || {};
+  if (!googleAds.enabled) return false;
+  if (stage === 'qualified') return googleAds.sendQualifiedLead === true;
+  if (stage === 'disqualified') return googleAds.sendDisqualifiedLead === true;
+  return googleAds.sendClientLead === true;
+}
+
+function getGoogleAdsLeadConversionAction(googleAds, stage) {
+  if (stage === 'qualified') return googleAds.qualifiedLeadConversionAction;
+  if (stage === 'disqualified') return googleAds.disqualifiedLeadConversionAction;
+  return googleAds.clientLeadConversionAction;
+}
+
+async function sendGoogleAdsLeadForAtivaCrmWebhook(event) {
+  if (!event || event.direction === 'outbound') {
+    return { skipped: true, reason: 'outbound' };
+  }
+  if (!event.contact_phone && !event.contact_name) {
+    return { skipped: true, reason: 'missing_user_data' };
+  }
+
+  const stage = detectAtivaCrmLeadStage(event);
+  if (!await isGoogleAdsLeadEnabled(event.company_id, stage)) {
+    return { skipped: true, reason: `${stage}_disabled` };
+  }
+
+  const settings = await getIntegrationSettings(event.company_id);
+  const googleAds = settings.googleAds || {};
+  const conversionAction = getGoogleAdsLeadConversionAction(googleAds, stage);
+  if (!conversionAction) return { skipped: true, reason: 'conversion_action_missing' };
+
+  const [firstName, ...lastNameParts] = String(event.contact_name || '').trim().split(/\s+/).filter(Boolean);
+  const leadKey = event.contact_phone || event.conversation_id || event.ticket_id || event.event_id;
+  const eventType = stage === 'qualified' ? 'lead_qualified' : stage === 'disqualified' ? 'lead_disqualified' : 'ativa_crm_lead';
+  const conversion = {
+    eventName: stage === 'qualified' ? 'Lead Qualified' : stage === 'disqualified' ? 'Lead Disqualified' : 'Lead WhatsApp',
+    eventId: `google_${eventType}_${event.company_id}_${stableEventHash(leadKey)}`,
+    conversionAction,
+    conversionDateTime: new Date(event.created_at || Date.now()),
+    orderId: String(event.ticket_id || event.conversation_id || event.event_id),
+    value: stage === 'disqualified' ? 0 : Number(googleAds.defaultLeadValue || 1),
+    currencyCode: 'BRL',
+    gclid: event.raw_payload?.gclid || findFirstDeep(event.raw_payload, ['gclid']),
+    gbraid: event.raw_payload?.gbraid || findFirstDeep(event.raw_payload, ['gbraid']),
+    wbraid: event.raw_payload?.wbraid || findFirstDeep(event.raw_payload, ['wbraid']),
+    userIdentifiers: buildGoogleUserIdentifiers({
+      phone: event.contact_phone,
+      firstName,
+      lastName: lastNameParts.join(' '),
+    }),
+  };
+
+  return sendGoogleAdsConversion(event.company_id, conversion, {
+    eventType,
+    source: 'ativa_crm_webhook',
+    ativaCrmEventId: event.id,
+  });
 }
 
 // Middlewares
@@ -3203,6 +3642,11 @@ app.post('/api/insert/:table', async (req, res) => {
         .forEach((row) => {
           void sendMetaOsPurchaseForSale(row.id);
         });
+      result.rows
+        .filter(shouldSendGooglePurchaseFromSaleRow)
+        .forEach((row) => {
+          void sendGoogleAdsPurchaseForSale(row.id);
+        });
     }
 
     res.json({ data: Array.isArray(data) ? result.rows : result.rows[0], rows: result.rows });
@@ -3685,6 +4129,11 @@ app.post('/api/update/:table', async (req, res) => {
         .filter(shouldSendMetaOsPurchaseFromSaleRow)
         .forEach((row) => {
           void sendMetaOsPurchaseForSale(row.id);
+        });
+      result.rows
+        .filter(shouldSendGooglePurchaseFromSaleRow)
+        .forEach((row) => {
+          void sendGoogleAdsPurchaseForSale(row.id);
         });
     }
 
@@ -4532,6 +4981,188 @@ app.get('/api/meta-ads/report', authenticateToken, async (req, res) => {
   }
 });
 
+app.post('/api/google-ads/test-event', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const settings = await getIntegrationSettings(req.companyId);
+    const googleAds = settings.googleAds || {};
+    const conversionAction = googleAds.osPurchaseConversionAction || googleAds.clientLeadConversionAction;
+    const now = new Date();
+    const conversion = {
+      eventName: 'Google Ads Test',
+      eventId: `google_test_${req.companyId}_${Math.floor(now.getTime() / 1000)}`,
+      conversionAction,
+      conversionDateTime: now,
+      orderId: `TEST-${Math.floor(now.getTime() / 1000)}`,
+      value: Number(req.body?.value || 1),
+      currencyCode: 'BRL',
+      userIdentifiers: buildGoogleUserIdentifiers({
+        phone: req.body?.phone || '5599999999999',
+        firstName: 'Teste',
+        lastName: 'Ativa Fix',
+      }),
+    };
+
+    const result = await sendGoogleAdsConversion(req.companyId, conversion, {
+      eventType: 'test',
+      source: 'manual_test',
+    });
+    if (result?.skipped) {
+      return res.status(400).json({
+        success: false,
+        error: 'Google Ads não configurado ou conversão sem Conversion Action.',
+        reason: result.reason,
+      });
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[Google Ads] Erro no evento de teste:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/google-ads/logs', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+    const result = await pool.query(`
+      SELECT
+        id,
+        event_id,
+        event_name,
+        event_type,
+        source,
+        sale_id,
+        ordem_servico_id,
+        ativa_crm_event_id,
+        status,
+        attempts,
+        last_attempt_at,
+        sent_at,
+        error_message,
+        response_payload,
+        created_at
+      FROM public.google_ads_event_logs
+      WHERE company_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `, [req.companyId, limit]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    if (isMissingGoogleLogsTable(error)) {
+      return res.json({ success: true, data: [], warning: 'GOOGLE_ADS_EVENT_LOGS_MISSING' });
+    }
+    console.error('[Google Ads] Erro ao listar logs:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/google-ads/report', authenticateToken, async (req, res) => {
+  try {
+    if (!req.companyId) {
+      return res.status(403).json({ success: false, error: 'Usuário sem empresa vinculada.', codigo: 'COMPANY_ID_REQUIRED' });
+    }
+
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+    const now = new Date();
+    const defaultStartDate = new Date(now);
+    defaultStartDate.setDate(defaultStartDate.getDate() - (days - 1));
+    defaultStartDate.setHours(0, 0, 0, 0);
+    const requestedStart = req.query.startDate ? new Date(`${req.query.startDate}T00:00:00.000Z`) : defaultStartDate;
+    const requestedEnd = req.query.endDate ? new Date(`${req.query.endDate}T23:59:59.999Z`) : now;
+    const startDate = Number.isNaN(requestedStart.getTime()) ? defaultStartDate : requestedStart;
+    const endDate = Number.isNaN(requestedEnd.getTime()) ? now : requestedEnd;
+    const cappedEndDate = endDate < startDate ? startDate : endDate;
+
+    const [summary, dailySummary] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'enviado')::int AS enviado,
+          COUNT(*) FILTER (WHERE status = 'erro')::int AS erro,
+          COUNT(*) FILTER (WHERE status = 'ignorado')::int AS ignorado,
+          COUNT(*) FILTER (WHERE event_type IN ('os_purchase', 'pdv_purchase') AND status = 'enviado')::int AS purchases,
+          COUNT(*) FILTER (WHERE event_type = 'ativa_crm_lead' AND status = 'enviado')::int AS leads,
+          COUNT(*) FILTER (WHERE event_type = 'lead_qualified' AND status = 'enviado')::int AS qualificados,
+          COUNT(*) FILTER (WHERE event_type = 'lead_disqualified' AND status = 'enviado')::int AS desqualificados,
+          COALESCE(SUM(
+            CASE
+              WHEN event_type IN ('os_purchase', 'pdv_purchase')
+               AND status = 'enviado'
+               AND (request_payload->>'value') ~ '^[0-9]+(\\.[0-9]+)?$'
+              THEN (request_payload->>'value')::numeric
+              ELSE 0
+            END
+          ), 0)::numeric AS valor_enviado
+        FROM public.google_ads_event_logs
+        WHERE company_id = $1
+          AND created_at >= $2::timestamptz
+          AND created_at <= $3::timestamptz
+          AND source <> 'manual_test'
+      `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
+      pool.query(`
+        WITH dias AS (
+          SELECT generate_series(
+            date_trunc('day', $2::timestamptz),
+            date_trunc('day', $3::timestamptz),
+            interval '1 day'
+          )::date AS dia
+        ),
+        events AS (
+          SELECT
+            date_trunc('day', created_at)::date AS dia,
+            COUNT(*) FILTER (WHERE event_type LIKE '%purchase%')::int AS purchases,
+            COUNT(*) FILTER (WHERE event_type LIKE '%lead%')::int AS leads
+          FROM public.google_ads_event_logs
+          WHERE company_id = $1
+            AND created_at >= $2::timestamptz
+            AND created_at <= $3::timestamptz
+            AND source <> 'manual_test'
+          GROUP BY 1
+        )
+        SELECT
+          dias.dia,
+          COALESCE(events.leads, 0)::int AS leads,
+          COALESCE(events.purchases, 0)::int AS purchases
+        FROM dias
+        LEFT JOIN events ON events.dia = dias.dia
+        ORDER BY dias.dia DESC
+        LIMIT 14
+      `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
+    ]);
+
+    res.json({
+      success: true,
+      days,
+      period: {
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: cappedEndDate.toISOString().slice(0, 10),
+      },
+      summary: summary.rows[0] || {},
+      daily: dailySummary.rows,
+    });
+  } catch (error) {
+    if (isMissingGoogleLogsTable(error)) {
+      return res.json({
+        success: true,
+        warning: 'GOOGLE_ADS_EVENT_LOGS_MISSING',
+        summary: {},
+        daily: [],
+      });
+    }
+    console.error('[Google Ads] Erro ao gerar relatório:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/webhook/ativa-crm/:companyId/:secret', async (req, res) => {
   const { companyId, secret } = req.params;
   try {
@@ -4551,12 +5182,19 @@ app.post('/api/webhook/ativa-crm/:companyId/:secret', async (req, res) => {
     }
 
     let metaResult = { skipped: true, reason: duplicate ? 'duplicate_webhook_event' : 'not_processed' };
+    let googleAdsResult = { skipped: true, reason: duplicate ? 'duplicate_webhook_event' : 'not_processed' };
     if (!duplicate) {
       try {
         metaResult = await sendMetaLeadForAtivaCrmWebhook(event);
       } catch (metaError) {
         console.error('[AtivaCRM Webhook] Lead recebido, mas falhou ao enviar para Meta:', metaError.message);
         metaResult = { skipped: false, error: metaError.message };
+      }
+      try {
+        googleAdsResult = await sendGoogleAdsLeadForAtivaCrmWebhook(event);
+      } catch (googleError) {
+        console.error('[AtivaCRM Webhook] Lead recebido, mas falhou ao enviar para Google Ads:', googleError.message);
+        googleAdsResult = { skipped: false, error: googleError.message };
       }
     }
 
@@ -4565,6 +5203,7 @@ app.post('/api/webhook/ativa-crm/:companyId/:secret', async (req, res) => {
       event_id: event.event_id,
       duplicate,
       meta: metaResult,
+      googleAds: googleAdsResult,
     });
   } catch (error) {
     if (isMissingAtivaCrmWebhookTable(error)) {

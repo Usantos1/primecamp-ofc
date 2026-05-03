@@ -97,6 +97,27 @@ interface IntegrationSettings {
     sendClientLead: boolean;
     webhookSecret: string;
   };
+  googleAds?: {
+    enabled: boolean;
+    customerId: string;
+    loginCustomerId: string;
+    developerToken: string;
+    clientId: string;
+    clientSecret: string;
+    refreshToken: string;
+    osPurchaseConversionAction: string;
+    pdvPurchaseConversionAction: string;
+    clientLeadConversionAction: string;
+    qualifiedLeadConversionAction: string;
+    disqualifiedLeadConversionAction: string;
+    defaultLeadValue: string;
+    sendOsPurchase: boolean;
+    sendPdvPurchase: boolean;
+    sendClientLead: boolean;
+    sendQualifiedLead: boolean;
+    sendDisqualifiedLead: boolean;
+    validateOnly: boolean;
+  };
 }
 
 interface WhatsAppTestResponse {
@@ -113,6 +134,21 @@ interface MetaAdsEventLog {
   event_type: string;
   source: string;
   status: 'pendente' | 'enviando' | 'enviado' | 'erro' | 'ignorado';
+  attempts: number;
+  error_message?: string | null;
+  sent_at?: string | null;
+  created_at: string;
+}
+
+type AdsEventStatus = 'pendente' | 'enviando' | 'enviado' | 'erro' | 'ignorado';
+
+interface GoogleAdsEventLog {
+  id: string;
+  event_id: string;
+  event_name: string;
+  event_type: string;
+  source: string;
+  status: AdsEventStatus;
   attempts: number;
   error_message?: string | null;
   sent_at?: string | null;
@@ -157,6 +193,31 @@ interface MetaAdsReport {
     total?: number;
     enviado?: number;
     erro?: number;
+    valor_enviado?: string | number;
+  };
+  daily?: Array<{
+    dia: string;
+    leads: number;
+    purchases: number;
+  }>;
+}
+
+interface GoogleAdsReport {
+  days?: number;
+  warning?: string;
+  period?: {
+    startDate?: string;
+    endDate?: string;
+  };
+  summary?: {
+    total?: number;
+    enviado?: number;
+    erro?: number;
+    ignorado?: number;
+    purchases?: number;
+    leads?: number;
+    qualificados?: number;
+    desqualificados?: number;
     valor_enviado?: string | number;
   };
   daily?: Array<{
@@ -244,6 +305,27 @@ export default function Integration() {
       sendClientLead: false,
       webhookSecret: createWebhookSecret(),
     },
+    googleAds: {
+      enabled: false,
+      customerId: '',
+      loginCustomerId: '',
+      developerToken: '',
+      clientId: '',
+      clientSecret: '',
+      refreshToken: '',
+      osPurchaseConversionAction: '',
+      pdvPurchaseConversionAction: '',
+      clientLeadConversionAction: '',
+      qualifiedLeadConversionAction: '',
+      disqualifiedLeadConversionAction: '',
+      defaultLeadValue: '1',
+      sendOsPurchase: true,
+      sendPdvPurchase: false,
+      sendClientLead: false,
+      sendQualifiedLead: false,
+      sendDisqualifiedLead: false,
+      validateOnly: false,
+    },
   });
   const [loading, setLoading] = useState(false);
   const [testPhone, setTestPhone] = useState('');
@@ -256,6 +338,10 @@ export default function Integration() {
   const [metaReportWarning, setMetaReportWarning] = useState<string | null>(null);
   const [metaReportStartDate, setMetaReportStartDate] = useState(getDefaultReportStartDate);
   const [metaReportEndDate, setMetaReportEndDate] = useState(getDefaultReportEndDate);
+  const [googleLogs, setGoogleLogs] = useState<GoogleAdsEventLog[]>([]);
+  const [googleLogsWarning, setGoogleLogsWarning] = useState<string | null>(null);
+  const [googleReport, setGoogleReport] = useState<GoogleAdsReport | null>(null);
+  const [googleReportWarning, setGoogleReportWarning] = useState<string | null>(null);
   
   // Configurações do Telegram
   const {
@@ -348,6 +434,27 @@ export default function Integration() {
             sendClientLead: ((v.metaAds as IntegrationSettings['metaAds'])?.sendClientLead as boolean) ?? false,
             webhookSecret: ((v.metaAds as IntegrationSettings['metaAds'])?.webhookSecret as string) ?? createWebhookSecret(),
           },
+          googleAds: {
+            enabled: ((v.googleAds as IntegrationSettings['googleAds'])?.enabled as boolean) ?? false,
+            customerId: ((v.googleAds as IntegrationSettings['googleAds'])?.customerId as string) ?? '',
+            loginCustomerId: ((v.googleAds as IntegrationSettings['googleAds'])?.loginCustomerId as string) ?? '',
+            developerToken: ((v.googleAds as IntegrationSettings['googleAds'])?.developerToken as string) ?? '',
+            clientId: ((v.googleAds as IntegrationSettings['googleAds'])?.clientId as string) ?? '',
+            clientSecret: ((v.googleAds as IntegrationSettings['googleAds'])?.clientSecret as string) ?? '',
+            refreshToken: ((v.googleAds as IntegrationSettings['googleAds'])?.refreshToken as string) ?? '',
+            osPurchaseConversionAction: ((v.googleAds as IntegrationSettings['googleAds'])?.osPurchaseConversionAction as string) ?? '',
+            pdvPurchaseConversionAction: ((v.googleAds as IntegrationSettings['googleAds'])?.pdvPurchaseConversionAction as string) ?? '',
+            clientLeadConversionAction: ((v.googleAds as IntegrationSettings['googleAds'])?.clientLeadConversionAction as string) ?? '',
+            qualifiedLeadConversionAction: ((v.googleAds as IntegrationSettings['googleAds'])?.qualifiedLeadConversionAction as string) ?? '',
+            disqualifiedLeadConversionAction: ((v.googleAds as IntegrationSettings['googleAds'])?.disqualifiedLeadConversionAction as string) ?? '',
+            defaultLeadValue: ((v.googleAds as IntegrationSettings['googleAds'])?.defaultLeadValue as string) ?? '1',
+            sendOsPurchase: ((v.googleAds as IntegrationSettings['googleAds'])?.sendOsPurchase as boolean) ?? true,
+            sendPdvPurchase: ((v.googleAds as IntegrationSettings['googleAds'])?.sendPdvPurchase as boolean) ?? false,
+            sendClientLead: ((v.googleAds as IntegrationSettings['googleAds'])?.sendClientLead as boolean) ?? false,
+            sendQualifiedLead: ((v.googleAds as IntegrationSettings['googleAds'])?.sendQualifiedLead as boolean) ?? false,
+            sendDisqualifiedLead: ((v.googleAds as IntegrationSettings['googleAds'])?.sendDisqualifiedLead as boolean) ?? false,
+            validateOnly: ((v.googleAds as IntegrationSettings['googleAds'])?.validateOnly as boolean) ?? false,
+          },
         });
       }
     } catch (error) {
@@ -403,13 +510,45 @@ export default function Integration() {
     }
   }, [metaReportEndDate, metaReportStartDate]);
 
+  const loadGoogleLogs = useCallback(async () => {
+    try {
+      const result = await apiClient.get('/google-ads/logs?limit=8');
+      if (result.error) throw result.error;
+      const payload = result.data as { data?: GoogleAdsEventLog[]; warning?: string };
+      setGoogleLogs(Array.isArray(payload?.data) ? payload.data : []);
+      setGoogleLogsWarning(payload?.warning || null);
+    } catch (error) {
+      console.error('Erro ao carregar logs Google Ads:', error);
+      setGoogleLogsWarning('Erro ao carregar histórico do Google Ads');
+    }
+  }, []);
+
+  const loadGoogleReport = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        startDate: metaReportStartDate,
+        endDate: metaReportEndDate,
+      });
+      const result = await apiClient.get(`/google-ads/report?${params.toString()}`);
+      if (result.error) throw result.error;
+      const payload = result.data as GoogleAdsReport;
+      setGoogleReport(payload || null);
+      setGoogleReportWarning(payload?.warning || null);
+    } catch (error) {
+      console.error('Erro ao carregar relatório Google Ads:', error);
+      setGoogleReportWarning('Erro ao carregar relatório do Google Ads');
+    }
+  }, [metaReportEndDate, metaReportStartDate]);
+
   useEffect(() => {
     if (currentTab === 'meta') {
       void loadMetaReport();
       void loadMetaLogs();
       void loadAtivaCrmEvents();
+      void loadGoogleReport();
+      void loadGoogleLogs();
     }
-  }, [currentTab, loadMetaReport, loadMetaLogs, loadAtivaCrmEvents]);
+  }, [currentTab, loadMetaReport, loadMetaLogs, loadAtivaCrmEvents, loadGoogleReport, loadGoogleLogs]);
 
   const saveSettings = async () => {
     if (!isAdmin) {
@@ -523,6 +662,34 @@ export default function Integration() {
     }));
   };
 
+  const updateGoogleAds = (patch: Partial<NonNullable<IntegrationSettings['googleAds']>>) => {
+    setSettings(prev => ({
+      ...prev,
+      googleAds: {
+        enabled: prev.googleAds?.enabled ?? false,
+        customerId: prev.googleAds?.customerId ?? '',
+        loginCustomerId: prev.googleAds?.loginCustomerId ?? '',
+        developerToken: prev.googleAds?.developerToken ?? '',
+        clientId: prev.googleAds?.clientId ?? '',
+        clientSecret: prev.googleAds?.clientSecret ?? '',
+        refreshToken: prev.googleAds?.refreshToken ?? '',
+        osPurchaseConversionAction: prev.googleAds?.osPurchaseConversionAction ?? '',
+        pdvPurchaseConversionAction: prev.googleAds?.pdvPurchaseConversionAction ?? '',
+        clientLeadConversionAction: prev.googleAds?.clientLeadConversionAction ?? '',
+        qualifiedLeadConversionAction: prev.googleAds?.qualifiedLeadConversionAction ?? '',
+        disqualifiedLeadConversionAction: prev.googleAds?.disqualifiedLeadConversionAction ?? '',
+        defaultLeadValue: prev.googleAds?.defaultLeadValue ?? '1',
+        sendOsPurchase: prev.googleAds?.sendOsPurchase ?? true,
+        sendPdvPurchase: prev.googleAds?.sendPdvPurchase ?? false,
+        sendClientLead: prev.googleAds?.sendClientLead ?? false,
+        sendQualifiedLead: prev.googleAds?.sendQualifiedLead ?? false,
+        sendDisqualifiedLead: prev.googleAds?.sendDisqualifiedLead ?? false,
+        validateOnly: prev.googleAds?.validateOnly ?? false,
+        ...patch,
+      },
+    }));
+  };
+
   const metaWebhookUrl = user?.company_id && settings.metaAds?.webhookSecret
     ? `${getApiUrl().replace(/\/$/, '')}/webhook/ativa-crm/${user.company_id}/${settings.metaAds.webhookSecret}`
     : '';
@@ -563,6 +730,29 @@ export default function Integration() {
       void loadMetaLogs();
     } catch (error) {
       toast.error(`Erro ao enviar evento de teste: ${getErrorMessage(error, 'Erro desconhecido')}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testGoogleAdsIntegration = async () => {
+    if (!settings.googleAds?.customerId || !settings.googleAds?.developerToken || !settings.googleAds?.refreshToken) {
+      toast.error('Informe Customer ID, Developer Token e Refresh Token antes de testar.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await apiClient.post('/google-ads/test-event', {
+        value: 1,
+      });
+
+      if (result.error) throw result.error;
+      toast.success('Evento de teste enviado para o Google Ads.');
+      void loadGoogleLogs();
+      void loadGoogleReport();
+    } catch (error) {
+      toast.error(`Erro ao enviar evento Google Ads: ${getErrorMessage(error, 'Erro desconhecido')}`);
     } finally {
       setLoading(false);
     }
@@ -1074,6 +1264,172 @@ export default function Integration() {
 
                 <Card>
                   <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <Megaphone className="h-5 w-5 text-amber-600" />
+                        <div>
+                          <CardTitle>Google Ads / Offline Conversions</CardTitle>
+                          <CardDescription>
+                            Envie OS, PDV e leads do WhatsApp para conversões offline do Google.
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings.googleAds?.enabled ?? false}
+                        onCheckedChange={(enabled) => updateGoogleAds({ enabled })}
+                        aria-label="Ativar integração Google Ads"
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="googleCustomerId">Customer ID</Label>
+                        <Input
+                          id="googleCustomerId"
+                          placeholder="123-456-7890"
+                          value={settings.googleAds?.customerId ?? ''}
+                          onChange={(e) => updateGoogleAds({ customerId: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="googleLoginCustomerId">Login Customer ID (MCC opcional)</Label>
+                        <Input
+                          id="googleLoginCustomerId"
+                          placeholder="Opcional"
+                          value={settings.googleAds?.loginCustomerId ?? ''}
+                          onChange={(e) => updateGoogleAds({ loginCustomerId: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="googleDeveloperToken">Developer Token</Label>
+                        <Input
+                          id="googleDeveloperToken"
+                          type="password"
+                          placeholder="Token do Google Ads API Center"
+                          value={settings.googleAds?.developerToken ?? ''}
+                          onChange={(e) => updateGoogleAds({ developerToken: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="googleRefreshToken">Refresh Token OAuth</Label>
+                        <Input
+                          id="googleRefreshToken"
+                          type="password"
+                          placeholder="Refresh token da conta Google"
+                          value={settings.googleAds?.refreshToken ?? ''}
+                          onChange={(e) => updateGoogleAds({ refreshToken: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="googleClientId">OAuth Client ID</Label>
+                        <Input
+                          id="googleClientId"
+                          type="password"
+                          value={settings.googleAds?.clientId ?? ''}
+                          onChange={(e) => updateGoogleAds({ clientId: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="googleClientSecret">OAuth Client Secret</Label>
+                        <Input
+                          id="googleClientSecret"
+                          type="password"
+                          value={settings.googleAds?.clientSecret ?? ''}
+                          onChange={(e) => updateGoogleAds({ clientSecret: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="googleOsAction">Conversion Action OS</Label>
+                        <Input
+                          id="googleOsAction"
+                          placeholder="ID ou customers/.../conversionActions/..."
+                          value={settings.googleAds?.osPurchaseConversionAction ?? ''}
+                          onChange={(e) => updateGoogleAds({ osPurchaseConversionAction: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="googlePdvAction">Conversion Action PDV</Label>
+                        <Input
+                          id="googlePdvAction"
+                          placeholder="Opcional"
+                          value={settings.googleAds?.pdvPurchaseConversionAction ?? ''}
+                          onChange={(e) => updateGoogleAds({ pdvPurchaseConversionAction: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="googleLeadAction">Conversion Action Lead</Label>
+                        <Input
+                          id="googleLeadAction"
+                          placeholder="Lead WhatsApp"
+                          value={settings.googleAds?.clientLeadConversionAction ?? ''}
+                          onChange={(e) => updateGoogleAds({ clientLeadConversionAction: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="googleQualifiedAction">Qualificado / Desqualificado</Label>
+                        <div className="grid gap-2">
+                          <Input
+                            id="googleQualifiedAction"
+                            placeholder="Action lead qualificado"
+                            value={settings.googleAds?.qualifiedLeadConversionAction ?? ''}
+                            onChange={(e) => updateGoogleAds({ qualifiedLeadConversionAction: e.target.value })}
+                          />
+                          <Input
+                            placeholder="Action lead desqualificado"
+                            value={settings.googleAds?.disqualifiedLeadConversionAction ?? ''}
+                            onChange={(e) => updateGoogleAds({ disqualifiedLeadConversionAction: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                      {[
+                        ['sendOsPurchase', 'OS faturada', 'Envia conversão quando a OS fica paga.'],
+                        ['sendPdvPurchase', 'PDV pago', 'Envia conversão de venda balcão paga.'],
+                        ['sendClientLead', 'Lead WhatsApp', 'Envia lead recebido pelo webhook Ativa CRM.'],
+                        ['sendQualifiedLead', 'Lead qualificado', 'Usa status/tag do payload para enviar qualificado.'],
+                        ['sendDisqualifiedLead', 'Lead desqualificado', 'Envia evento separado para desqualificados.'],
+                        ['validateOnly', 'Modo validação', 'Valida na API sem registrar conversão real.'],
+                      ].map(([key, title, description]) => (
+                        <div key={key} className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-medium">{title}</p>
+                            <p className="text-xs text-muted-foreground">{description}</p>
+                          </div>
+                          <Switch
+                            checked={Boolean(settings.googleAds?.[key as keyof NonNullable<IntegrationSettings['googleAds']>])}
+                            onCheckedChange={(checked) => updateGoogleAds({ [key]: checked } as Partial<NonNullable<IntegrationSettings['googleAds']>>)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={saveSettings} disabled={loading}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Salvar Google Ads
+                      </Button>
+                      <Button type="button" variant="outline" onClick={testGoogleAdsIntegration} disabled={loading}>
+                        <Send className="h-4 w-4 mr-2" />
+                        Enviar teste Google
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Activity className="h-4 w-4 text-blue-600" />
                       Eventos planejados
@@ -1277,6 +1633,63 @@ export default function Integration() {
                   <CardHeader>
                     <div className="flex items-center justify-between gap-3">
                       <div>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <BarChart3 className="h-4 w-4 text-amber-600" />
+                          Relatório Google Ads
+                        </CardTitle>
+                        <CardDescription>
+                          Usa o mesmo período escolhido no relatório da Meta.
+                        </CardDescription>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={() => {
+                        void loadGoogleReport();
+                        void loadGoogleLogs();
+                      }}>
+                        Atualizar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-xs text-muted-foreground">
+                      Período exibido: {googleReport?.period?.startDate || metaReportStartDate} até {googleReport?.period?.endDate || metaReportEndDate}
+                    </p>
+                    {googleReportWarning === 'GOOGLE_ADS_EVENT_LOGS_MISSING' ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        Rode a migration `db/migrations/manual/GOOGLE_ADS_EVENT_LOGS.sql` na VPS para gerar relatórios.
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-lg border bg-background p-3">
+                            <p className="text-xs text-muted-foreground">Eventos enviados</p>
+                            <p className="mt-1 text-2xl font-semibold text-emerald-700">{formatReportNumber(googleReport?.summary?.enviado)}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{formatReportNumber(googleReport?.summary?.erro)} com erro</p>
+                          </div>
+                          <div className="rounded-lg border bg-background p-3">
+                            <p className="text-xs text-muted-foreground">Valor enviado</p>
+                            <p className="mt-1 text-2xl font-semibold text-blue-700">{formatReportCurrency(googleReport?.summary?.valor_enviado)}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">OS + PDV enviados</p>
+                          </div>
+                          <div className="rounded-lg border bg-background p-3">
+                            <p className="text-xs text-muted-foreground">Leads / Qualificados</p>
+                            <p className="mt-1 text-2xl font-semibold">{formatReportNumber(googleReport?.summary?.leads)}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{formatReportNumber(googleReport?.summary?.qualificados)} qualificados</p>
+                          </div>
+                          <div className="rounded-lg border bg-background p-3">
+                            <p className="text-xs text-muted-foreground">Desqualificados</p>
+                            <p className="mt-1 text-2xl font-semibold">{formatReportNumber(googleReport?.summary?.desqualificados)}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{formatReportNumber(googleReport?.summary?.purchases)} purchases</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
                         <CardTitle className="text-base">Leads recebidos do Ativa CRM</CardTitle>
                         <CardDescription>
                           Payload bruto fica salvo em `ativa_crm_webhook_events` para mapear CTWA/campanha depois.
@@ -1373,6 +1786,68 @@ export default function Integration() {
                       <ScrollArea className="h-[280px] pr-3">
                         <div className="space-y-2">
                           {metaLogs.map((log) => {
+                            const statusClass = log.status === 'enviado'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : log.status === 'erro'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-slate-100 text-slate-700';
+                            return (
+                              <div key={log.id} className="rounded-lg border bg-background p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium">{log.event_name}</p>
+                                    <p className="truncate text-xs text-muted-foreground">{log.event_id}</p>
+                                  </div>
+                                  <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${statusClass}`}>
+                                    {log.status}
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  <span>{log.event_type}</span>
+                                  <span>tentativas: {log.attempts}</span>
+                                  <span>{new Date(log.created_at).toLocaleString('pt-BR')}</span>
+                                </div>
+                                {log.error_message && (
+                                  <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">
+                                    {log.error_message}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-base">Últimos envios Google Ads</CardTitle>
+                        <CardDescription>
+                          Histórico salvo em `google_ads_event_logs`.
+                        </CardDescription>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={loadGoogleLogs}>
+                        Atualizar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {googleLogsWarning === 'GOOGLE_ADS_EVENT_LOGS_MISSING' ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        Rode a migration `db/migrations/manual/GOOGLE_ADS_EVENT_LOGS.sql` na VPS para exibir e gravar o histórico.
+                      </div>
+                    ) : googleLogs.length === 0 ? (
+                      <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                        Nenhum evento Google Ads enviado ainda.
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[240px] pr-3">
+                        <div className="space-y-2">
+                          {googleLogs.map((log) => {
                             const statusClass = log.status === 'enviado'
                               ? 'bg-emerald-100 text-emerald-700'
                               : log.status === 'erro'
