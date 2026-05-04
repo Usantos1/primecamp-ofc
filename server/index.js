@@ -554,7 +554,7 @@ async function buildMetaOsPurchaseEvent(saleId) {
   const phone = normalizePhoneForMeta(sale.os_cliente_telefone || sale.sale_cliente_telefone || '');
   const [firstName, ...lastNameParts] = customerName.trim().split(/\s+/).filter(Boolean);
   const modelName = [sale.marca_nome, sale.modelo_nome].filter(Boolean).join(' ') || sale.modelo_nome || 'Ordem de Serviço';
-  const value = Number(sale.total_pago || sale.total || sale.valor_total || 0);
+  const value = Number(sale.valor_total || sale.total || sale.total_pago || 0);
   const eventTime = Math.floor(new Date(sale.finalized_at || sale.created_at || Date.now()).getTime() / 1000);
 
   const userData = {};
@@ -584,7 +584,7 @@ async function buildMetaOsPurchaseEvent(saleId) {
     event: {
       event_name: 'Purchase',
       event_time: eventTime,
-      event_id: `os_purchase_${sale.id}`,
+      event_id: `os_purchase_${sale.company_id}_${sale.ordem_servico_id}`,
       action_source: 'system_generated',
       user_data: userData,
       custom_data: {
@@ -611,6 +611,20 @@ async function sendMetaOsPurchaseForSale(saleId) {
     const payload = await buildMetaOsPurchaseEvent(saleId);
     if (!payload) return { sent: false, reason: 'sale_without_os' };
     if (!await isMetaOsPurchaseEnabled(payload.companyId)) return { sent: false, reason: 'meta_os_purchase_disabled' };
+
+    const alreadySentResult = await pool.query(`
+      SELECT id, event_id
+      FROM public.meta_ads_event_logs
+      WHERE company_id = $1
+        AND ordem_servico_id = $2
+        AND event_name = 'Purchase'
+        AND status = 'enviado'
+      LIMIT 1
+    `, [payload.companyId, payload.ordemServicoId]);
+    if (alreadySentResult.rows[0]) {
+      return { sent: false, reason: 'already_sent_for_os', log_id: alreadySentResult.rows[0].id };
+    }
+
     const result = await sendMetaEvent(payload.companyId, payload.event, {
       eventType: 'os_purchase',
       source: 'os_billing',
@@ -636,14 +650,14 @@ async function sendMetaOsPurchaseForOrder(ordemServicoId, companyId = null) {
   }
 
   const salesResult = await pool.query(`
-    SELECT id
+    SELECT DISTINCT ON (ordem_servico_id) id
     FROM public.sales
     WHERE ordem_servico_id = $1
       ${companyFilter}
       AND sale_origin = 'OS'
       AND status = 'paid'
       AND COALESCE(is_draft, false) = false
-    ORDER BY finalized_at DESC NULLS LAST, created_at DESC
+    ORDER BY ordem_servico_id, total DESC NULLS LAST, finalized_at DESC NULLS LAST, created_at DESC
   `, params);
 
   const summary = { processed: 0, sent: 0, skipped: 0, errors: 0, results: [] };
@@ -4914,16 +4928,24 @@ app.post('/api/meta-ads/reprocess-os-purchases', authenticateToken, async (req, 
     }
 
     const salesResult = await pool.query(`
-      SELECT id, ordem_servico_id
-      FROM public.sales
-      WHERE company_id = $1
-        AND sale_origin = 'OS'
-        AND ordem_servico_id IS NOT NULL
-        AND status = 'paid'
-        AND COALESCE(is_draft, false) = false
-        AND COALESCE(finalized_at, created_at) >= $2::date
-        AND COALESCE(finalized_at, created_at) < ($3::date + INTERVAL '1 day')
-      ORDER BY COALESCE(finalized_at, created_at) ASC
+      SELECT DISTINCT ON (s.ordem_servico_id)
+        s.id,
+        s.ordem_servico_id
+      FROM public.sales s
+      LEFT JOIN public.meta_ads_event_logs l
+        ON l.company_id = s.company_id
+       AND l.ordem_servico_id = s.ordem_servico_id
+       AND l.event_name = 'Purchase'
+       AND l.status = 'enviado'
+      WHERE s.company_id = $1
+        AND s.sale_origin = 'OS'
+        AND s.ordem_servico_id IS NOT NULL
+        AND s.status = 'paid'
+        AND COALESCE(s.is_draft, false) = false
+        AND COALESCE(s.finalized_at, s.created_at) >= $2::date
+        AND COALESCE(s.finalized_at, s.created_at) < ($3::date + INTERVAL '1 day')
+        AND l.id IS NULL
+      ORDER BY s.ordem_servico_id, s.total DESC NULLS LAST, s.finalized_at DESC NULLS LAST, s.created_at DESC
     `, [req.companyId, startDate, endDate]);
 
     const summary = {
@@ -5030,24 +5052,35 @@ app.get('/api/meta-ads/report', authenticateToken, async (req, res) => {
           AND created_at <= $3::timestamptz
       `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
       pool.query(`
+        WITH latest_purchase_per_os AS (
+          SELECT DISTINCT ON (ordem_servico_id)
+            ordem_servico_id,
+            event_name,
+            status,
+            request_payload,
+            created_at
+          FROM public.meta_ads_event_logs
+          WHERE company_id = $1
+            AND created_at >= $2::timestamptz
+            AND created_at <= $3::timestamptz
+            AND source <> 'manual_test'
+            AND event_name = 'Purchase'
+            AND ordem_servico_id IS NOT NULL
+          ORDER BY ordem_servico_id, CASE WHEN status = 'enviado' THEN 0 ELSE 1 END, created_at DESC
+        )
         SELECT
-          COUNT(*) FILTER (WHERE event_name = 'Purchase')::int AS total,
-          COUNT(*) FILTER (WHERE event_name = 'Purchase' AND status = 'enviado')::int AS enviado,
-          COUNT(*) FILTER (WHERE event_name = 'Purchase' AND status = 'erro')::int AS erro,
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'enviado')::int AS enviado,
+          COUNT(*) FILTER (WHERE status = 'erro')::int AS erro,
           COALESCE(SUM(
             CASE
-              WHEN event_name = 'Purchase'
-               AND status = 'enviado'
+              WHEN status = 'enviado'
                AND (request_payload->'custom_data'->>'value') ~ '^[0-9]+(\\.[0-9]+)?$'
               THEN (request_payload->'custom_data'->>'value')::numeric
               ELSE 0
             END
           ), 0)::numeric AS valor_enviado
-        FROM public.meta_ads_event_logs
-        WHERE company_id = $1
-          AND created_at >= $2::timestamptz
-          AND created_at <= $3::timestamptz
-          AND source <> 'manual_test'
+        FROM latest_purchase_per_os
       `, [req.companyId, startDate.toISOString(), cappedEndDate.toISOString()]),
       pool.query(`
         WITH dias AS (
@@ -5066,13 +5099,23 @@ app.get('/api/meta-ads/report', authenticateToken, async (req, res) => {
           GROUP BY 1
         ),
         purchases AS (
-          SELECT date_trunc('day', created_at)::date AS dia, COUNT(*)::int AS total
-          FROM public.meta_ads_event_logs
-          WHERE company_id = $1
-            AND created_at >= $2::timestamptz
-            AND created_at <= $3::timestamptz
-            AND source <> 'manual_test'
-            AND event_name = 'Purchase'
+          SELECT dia, COUNT(*)::int AS total
+          FROM (
+            SELECT DISTINCT ON (ordem_servico_id)
+              ordem_servico_id,
+              date_trunc('day', created_at)::date AS dia,
+              status,
+              created_at
+            FROM public.meta_ads_event_logs
+            WHERE company_id = $1
+              AND created_at >= $2::timestamptz
+              AND created_at <= $3::timestamptz
+              AND source <> 'manual_test'
+              AND event_name = 'Purchase'
+              AND ordem_servico_id IS NOT NULL
+            ORDER BY ordem_servico_id, CASE WHEN status = 'enviado' THEN 0 ELSE 1 END, created_at DESC
+          ) purchase_per_os
+          WHERE status = 'enviado'
           GROUP BY 1
         )
         SELECT
