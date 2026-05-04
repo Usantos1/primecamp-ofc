@@ -490,7 +490,9 @@ export async function processDueBirthdayMessages(pool, batchSize = 25, companyId
       const sender = createWhatsAppSender(client, job.company_id);
       let sendResult;
       try {
-        sendResult = await sender(job.telefone, job.mensagem_renderizada);
+        sendResult = await sender(job.telefone, job.mensagem_renderizada, {
+          name: cliente.nome,
+        });
       } catch (sendErr) {
         sendResult = { ok: false, error: sendErr?.message || String(sendErr) };
       }

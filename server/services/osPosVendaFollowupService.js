@@ -307,7 +307,10 @@ export async function processDueFollowups(pool, batchSize = 25) {
       results.processed++;
 
       const osRes = await client.query(
-        `SELECT situacao, status FROM ordens_servico WHERE id = $1`,
+        `SELECT os.situacao, os.status, COALESCE(c.nome, os.cliente_nome) AS cliente_nome
+         FROM ordens_servico os
+         LEFT JOIN clientes c ON c.id = os.cliente_id
+         WHERE os.id = $1`,
         [job.ordem_servico_id]
       );
       const osRow = osRes.rows[0];
@@ -328,7 +331,9 @@ export async function processDueFollowups(pool, batchSize = 25) {
       const send = createWhatsAppSender(client, job.company_id);
       let sendRes;
       try {
-        sendRes = await send(job.telefone, job.mensagem_renderizada);
+        sendRes = await send(job.telefone, job.mensagem_renderizada, {
+          name: osRow.cliente_nome,
+        });
       } catch (sendErr) {
         sendRes = { ok: false, error: sendErr?.message || String(sendErr) };
       }

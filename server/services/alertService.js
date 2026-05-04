@@ -473,6 +473,21 @@ export async function dispatch(options) {
 
 export { pool as alertPool };
 
+function normalizeAtivaCrmContactName(name, phone = '') {
+  const value = String(name || '').trim();
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '');
+  const phoneDigits = String(phone || '').replace(/\D/g, '');
+  const normalized = value.toLowerCase();
+  const genericNames = new Set(['cliente', 'lead', 'lead whatsapp', 'desconhecido']);
+
+  if (genericNames.has(normalized)) return '';
+  if (digits && digits === phoneDigits) return '';
+  if (digits.length >= 10 && digits.length >= value.replace(/\s/g, '').length - 2) return '';
+
+  return value;
+}
+
 /**
  * Cria uma função de envio via WhatsApp (Ativa CRM) para uma empresa.
  * Use para chamar dispatch() a partir de outras rotas (ex.: ao criar OS, fechar caixa).
@@ -486,7 +501,7 @@ export function createWhatsAppSender(poolOrClient, companyId, options = {}) {
   const tokenError = tokenKind === 'sensitive'
     ? 'Token sensível do Ativa CRM não configurado. Configure em Integrações > CRM.'
     : 'Token do Ativa CRM não configurado. Configure em Integrações.';
-  return async function sendMessage(number, body) {
+  return async function sendMessage(number, body, contact = {}) {
     const key = `integration_settings_${companyId}`;
     const res = await poolOrClient.query(
       'SELECT value FROM kv_store_2c4defad WHERE key = $1',
@@ -497,11 +512,30 @@ export function createWhatsAppSender(poolOrClient, companyId, options = {}) {
     if (!fetch) return { ok: false, error: 'Fetch não disponível' };
     const formattedNumber = String(number).replace(/\D/g, '');
     if (!formattedNumber) return { ok: false, error: 'Número inválido' };
+    const contactName = normalizeAtivaCrmContactName(contact.name || contact.contactName, formattedNumber);
+    const payload = {
+      number: formattedNumber,
+      body,
+      ...(contactName ? {
+        name: contactName,
+        contactName,
+        contact_name: contactName,
+        displayName: contactName,
+        contact: {
+          name: contactName,
+          contactName,
+          number: formattedNumber,
+          phone: formattedNumber,
+          whatsapp: formattedNumber,
+          email: contact.email || '',
+        },
+      } : {}),
+    };
     try {
       const response = await fetch('https://api.ativacrm.com/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ number: formattedNumber, body }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) return { ok: false, error: data.message || data.error || 'Erro ao enviar' };

@@ -4488,6 +4488,21 @@ function extractAtivaCrmContactId(payload) {
   return contactId ? String(contactId) : null;
 }
 
+function normalizeAtivaCrmContactName(name, phone = '') {
+  const value = String(name || '').trim();
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '');
+  const phoneDigits = String(phone || '').replace(/\D/g, '');
+  const normalized = value.toLowerCase();
+  const genericNames = new Set(['cliente', 'lead', 'lead whatsapp', 'desconhecido']);
+
+  if (genericNames.has(normalized)) return '';
+  if (digits && digits === phoneDigits) return '';
+  if (digits.length >= 10 && digits.length >= value.replace(/\s/g, '').length - 2) return '';
+
+  return value;
+}
+
 async function postAtivaCrmApi({ token, path, payload, label }) {
   const response = await fetch(`https://api.ativacrm.com/api/${path}`, {
     method: 'POST',
@@ -4511,10 +4526,13 @@ async function createAtivaCrmContact({ token, name, email, phone, tagId }) {
   const cleanPhone = String(phone || '').replace(/\D/g, '');
   if (!cleanPhone) return null;
 
+  const contactName = normalizeAtivaCrmContactName(name, cleanPhone);
   const numericTagId = tagId ? Number(tagId) : null;
   const payload = {
-    name: String(name || cleanPhone).trim(),
-    contactName: String(name || cleanPhone).trim(),
+    name: contactName || cleanPhone,
+    contactName: contactName || cleanPhone,
+    contact_name: contactName || cleanPhone,
+    displayName: contactName || cleanPhone,
     email: email || '',
     phone: cleanPhone,
     number: cleanPhone,
@@ -4538,28 +4556,36 @@ async function createAtivaCrmContact({ token, name, email, phone, tagId }) {
   return { success: attempts.some((attempt) => attempt.success), attempts };
 }
 
-async function updateAtivaCrmContact({ token, name, email, phone }) {
+async function updateAtivaCrmContact({ token, name, email, phone, contactId, ticketId }) {
   const cleanPhone = String(phone || '').replace(/\D/g, '');
-  if (!cleanPhone || !name) return null;
+  const contactName = normalizeAtivaCrmContactName(name, cleanPhone);
+  if (!contactName || (!cleanPhone && !contactId && !ticketId)) return null;
 
-  const payload = {
-    name: String(name).trim(),
-    contactName: String(name).trim(),
+  const basePayload = {
+    name: contactName,
+    contactName,
+    contact_name: contactName,
+    displayName: contactName,
     email: email || '',
-    phone: cleanPhone,
-    number: cleanPhone,
-    whatsapp: cleanPhone,
   };
+  const payloads = [
+    cleanPhone ? { ...basePayload, phone: cleanPhone, number: cleanPhone, whatsapp: cleanPhone } : null,
+    contactId ? { ...basePayload, id: contactId, contactId } : null,
+    ticketId ? { ...basePayload, ticketId } : null,
+  ].filter(Boolean);
 
   const attempts = [];
-  for (const path of ['updatecontact', 'contactUpdate']) {
-    const result = await postAtivaCrmApi({
-      token,
-      path,
-      payload,
-      label: `atualizar contato (${path})`,
-    });
-    attempts.push(result);
+  for (const payload of payloads) {
+    for (const path of ['updatecontact', 'contactUpdate']) {
+      const result = await postAtivaCrmApi({
+        token,
+        path,
+        payload,
+        label: `atualizar contato (${path})`,
+      });
+      attempts.push(result);
+      if (result.success) return { success: true, attempts };
+    }
   }
 
   return { success: attempts.some((attempt) => attempt.success), attempts };
@@ -4653,7 +4679,7 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
     // Formatar número (remover caracteres especiais)
     const formattedNumber = data.number.replace(/\D/g, '');
-    const contactName = data.contactName || data.name || '';
+    const contactName = normalizeAtivaCrmContactName(data.contactName || data.name, formattedNumber);
 
     const contactResult = await createAtivaCrmContact({
       token: ativaCrmToken,
@@ -4688,15 +4714,18 @@ app.post('/api/whatsapp/send', async (req, res) => {
         'Authorization': `Bearer ${ativaCrmToken}`,
       },
       body: JSON.stringify({
-        name: contactName,
-        contactName,
+        name: contactName || formattedNumber,
+        contactName: contactName || formattedNumber,
+        contact_name: contactName || formattedNumber,
+        displayName: contactName || formattedNumber,
         email: data.email || '',
         number: formattedNumber,
         body: data.body,
         tagId: data.tagId ? Number(data.tagId) : undefined,
         tags: data.tagId ? [Number(data.tagId)] : undefined,
         contact: {
-          name: contactName,
+          name: contactName || formattedNumber,
+          contactName: contactName || formattedNumber,
           number: formattedNumber,
           phone: formattedNumber,
           whatsapp: formattedNumber,
@@ -4726,16 +4755,18 @@ app.post('/api/whatsapp/send', async (req, res) => {
     }
 
     let tagResult = null;
+    const ticketId = data.ticketId || extractAtivaCrmTicketId(ativaCrmData);
+    const contactId = extractAtivaCrmContactId(ativaCrmData);
     const contactUpdateAfterSendResult = await updateAtivaCrmContact({
       token: ativaCrmToken,
       name: contactName,
       email: data.email,
       phone: formattedNumber,
+      contactId,
+      ticketId,
     });
 
     if (data.tagId) {
-      const ticketId = data.ticketId || extractAtivaCrmTicketId(ativaCrmData);
-      const contactId = extractAtivaCrmContactId(ativaCrmData);
       const contactTagAfterSendResult = await updateAtivaCrmContactTag({
         token: ativaCrmToken,
         phone: formattedNumber,
@@ -9044,31 +9075,6 @@ function extractProductModelSearchTerms(value) {
   return Array.from(terms).slice(0, 5);
 }
 
-function extractProductIntentSearchTerms(value) {
-  const normalized = normalizeProductSearchText(value);
-  if (!normalized) return [];
-
-  const terms = new Set();
-  const addTerms = (items) => items.forEach((item) => terms.add(item));
-
-  const groups = [
-    { match: /\b(tela|display|vidro|touch|frontal)\b/, terms: ['tela', 'display'] },
-    { match: /\b(bateria)\b/, terms: ['bateria'] },
-    { match: /\b(conector|carga|carregador)\b/, terms: ['conector', 'carga'] },
-    { match: /\b(camera|camera\s+frontal|camera\s+traseira|lente)\b/, terms: ['camera'] },
-    { match: /\b(alto\s+falante|campainha|auricular|speaker)\b/, terms: ['alto falante', 'speaker'] },
-    { match: /\b(sensor|proximidade|face\s*id)\b/, terms: ['sensor', 'proximidade', 'face id'] },
-    { match: /\b(carcaca|tampa|aro|chassi)\b/, terms: ['carcaca', 'tampa', 'aro'] },
-    { match: /\b(botao|power|volume|home)\b/, terms: ['botao', 'power', 'volume', 'home'] },
-  ];
-
-  groups.forEach((group) => {
-    if (group.match.test(normalized)) addTerms(group.terms);
-  });
-
-  return Array.from(terms).slice(0, 8);
-}
-
 function appendProductTextSearchFilter(sql, params, paramIndex, terms, columns = ['p.modelo', 'p.nome']) {
   const searchTerms = Array.isArray(terms) ? terms.filter(Boolean) : [];
   if (searchTerms.length === 0) return { sql, paramIndex };
@@ -9114,7 +9120,6 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     const buscaTerms = busca ? extractProductModelSearchTerms(busca) : [];
     const modeloTerms = modelo ? extractProductModelSearchTerms(modelo) : [];
-    const productIntentTerms = extractProductIntentSearchTerms(`${busca || ''} ${modelo || ''}`);
 
     let query = `
       SELECT 
@@ -9137,12 +9142,6 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     
     if (modelo) {
       const filter = appendProductTextSearchFilter(query, params, paramIndex, modeloTerms);
-      query = filter.sql;
-      paramIndex = filter.paramIndex;
-    }
-
-    if (productIntentTerms.length > 0) {
-      const filter = appendProductTextSearchFilter(query, params, paramIndex, productIntentTerms, ['p.nome', 'p.referencia', 'p.grupo', 'p.sub_grupo']);
       query = filter.sql;
       paramIndex = filter.paramIndex;
     }
@@ -9251,11 +9250,6 @@ app.get('/api/v1/produtos', validateApiToken, async (req, res) => {
     }
     if (modelo) {
       const filter = appendProductTextSearchFilter(countQuery, countParams, countParamIndex, modeloTerms);
-      countQuery = filter.sql;
-      countParamIndex = filter.paramIndex;
-    }
-    if (productIntentTerms.length > 0) {
-      const filter = appendProductTextSearchFilter(countQuery, countParams, countParamIndex, productIntentTerms, ['p.nome', 'p.referencia', 'p.grupo', 'p.sub_grupo']);
       countQuery = filter.sql;
       countParamIndex = filter.paramIndex;
     }
