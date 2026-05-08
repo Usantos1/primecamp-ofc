@@ -52,6 +52,14 @@ export interface Voucher {
   status: 'active' | 'used' | 'expired' | 'cancelled';
   is_transferable: boolean;
   created_at: string;
+  used_at?: string;
+  used_sale_id?: string;
+  used_sale_number?: number;
+  used_items?: Array<{
+    produto_nome?: string;
+    quantidade?: number;
+    valor_total?: number;
+  }>;
 }
 
 export interface VoucherUsageHistory {

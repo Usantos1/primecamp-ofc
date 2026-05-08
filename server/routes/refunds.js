@@ -576,10 +576,37 @@ router.get('/vouchers/list', async (req, res) => {
     const { status, customer, limit = 50, offset = 0 } = req.query;
     
     let query = `
-      SELECT v.*, 
-             u.email as created_by_email
+      SELECT v.*,
+             u.email as created_by_email,
+             usage.used_at,
+             usage.used_sale_id,
+             usage.used_sale_number,
+             usage.used_items
       FROM vouchers v
       LEFT JOIN users u ON v.created_by = u.id
+      LEFT JOIN LATERAL (
+        SELECT vu.used_at,
+               vu.sale_id as used_sale_id,
+               s.numero as used_sale_number,
+               COALESCE(
+                 json_agg(
+                   json_build_object(
+                     'produto_nome', si.produto_nome,
+                     'quantidade', si.quantidade,
+                     'valor_total', si.valor_total
+                   )
+                   ORDER BY si.created_at ASC
+                 ) FILTER (WHERE si.id IS NOT NULL),
+                 '[]'::json
+               ) as used_items
+        FROM voucher_usage vu
+        LEFT JOIN sales s ON vu.sale_id = s.id
+        LEFT JOIN sale_items si ON si.sale_id = vu.sale_id
+        WHERE vu.voucher_id = v.id
+        GROUP BY vu.id, vu.used_at, vu.sale_id, s.numero
+        ORDER BY vu.used_at DESC
+        LIMIT 1
+      ) usage ON true
       WHERE v.company_id = $1
     `;
     const params = [companyId];

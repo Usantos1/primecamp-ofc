@@ -64,6 +64,34 @@ router.put('/settings', async (req, res) => {
 router.get('/jobs', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || '50', 10) || 50, 200);
+    const offset = Math.max(parseInt(req.query.offset || '0', 10) || 0, 0);
+    const status = String(req.query.status || 'all');
+    const search = String(req.query.search || '').trim();
+    const where = ['j.company_id = $1'];
+    const params = [req.companyId];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      where.push(`j.status = $${params.length}`);
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(
+        o.cliente_nome ILIKE $${params.length}
+        OR o.telefone_contato ILIKE $${params.length}
+        OR j.telefone ILIKE $${params.length}
+        OR o.marca_nome ILIKE $${params.length}
+        OR o.modelo_nome ILIKE $${params.length}
+        OR CAST(o.numero AS TEXT) ILIKE $${params.length}
+      )`);
+    }
+
+    params.push(limit);
+    const limitIndex = params.length;
+    params.push(offset);
+    const offsetIndex = params.length;
+
     const r = await pool.query(
       `SELECT j.id, j.ordem_servico_id, j.telefone, j.status, j.tipo_regra_envio,
               j.scheduled_at, j.sent_at, j.faturado_at, j.error_message, j.skip_reason,
@@ -76,12 +104,22 @@ router.get('/jobs', async (req, res) => {
               LEFT(mensagem_renderizada, 200) AS mensagem_preview
        FROM os_pos_venda_followup_jobs j
        LEFT JOIN ordens_servico o ON o.id = j.ordem_servico_id
-       WHERE j.company_id = $1
+       WHERE ${where.join(' AND ')}
        ORDER BY j.created_at DESC
-       LIMIT $2`,
-      [req.companyId, limit]
+       LIMIT $${limitIndex}
+       OFFSET $${offsetIndex}`,
+      params
     );
-    res.json({ jobs: r.rows });
+
+    const countParams = params.slice(0, params.length - 2);
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM os_pos_venda_followup_jobs j
+       LEFT JOIN ordens_servico o ON o.id = j.ordem_servico_id
+       WHERE ${where.join(' AND ')}`,
+      countParams
+    );
+    res.json({ jobs: r.rows, total: countResult.rows[0]?.total || 0, limit, offset });
   } catch (e) {
     console.error('[OS Follow-up] GET jobs:', e);
     res.status(500).json({ error: e.message });

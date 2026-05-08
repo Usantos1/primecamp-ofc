@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getApiUrl } from '@/utils/apiUrl';
 import { authAPI } from '@/integrations/auth/api-client';
-import { Loader2, MessageCircle, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, MessageCircle, Pencil, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DEFAULT_TEMPLATE = `Olá, {cliente}. Tudo bem?
@@ -91,6 +91,12 @@ export default function FollowupPosVendaConfig() {
     template_mensagem: DEFAULT_TEMPLATE,
   });
   const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [jobTotal, setJobTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobStatusFilter, setJobStatusFilter] = useState('all');
+  const totalPages = Math.max(1, Math.ceil(jobTotal / pageSize));
 
   const preview = useMemo(() => {
     const vars: Record<string, string> = {
@@ -113,9 +119,16 @@ export default function FollowupPosVendaConfig() {
     try {
       const token = authAPI.getToken();
       const headers: HeadersInit = { Authorization: `Bearer ${token}` };
+      const jobParams = new URLSearchParams({
+        limit: String(pageSize),
+        offset: String((page - 1) * pageSize),
+      });
+      if (jobStatusFilter !== 'all') jobParams.set('status', jobStatusFilter);
+      if (jobSearch.trim()) jobParams.set('search', jobSearch.trim());
+
       const [sRes, jRes] = await Promise.all([
         fetch(`${getApiUrl()}/os-pos-venda-followup/settings`, { headers }),
-        fetch(`${getApiUrl()}/os-pos-venda-followup/jobs?limit=50`, { headers }),
+        fetch(`${getApiUrl()}/os-pos-venda-followup/jobs?${jobParams.toString()}`, { headers }),
       ]);
       if (sRes.ok) {
         const data = await sRes.json();
@@ -130,6 +143,7 @@ export default function FollowupPosVendaConfig() {
       if (jRes.ok) {
         const j = await jRes.json();
         setJobs(j.jobs || []);
+        setJobTotal(Number(j.total || 0));
       }
     } catch (e: any) {
       toast({ title: 'Erro ao carregar', description: e?.message, variant: 'destructive' });
@@ -140,7 +154,17 @@ export default function FollowupPosVendaConfig() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page, pageSize, jobStatusFilter, jobSearch]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, jobStatusFilter, jobSearch]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   const save = async () => {
     setSaving(true);
@@ -344,9 +368,42 @@ export default function FollowupPosVendaConfig() {
         </div>
 
         <Card className="border shadow-sm w-full min-w-0">
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Histórico recente</CardTitle>
-            <CardDescription>Agendamentos e envios desta empresa.</CardDescription>
+          <CardHeader className="space-y-4">
+            <div>
+              <CardTitle className="text-base sm:text-lg">Histórico recente</CardTitle>
+              <CardDescription>Agendamentos e envios desta empresa.</CardDescription>
+            </div>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center flex-1">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por OS, cliente, telefone ou aparelho..."
+                    value={jobSearch}
+                    onChange={(e) => setJobSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={jobStatusFilter} onValueChange={setJobStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="agendado">Agendado</SelectItem>
+                    <SelectItem value="enviado">Enviado</SelectItem>
+                    <SelectItem value="erro">Erro</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button variant="outline" onClick={load} disabled={loading} className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Atualizar
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="overflow-x-auto min-w-0 p-4 sm:p-6 pt-0">
             <Table className="w-full">
@@ -445,6 +502,54 @@ export default function FollowupPosVendaConfig() {
                 )}
               </TableBody>
             </Table>
+            <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground tabular-nums">
+                {jobTotal === 0
+                  ? '0 registros'
+                  : `${(page - 1) * pageSize + 1}-${Math.min(page * pageSize, jobTotal)} de ${jobTotal} registros`}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <div className="flex items-center gap-2 sm:mr-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Por página</span>
+                  <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1 || loading}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </Button>
+                  <span className="min-w-[72px] text-center text-sm font-medium tabular-nums">
+                    {page}/{totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages || loading}
+                    className="gap-1"
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

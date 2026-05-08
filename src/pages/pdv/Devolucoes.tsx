@@ -882,7 +882,7 @@ export default function Devolucoes() {
               ) : (
                 <>
                   {/* Desktop: Tabela */}
-                  <div className="hidden md:block overflow-x-auto">
+                  <div className="hidden lg:block overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -891,6 +891,7 @@ export default function Devolucoes() {
                           <TableHead>Valor Original</TableHead>
                           <TableHead>Saldo</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Data/Hora de Uso</TableHead>
                           <TableHead>Validade</TableHead>
                           <TableHead>Ações</TableHead>
                         </TableRow>
@@ -915,6 +916,23 @@ export default function Devolucoes() {
                             </TableCell>
                             <TableCell>{getStatusBadge(voucher.status)}</TableCell>
                             <TableCell>
+                              {voucher.used_at ? (
+                                <div className="space-y-0.5">
+                                  <div className="font-medium">{formatDate(voucher.used_at)}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Venda #{voucher.used_sale_number || voucher.used_sale_id?.slice(0, 8)}
+                                  </div>
+                                  {voucher.used_items && voucher.used_items.length > 0 && (
+                                    <div className="text-xs text-muted-foreground max-w-[220px] truncate">
+                                      {voucher.used_items.map(item => item.produto_nome).filter(Boolean).join(', ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
                               {voucher.expires_at ? formatDate(voucher.expires_at) : '90 dias após a emissão'}
                             </TableCell>
                             <TableCell>
@@ -938,7 +956,7 @@ export default function Devolucoes() {
                     </Table>
                   </div>
                   {/* Mobile: Cards compactos */}
-                  <div className="md:hidden space-y-1.5">
+                  <div className="lg:hidden space-y-1.5">
                     {filteredVouchers.map((voucher) => (
                       <Card
                         key={voucher.id}
@@ -955,9 +973,15 @@ export default function Devolucoes() {
                             {getStatusBadge(voucher.status)}
                           </div>
                           <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-border/50">
-                            <span className="text-[10px] text-muted-foreground">
-                              {formatCurrency(voucher.current_value || voucher.remaining_value || 0)} saldo
-                            </span>
+                            <div className="min-w-0 text-[10px] text-muted-foreground">
+                              <div>{formatCurrency(voucher.current_value || voucher.remaining_value || 0)} saldo</div>
+                              {voucher.used_at && (
+                                <div className="truncate">
+                                  Usado em {formatDate(voucher.used_at)}
+                                  {voucher.used_sale_number ? ` · Venda #${voucher.used_sale_number}` : ''}
+                                </div>
+                              )}
+                            </div>
                             <div className="flex gap-0.5">
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-md" onClick={() => handleCopyCode(voucher.code)} aria-label="Copiar">
                                 <Copy className="h-3.5 w-3.5" />
