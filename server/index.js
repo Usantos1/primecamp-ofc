@@ -1600,7 +1600,7 @@ try {
   }
 
   if (birthdayMessagesRoutes) {
-    setInterval(() => {
+    const runBirthdayMessages = () => {
       import('./jobs/birthdayMessageWorker.js')
         .then((m) => m.runBirthdayMessageTick(pool))
         .then((r) => {
@@ -1613,7 +1613,9 @@ try {
             console.error('[Birthday Message Worker]', err.message || err);
           }
         });
-    }, 60 * 1000);
+    };
+    setTimeout(runBirthdayMessages, 10 * 1000);
+    setInterval(runBirthdayMessages, 60 * 1000);
     console.log('[Server] ✅ Worker de mensagens de aniversário agendado (1 min)');
   }
 

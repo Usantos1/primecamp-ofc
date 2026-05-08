@@ -56,12 +56,17 @@ router.get('/settings', async (req, res) => {
 
 router.put('/settings', async (req, res) => {
   try {
-    await upsertBirthdaySettings(pool, req.companyId, req.body || {});
+    const payload = req.body || {};
+    await upsertBirthdaySettings(pool, req.companyId, payload);
     const row = await getBirthdaySettingsRow(pool, req.companyId);
     const syncResult = await syncBirthdayJobsForCompany(pool, req.companyId, { force: true });
+    const processResult = payload.ativo
+      ? await processDueBirthdayMessages(pool, 30, req.companyId)
+      : null;
     res.json({
       ...mergeBirthdaySettingsResponse(row),
       sync: syncResult,
+      process: processResult,
     });
   } catch (error) {
     console.error('[Birthday Messages] PUT settings:', error);

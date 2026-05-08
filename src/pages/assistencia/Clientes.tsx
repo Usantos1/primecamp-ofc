@@ -1569,7 +1569,7 @@ export default function Clientes() {
                 <div>
                   <p className="text-sm font-medium">Fila de aniversários</p>
                   <p className="text-xs text-muted-foreground">
-                    Gere os agendamentos do dia e acompanhe o status de envio por cliente.
+                    A fila automática é criada para aniversariantes do dia. A lista do mês abaixo é apenas para conferência antecipada.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
