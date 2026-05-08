@@ -335,6 +335,13 @@ export default function OrdensServico() {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const hojeStr = hoje.toISOString().split('T')[0];
+  const normalizeSearch = (value: unknown) =>
+    String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  const onlyDigits = (value: unknown) => String(value ?? '').replace(/\D/g, '');
 
   // Filtrar ordens: abertas (padrão), fechadas (somente fechadas), all (todos) ou status específico
   const filteredOrdens = useMemo(() => {
@@ -348,38 +355,70 @@ export default function OrdensServico() {
       result = result.filter(os => os.status === statusFilter);
     }
 
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+    const search = normalizeSearch(searchTerm);
+    if (search) {
+      const searchDigits = onlyDigits(searchTerm);
       result = result.filter(os => {
         const cliente = getClienteById(os.cliente_id);
+        const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
+        const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
+        const osData = os as any;
+
+        const matchesText = (values: unknown[]) =>
+          values.some(value => normalizeSearch(value).includes(search));
+        const matchesDigits = (values: unknown[]) =>
+          searchDigits.length > 0 && values.some(value => onlyDigits(value).includes(searchDigits));
+        const matchesNumero = () =>
+          String(os.numero ?? '').includes(search) || matchesDigits([os.numero]);
+        const matchesCliente = () =>
+          matchesText([
+            cliente?.nome,
+            cliente?.empresa,
+            os.cliente_nome,
+            osData.cliente_empresa,
+          ]) || matchesDigits([
+            cliente?.telefone,
+            cliente?.whatsapp,
+            os.telefone_contato,
+            osData.cliente_telefone,
+          ]);
+        const matchesAparelho = () =>
+          matchesText([
+            os.tipo_aparelho,
+            marca?.nome,
+            modelo?.nome,
+            os.marca_nome,
+            os.modelo_nome,
+            os.cor,
+          ]) || matchesDigits([
+            os.imei,
+            os.numero_serie,
+          ]);
+        const matchesProblema = () =>
+          matchesText([
+            os.descricao_problema,
+            osData.problema_relatado,
+            os.problema_constatado,
+            os.descricao_servico,
+            os.servico_executado,
+            os.observacoes,
+            os.observacoes_internas,
+          ]);
         
         // Filtrar por campo específico se selecionado
         if (searchField === 'numero') {
-          return String(os.numero).includes(search);
+          return matchesNumero();
         }
         if (searchField === 'cliente') {
-          return cliente?.nome?.toLowerCase().includes(search) || 
-                 cliente?.telefone?.includes(searchTerm) ||
-                 cliente?.whatsapp?.includes(searchTerm);
+          return matchesCliente();
         }
         if (searchField === 'aparelho') {
-          const marca = os.marca_id ? getMarcaById(os.marca_id) : null;
-          const modelo = os.modelo_id ? getModeloById(os.modelo_id) : null;
-          return marca?.nome?.toLowerCase().includes(search) || 
-                 modelo?.nome?.toLowerCase().includes(search) ||
-                 os.imei?.includes(searchTerm);
+          return matchesAparelho();
         }
         if (searchField === 'problema') {
-          return os.problema_relatado?.toLowerCase().includes(search) ||
-                 os.observacoes?.toLowerCase().includes(search);
+          return matchesProblema();
         }
-        return (
-          os.numero.toString().includes(search) ||
-          os.descricao_problema?.toLowerCase().includes(search) ||
-          cliente?.nome?.toLowerCase().includes(search) ||
-          cliente?.telefone?.includes(search) ||
-          os.imei?.includes(search)
-        );
+        return matchesNumero() || matchesCliente() || matchesAparelho() || matchesProblema();
       });
     }
 
