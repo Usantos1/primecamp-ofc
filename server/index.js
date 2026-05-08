@@ -1600,23 +1600,39 @@ try {
   }
 
   if (birthdayMessagesRoutes) {
-    const runBirthdayMessages = () => {
+    const runBirthdaySync = () => {
       import('./jobs/birthdayMessageWorker.js')
-        .then((m) => m.runBirthdayMessageTick(pool))
+        .then((m) => m.runBirthdayMessageSync(pool))
         .then((r) => {
-          if ((r?.sync?.created || 0) > 0 || (r?.process?.processed || 0) > 0) {
-            console.log('[Birthday Message Worker]', r);
+          if ((r?.created || 0) > 0 || (r?.cancelled || 0) > 0) {
+            console.log('[Birthday Message Sync]', r);
           }
         })
         .catch((err) => {
           if (!String(err.message || err).includes('does not exist')) {
-            console.error('[Birthday Message Worker]', err.message || err);
+            console.error('[Birthday Message Sync]', err.message || err);
           }
         });
     };
-    setTimeout(runBirthdayMessages, 10 * 1000);
-    setInterval(runBirthdayMessages, 60 * 1000);
-    console.log('[Server] ✅ Worker de mensagens de aniversário agendado (1 min)');
+    const runBirthdayProcess = () => {
+      import('./jobs/birthdayMessageWorker.js')
+        .then((m) => m.runBirthdayMessageProcess(pool))
+        .then((r) => {
+          if ((r?.processed || 0) > 0) {
+            console.log('[Birthday Message Process]', r);
+          }
+        })
+        .catch((err) => {
+          if (!String(err.message || err).includes('does not exist')) {
+            console.error('[Birthday Message Process]', err.message || err);
+          }
+        });
+    };
+    setTimeout(runBirthdaySync, 10 * 1000);
+    setInterval(runBirthdaySync, 24 * 60 * 60 * 1000);
+    setTimeout(runBirthdayProcess, 15 * 1000);
+    setInterval(runBirthdayProcess, 15 * 60 * 1000);
+    console.log('[Server] ✅ Aniversários: sync diário e envio a cada 15 min');
   }
 
   if (alertsRoutes) {
