@@ -17,6 +17,8 @@ export type PedidoItem = {
 export type Pedido = {
   id: string;
   nome: string;
+  fornecedor_id?: string | null;
+  fornecedor_nome?: string | null;
   itens: PedidoItem[];
   createdAt: string;
   createdBy: string;
@@ -36,6 +38,8 @@ function loadPedidosFromStorage(): Pedido[] {
     return list.map((p: any) => ({
       ...p,
       createdBy: p.createdBy ?? '—',
+      fornecedor_id: p.fornecedor_id ?? null,
+      fornecedor_nome: p.fornecedor_nome ?? null,
       receivedBy: p.receivedBy,
       receivedAt: p.receivedAt,
       itens: (p.itens || []).map((i: any) => ({
@@ -70,6 +74,8 @@ function mapDbToPedido(row: any, itens: any[]): Pedido {
   return {
     id: row.id,
     nome: row.nome ?? '',
+    fornecedor_id: row.fornecedor_id ?? null,
+    fornecedor_nome: row.fornecedor_nome ?? null,
     itens: itensMap,
     createdAt: row.created_at ?? new Date().toISOString(),
     createdBy: row.created_by_nome ?? '—',
@@ -94,7 +100,7 @@ export function usePedidos() {
     setLoading(true);
     try {
       const fields =
-        'id,nome,created_at,created_by,created_by_nome,recebido,received_at,received_by,received_by_nome';
+        'id,nome,fornecedor_id,fornecedor_nome,created_at,created_by,created_by_nome,recebido,received_at,received_by,received_by_nome';
       if (!companyId) {
         setPedidos([]);
         setLoading(false);
@@ -164,16 +170,28 @@ export function usePedidos() {
   const salvarPedido = useCallback(
     async (params: {
       nome: string;
+      fornecedor_id: string;
+      fornecedor_nome: string;
       itens: PedidoItem[];
       editando?: Pedido | null;
     }): Promise<boolean> => {
       const nome = params.nome.trim();
+      const fornecedorId = params.fornecedor_id;
+      const fornecedorNome = params.fornecedor_nome.trim();
       const editingPedido = params.editando ?? null;
 
       if (!nome) {
         toast({
           title: 'Nome obrigatório',
           description: 'Informe o nome do pedido.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      if (!fornecedorId || !fornecedorNome) {
+        toast({
+          title: 'Fornecedor obrigatório',
+          description: 'Selecione o fornecedor antes de salvar o pedido.',
           variant: 'destructive',
         });
         return false;
@@ -199,7 +217,7 @@ export function usePedidos() {
       try {
         if (editingPedido) {
           const { error: errUpd } = await from('pedidos')
-            .update({ nome })
+            .update({ nome, fornecedor_id: fornecedorId, fornecedor_nome: fornecedorNome })
             .eq('id', editingPedido.id)
             .execute();
           if (errUpd) throw errUpd;
@@ -226,12 +244,14 @@ export function usePedidos() {
           const { data: inserted, error: errIns } = await from('pedidos')
             .insert({
               nome,
+              fornecedor_id: fornecedorId,
+              fornecedor_nome: fornecedorNome,
               company_id: companyId,
               created_by: user?.id ?? null,
               created_by_nome: userNome,
               recebido: false,
             })
-            .select('id,created_at,created_by_nome')
+            .select('id,created_at,created_by_nome,fornecedor_id,fornecedor_nome')
             .execute();
           if (errIns || !inserted) throw errIns || new Error('Inserção falhou');
           const row = Array.isArray(inserted) ? inserted[0] : inserted;
@@ -254,7 +274,9 @@ export function usePedidos() {
         try {
           if (editingPedido) {
             const next = pedidos.map((p) =>
-              p.id === editingPedido.id ? { ...p, nome, itens: itensPayload } : p
+              p.id === editingPedido.id
+                ? { ...p, nome, fornecedor_id: fornecedorId, fornecedor_nome: fornecedorNome, itens: itensPayload }
+                : p
             );
             savePedidosToStorage(next);
             setPedidos(next);
@@ -266,6 +288,8 @@ export function usePedidos() {
             const novo: Pedido = {
               id: crypto.randomUUID(),
               nome,
+              fornecedor_id: fornecedorId,
+              fornecedor_nome: fornecedorNome,
               itens: itensPayload,
               createdAt: new Date().toISOString(),
               createdBy: userNome,
@@ -348,6 +372,7 @@ export function usePedidos() {
             .insert({
               description: `Entrada de estoque - Pedido: ${pedido.nome}`,
               amount: totalDespesa,
+              supplier: pedido.fornecedor_nome || null,
               due_date: dueDate,
               expense_type: 'variavel',
               recurring: false,

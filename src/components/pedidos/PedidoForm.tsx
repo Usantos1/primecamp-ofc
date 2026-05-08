@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table,
   TableBody,
@@ -18,10 +19,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CheckCircle2, Trash2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Plus, Search, Trash2 } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { BuscaProdutoSelector, type ProdutoBusca } from './BuscaProdutoSelector';
 import { totalCustoPedido, type Pedido, type PedidoItem } from '@/hooks/usePedidos';
+import { useFornecedores } from '@/hooks/useFornecedores';
 
 type Props = {
   open: boolean;
@@ -29,23 +31,43 @@ type Props = {
   editando: Pedido | null;
   onSubmit: (params: {
     nome: string;
+    fornecedor_id: string;
+    fornecedor_nome: string;
     itens: PedidoItem[];
     editando: Pedido | null;
   }) => Promise<boolean>;
+  onCreateProduto?: (nomeInicial: string, onCreated: (produto: ProdutoBusca) => void) => void;
 };
 
-export function PedidoForm({ open, onOpenChange, editando, onSubmit }: Props) {
+export function PedidoForm({ open, onOpenChange, editando, onSubmit, onCreateProduto }: Props) {
   const [nome, setNome] = useState('');
+  const [fornecedorId, setFornecedorId] = useState('');
+  const [fornecedorNome, setFornecedorNome] = useState('');
   const [itens, setItens] = useState<PedidoItem[]>([]);
   const [salvando, setSalvando] = useState(false);
+  const [fornecedorPopoverOpen, setFornecedorPopoverOpen] = useState(false);
+  const [fornecedorSearch, setFornecedorSearch] = useState('');
+  const [showNovoFornecedorDialog, setShowNovoFornecedorDialog] = useState(false);
+  const [novoFornecedorNome, setNovoFornecedorNome] = useState('');
+  const { fornecedores, createFornecedor } = useFornecedores();
+
+  const fornecedoresFiltrados = useMemo(() => {
+    const q = fornecedorSearch.trim().toLowerCase();
+    if (!q) return fornecedores.slice(0, 50);
+    return fornecedores.filter((f) => f.nome.toLowerCase().includes(q)).slice(0, 50);
+  }, [fornecedores, fornecedorSearch]);
 
   useEffect(() => {
     if (open) {
       if (editando) {
         setNome(editando.nome);
+        setFornecedorId(editando.fornecedor_id || '');
+        setFornecedorNome(editando.fornecedor_nome || '');
         setItens(editando.itens.map((i) => ({ ...i })));
       } else {
         setNome('');
+        setFornecedorId('');
+        setFornecedorNome('');
         setItens([]);
       }
     }
@@ -85,11 +107,21 @@ export function PedidoForm({ open, onOpenChange, editando, onSubmit }: Props) {
   const handleSubmit = async () => {
     setSalvando(true);
     try {
-      const ok = await onSubmit({ nome, itens, editando });
+      const ok = await onSubmit({ nome, fornecedor_id: fornecedorId, fornecedor_nome: fornecedorNome, itens, editando });
       if (ok) onOpenChange(false);
     } finally {
       setSalvando(false);
     }
+  };
+
+  const handleCreateFornecedor = async () => {
+    const nomeTrim = novoFornecedorNome.trim();
+    if (!nomeTrim) return;
+    const novo = await createFornecedor(nomeTrim);
+    setFornecedorId(novo.id);
+    setFornecedorNome(novo.nome);
+    setNovoFornecedorNome('');
+    setShowNovoFornecedorDialog(false);
   };
 
   const total = totalCustoPedido(itens);
@@ -103,8 +135,8 @@ export function PedidoForm({ open, onOpenChange, editando, onSubmit }: Props) {
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
             {editando
-              ? 'Altere nome e itens (custos e vendas serão usados ao dar entrada).'
-              : 'Nome do pedido e itens. Informe custo e venda para atualizar ao dar entrada e gerar despesa.'}
+              ? 'Confira fornecedor, itens, custos e venda antes de dar entrada.'
+              : 'Escolha o fornecedor e adicione os produtos. O pedido ficará pendente até a chegada.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -119,7 +151,73 @@ export function PedidoForm({ open, onOpenChange, editando, onSubmit }: Props) {
             />
           </div>
 
-          <BuscaProdutoSelector onSelect={adicionarItem} />
+          <div>
+            <Label className="text-sm">Fornecedor <span className="text-destructive">*</span></Label>
+            <Popover open={fornecedorPopoverOpen} onOpenChange={(open) => { setFornecedorPopoverOpen(open); if (!open) setFornecedorSearch(''); }}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" className="mt-1 w-full justify-between font-normal min-h-[44px] rounded-full touch-manipulation">
+                  <span className="truncate">{fornecedorNome || 'Selecione o fornecedor'}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="z-[110] w-[var(--radix-popover-trigger-width)] max-h-[min(320px,calc(100vh-220px))] overflow-hidden p-0" align="start">
+                <div className="p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Pesquisar fornecedor..."
+                      value={fornecedorSearch}
+                      onChange={(e) => setFornecedorSearch(e.target.value)}
+                      className="h-9 pl-8 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setNovoFornecedorNome(fornecedorSearch.trim()); setShowNovoFornecedorDialog(true); setFornecedorPopoverOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 font-medium hover:bg-green-50 border-b"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Cadastrar novo fornecedor
+                </button>
+                <div
+                  className="max-h-[min(220px,calc(100vh-330px))] overflow-y-auto overscroll-contain p-1"
+                  onWheel={(event) => event.stopPropagation()}
+                  onTouchMove={(event) => event.stopPropagation()}
+                >
+                  {fornecedoresFiltrados.length > 0 ? (
+                    fornecedoresFiltrados.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                        onClick={() => {
+                          setFornecedorId(f.id);
+                          setFornecedorNome(f.nome);
+                          setFornecedorPopoverOpen(false);
+                        }}
+                      >
+                        <span className="truncate">{f.nome}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                      {fornecedorSearch.trim() ? 'Nenhum fornecedor encontrado.' : 'Nenhum fornecedor cadastrado.'}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {fornecedorId ? (
+            <BuscaProdutoSelector onSelect={adicionarItem} onCreateProduto={onCreateProduto} />
+          ) : (
+            <div className="rounded-lg border-2 border-dashed border-gray-300 p-4 text-sm text-muted-foreground dark:border-gray-700">
+              Selecione o fornecedor para liberar a busca de produtos.
+            </div>
+          )}
 
           {itens.length > 0 && (
             <div>
@@ -227,7 +325,7 @@ export function PedidoForm({ open, onOpenChange, editando, onSubmit }: Props) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={salvando || itens.length === 0 || !nome.trim()}
+            disabled={salvando || itens.length === 0 || !nome.trim() || !fornecedorId}
             className="w-full sm:w-auto min-h-[44px] sm:min-h-0 rounded-full touch-manipulation"
           >
             <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -235,6 +333,29 @@ export function PedidoForm({ open, onOpenChange, editando, onSubmit }: Props) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={showNovoFornecedorDialog} onOpenChange={setShowNovoFornecedorDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Novo fornecedor</DialogTitle>
+            <DialogDescription>Cadastre o fornecedor do pedido.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Input
+              placeholder="Ex: Loja de Peças XYZ"
+              value={novoFornecedorNome}
+              onChange={(e) => setNovoFornecedorNome(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateFornecedor(); } }}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setShowNovoFornecedorDialog(false); setNovoFornecedorNome(''); }}>Cancelar</Button>
+              <Button onClick={handleCreateFornecedor} disabled={!novoFornecedorNome.trim()}>
+                Cadastrar e selecionar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

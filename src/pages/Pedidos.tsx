@@ -3,7 +3,6 @@ import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -12,9 +11,13 @@ import { ClipboardList, Loader2, Plus, Search } from 'lucide-react';
 import { usePedidos, totalCustoPedido, type Pedido } from '@/hooks/usePedidos';
 import { PedidoCard } from '@/components/pedidos/PedidoCard';
 import { PedidoForm } from '@/components/pedidos/PedidoForm';
+import type { ProdutoBusca } from '@/components/pedidos/BuscaProdutoSelector';
 import { PedidosResumoCards } from '@/components/pedidos/PedidosResumoCards';
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from '@/types/financial';
 import { currencyFormatters } from '@/utils/formatters';
+import { ProductFormOptimized } from '@/components/assistencia/ProductFormOptimized';
+import { useProdutosPaginated } from '@/hooks/useProdutosPaginated';
+import type { Produto } from '@/types/assistencia';
 
 type StatusFilter = 'todos' | 'pendentes' | 'recebidos';
 
@@ -36,6 +39,10 @@ export default function Pedidos() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [pedidoEntrada, setPedidoEntrada] = useState<Pedido | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [produtoInicial, setProdutoInicial] = useState<Produto | null>(null);
+  const [onProdutoCriado, setOnProdutoCriado] = useState<((produto: ProdutoBusca) => void) | null>(null);
+  const { createProduto } = useProdutosPaginated({ pageSize: 1 });
 
   const pedidosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -45,10 +52,11 @@ export default function Pedidos() {
       if (!termo) return true;
       const inNome = p.nome.toLowerCase().includes(termo);
       const inCriador = (p.createdBy || '').toLowerCase().includes(termo);
+      const inFornecedor = (p.fornecedor_nome || '').toLowerCase().includes(termo);
       const inItens = p.itens.some((i) =>
         (i.produto_nome || '').toLowerCase().includes(termo)
       );
-      return inNome || inCriador || inItens;
+      return inNome || inCriador || inFornecedor || inItens;
     });
   }, [pedidos, busca, statusFilter]);
 
@@ -80,6 +88,31 @@ export default function Pedidos() {
   };
 
   const entradaTotal = pedidoEntrada ? totalCustoPedido(pedidoEntrada.itens) : 0;
+
+  const abrirCadastroProduto = (nomeInicial: string, onCreated: (produto: ProdutoBusca) => void) => {
+    setProdutoInicial({
+      id: '',
+      nome: nomeInicial,
+      descricao: nomeInicial,
+      quantidade: 0,
+      unidade: 'UN',
+      tipo: 'PECA',
+    } as Produto);
+    setOnProdutoCriado(() => onCreated);
+    setShowProductForm(true);
+  };
+
+  const salvarProdutoDoPedido = async (payload: Partial<Produto>) => {
+    const created = await createProduto(payload);
+    onProdutoCriado?.({
+      id: created.id,
+      nome: created.nome || created.descricao || payload.nome || '',
+      codigo: created.codigo,
+      referencia: created.referencia,
+    });
+    setOnProdutoCriado(null);
+    setProdutoInicial(null);
+  };
 
   return (
     <ModernLayout title="Pedidos" subtitle="Crie pedidos e dê entrada no estoque">
@@ -142,23 +175,30 @@ export default function Pedidos() {
                 className="pl-9 min-h-[44px] sm:min-h-[40px] rounded-full"
               />
             </div>
-            <Tabs
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-              className="w-full md:w-auto"
-            >
-              <TabsList className="grid grid-cols-3 w-full md:w-auto rounded-full border-2 border-gray-300 dark:border-gray-700 p-1">
-                <TabsTrigger value="todos" className="text-xs sm:text-sm">
-                  Todos
-                </TabsTrigger>
-                <TabsTrigger value="pendentes" className="text-xs sm:text-sm">
-                  Pendentes
-                </TabsTrigger>
-                <TabsTrigger value="recebidos" className="text-xs sm:text-sm">
-                  Recebidos
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="grid h-11 w-full grid-cols-3 overflow-hidden rounded-full md:w-[320px]">
+              {[
+                { value: 'todos', label: 'Todos' },
+                { value: 'pendentes', label: 'Pendentes' },
+                { value: 'recebidos', label: 'Recebidos' },
+              ].map((item) => {
+                const active = statusFilter === item.value;
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setStatusFilter(item.value as StatusFilter)}
+                    className={[
+                      'h-full !rounded-none border-y-2 border-r-2 border-gray-300 bg-background text-xs font-semibold transition-colors first:!rounded-l-full first:border-l-2 last:!rounded-r-full dark:border-gray-700 sm:text-sm',
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+                    ].join(' ')}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -222,6 +262,20 @@ export default function Pedidos() {
         onOpenChange={handleFormChange}
         editando={editing}
         onSubmit={salvarPedido}
+        onCreateProduto={abrirCadastroProduto}
+      />
+
+      <ProductFormOptimized
+        open={showProductForm}
+        onOpenChange={(open) => {
+          setShowProductForm(open);
+          if (!open) {
+            setProdutoInicial(null);
+            setOnProdutoCriado(null);
+          }
+        }}
+        produto={produtoInicial}
+        onSave={salvarProdutoDoPedido}
       />
 
       <Dialog open={!!pedidoEntrada} onOpenChange={(open) => !open && setPedidoEntrada(null)}>

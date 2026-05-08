@@ -16,6 +16,7 @@ import {
   User,
   Calendar,
   PackageCheck,
+  Building2,
 } from 'lucide-react';
 import { currencyFormatters } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
@@ -71,6 +72,12 @@ export function PedidoCard({
                 <User className="h-3 w-3 shrink-0" />
                 {p.createdBy}
               </span>
+              {p.fornecedor_nome && (
+                <span className="inline-flex items-center gap-1">
+                  <Building2 className="h-3 w-3 shrink-0" />
+                  {p.fornecedor_nome}
+                </span>
+              )}
               {p.recebido && p.receivedBy && (
                 <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <PackageCheck className="h-3 w-3 shrink-0" />

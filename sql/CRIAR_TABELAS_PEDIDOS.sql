@@ -9,6 +9,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS public.pedidos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome TEXT NOT NULL,
+  fornecedor_id UUID NULL REFERENCES public.fornecedores(id) ON DELETE SET NULL,
+  fornecedor_nome TEXT NULL,
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   created_by UUID NULL,
@@ -22,12 +24,16 @@ CREATE TABLE IF NOT EXISTS public.pedidos (
 
 COMMENT ON TABLE public.pedidos IS 'Pedidos de compra para entrada de estoque';
 COMMENT ON COLUMN public.pedidos.nome IS 'Nome/identificação do pedido';
+COMMENT ON COLUMN public.pedidos.fornecedor_id IS 'Fornecedor vinculado ao pedido';
+COMMENT ON COLUMN public.pedidos.fornecedor_nome IS 'Nome do fornecedor no momento do pedido';
 COMMENT ON COLUMN public.pedidos.recebido IS 'True quando já foi dada entrada no estoque';
 
 CREATE INDEX IF NOT EXISTS idx_pedidos_created_at
   ON public.pedidos (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pedidos_recebido
   ON public.pedidos (recebido);
+CREATE INDEX IF NOT EXISTS idx_pedidos_fornecedor_id
+  ON public.pedidos (fornecedor_id);
 
 -- Itens do pedido
 CREATE TABLE IF NOT EXISTS public.pedido_itens (

@@ -665,8 +665,7 @@ export default function Relatorios() {
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">Pedidos de compra</CardTitle>
                       <CardDescription>
-                        Pedidos de entrada no estoque. O cadastro atual não vincula fornecedor ao pedido; use a tabela
-                        abaixo para visão por fornecedor nas peças da OS.
+                        Pedidos de entrada no estoque vinculados ao fornecedor selecionado no lançamento.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="overflow-x-auto">

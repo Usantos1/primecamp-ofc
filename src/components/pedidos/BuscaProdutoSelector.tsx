@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Plus, Search } from 'lucide-react';
 import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,9 +15,10 @@ export type ProdutoBusca = {
 
 type Props = {
   onSelect: (produto: ProdutoBusca) => void;
+  onCreateProduto?: (nomeInicial: string, onCreated: (produto: ProdutoBusca) => void) => void;
 };
 
-export function BuscaProdutoSelector({ onSelect }: Props) {
+export function BuscaProdutoSelector({ onSelect, onCreateProduto }: Props) {
   const { toast } = useToast();
   const [busca, setBusca] = useState('');
   const [resultados, setResultados] = useState<ProdutoBusca[]>([]);
@@ -116,6 +117,18 @@ export function BuscaProdutoSelector({ onSelect }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {onCreateProduto && busca.trim().length >= 2 && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onCreateProduto(busca.trim(), handleSelect)}
+          className="mt-2 w-full min-h-[44px] rounded-full touch-manipulation"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Cadastrar produto "{busca.trim()}"
+        </Button>
       )}
     </div>
   );
