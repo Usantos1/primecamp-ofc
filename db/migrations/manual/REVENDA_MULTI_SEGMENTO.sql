@@ -116,7 +116,9 @@ INSERT INTO public.modulos (id, nome, slug, descricao, categoria, icone, path, l
     ('a1000001-0000-4000-8000-000000000012', 'Caixa', 'caixa', 'Caixa', 'operacao', 'wallet', '/pdv/caixa', 'Caixa', true),
     ('a1000001-0000-4000-8000-000000000013', 'Financeiro', 'financeiro', 'Financeiro', 'gestao', 'bar-chart-3', '/financeiro', 'Financeiro', true),
     ('a1000001-0000-4000-8000-000000000014', 'Relatórios', 'relatorios', 'Relatórios', 'gestao', 'file-text', '/relatorios', 'Relatórios', true),
-    ('a1000001-0000-4000-8000-000000000015', 'Painel de Alertas', 'painel_alertas', 'Alertas', 'gestao', 'activity', '/painel-alertas', 'Painel de Alertas', true)
+    ('a1000001-0000-4000-8000-000000000015', 'Painel de Alertas', 'painel_alertas', 'Alertas', 'gestao', 'activity', '/painel-alertas', 'Painel de Alertas', true),
+    ('a1000001-0000-4000-8000-000000000016', 'Pós-venda', 'pos_venda', 'Automação e histórico de acompanhamento ao cliente', 'relatorios', 'message-circle', '/pos-venda', 'Pós-venda', true),
+    ('a1000001-0000-4000-8000-000000000017', 'Aniversariantes', 'aniversariantes', 'Mensagens automáticas de aniversário no WhatsApp', 'relatorios', 'cake', '/aniversariantes', 'Aniversariantes', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Inserir por slug para evitar conflito de ID em ambientes já com dados
@@ -165,6 +167,12 @@ WHERE NOT EXISTS (SELECT 1 FROM public.modulos WHERE slug = 'relatorios');
 INSERT INTO public.modulos (nome, slug, descricao, categoria, icone, path, label_menu, ativo)
 SELECT 'Painel de Alertas', 'painel_alertas', 'Alertas', 'gestao', 'activity', '/painel-alertas', 'Painel de Alertas', true
 WHERE NOT EXISTS (SELECT 1 FROM public.modulos WHERE slug = 'painel_alertas');
+INSERT INTO public.modulos (nome, slug, descricao, categoria, icone, path, label_menu, ativo)
+SELECT 'Pós-venda', 'pos_venda', 'Automação e histórico de acompanhamento ao cliente', 'relatorios', 'message-circle', '/pos-venda', 'Pós-venda', true
+WHERE NOT EXISTS (SELECT 1 FROM public.modulos WHERE slug = 'pos_venda');
+INSERT INTO public.modulos (nome, slug, descricao, categoria, icone, path, label_menu, ativo)
+SELECT 'Aniversariantes', 'aniversariantes', 'Mensagens automáticas de aniversário no WhatsApp', 'relatorios', 'cake', '/aniversariantes', 'Aniversariantes', true
+WHERE NOT EXISTS (SELECT 1 FROM public.modulos WHERE slug = 'aniversariantes');
 
 -- =====================================================
 -- SEEDS: Segmentos iniciais
@@ -314,6 +322,20 @@ SELECT m.id, 'Relatórios gerais', 'relatorios_gerais', 'Relatórios', 'relatori
 INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
 SELECT m.id, 'Alertas', 'alertas', 'Painel de alertas', 'relatorios.financeiro', true FROM public.modulos m WHERE m.slug = 'painel_alertas' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'alertas');
 
+-- Recursos do módulo Pós-venda e Aniversariantes
+INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
+SELECT m.id, 'Visualizar pós-venda', 'visualizar_pos_venda', 'Acessar tela de pós-venda', 'pos_venda.view', true FROM public.modulos m WHERE m.slug = 'pos_venda' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'visualizar_pos_venda');
+INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
+SELECT m.id, 'Gerenciar pós-venda', 'gerenciar_pos_venda', 'Gerenciar mensagens e fila de pós-venda', 'pos_venda.manage', true FROM public.modulos m WHERE m.slug = 'pos_venda' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'gerenciar_pos_venda');
+INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
+SELECT m.id, 'Configurar pós-venda', 'configurar_pos_venda', 'Configurar mensagem e automação de pós-venda', 'pos_venda.config', true FROM public.modulos m WHERE m.slug = 'pos_venda' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'configurar_pos_venda');
+INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
+SELECT m.id, 'Visualizar aniversariantes', 'visualizar_aniversariantes', 'Acessar tela de aniversariantes', 'aniversariantes.view', true FROM public.modulos m WHERE m.slug = 'aniversariantes' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'visualizar_aniversariantes');
+INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
+SELECT m.id, 'Gerenciar aniversariantes', 'gerenciar_aniversariantes', 'Gerenciar mensagens e fila de aniversário', 'aniversariantes.manage', true FROM public.modulos m WHERE m.slug = 'aniversariantes' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'gerenciar_aniversariantes');
+INSERT INTO public.recursos (modulo_id, nome, slug, descricao, permission_key, ativo)
+SELECT m.id, 'Configurar aniversariantes', 'configurar_aniversariantes', 'Configurar mensagem e automação de aniversário', 'aniversariantes.config', true FROM public.modulos m WHERE m.slug = 'aniversariantes' AND NOT EXISTS (SELECT 1 FROM public.recursos r WHERE r.modulo_id = m.id AND r.slug = 'configurar_aniversariantes');
+
 
 -- =====================================================
 -- Vínculos: Oficina Mecânica - Módulos (ordem do menu)
@@ -329,7 +351,7 @@ BEGIN
     IF seg_id IS NULL THEN RETURN; END IF;
 
     ord := 0;
-    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('ordens_servico'), ('clientes'), ('veiculos'), ('orcamentos'), ('pdv'), ('estoque'), ('produtos_pecas'), ('caixa'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
+    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('ordens_servico'), ('clientes'), ('veiculos'), ('orcamentos'), ('pdv'), ('estoque'), ('produtos_pecas'), ('caixa'), ('pos_venda'), ('aniversariantes'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
     LOOP
         SELECT id INTO mod_id FROM public.modulos WHERE modulos.slug = r.slug LIMIT 1;
         IF mod_id IS NOT NULL THEN
@@ -355,7 +377,7 @@ BEGIN
     IF seg_id IS NULL THEN RETURN; END IF;
 
     ord := 0;
-    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('pdv'), ('vendas'), ('clientes'), ('produtos_pecas'), ('estoque'), ('pedidos'), ('devolucoes'), ('caixa'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
+    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('pdv'), ('vendas'), ('clientes'), ('produtos_pecas'), ('estoque'), ('pedidos'), ('devolucoes'), ('caixa'), ('pos_venda'), ('aniversariantes'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
     LOOP
         SELECT id INTO mod_id FROM public.modulos WHERE modulos.slug = r.slug LIMIT 1;
         IF mod_id IS NOT NULL THEN
@@ -402,7 +424,7 @@ BEGIN
     IF seg_id IS NULL THEN RETURN; END IF;
 
     ord := 0;
-    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('ordens_servico'), ('clientes'), ('orcamentos'), ('estoque'), ('produtos_pecas'), ('caixa'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
+    FOR r IN (SELECT slug FROM (VALUES ('dashboard'), ('ordens_servico'), ('clientes'), ('orcamentos'), ('estoque'), ('produtos_pecas'), ('caixa'), ('pos_venda'), ('aniversariantes'), ('financeiro'), ('relatorios'), ('painel_alertas')) AS t(slug))
     LOOP
         SELECT id INTO mod_id FROM public.modulos WHERE modulos.slug = r.slug LIMIT 1;
         IF mod_id IS NOT NULL THEN

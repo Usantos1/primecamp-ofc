@@ -187,6 +187,11 @@ INSERT INTO permissions (resource, action, description, category) VALUES
   ('pos_venda', 'manage', 'Gerenciar mensagens de pós-venda', 'pos_venda'),
   ('pos_venda', 'config', 'Configurar pós-venda', 'pos_venda'),
 
+  -- Aniversariantes
+  ('aniversariantes', 'view', 'Visualizar aniversariantes', 'aniversariantes'),
+  ('aniversariantes', 'manage', 'Gerenciar mensagens de aniversário', 'aniversariantes'),
+  ('aniversariantes', 'config', 'Configurar aniversariantes', 'aniversariantes'),
+
   -- Alertas
   ('alertas', 'view', 'Visualizar painel de alertas', 'alertas'),
   ('alertas', 'config', 'Configurar alertas', 'alertas'),
@@ -256,6 +261,7 @@ WHERE r.name = 'gerente' AND (p.resource || '.' || p.action) IN (
   'financeiro.view', 'financeiro.create', 'financeiro.edit',
   'relatorios.view', 'relatorios.vendas', 'relatorios.financeiro', 'relatorios.geral',
   'pos_venda.view', 'pos_venda.manage', 'pos_venda.config',
+  'aniversariantes.view', 'aniversariantes.manage', 'aniversariantes.config',
   'alertas.view', 'alertas.config',
   'admin.users', 'admin.view',
   'rh.view', 'rh.ponto', 'rh.manage'
@@ -272,7 +278,7 @@ WHERE r.name = 'vendedor' AND (p.resource || '.' || p.action) IN (
   'os.view', 'os.create',
   'clientes.view', 'clientes.create', 'clientes.edit',
   'produtos.view',
-  'pos_venda.view',
+  'pos_venda.view', 'aniversariantes.view',
   'rh.ponto'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -314,7 +320,7 @@ WHERE r.name = 'atendente' AND (p.resource || '.' || p.action) IN (
   'os.view', 'os.create',
   'clientes.view', 'clientes.create',
   'produtos.view',
-  'pos_venda.view',
+  'pos_venda.view', 'aniversariantes.view',
   'rh.ponto'
 )
 ON CONFLICT (role_id, permission_id) DO NOTHING;

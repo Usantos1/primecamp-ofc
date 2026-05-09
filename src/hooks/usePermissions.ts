@@ -104,6 +104,14 @@ export const SYSTEM_MODULES: PermissionModule[] = [
     ],
   },
   {
+    key: 'aniversariantes', label: 'Aniversariantes', description: 'Mensagens automáticas de aniversário',
+    permissions: [
+      { key: 'aniversariantes.view', label: 'Visualizar aniversariantes' },
+      { key: 'aniversariantes.manage', label: 'Gerenciar mensagens de aniversário' },
+      { key: 'aniversariantes.config', label: 'Configurar aniversariantes' },
+    ],
+  },
+  {
     key: 'alertas', label: 'Alertas', description: 'Painel de alertas automáticos',
     permissions: [
       { key: 'alertas.view', label: 'Visualizar alertas' },

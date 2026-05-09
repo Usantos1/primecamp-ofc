@@ -2821,9 +2821,10 @@ app.get('/api/me/role-menu', authenticateToken, async (req, res) => {
       let menuRows = menuResult.rows || [];
       if (isVendedor) {
         const bloqueadosVendedor = ['/pdv', '/orcamentos', '/relatorios', '/financeiro', '/painel-alertas'];
+        const permitidosVendedorGestao = ['/pos-venda', '/aniversariantes'];
         menuRows = menuRows.filter((r) => {
           const p = (r.path || '').replace(/\/$/, '') || '/';
-          const bloqueado = bloqueadosVendedor.includes(p) || (r.categoria || '') === 'gestao';
+          const bloqueado = bloqueadosVendedor.includes(p) || ((r.categoria || '') === 'gestao' && !permitidosVendedorGestao.includes(p));
           return !bloqueado;
         });
       }

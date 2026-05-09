@@ -31,7 +31,7 @@ export type NavigationItem = {
   description?: string;
   icon: LucideIcon;
   exact?: boolean;
-  permission?: string;
+  permission?: string | string[];
   badge?: number;
   section: NavigationSectionId;
   groupLabel?: string;
@@ -65,6 +65,7 @@ export const iconMap: Record<string, LucideIcon> = {
   'bar-chart-3': BarChart3,
   activity: Activity,
   cake: Cake,
+  'message-circle': MessageCircle,
 };
 
 const PDV_NAV_ITEMS: NavigationItem[] = [
@@ -127,7 +128,7 @@ export const relatoriosItemsBase: NavigationItem[] = [
   { label: 'Relatórios', description: 'Indicadores e análises operacionais do negócio', path: '/relatorios', icon: Receipt, permission: 'relatorios.view', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
   { label: 'Financeiro', description: 'Visão financeira com DRE, contas e fluxo', path: '/financeiro', icon: BarChart3, permission: 'financeiro.view', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
   { label: 'Pós-venda', description: 'Automação e histórico de acompanhamento ao cliente', path: '/pos-venda', icon: MessageCircle, permission: 'pos_venda.view', exact: true, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
-  { label: 'Aniversariantes', description: 'Mensagens automáticas de aniversário no WhatsApp', path: '/aniversariantes', icon: Cake, permission: 'pos_venda.view', exact: true, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
+  { label: 'Aniversariantes', description: 'Mensagens automáticas de aniversário no WhatsApp', path: '/aniversariantes', icon: Cake, permission: ['aniversariantes.view', 'pos_venda.view'], exact: true, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
   { label: 'Painel de Alertas', description: 'Configurar e acompanhar alertas automáticos', path: '/painel-alertas', icon: Activity, permission: 'alertas.view', exact: false, section: 'relatorios', groupLabel: 'Relatórios', contexts: ['financeiro', 'global'] },
 ];
 
@@ -152,6 +153,8 @@ export function toNavigationItem(m: SegmentMenuEntry, useRoleMenu: boolean): Nav
     groupLabel:
       m.categoria === 'estoque'
         ? 'Estoque'
+        : m.categoria === 'relatorios'
+          ? 'Relatórios'
         : m.categoria === 'gestao'
           ? 'Gestão'
           : 'Operação',

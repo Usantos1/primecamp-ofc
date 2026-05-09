@@ -30,20 +30,22 @@ export function useNavigationItems(params: UseNavigationItemsParams = {}) {
   const useRoleMenu = !!params.useRoleMenu;
   const useSegmentOrRoleList = !!params.useSegmentOrRoleList;
 
-  const checkPermission = (permission?: string) => {
+  const checkPermission = (permission?: string | string[]) => {
     if (!permission) return true;
     if (isAdmin) return true;
+    if (Array.isArray(permission)) return permission.some((p) => hasPermission(p));
     return hasPermission(permission);
   };
 
   const segmentByCategory = useMemo(() => {
-    if (!menuToUse.length) return { operacao: [], estoque: [], gestao: [] as NavigationItem[] };
+    if (!menuToUse.length) return { operacao: [], estoque: [], relatorios: [], gestao: [] as NavigationItem[] };
 
     const cat = (m: SegmentMenuEntry) => m.categoria || 'operacao';
     const operacao = menuToUse.filter((m) => cat(m) === 'operacao').map((m) => toNavigationItem(m, useRoleMenu));
     const estoque = menuToUse.filter((m) => cat(m) === 'estoque').map((m) => toNavigationItem(m, useRoleMenu));
+    const relatorios = menuToUse.filter((m) => cat(m) === 'relatorios').map((m) => toNavigationItem(m, useRoleMenu));
     const gestao = menuToUse.filter((m) => cat(m) === 'gestao').map((m) => toNavigationItem(m, useRoleMenu));
-    return { operacao, estoque, gestao };
+    return { operacao, estoque, relatorios, gestao };
   }, [menuToUse, useRoleMenu]);
 
   const operacaoItems = useMemo(() => {
@@ -62,13 +64,14 @@ export function useNavigationItems(params: UseNavigationItemsParams = {}) {
     const raw = useSegmentOrRoleList
       ? (() => {
           const basePaths = new Set(relatoriosItemsBase.map((item) => item.path));
+          const extraFromRelatorios = segmentByCategory.relatorios.filter((item) => !basePaths.has(item.path));
           const extraFromGestao = segmentByCategory.gestao.filter((item) => !basePaths.has(item.path));
-          return [...relatoriosItemsBase, ...extraFromGestao];
+          return [...relatoriosItemsBase, ...extraFromRelatorios, ...extraFromGestao];
         })()
       : relatoriosItemsBase;
 
     return raw.filter((item) => checkPermission(item.permission));
-  }, [useSegmentOrRoleList, segmentByCategory.gestao, permissionsLoading, isAdmin, hasPermission]);
+  }, [useSegmentOrRoleList, segmentByCategory.relatorios, segmentByCategory.gestao, permissionsLoading, isAdmin, hasPermission]);
 
   const gestaoItems = useMemo(() => {
     const raw = useSegmentOrRoleList ? [] : gestaoItemsBase;
