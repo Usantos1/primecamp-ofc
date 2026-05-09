@@ -2045,13 +2045,7 @@ app.get('/api/public/vaga/:slugOrId', async (req, res) => {
       SELECT js.*, NULL::text AS support_whatsapp
       FROM job_surveys js
     `;
-    const publicJobWhere = `(
-      COALESCE(js.visible_on_portal, true) = true
-      AND (
-        js.is_active = true
-        OR (js.is_active = false AND (js.published_at IS NOT NULL OR (js.slug IS NOT NULL AND TRIM(js.slug) <> '')))
-      )
-    )`;
+    const publicJobWhere = `js.is_active = true`;
     const normalizeJobTextSql = (column) => `
       regexp_replace(
         translate(
