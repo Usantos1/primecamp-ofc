@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   AlertCircle, CheckCircle, FileText, Send,
   Home, Building, MapPin, DollarSign, Users, Clock,
-  Phone, Mail, User, ChevronLeft, ChevronRight, Zap, Award,
+  Mail, User, ChevronLeft, ChevronRight, Zap, Award,
   Lock, Info, AlertTriangle, Ban
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -196,6 +196,8 @@ interface FormData {
   responses: Record<string, any>;
 }
 
+const AGE_OPTIONS = Array.from({ length: 30 }, (_, index) => String(index + 16));
+
 /* ---------------- helpers de máscara/validação ---------------- */
 const onlyDigits = (v: string) => v.replace(/\D/g, "");
 const formatBRPhone = (v: string) => {
@@ -204,10 +206,6 @@ const formatBRPhone = (v: string) => {
   if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
   if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
   return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`;
-};
-const isValidBRPhone = (v: string) => {
-  const len = onlyDigits(v).length;
-  return len === 10 || len === 11;
 };
 const isValidWhatsApp = (v: string) => onlyDigits(v).length === 11; // 9 dígitos + DDD
 const formatCEP = (v: string) => {
@@ -244,6 +242,25 @@ const WhatsAppLogo = ({ className = 'h-5 w-5' }: { className?: string }) => (
     <span className="hidden h-full w-full rounded-full bg-white/95 text-[10px] font-bold leading-none text-green-600" aria-hidden>
       W
     </span>
+  </span>
+);
+
+const InstagramLogo = ({ className = 'h-5 w-5' }: { className?: string }) => (
+  <span className={cn('inline-flex shrink-0 items-center justify-center', className)} aria-hidden>
+    <svg viewBox="0 0 24 24" className="h-full w-full">
+      <defs>
+        <linearGradient id="instagram-label-gradient" x1="3" y1="21" x2="21" y2="3" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#feda75" />
+          <stop offset="0.28" stopColor="#fa7e1e" />
+          <stop offset="0.55" stopColor="#d62976" />
+          <stop offset="0.78" stopColor="#962fbf" />
+          <stop offset="1" stopColor="#4f5bd5" />
+        </linearGradient>
+      </defs>
+      <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" fill="url(#instagram-label-gradient)" />
+      <circle cx="12" cy="12" r="4.2" fill="none" stroke="white" strokeWidth="2" />
+      <circle cx="17.4" cy="6.8" r="1.35" fill="white" />
+    </svg>
   </span>
 );
 
@@ -284,7 +301,6 @@ export default function JobApplicationSteps() {
   // Estado para modal de confirmação do teste DISC
   const [showDiscTestModal, setShowDiscTestModal] = useState<boolean>(false);
   const [showExitIntentModal, setShowExitIntentModal] = useState(false);
-  const exitIntentShownRef = React.useRef(false);
 
   // Forçar referência ao estado para evitar tree-shaking do Vite
   React.useEffect(() => {
@@ -641,14 +657,13 @@ export default function JobApplicationSteps() {
     if (!survey || submitted || !hasStartedApplication) return;
 
     const handleMouseLeave = (event: MouseEvent) => {
-      if (exitIntentShownRef.current || event.clientY > 12) return;
-      exitIntentShownRef.current = true;
+      if (showExitIntentModal || event.clientY > 12) return;
       setShowExitIntentModal(true);
     };
 
     document.addEventListener('mouseleave', handleMouseLeave);
     return () => document.removeEventListener('mouseleave', handleMouseLeave);
-  }, [hasStartedApplication, submitted, survey]);
+  }, [hasStartedApplication, showExitIntentModal, submitted, survey]);
 
   /* ---------- validação ---------- */
   const validateStep = (stepIndex: number) => {
@@ -658,13 +673,14 @@ export default function JobApplicationSteps() {
       if (!formData.name.trim()) newErrors.name = "Nome é obrigatório";
       if (!formData.email.trim()) newErrors.email = "Email é obrigatório";
       if (formData.email && !isValidEmail(formData.email)) newErrors.email = "Email inválido";
-      if (!formData.phone.trim()) newErrors.phone = "Telefone é obrigatório";
-      if (formData.phone && !isValidBRPhone(formData.phone)) newErrors.phone = "Telefone inválido";
+      if (!formData.whatsapp.trim()) newErrors.whatsapp = "WhatsApp é obrigatório";
+      if (formData.whatsapp && !isValidWhatsApp(formData.whatsapp)) newErrors.whatsapp = "WhatsApp inválido";
 
-      // Idade opcional: só valida o formato se a pessoa preencher.
-      if (formData.age?.trim()) {
+      if (!formData.age?.trim()) {
+        newErrors.age = "Idade é obrigatória";
+      } else {
         const n = parseInt(formData.age, 10);
-        if (Number.isNaN(n) || n < 16 || n > 100) newErrors.age = "Idade inválida (16 a 100)";
+        if (Number.isNaN(n) || n < 16 || n > 45) newErrors.age = "Idade inválida (16 a 45 anos)";
       }
 
       if (!formData.cep.trim()) {
@@ -698,7 +714,7 @@ export default function JobApplicationSteps() {
 
   /* ---------- navegação ---------- */
   // Ordem dos campos no Step 0 — usada pra rolar até o primeiro campo com erro
-  const PERSONAL_FIELD_ORDER = ['name', 'email', 'phone', 'age', 'cep', 'address'] as const;
+  const PERSONAL_FIELD_ORDER = ['name', 'email', 'age', 'cep', 'address', 'whatsapp'] as const;
 
   const focusFirstError = (currentErrors: Record<string, string>) => {
     if (typeof window === 'undefined') return;
@@ -774,8 +790,8 @@ export default function JobApplicationSteps() {
       idempotencyKey = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     }
 
-    if (!formData.name.trim() || !formData.email.trim() || !formData.cep.trim() || !formData.address.trim()) {
-      toast({ title: "Erro", description: "Nome, e-mail, CEP e endereço são obrigatórios.", variant: "destructive" });
+    if (!formData.name.trim() || !formData.email.trim() || !formData.cep.trim() || !formData.address.trim() || !formData.whatsapp.trim()) {
+      toast({ title: "Erro", description: "Nome, e-mail, CEP, endereço e WhatsApp são obrigatórios.", variant: "destructive" });
       return;
     }
 
@@ -783,13 +799,12 @@ export default function JobApplicationSteps() {
       survey_id: survey.id,
       name: formData.name.trim(),
       email: formData.email.trim(),
-      phone: formData.phone?.trim() || null,
+      phone: formData.whatsapp?.trim() || null,
       age: formData.age ? parseInt(formData.age, 10) : null,
       cep: formData.cep?.trim() || null,
       address: formData.address?.trim() || null,
       whatsapp: formData.whatsapp?.trim() || null,
       instagram: formData.instagram?.trim() || null,
-      linkedin: formData.linkedin?.trim() || null,
       responses: formData.responses || {},
     };
 
@@ -866,7 +881,7 @@ export default function JobApplicationSteps() {
       const candidateInfo = {
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
-        phone: formData.phone?.trim() || null,
+        phone: formData.whatsapp?.trim() || null,
         age: formData.age ? parseInt(formData.age, 10) : null,
         job_response_id: jobResponseId || null,
         survey_id: survey.id,
@@ -1563,36 +1578,21 @@ export default function JobApplicationSteps() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-sm sm:text-base font-medium flex items-center gap-2" style={{ color: 'hsl(var(--job-text))' }}>
-                          <Phone className="w-4 h-4" style={{ color: 'hsl(var(--job-primary))' }} />
-                          Telefone *
-                        </Label>
-                        <Input
-                          id="phone"
-                          inputMode="tel"
-                          autoComplete="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: formatBRPhone(e.target.value) })}
-                          className={`h-11 sm:h-12 text-base border focus-visible:ring-2 focus-visible:ring-[hsl(var(--job-primary))] ${errors.phone ? 'border-red-500' : ''}`}
-                          style={fieldStyle}
-                          placeholder="(00) 00000-0000"
-                        />
-                        {errors.phone && <p className="text-red-600 text-sm flex items-center gap-2"><AlertCircle className="w-4 h-4" />{errors.phone}</p>}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="age" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>Idade</Label>
-                        <Input
-                          id="age"
-                          type="number"
-                          min={16}
-                          max={100}
-                          value={formData.age || ''}
-                          onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                          className={`h-11 sm:h-12 text-base border focus-visible:ring-2 focus-visible:ring-[hsl(var(--job-primary))] ${errors.age ? 'border-red-500' : ''}`}
-                          style={fieldStyle}
-                          placeholder="Sua idade"
-                        />
+                        <Label htmlFor="age" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>Idade *</Label>
+                        <Select value={formData.age || ''} onValueChange={(age) => setFormData({ ...formData, age })}>
+                          <SelectTrigger
+                            id="age"
+                            className={`h-11 sm:h-12 text-base border focus-visible:ring-2 focus-visible:ring-[hsl(var(--job-primary))] ${errors.age ? 'border-red-500' : ''}`}
+                            style={fieldStyle}
+                          >
+                            <SelectValue placeholder="Selecione a idade" />
+                          </SelectTrigger>
+                          <SelectContent position="popper" sideOffset={4} className="max-h-72">
+                            {AGE_OPTIONS.map((age) => (
+                              <SelectItem key={age} value={age}>{age} anos</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         {errors.age && <p className="text-red-600 text-sm flex items-center gap-2"><AlertCircle className="w-4 h-4" />{errors.age}</p>}
                       </div>
 
@@ -1628,7 +1628,10 @@ export default function JobApplicationSteps() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="whatsapp" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>WhatsApp</Label>
+                        <Label htmlFor="whatsapp" className="flex items-center gap-2 text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>
+                          <WhatsAppLogo className="h-4 w-4 sm:h-5 sm:w-5" />
+                          WhatsApp *
+                        </Label>
                         <Input
                           id="whatsapp"
                           inputMode="tel"
@@ -1643,7 +1646,10 @@ export default function JobApplicationSteps() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="instagram" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>Instagram</Label>
+                        <Label htmlFor="instagram" className="flex items-center gap-2 text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>
+                          <InstagramLogo className="h-4 w-4 sm:h-5 sm:w-5" />
+                          Instagram
+                        </Label>
                         <Input
                           id="instagram"
                           value={formData.instagram}
@@ -1658,18 +1664,6 @@ export default function JobApplicationSteps() {
                         </p>
                       </div>
 
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="linkedin" className="text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>LinkedIn</Label>
-                        <Input
-                          id="linkedin"
-                          type="url"
-                          value={formData.linkedin}
-                          onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
-                          className="h-11 sm:h-12 text-base border focus-visible:ring-2 focus-visible:ring-[hsl(var(--job-primary))]"
-                          style={fieldStyle}
-                          placeholder="https://linkedin.com/in/seuperfil"
-                        />
-                      </div>
                     </div>
                   </div>
                 ) : (
