@@ -2,6 +2,7 @@
  * Agendamento e envio de mensagens de aniversário para clientes.
  */
 import {
+  addSeconds,
   setHours,
   setMinutes,
   setSeconds,
@@ -73,6 +74,21 @@ function computeScheduledAtForDate(timeZone, horario, sourceDate) {
   return fromZonedTime(localTarget, timeZone);
 }
 
+function normalizeDelaySettings(settings = {}) {
+  const min = Math.max(0, Number(settings.delay_min_seconds ?? 40) || 0);
+  const maxRaw = Math.max(0, Number(settings.delay_max_seconds ?? 60) || 0);
+  return {
+    delay_min_seconds: min,
+    delay_max_seconds: Math.max(min, maxRaw),
+  };
+}
+
+function randomDelaySeconds(min = 40, max = 60) {
+  const normalizedMin = Math.max(0, Number(min) || 0);
+  const normalizedMax = Math.max(normalizedMin, Number(max) || normalizedMin);
+  return Math.floor(Math.random() * (normalizedMax - normalizedMin + 1)) + normalizedMin;
+}
+
 function renderBirthdayTemplate(template, vars) {
   let output = template || '';
   for (const [key, value] of Object.entries(vars)) {
@@ -114,13 +130,18 @@ export function mergeBirthdaySettingsResponse(row) {
       horario_envio: '09:00',
       timezone: 'America/Sao_Paulo',
       template_mensagem: DEFAULT_BIRTHDAY_TEMPLATE,
+      delay_min_seconds: 40,
+      delay_max_seconds: 60,
     };
   }
+  const delay = normalizeDelaySettings(row);
   return {
     ativo: !!row.ativo,
     horario_envio: row.horario_envio || '09:00',
     timezone: row.timezone || 'America/Sao_Paulo',
     template_mensagem: row.template_mensagem || DEFAULT_BIRTHDAY_TEMPLATE,
+    delay_min_seconds: delay.delay_min_seconds,
+    delay_max_seconds: delay.delay_max_seconds,
   };
 }
 
@@ -128,13 +149,15 @@ export async function upsertBirthdaySettings(client, companyId, body) {
   const merged = mergeBirthdaySettingsResponse(body);
   await client.query(
     `INSERT INTO birthday_message_settings (
-       company_id, ativo, horario_envio, timezone, template_mensagem
-     ) VALUES ($1, $2, $3, $4, $5)
+       company_id, ativo, horario_envio, timezone, template_mensagem, delay_min_seconds, delay_max_seconds
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT (company_id) DO UPDATE SET
        ativo = EXCLUDED.ativo,
        horario_envio = EXCLUDED.horario_envio,
        timezone = EXCLUDED.timezone,
        template_mensagem = EXCLUDED.template_mensagem,
+       delay_min_seconds = EXCLUDED.delay_min_seconds,
+       delay_max_seconds = EXCLUDED.delay_max_seconds,
        updated_at = now()`,
     [
       companyId,
@@ -142,6 +165,8 @@ export async function upsertBirthdaySettings(client, companyId, body) {
       merged.horario_envio || '09:00',
       merged.timezone || 'America/Sao_Paulo',
       merged.template_mensagem || DEFAULT_BIRTHDAY_TEMPLATE,
+      merged.delay_min_seconds,
+      merged.delay_max_seconds,
     ]
   );
 }
@@ -188,6 +213,7 @@ export async function syncBirthdayJobsForCompany(pool, companyId, options = {}) 
     };
 
     const timeZone = effectiveSettings.timezone || 'America/Sao_Paulo';
+    const delaySettings = normalizeDelaySettings(effectiveSettings);
     const localDate = formatLocalDateParts(new Date(), timeZone);
     const companyResult = await client.query('SELECT name FROM companies WHERE id = $1', [companyId]);
     const companyName = companyResult.rows[0]?.name || '';
@@ -214,7 +240,8 @@ export async function syncBirthdayJobsForCompany(pool, companyId, options = {}) 
        WHERE company_id = $1
          AND data_nascimento IS NOT NULL
          AND (situacao IS NULL OR situacao = '' OR situacao <> 'inativo')
-         ${periodFilter}`,
+         ${periodFilter}
+       ORDER BY birthday_source_date, nome`,
       period === 'month'
         ? [companyId, timeZone]
         : [companyId, timeZone, localDate.month, localDate.day, localDate.sourceDate]
@@ -230,13 +257,25 @@ export async function syncBirthdayJobsForCompany(pool, companyId, options = {}) 
       data_referencia: localDate.sourceDate,
       periodo: period,
     };
+    const delayByDate = new Map();
 
     for (const cliente of clientesResult.rows) {
       const sourceDate = String(cliente.birthday_source_date || localDate.sourceDate).slice(0, 10);
-      const scheduledAt = computeScheduledAtForDate(
-        timeZone,
-        effectiveSettings.horario_envio,
-        sourceDate
+      const currentDelaySeconds = delayByDate.get(sourceDate) || 0;
+      const scheduledAt = addSeconds(
+        computeScheduledAtForDate(
+          timeZone,
+          effectiveSettings.horario_envio,
+          sourceDate
+        ),
+        currentDelaySeconds
+      );
+      delayByDate.set(
+        sourceDate,
+        currentDelaySeconds + randomDelaySeconds(
+          delaySettings.delay_min_seconds,
+          delaySettings.delay_max_seconds
+        )
       );
       const rawPhone = resolveClientPhone(cliente);
       const normalized = normalizeWhatsappNumber(rawPhone);
@@ -247,8 +286,38 @@ export async function syncBirthdayJobsForCompany(pool, companyId, options = {}) 
            company_id, cliente_id, telefone, mensagem_renderizada, status,
            scheduled_at, source_date, template_key, skip_reason
          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'birthday-default', $8)
-         ON CONFLICT (company_id, cliente_id, source_date) DO NOTHING
-         RETURNING id`,
+         ON CONFLICT (company_id, cliente_id, source_date) DO UPDATE
+           SET scheduled_at = CASE
+                 WHEN birthday_message_jobs.status IN ('agendado', 'pendente', 'erro')
+                   THEN EXCLUDED.scheduled_at
+                 ELSE birthday_message_jobs.scheduled_at
+               END,
+               status = CASE
+                 WHEN birthday_message_jobs.status IN ('agendado', 'pendente', 'erro')
+                   THEN EXCLUDED.status
+                 ELSE birthday_message_jobs.status
+               END,
+               telefone = CASE
+                 WHEN birthday_message_jobs.status IN ('agendado', 'pendente', 'erro')
+                   THEN EXCLUDED.telefone
+                 ELSE birthday_message_jobs.telefone
+               END,
+               mensagem_renderizada = CASE
+                 WHEN birthday_message_jobs.status IN ('agendado', 'pendente', 'erro')
+                   THEN EXCLUDED.mensagem_renderizada
+                 ELSE birthday_message_jobs.mensagem_renderizada
+               END,
+               skip_reason = CASE
+                 WHEN birthday_message_jobs.status IN ('agendado', 'pendente', 'erro')
+                   THEN EXCLUDED.skip_reason
+                 ELSE birthday_message_jobs.skip_reason
+               END,
+               error_message = CASE
+                 WHEN birthday_message_jobs.status = 'erro' THEN NULL
+                 ELSE birthday_message_jobs.error_message
+               END,
+               updated_at = now()
+         RETURNING id, (xmax <> 0) AS updated_existing`,
         [
           companyId,
           cliente.id,
@@ -261,7 +330,7 @@ export async function syncBirthdayJobsForCompany(pool, companyId, options = {}) 
         ]
       );
 
-      if (insertResult.rowCount === 0) {
+      if (insertResult.rows[0]?.updated_existing) {
         summary.duplicates += 1;
       } else if (status === 'cancelado') {
         summary.cancelled += 1;

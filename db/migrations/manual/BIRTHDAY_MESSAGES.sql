@@ -9,10 +9,18 @@ CREATE TABLE IF NOT EXISTS public.birthday_message_settings (
   horario_envio VARCHAR(5) NOT NULL DEFAULT '09:00',
   timezone VARCHAR(64) NOT NULL DEFAULT 'America/Sao_Paulo',
   template_mensagem TEXT NOT NULL DEFAULT '',
+  delay_min_seconds INTEGER NOT NULL DEFAULT 40,
+  delay_max_seconds INTEGER NOT NULL DEFAULT 60,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT birthday_message_settings_company_unique UNIQUE (company_id)
 );
+
+ALTER TABLE public.birthday_message_settings
+  ADD COLUMN IF NOT EXISTS delay_min_seconds INTEGER NOT NULL DEFAULT 40;
+
+ALTER TABLE public.birthday_message_settings
+  ADD COLUMN IF NOT EXISTS delay_max_seconds INTEGER NOT NULL DEFAULT 60;
 
 CREATE INDEX IF NOT EXISTS idx_birthday_message_settings_company
   ON public.birthday_message_settings (company_id);

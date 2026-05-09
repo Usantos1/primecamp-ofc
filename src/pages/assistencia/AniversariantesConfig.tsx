@@ -10,11 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Cake, CalendarClock, Ban, Edit, Loader2, RefreshCcw, Send } from 'lucide-react';
+import { Cake, Ban, Edit, Loader2, RefreshCcw, Send } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
-import { dateFormatters } from '@/utils/formatters';
 
 const DEFAULT_TEMPLATE = `🎉 *Feliz Aniversário!*
 
@@ -44,6 +43,8 @@ type BirthdayConfig = {
   horario: string;
   ativo: boolean;
   timezone?: string;
+  delayMinSeconds: number;
+  delayMaxSeconds: number;
 };
 
 type BirthdayJob = {
@@ -113,6 +114,8 @@ export default function AniversariantesConfig() {
     horario: '09:00',
     ativo: false,
     timezone: 'America/Sao_Paulo',
+    delayMinSeconds: 40,
+    delayMaxSeconds: 60,
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -136,6 +139,8 @@ export default function AniversariantesConfig() {
         horario: data?.horario_envio || '09:00',
         ativo: !!data?.ativo,
         timezone: data?.timezone || 'America/Sao_Paulo',
+        delayMinSeconds: Number(data?.delay_min_seconds ?? 40),
+        delayMaxSeconds: Number(data?.delay_max_seconds ?? 60),
       });
     } catch (error: any) {
       toast({ title: 'Erro ao carregar', description: error?.message, variant: 'destructive' });
@@ -199,6 +204,12 @@ export default function AniversariantesConfig() {
     cancelled_jobs: 0,
   };
 
+  const filteredUpcomingClients = useMemo(() => {
+    const clientes = upcomingData?.clientes || [];
+    if (jobFilter === 'all') return clientes;
+    return clientes.filter((client) => client.job_status === jobFilter);
+  }, [jobFilter, upcomingData]);
+
   const saveSettings = async () => {
     setSaving(true);
     try {
@@ -207,6 +218,8 @@ export default function AniversariantesConfig() {
         horario_envio: settings.horario,
         timezone: settings.timezone || 'America/Sao_Paulo',
         template_mensagem: settings.mensagem,
+        delay_min_seconds: settings.delayMinSeconds,
+        delay_max_seconds: settings.delayMaxSeconds,
         sync_period: 'month',
       });
       if (error) throw new Error(typeof error === 'string' ? error : 'Erro ao salvar configuração');
@@ -248,29 +261,6 @@ export default function AniversariantesConfig() {
     } finally {
       setProcessing(false);
     }
-  };
-
-  const rescheduleJob = async (job: BirthdayJob) => {
-    const { error } = await apiClient.patch(`/birthday-messages/jobs/${job.id}`, {
-      status: 'agendado',
-      telefone: job.telefone || job.cliente_whatsapp || job.cliente_telefone || job.cliente_telefone2 || '',
-    });
-    if (error) {
-      toast({ title: 'Erro ao reagendar', description: String(error), variant: 'destructive' });
-      return;
-    }
-    await refetchJobs();
-    toast({ title: 'Agendamento atualizado!' });
-  };
-
-  const deleteJob = async (jobId: string) => {
-    const { error } = await apiClient.delete(`/birthday-messages/jobs/${jobId}`);
-    if (error) {
-      toast({ title: 'Erro ao remover', description: String(error), variant: 'destructive' });
-      return;
-    }
-    await refetchJobs();
-    toast({ title: 'Agendamento removido!' });
   };
 
   const openEdit = (client: BirthdayUpcomingClient) => {
@@ -381,7 +371,7 @@ export default function AniversariantesConfig() {
                     />
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+                  <div className="grid gap-4 md:grid-cols-[180px_140px_140px_minmax(0,1fr)]">
                     <div className="space-y-2">
                       <Label>Horário de envio</Label>
                       <Input
@@ -393,6 +383,35 @@ export default function AniversariantesConfig() {
                       <p className="text-xs text-muted-foreground">
                         Fuso: {settings.timezone || 'America/Sao_Paulo'}
                       </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Delay mín.</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={settings.delayMinSeconds}
+                        onChange={(e) => {
+                          const delayMinSeconds = Math.max(0, Number(e.target.value) || 0);
+                          setSettings((s) => ({
+                            ...s,
+                            delayMinSeconds,
+                            delayMaxSeconds: Math.max(delayMinSeconds, s.delayMaxSeconds),
+                          }));
+                        }}
+                        className="h-9 rounded-xl text-base md:text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">Segundos</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Delay máx.</Label>
+                      <Input
+                        type="number"
+                        min={settings.delayMinSeconds}
+                        value={settings.delayMaxSeconds}
+                        onChange={(e) => setSettings((s) => ({ ...s, delayMaxSeconds: Math.max(s.delayMinSeconds, Number(e.target.value) || 0) }))}
+                        className="h-9 rounded-xl text-base md:text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">Entre envios</p>
                     </div>
                     <div className="space-y-2">
                       <Label>Variáveis disponíveis</Label>
@@ -502,7 +521,7 @@ export default function AniversariantesConfig() {
                   <p className="text-lg font-semibold leading-none">{summary.pending_jobs}</p>
                 </div>
                 <div className="flex min-h-12 items-center justify-between gap-3 rounded-full border border-blue-200 bg-blue-50/50 px-4 py-2 shadow-sm">
-                  <p className="text-xs text-muted-foreground">Enviadas hoje</p>
+                  <p className="text-xs text-muted-foreground">Enviadas</p>
                   <p className="text-lg font-semibold leading-none">{summary.sent_jobs}</p>
                 </div>
                 <div className="flex min-h-12 items-center justify-between gap-3 rounded-full border border-amber-200 bg-amber-50/50 px-4 py-2 shadow-sm">
@@ -539,55 +558,14 @@ export default function AniversariantesConfig() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4 overflow-x-auto">
-            <div className="overflow-hidden rounded-2xl border">
-              <div className="max-h-[300px] overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Telefone</TableHead>
-                      <TableHead>Agendado</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Mensagem</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loadingJobs ? (
-                      <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Carregando agendamentos...</TableCell></TableRow>
-                    ) : jobsData?.jobs?.length ? (
-                      jobsData.jobs.map((job) => (
-                        <TableRow key={job.id}>
-                          <TableCell>
-                            <p className="font-medium">{job.cliente_nome || 'Cliente sem nome'}</p>
-                            <p className="text-xs text-muted-foreground">Nasc.: {job.data_nascimento ? dateFormatters.short(job.data_nascimento) : '-'}</p>
-                          </TableCell>
-                          <TableCell>{job.telefone || job.cliente_whatsapp || job.cliente_telefone || '-'}</TableCell>
-                          <TableCell className="text-sm">{job.scheduled_at ? new Date(job.scheduled_at).toLocaleString('pt-BR') : '-'}</TableCell>
-                          <TableCell><Badge variant={job.status === 'enviado' ? 'default' : job.status === 'erro' ? 'destructive' : 'secondary'}>{job.status}</Badge></TableCell>
-                          <TableCell className="max-w-[280px]"><p className="line-clamp-3 text-xs text-muted-foreground">{job.mensagem_preview || job.error_message || job.skip_reason || '-'}</p></TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => rescheduleJob(job)} title="Reagendar"><CalendarClock className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteJob(job.id)} title="Remover"><Ban className="h-4 w-4" /></Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow><TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">Nenhum agendamento para o filtro selecionado.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
+          <CardContent className="overflow-x-auto">
             <div className="overflow-hidden rounded-2xl border">
               <div className="flex flex-col gap-2 border-b p-3 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-sm font-medium">Aniversariantes do mês</p>
-                  <p className="text-xs text-muted-foreground">Lista de clientes com aniversário no mês corrente.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Lista única com aniversário, status, horário agendado, mensagem e ações.
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{loadingUpcoming ? '...' : upcomingData?.total ?? 0} cliente(s)</Badge>
@@ -597,22 +575,24 @@ export default function AniversariantesConfig() {
                   </Button>
                 </div>
               </div>
-              <div className="max-h-[340px] overflow-auto">
+              <div className="max-h-[520px] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Dia</TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Telefone</TableHead>
+                      <TableHead>Agendado</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Mensagem</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loadingUpcoming ? (
-                      <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Carregando aniversariantes...</TableCell></TableRow>
-                    ) : upcomingData?.clientes?.length ? (
-                      upcomingData.clientes.map((client) => {
+                    {loadingUpcoming || loadingJobs ? (
+                      <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Carregando aniversariantes...</TableCell></TableRow>
+                    ) : filteredUpcomingClients.length ? (
+                      filteredUpcomingClients.map((client) => {
                         const isSent = client.job_status === 'enviado';
                         const isCancelled = client.job_status === 'cancelado';
                         const cancelDisabled = !client.job_id || isSent || isCancelled || cancellingId === client.id;
@@ -624,7 +604,17 @@ export default function AniversariantesConfig() {
                               {client.email && <p className="text-xs text-muted-foreground">{client.email}</p>}
                             </TableCell>
                             <TableCell>{client.whatsapp || client.telefone || client.telefone2 || '-'}</TableCell>
-                            <TableCell>{client.job_status ? <Badge variant={isSent ? 'default' : client.job_status === 'erro' ? 'destructive' : 'secondary'}>{client.job_status}</Badge> : '-'}</TableCell>
+                            <TableCell className="text-sm">
+                              {client.scheduled_at ? new Date(client.scheduled_at).toLocaleString('pt-BR') : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {client.job_status ? (
+                                <Badge variant={isSent ? 'default' : client.job_status === 'erro' ? 'destructive' : 'secondary'}>{client.job_status}</Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell className="max-w-[320px]">
+                              <p className="line-clamp-3 text-xs text-muted-foreground">{client.mensagem_renderizada || '-'}</p>
+                            </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1">
                                 <Button variant="ghost" size="icon" onClick={() => openEdit(client)} disabled={isSent} title="Editar mensagem"><Edit className="h-4 w-4" /></Button>
@@ -635,7 +625,7 @@ export default function AniversariantesConfig() {
                         );
                       })
                     ) : (
-                      <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">Nenhum cliente com aniversário neste mês.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Nenhum aniversariante para o filtro selecionado.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
