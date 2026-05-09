@@ -267,8 +267,7 @@ export default function JobPortal() {
 
   const handleApply = useCallback((job: JobSurvey) => {
     if (!job.is_active) return;
-    if (job.slug) window.open(`/vaga/${job.slug}`, '_blank');
-    else window.open(`/job-application/${job.id}`, '_blank');
+    window.open(`/vaga/${encodeURIComponent(job.id)}`, '_blank');
   }, []);
 
   if (loading) {
@@ -906,7 +905,7 @@ export default function JobPortal() {
                                     color: 'hsl(var(--job-primary))',
                                   }}
                                   onClick={() =>
-                                    window.open(`/vaga/${job.slug || job.id}`, '_blank')
+                                    window.open(`/vaga/${encodeURIComponent(job.id)}`, '_blank')
                                   }
                                 >
                                   <ExternalLink className="h-4 w-4 mr-1" />

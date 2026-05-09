@@ -2058,6 +2058,24 @@ app.get('/api/public/vaga/:slugOrId', async (req, res) => {
         OR (js.is_active = false AND (js.published_at IS NOT NULL OR (js.slug IS NOT NULL AND TRIM(js.slug) <> '')))
       )
     )`;
+    const normalizeJobTextSql = (column) => `
+      regexp_replace(
+        translate(
+          lower(coalesce(${column}, '')),
+          'áàâãäéèêëíìîïóòôõöúùûüçñ',
+          'aaaaaeeeeiiiiooooouuuucn'
+        ),
+        '[^a-z0-9]+',
+        '-',
+        'g'
+      )
+    `;
+    const normalizedSlugOrId = String(slugOrId || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
 
     // Tentar buscar por slug (case-insensitive)
     let result = await pool.query(
@@ -2078,6 +2096,22 @@ app.get('/api/public/vaga/:slugOrId', async (req, res) => {
       result = await pool.query(
         `${publicJobSelect} WHERE LOWER(js.slug) LIKE LOWER($1) AND ${publicJobWhere}`,
         [`%${slugOrId}%`]
+      );
+    }
+
+    // Fallback para links antigos gerados a partir de cargo/título (ex.: Aux-tecnico)
+    if (result.rows.length === 0 && normalizedSlugOrId) {
+      result = await pool.query(
+        `${publicJobSelect}
+         WHERE ${publicJobWhere}
+           AND (
+             ${normalizeJobTextSql('js.slug')} = $1
+             OR ${normalizeJobTextSql('js.title')} = $1
+             OR ${normalizeJobTextSql('js.position_title')} = $1
+           )
+         ORDER BY js.is_active DESC, js.created_at DESC
+         LIMIT 1`,
+        [normalizedSlugOrId]
       );
     }
     
