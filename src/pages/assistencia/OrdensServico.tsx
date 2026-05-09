@@ -77,22 +77,22 @@ const OSTableRow = memo(({
   const statusConfig = getConfigByStatus?.(os.status) ?? (['manutencao_finalizada', 'manutenção_finalizada'].includes(os.status) ? getConfigByStatus?.('finalizada') : undefined);
   const statusLabel = statusConfig?.label ?? getStatusOSLabel(os.status);
   const statusColor = statusConfig?.cor ?? getStatusOSColor(os.status);
-  const zebraClass = index % 2 === 0 ? 'bg-white dark:bg-gray-950' : 'bg-gray-50/80 dark:bg-gray-900/50';
+  const zebraClass = index % 2 === 0 ? 'bg-card' : 'bg-muted/25 dark:bg-muted/10';
   const temSaldoPendente = valorTotal > 0 && valorPago < valorTotal;
 
   return (
     <tr 
       className={cn(
         zebraClass,
-        isAtrasada && 'bg-red-50 dark:bg-red-950/20',
-        'cursor-pointer border-b border-gray-200 dark:border-gray-700 transition-all duration-150',
-        selected ? 'ring-2 ring-primary bg-blue-100 dark:bg-blue-950/50' : 'hover:bg-blue-50 dark:hover:bg-blue-950/30'
+        isAtrasada && 'bg-red-50/80 dark:bg-red-500/10',
+        'cursor-pointer border-b border-border transition-all duration-150',
+        selected ? 'ring-2 ring-primary bg-blue-100 text-blue-950 dark:bg-blue-500/20 dark:text-blue-50' : 'hover:bg-muted/60'
       )}
       onClick={() => onSelect(os.id)}
       onDoubleClick={() => onNavigate(`/os/${os.id}`)}
     >
       {/* Nº OS — cinza quando fechada/entregue */}
-      <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[100px]">
+      <td className="py-3.5 px-3 text-center border-r border-border w-[100px]">
         <div className="flex flex-col items-center gap-1">
           <span className={cn(
             "font-bold text-base",
@@ -104,9 +104,9 @@ const OSTableRow = memo(({
             variant="outline" 
             className={cn(
               'text-[10px] px-1.5',
-              os.situacao === 'fechada' ? 'border-gray-400 text-gray-700 bg-gray-100 dark:bg-gray-800 dark:text-gray-300' :
-              os.situacao === 'cancelada' ? 'border-red-500 text-red-700 bg-red-50' :
-              'border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-300'
+              os.situacao === 'fechada' ? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-500/40 dark:bg-slate-500/20 dark:text-slate-100' :
+              os.situacao === 'cancelada' ? 'border-red-300 bg-red-100 text-red-800 dark:border-red-500/40 dark:bg-red-500/20 dark:text-red-100' :
+              'border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/20 dark:text-blue-100'
             )}
           >
             {os.situacao === 'fechada' ? 'Fechada' : os.situacao === 'cancelada' ? 'Cancelada' : 'Aberta'}
@@ -115,24 +115,24 @@ const OSTableRow = memo(({
       </td>
       
       {/* Cliente — telefone sem link WhatsApp */}
-      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700 w-[200px] max-w-[200px]">
+      <td className="py-3.5 px-3 text-left border-r border-border w-[200px] max-w-[200px]">
         <div className="min-w-0">
           <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
           {(cliente?.telefone || os.telefone_contato) && (
             <p className="text-xs text-muted-foreground mt-0.5">{os.telefone_contato || cliente?.telefone}</p>
           )}
-          {cliente?.cpf_cnpj && <p className="text-xs text-gray-500 truncate">CPF: {cliente.cpf_cnpj}</p>}
+          {cliente?.cpf_cnpj && <p className="text-xs text-foreground/60 dark:text-foreground/70 truncate">CPF: {cliente.cpf_cnpj}</p>}
         </div>
       </td>
       
       {/* Aparelho */}
-      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700 hidden lg:table-cell">
+      <td className="py-3.5 px-3 text-left border-r border-border hidden lg:table-cell">
         <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{modelo?.nome || os.modelo_nome || '-'}</p>
-        <p className="text-xs text-gray-500">{marca?.nome || os.marca_nome || '-'}</p>
+        <p className="text-xs text-foreground/60 dark:text-foreground/70">{marca?.nome || os.marca_nome || '-'}</p>
       </td>
       
       {/* Problema */}
-      <td className="py-3.5 px-3 text-left border-r border-gray-200 dark:border-gray-700 w-[180px] min-w-0 max-w-[180px]">
+      <td className="py-3.5 px-3 text-left border-r border-border w-[180px] min-w-0 max-w-[180px]">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -146,51 +146,51 @@ const OSTableRow = memo(({
       </td>
       
       {/* Status (label e cor da config /pdv/configuracao-status quando existir) */}
-      <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[160px]">
+      <td className="py-3.5 px-3 text-center border-r border-border w-[160px]">
         <Badge className={cn('text-xs text-white shadow-sm', statusColor)}>
           {statusLabel}
         </Badge>
       </td>
       
       {/* Entrada */}
-      <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[110px] hidden md:table-cell">
+      <td className="py-3.5 px-3 text-center border-r border-border w-[110px] hidden md:table-cell">
         {os.data_entrada ? (
           <div>
             <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{dateFormatters.short(os.data_entrada)}</p>
-            <p className="text-xs text-gray-500">{os.hora_entrada || '00:00'}</p>
+            <p className="text-xs text-foreground/60 dark:text-foreground/70">{os.hora_entrada || '00:00'}</p>
           </div>
-        ) : <span className="text-gray-400">-</span>}
+        ) : <span className="text-foreground/50">-</span>}
       </td>
       
       {/* Previsão */}
-      <td className="py-3.5 px-3 text-center border-r border-gray-200 dark:border-gray-700 w-[110px] hidden md:table-cell">
+      <td className="py-3.5 px-3 text-center border-r border-border w-[110px] hidden md:table-cell">
         {os.previsao_entrega ? (
           <div>
-            <p className={cn("font-medium text-sm", isAtrasada ? 'text-red-600' : 'text-gray-800 dark:text-gray-200')}>
+            <p className={cn("font-medium text-sm", isAtrasada ? 'text-red-700 dark:text-red-300' : 'text-gray-800 dark:text-gray-200')}>
               {dateFormatters.short(os.previsao_entrega)}
             </p>
-            <p className={cn("text-xs", isAtrasada ? "text-red-500" : "text-gray-500")}>{os.hora_previsao || '00:00'}</p>
+            <p className={cn("text-xs", isAtrasada ? "text-red-600 dark:text-red-300" : "text-foreground/60 dark:text-foreground/70")}>{os.hora_previsao || '00:00'}</p>
           </div>
-        ) : <span className="text-gray-400">-</span>}
+        ) : <span className="text-foreground/50">-</span>}
       </td>
       
       {/* Valor */}
-      <td className="py-3.5 px-3 text-right border-r border-gray-200 dark:border-gray-700 w-[110px]">
+      <td className="py-3.5 px-3 text-right border-r border-border w-[110px]">
         {valorTotal > 0 ? (
           <div>
             <p className="font-semibold text-emerald-600 dark:text-emerald-400">{currencyFormatters.brl(valorTotal)}</p>
             {temSaldoPendente && valorPago > 0 && (
-              <p className="text-xs text-amber-600">Pago: {currencyFormatters.brl(valorPago)}</p>
+              <p className="text-xs text-amber-700 dark:text-amber-300">Pago: {currencyFormatters.brl(valorPago)}</p>
             )}
           </div>
-        ) : <span className="text-gray-400">-</span>}
+        ) : <span className="text-foreground/50">-</span>}
       </td>
       
       {/* Ações */}
       <td className="py-3.5 px-3 text-center w-[70px]">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-gray-200" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-muted" onClick={(e) => e.stopPropagation()}>
               <Edit className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -699,7 +699,7 @@ export default function OrdensServico() {
               key={card.filter}
               className={cn(
                 `border-2 border-${card.color}-500 cursor-pointer hover:shadow-md transition-all rounded-full overflow-hidden`,
-                statusFilter === card.filter ? `bg-${card.color}-50 dark:bg-${card.color}-950/20 ring-2 ring-${card.color}-400` : 'bg-white dark:bg-gray-900',
+                statusFilter === card.filter ? `bg-${card.color}-50 dark:bg-${card.color}-950/20 ring-2 ring-inset ring-${card.color}-400` : 'bg-card',
                 'min-w-0'
               )}
               onClick={() => setStatusFilter(card.filter)}
@@ -765,7 +765,7 @@ export default function OrdensServico() {
                 variant="outline"
                 size="sm"
                 className={cn(
-                  'h-10 gap-1.5 border-gray-200 min-w-[140px] justify-between',
+                  'h-10 gap-1.5 border-border bg-background text-foreground hover:bg-muted min-w-[140px] justify-between',
                   hasActiveFilters && 'border-blue-400 bg-blue-50/80 dark:bg-blue-950/30'
                 )}
               >
@@ -785,7 +785,7 @@ export default function OrdensServico() {
                 <ChevronDown className="h-4 w-4 shrink-0 opacity-60" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 rounded-xl border-gray-200 shadow-lg p-0 overflow-hidden max-h-[min(85vh,420px)] flex flex-col" sideOffset={6}>
+            <PopoverContent align="start" className="w-80 rounded-xl border-border bg-card shadow-lg p-0 overflow-hidden max-h-[min(85vh,420px)] flex flex-col" sideOffset={6}>
               <div className="p-2 flex-shrink-0">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5">Período</p>
                 <div className="flex flex-col gap-0.5">
@@ -799,7 +799,7 @@ export default function OrdensServico() {
                   >
                     Todos
                   </button>
-                  <div className="border-t border-gray-200 my-1.5" />
+                  <div className="border-t border-border my-1.5" />
                   <div className="px-2 py-1.5 flex flex-col gap-2">
                     <p className="text-xs font-medium text-foreground">Personalizado</p>
                     <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
@@ -807,14 +807,14 @@ export default function OrdensServico() {
                         type="date"
                         value={periodoCustomInicio}
                         onChange={(e) => setPeriodoCustomInicio(e.target.value)}
-                        className="w-full min-w-0 h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
+                        className="w-full min-w-0 h-9 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                       />
                       <span className="text-muted-foreground text-xs shrink-0">até</span>
                       <input
                         type="date"
                         value={periodoCustomFim}
                         onChange={(e) => setPeriodoCustomFim(e.target.value)}
-                        className="w-full min-w-0 h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
+                        className="w-full min-w-0 h-9 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                       />
                     </div>
                     <Button
@@ -833,7 +833,7 @@ export default function OrdensServico() {
                   </div>
                 </div>
               </div>
-              <div className="border-t border-gray-200 p-2 flex-1 min-h-0 overflow-y-auto pb-1">
+              <div className="border-t border-border p-2 flex-1 min-h-0 overflow-y-auto pb-1">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5">Status</p>
                 <div className="flex flex-col gap-0.5 pb-2">
                   <button
@@ -899,7 +899,7 @@ export default function OrdensServico() {
                 </div>
               </div>
               {hasActiveFilters && (
-                <div className="border-t border-gray-200 p-2 flex-shrink-0 bg-muted/30 rounded-b-xl">
+                <div className="border-t border-border p-2 flex-shrink-0 bg-muted/30 rounded-b-xl">
                   <Button variant="ghost" size="sm" className="w-full justify-center text-muted-foreground" onClick={() => { clearFilters(); setShowFiltroPopover(false); }}>
                     <XCircle className="h-4 w-4 mr-1.5" /> Limpar filtros
                   </Button>
@@ -914,21 +914,21 @@ export default function OrdensServico() {
               placeholder={searchField === 'all' ? "Buscar por nº OS, cliente, aparelho, problema... (clique na coluna)" : `Buscar por ${OS_SEARCH_FIELD_LABELS[searchField]}...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`h-10 pl-10 text-base border-gray-200 focus:border-blue-400 ${searchField !== 'all' ? 'pr-24' : ''}`}
+              className={`h-10 pl-10 text-base border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-blue-400 ${searchField !== 'all' ? 'pr-24' : ''}`}
             />
             {searchField !== 'all' && (
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                <Badge variant="outline" className="text-xs border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/20 dark:text-blue-100">
                   {OS_SEARCH_FIELD_LABELS[searchField]}
                 </Badge>
-                <button type="button" onClick={() => setSearchField('all')} className="text-gray-400 hover:text-gray-600">
+                <button type="button" onClick={() => setSearchField('all')} className="text-foreground/50 hover:text-foreground">
                   <X className="h-3 w-3" />
                 </button>
               </div>
             )}
           </div>
 
-          <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-10 gap-1.5 border-gray-200 shrink-0">
+          <Button onClick={() => setShowExportModal(true)} size="sm" variant="outline" className="h-10 gap-1.5 border-border bg-background text-foreground hover:bg-muted shrink-0">
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar</span>
           </Button>
@@ -944,7 +944,7 @@ export default function OrdensServico() {
         {/* ÁREA DA TABELA — desktop: scroll interno; mobile: página rola */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         <div className="flex flex-col min-h-0 md:flex-1 md:overflow-hidden">
-          <Card className="flex flex-col border-gray-200 shadow-sm md:flex-1 md:overflow-hidden">
+          <Card className="flex flex-col border-border bg-card shadow-sm md:flex-1 md:overflow-hidden">
             <CardContent className="p-0 flex flex-col md:flex-1 md:overflow-hidden">
               {isLoading ? (
                 <div className="p-10 text-center text-muted-foreground">
@@ -966,44 +966,44 @@ export default function OrdensServico() {
                 <>
                   {/* Desktop: Tabela */}
                   <div className="hidden md:flex flex-1 flex-col overflow-hidden min-h-0">
-                    <p className="text-xs text-muted-foreground px-4 py-1.5 border-b border-gray-100 dark:border-gray-800 shrink-0">Clique para selecionar a linha · Duplo clique para abrir a OS</p>
+                    <p className="text-xs text-foreground/70 dark:text-foreground/80 px-4 py-1.5 border-b border-border bg-muted/20 shrink-0">Clique para selecionar a linha · Duplo clique para abrir a OS</p>
                     <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
                       <table className="w-full caption-bottom text-sm border-collapse table-fixed">
-                        <thead className="sticky top-0 z-20 bg-gray-100 dark:bg-gray-800 shadow-sm">
-                          <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                        <thead className="sticky top-0 z-20 bg-muted dark:bg-muted/70 shadow-sm">
+                          <tr className="border-b-2 border-border">
                             <th 
-                              className={`h-12 px-3 text-center align-middle font-semibold border-r border-gray-200 w-[100px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'numero' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              className={`h-12 px-3 text-center align-middle font-semibold border-r border-border w-[100px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors ${searchField === 'numero' ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/25 dark:text-blue-100' : 'text-foreground/80 dark:text-foreground/90'}`}
                               onClick={() => setSearchField(searchField === 'numero' ? 'all' : 'numero')}
                               title="Clique para filtrar por Nº OS"
                             >
                               Nº OS {searchField === 'numero' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
                             <th 
-                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 w-[200px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'cliente' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-border w-[200px] text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors ${searchField === 'cliente' ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/25 dark:text-blue-100' : 'text-foreground/80 dark:text-foreground/90'}`}
                               onClick={() => setSearchField(searchField === 'cliente' ? 'all' : 'cliente')}
                               title="Clique para filtrar por Cliente"
                             >
                               Cliente {searchField === 'cliente' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
                             <th 
-                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 w-[130px] hidden lg:table-cell text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'aparelho' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-border w-[130px] hidden lg:table-cell text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors ${searchField === 'aparelho' ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/25 dark:text-blue-100' : 'text-foreground/80 dark:text-foreground/90'}`}
                               onClick={() => setSearchField(searchField === 'aparelho' ? 'all' : 'aparelho')}
                               title="Clique para filtrar por Aparelho"
                             >
                               Aparelho {searchField === 'aparelho' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
                             <th 
-                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-gray-200 w-[180px] min-w-0 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 transition-colors ${searchField === 'problema' ? 'bg-blue-200 text-blue-700' : 'text-gray-700 dark:text-gray-200'}`}
+                              className={`h-12 px-3 text-left align-middle font-semibold border-r border-border w-[180px] min-w-0 text-xs uppercase tracking-wide cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors ${searchField === 'problema' ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/25 dark:text-blue-100' : 'text-foreground/80 dark:text-foreground/90'}`}
                               onClick={() => setSearchField(searchField === 'problema' ? 'all' : 'problema')}
                               title="Clique para filtrar por Problema"
                             >
                               Problema {searchField === 'problema' && <Search className="inline h-3 w-3 ml-1" />}
                             </th>
-                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[160px] text-xs uppercase tracking-wide">Status</th>
-                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Entrada</th>
-                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Previsão</th>
-                            <th className="h-12 px-3 text-right align-middle font-semibold text-gray-700 dark:text-gray-200 border-r border-gray-200 w-[110px] text-xs uppercase tracking-wide">Valor</th>
-                            <th className="h-12 px-3 text-center align-middle font-semibold text-gray-700 dark:text-gray-200 w-[70px] text-xs uppercase tracking-wide">Ações</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-foreground/80 dark:text-foreground/90 border-r border-border w-[160px] text-xs uppercase tracking-wide">Status</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-foreground/80 dark:text-foreground/90 border-r border-border w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Entrada</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-foreground/80 dark:text-foreground/90 border-r border-border w-[110px] hidden md:table-cell text-xs uppercase tracking-wide">Previsão</th>
+                            <th className="h-12 px-3 text-right align-middle font-semibold text-foreground/80 dark:text-foreground/90 border-r border-border w-[110px] text-xs uppercase tracking-wide">Valor</th>
+                            <th className="h-12 px-3 text-center align-middle font-semibold text-foreground/80 dark:text-foreground/90 w-[70px] text-xs uppercase tracking-wide">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1045,18 +1045,18 @@ export default function OrdensServico() {
                     </div>
 
                     {/* Paginação Desktop */}
-                    <div className="shrink-0 border-t border-gray-200 bg-gray-50/50 px-4 py-3 flex items-center justify-between">
+                    <div className="shrink-0 border-t border-border bg-muted/30 px-4 py-3 flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
                         Mostrando <span className="font-medium">{(page - 1) * PAGE_SIZE + 1}</span> a{' '}
                         <span className="font-medium">{Math.min(page * PAGE_SIZE, filteredOrdens.length)}</span> de{' '}
                         <span className="font-medium">{filteredOrdens.length}</span> OS
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1} className="h-8 border-gray-200">
+                        <Button variant="outline" size="sm" onClick={() => setPage(p => p - 1)} disabled={page === 1} className="h-8 border-border bg-background text-foreground hover:bg-muted">
                           <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
                         </Button>
                         <span className="text-sm font-medium px-3">{page} / {totalPages || 1}</span>
-                        <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages} className="h-8 border-gray-200">
+                        <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages} className="h-8 border-border bg-background text-foreground hover:bg-muted">
                           Próxima <ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                       </div>
@@ -1172,7 +1172,7 @@ export default function OrdensServico() {
 
       {/* Modal de Exportação */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border bg-card text-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5" />
@@ -1191,19 +1191,19 @@ export default function OrdensServico() {
                 Presets Rápidos
               </Label>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => applyExportPreset('abertas')} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('abertas')} className="text-xs border-border bg-background text-foreground hover:bg-muted">
                   OS Abertas
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => applyExportPreset('finalizadas')} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('finalizadas')} className="text-xs border-border bg-background text-foreground hover:bg-muted">
                   Finalizadas
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => applyExportPreset('hoje')} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('hoje')} className="text-xs border-border bg-background text-foreground hover:bg-muted">
                   Hoje
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => applyExportPreset('mes')} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('mes')} className="text-xs border-border bg-background text-foreground hover:bg-muted">
                   Este Mês
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => applyExportPreset('completo')} className="text-xs text-blue-600 border-blue-200 hover:bg-blue-50">
+                <Button variant="outline" size="sm" onClick={() => applyExportPreset('completo')} className="text-xs border-blue-200 bg-background text-blue-700 hover:bg-blue-50 dark:border-blue-500/40 dark:text-blue-200 dark:hover:bg-blue-500/20">
                   Relatório Completo
                 </Button>
               </div>
@@ -1240,8 +1240,8 @@ export default function OrdensServico() {
                         setExportUsarFiltrosAtuais(false);
                       }}
                       className={cn(
-                        "text-xs",
-                        exportDataInicio === mes.inicio && exportDataFim === mes.fim && "bg-blue-100 border-blue-300"
+                        "text-xs border-border bg-background text-foreground hover:bg-muted",
+                        exportDataInicio === mes.inicio && exportDataFim === mes.fim && "border-blue-300 bg-blue-100 text-blue-800 dark:border-blue-500/40 dark:bg-blue-500/20 dark:text-blue-100"
                       )}
                     >
                       {mes.label}
@@ -1262,7 +1262,7 @@ export default function OrdensServico() {
                     setExportDataInicio(e.target.value);
                     if (e.target.value) setExportUsarFiltrosAtuais(false);
                   }}
-                  className="h-10"
+                  className="h-10 border-border bg-background text-foreground"
                 />
               </div>
               <div className="space-y-2">
@@ -1274,14 +1274,14 @@ export default function OrdensServico() {
                     setExportDataFim(e.target.value);
                     if (e.target.value) setExportUsarFiltrosAtuais(false);
                   }}
-                  className="h-10"
+                  className="h-10 border-border bg-background text-foreground"
                 />
               </div>
             </div>
 
             {/* Usar filtros atuais da tela */}
             {hasActiveFilters && (
-              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-50">
                 <Checkbox
                   id="usar-filtros"
                   checked={exportUsarFiltrosAtuais}
@@ -1296,7 +1296,7 @@ export default function OrdensServico() {
                 />
                 <label htmlFor="usar-filtros" className="text-sm cursor-pointer">
                   <span className="font-medium">Usar filtros aplicados na tela</span>
-                  <span className="text-blue-600 text-xs ml-2">
+                  <span className="text-blue-700 dark:text-blue-200 text-xs ml-2">
                     ({filteredOrdens.length} OS filtradas)
                   </span>
                 </label>
@@ -1310,7 +1310,7 @@ export default function OrdensServico() {
                 setExportStatus(v);
                 if (v !== 'all') setExportUsarFiltrosAtuais(false);
               }}>
-                <SelectTrigger className="h-10">
+                <SelectTrigger className="h-10 border-border bg-background text-foreground">
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1331,7 +1331,7 @@ export default function OrdensServico() {
             {/* Colunas para exportar */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Colunas para Exportar</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-gray-50 rounded-lg border">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-lg border border-border bg-muted/30">
                 {exportColumns.map((col) => (
                   <div key={col.id} className="flex items-center gap-2">
                     <Checkbox
@@ -1351,7 +1351,7 @@ export default function OrdensServico() {
             <div className="space-y-2">
               <Label>Formato do Arquivo</Label>
               <Select value={exportFormat} onValueChange={(v: 'xlsx' | 'csv') => setExportFormat(v)}>
-                <SelectTrigger>
+                <SelectTrigger className="border-border bg-background text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1363,7 +1363,7 @@ export default function OrdensServico() {
           </div>
 
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowExportModal(false)}>
+            <Button variant="outline" onClick={() => setShowExportModal(false)} className="border-border bg-background text-foreground hover:bg-muted">
               Cancelar
             </Button>
             <Button 

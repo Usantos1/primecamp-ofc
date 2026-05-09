@@ -74,6 +74,94 @@ interface OrdemServicoFormProps {
   isModal?: boolean;
 }
 
+const PROBLEMAS_APARELHO_MODELOS = [
+  'TROCA DE TELA',
+  'APARELHO NAO LIGA',
+  'APARELHO SEM IMAGEM',
+  'TELA QUEBRADA',
+  'TOUCH NAO FUNCIONA',
+  'BATERIA DESCARREGANDO RAPIDO',
+  'CONECTOR DE CARGA COM DEFEITO',
+  'APARELHO MOLHADO/OXIDADO',
+  'CAMERA NAO FUNCIONA',
+  'ALTO-FALANTE SEM AUDIO',
+  'MICROFONE NAO FUNCIONA',
+  'APARELHO TRAVANDO',
+];
+
+const PROBLEMAS_VEICULO_MODELOS = [
+  'REVISAO GERAL',
+  'BARULHO NA SUSPENSAO',
+  'FREIO COM RUIDO',
+  'TROCA DE OLEO',
+  'MOTOR FALHANDO',
+  'VAZAMENTO DE OLEO',
+  'AR-CONDICIONADO NAO GELA',
+  'LUZ DE INJECAO ACESA',
+  'BATERIA DESCARREGANDO',
+  'ALINHAMENTO E BALANCEAMENTO',
+  'TROCA DE PASTILHAS DE FREIO',
+  'DIAGNOSTICO ELETRONICO',
+];
+
+const CONDICOES_APARELHO_MODELOS = [
+  'TELA QUEBRADA',
+  'MARCAS DE USO NA PARTE TRASEIRA',
+  'NAO FOI POSSIVEL TESTAR',
+  'APARELHO COM RISCOS',
+  'APARELHO COM AMASSADOS',
+  'TAMPA TRASEIRA TRINCADA',
+  'CAMERA COM MARCAS DE USO',
+  'CONECTOR COM SINAIS DE USO',
+  'APARELHO SEM SINAIS DE OXIDACAO APARENTE',
+  'APARELHO LIGA NORMALMENTE',
+  'APARELHO NAO LIGA PARA TESTE',
+  'CLIENTE NAO INFORMOU SENHA PARA TESTE',
+];
+
+const CONDICOES_VEICULO_MODELOS = [
+  'VEICULO COM MARCAS DE USO',
+  'PINTURA COM RISCOS',
+  'PARACHOQUE COM AVARIAS',
+  'PNEUS COM DESGASTE',
+  'INTERIOR EM BOM ESTADO',
+  'VEICULO NAO LIGA PARA TESTE',
+  'LUZ DE INJECAO ACESA',
+  'QUILOMETRAGEM INFORMADA NO PAINEL',
+  'SEM VAZAMENTOS APARENTES',
+  'CLIENTE AUTORIZOU TESTE DE RODAGEM',
+  'NAO FOI POSSIVEL REALIZAR TESTE DE RODAGEM',
+  'VEICULO ENTREGUE COM PERTENCES REMOVIDOS',
+];
+
+const PROBLEMAS_APARELHO_STORAGE_KEY = 'ativafix_os_problemas_aparelho_modelos';
+const PROBLEMAS_VEICULO_STORAGE_KEY = 'ativafix_os_problemas_veiculo_modelos';
+const CONDICOES_APARELHO_STORAGE_KEY = 'ativafix_os_condicoes_aparelho_modelos';
+const CONDICOES_VEICULO_STORAGE_KEY = 'ativafix_os_condicoes_veiculo_modelos';
+
+const normalizeProblemTemplate = (value: string) => value.trim().replace(/\s+/g, ' ').toLocaleUpperCase('pt-BR');
+
+const loadProblemTemplates = (storageKey: string, fallback: string[]) => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) return fallback;
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return fallback;
+    const normalized = parsed
+      .map((item) => typeof item === 'string' ? normalizeProblemTemplate(item) : '')
+      .filter(Boolean);
+    return normalized.length > 0 ? Array.from(new Set(normalized)) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const saveProblemTemplates = (storageKey: string, templates: string[]) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(storageKey, JSON.stringify(templates));
+};
+
 interface OSMovimentacao {
   id: string;
   data: string;
@@ -359,6 +447,24 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { segmentoSlug } = useCompanySegment();
   const isOficinaMecanica = segmentoSlug === 'oficina_mecanica';
   const currentUserNome = profile?.display_name || user?.email || 'Usuário';
+  const [problemasAparelhoModelos, setProblemasAparelhoModelos] = useState<string[]>(() =>
+    loadProblemTemplates(PROBLEMAS_APARELHO_STORAGE_KEY, PROBLEMAS_APARELHO_MODELOS)
+  );
+  const [problemasVeiculoModelos, setProblemasVeiculoModelos] = useState<string[]>(() =>
+    loadProblemTemplates(PROBLEMAS_VEICULO_STORAGE_KEY, PROBLEMAS_VEICULO_MODELOS)
+  );
+  const [condicoesAparelhoModelos, setCondicoesAparelhoModelos] = useState<string[]>(() =>
+    loadProblemTemplates(CONDICOES_APARELHO_STORAGE_KEY, CONDICOES_APARELHO_MODELOS)
+  );
+  const [condicoesVeiculoModelos, setCondicoesVeiculoModelos] = useState<string[]>(() =>
+    loadProblemTemplates(CONDICOES_VEICULO_STORAGE_KEY, CONDICOES_VEICULO_MODELOS)
+  );
+  const [novoProblemaModelo, setNovoProblemaModelo] = useState('');
+  const [editingProblemaModelo, setEditingProblemaModelo] = useState<string | null>(null);
+  const [editingProblemaModeloValue, setEditingProblemaModeloValue] = useState('');
+  const [novaCondicaoModelo, setNovaCondicaoModelo] = useState('');
+  const [editingCondicaoModelo, setEditingCondicaoModelo] = useState<string | null>(null);
+  const [editingCondicaoModeloValue, setEditingCondicaoModeloValue] = useState('');
 
   // Hooks
   const { createOS, updateOS, getOSById, updateStatus } = useOrdensServicoSupabase();
@@ -414,6 +520,22 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   useEffect(() => {
     fetchPaymentMethods(true);
   }, [fetchPaymentMethods]);
+
+  useEffect(() => {
+    saveProblemTemplates(PROBLEMAS_APARELHO_STORAGE_KEY, problemasAparelhoModelos);
+  }, [problemasAparelhoModelos]);
+
+  useEffect(() => {
+    saveProblemTemplates(PROBLEMAS_VEICULO_STORAGE_KEY, problemasVeiculoModelos);
+  }, [problemasVeiculoModelos]);
+
+  useEffect(() => {
+    saveProblemTemplates(CONDICOES_APARELHO_STORAGE_KEY, condicoesAparelhoModelos);
+  }, [condicoesAparelhoModelos]);
+
+  useEffect(() => {
+    saveProblemTemplates(CONDICOES_VEICULO_STORAGE_KEY, condicoesVeiculoModelos);
+  }, [condicoesVeiculoModelos]);
 
   // Estados do formulário (Oficina Mecânica: padrão veículo; Assistência: celular)
   const [formData, setFormData] = useState<OrdemServicoFormData>({
@@ -3311,6 +3433,111 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
   };
   */
 
+  const handleBackToPreviousScreen = useCallback(() => {
+    navigate('/os');
+  }, [navigate]);
+
+  const problemasModelos = isOficinaMecanica ? problemasVeiculoModelos : problemasAparelhoModelos;
+  const setActiveProblemasModelos = isOficinaMecanica ? setProblemasVeiculoModelos : setProblemasAparelhoModelos;
+  const condicoesModelos = isOficinaMecanica ? condicoesVeiculoModelos : condicoesAparelhoModelos;
+  const setActiveCondicoesModelos = isOficinaMecanica ? setCondicoesVeiculoModelos : setCondicoesAparelhoModelos;
+
+  const clearDescricaoProblemaObrigatorio = useCallback(() => {
+    setCamposFaltandoState(prev => {
+      if (!prev.has('descricao_problema')) return prev;
+      const next = new Set(prev);
+      next.delete('descricao_problema');
+      return next;
+    });
+  }, []);
+
+  const applyDescricaoProblemaModelo = useCallback((modelo: string) => {
+    setFormData(prev => {
+      const atual = (prev.descricao_problema || '').trim();
+      return {
+        ...prev,
+        descricao_problema: atual ? `${atual}, ${modelo}` : modelo,
+      };
+    });
+    clearDescricaoProblemaObrigatorio();
+  }, [clearDescricaoProblemaObrigatorio]);
+
+  const addProblemaModelo = useCallback(() => {
+    const normalized = normalizeProblemTemplate(novoProblemaModelo);
+    if (!normalized) return;
+    setActiveProblemasModelos(prev => prev.includes(normalized) ? prev : [...prev, normalized]);
+    setNovoProblemaModelo('');
+  }, [novoProblemaModelo, setActiveProblemasModelos]);
+
+  const startEditProblemaModelo = useCallback((modelo: string) => {
+    setEditingProblemaModelo(modelo);
+    setEditingProblemaModeloValue(modelo);
+  }, []);
+
+  const saveEditProblemaModelo = useCallback((modelo: string) => {
+    const normalized = normalizeProblemTemplate(editingProblemaModeloValue);
+    if (!normalized) return;
+    setActiveProblemasModelos(prev => Array.from(new Set(prev.map(item => item === modelo ? normalized : item))));
+    setEditingProblemaModelo(null);
+    setEditingProblemaModeloValue('');
+  }, [editingProblemaModeloValue, setActiveProblemasModelos]);
+
+  const removeProblemaModelo = useCallback((modelo: string) => {
+    setActiveProblemasModelos(prev => prev.filter(item => item !== modelo));
+    if (editingProblemaModelo === modelo) {
+      setEditingProblemaModelo(null);
+      setEditingProblemaModeloValue('');
+    }
+  }, [editingProblemaModelo, setActiveProblemasModelos]);
+
+  const clearCondicoesObrigatorio = useCallback(() => {
+    setCamposFaltandoState(prev => {
+      if (!prev.has('condicoes_equipamento')) return prev;
+      const next = new Set(prev);
+      next.delete('condicoes_equipamento');
+      return next;
+    });
+  }, []);
+
+  const applyCondicaoModelo = useCallback((modelo: string) => {
+    setFormData(prev => {
+      const atual = (prev.condicoes_equipamento || '').trim();
+      return {
+        ...prev,
+        condicoes_equipamento: atual ? `${atual}, ${modelo}` : modelo,
+      };
+    });
+    clearCondicoesObrigatorio();
+  }, [clearCondicoesObrigatorio]);
+
+  const addCondicaoModelo = useCallback(() => {
+    const normalized = normalizeProblemTemplate(novaCondicaoModelo);
+    if (!normalized) return;
+    setActiveCondicoesModelos(prev => prev.includes(normalized) ? prev : [...prev, normalized]);
+    setNovaCondicaoModelo('');
+  }, [novaCondicaoModelo, setActiveCondicoesModelos]);
+
+  const startEditCondicaoModelo = useCallback((modelo: string) => {
+    setEditingCondicaoModelo(modelo);
+    setEditingCondicaoModeloValue(modelo);
+  }, []);
+
+  const saveEditCondicaoModelo = useCallback((modelo: string) => {
+    const normalized = normalizeProblemTemplate(editingCondicaoModeloValue);
+    if (!normalized) return;
+    setActiveCondicoesModelos(prev => Array.from(new Set(prev.map(item => item === modelo ? normalized : item))));
+    setEditingCondicaoModelo(null);
+    setEditingCondicaoModeloValue('');
+  }, [editingCondicaoModeloValue, setActiveCondicoesModelos]);
+
+  const removeCondicaoModelo = useCallback((modelo: string) => {
+    setActiveCondicoesModelos(prev => prev.filter(item => item !== modelo));
+    if (editingCondicaoModelo === modelo) {
+      setEditingCondicaoModelo(null);
+      setEditingCondicaoModeloValue('');
+    }
+  }, [editingCondicaoModelo, setActiveCondicoesModelos]);
+
   const content = (
     <div className={cn("w-full h-full flex flex-col")}>
         {/* Tabs principais */}
@@ -3328,16 +3555,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 valorPago={totalPagoAPI}
                 previsaoEntrega={currentOS.previsao_entrega}
                 tecnicoNome={currentOS.tecnico_id ? getColaboradorById(currentOS.tecnico_id)?.nome || currentOS.tecnico_nome : undefined}
+                onBack={handleBackToPreviousScreen}
               />
             </div>
           )}
 
           {/* Tab Dados - com scroll interno */}
           <TabsContent value="dados" className="flex-1 min-h-0 overflow-auto scrollbar-thin p-2 md:p-3">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_430px] gap-4">
               {/* Widget 1: Dados do Cliente e Aparelho */}
-              <Card className="border border-gray-200/80 dark:border-gray-800 shadow-sm rounded-xl bg-white dark:bg-card">
-                <CardHeader className="py-3 px-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-muted/30 rounded-t-xl">
+              <Card className="border-2 border-border shadow-sm rounded-xl bg-card">
+                <CardHeader className="py-3 px-4 border-b border-border bg-muted/40 rounded-t-xl">
                   <CardTitle className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                     <FileText className="h-4 w-4 text-blue-600" />
                     Dados da OS
@@ -3345,23 +3573,22 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 </CardHeader>
                 <CardContent className="space-y-4 p-4">
                   {/* Cliente */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-1.5 md:col-span-2">
-                      <div className="flex items-center justify-between">
+                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)] gap-y-3 md:gap-x-6 items-start">
+                    <div>
+                      <div className="mb-3 flex min-h-8 items-end justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('cliente') && "font-bold text-red-600")}>Cliente *</Label>
                           {camposFaltandoState.has('cliente') && (
                             <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                           )}
                         </div>
-                        {/* Filtro de busca */}
                         {!selectedCliente && (
-                          <div className="flex gap-1">
+                          <div className="ml-auto mr-3 flex shrink-0 gap-1">
                             <button
                               type="button"
                               onClick={() => setClienteSearchField('nome')}
                               className={cn(
-                                "px-2 py-0.5 text-[10px] rounded-full transition-colors",
+                                "h-6 px-2 text-[10px] rounded-full transition-colors",
                                 clienteSearchField === 'nome' 
                                   ? "bg-blue-600 text-white" 
                                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -3373,7 +3600,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               type="button"
                               onClick={() => setClienteSearchField('cpf_cnpj')}
                               className={cn(
-                                "px-2 py-0.5 text-[10px] rounded-full transition-colors",
+                                "h-6 px-2 text-[10px] rounded-full transition-colors",
                                 clienteSearchField === 'cpf_cnpj' 
                                   ? "bg-blue-600 text-white" 
                                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -3385,7 +3612,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                               type="button"
                               onClick={() => setClienteSearchField('telefone')}
                               className={cn(
-                                "px-2 py-0.5 text-[10px] rounded-full transition-colors",
+                                "h-6 px-2 text-[10px] rounded-full transition-colors",
                                 clienteSearchField === 'telefone' 
                                   ? "bg-blue-600 text-white" 
                                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -3493,8 +3720,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         document.body
                       )}
                     </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                    <div className={cn(!selectedCliente && "md:pt-3")}>
+                      <div className="mb-3 flex min-h-8 items-end gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('telefone') && "font-bold text-red-600")}>Telefone *</Label>
                         {camposFaltandoState.has('telefone') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
@@ -3532,23 +3759,23 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     ].filter(Boolean);
                     const enderecoCompleto = enderecoPartes.length > 0 ? enderecoPartes.join(', ') : null;
                     return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-gray-100">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-gray-500">CPF/CNPJ</Label>
-                          <p className="text-sm text-gray-800 min-h-[1.25rem]">{clienteDados.cpf_cnpj || '—'}</p>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium text-gray-500">Endereço completo</Label>
-                          <p className="text-sm text-gray-800 min-h-[1.25rem]">{enderecoCompleto || '—'}</p>
-                        </div>
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-border bg-muted/20 px-3 py-2 text-xs text-foreground/80 dark:text-foreground/85">
+                        <span className="min-w-0">
+                          <span className="font-semibold text-muted-foreground">CPF/CNPJ:</span>{' '}
+                          <span className="font-medium">{clienteDados.cpf_cnpj || '—'}</span>
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">
+                          <span className="font-semibold text-muted-foreground">Endereço:</span>{' '}
+                          <span title={enderecoCompleto || undefined}>{enderecoCompleto || '—'}</span>
+                        </span>
                       </div>
                     );
                   })()}
                   
                   {/* Aparelho - Linha 1 */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-7 items-center gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('marca') && "font-bold text-red-600")}>Marca *</Label>
                         {camposFaltandoState.has('marca') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
@@ -3571,7 +3798,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }
                         }}
                       >
-                        <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('marca') && "border-red-500 border-2 bg-red-50")}>
+                        <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-xl", camposFaltandoState.has('marca') && "border-red-500 border-2 bg-red-50")}>
                           <SelectValue placeholder="Selecione a marca">
                             {formData.marca_id && marcas.length > 0 
                               ? (marcas.find(m => m.id === formData.marca_id)?.nome || currentOS?.marca_nome || '')
@@ -3590,7 +3817,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-7 items-center gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('modelo') && "font-bold text-red-600")}>Modelo *</Label>
                         {camposFaltandoState.has('modelo') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
@@ -3602,7 +3829,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                             <Button
                               type="button"
                               variant="outline"
-                              className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg justify-between font-normal", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")}
+                              className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-xl justify-between font-normal", camposFaltandoState.has('modelo') && "border-red-500 border-2 bg-red-50")}
                               disabled={!formData.marca_id}
                             >
                               <span className="truncate">
@@ -3672,7 +3899,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Placa' : 'IMEI'}</Label>
+                      <div className="flex min-h-7 items-center">
+                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Placa' : 'IMEI'}</Label>
+                      </div>
                       <Input
                         value={formData.imei}
                         onChange={(e) => setFormData(prev => ({ ...prev, imei: e.target.value }))}
@@ -3681,7 +3910,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Chassis' : 'Nº Série'}</Label>
+                      <div className="flex min-h-7 items-center">
+                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Chassis' : 'Nº Série'}</Label>
+                      </div>
                       <Input
                         value={formData.numero_serie}
                         onChange={(e) => setFormData(prev => ({ ...prev, numero_serie: e.target.value }))}
@@ -3692,9 +3923,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Aparelho - Linha 2 */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 items-start">
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-7 items-center gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('cor') && "font-bold text-red-600")}>Cor *</Label>
                         {camposFaltandoState.has('cor') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
@@ -3729,7 +3960,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Deixou veículo' : 'Deixou aparelho'}</Label>
+                      <div className="flex min-h-7 items-center">
+                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{isOficinaMecanica ? 'Deixou veículo' : 'Deixou aparelho'}</Label>
+                      </div>
                       <Select 
                         value={formData.deixou_aparelho ? 'sim' : formData.apenas_agendamento ? 'agendado' : 'nao'} 
                         onValueChange={(v) => {
@@ -3740,7 +3973,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           }));
                         }}
                       >
-                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg">
+                        <SelectTrigger className="w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-xl">
                           <SelectValue placeholder="Selecione">
                             {formData.deixou_aparelho ? 'SIM' : formData.apenas_agendamento ? 'AGENDADO' : 'NÃO'}
                           </SelectValue>
@@ -3753,7 +3986,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-7 items-center gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('previsao_entrega') && "font-bold text-red-600")}>Previsão Entrega *</Label>
                         {camposFaltandoState.has('previsao_entrega') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
@@ -3777,7 +4010,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">Hora</Label>
+                      <div className="flex min-h-7 items-center">
+                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">Hora</Label>
+                      </div>
                       <Input
                         type="time"
                         value={formData.hora_previsao || '18:00'}
@@ -3788,10 +4023,94 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Descrição e Condições */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-7 items-center justify-between gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('descricao_problema') && "font-bold text-red-600")}>Descrição do Problema *</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 rounded-full border-border bg-background px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              Defeitos padrões
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-80 rounded-2xl border-border bg-card p-2 shadow-lg">
+                            <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                              <p className="text-xs font-semibold text-muted-foreground">
+                                Problemas principais
+                              </p>
+                              <span className="text-[10px] text-muted-foreground">clique para adicionar</span>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto pr-2 scrollbar-thin">
+                              <div className="grid gap-1">
+                                {problemasModelos.map((modelo) => (
+                                  <div key={modelo} className="flex items-center gap-1 rounded-xl hover:bg-muted">
+                                    {editingProblemaModelo === modelo ? (
+                                      <>
+                                        <Input
+                                          value={editingProblemaModeloValue}
+                                          onChange={(e) => setEditingProblemaModeloValue(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') saveEditProblemaModelo(modelo);
+                                            if (e.key === 'Escape') {
+                                              setEditingProblemaModelo(null);
+                                              setEditingProblemaModeloValue('');
+                                            }
+                                          }}
+                                          className="h-8 rounded-xl border-border bg-background text-xs"
+                                          autoFocus
+                                        />
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => saveEditProblemaModelo(modelo)}>
+                                          <Check className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => { setEditingProblemaModelo(null); setEditingProblemaModeloValue(''); }}>
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyDescricaoProblemaModelo(modelo)}
+                                          className="min-w-0 flex-1 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground transition-colors"
+                                        >
+                                          {modelo}
+                                        </button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:text-foreground" onClick={() => startEditProblemaModelo(modelo)} title="Editar modelo">
+                                          <Edit className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15" onClick={() => removeProblemaModelo(modelo)} title="Remover modelo">
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
+                              <Input
+                                value={novoProblemaModelo}
+                                onChange={(e) => setNovoProblemaModelo(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addProblemaModelo();
+                                  }
+                                }}
+                                placeholder="Novo modelo..."
+                                className="h-8 rounded-xl border-border bg-background text-xs"
+                              />
+                              <Button type="button" variant="outline" size="sm" className="h-8 rounded-full border-border px-2 text-xs" onClick={addProblemaModelo}>
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                         {camposFaltandoState.has('descricao_problema') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3814,8 +4133,92 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-7 items-center justify-between gap-2">
                         <Label className={cn("text-xs font-medium text-gray-600 dark:text-gray-300", camposFaltandoState.has('condicoes_equipamento') && "font-bold text-red-600")}>{isOficinaMecanica ? 'Condições do veículo *' : 'Condições do Equipamento *'}</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-6 rounded-full border-border bg-background px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              Condições padrões
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-80 rounded-2xl border-border bg-card p-2 shadow-lg">
+                            <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                              <p className="text-xs font-semibold text-muted-foreground">
+                                Condições principais
+                              </p>
+                              <span className="text-[10px] text-muted-foreground">clique para adicionar</span>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto pr-2 scrollbar-thin">
+                              <div className="grid gap-1">
+                                {condicoesModelos.map((modelo) => (
+                                  <div key={modelo} className="flex items-center gap-1 rounded-xl hover:bg-muted">
+                                    {editingCondicaoModelo === modelo ? (
+                                      <>
+                                        <Input
+                                          value={editingCondicaoModeloValue}
+                                          onChange={(e) => setEditingCondicaoModeloValue(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') saveEditCondicaoModelo(modelo);
+                                            if (e.key === 'Escape') {
+                                              setEditingCondicaoModelo(null);
+                                              setEditingCondicaoModeloValue('');
+                                            }
+                                          }}
+                                          className="h-8 rounded-xl border-border bg-background text-xs"
+                                          autoFocus
+                                        />
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => saveEditCondicaoModelo(modelo)}>
+                                          <Check className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => { setEditingCondicaoModelo(null); setEditingCondicaoModeloValue(''); }}>
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyCondicaoModelo(modelo)}
+                                          className="min-w-0 flex-1 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground transition-colors"
+                                        >
+                                          {modelo}
+                                        </button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:text-foreground" onClick={() => startEditCondicaoModelo(modelo)} title="Editar condição">
+                                          <Edit className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/15" onClick={() => removeCondicaoModelo(modelo)} title="Remover condição">
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-2 border-t border-border pt-2">
+                              <Input
+                                value={novaCondicaoModelo}
+                                onChange={(e) => setNovaCondicaoModelo(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addCondicaoModelo();
+                                  }
+                                }}
+                                placeholder="Nova condição..."
+                                className="h-8 rounded-xl border-border bg-background text-xs"
+                              />
+                              <Button type="button" variant="outline" size="sm" className="h-8 rounded-full border-border px-2 text-xs" onClick={addCondicaoModelo}>
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                         {camposFaltandoState.has('condicoes_equipamento') && (
                           <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Obrigatório</Badge>
                         )}
@@ -3923,14 +4326,14 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </Card>
 
               {/* Widget 2: Senha/Chave e Áreas com Defeito (veículo: só chave/código e referência; celular: senha + deslizar + referência) */}
-              <Card className="border border-gray-200/80 dark:border-gray-800 shadow-sm rounded-xl bg-white dark:bg-card">
-                <CardHeader className="py-3 px-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-muted/30 rounded-t-xl">
+              <Card className="flex h-full flex-col border-2 border-border shadow-sm rounded-xl bg-card">
+                <CardHeader className="py-3 px-4 border-b border-border bg-muted/40 rounded-t-xl">
                   <CardTitle className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-orange-500" />
                     {isOficinaMecanica ? 'Chave/Código e Defeitos' : 'Senha e Defeitos'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 space-y-4">
+                <CardContent className="flex flex-1 flex-col p-4 space-y-4">
                   {/* Seção Senha/Chave — obrigatório; oficina: só chave/código (sem opção deslizar) */}
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -3955,7 +4358,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }
                       }}
                     >
-                      <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-lg", camposFaltandoState.has('possui_senha') && "border-red-500 border-2 bg-red-50")}>
+                      <SelectTrigger className={cn("w-full h-10 text-sm border-gray-200 dark:border-gray-700 dark:bg-background dark:text-gray-100 rounded-xl", camposFaltandoState.has('possui_senha') && "border-red-500 border-2 bg-red-50")}>
                         <SelectValue placeholder={isOficinaMecanica ? 'Selecione se deixou chave/código do veículo' : 'Selecione se o aparelho possui senha'}>
                           {(formData.possui_senha_tipo === 'sim' || (isOficinaMecanica && formData.possui_senha_tipo === 'deslizar')) && 'SIM'}
                           {formData.possui_senha_tipo === 'deslizar' && !isOficinaMecanica && 'SIM - DESLIZAR (DESENHO)'}
@@ -4018,9 +4421,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   </div>
 
                   {/* Seção Áreas com Defeito - Imagem de Referência Interativa */}
-                  <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                  <div className="flex min-h-[320px] flex-1 flex-col border-t border-border pt-4">
                     <Label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2 block">{isOficinaMecanica ? 'Referência Visual do Veículo' : 'Referência Visual do Aparelho'}</Label>
-                    <div className="h-[220px] flex items-center justify-center bg-gray-50/50 dark:bg-muted/30 rounded-xl border border-gray-200 dark:border-gray-700 p-2">
+                    <div className="flex min-h-[260px] flex-1 items-center justify-center rounded-2xl border-2 border-border bg-muted/30 p-3">
                       <OSImageReferenceViewer
                         imageUrl={osImageReferenceUrl || null}
                         defects={formData.areas_defeito || []}
@@ -4207,9 +4610,9 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           </TabsContent>
 
           {/* Tab Checklist */}
-          <TabsContent value="checklist" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 mt-2 p-2">
+          <TabsContent value="checklist" className="flex-1 min-h-0 overflow-auto scrollbar-thin space-y-2 p-2">
             <Tabs defaultValue="entrada" className="w-full">
-              <TabsList className="w-full justify-start mb-4">
+              <TabsList className="w-full justify-start mb-2">
                 <TabsTrigger value="entrada">Checklist de Entrada</TabsTrigger>
                 {isEditing && currentOS && (
                   <TabsTrigger value="saida">Checklist de Saída</TabsTrigger>
@@ -4217,7 +4620,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
               </TabsList>
 
               {/* Auditoria: quem realizou */}
-              <div className="flex flex-wrap items-center gap-2 mb-3 px-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2 px-2">
                 {formData.checklist_entrada_realizado_por_nome && (
                   <Badge variant="outline" className="border-gray-300 text-gray-800 text-xs font-semibold">
                     Entrada: {formData.checklist_entrada_realizado_por_nome}
@@ -4237,10 +4640,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
                   {/* Problemas Encontrados - Entrada */}
                   <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
-                    <CardHeader className="pb-2 pt-3">
+                    <CardHeader className="px-4 py-2">
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-base font-semibold text-destructive">Problemas Encontrados</CardTitle>
+                          <CardTitle className="text-sm font-semibold text-destructive">Problemas Encontrados</CardTitle>
                           <CardDescription className="text-xs">Marque os problemas encontrados</CardDescription>
                         </div>
                         <Badge variant="destructive" className="text-xs">
@@ -4248,17 +4651,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent className="flex-1 pt-2">
-                      <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
-                        <div className="grid grid-cols-1 gap-1 pr-4">
+                    <CardContent className="flex-1 pt-1">
+                      <ScrollArea className="h-[250px] md:h-[300px]">
+                        <div className="grid grid-cols-1 gap-0.5 pr-4">
                           {checklistEntradaConfig.filter(i => i.categoria === 'fisico').map(item => (
-                            <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                            <div key={item.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/50">
                               <Checkbox
                                 id={`entrada-fisico-${item.id}`}
                                 checked={parseJsonArray(formData.checklist_entrada).includes(item.item_id)}
                                 onCheckedChange={() => toggleChecklist(item.item_id)}
                               />
-                              <Label htmlFor={`entrada-fisico-${item.id}`} className="text-sm cursor-pointer flex-1 font-medium">
+                              <Label htmlFor={`entrada-fisico-${item.id}`} className="text-xs cursor-pointer flex-1 font-medium">
                                 {item.nome}
                               </Label>
                             </div>
@@ -4270,10 +4673,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
 
                   {/* Funcional OK - Entrada */}
                   <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
-                    <CardHeader className="pb-2 pt-3">
+                    <CardHeader className="px-4 py-2">
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-base font-semibold text-green-700">Funcional OK</CardTitle>
+                          <CardTitle className="text-sm font-semibold text-green-700">Funcional OK</CardTitle>
                           <CardDescription className="text-xs">Marque o que está funcionando</CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
@@ -4305,17 +4708,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="flex-1 pt-2">
-                      <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
-                        <div className="grid grid-cols-1 gap-1 pr-4">
+                    <CardContent className="flex-1 pt-1">
+                      <ScrollArea className="h-[250px] md:h-[300px]">
+                        <div className="grid grid-cols-1 gap-0.5 pr-4">
                           {checklistEntradaConfig.filter(i => i.categoria === 'funcional').map(item => (
-                            <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                            <div key={item.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/50">
                               <Checkbox
                                 id={`entrada-funcional-${item.id}`}
                                 checked={parseJsonArray(formData.checklist_entrada).includes(item.item_id)}
                                 onCheckedChange={() => toggleChecklist(item.item_id)}
                               />
-                              <Label htmlFor={`entrada-funcional-${item.id}`} className="text-sm cursor-pointer flex-1 font-medium">
+                              <Label htmlFor={`entrada-funcional-${item.id}`} className="text-xs cursor-pointer flex-1 font-medium">
                                 {item.nome}
                               </Label>
                             </div>
@@ -4328,10 +4731,10 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 
                 {/* Observações do Checklist de Entrada */}
                 <Card className="border-2 border-gray-300 shadow-sm rounded-xl">
-                  <CardHeader className="pb-2 pt-3">
-                    <CardTitle className="text-base font-semibold">Observações do Checklist de Entrada</CardTitle>
+                  <CardHeader className="px-4 py-2">
+                    <CardTitle className="text-sm font-semibold">Observações do Checklist de Entrada</CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-2">
+                  <CardContent className="pt-1">
                     <Textarea
                       value={formData.observacoes_checklist || ''}
                       onChange={(e) => {
@@ -4347,8 +4750,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         }));
                       }}
                       placeholder="Adicione observações gerais sobre o checklist de entrada..."
-                      rows={3}
-                      className="resize-none"
+                      rows={2}
+                      className="min-h-[70px] resize-none text-sm"
                     />
                   </CardContent>
                 </Card>
@@ -4371,17 +4774,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="flex-1 pt-2">
-                        <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
-                          <div className="grid grid-cols-1 gap-1 pr-4">
+                      <CardContent className="flex-1 pt-1">
+                        <ScrollArea className="h-[250px] md:h-[300px]">
+                          <div className="grid grid-cols-1 gap-0.5 pr-4">
                             {checklistSaidaConfig.filter(i => i.categoria === 'fisico').map(item => (
-                              <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                              <div key={item.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/50">
                                 <Checkbox
                                   id={`saida-fisico-${item.id}`}
                                   checked={parseJsonArray(currentOS.checklist_saida).includes(item.item_id)}
                                   disabled
                                 />
-                                <Label htmlFor={`saida-fisico-${item.id}`} className="text-sm cursor-default opacity-75 flex-1">
+                                <Label htmlFor={`saida-fisico-${item.id}`} className="text-xs cursor-default opacity-75 flex-1">
                                   {item.nome}
                                 </Label>
                               </div>
@@ -4404,17 +4807,17 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="flex-1 pt-2">
-                        <ScrollArea className="h-[calc(100vh-20rem)] md:h-[400px]">
-                          <div className="grid grid-cols-1 gap-1 pr-4">
+                      <CardContent className="flex-1 pt-1">
+                        <ScrollArea className="h-[250px] md:h-[300px]">
+                          <div className="grid grid-cols-1 gap-0.5 pr-4">
                             {checklistSaidaConfig.filter(i => i.categoria === 'funcional').map(item => (
-                              <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-muted/50">
+                              <div key={item.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/50">
                                 <Checkbox
                                   id={`saida-funcional-${item.id}`}
                                   checked={parseJsonArray(currentOS.checklist_saida).includes(item.item_id)}
                                   disabled
                                 />
-                                <Label htmlFor={`saida-funcional-${item.id}`} className="text-sm cursor-default opacity-75 flex-1">
+                                <Label htmlFor={`saida-funcional-${item.id}`} className="text-xs cursor-default opacity-75 flex-1">
                                   {item.nome}
                                 </Label>
                               </div>
@@ -4502,7 +4905,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       value={formData.tecnico_id || ''}
                       onValueChange={(v) => setFormData(prev => ({ ...prev, tecnico_id: v }))}
                     >
-                      <SelectTrigger className="max-w-sm">
+                      <SelectTrigger className="max-w-sm rounded-xl border-border bg-background text-foreground">
                         <SelectValue placeholder="Selecione o técnico" />
                       </SelectTrigger>
                       <SelectContent>
@@ -6019,21 +6422,21 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           )}
 
           {/* Rodapé único - tabs (ícone + nome no mobile) e ações */}
-          <div className="flex-shrink-0 z-20 bg-white dark:bg-background border-t border-gray-200 dark:border-gray-800 pb-20 sm:pb-1">
+          <div className="flex-shrink-0 z-20 bg-background/95 border-t border-border pb-20 sm:pb-2">
             <div className="overflow-x-auto scrollbar-none px-2 py-2 sm:px-2 sm:py-2 touch-pan-x">
-              <div className="flex items-center justify-start sm:justify-center gap-1.5 min-w-max">
+              <div className="flex items-center justify-start sm:justify-center gap-3 min-w-max">
                 {/* Tabs — mobile: ícone + nome sempre visíveis e área de toque confortável */}
-                <TabsList className="inline-flex bg-muted/60 h-auto min-h-[44px] sm:min-h-0 sm:h-8 p-1 sm:p-0.5 gap-0.5 sm:gap-0 rounded-lg sm:rounded-md">
+                <TabsList className="inline-flex h-auto min-h-[44px] sm:min-h-0 sm:h-auto rounded-full border border-border bg-card p-1 shadow-sm gap-1">
                   <TabsTrigger 
                     value="dados" 
-                    className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                    className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                   >
                     <FileText className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                     <span>Dados</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="checklist" 
-                    className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                    className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                   >
                     <Check className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                     <span>Checklist</span>
@@ -6042,35 +6445,35 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     <>
                       <TabsTrigger 
                         value="resolucao" 
-                        className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                        className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                       >
                         <AlertTriangle className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                         <span>Resolução</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="itens" 
-                        className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                        className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                       >
                         <Package className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                         <span>Peças</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="financeiro" 
-                        className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                        className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                       >
                         <DollarSign className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                         <span>Financeiro</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="fotos" 
-                        className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                        className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                       >
                         <Image className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                         <span>Fotos</span>
                       </TabsTrigger>
                       <TabsTrigger 
                         value="logs" 
-                        className="gap-1.5 sm:gap-0.5 px-3 min-h-[40px] sm:h-7 rounded-md touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
+                        className="gap-1.5 sm:gap-1 px-3 min-h-[40px] sm:h-8 rounded-full touch-manipulation data-[state=active]:bg-[hsl(var(--sidebar-primary))] data-[state=active]:text-white font-medium text-xs whitespace-nowrap"
                       >
                         <History className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" />
                         <span>Logs</span>
@@ -6079,14 +6482,12 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                   )}
                 </TabsList>
 
-                {/* Separador */}
-                <div className="w-px h-6 sm:h-6 bg-gray-300 dark:bg-gray-600 mx-1 shrink-0" />
-
-                {/* Ações — mobile: toque confortável */}
-                {isEditing && currentOS && (
-                  <>
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card p-1 shadow-sm">
+                  {/* Ações — mobile: toque confortável */}
+                  {isEditing && currentOS && (
+                    <>
                     <Select value={currentOS.status} onValueChange={handleChangeStatus}>
-                      <SelectTrigger className={cn('w-auto min-w-[90px] min-h-[44px] sm:min-h-0 sm:h-8 text-white border-0 rounded-lg sm:rounded text-xs px-3 sm:px-2 touch-manipulation shrink-0', (() => {
+                      <SelectTrigger className={cn('w-auto min-w-[96px] min-h-[40px] sm:min-h-0 sm:h-9 text-white border-0 rounded-full text-xs px-3 touch-manipulation shrink-0 shadow-sm', (() => {
                         const config = getConfigByStatus(currentOS.status);
                         return config?.cor || STATUS_OS_COLORS[currentOS.status as StatusOS] || 'bg-gray-500';
                       })())}>
@@ -6119,7 +6520,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       size="sm"
                       onClick={() => handleWhatsApp()}
                       disabled={whatsappLoading}
-                      className="min-h-[44px] sm:h-8 rounded-lg sm:rounded flex items-center gap-1.5 px-3 text-green-600 border-green-200 hover:bg-green-50 touch-manipulation shrink-0"
+                      className="min-h-[40px] sm:h-9 rounded-full flex items-center gap-1.5 px-3 text-green-700 border-green-200 bg-green-50/60 hover:bg-green-50 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300 touch-manipulation shrink-0"
                       title="WhatsApp"
                     >
                       <span className="inline-flex h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 items-center justify-center">
@@ -6130,7 +6531,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     </Button>
                     
                     <Select onValueChange={(v) => handlePrint(v as 'termica' | 'a4' | 'pdf')}>
-                      <SelectTrigger className="w-auto min-h-[44px] sm:h-8 rounded-lg sm:rounded text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-foreground bg-white dark:bg-background px-3 touch-manipulation shrink-0">
+                      <SelectTrigger className="w-auto min-h-[40px] sm:h-9 rounded-full text-xs font-medium border border-border text-foreground bg-background px-3 touch-manipulation shrink-0 hover:bg-muted">
                         <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                         <span className="ml-1 whitespace-nowrap">Imprimir</span>
                       </SelectTrigger>
@@ -6140,28 +6541,29 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                         <SelectItem value="pdf">Salvar PDF</SelectItem>
                       </SelectContent>
                     </Select>
-                  </>
-                )}
+                    </>
+                  )}
 
-                {!isEditing && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleOpenAiOSDialog}
-                    className="min-h-[44px] sm:h-8 rounded-lg sm:rounded px-3 text-xs sm:text-sm border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-300 dark:hover:bg-violet-950 touch-manipulation shrink-0 flex items-center gap-1.5"
-                    aria-label="Gerar OS com inteligência artificial"
-                    title="Gerar OS com IA"
-                  >
-                    <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" aria-hidden="true" />
-                    <span className="whitespace-nowrap">Gerar com IA</span>
-                  </Button>
-                )}
+                  {!isEditing && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenAiOSDialog}
+                      className="min-h-[40px] sm:h-9 rounded-full px-3 text-xs sm:text-sm border-violet-200 bg-violet-50/60 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-950 touch-manipulation shrink-0 flex items-center gap-1.5"
+                      aria-label="Gerar OS com inteligência artificial"
+                      title="Gerar OS com IA"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" aria-hidden="true" />
+                      <span className="whitespace-nowrap">Gerar com IA</span>
+                    </Button>
+                  )}
 
-                <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-lg sm:rounded min-h-[44px] sm:h-8 px-4 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90 text-xs sm:text-sm touch-manipulation shrink-0">
-                  <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 shrink-0" />
-                  <span>Salvar</span>
-                </LoadingButton>
+                  <LoadingButton onClick={handleSubmit} loading={isLoading} size="sm" className="rounded-full min-h-[40px] sm:h-9 px-4 bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary))]/90 text-xs sm:text-sm touch-manipulation shrink-0 shadow-sm">
+                    <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 shrink-0" />
+                    <span>Salvar</span>
+                  </LoadingButton>
+                </div>
               </div>
             </div>
           </div>
@@ -6413,7 +6815,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                       setProdutoResults([]);
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="rounded-xl border-border bg-background text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -6662,7 +7064,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           value={itemForm.grade_cor || ''}
                           onValueChange={(v) => setItemForm(prev => ({ ...prev, grade_cor: v, quantidade: 1 }))}
                         >
-                          <SelectTrigger className="w-full h-10">
+                          <SelectTrigger className="w-full h-10 rounded-xl border-border bg-background text-foreground">
                             <SelectValue placeholder="Selecione a cor" />
                           </SelectTrigger>
                           <SelectContent>
@@ -6686,7 +7088,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           value={itemForm.com_aro || ''}
                           onValueChange={(v) => setItemForm(prev => ({ ...prev, com_aro: (v === 'com_aro' || v === 'sem_aro' ? v : '') as '' | 'com_aro' | 'sem_aro', quantidade: 1 }))}
                         >
-                          <SelectTrigger className="w-full h-10">
+                          <SelectTrigger className="w-full h-10 rounded-xl border-border bg-background text-foreground">
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
@@ -6709,7 +7111,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                           value={itemForm.com_aro || 'none'}
                           onValueChange={(v) => setItemForm(prev => ({ ...prev, com_aro: (v === 'none' ? '' : v) as '' | 'com_aro' | 'sem_aro' }))}
                         >
-                          <SelectTrigger className="w-full h-10">
+                          <SelectTrigger className="w-full h-10 rounded-xl border-border bg-background text-foreground">
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
@@ -6878,7 +7280,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 onValueChange={(v) => setPagamentoOSForm(prev => ({ ...prev, forma_pagamento: v as FormaPagamento }))}
                 disabled={paymentMethods.filter(pm => pm.is_active).length === 0}
               >
-                <SelectTrigger>
+                <SelectTrigger className="rounded-xl border-border bg-background text-foreground">
                   <SelectValue placeholder="Selecione a forma" />
                 </SelectTrigger>
                 <SelectContent>
@@ -6899,7 +7301,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                 value={pagamentoOSForm.tipo}
                 onValueChange={(v: 'adiantamento' | 'pagamento_final') => setPagamentoOSForm(prev => ({ ...prev, tipo: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="rounded-xl border-border bg-background text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -7259,7 +7661,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                     value={novoClienteData.tipo_pessoa} 
                     onValueChange={(v: 'fisica' | 'juridica') => setNovoClienteData(prev => ({ ...prev, tipo_pessoa: v }))}
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-10 rounded-xl border-border bg-background text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
