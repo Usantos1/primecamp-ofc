@@ -12,6 +12,7 @@ import multer from 'multer';
 import fs from 'fs';
 import crypto from 'crypto';
 import https from 'https';
+import net from 'net';
 
 // Fetch: usar nativo (Node 18+) onde existir; senão node-fetch não é usado na rota telegram (usa https)
 const fetch = typeof globalThis.fetch === 'function' ? globalThis.fetch : null;
@@ -856,6 +857,113 @@ function normalizeWebhookText(value) {
   return null;
 }
 
+function getHeaderValue(headers, names = []) {
+  if (!headers || typeof headers !== 'object') return null;
+  const normalizedHeaders = Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [String(key).toLowerCase(), value])
+  );
+
+  for (const name of names) {
+    const value = normalizeWebhookText(normalizedHeaders[String(name).toLowerCase()]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function getCookieValue(source, cookieName) {
+  if (!source) return null;
+  if (typeof source === 'object') {
+    return normalizeWebhookText(source[cookieName] || source[cookieName.replace(/^_/, '')]);
+  }
+
+  const parts = String(source).split(';');
+  for (const part of parts) {
+    const [rawName, ...rawValue] = part.split('=');
+    if (rawName?.trim() === cookieName) return normalizeWebhookText(rawValue.join('='));
+  }
+  return null;
+}
+
+function getUrlParam(value, paramName) {
+  const text = normalizeWebhookText(value);
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    return normalizeWebhookText(url.searchParams.get(paramName));
+  } catch {
+    const match = text.match(new RegExp(`[?&]${paramName}=([^&#]+)`, 'i'));
+    if (!match) return null;
+    try {
+      return normalizeWebhookText(decodeURIComponent(match[1]));
+    } catch {
+      return normalizeWebhookText(match[1]);
+    }
+  }
+}
+
+function normalizeMetaCookieValue(value, expectedPrefix) {
+  const text = normalizeWebhookText(value);
+  if (!text) return null;
+  return text.startsWith(expectedPrefix) ? text : null;
+}
+
+function buildMetaFbcFromFbclid(fbclid, eventDate) {
+  const clickId = normalizeWebhookText(fbclid);
+  if (!clickId) return null;
+  const creationTime = new Date(eventDate || Date.now()).getTime();
+  if (!Number.isFinite(creationTime)) return null;
+  return `fb.1.${creationTime}.${clickId}`;
+}
+
+function normalizeClientIp(value) {
+  const firstIp = normalizeWebhookText(value)?.split(',')[0]?.trim();
+  if (!firstIp) return null;
+
+  let ip = firstIp.replace(/^\[|\]$/g, '');
+  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
+  if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(ip)) ip = ip.split(':')[0];
+
+  return net.isIP(ip) ? ip : null;
+}
+
+function buildMetaLeadUserDataContext(event) {
+  const payload = event?.raw_payload || {};
+  const headers = event?.headers || {};
+  const cookieSource =
+    findFirstDeep(payload, ['cookie', 'cookies', 'document_cookie']) ||
+    getHeaderValue(headers, ['cookie']);
+  const sourceUrl =
+    event?.source_url ||
+    findFirstDeep(payload, ['source_url', 'sourceUrl', 'landing_url', 'landingUrl', 'url', 'href']);
+
+  const fbc =
+    normalizeMetaCookieValue(findFirstDeep(payload, ['fbc', '_fbc']) || getCookieValue(cookieSource, '_fbc'), 'fb.') ||
+    buildMetaFbcFromFbclid(
+      findFirstDeep(payload, ['fbclid']) || getUrlParam(sourceUrl, 'fbclid'),
+      event?.created_at
+    );
+  const fbp = normalizeMetaCookieValue(
+    findFirstDeep(payload, ['fbp', '_fbp']) || getCookieValue(cookieSource, '_fbp'),
+    'fb.'
+  );
+  const clientIp = normalizeClientIp(
+    findFirstDeep(payload, ['client_ip_address', 'clientIpAddress', 'client_ip', 'clientIp', 'ip']) ||
+    getHeaderValue(headers, ['cf-connecting-ip', 'true-client-ip', 'x-forwarded-for', 'x-real-ip']) ||
+    event?.ip_origem
+  );
+  const clientUserAgent = normalizeWebhookText(
+    findFirstDeep(payload, ['client_user_agent', 'clientUserAgent', 'user_agent', 'userAgent', 'browser_user_agent']) ||
+    getHeaderValue(headers, ['x-client-user-agent', 'x-original-user-agent', 'user-agent'])
+  );
+
+  return {
+    ...(fbc ? { fbc } : {}),
+    ...(fbp ? { fbp } : {}),
+    ...(clientIp ? { client_ip_address: clientIp } : {}),
+    ...(clientUserAgent ? { client_user_agent: clientUserAgent } : {}),
+  };
+}
+
 function parseWebhookBoolean(value) {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value === 1;
@@ -1014,6 +1122,9 @@ async function insertAtivaCrmWebhookEvent(companyId, payload, req) {
   const headers = {
     'content-type': req.get('content-type'),
     'user-agent': req.get('user-agent'),
+    'x-forwarded-for': req.get('x-forwarded-for'),
+    'cf-connecting-ip': req.get('cf-connecting-ip'),
+    'true-client-ip': req.get('true-client-ip'),
     'x-real-ip': req.get('x-real-ip') || req.ip,
   };
 
@@ -1106,6 +1217,8 @@ async function sendMetaLeadForAtivaCrmWebhook(event) {
   if (phoneHash) userData.ph = [phoneHash];
   if (firstNameHash) userData.fn = [firstNameHash];
   if (lastNameHash) userData.ln = [lastNameHash];
+  Object.assign(userData, buildMetaLeadUserDataContext(event));
+  if (event.ctwa_clid) userData.ctwa_clid = event.ctwa_clid;
 
   const leadKey = event.contact_phone || event.conversation_id || event.ticket_id || event.event_id;
   const metaEventId = `ativa_crm_lead_${event.company_id}_${stableEventHash(leadKey)}`;
