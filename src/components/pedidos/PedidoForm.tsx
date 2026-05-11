@@ -89,6 +89,8 @@ export function PedidoForm({ open, onOpenChange, editando, onSubmit, onCreatePro
           codigo: p.codigo,
           referencia: p.referencia,
           quantidade: 1,
+          valor_compra: p.valor_compra,
+          valor_venda: p.valor_venda,
         },
       ];
     });

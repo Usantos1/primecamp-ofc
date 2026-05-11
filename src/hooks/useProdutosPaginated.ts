@@ -588,7 +588,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     });
 
     return mapSupabaseToAssistencia(novoProduto?.data || novoProduto);
-  }, [queryClient]);
+  }, [queryClient, user]);
 
   // Atualizar produto
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {

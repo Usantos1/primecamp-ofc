@@ -103,12 +103,19 @@ export default function Pedidos() {
   };
 
   const salvarProdutoDoPedido = async (payload: Partial<Produto>) => {
-    const created = await createProduto(payload);
+    const created = await createProduto({
+      ...payload,
+      quantidade: 0,
+      estoque_atual: 0,
+      estoque_grade: undefined,
+    });
     onProdutoCriado?.({
       id: created.id,
       nome: created.nome || created.descricao || payload.nome || '',
       codigo: created.codigo,
       referencia: created.referencia,
+      valor_compra: created.valor_compra ?? created.preco_custo,
+      valor_venda: created.valor_venda ?? created.preco_venda,
     });
     setOnProdutoCriado(null);
     setProdutoInicial(null);

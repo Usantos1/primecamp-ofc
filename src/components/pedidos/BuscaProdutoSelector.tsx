@@ -11,6 +11,8 @@ export type ProdutoBusca = {
   nome: string;
   codigo?: number;
   referencia?: string;
+  valor_compra?: number;
+  valor_venda?: number;
 };
 
 type Props = {

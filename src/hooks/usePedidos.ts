@@ -29,6 +29,12 @@ export type Pedido = {
 
 const PEDIDOS_STORAGE_KEY = 'primecamp_pedidos';
 
+function formatQuantidadePedido(quantidade: number) {
+  const qtd = Number(quantidade || 0);
+  const unidade = Math.abs(qtd) === 1 ? 'unidade' : 'unidades';
+  return `${qtd} ${unidade}`;
+}
+
 function loadPedidosFromStorage(): Pedido[] {
   try {
     const raw = localStorage.getItem(PEDIDOS_STORAGE_KEY);
@@ -322,6 +328,7 @@ export function usePedidos() {
       setDarEntradaId(pedido.id);
       try {
         let totalDespesa = 0;
+        const pedidoRef = pedido.id ? pedido.id.slice(0, 8).toUpperCase() : pedido.nome;
         for (const item of pedido.itens) {
           const { data: prod, error: errFetch } = await from('produtos')
             .select('id,quantidade,valor_compra,valor_venda,vi_custo,valor_dinheiro_pix')
@@ -363,6 +370,31 @@ export function usePedidos() {
               variant: 'destructive',
             });
             continue;
+          }
+
+          const descricaoEntrada = `Entrada de ${formatQuantidadePedido(item.quantidade)} pelo pedido #${pedidoRef}`;
+          const { error: errMov } = await from('produto_movimentacoes')
+            .insert({
+              produto_id: item.produto_id,
+              tipo: 'pedido_entrada',
+              motivo: `${descricaoEntrada}${pedido.nome ? ` (${pedido.nome})` : ''}`,
+              quantidade_antes: atualQtd,
+              quantidade_depois: novaQtd,
+              quantidade_delta: item.quantidade,
+              user_id: user?.id ?? null,
+              user_nome: userNome,
+            })
+            .execute();
+
+          if (errMov) {
+            console.error('Erro ao registrar movimentação de entrada por pedido:', errMov);
+            toast({
+              title: 'Movimentação não registrada',
+              description:
+                (errMov as any)?.message ||
+                `O estoque de ${item.produto_nome} foi atualizado, mas a movimentação do pedido não foi registrada.`,
+              variant: 'destructive',
+            });
           }
         }
 
