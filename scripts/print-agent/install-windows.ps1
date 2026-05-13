@@ -47,13 +47,14 @@ function Install-PortableNode([string]$InstallDir) {
   } catch {}
 
   $arch = if ([Environment]::Is64BitOperatingSystem) { "win-x64" } else { "win-x86" }
+  $nodeFile = "$arch-zip"
   $index = Invoke-RestMethod "https://nodejs.org/dist/index.json"
   $release = $index |
-    Where-Object { $_.lts -and $_.files -contains $arch } |
+    Where-Object { $_.lts -and $_.files -contains $nodeFile } |
     Select-Object -First 1
 
   if (-not $release) {
-    throw "Nao foi possivel encontrar uma versao LTS do Node.js para $arch."
+    throw "Nao foi possivel encontrar uma versao LTS do Node.js para $nodeFile."
   }
 
   $version = $release.version
