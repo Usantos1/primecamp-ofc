@@ -60,10 +60,12 @@ function Install-PortableNode([string]$InstallDir) {
   $version = $release.version
   $zipName = "node-$version-$arch.zip"
   $zipUrl = "https://nodejs.org/dist/$version/$zipName"
-  $zipPath = Join-Path $env:TEMP $zipName
-  $extractDir = Join-Path $env:TEMP ("ativafix-node-" + [guid]::NewGuid().ToString("N"))
+  $downloadDir = Join-Path $env:TEMP ("ativafix-node-download-" + [guid]::NewGuid().ToString("N"))
+  $zipPath = Join-Path $downloadDir $zipName
+  $extractDir = Join-Path $downloadDir "extract"
 
   try {
+    New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
     Write-Step "Baixando $zipName..."
     Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
 
@@ -84,8 +86,7 @@ function Install-PortableNode([string]$InstallDir) {
   } catch {
     throw "Nao foi possivel baixar o Node.js portatil. Verifique a internet deste computador e tente novamente. Detalhe: $($_.Exception.Message)"
   } finally {
-    Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force $extractDir -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $downloadDir -ErrorAction SilentlyContinue
   }
 }
 
