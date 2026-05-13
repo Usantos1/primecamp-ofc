@@ -24,10 +24,8 @@ npm install
 # 3. Fazer build do frontend
 npm run build
 
-# 4. Copiar dist para TODAS as pastas que o Nginx usa (grep root em /etc/nginx/)
-#    primecamp.cloud → /var/www/primecamp.cloud | ativafix.com pode → /var/www/primecamp.cloud
-#    Outros hosts → /var/www/ativafix
-for WWW in /var/www/ativafix /var/www/primecamp.cloud; do
+# 4. Copiar dist para a pasta usada pelo app.ativafix.com
+for WWW in /var/www/ativafix; do
   if [ -d "$WWW" ]; then
     sudo rm -rf "$WWW"/*
     sudo cp -r dist/* "$WWW"/
@@ -38,5 +36,5 @@ done
 # 5. Recarregar Nginx
 sudo systemctl reload nginx
 
-# OU use o script automatizado (já copia para as duas pastas se existirem):
+# OU use o script automatizado:
 # bash scripts/deploy/DEPLOY_COMPLETO_VPS.sh

@@ -29,10 +29,10 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ Build concluído."
 
-# 4. Deploy do frontend (primecamp.cloud -> /var/www/primecamp.cloud; ver grep root no nginx)
+# 4. Deploy do frontend (app.ativafix.com -> /var/www/ativafix)
 echo ""
-echo "4️⃣ Copiando arquivos para o Nginx (ativafix + primecamp.cloud)..."
-FRONTEND_ROOTS=(/var/www/ativafix /var/www/primecamp.cloud)
+echo "4️⃣ Copiando arquivos para o Nginx (app.ativafix.com)..."
+FRONTEND_ROOTS=(/var/www/ativafix)
 for root in "${FRONTEND_ROOTS[@]}"; do
   if [ -d "$root" ]; then
     echo "   -> $root"

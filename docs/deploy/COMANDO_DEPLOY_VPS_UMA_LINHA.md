@@ -109,29 +109,22 @@ Isso acontece quando **ativafix.com** está apontando para outro `root` no Nginx
 5. Rode o deploy de novo (build + copiar para `/var/www/ativafix`).
 6. Abra https://ativafix.com em aba anônima ou com cache limpo (Ctrl+Shift+R). Deve aparecer a LP em React (hero verde, dores, recursos, CTA WhatsApp).
 
-**Diagnóstico na VPS (ver se os dois domínios servem o mesmo arquivo):**
+**Diagnóstico na VPS (ver se app.ativafix.com serve o build atual):**
 ```bash
-# Os dois devem devolver o MESMO index.html (com script src="/assets/...")
-curl -sI https://ativafix.com | head -3
 curl -sI https://app.ativafix.com | head -3
-curl -s https://ativafix.com 2>/dev/null | head -20
 curl -s https://app.ativafix.com 2>/dev/null | head -20
 ```
-Se o corpo de ativafix.com for diferente (ex.: texto "em construção" ou outro HTML), o Nginx está com `root` diferente para ativafix.com — corrija para `root /var/www/ativafix;` no bloco de ativafix.com.
+Se o corpo não for o app atual, confira o `root /var/www/ativafix;` no bloco de `app.ativafix.com`.
 
-**Correção em uma linha (na VPS):** garantir que ativafix.com e app.ativafix.com usem **só** `root /var/www/ativafix;`:
+**Correção em uma linha (na VPS):** garantir que `app.ativafix.com` use **só** `root /var/www/ativafix;`:
 ```bash
-# Corrige qualquer root errado no config ativafix (ativafix-lp, primecamp.cloud, etc.)
-sudo sed -i 's|root /var/www/ativafix-lp;|root /var/www/ativafix;|g' /etc/nginx/sites-available/ativafix
-sudo sed -i 's|root /var/www/primecamp.cloud;|root /var/www/ativafix;|g' /etc/nginx/sites-available/ativafix
 sudo nginx -t && sudo systemctl reload nginx
 ```
-**Conferir:** no config, ativafix.com e app.ativafix.com devem ter exatamente `root /var/www/ativafix;`:
+**Conferir:** no config, `app.ativafix.com` deve ter exatamente `root /var/www/ativafix;`:
 ```bash
-sudo grep -A 2 "server_name ativafix.com" /etc/nginx/sites-available/ativafix
 sudo grep -A 2 "server_name app.ativafix.com" /etc/nginx/sites-available/ativafix
 ```
-Depois abra https://ativafix.com em aba anônima (Ctrl+Shift+N) — deve carregar a LP em React (hero verde), não a página HTML “em construção”.
+Depois abra https://app.ativafix.com em aba anônima (Ctrl+Shift+N).
 
 **Painel de Alertas:** para o Painel de Alertas funcionar, rode **uma vez** no banco usado pela API a migração `db/migrations/manual/PAINEL_ALERTAS_TABELAS.sql`. Se a API estiver em "errored" com muitos restarts, veja a seção "PM2 em erro / API caindo" abaixo.
 

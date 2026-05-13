@@ -55,7 +55,7 @@ cd "$PROJ"
 npm install
 npm run build
 
-for WWW in /var/www/ativafix /var/www/primecamp.cloud; do
+for WWW in /var/www/ativafix; do
   if [ -d "$WWW" ]; then
     sudo rm -rf "$WWW"/*
     sudo cp -r dist/* "$WWW"/

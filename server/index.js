@@ -1372,10 +1372,6 @@ app.use(cors({
       'http://127.0.0.1:8080',
       'http://127.0.0.1:3000',
       apiOrigin,
-      'https://ativafix.com',
-      'http://ativafix.com',
-      'https://www.ativafix.com',
-      'http://www.ativafix.com',
       'https://app.ativafix.com',
       'http://app.ativafix.com',
     ].filter(Boolean);
@@ -5737,8 +5733,8 @@ app.get('/api/ativa-crm/webhook-events', authenticateToken, async (req, res) => 
 // TEMA DO SISTEMA (cores, logo, nome) — persistido na VPS por domínio (white-label)
 // ============================================
 // Cada domínio tem sua própria chave; domínios não listados usam a chave padrão.
-// Para liberar white-label em um domínio, adicione-o em WHITELABEL_DOMAINS no .env (ex: ativafix.com).
-const WHITELABEL_DOMAINS = (process.env.WHITELABEL_DOMAINS || 'ativafix.com,www.ativafix.com,app.ativafix.com')
+// Para liberar white-label em um domínio, adicione-o em WHITELABEL_DOMAINS no .env.
+const WHITELABEL_DOMAINS = (process.env.WHITELABEL_DOMAINS || 'app.ativafix.com')
   .toLowerCase()
   .split(',')
   .map((s) => s.trim())
@@ -5751,8 +5747,7 @@ function themeConfigKey(host) {
   if (!normalized) return 'theme_config';
   const allowed = WHITELABEL_DOMAINS.length === 0 || WHITELABEL_DOMAINS.some((d) => d.replace(/^www\./, '') === h);
   if (!allowed) return 'theme_config';
-  // Compatibilidade: ativafix.com e app.ativafix.com usam o mesmo tema (empresa 1 / login)
-  if (h === 'ativafix.com' || h === 'app.ativafix.com') return 'theme_config_ativafix';
+  if (h === 'app.ativafix.com') return 'theme_config_ativafix';
   return `theme_config_${normalized}`;
 }
 
@@ -5783,7 +5778,7 @@ app.get('/api/theme-config', async (req, res) => {
         return res.json(typeof val === 'string' ? JSON.parse(val) : val);
       }
     }
-    // 2) Sem auth (tela de login): ativafix.com/localhost usam tema da empresa 1 (logo e cores corretos)
+    // 2) Sem auth (tela de login): app.ativafix.com/localhost usam tema da empresa 1 (logo e cores corretos)
     const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
     const adminCompanyKey = `theme_config_company_${ADMIN_COMPANY_ID}`;
     let host = req.query.host;
@@ -5793,7 +5788,7 @@ app.get('/api/theme-config', async (req, res) => {
       } catch (_) {}
     }
     const h = (host && host.toLowerCase().replace(/^www\./, '')) || '';
-    const isLoginHost = h === 'ativafix.com' || h === 'app.ativafix.com' || h === 'localhost' || h === '127.0.0.1';
+    const isLoginHost = h === 'app.ativafix.com' || h === 'localhost' || h === '127.0.0.1';
     if (isLoginHost) {
       const company1Result = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [adminCompanyKey]);
       if (company1Result.rows.length > 0 && company1Result.rows[0].value) {

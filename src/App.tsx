@@ -97,13 +97,6 @@ const queryClient = new QueryClient({
   },
 });
 
-/** ativafix.com / www = LP de vendas. Se o main.tsx não tiver rodado a branch certa (cache/build antigo), este fallback garante a LP. */
-function isLandingHost() {
-  if (typeof window === 'undefined') return false;
-  const h = window.location.hostname.toLowerCase();
-  return h === 'ativafix.com' || h === 'www.ativafix.com';
-}
-
 /** Dispara evento para AuthContext atualizar sessão/permissões ao trocar de página (não ao alternar aba do Chrome). */
 function AuthSyncOnNavigate({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -119,7 +112,6 @@ function AuthSyncOnNavigate({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => {
-  if (isLandingHost()) return <LandingPage />;
   return (
   <ErrorBoundary>
     <HelmetProvider>
