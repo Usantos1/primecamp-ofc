@@ -4,10 +4,11 @@ import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, Share2 } from 'lucide-react';
-import { generateCupomTermica, generateCupomPDF, printTermica } from '@/utils/pdfGenerator';
+import { generateCupomTermica, generateCupomPDF } from '@/utils/pdfGenerator';
 import { APP_PUBLIC_URL } from '@/utils/appUrl';
 import { from } from '@/integrations/db/client';
 import { LoadingSkeleton } from '@/components/LoadingSkeleton';
+import { printHtmlWithConfig } from '@/utils/printUtils';
 
 export default function CupomView() {
   const { id } = useParams<{ id: string }>();
@@ -185,7 +186,10 @@ export default function CupomView() {
 
     const qrCodeData = `${APP_PUBLIC_URL}/cupom/${sale.id}`;
     const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
-    printTermica(html);
+    await printHtmlWithConfig(html, cupomConfig || undefined, {
+      jobName: `AtivaFIX Reimpressao Cupom #${sale.numero || ''}`.trim(),
+      source: 'cupom-view-reimpressao',
+    });
   };
 
   const handleDownloadPDF = async () => {

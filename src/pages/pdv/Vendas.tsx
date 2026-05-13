@@ -37,11 +37,13 @@ import {
   CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { ImportarVendasRetroativas } from '@/components/pdv/ImportarVendasRetroativas';
-import { generateCupomPDF, generateCupomTermica, printTermica } from '@/utils/pdfGenerator';
+import { generateCupomPDF, generateCupomTermica } from '@/utils/pdfGenerator';
 import { APP_PUBLIC_URL } from '@/utils/appUrl';
 import { openWhatsApp, formatVendaMessage } from '@/utils/whatsapp';
 import { useSales, useCancelRequests } from '@/hooks/usePDV';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCupomConfig } from '@/hooks/useCupomConfig';
+import { printHtmlWithConfig } from '@/utils/printUtils';
 import { Sale, SALE_STATUS_LABELS } from '@/types/pdv';
 import type { CancelRequest } from '@/types/pdv';
 import { from } from '@/integrations/db/client';
@@ -65,6 +67,7 @@ const SALE_STATUS_COLORS: Record<Sale['status'], string> = {
 export default function Vendas() {
   const navigate = useNavigate();
   const { sales, isLoading, getSaleById, cancelSale, deleteSale } = useSales();
+  const { data: cupomConfig } = useCupomConfig();
   const { isAdmin, profile } = useAuth();
   const { createRequest, requests: cancelRequests, isLoading: cancelRequestsLoading, approveRequest, rejectRequest, refreshRequests } = useCancelRequests();
   const { toast } = useToast();
@@ -334,47 +337,13 @@ export default function Vendas() {
       // Gerar QR code com URL para 2ª via do cupom
       const qrCodeData = `${APP_PUBLIC_URL}/cupom/${fullSale.id}`;
       const html = await generateCupomTermica(cupomData, qrCodeData);
-      
-      // Impressão direta sem abrir janela
-      const printFrame = document.createElement('iframe');
-      printFrame.style.position = 'fixed';
-      printFrame.style.right = '0';
-      printFrame.style.bottom = '0';
-      printFrame.style.width = '0';
-      printFrame.style.height = '0';
-      printFrame.style.border = '0';
-      document.body.appendChild(printFrame);
-      
-      const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-      if (printDoc) {
-        printDoc.open();
-        printDoc.write(html);
-        printDoc.close();
-        
-        // Aguardar carregamento e imprimir
-        setTimeout(() => {
-          try {
-            printFrame.contentWindow?.focus();
-            printFrame.contentWindow?.print();
-            
-            // Remover iframe após impressão
-            setTimeout(() => {
-              try {
-                if (printFrame.parentNode) {
-                  document.body.removeChild(printFrame);
-                }
-              } catch (e) {
-                console.error('Erro ao remover iframe:', e);
-              }
-            }, 1000);
-          } catch (e) {
-            console.error('Erro ao imprimir:', e);
-            toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
-          }
-        }, 500);
-      }
+      await printHtmlWithConfig(html, cupomConfig || undefined, {
+        jobName: `AtivaFIX Reimpressao Cupom #${fullSale.numero || ''}`.trim(),
+        source: 'vendas-reimpressao',
+      });
     } catch (error) {
       console.error('Erro ao imprimir cupom:', error);
+      toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
     }
   };
 

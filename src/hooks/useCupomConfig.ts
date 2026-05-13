@@ -18,6 +18,8 @@ export interface CupomConfig {
   imprimir_2_vias?: boolean;
   imprimir_sem_dialogo?: boolean;
   impressora_padrao?: string;
+  usar_print_agent?: boolean;
+  print_agent_url?: string;
 }
 
 export function useCupomConfig() {

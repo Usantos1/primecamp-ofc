@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "check:db": "node scripts/verificar-db-mode.js",
     "server": "node server/index.js",
-    "api": "node server/index.js"
+    "api": "node server/index.js",
+    "print-agent": "node scripts/print-agent/agent.cjs",
+    "print-agent:build-installer": "powershell -ExecutionPolicy Bypass -File scripts/print-agent/build-windows-installer.ps1"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",

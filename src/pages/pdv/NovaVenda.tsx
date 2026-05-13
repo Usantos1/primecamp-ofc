@@ -37,7 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/LoadingButton';
 import { cn } from '@/lib/utils';
 import { useWhatsApp } from '@/hooks/useWhatsApp';
-import { updatePrintStatus } from '@/utils/printUtils';
+import { printHtmlWithConfig, updatePrintStatus } from '@/utils/printUtils';
 import { VoucherPayment } from '@/components/pdv/VoucherPayment';
 import { useRefunds } from '@/hooks/useRefunds';
 import { usePaymentMethods as usePaymentMethodsHook } from '@/hooks/usePaymentMethods';
@@ -76,6 +76,24 @@ export default function NovaVenda() {
   
   const { produtos, isLoading: produtosLoading } = useProdutosSupabase();
   const { data: cupomConfig } = useCupomConfig();
+  const loadFreshCupomConfig = useCallback(async () => {
+    try {
+      const cupomKey = user?.company_id ? `cupom_config_${user.company_id}` : 'cupom_config';
+      const { data: kvData, error: kvError } = await from('kv_store_2c4defad')
+        .select('value')
+        .eq('key', cupomKey)
+        .limit(1)
+        .execute();
+
+      if (!kvError && kvData?.[0]?.value) {
+        return kvData[0].value as typeof cupomConfig;
+      }
+    } catch (error) {
+      console.warn('[IMPRESSÃO] Não foi possível recarregar config do cupom:', error);
+    }
+
+    return cupomConfig;
+  }, [cupomConfig, user?.company_id]);
   
   // Buscar formas de pagamento configuradas
   const { paymentMethods, fetchPaymentMethods } = usePaymentMethodsHook();
@@ -1185,6 +1203,13 @@ export default function NovaVenda() {
     }, 100);
   }, []);
 
+  const prepararNovaVenda = useCallback(() => {
+    onCupomPrintClosedRef.current = null;
+    limparPDV();
+    navigate('/pdv', { replace: true });
+    toast({ title: 'PDV limpo. Pronto para nova venda!' });
+  }, [limparPDV, navigate, toast]);
+
   // Ao fechar a janela de impressão do cupom (afterprint), limpar PDV e ir para /pdv
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -1426,14 +1451,9 @@ export default function NovaVenda() {
         toast({ title: 'Venda finalizada com sucesso!' });
         // Limpar e redirecionar imediatamente para não deixar URL/estado amarrados à venda anterior
         const finalizedSaleId = id;
-        limparPDV();
-        navigate('/pdv', { replace: true });
-        toast({ title: 'PDV limpo. Pronto para nova venda!' });
+        prepararNovaVenda();
         // Ao fechar a janela de impressão do cupom, garantir PDV limpo e em /pdv
-        onCupomPrintClosedRef.current = () => {
-          limparPDV();
-          navigate('/pdv', { replace: true });
-        };
+        onCupomPrintClosedRef.current = prepararNovaVenda;
         // Impressão em segundo plano (sem bloquear a tela)
         setTimeout(async () => {
           try {
@@ -1461,7 +1481,7 @@ export default function NovaVenda() {
     } finally {
       setIsSaving(false);
     }
-  }, [cart, isEditing, id, sale, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById, limparPDV]);
+  }, [cart, isEditing, id, sale, selectedCliente, observacoes, totals, items, payments, createSale, addItem, updateSale, finalizeSale, removeItem, updateItem, navigate, toast, setShowCheckout, setIsSaving, cashSession, updateOSStatus, getSaleById, limparPDV, prepararNovaVenda]);
 
   // Atalhos de teclado
   useEffect(() => {
@@ -1914,20 +1934,20 @@ export default function NovaVenda() {
           setShowCheckout(false);
           
           // Ao fechar a janela de impressão do cupom, limpar PDV e ir para /pdv (sem link da venda anterior)
-          onCupomPrintClosedRef.current = () => {
-            limparPDV();
-            navigate('/pdv', { replace: true });
-            toast({ title: 'PDV limpo. Pronto para nova venda!' });
-          };
+          onCupomPrintClosedRef.current = prepararNovaVenda;
           // Aguardar e imprimir automaticamente com dados frescos da venda
           setPendingSaleForCupom(updatedSale);
           setTimeout(async () => {
-            const finalSale = await getSaleById(id);
-            if (finalSale?.items?.length && finalSale?.payments?.length) {
-              console.log('[IMPRESSÃO] Iniciando impressão automática...', { saleId: finalSale.id });
-              await handlePrintCupomDirect(finalSale);
-            } else {
-              console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos');
+            try {
+              const finalSale = await getSaleById(id);
+              if (finalSale?.items?.length && finalSale?.payments?.length) {
+                console.log('[IMPRESSÃO] Iniciando impressão automática...', { saleId: finalSale.id });
+                await handlePrintCupomDirect(finalSale);
+              } else {
+                console.warn('[IMPRESSÃO] Impressão automática não executada: venda sem itens ou pagamentos');
+              }
+            } finally {
+              prepararNovaVenda();
             }
           }, 800);
         } catch (error: any) {
@@ -1955,24 +1975,19 @@ export default function NovaVenda() {
     if (pendingSaleForCupom?.id) {
       try {
         // Ao fechar a janela de impressão, limpar PDV e ir para /pdv
-        onCupomPrintClosedRef.current = () => {
-          limparPDV();
-          navigate('/pdv', { replace: true });
-          toast({ title: 'PDV limpo. Pronto para nova venda!' });
-        };
+        onCupomPrintClosedRef.current = prepararNovaVenda;
         const saleParaCupom = await getSaleById(pendingSaleForCupom.id);
         if (saleParaCupom?.items?.length && saleParaCupom?.payments?.length) {
           await handlePrintCupomDirect(saleParaCupom);
+          prepararNovaVenda();
         } else {
-          limparPDV();
-          navigate('/pdv', { replace: true });
+          prepararNovaVenda();
         }
       } catch (error) {
         console.error('Erro ao emitir cupom:', error);
         toast({ title: 'Erro ao emitir cupom', variant: 'destructive' });
         // Limpar mesmo em caso de erro
-        limparPDV();
-        navigate('/pdv', { replace: true });
+        prepararNovaVenda();
       }
     } else {
       // Se não tiver venda pendente, apenas limpar
@@ -2104,73 +2119,18 @@ export default function NovaVenda() {
 
       // Gerar QR code com URL para 2ª via do cupom
       const qrCodeData = `${APP_PUBLIC_URL}/cupom/${saleToUse.id}`;
-      const html = await generateCupomTermica(cupomData, qrCodeData, cupomConfig || undefined);
+      const freshCupomConfig = await loadFreshCupomConfig();
+      const html = await generateCupomTermica(cupomData, qrCodeData, freshCupomConfig || undefined);
       
-      const imprimirSemDialogo = cupomConfig?.imprimir_sem_dialogo !== false; // Default true
-      const imprimir2Vias = cupomConfig?.imprimir_2_vias === true;
+      const imprimirSemDialogo = freshCupomConfig?.imprimir_sem_dialogo !== false; // Default true
+      const imprimir2Vias = freshCupomConfig?.imprimir_2_vias === true;
       
-      console.log('[IMPRESSÃO] Configurações:', { imprimirSemDialogo, imprimir2Vias, cupomConfig });
+      console.log('[IMPRESSÃO] Configurações:', { imprimirSemDialogo, imprimir2Vias, cupomConfig: freshCupomConfig });
       
-      const printCupom = () => {
-        return new Promise<void>((resolve) => {
-          // Impressão direta sem abrir janela
-          const printFrame = document.createElement('iframe');
-          printFrame.style.position = 'fixed';
-          printFrame.style.right = '0';
-          printFrame.style.bottom = '0';
-          printFrame.style.width = '0';
-          printFrame.style.height = '0';
-          printFrame.style.border = '0';
-          document.body.appendChild(printFrame);
-          
-          const printDoc = printFrame.contentWindow?.document || printFrame.contentDocument;
-          if (printDoc) {
-            printDoc.open();
-            printDoc.write(html);
-            printDoc.close();
-            
-            // Aguardar carregamento e imprimir
-            setTimeout(() => {
-              try {
-                const win = printFrame.contentWindow;
-                if (win) {
-                  win.onafterprint = () => {
-                    try {
-                      win.parent?.postMessage?.({ type: 'primecamp-cupom-print-closed' }, '*');
-                    } catch (_) {}
-                  };
-                  // Fallback: alguns navegadores não disparam onafterprint ao cancelar; assumir fechado após 4s
-                  win.setTimeout(() => {
-                    try {
-                      win.parent?.postMessage?.({ type: 'primecamp-cupom-print-closed' }, '*');
-                    } catch (_) {}
-                  }, 4000);
-                }
-                printFrame.contentWindow?.focus();
-                // Imprimir diretamente - navegadores podem mostrar diálogo
-                printFrame.contentWindow?.print();
-                console.log('[IMPRESSÃO] Comando de impressão enviado');
-                
-                // Remover iframe após impressão
-                setTimeout(() => {
-                  try {
-                    if (printFrame.parentNode) {
-                      document.body.removeChild(printFrame);
-                    }
-                  } catch (e) {
-                    console.error('Erro ao remover iframe:', e);
-                  }
-                  resolve();
-                }, 2000);
-              } catch (e) {
-                console.error('Erro ao imprimir:', e);
-                toast({ title: 'Erro ao imprimir cupom', variant: 'destructive' });
-                resolve();
-              }
-            }, 1000); // Delay para garantir que HTML está totalmente carregado
-          } else {
-            resolve();
-          }
+      const printCupom = async () => {
+        await printHtmlWithConfig(html, freshCupomConfig || undefined, {
+          jobName: `AtivaFIX Cupom #${saleToUse.numero || ''}`.trim(),
+          source: 'pdv-venda',
         });
       };
       

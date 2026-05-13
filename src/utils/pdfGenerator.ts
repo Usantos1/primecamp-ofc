@@ -458,6 +458,138 @@ Agradecemos a preferência!`;
   return html;
 }
 
+function stripAccents(value: string) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function sanitizeThermalText(value: unknown) {
+  return stripAccents(String(value ?? '')).replace(/\s+/g, ' ').trim();
+}
+
+function centerText(value: string, width: number) {
+  const text = sanitizeThermalText(value).slice(0, width);
+  const left = Math.max(0, Math.floor((width - text.length) / 2));
+  return `${' '.repeat(left)}${text}`;
+}
+
+function lineText(left: string, right: string, width: number) {
+  const l = sanitizeThermalText(left);
+  const r = sanitizeThermalText(right);
+  const maxLeft = Math.max(0, width - r.length - 1);
+  const leftText = l.length > maxLeft ? l.slice(0, maxLeft) : l;
+  return `${leftText}${' '.repeat(Math.max(1, width - leftText.length - r.length))}${r}`;
+}
+
+function wrapText(value: string, width: number) {
+  const text = sanitizeThermalText(value);
+  if (!text) return [];
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+
+  for (const word of words) {
+    if (!current) {
+      current = word;
+      continue;
+    }
+    if (`${current} ${word}`.length <= width) {
+      current += ` ${word}`;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+export function generateCupomTermicaText(data: CupomData, width = 42): string {
+  const sep = '-'.repeat(width);
+  const lines: string[] = [];
+  const empresa = data.empresa || {};
+  const empresaNome = empresa.nome || 'PRIME CAMP';
+  const hora = String(data.hora || '').split(':').slice(0, 2).join(':');
+
+  lines.push(centerText(empresaNome, width));
+  if (empresa.cnpj) lines.push(centerText(`CNPJ: ${empresa.cnpj}`, width));
+  if (empresa.ie) lines.push(centerText(`IE: ${empresa.ie}`, width));
+  if (empresa.endereco) wrapText(empresa.endereco, width).forEach((l) => lines.push(centerText(l, width)));
+  if (empresa.telefone || empresa.whatsapp) {
+    lines.push(centerText(`${empresa.telefone ? `Tel:${empresa.telefone}` : ''}${empresa.telefone && empresa.whatsapp ? ' / ' : ''}${empresa.whatsapp ? `WhatsApp:${empresa.whatsapp}` : ''}`, width));
+  }
+
+  lines.push(sep);
+  lines.push(centerText(`PEDIDO No ${data.numero}`, width));
+  lines.push(lineText('Operacao:', 'VENDA', width));
+  lines.push(`${data.data} - ${hora}`);
+  if (data.vendedor) lines.push(lineText(`${data.vendedor_label || 'VENDEDOR'}:`, data.vendedor, width));
+  lines.push('');
+  lines.push(lineText('CLIENTE:', data.cliente?.nome || 'CONSUMIDOR FINAL', width));
+  if (data.cliente?.cpf_cnpj) lines.push(lineText('CPF/CNPJ:', data.cliente.cpf_cnpj, width));
+  if (data.cliente?.telefone) lines.push(lineText('TELEFONE:', data.cliente.telefone, width));
+  lines.push(sep);
+  lines.push('COD  DESCRICAO');
+  lines.push(lineText('QTD  VL UNIT', 'VL TOTAL', width));
+  lines.push(sep);
+
+  data.itens.forEach((item) => {
+    const codigo = sanitizeThermalText(item.codigo || '-');
+    wrapText(`${codigo}  ${(item.nome || '').toUpperCase()}`, width).forEach((l) => lines.push(l));
+    lines.push(lineText(`${item.quantidade} x ${formatCurrency(item.valor_unitario)}`, formatCurrency(item.valor_total), width));
+    if (Number(item.desconto || 0) > 0) {
+      lines.push(lineText('Desconto item:', `-${formatCurrency(item.desconto)}`, width));
+    }
+    lines.push('');
+  });
+
+  lines.push(sep);
+  lines.push(lineText('Total:', formatCurrency(Number(data.subtotal || 0)), width));
+  lines.push(lineText('Desconto:', formatCurrency(Number(data.desconto_total || 0)), width));
+  lines.push(lineText('Total a Pagar:', formatCurrency(Number(data.total || 0)), width));
+  lines.push('');
+
+  data.pagamentos.forEach((pag) => {
+    const forma = PAYMENT_METHOD_LABELS[pag.forma as keyof typeof PAYMENT_METHOD_LABELS] || pag.forma || 'Pagamento';
+    const valor = (/dinheiro/i.test(pag.forma || '') && Number(pag.troco || 0) > 0)
+      ? Number(pag.valor || 0) + Number(pag.troco || 0)
+      : Number(pag.valor || 0);
+    const parcelas = pag.parcelas && pag.parcelas > 1 ? ` (${pag.parcelas}x)` : '';
+    lines.push(lineText(`Forma: ${forma}${parcelas}`, formatCurrency(valor), width));
+  });
+
+  const valorPago = data.pagamentos.reduce((sum, pag) => {
+    const valor = (/dinheiro/i.test(pag.forma || '') && Number(pag.troco || 0) > 0)
+      ? Number(pag.valor || 0) + Number(pag.troco || 0)
+      : Number(pag.valor || 0);
+    return sum + valor;
+  }, 0);
+  const troco = data.pagamentos.reduce((sum, pag) => sum + Number(pag.troco || 0), 0);
+  lines.push(lineText('Valor Pago:', formatCurrency(valorPago), width));
+  if (troco > 0) lines.push(lineText('Troco:', formatCurrency(troco), width));
+
+  if (data.mostrar_termos_garantia_os) {
+    lines.push(sep);
+    lines.push('TERMOS DE GARANTIA');
+    wrapText('Garantia de 90 dias sobre a peca substituida e o servico realizado, contados a partir da data de retirada do aparelho.', width).forEach((l) => lines.push(l));
+    wrapText('A garantia nao cobre mau uso, quedas, agua, oxidacao, danos fisicos ou manutencao por terceiros.', width).forEach((l) => lines.push(l));
+    if (data.data_vencimento_garantia) lines.push(`Vencimento: ${data.data_vencimento_garantia}`);
+  }
+
+  if (data.mensagem_rodape) {
+    lines.push(sep);
+    String(data.mensagem_rodape).split(/\r?\n/).map((l) => l.trim()).filter(Boolean).forEach((l) => {
+      wrapText(l, width).forEach((wrapped) => lines.push(centerText(wrapped, width)));
+    });
+  }
+
+  lines.push(sep);
+  lines.push(centerText(`Impresso em ${data.data} - ${hora}`, width));
+  lines.push('');
+  lines.push('');
+  return `${lines.join('\n')}\n`;
+}
+
 export async function generateCupomPDF(data: CupomData, qrCodeData?: string): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: 'portrait',

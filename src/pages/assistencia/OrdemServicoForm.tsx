@@ -57,9 +57,10 @@ import { useTelegramConfig } from '@/hooks/useTelegramConfig';
 import { OSSummaryHeader } from '@/components/assistencia/OSSummaryHeader';
 import { generateOSTermica } from '@/utils/osTermicaGenerator';
 import { generateOSPDF } from '@/utils/osPDFGenerator';
-import { printTermica, generateCupomTermica } from '@/utils/pdfGenerator';
-import { updatePrintStatus, printViaIframe } from '@/utils/printUtils';
+import { generateCupomTermica } from '@/utils/pdfGenerator';
+import { printHtmlWithConfig } from '@/utils/printUtils';
 import { printOSTermicaDirect, resolveClienteForOsPrint, fetchPagamentosOsForTermica, buildClienteEnderecoStr } from '@/utils/osPrintUtils';
+import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { useAlertsFire } from '@/hooks/useAlerts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -480,6 +481,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
   const { imageUrl: osImageReferenceUrl } = useOSImageReference();
   const { itemsEntrada: checklistEntradaConfig, itemsSaida: checklistSaidaConfig } = useChecklistConfig();
   const { paymentMethods, fetchPaymentMethods } = usePaymentMethodsHook();
+  const { data: cupomConfig } = useCupomConfig();
   
   // Configurações do Telegram do banco de dados
   const {
@@ -1646,16 +1648,10 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
           data_vencimento_garantia: vencGarantia.toLocaleDateString('pt-BR'),
         };
         const html = await generateCupomTermica(cupomData);
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-        document.body.appendChild(iframe);
-        const doc = iframe.contentWindow?.document;
-        if (doc) {
-          doc.open();
-          doc.write(html);
-          doc.close();
-          setTimeout(() => { iframe.contentWindow?.print(); setTimeout(() => iframe.parentNode?.removeChild(iframe), 2000); }, 800);
-        }
+        await printHtmlWithConfig(html, cupomConfig || undefined, {
+          jobName: `AtivaFIX Pagamento OS #${currentOS.numero || ''}`.trim(),
+          source: 'os-pagamento',
+        });
       }
     } catch (e: any) {
       const err = e?.error ?? e;
@@ -2546,7 +2542,8 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
             marcaData,
             modeloData,
             checklistEntradaConfig,
-            osImageReferenceUrl
+            osImageReferenceUrl,
+            cupomConfig || undefined
           );
 
           toast({ title: 'Checklist salvo e OS impressa automaticamente!' });
@@ -2993,11 +2990,16 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
           pagamentosOs,
         });
 
-        // Imprimir ambas as vias
-        printTermica(htmlCliente);
-        setTimeout(() => {
-          printTermica(htmlLoja);
-        }, 1000);
+        // Imprimir ambas as vias usando o agente local quando estiver configurado.
+        await printHtmlWithConfig(htmlCliente, cupomConfig || undefined, {
+          jobName: `AtivaFIX OS #${osToPrint?.numero || osToPrint?.id || ''} Cliente`.trim(),
+          source: 'os-reimpressao-cliente',
+        });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await printHtmlWithConfig(htmlLoja, cupomConfig || undefined, {
+          jobName: `AtivaFIX OS #${osToPrint?.numero || osToPrint?.id || ''} Loja`.trim(),
+          source: 'os-reimpressao-loja',
+        });
 
         toast({ title: 'Impressão térmica gerada', description: '2 vias impressas (Cliente e Loja)' });
       } catch (error: any) {

@@ -3,8 +3,9 @@
 // ============================================
 
 import { generateOSTermica } from './osTermicaGenerator';
-import { printViaIframe, updatePrintStatus } from './printUtils';
+import { printHtmlWithConfig, updatePrintStatus } from './printUtils';
 import { from } from '@/integrations/db/client';
+import type { CupomConfig } from '@/hooks/useCupomConfig';
 
 const CLIENTE_PRINT_FIELDS =
   'id,nome,cpf_cnpj,logradouro,numero,complemento,bairro,cidade,estado,uf,cep';
@@ -79,7 +80,8 @@ export async function printOSTermicaDirect(
   marca: any,
   modelo: any,
   checklistEntradaConfig: any[],
-  osImageReferenceUrl?: string | null
+  osImageReferenceUrl?: string | null,
+  printConfig?: Pick<CupomConfig, 'usar_print_agent' | 'print_agent_url' | 'impressora_padrao'> | null
 ): Promise<void> {
   try {
     const clienteResolved = await resolveClienteForOsPrint(os?.cliente_id, cliente);
@@ -143,7 +145,10 @@ export async function printOSTermicaDirect(
 
     // Imprimir primeira via (cliente)
     console.log('[IMPRESSÃO OS] Iniciando impressão da primeira via (cliente)');
-    await printViaIframe(htmlCliente);
+    await printHtmlWithConfig(htmlCliente, printConfig, {
+      jobName: `AtivaFIX OS #${os?.numero || os?.id || ''} Cliente`.trim(),
+      source: 'os-cliente',
+    });
     console.log('[IMPRESSÃO OS] Primeira via impressa');
 
     // Aguardar 3 segundos antes de imprimir segunda via
@@ -151,7 +156,10 @@ export async function printOSTermicaDirect(
     
     // Imprimir segunda via (loja)
     console.log('[IMPRESSÃO OS] Iniciando impressão da segunda via (loja)');
-    await printViaIframe(htmlLoja);
+    await printHtmlWithConfig(htmlLoja, printConfig, {
+      jobName: `AtivaFIX OS #${os?.numero || os?.id || ''} Loja`.trim(),
+      source: 'os-loja',
+    });
     console.log('[IMPRESSÃO OS] Segunda via impressa com sucesso');
 
     // Atualizar campos de impressão no banco (sucesso)

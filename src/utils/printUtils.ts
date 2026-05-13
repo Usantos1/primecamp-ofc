@@ -3,6 +3,8 @@
 // ============================================
 
 import { from } from '@/integrations/db/client';
+import type { CupomConfig } from '@/hooks/useCupomConfig';
+import { printHtmlViaAgent } from './localPrintAgent';
 
 /**
  * Atualiza campos de impressão no banco de dados após impressão.
@@ -97,4 +99,25 @@ export function printViaIframe(html: string): Promise<void> {
       reject(error);
     }
   });
+}
+
+export async function printHtmlWithConfig(
+  html: string,
+  config?: Pick<CupomConfig, 'usar_print_agent' | 'print_agent_url' | 'impressora_padrao'> | null,
+  options: { jobName?: string; source?: string } = {}
+): Promise<void> {
+  if (config?.usar_print_agent) {
+    try {
+      await printHtmlViaAgent(html, config, {
+        copies: 1,
+        jobName: options.jobName,
+        source: options.source,
+      });
+      return;
+    } catch (error) {
+      console.warn('[IMPRESSÃO] Agente local falhou, usando impressão do navegador:', error);
+    }
+  }
+
+  await printViaIframe(html);
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ModernLayout } from '@/components/ModernLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { from } from '@/integrations/db/client';
 import { LoadingButton } from '@/components/LoadingButton';
-import { Upload, Image as ImageIcon, Save } from 'lucide-react';
+import { Upload, Image as ImageIcon, Save, PlugZap, Download } from 'lucide-react';
+import { DEFAULT_PRINT_AGENT_URL, checkPrintAgent, testPrintAgent } from '@/utils/localPrintAgent';
+
+const PRINT_AGENT_DOWNLOAD_URL = '/downloads/AtivaFIX-Print-Agent-Setup.exe';
 
 interface CupomConfig {
   id?: string;
@@ -29,12 +33,15 @@ interface CupomConfig {
   imprimir_2_vias?: boolean;
   imprimir_sem_dialogo?: boolean;
   impressora_padrao?: string;
+  usar_print_agent?: boolean;
+  print_agent_url?: string;
 }
 
 export default function ConfiguracaoCupom() {
   const { isAdmin, user } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const canEditFull = isAdmin || hasPermission('vendas.manage');
   const canEditPrintOnly = hasPermission('vendas.create') || hasPermission('vendas.view');
   const [loading, setLoading] = useState(false);
@@ -54,6 +61,8 @@ export default function ConfiguracaoCupom() {
     imprimir_2_vias: false,
     imprimir_sem_dialogo: true,
     impressora_padrao: '',
+    usar_print_agent: false,
+    print_agent_url: DEFAULT_PRINT_AGENT_URL,
   });
 
   // Chave por empresa: cada empresa tem sua própria config no kv_store e na tabela cupom_config
@@ -175,6 +184,8 @@ export default function ConfiguracaoCupom() {
           imprimir_sem_dialogo: config.imprimir_sem_dialogo,
           impressora_padrao: config.impressora_padrao ?? current.impressora_padrao,
           imprimir_2_vias: config.imprimir_2_vias,
+          usar_print_agent: config.usar_print_agent,
+          print_agent_url: config.print_agent_url || DEFAULT_PRINT_AGENT_URL,
         };
       }
 
@@ -217,6 +228,7 @@ export default function ConfiguracaoCupom() {
         title: 'Configurações salvas!',
         description: canEditFull ? 'As configurações do cupom foram atualizadas.' : 'Configuração de impressão atualizada.',
       });
+      queryClient.invalidateQueries({ queryKey: ['cupom_config'] });
     } catch (error: any) {
       console.error('Erro ao salvar configurações:', error);
       toast({
@@ -226,6 +238,23 @@ export default function ConfiguracaoCupom() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestPrintAgent = async () => {
+    try {
+      await checkPrintAgent(config);
+      await testPrintAgent(config);
+      toast({
+        title: 'Agente local funcionando',
+        description: 'Teste enviado para a impressora.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Agente local não respondeu',
+        description: error?.message || 'Verifique se o AtivaFIX Print Agent está rodando.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -290,6 +319,47 @@ export default function ConfiguracaoCupom() {
                 <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
                   Nome da impressora para impressão direta. Em branco = impressora padrão do sistema.
                 </p>
+              </div>
+              <div className="pt-3 border-t-2 border-gray-200 space-y-3">
+                <div className="rounded-lg border-2 border-dashed border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+                  <div>
+                    <p className="text-xs md:text-sm font-semibold text-emerald-800">Instalador do agente local</p>
+                    <p className="text-[10px] md:text-xs text-emerald-700">
+                      Baixe e execute no computador do caixa para imprimir automaticamente sem abrir janela.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" asChild className="gap-2 bg-white">
+                    <a href={PRINT_AGENT_DOWNLOAD_URL} download>
+                      <Download className="h-4 w-4" />
+                      Baixar AtivaFIX Print Agent
+                    </a>
+                  </Button>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="usar_print_agent_print_only"
+                    checked={config.usar_print_agent === true}
+                    onCheckedChange={(checked) => setConfig({ ...config, usar_print_agent: checked === true })}
+                    className="h-4 w-4 md:h-5 md:w-5 mt-0.5"
+                  />
+                  <Label htmlFor="usar_print_agent_print_only" className="cursor-pointer text-xs md:text-sm leading-tight">
+                    Usar AtivaFIX Print Agent local para impressão sem diálogo
+                  </Label>
+                </div>
+                <div>
+                  <Label htmlFor="print_agent_url_print_only" className="text-xs md:text-sm">URL do agente local</Label>
+                  <Input
+                    id="print_agent_url_print_only"
+                    value={config.print_agent_url || DEFAULT_PRINT_AGENT_URL}
+                    onChange={(e) => setConfig({ ...config, print_agent_url: e.target.value })}
+                    placeholder={DEFAULT_PRINT_AGENT_URL}
+                    className="h-9 md:h-10 text-sm border-2 border-gray-300 mt-1.5"
+                  />
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={handleTestPrintAgent} className="gap-2">
+                  <PlugZap className="h-4 w-4" />
+                  Testar agente local
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -540,6 +610,50 @@ export default function ConfiguracaoCupom() {
               <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
                 Nome da impressora que será usada para impressão direta. Deixe em branco para usar a impressora padrão do sistema.
               </p>
+            </div>
+            <div className="pt-3 border-t-2 border-gray-200 space-y-3">
+              <div className="rounded-lg border-2 border-dashed border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+                <div>
+                  <p className="text-xs md:text-sm font-semibold text-emerald-800">Instalador do agente local</p>
+                  <p className="text-[10px] md:text-xs text-emerald-700">
+                    Baixe e execute no computador do caixa para imprimir automaticamente sem abrir janela.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" asChild className="gap-2 bg-white">
+                  <a href={PRINT_AGENT_DOWNLOAD_URL} download>
+                    <Download className="h-4 w-4" />
+                    Baixar AtivaFIX Print Agent
+                  </a>
+                </Button>
+              </div>
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="usar_print_agent"
+                  checked={config.usar_print_agent === true}
+                  onCheckedChange={(checked) => setConfig({ ...config, usar_print_agent: checked === true })}
+                  className="h-4 w-4 md:h-5 md:w-5 mt-0.5"
+                />
+                <Label htmlFor="usar_print_agent" className="cursor-pointer text-xs md:text-sm leading-tight">
+                  Usar AtivaFIX Print Agent local para imprimir sem diálogo no Chrome normal
+                </Label>
+              </div>
+              <div>
+                <Label htmlFor="print_agent_url" className="text-xs md:text-sm">URL do agente local</Label>
+                <Input
+                  id="print_agent_url"
+                  value={config.print_agent_url || DEFAULT_PRINT_AGENT_URL}
+                  onChange={(e) => setConfig({ ...config, print_agent_url: e.target.value })}
+                  placeholder={DEFAULT_PRINT_AGENT_URL}
+                  className="h-9 md:h-10 text-sm border-2 border-gray-300 mt-1.5"
+                />
+                <p className="text-[10px] md:text-xs text-muted-foreground mt-1">
+                  Rode o agente no computador do caixa. Padrão: {DEFAULT_PRINT_AGENT_URL}
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={handleTestPrintAgent} className="gap-2">
+                <PlugZap className="h-4 w-4" />
+                Testar agente local
+              </Button>
             </div>
           </CardContent>
         </Card>
