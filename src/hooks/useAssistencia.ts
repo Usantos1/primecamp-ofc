@@ -418,6 +418,7 @@ export function useOrdensServico() {
       senha_numerica: data.senha_numerica,
       padrao_desbloqueio: data.padrao_desbloqueio,
       possui_senha: data.possui_senha || false,
+      possui_senha_tipo: data.possui_senha_tipo,
       deixou_aparelho: data.deixou_aparelho ?? true,
       apenas_agendamento: data.apenas_agendamento || false,
       descricao_problema: data.descricao_problema || '',

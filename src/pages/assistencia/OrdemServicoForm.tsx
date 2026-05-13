@@ -59,7 +59,7 @@ import { generateOSTermica } from '@/utils/osTermicaGenerator';
 import { generateOSPDF } from '@/utils/osPDFGenerator';
 import { generateCupomTermica } from '@/utils/pdfGenerator';
 import { printHtmlWithConfig } from '@/utils/printUtils';
-import { printOSTermicaDirect, resolveClienteForOsPrint, fetchPagamentosOsForTermica, buildClienteEnderecoStr } from '@/utils/osPrintUtils';
+import { printOSTermicaDirect, resolveClienteForOsPrint, fetchPagamentosOsForTermica, buildClienteEnderecoStr, buildClienteDocumentoStr } from '@/utils/osPrintUtils';
 import { useCupomConfig } from '@/hooks/useCupomConfig';
 import { useChecklistConfig } from '@/hooks/useChecklistConfig';
 import { useAlertsFire } from '@/hooks/useAlerts';
@@ -2862,16 +2862,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         // Buscar imagem de referência do aparelho
         const imagemReferenciaUrl = osImageReferenceUrl || null;
         const areasDefeito = osToPrint.areas_defeito || [];
-        const clienteCpfPdf = cliente?.cpf_cnpj || null;
-        const clienteEnderecoPdfParts = cliente ? [
-          cliente.logradouro,
-          cliente.numero,
-          cliente.complemento,
-          cliente.bairro,
-          [cliente.cidade, cliente.estado || cliente.uf].filter(Boolean).join('/'),
-          cliente.cep,
-        ].filter(Boolean) : [];
-        const clienteEnderecoPdfStr = clienteEnderecoPdfParts.length > 0 ? clienteEnderecoPdfParts.join(', ') : null;
+        const clienteCpfPdf = buildClienteDocumentoStr(cliente, osToPrint);
+        const clienteEnderecoPdfStr = buildClienteEnderecoStr(cliente);
 
         // Gerar uma única página com ambas as vias lado a lado
         const htmlCompleto = await generateOSPDF({
@@ -2941,16 +2933,8 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
         const imagemReferenciaUrl = osImageReferenceUrl || null;
         const areasDefeito = osToPrint.areas_defeito || [];
 
-        const clienteCpf = cliente?.cpf_cnpj || null;
-        const clienteEnderecoParts = cliente ? [
-          cliente.logradouro,
-          cliente.numero,
-          cliente.complemento,
-          cliente.bairro,
-          [cliente.cidade, cliente.estado || cliente.uf].filter(Boolean).join('/'),
-          cliente.cep,
-        ].filter(Boolean) : [];
-        const clienteEnderecoStr = clienteEnderecoParts.length > 0 ? clienteEnderecoParts.join(', ') : null;
+        const clienteCpf = buildClienteDocumentoStr(cliente, osToPrint);
+        const clienteEnderecoStr = buildClienteEnderecoStr(cliente);
 
         const nomeCli = cliente?.nome || osToPrint.cliente_nome || 'Cliente';
 

@@ -8,7 +8,16 @@ import { from } from '@/integrations/db/client';
 import type { CupomConfig } from '@/hooks/useCupomConfig';
 
 const CLIENTE_PRINT_FIELDS =
-  'id,nome,cpf_cnpj,logradouro,numero,complemento,bairro,cidade,estado,uf,cep';
+  'id,nome,cpf_cnpj,telefone,whatsapp,logradouro,numero,complemento,bairro,cidade,estado,uf,cep';
+
+function firstFilled(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (value == null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return null;
+}
 
 /**
  * Busca cliente no banco para CPF/endereço na impressão (cache do formulário costuma vazio na 1ª impressão).
@@ -38,8 +47,11 @@ export async function resolveClienteForOsPrint(
 
 export function buildClienteEnderecoStr(cliente: any): string | null {
   if (!cliente) return null;
+  const enderecoCompleto = firstFilled(cliente.endereco, cliente.endereco_completo, cliente.cliente_endereco);
+  if (enderecoCompleto) return enderecoCompleto;
+
   const parts = [
-    cliente.logradouro,
+    firstFilled(cliente.logradouro, cliente.rua, cliente.address),
     cliente.numero,
     cliente.complemento,
     cliente.bairro,
@@ -47,6 +59,18 @@ export function buildClienteEnderecoStr(cliente: any): string | null {
     cliente.cep,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(', ') : null;
+}
+
+export function buildClienteDocumentoStr(cliente: any, os?: any): string | null {
+  return firstFilled(
+    cliente?.cpf_cnpj,
+    cliente?.cpf,
+    cliente?.cnpj,
+    os?.cliente_cpf_cnpj,
+    os?.cpf_cnpj,
+    os?.cliente_cpf,
+    os?.documento_cliente
+  );
 }
 
 export async function fetchPagamentosOsForTermica(
@@ -97,7 +121,7 @@ export async function printOSTermicaDirect(
     const imagemReferenciaUrl = osImageReferenceUrl || null;
     const areasDefeito = os.areas_defeito || [];
     
-    const clienteCpf = clienteResolved?.cpf_cnpj || null;
+    const clienteCpf = buildClienteDocumentoStr(clienteResolved, os);
     const clienteEnderecoStr = buildClienteEnderecoStr(clienteResolved);
 
     // Parse checklist entrada

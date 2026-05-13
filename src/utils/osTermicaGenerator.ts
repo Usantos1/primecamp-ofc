@@ -44,6 +44,16 @@ function labelFormaPagamentoOs(forma: string) {
 
 export async function generateOSTermica(data: OSTermicaData): Promise<string> {
   const { os, clienteNome, clienteCpf, clienteEndereco, marcaNome, modeloNome, checklistEntrada, checklistEntradaMarcados, imagemReferenciaUrl, areasDefeito, via, omitirChecklist, pagamentosOs } = data;
+  const firstFilled = (...values: unknown[]) => {
+    for (const value of values) {
+      if (value == null) continue;
+      const text = String(value).trim();
+      if (text) return text;
+    }
+    return '';
+  };
+  const clienteCpfPrint = firstFilled(clienteCpf, (os as any).cliente_cpf_cnpj, (os as any).cpf_cnpj, (os as any).cliente_cpf, (os as any).documento_cliente);
+  const clienteEnderecoPrint = firstFilled(clienteEndereco, (os as any).cliente_endereco, (os as any).endereco_cliente, (os as any).endereco);
 
   // Gerar QR Code com URL da OS
   let qrCodeImg = '';
@@ -125,18 +135,19 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
   const patternSvgHtml = patternToSvg(padraoParaImpressao);
 
   // Possui senha: seguir exatamente os status do formulário (SIM, SIM - DESLIZAR (DESENHO), NÃO, etc.)
-  const valorSenhaNum = os.senha_numerica || os.senha_aparelho || '';
+  const valorSenhaNum = firstFilled(os.senha_numerica, os.senha_aparelho);
   const ehPadraoDesenho = Boolean((os.padrao_desbloqueio && String(os.padrao_desbloqueio).trim()) || os.possui_senha_tipo === 'deslizar');
   const tipo = (os.possui_senha_tipo || '').toLowerCase();
+  const possuiSenha = tipo ? tipo !== 'nao' : (os.possui_senha === true || Boolean(valorSenhaNum || ehPadraoDesenho));
   // Não mostrar "Senha: Informado" quando for "CLIENTE NÃO QUIS DEIXAR SENHA"
-  const mostrarSenhaNum = os.possui_senha && !ehPadraoDesenho && tipo !== 'nao_autorizou';
-  const possuiSenhaTexto = !os.possui_senha
+  const mostrarSenhaNum = possuiSenha && !ehPadraoDesenho && tipo !== 'nao_autorizou' && tipo !== 'nao_sabe';
+  const possuiSenhaTexto = !possuiSenha
     ? POSSUI_SENHA_LABELS.nao
     : (POSSUI_SENHA_LABELS[tipo] ?? (ehPadraoDesenho ? POSSUI_SENHA_LABELS.deslizar : POSSUI_SENHA_LABELS.sim));
   let senhaHtml = `
     <div style="font-size: 10px; margin: 1px 0; padding: 2px; border: 1px solid #000;">
       <span class="bold">Possui senha: ${possuiSenhaTexto}</span>
-      ${mostrarSenhaNum ? `<div style="font-size: 9px; margin-top: 2px;">Senha: ${valorSenhaNum || 'Informado'}</div>` : ''}
+      ${mostrarSenhaNum ? `<div style="font-size: 9px; margin-top: 2px;">Senha: ${valorSenhaNum || 'NÃO INFORMADA'}</div>` : ''}
       ${ehPadraoDesenho && patternSvgHtml ? `<div style="margin-top: 2px;">${patternSvgHtml}</div>` : ''}
     </div>
   `;
@@ -323,8 +334,8 @@ export async function generateOSTermica(data: OSTermicaData): Promise<string> {
       <div class="section-title">DADOS DO CLIENTE</div>
       <div style="font-size: 11px; font-weight: 900; margin: 2px 0; line-height: 1.35;">Cliente: ${clienteNome}</div>
       <div style="font-size: 11px; font-weight: 900; margin: 2px 0; line-height: 1.35;">Contato: ${os.telefone_contato || '-'}</div>
-      <div style="font-size: 10px; font-weight: 700; margin: 2px 0; line-height: 1.35;">CPF/CNPJ: ${clienteCpf || '—'}</div>
-      <div style="font-size: 9px; font-weight: 700; margin: 2px 0; line-height: 1.3;">Endereço: ${clienteEndereco || '—'}</div>
+      <div style="font-size: 10px; font-weight: 700; margin: 2px 0; line-height: 1.35;">CPF/CNPJ: ${clienteCpfPrint || '—'}</div>
+      <div style="font-size: 9px; font-weight: 700; margin: 2px 0; line-height: 1.3;">Endereço: ${clienteEnderecoPrint || '—'}</div>
       <div class="divider-dashed"></div>
       
       <div class="section-title">EQUIPAMENTO</div>
