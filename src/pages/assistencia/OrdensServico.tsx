@@ -54,6 +54,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const formatClienteNome = (nome?: string | null) =>
+  nome?.trim() ? nome.trim().toLocaleUpperCase('pt-BR') : '-';
+
 // Componente de linha da tabela otimizado — 1 clique seleciona, 2 cliques abre a OS
 const OSTableRow = memo(({ 
   os, 
@@ -117,7 +120,7 @@ const OSTableRow = memo(({
       {/* Cliente — telefone sem link WhatsApp */}
       <td className="py-3.5 px-3 text-left border-r border-border w-[200px] max-w-[200px]">
         <div className="min-w-0">
-          <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{cliente?.nome || os.cliente_nome || '-'}</p>
+          <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{formatClienteNome(cliente?.nome || os.cliente_nome)}</p>
           {(cliente?.telefone || os.telefone_contato) && (
             <p className="text-xs text-muted-foreground mt-0.5">{os.telefone_contato || cliente?.telefone}</p>
           )}
@@ -1098,7 +1101,7 @@ export default function OrdensServico() {
                             </div>
                             {/* Cliente em destaque */}
                             <p className="font-semibold text-foreground text-sm leading-tight truncate mb-1.5">
-                              {cliente?.nome || os.cliente_nome || '-'}
+                              {formatClienteNome(cliente?.nome || os.cliente_nome)}
                             </p>
                             {/* Aparelho e problema em uma linha compacta */}
                             <div className="text-xs text-muted-foreground line-clamp-2 min-w-0 leading-tight">

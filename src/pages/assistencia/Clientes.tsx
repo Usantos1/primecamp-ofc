@@ -489,6 +489,7 @@ export default function Clientes() {
       let clienteId: string;
       const payload: Record<string, unknown> = {
         ...formData,
+        nome: formData.nome.trim().toLocaleUpperCase('pt-BR'),
         data_nascimento: formData.data_nascimento || null,
       };
       if (payload.estado !== undefined) payload.uf = payload.estado;
@@ -501,7 +502,7 @@ export default function Clientes() {
         const newCliente = await createCliente(payload as any);
         clienteId = newCliente.id;
         toast({ title: 'Cliente cadastrado com sucesso!' });
-        setSearchTerm(formData.nome.split(' ')[0]);
+        setSearchTerm(String(payload.nome || '').split(' ')[0]);
       }
 
       if (isOficina && veiculosForm.length > 0) {

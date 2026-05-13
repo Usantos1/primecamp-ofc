@@ -1059,7 +1059,7 @@ export default function OrdemServicoForm({ osId, onClose, isModal = false }: Ord
     try {
       const novoCliente = await createCliente({
         tipo_pessoa: novoClienteData.tipo_pessoa,
-        nome: novoClienteData.nome.trim(),
+        nome: novoClienteData.nome.trim().toLocaleUpperCase('pt-BR'),
         nome_fantasia: novoClienteData.nome_fantasia?.trim() || null,
         cpf_cnpj: novoClienteData.cpf_cnpj?.trim() || null,
         rg: novoClienteData.rg?.trim() || null,

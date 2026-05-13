@@ -147,7 +147,7 @@ export function ImportarClientes({ onClose, onSuccess }: ImportarClientesProps) 
 
         return {
           codigo_original: codigoOriginal,
-          nome: nome.trim(),
+          nome: nome.trim().toLocaleUpperCase('pt-BR'),
           cpf_cnpj: cpfCnpj ? String(cpfCnpj).trim() : null,
           telefone: telefone1 ? String(telefone1).trim() : null,
           telefone2: telefone2 ? String(telefone2).trim() : null,

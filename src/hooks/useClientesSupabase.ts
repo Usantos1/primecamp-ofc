@@ -9,6 +9,17 @@ const API_URL = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.i
   ? import.meta.env.VITE_API_URL 
   : 'https://api.ativafix.com/api';
 
+const normalizeClienteNome = (nome?: string | null) =>
+  nome?.trim() ? nome.trim().toLocaleUpperCase('pt-BR') : '';
+
+const normalizeClientePayload = (data: Partial<Cliente>) => {
+  if (data.nome === undefined) return data;
+  return {
+    ...data,
+    nome: normalizeClienteNome(data.nome),
+  };
+};
+
 export function useClientesSupabase(pageSize: number = 50) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -51,27 +62,28 @@ export function useClientesSupabase(pageSize: number = 50) {
   // Criar cliente
   const createCliente = useMutation({
     mutationFn: async (data: Partial<Cliente>): Promise<Cliente> => {
+      const normalizedData = normalizeClientePayload(data);
       const novoCliente: any = {
-        tipo_pessoa: data.tipo_pessoa || 'fisica',
+        tipo_pessoa: normalizedData.tipo_pessoa || 'fisica',
         situacao: 'ativo',
-        nome: data.nome || '',
-        nome_fantasia: data.nome_fantasia || null,
-        cpf_cnpj: data.cpf_cnpj || null,
-        rg: data.rg || null,
-        sexo: data.sexo || null,
-        data_nascimento: data.data_nascimento || null,
-        cep: data.cep || null,
-        logradouro: data.logradouro || null,
-        numero: data.numero || null,
-        complemento: data.complemento || null,
-        bairro: data.bairro || null,
-        cidade: data.cidade || null,
-        estado: data.estado || null,
-        uf: data.uf ?? data.estado ?? null,
-        telefone: data.telefone || null,
-        telefone2: data.telefone2 || null,
-        email: data.email || null,
-        whatsapp: data.whatsapp || null,
+        nome: normalizedData.nome || '',
+        nome_fantasia: normalizedData.nome_fantasia || null,
+        cpf_cnpj: normalizedData.cpf_cnpj || null,
+        rg: normalizedData.rg || null,
+        sexo: normalizedData.sexo || null,
+        data_nascimento: normalizedData.data_nascimento || null,
+        cep: normalizedData.cep || null,
+        logradouro: normalizedData.logradouro || null,
+        numero: normalizedData.numero || null,
+        complemento: normalizedData.complemento || null,
+        bairro: normalizedData.bairro || null,
+        cidade: normalizedData.cidade || null,
+        estado: normalizedData.estado || null,
+        uf: normalizedData.uf ?? normalizedData.estado ?? null,
+        telefone: normalizedData.telefone || null,
+        telefone2: normalizedData.telefone2 || null,
+        email: normalizedData.email || null,
+        whatsapp: normalizedData.whatsapp || null,
         created_by: user?.id || null,
       };
 
@@ -100,9 +112,10 @@ export function useClientesSupabase(pageSize: number = 50) {
   // Atualizar cliente
   const updateCliente = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Cliente> }): Promise<Cliente> => {
+      const normalizedData = normalizeClientePayload(data);
       const { data: updated, error } = await from('clientes')
         .eq('id', id)
-        .update(data);
+        .update(normalizedData);
 
       if (error) throw error;
       return (updated?.data || updated) as Cliente;

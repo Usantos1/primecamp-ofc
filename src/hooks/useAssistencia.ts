@@ -555,7 +555,7 @@ export function useClientes() {
       id: generateId(),
       tipo_pessoa: data.tipo_pessoa || 'fisica',
       situacao: 'ativo',
-      nome: data.nome || '',
+      nome: data.nome?.trim().toLocaleUpperCase('pt-BR') || '',
       nome_fantasia: data.nome_fantasia,
       cpf_cnpj: data.cpf_cnpj,
       rg: data.rg,
@@ -580,8 +580,11 @@ export function useClientes() {
   }, []);
 
   const updateCliente = useCallback((id: string, data: Partial<Cliente>) => {
+    const normalizedData = data.nome === undefined
+      ? data
+      : { ...data, nome: data.nome.trim().toLocaleUpperCase('pt-BR') };
     setClientes(prev => prev.map(c => 
-      c.id === id ? { ...c, ...data, updated_at: new Date().toISOString() } : c
+      c.id === id ? { ...c, ...normalizedData, updated_at: new Date().toISOString() } : c
     ));
   }, []);
 
