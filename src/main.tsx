@@ -4,6 +4,12 @@ import { ThemeProvider } from "next-themes";
 import App from "./App.tsx";
 import "./index.css";
 
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = 'pt-BR';
+  document.documentElement.spellcheck = true;
+  document.body?.setAttribute('spellcheck', 'true');
+}
+
 // Limpar tokens antigos/inválidos do localStorage
 if (typeof window !== 'undefined' && window.localStorage) {
   try {
