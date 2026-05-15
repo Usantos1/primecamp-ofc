@@ -17,13 +17,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { executeManualRaffle, getOrCreateCurrentRaffle, replaceRaffleTemplateVariables } from '@/utils/raffleService';
-import type { Raffle, RaffleAuditLog, RaffleCoupon, RaffleSettings } from '@/types/raffle';
+import type { Raffle, RaffleAuditLog, RaffleCoupon, RafflePrizeTier, RaffleSettings } from '@/types/raffle';
 
 const DEFAULT_COUPON_TEMPLATE =
-  'Olá, {cliente}! 😊\n\nObrigado por comprar na {empresa}.\n\nVocê recebeu seus números da sorte para o sorteio {nome_sorteio}:\n\n{numeros_da_sorte}\n\nO sorteio será realizado no dia {data_sorteio}.\n\nBoa sorte!';
+  'Olá, {cliente}! 😊\n\nObrigado por comprar na {empresa}.\n\nVocê recebeu seus números da sorte:\n\n{numeros_da_sorte}\n\nO sorteio será realizado no dia {data_sorteio} às {horario_sorteio}.\n\nVocê pode acompanhar o resultado por aqui:\n\n{link_acompanhamento}\n\nBoa sorte!';
 
 const DEFAULT_WINNER_TEMPLATE =
-  'Parabéns, {cliente}! 🎉\n\nO seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}.\n\nPrêmio: {premio}.\nValidade: {validade_premio}.\nRetirada: {retirada_premio}.\n\nObrigado por comprar com a gente!';
+  'Parabéns, {cliente}! 🎉\n\nO seu número da sorte {numero_sorteado} ganhou o {posicao_premio} do sorteio {nome_sorteio} da {empresa}.\n\nPrêmio: {premio}.\nValidade: {validade_premio}.\nRetirada: {retirada_premio}.\n\nObrigado por comprar com a gente!';
 
 const renderWhatsAppFormattedText = (text: string) =>
   text.split(/(\*[^*\n]+\*)/g).map((part, index) => {
@@ -42,6 +42,9 @@ const ensureWinnerPrizeVariables = (template?: string | null) => {
   if (!message.includes('{premio}')) {
     message += '\n\nPrêmio: {premio}.';
   }
+  if (!message.includes('{posicao_premio}')) {
+    message = message.replace('foi o ganhador', 'ganhou o {posicao_premio}');
+  }
   if (!message.includes('{validade_premio}')) {
     message += '\nValidade: {validade_premio}.';
   }
@@ -51,11 +54,41 @@ const ensureWinnerPrizeVariables = (template?: string | null) => {
   return message;
 };
 
+const ensureCouponTrackingVariables = (template?: string | null) => {
+  let message = template || DEFAULT_COUPON_TEMPLATE;
+  if (!message.includes('{horario_sorteio}')) {
+    message = message.replace('{data_sorteio}', '{data_sorteio} às {horario_sorteio}');
+  }
+  if (!message.includes('{link_acompanhamento}')) {
+    message += '\n\nVocê pode acompanhar o resultado por aqui:\n\n{link_acompanhamento}';
+  }
+  return message;
+};
+
 const raffleStatusLabel: Record<string, string> = {
   open: 'Aberto',
   closed: 'Encerrado',
   drawn: 'Sorteado',
   cancelled: 'Cancelado',
+};
+
+const DEFAULT_PRIZE_TIERS: RafflePrizeTier[] = [
+  { position: 1, type: 'voucher', description: 'Vale-compra', value: 100 },
+  { position: 2, type: 'voucher', description: 'Vale-compra', value: 70 },
+  { position: 3, type: 'voucher', description: 'Vale-compra', value: 30 },
+];
+
+const normalizePrizeTiers = (tiers?: RafflePrizeTier[] | null): RafflePrizeTier[] => {
+  const source = Array.isArray(tiers) && tiers.length > 0 ? tiers : DEFAULT_PRIZE_TIERS;
+  return DEFAULT_PRIZE_TIERS.map((defaultTier, index) => {
+    const tier = source.find((item) => Number(item.position) === defaultTier.position) || source[index] || defaultTier;
+    return {
+      position: defaultTier.position,
+      type: tier.type === 'product' ? 'product' : 'voucher',
+      description: tier.description || (tier.type === 'product' ? 'Produto' : 'Vale-compra'),
+      value: tier.type === 'product' ? Number(tier.value || 0) : Number(tier.value || defaultTier.value),
+    };
+  });
 };
 
 const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
@@ -76,6 +109,7 @@ const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
   prize_value: 100,
   prize_validity_days: 7,
   prize_redeem_instructions: 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+  prize_tiers: DEFAULT_PRIZE_TIERS,
   rounding_rule: 'complete_value',
 });
 
@@ -138,11 +172,13 @@ export default function Sorteios() {
       setSettings(settingsData
         ? {
             ...settingsData,
+            coupon_message_template: ensureCouponTrackingVariables(settingsData.coupon_message_template),
             winner_message_template: ensureWinnerPrizeVariables(settingsData.winner_message_template),
             prize_description: settingsData.prize_description || 'Vale-compra',
             prize_value: Number(settingsData.prize_value || 100),
             prize_validity_days: Number(settingsData.prize_validity_days || 7),
             prize_redeem_instructions: settingsData.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+            prize_tiers: normalizePrizeTiers(settingsData.prize_tiers),
           }
         : emptySettings(companyId));
 
@@ -206,6 +242,7 @@ export default function Sorteios() {
     setIsSaving(true);
     try {
       const winnerMessageTemplate = ensureWinnerPrizeVariables(settings.winner_message_template);
+      const couponMessageTemplate = ensureCouponTrackingVariables(settings.coupon_message_template);
 
       const payload = {
         company_id: companyId,
@@ -219,12 +256,13 @@ export default function Sorteios() {
         auto_draw_enabled: !!settings.auto_draw_enabled,
         send_coupon_message_enabled: !!settings.send_coupon_message_enabled,
         send_winner_message_enabled: !!settings.send_winner_message_enabled,
-        coupon_message_template: settings.coupon_message_template || DEFAULT_COUPON_TEMPLATE,
+        coupon_message_template: couponMessageTemplate,
         winner_message_template: winnerMessageTemplate,
         prize_description: settings.prize_description || 'Vale-compra',
-        prize_value: Number(settings.prize_value || 100),
+        prize_value: Number(normalizePrizeTiers(settings.prize_tiers)[0]?.value || settings.prize_value || 100),
         prize_validity_days: Number(settings.prize_validity_days || 7),
         prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+        prize_tiers: normalizePrizeTiers(settings.prize_tiers),
         rounding_rule: 'complete_value',
         updated_at: new Date().toISOString(),
       };
@@ -264,6 +302,16 @@ export default function Sorteios() {
   };
 
   const handleDraw = async (raffle: Raffle) => {
+    const validCouponsCount = coupons.filter((coupon) => coupon.raffle_id === raffle.id && coupon.status === 'valid').length;
+    if (validCouponsCount <= 0) {
+      toast({
+        title: 'Nenhum cupom válido',
+        description: 'Este sorteio ainda não possui cupons válidos para sortear.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const confirmed = window.confirm(`Executar o sorteio "${raffle.name}"? Essa ação não pode ser refeita sem auditoria.`);
     if (!confirmed) return;
 
@@ -276,7 +324,7 @@ export default function Sorteios() {
       });
       toast({
         title: 'Sorteio realizado',
-        description: `Número vencedor: ${result.winner.coupon_number}`,
+        description: `${result.winners?.length || 1} prêmio(s) sorteado(s).`,
       });
       await loadData();
     } catch (error: any) {
@@ -304,15 +352,26 @@ export default function Sorteios() {
     }
   };
 
+  const handleDrawCurrentRaffle = () => {
+    if (!currentRaffle) {
+      toast({ title: 'Crie o sorteio do mês antes de sortear', variant: 'destructive' });
+      return;
+    }
+    handleDraw(currentRaffle);
+  };
+
   const getCustomerName = (customerId?: string | null) => {
     if (!customerId) return '-';
     return clientesMap[customerId]?.nome || customerId;
   };
 
   const winnerPreview = useMemo(() => {
-    const prizeValue = Number(settings.prize_value ?? 100);
+    const firstPrize = normalizePrizeTiers(settings.prize_tiers)[0] || DEFAULT_PRIZE_TIERS[0];
+    const prizeValue = Number(firstPrize.value || 100);
     const validityDays = Number(settings.prize_validity_days ?? 7);
-    const prizeText = `${settings.prize_description || 'Vale-compra'} de ${currencyFormatters.brl(prizeValue)}`;
+    const prizeText = firstPrize.type === 'product'
+      ? (firstPrize.description || 'Produto')
+      : `${firstPrize.description || settings.prize_description || 'Vale-compra'} de ${currencyFormatters.brl(prizeValue)}`;
     return replaceRaffleTemplateVariables(
       ensureWinnerPrizeVariables(settings.winner_message_template),
       {
@@ -323,7 +382,9 @@ export default function Sorteios() {
         telefone: '(99) 99999-9999',
         data_sorteio: dateFormatters.short(new Date().toISOString()),
         premio: prizeText,
-        premio_valor: currencyFormatters.brl(prizeValue),
+        premio_tipo: firstPrize.type === 'product' ? 'Produto' : 'Vale-compra',
+        premio_valor: firstPrize.type === 'product' ? '' : currencyFormatters.brl(prizeValue),
+        posicao_premio: '1º prêmio',
         validade_premio: `${validityDays} dias`,
         retirada_premio: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
         valor_total_compras: currencyFormatters.brl(100),
@@ -335,8 +396,8 @@ export default function Sorteios() {
     settings.campaign_name,
     settings.prize_description,
     settings.prize_redeem_instructions,
+    settings.prize_tiers,
     settings.prize_validity_days,
-    settings.prize_value,
     settings.winner_message_template,
   ]);
 
@@ -348,10 +409,12 @@ export default function Sorteios() {
       quantidade_cupons: 5,
       numeros_da_sorte: '100, 101, 102, 103, 104',
       data_sorteio: dateFormatters.short(currentRaffle?.draw_date || new Date().toISOString()),
+      horario_sorteio: dateFormatters.time(currentRaffle?.draw_date || new Date().toISOString()),
       nome_sorteio: currentRaffle?.name || settings.campaign_name || 'Sorteio Mensal',
       empresa: companyName,
       numero_os: '1234',
       numero_venda: '5678',
+      link_acompanhamento: `${typeof window !== 'undefined' ? window.location.origin : 'https://app.ativafix.com'}/sorteio/acompanhar/exemplo`,
     });
   }, [
     currentRaffle?.draw_date,
@@ -427,9 +490,30 @@ export default function Sorteios() {
 
         <TabsContent value="visao-geral" className="space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Shuffle className="h-5 w-5" /> Sorteios Mensais</CardTitle>
-              <CardDescription>Criação mensal acontece automaticamente quando o primeiro cupom do mês é gerado.</CardDescription>
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2"><Shuffle className="h-5 w-5" /> Sorteios Mensais</CardTitle>
+                <CardDescription>Crie o sorteio do mês e execute o sorteio manual quando houver cupons válidos.</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCreateCurrentRaffle}
+                  disabled={isSaving || !settings.id}
+                  className="rounded-full"
+                >
+                  Criar sorteio do mês
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleDrawCurrentRaffle}
+                  disabled={isDrawing || !currentRaffle || currentRaffle.status === 'drawn' || currentRaffle.status === 'cancelled'}
+                  className="rounded-full bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Sortear na mão
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
@@ -447,7 +531,9 @@ export default function Sorteios() {
                 </TableHeader>
                 <TableBody>
                   {raffles.map((raffle) => {
-                    const winner = coupons.find((c) => c.id === raffle.winning_coupon_id);
+                    const raffleWinners = coupons
+                      .filter((c) => c.raffle_id === raffle.id && c.status === 'winner')
+                      .sort((a, b) => Number(a.prize_position || 99) - Number(b.prize_position || 99));
                     return (
                       <TableRow key={raffle.id}>
                         <TableCell className="font-medium">{raffle.name}</TableCell>
@@ -456,14 +542,19 @@ export default function Sorteios() {
                         <TableCell>{raffle.total_coupons}</TableCell>
                         <TableCell>{raffle.total_participants}</TableCell>
                         <TableCell>{dateFormatters.short(raffle.draw_date)}</TableCell>
-                        <TableCell>{winner ? `#${winner.coupon_number} · ${getCustomerName(winner.customer_id)}` : '-'}</TableCell>
+                        <TableCell>
+                          {raffleWinners.length > 0
+                            ? raffleWinners.map((winner) => `${winner.prize_position || 1}º #${winner.coupon_number} · ${winner.prize_type === 'product' ? (winner.prize_description || 'Produto') : currencyFormatters.brl(Number(winner.prize_value || 0))}`).join(' | ')
+                            : '-'}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             size="sm"
                             onClick={() => handleDraw(raffle)}
                             disabled={isDrawing || raffle.status === 'drawn' || raffle.status === 'cancelled'}
+                            className="rounded-full"
                           >
-                            Sortear
+                            Sortear na mão
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -543,19 +634,18 @@ export default function Sorteios() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>Tipo do prêmio</Label>
+                    <Label>Tipo dos prêmios</Label>
                     <Input
                       value={settings.prize_description || 'Vale-compra'}
-                      onChange={(e) => setSettings((p) => ({ ...p, prize_description: e.target.value }))}
+                      onChange={(e) => {
+                        const description = e.target.value;
+                        setSettings((p) => ({
+                          ...p,
+                          prize_description: description,
+                          prize_tiers: normalizePrizeTiers(p.prize_tiers).map((tier) => ({ ...tier, description })),
+                        }));
+                      }}
                       placeholder="Vale-compra"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Valor do vale-compra</Label>
-                    <CurrencyInput
-                      showCurrency
-                      value={Number(settings.prize_value ?? 100)}
-                      onChange={(value) => setSettings((p) => ({ ...p, prize_value: value || 0 }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -568,6 +658,62 @@ export default function Sorteios() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {normalizePrizeTiers(settings.prize_tiers).map((tier) => (
+                    <div key={tier.position} className="space-y-2 rounded-2xl border bg-muted/20 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label>{tier.position}º prêmio</Label>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={tier.type === 'product' ? 'text-muted-foreground' : 'font-medium'}>Vale</span>
+                          <Switch
+                            checked={tier.type === 'product'}
+                            onCheckedChange={(checked) => setSettings((p) => ({
+                              ...p,
+                              prize_tiers: normalizePrizeTiers(p.prize_tiers).map((item) =>
+                                item.position === tier.position
+                                  ? {
+                                      ...item,
+                                      type: checked ? 'product' : 'voucher',
+                                      description: checked ? 'Produto' : 'Vale-compra',
+                                      value: checked ? 0 : (DEFAULT_PRIZE_TIERS[tier.position - 1]?.value || 0),
+                                    }
+                                  : item
+                              ),
+                            }))}
+                          />
+                          <span className={tier.type === 'product' ? 'font-medium' : 'text-muted-foreground'}>Produto</span>
+                        </div>
+                      </div>
+                      {tier.type === 'product' ? (
+                        <Input
+                          value={tier.description}
+                          onChange={(e) => setSettings((p) => ({
+                            ...p,
+                            prize_tiers: normalizePrizeTiers(p.prize_tiers).map((item) =>
+                              item.position === tier.position ? { ...item, description: e.target.value, value: 0 } : item
+                            ),
+                          }))}
+                          placeholder="Ex.: Carregador, fone, película..."
+                        />
+                      ) : (
+                        <CurrencyInput
+                          showCurrency
+                          value={Number(tier.value || 0)}
+                          onChange={(value) => setSettings((p) => {
+                            const nextTiers = normalizePrizeTiers(p.prize_tiers).map((item) =>
+                              item.position === tier.position ? { ...item, type: 'voucher', description: settings.prize_description || 'Vale-compra', value: value || 0 } : item
+                            );
+                            return {
+                              ...p,
+                              prize_value: nextTiers[0]?.value || 0,
+                              prize_tiers: nextTiers,
+                            };
+                          })}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <div className="space-y-2">
                   <Label>Como retirar o prêmio</Label>
                   <Textarea
@@ -578,7 +724,7 @@ export default function Sorteios() {
                   />
                 </div>
                 <p className="text-sm font-medium">
-                  Prévia: {(settings.prize_description || 'Vale-compra')} de {currencyFormatters.brl(Number(settings.prize_value ?? 100))} válido por {Number(settings.prize_validity_days ?? 7)} dias. {settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.'}
+                  Prévia: {normalizePrizeTiers(settings.prize_tiers).map((tier) => tier.type === 'product' ? `${tier.position}º ${tier.description}` : `${tier.position}º ${currencyFormatters.brl(tier.value)}`).join(' · ')}. Válidos por {Number(settings.prize_validity_days ?? 7)} dias. {settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.'}
                 </p>
               </div>
 
@@ -600,14 +746,14 @@ export default function Sorteios() {
               <div className="space-y-2">
                 <Label>Modelo da mensagem de cupom</Label>
                 <Textarea rows={6} value={settings.coupon_message_template || ''} onChange={(e) => setSettings((p) => ({ ...p, coupon_message_template: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">Variáveis: {'{cliente}'}, {'{valor_total}'}, {'{quantidade_cupons}'}, {'{numeros_da_sorte}'}, {'{data_sorteio}'}, {'{nome_sorteio}'}, {'{empresa}'}, {'{numero_os}'}, {'{numero_venda}'}.</p>
+                <p className="text-xs text-muted-foreground">Variáveis: {'{cliente}'}, {'{valor_total}'}, {'{quantidade_cupons}'}, {'{numeros_da_sorte}'}, {'{data_sorteio}'}, {'{horario_sorteio}'}, {'{link_acompanhamento}'}, {'{nome_sorteio}'}, {'{empresa}'}, {'{numero_os}'}, {'{numero_venda}'}.</p>
               </div>
 
               <div className="space-y-2">
                 <Label>Modelo da mensagem para ganhador</Label>
                 <Textarea rows={5} value={settings.winner_message_template || ''} onChange={(e) => setSettings((p) => ({ ...p, winner_message_template: e.target.value }))} />
                 <p className="text-xs text-muted-foreground">
-                  Variáveis do ganhador: {'{cliente}'}, {'{numero_sorteado}'}, {'{nome_sorteio}'}, {'{empresa}'}, {'{premio}'}, {'{premio_valor}'}, {'{validade_premio}'}, {'{retirada_premio}'}.
+                  Variáveis do ganhador: {'{cliente}'}, {'{numero_sorteado}'}, {'{nome_sorteio}'}, {'{empresa}'}, {'{posicao_premio}'}, {'{premio_tipo}'}, {'{premio}'}, {'{premio_valor}'}, {'{validade_premio}'}, {'{retirada_premio}'}.
                 </p>
               </div>
 

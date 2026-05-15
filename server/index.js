@@ -2629,6 +2629,115 @@ app.post('/api/auth/demo', async (req, res) => {
   }
 });
 
+// Acompanhamento público de sorteio por token. Não exige autenticação e não expõe dados sensíveis.
+app.get('/api/public/sorteio/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '').trim();
+    if (!token || token.length < 12) {
+      return res.status(400).json({ error: 'Token de acompanhamento inválido' });
+    }
+
+    const baseResult = await pool.query(`
+      SELECT
+        rc.tracking_token,
+        rc.customer_id,
+        rc.raffle_id,
+        r.name AS raffle_name,
+        r.draw_date,
+        r.draw_executed_at,
+        r.status AS raffle_status,
+        r.winning_coupon_id,
+        r.winning_customer_id,
+        c.nome AS customer_name,
+        c.telefone AS customer_phone,
+        c.whatsapp AS customer_whatsapp,
+        co.name AS company_name
+      FROM public.raffle_coupons rc
+      JOIN public.raffles r ON r.id = rc.raffle_id
+      LEFT JOIN public.clientes c ON c.id = rc.customer_id
+      LEFT JOIN public.companies co ON co.id = rc.company_id
+      WHERE rc.tracking_token = $1
+      LIMIT 1
+    `, [token]);
+
+    if (baseResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Acompanhamento não encontrado' });
+    }
+
+    const base = baseResult.rows[0];
+    const couponsResult = await pool.query(`
+      SELECT coupon_number, status, prize_position, prize_type, prize_description, prize_value
+      FROM public.raffle_coupons
+      WHERE tracking_token = $1
+      ORDER BY coupon_number ASC
+    `, [token]);
+
+    const winnersResult = await pool.query(`
+      SELECT
+        rc.coupon_number,
+        rc.customer_id,
+        rc.prize_position,
+        rc.prize_type,
+        rc.prize_description,
+        rc.prize_value,
+        c.nome AS customer_name,
+        COALESCE(c.whatsapp, c.telefone) AS customer_phone
+      FROM public.raffle_coupons rc
+      LEFT JOIN public.clientes c ON c.id = rc.customer_id
+      WHERE rc.raffle_id = $1
+        AND rc.status = 'winner'
+      ORDER BY COALESCE(rc.prize_position, 999), rc.coupon_number
+    `, [base.raffle_id]);
+
+    const maskPhone = (phone) => {
+      const digits = String(phone || '').replace(/\D+/g, '');
+      if (!digits) return null;
+      return `****-${digits.slice(-4)}`;
+    };
+
+    res.json({
+      data: {
+        token,
+        raffle: {
+          id: base.raffle_id,
+          name: base.raffle_name,
+          draw_date: base.draw_date,
+          draw_executed_at: base.draw_executed_at,
+          status: base.raffle_status,
+          company_name: base.company_name || 'Empresa',
+        },
+        participant: {
+          id: base.customer_id,
+          name: base.customer_name || 'Cliente',
+          phone_masked: maskPhone(base.customer_whatsapp || base.customer_phone),
+        },
+        coupons: couponsResult.rows.map((row) => ({
+          coupon_number: row.coupon_number,
+          status: row.status,
+          prize_position: row.prize_position,
+          prize_type: row.prize_type,
+          prize_description: row.prize_description,
+          prize_value: row.prize_value,
+        })),
+        winners: winnersResult.rows.map((row) => ({
+          coupon_number: row.coupon_number,
+          customer_id: row.customer_id,
+          customer_name: row.customer_name || 'Cliente',
+          phone_masked: maskPhone(row.customer_phone),
+          prize_position: row.prize_position,
+          prize_type: row.prize_type,
+          prize_description: row.prize_description,
+          prize_value: row.prize_value,
+          is_current_participant: row.customer_id && base.customer_id && row.customer_id === base.customer_id,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('[Public] Erro ao acompanhar sorteio:', error);
+    res.status(500).json({ error: 'Erro ao carregar acompanhamento do sorteio' });
+  }
+});
+
 // Signup (Cadastro)
 app.post('/api/auth/signup', async (req, res) => {
   try {

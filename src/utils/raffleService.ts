@@ -1,9 +1,9 @@
 import { from } from '@/integrations/db/client';
 import { getApiUrl } from '@/utils/apiUrl';
-import type { Raffle, RaffleCoupon, RaffleSettings } from '@/types/raffle';
+import type { Raffle, RaffleCoupon, RafflePrizeTier, RaffleSettings } from '@/types/raffle';
 
 const DEFAULT_COUPON_TEMPLATE =
-  'Olá, {cliente}! Obrigado por comprar na {empresa}. Você recebeu {quantidade_cupons} número(s) da sorte para o sorteio {nome_sorteio}: {numeros_da_sorte}. Sorteio em {data_sorteio}. Boa sorte!';
+  'Olá, {cliente}! Obrigado por comprar na {empresa}. Você recebeu seus números da sorte: {numeros_da_sorte}. O sorteio será realizado no dia {data_sorteio} às {horario_sorteio}. Acompanhe o resultado por aqui: {link_acompanhamento}. Boa sorte!';
 
 const DEFAULT_WINNER_TEMPLATE =
   'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}. Entre em contato com nossa equipe para combinar a retirada do prêmio.';
@@ -24,6 +24,33 @@ type GenerateRaffleCouponsInput = {
 };
 
 const onlyDigits = (value?: string | null) => String(value || '').replace(/\D+/g, '');
+
+const getAppBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_PUBLIC_APP_URL;
+  if (envUrl) return String(envUrl).replace(/\/+$/, '');
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
+  return 'https://app.ativafix.com';
+};
+
+const createTrackingToken = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+};
+
+const createUniqueTrackingToken = async () => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const token = createTrackingToken();
+    const { data } = await from('raffle_coupons')
+      .select('id')
+      .eq('tracking_token', token)
+      .limit(1)
+      .execute();
+    if (!data || data.length === 0) return token;
+  }
+  return createTrackingToken();
+};
 
 const hasValidPhone = (value?: string | null) => {
   const digits = onlyDigits(value);
@@ -64,15 +91,41 @@ const formatDateBR = (value?: string | Date | null) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
 };
 
+const formatTimeBR = (value?: string | Date | null) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+};
+
 const formatPrize = (params: {
+  type?: string | null;
   description?: string | null;
   value?: number | null;
   validityDays?: number | null;
 }) => {
-  const description = params.description || 'Vale-compra';
+  const description = params.description || (params.type === 'product' ? 'Produto' : 'Vale-compra');
   const value = Number(params.value || 0);
-  const valueText = value > 0 ? ` de ${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : '';
+  const valueText = params.type === 'product' || value <= 0 ? '' : ` de ${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
   return `${description}${valueText}`;
+};
+
+const DEFAULT_PRIZE_TIERS: RafflePrizeTier[] = [
+  { position: 1, type: 'voucher', description: 'Vale-compra', value: 100 },
+  { position: 2, type: 'voucher', description: 'Vale-compra', value: 70 },
+  { position: 3, type: 'voucher', description: 'Vale-compra', value: 30 },
+];
+
+const normalizePrizeTiers = (tiers?: RafflePrizeTier[] | null): RafflePrizeTier[] => {
+  const source = Array.isArray(tiers) && tiers.length > 0 ? tiers : DEFAULT_PRIZE_TIERS;
+  return source
+    .map((tier, index) => ({
+      position: Number(tier.position || index + 1),
+      type: tier.type === 'product' ? 'product' : 'voucher',
+      description: tier.description || (tier.type === 'product' ? 'Produto' : 'Vale-compra'),
+      value: tier.type === 'product' ? Number(tier.value || 0) : Number(tier.value || DEFAULT_PRIZE_TIERS[index]?.value || 0),
+    }))
+    .filter((tier) => tier.type === 'product' || tier.value > 0)
+    .sort((a, b) => a.position - b.position);
 };
 
 export const replaceRaffleTemplateVariables = (
@@ -117,7 +170,8 @@ export async function getOrCreateCurrentRaffle(settings: RaffleSettings, company
         prize_description: settings.prize_description || 'Vale-compra',
         prize_value: Number(settings.prize_value || 100),
         prize_validity_days: Number(settings.prize_validity_days || 7),
-      prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+        prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+        prize_tiers: normalizePrizeTiers(settings.prize_tiers),
       };
       await from('raffles').update(prizePatch).eq('id', existing.id).execute();
       return { ...(existing as Raffle), ...prizePatch };
@@ -141,6 +195,7 @@ export async function getOrCreateCurrentRaffle(settings: RaffleSettings, company
       prize_value: Number(settings.prize_value || 100),
       prize_validity_days: Number(settings.prize_validity_days || 7),
       prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+      prize_tiers: normalizePrizeTiers(settings.prize_tiers),
       status: 'open',
     })
     .select()
@@ -340,6 +395,17 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
 
     const currentMax = Number(lastCoupons?.[0]?.coupon_number || 0);
     const firstNumber = Math.max(Number(settings.initial_number || 100), currentMax + 1);
+    let trackingToken = await createUniqueTrackingToken();
+    const { data: existingTracking } = await from('raffle_coupons')
+      .select('tracking_token')
+      .eq('raffle_id', raffle.id)
+      .eq('customer_id', input.customerId)
+      .limit(1)
+      .execute();
+    if (existingTracking?.[0]?.tracking_token) {
+      trackingToken = existingTracking[0].tracking_token;
+    }
+
     const couponsPayload = Array.from({ length: quantity }).map((_, index) => ({
       company_id: input.companyId,
       raffle_id: raffle.id,
@@ -348,6 +414,7 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
       service_order_id: input.serviceOrderId || null,
       order_type: input.orderType,
       coupon_number: firstNumber + index,
+      tracking_token: trackingToken,
       eligible_amount: Number(settings.amount_per_coupon),
       source_total_amount: totalAmount,
       status: 'valid',
@@ -394,6 +461,7 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
 
     if (settings.send_coupon_message_enabled) {
       const numbers = coupons.map((c) => c.coupon_number).join(', ');
+      const trackingUrl = `${getAppBaseUrl()}/sorteio/acompanhar/${trackingToken}`;
       const body = replaceRaffleTemplateVariables(settings.coupon_message_template || DEFAULT_COUPON_TEMPLATE, {
         cliente: customerName,
         telefone: customerPhone,
@@ -401,10 +469,12 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
         quantidade_cupons: coupons.length,
         numeros_da_sorte: numbers,
         data_sorteio: formatDateBR(raffle.draw_date),
+        horario_sorteio: formatTimeBR(raffle.draw_date),
         nome_sorteio: raffle.name,
         empresa: companyName,
         numero_os: input.serviceOrderNumber || '',
         numero_venda: input.saleNumber || '',
+        link_acompanhamento: trackingUrl,
         cpf: customerCpf,
       });
 
@@ -498,8 +568,32 @@ export async function executeManualRaffle(params: {
     throw new Error('Não há cupons válidos para sortear.');
   }
 
-  const winner = coupons[Math.floor(Math.random() * coupons.length)] as RaffleCoupon;
-  await from('raffle_coupons').update({ status: 'winner' }).eq('id', winner.id).execute();
+  const { data: settings } = await from('raffle_settings')
+    .select('*')
+    .eq('id', raffle.raffle_setting_id)
+    .maybeSingle()
+    .execute();
+  const prizeTiers = normalizePrizeTiers((raffle.prize_tiers || (settings as RaffleSettings | null)?.prize_tiers) as RafflePrizeTier[] | null);
+  const shuffledCoupons = [...coupons].sort(() => Math.random() - 0.5) as RaffleCoupon[];
+  const winners = shuffledCoupons.slice(0, Math.min(prizeTiers.length, shuffledCoupons.length));
+
+  for (let index = 0; index < winners.length; index += 1) {
+    const winner = winners[index];
+    const tier = prizeTiers[index];
+    await from('raffle_coupons')
+      .update({
+        status: 'winner',
+        prize_position: tier.position,
+        prize_type: tier.type || 'voucher',
+        prize_description: tier.description,
+        prize_value: tier.value,
+      })
+      .eq('id', winner.id)
+      .execute();
+    winners[index] = { ...winner, status: 'winner', prize_position: tier.position, prize_type: tier.type || 'voucher', prize_description: tier.description, prize_value: tier.value };
+  }
+
+  const winner = winners[0];
   const { data: updatedRaffle } = await from('raffles')
     .update({
       status: 'drawn',
@@ -521,18 +615,16 @@ export async function executeManualRaffle(params: {
     userId: params.userId,
     action: 'raffle_drawn',
     origin: 'user',
-    newData: { raffle: updatedRaffle, winner },
+    newData: { raffle: updatedRaffle, winners },
   });
 
-  const { data: settings } = await from('raffle_settings')
-    .select('*')
-    .eq('id', raffle.raffle_setting_id)
-    .maybeSingle()
-    .execute();
-  if ((settings as RaffleSettings | null)?.send_winner_message_enabled && winner.customer_id) {
+  if ((settings as RaffleSettings | null)?.send_winner_message_enabled) {
+    for (const currentWinner of winners) {
+      if (!currentWinner.customer_id) continue;
+      const currentTier = prizeTiers.find((tier) => tier.position === currentWinner.prize_position) || prizeTiers[0];
     const { data: customer } = await from('clientes')
       .select('id, nome, telefone, whatsapp')
-      .eq('id', winner.customer_id)
+        .eq('id', currentWinner.customer_id)
       .maybeSingle()
       .execute();
     const phone = customer?.whatsapp || customer?.telefone;
@@ -541,33 +633,37 @@ export async function executeManualRaffle(params: {
         (settings as RaffleSettings).winner_message_template || DEFAULT_WINNER_TEMPLATE,
         {
           cliente: customer?.nome || '',
-          numero_sorteado: winner.coupon_number,
+            numero_sorteado: currentWinner.coupon_number,
           nome_sorteio: raffle.name,
           empresa: companyName,
           telefone: phone,
           data_sorteio: formatDateBR(new Date()),
           premio: formatPrize({
-            description: raffle.prize_description || (settings as RaffleSettings).prize_description,
-            value: raffle.prize_value ?? (settings as RaffleSettings).prize_value,
+              type: currentTier.type,
+              description: currentTier.description,
+              value: currentTier.value,
             validityDays: raffle.prize_validity_days ?? (settings as RaffleSettings).prize_validity_days,
           }),
-          premio_valor: Number((raffle.prize_value ?? (settings as RaffleSettings).prize_value) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            premio_tipo: currentTier.type === 'product' ? 'Produto' : 'Vale-compra',
+            premio_valor: currentTier.type === 'product' ? '' : Number(currentTier.value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            posicao_premio: `${currentTier.position}º prêmio`,
           validade_premio: `${Number((raffle.prize_validity_days ?? (settings as RaffleSettings).prize_validity_days) || 0)} dias`,
           retirada_premio: raffle.prize_redeem_instructions || (settings as RaffleSettings).prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
-          valor_total_compras: Number(winner.source_total_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+            valor_total_compras: Number(currentWinner.source_total_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
         },
       );
       await sendRaffleWhatsApp({
         companyId: params.companyId,
         raffleId: params.raffleId,
-        couponId: winner.id,
-        customerId: winner.customer_id,
+          couponId: currentWinner.id,
+          customerId: currentWinner.customer_id,
         phone: onlyDigits(phone),
         messageType: 'winner_notification',
         messageBody: body,
       });
     }
+    }
   }
 
-  return { raffle: updatedRaffle as Raffle, winner };
+  return { raffle: updatedRaffle as Raffle, winner, winners };
 }

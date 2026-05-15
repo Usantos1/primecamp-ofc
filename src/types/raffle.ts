@@ -2,6 +2,13 @@ export type RaffleStatus = 'open' | 'closed' | 'drawn' | 'cancelled';
 export type RaffleCouponStatus = 'valid' | 'cancelled' | 'winner';
 export type RaffleOrderType = 'sale' | 'service_order';
 
+export interface RafflePrizeTier {
+  position: number;
+  type?: 'voucher' | 'product';
+  description: string;
+  value: number;
+}
+
 export interface RaffleSettings {
   id: string;
   company_id?: string | null;
@@ -21,6 +28,7 @@ export interface RaffleSettings {
   prize_value: number;
   prize_validity_days: number;
   prize_redeem_instructions: string;
+  prize_tiers?: RafflePrizeTier[] | null;
   rounding_rule: 'complete_value';
   created_at?: string;
   updated_at?: string;
@@ -47,6 +55,7 @@ export interface Raffle {
   prize_value?: number | null;
   prize_validity_days?: number | null;
   prize_redeem_instructions?: string | null;
+  prize_tiers?: RafflePrizeTier[] | null;
   draw_origin?: 'automatic' | 'manual' | null;
   drawn_by_user_id?: string | null;
   cancelled_reason?: string | null;
@@ -63,6 +72,11 @@ export interface RaffleCoupon {
   service_order_id?: string | null;
   order_type: RaffleOrderType;
   coupon_number: number;
+  tracking_token?: string | null;
+  prize_position?: number | null;
+  prize_type?: 'voucher' | 'product' | string | null;
+  prize_description?: string | null;
+  prize_value?: number | null;
   eligible_amount: number;
   source_total_amount: number;
   status: RaffleCouponStatus;

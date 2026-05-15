@@ -16,12 +16,13 @@ CREATE TABLE IF NOT EXISTS public.raffle_settings (
   auto_draw_enabled BOOLEAN NOT NULL DEFAULT false,
   send_coupon_message_enabled BOOLEAN NOT NULL DEFAULT false,
   send_winner_message_enabled BOOLEAN NOT NULL DEFAULT false,
-  coupon_message_template TEXT NOT NULL DEFAULT 'Olá, {cliente}! Obrigado por comprar na {empresa}. Você recebeu {quantidade_cupons} número(s) da sorte para o sorteio {nome_sorteio}: {numeros_da_sorte}. Sorteio em {data_sorteio}. Boa sorte!',
-  winner_message_template TEXT NOT NULL DEFAULT 'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}. Prêmio: {premio}. Validade: {validade_premio}. Retirada: {retirada_premio}. Obrigado por comprar com a gente!',
+  coupon_message_template TEXT NOT NULL DEFAULT 'Olá, {cliente}! Obrigado por comprar na {empresa}. Você recebeu seus números da sorte: {numeros_da_sorte}. O sorteio será realizado no dia {data_sorteio} às {horario_sorteio}. Acompanhe o resultado por aqui: {link_acompanhamento}. Boa sorte!',
+  winner_message_template TEXT NOT NULL DEFAULT 'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} ganhou o {posicao_premio} do sorteio {nome_sorteio} da {empresa}. Prêmio: {premio}. Validade: {validade_premio}. Retirada: {retirada_premio}. Obrigado por comprar com a gente!',
   prize_description TEXT NOT NULL DEFAULT 'Vale-compra',
   prize_value NUMERIC(12,2) NOT NULL DEFAULT 100,
   prize_validity_days INTEGER NOT NULL DEFAULT 7,
   prize_redeem_instructions TEXT NOT NULL DEFAULT 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+  prize_tiers JSONB NOT NULL DEFAULT '[{"position":1,"type":"voucher","description":"Vale-compra","value":100},{"position":2,"type":"voucher","description":"Vale-compra","value":70},{"position":3,"type":"voucher","description":"Vale-compra","value":30}]'::jsonb,
   rounding_rule TEXT NOT NULL DEFAULT 'complete_value' CHECK (rounding_rule IN ('complete_value')),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.raffles (
   prize_value NUMERIC(12,2),
   prize_validity_days INTEGER,
   prize_redeem_instructions TEXT,
+  prize_tiers JSONB,
   draw_origin TEXT CHECK (draw_origin IN ('automatic', 'manual')),
   drawn_by_user_id UUID,
   cancelled_reason TEXT,
@@ -66,6 +68,11 @@ CREATE TABLE IF NOT EXISTS public.raffle_coupons (
   service_order_id UUID,
   order_type TEXT NOT NULL CHECK (order_type IN ('sale', 'service_order')),
   coupon_number INTEGER NOT NULL,
+  tracking_token TEXT,
+  prize_position INTEGER,
+  prize_type TEXT,
+  prize_description TEXT,
+  prize_value NUMERIC(12,2),
   eligible_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   source_total_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'valid' CHECK (status IN ('valid', 'cancelled', 'winner')),
@@ -117,6 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_raffles_company_reference ON public.raffles(compa
 CREATE INDEX IF NOT EXISTS idx_raffle_coupons_raffle_status ON public.raffle_coupons(raffle_id, status);
 CREATE INDEX IF NOT EXISTS idx_raffle_coupons_customer ON public.raffle_coupons(customer_id);
 CREATE INDEX IF NOT EXISTS idx_raffle_coupons_sale ON public.raffle_coupons(sale_id);
+CREATE INDEX IF NOT EXISTS idx_raffle_coupons_tracking_token ON public.raffle_coupons(tracking_token);
 CREATE INDEX IF NOT EXISTS idx_raffle_message_logs_raffle ON public.raffle_message_logs(raffle_id);
 CREATE INDEX IF NOT EXISTS idx_raffle_audit_logs_raffle ON public.raffle_audit_logs(raffle_id);
 
@@ -124,32 +132,56 @@ ALTER TABLE public.raffle_settings
   ADD COLUMN IF NOT EXISTS prize_description TEXT NOT NULL DEFAULT 'Vale-compra',
   ADD COLUMN IF NOT EXISTS prize_value NUMERIC(12,2) NOT NULL DEFAULT 100,
   ADD COLUMN IF NOT EXISTS prize_validity_days INTEGER NOT NULL DEFAULT 7,
-  ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT NOT NULL DEFAULT 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.';
+  ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT NOT NULL DEFAULT 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+  ADD COLUMN IF NOT EXISTS prize_tiers JSONB NOT NULL DEFAULT '[{"position":1,"type":"voucher","description":"Vale-compra","value":100},{"position":2,"type":"voucher","description":"Vale-compra","value":70},{"position":3,"type":"voucher","description":"Vale-compra","value":30}]'::jsonb;
 
 ALTER TABLE public.raffles
   ADD COLUMN IF NOT EXISTS prize_description TEXT,
   ADD COLUMN IF NOT EXISTS prize_value NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS prize_validity_days INTEGER,
-  ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT;
+  ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT,
+  ADD COLUMN IF NOT EXISTS prize_tiers JSONB;
+
+ALTER TABLE public.raffle_coupons
+  ADD COLUMN IF NOT EXISTS tracking_token TEXT,
+  ADD COLUMN IF NOT EXISTS prize_position INTEGER,
+  ADD COLUMN IF NOT EXISTS prize_type TEXT,
+  ADD COLUMN IF NOT EXISTS prize_description TEXT,
+  ADD COLUMN IF NOT EXISTS prize_value NUMERIC(12,2);
+
+CREATE INDEX IF NOT EXISTS idx_raffle_coupons_tracking_token ON public.raffle_coupons(tracking_token);
 
 UPDATE public.raffle_settings
 SET winner_message_template =
   winner_message_template ||
   CASE WHEN winner_message_template NOT LIKE '%{premio}%' THEN E'\n\nPrêmio: {premio}.' ELSE '' END ||
+  CASE WHEN winner_message_template NOT LIKE '%{posicao_premio}%' THEN E'\nPosição: {posicao_premio}.' ELSE '' END ||
   CASE WHEN winner_message_template NOT LIKE '%{validade_premio}%' THEN E'\nValidade: {validade_premio}.' ELSE '' END ||
   CASE WHEN winner_message_template NOT LIKE '%{retirada_premio}%' THEN E'\nRetirada: {retirada_premio}.' ELSE '' END,
   prize_description = COALESCE(NULLIF(prize_description, ''), 'Vale-compra'),
   prize_value = COALESCE(prize_value, 100),
   prize_validity_days = COALESCE(prize_validity_days, 7),
   prize_redeem_instructions = COALESCE(NULLIF(prize_redeem_instructions, ''), 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.'),
+  prize_tiers = COALESCE(prize_tiers, '[{"position":1,"type":"voucher","description":"Vale-compra","value":100},{"position":2,"type":"voucher","description":"Vale-compra","value":70},{"position":3,"type":"voucher","description":"Vale-compra","value":30}]'::jsonb),
   updated_at = NOW()
 WHERE winner_message_template NOT LIKE '%{premio}%'
+   OR winner_message_template NOT LIKE '%{posicao_premio}%'
    OR winner_message_template NOT LIKE '%{validade_premio}%'
    OR winner_message_template NOT LIKE '%{retirada_premio}%'
    OR prize_description IS NULL
    OR prize_value IS NULL
    OR prize_validity_days IS NULL
-   OR prize_redeem_instructions IS NULL;
+   OR prize_redeem_instructions IS NULL
+   OR prize_tiers IS NULL;
+
+UPDATE public.raffle_settings
+SET coupon_message_template =
+  coupon_message_template ||
+  CASE WHEN coupon_message_template NOT LIKE '%{horario_sorteio}%' THEN E'\nHorário: {horario_sorteio}.' ELSE '' END ||
+  CASE WHEN coupon_message_template NOT LIKE '%{link_acompanhamento}%' THEN E'\nAcompanhe o resultado por aqui: {link_acompanhamento}.' ELSE '' END,
+  updated_at = NOW()
+WHERE coupon_message_template NOT LIKE '%{horario_sorteio}%'
+   OR coupon_message_template NOT LIKE '%{link_acompanhamento}%';
 
 DO $$
 BEGIN
