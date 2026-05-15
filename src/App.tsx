@@ -72,6 +72,7 @@ import Configuracoes from "./pages/admin/Configuracoes";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
 import AcompanharSorteio from "./pages/public/AcompanharSorteio";
+import ConsultaSorteio from "./pages/public/ConsultaSorteio";
 import TermosDeUso from "./pages/public/TermosDeUso";
 import PoliticaPrivacidade from "./pages/public/PoliticaPrivacidade";
 import LandingPage from "./pages/landing/LandingPage";
@@ -208,6 +209,7 @@ const App = () => {
               
               {/* Public OS tracking route */}
               <Route path="/acompanhar-os/:id" element={<AcompanharOS />} />
+              <Route path="/sorteio" element={<ConsultaSorteio />} />
               <Route path="/sorteio/acompanhar/:token" element={<AcompanharSorteio />} />
               <Route path="/integracoes" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
               <Route path="/integracoes/:tab" element={<ProtectedRoute><Integration /></ProtectedRoute>} />

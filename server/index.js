@@ -2629,6 +2629,178 @@ app.post('/api/auth/demo', async (req, res) => {
   }
 });
 
+const publicRaffleOnlyDigits = (value) => String(value || '').replace(/\D+/g, '');
+
+const publicRaffleNormalizeName = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const publicRaffleMaskPhone = (phone) => {
+  const digits = publicRaffleOnlyDigits(phone);
+  if (!digits) return null;
+  return `****-${digits.slice(-4)}`;
+};
+
+const publicRaffleNameSql = (column) => `
+  regexp_replace(
+    translate(
+      lower(coalesce(${column}, '')),
+      'áàãâäéèêëíìîïóòõôöúùûüçñ',
+      'aaaaaeeeeiiiiooooouuuucn'
+    ),
+    '[^a-z0-9]+',
+    ' ',
+    'g'
+  )
+`;
+
+// Listagem pública de sorteios para a tela /sorteio.
+app.get('/api/public/sorteios', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        r.id,
+        r.name,
+        r.draw_date,
+        r.draw_executed_at,
+        r.status,
+        r.total_coupons,
+        co.name AS company_name
+      FROM public.raffles r
+      LEFT JOIN public.companies co ON co.id = r.company_id
+      ORDER BY r.reference_year DESC, r.reference_month DESC, r.created_at DESC
+      LIMIT 60
+    `);
+
+    res.json({
+      data: result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        draw_date: row.draw_date,
+        draw_executed_at: row.draw_executed_at,
+        status: row.status,
+        total_coupons: row.total_coupons,
+        company_name: row.company_name || 'Empresa',
+      })),
+    });
+  } catch (error) {
+    console.error('[Public] Erro ao listar sorteios:', error);
+    res.status(500).json({ error: 'Erro ao carregar sorteios' });
+  }
+});
+
+// Consulta pública de participação: CPF + celular ou CPF + nome.
+app.post('/api/public/sorteio/consultar', async (req, res) => {
+  try {
+    const cpfDigits = publicRaffleOnlyDigits(req.body?.cpf);
+    const phoneDigits = publicRaffleOnlyDigits(req.body?.phone);
+    const nameKey = publicRaffleNormalizeName(req.body?.name);
+
+    if (cpfDigits.length < 11) {
+      return res.status(400).json({ error: 'Informe um CPF válido.' });
+    }
+
+    if (phoneDigits.length < 4 && nameKey.length < 3) {
+      return res.status(400).json({ error: 'Informe o celular ou o nome junto com o CPF.' });
+    }
+
+    const customersResult = await pool.query(`
+      SELECT id, nome, telefone, whatsapp
+      FROM public.clientes c
+      WHERE regexp_replace(coalesce(c.cpf_cnpj, ''), '\\D', '', 'g') = $1
+        AND (
+          (
+            $2 <> ''
+            AND (
+              right(regexp_replace(coalesce(c.telefone, ''), '\\D', '', 'g'), length($2)) = $2
+              OR right(regexp_replace(coalesce(c.whatsapp, ''), '\\D', '', 'g'), length($2)) = $2
+            )
+          )
+          OR (
+            $3 <> ''
+            AND ${publicRaffleNameSql('c.nome')} LIKE '%' || $3 || '%'
+          )
+        )
+      LIMIT 5
+    `, [cpfDigits, phoneDigits, nameKey]);
+
+    if (customersResult.rows.length === 0) {
+      return res.json({ data: { participant: null, participations: [] } });
+    }
+
+    const customerIds = customersResult.rows.map((customer) => customer.id);
+
+    await pool.query(`
+      WITH token_groups AS (
+        SELECT
+          raffle_id,
+          customer_id,
+          COALESCE(MAX(tracking_token), replace(gen_random_uuid()::text, '-', '')) AS tracking_token
+        FROM public.raffle_coupons
+        WHERE customer_id = ANY($1::uuid[])
+        GROUP BY raffle_id, customer_id
+      )
+      UPDATE public.raffle_coupons rc
+      SET tracking_token = token_groups.tracking_token,
+          updated_at = NOW()
+      FROM token_groups
+      WHERE rc.raffle_id = token_groups.raffle_id
+        AND rc.customer_id = token_groups.customer_id
+        AND rc.tracking_token IS NULL
+    `, [customerIds]);
+
+    const participationsResult = await pool.query(`
+      SELECT
+        r.id AS raffle_id,
+        r.name AS raffle_name,
+        r.draw_date,
+        r.draw_executed_at,
+        r.status AS raffle_status,
+        co.name AS company_name,
+        rc.tracking_token,
+        array_agg(rc.coupon_number ORDER BY rc.coupon_number ASC) AS coupon_numbers,
+        COUNT(*)::int AS total_coupons
+      FROM public.raffle_coupons rc
+      JOIN public.raffles r ON r.id = rc.raffle_id
+      LEFT JOIN public.companies co ON co.id = rc.company_id
+      WHERE rc.customer_id = ANY($1::uuid[])
+        AND rc.status IN ('valid', 'winner')
+      GROUP BY r.id, r.name, r.draw_date, r.draw_executed_at, r.status, co.name, rc.tracking_token
+      ORDER BY r.reference_year DESC, r.reference_month DESC, r.created_at DESC
+      LIMIT 60
+    `, [customerIds]);
+
+    const firstCustomer = customersResult.rows[0];
+    res.json({
+      data: {
+        participant: {
+          name: firstCustomer.nome || 'Cliente',
+          phone_masked: publicRaffleMaskPhone(firstCustomer.whatsapp || firstCustomer.telefone),
+        },
+        participations: participationsResult.rows.map((row) => ({
+          raffle_id: row.raffle_id,
+          raffle_name: row.raffle_name,
+          draw_date: row.draw_date,
+          draw_executed_at: row.draw_executed_at,
+          status: row.raffle_status,
+          company_name: row.company_name || 'Empresa',
+          tracking_token: row.tracking_token,
+          coupon_numbers: row.coupon_numbers || [],
+          total_coupons: row.total_coupons || 0,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('[Public] Erro ao consultar participação no sorteio:', error);
+    res.status(500).json({ error: 'Erro ao consultar participação no sorteio' });
+  }
+});
+
 // Acompanhamento público de sorteio por token. Não exige autenticação e não expõe dados sensíveis.
 app.get('/api/public/sorteio/:token', async (req, res) => {
   try {
