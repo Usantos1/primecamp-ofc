@@ -52,6 +52,17 @@ const createUniqueTrackingToken = async () => {
   return createTrackingToken();
 };
 
+const ensureCouponTrackingTemplate = (template?: string | null) => {
+  let message = template || DEFAULT_COUPON_TEMPLATE;
+  if (!message.includes('{horario_sorteio}')) {
+    message = message.replace('{data_sorteio}', '{data_sorteio} às {horario_sorteio}');
+  }
+  if (!message.includes('{link_acompanhamento}')) {
+    message += '\n\nVocê pode acompanhar o resultado por aqui:\n\n{link_acompanhamento}';
+  }
+  return message;
+};
+
 const hasValidPhone = (value?: string | null) => {
   const digits = onlyDigits(value);
   return digits.length >= 10;
@@ -126,6 +137,25 @@ const normalizePrizeTiers = (tiers?: RafflePrizeTier[] | null): RafflePrizeTier[
     }))
     .filter((tier) => tier.type === 'product' || tier.value > 0)
     .sort((a, b) => a.position - b.position);
+};
+
+const sumUniqueSourceAmounts = (coupons: Array<{
+  id?: string | null;
+  sale_id?: string | null;
+  service_order_id?: string | null;
+  order_type?: string | null;
+  source_total_amount?: number | string | null;
+}>) => {
+  const seen = new Set<string>();
+  return coupons.reduce((sum, coupon) => {
+    const sourceKey =
+      coupon.sale_id ? `sale:${coupon.sale_id}` :
+      coupon.service_order_id ? `os:${coupon.service_order_id}` :
+      `coupon:${coupon.id || Math.random()}`;
+    if (seen.has(sourceKey)) return sum;
+    seen.add(sourceKey);
+    return sum + Number(coupon.source_total_amount || 0);
+  }, 0);
 };
 
 export const replaceRaffleTemplateVariables = (
@@ -430,12 +460,12 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
 
     const coupons = (inserted || []) as RaffleCoupon[];
     const { data: allValidCoupons } = await from('raffle_coupons')
-      .select('id, customer_id, source_total_amount')
+      .select('id, customer_id, sale_id, service_order_id, source_total_amount')
       .eq('raffle_id', raffle.id)
       .eq('status', 'valid')
       .execute();
     const participants = new Set((allValidCoupons || []).map((c: any) => c.customer_id).filter(Boolean));
-    const totalEligible = (allValidCoupons || []).reduce((sum: number, c: any) => sum + Number(c.source_total_amount || 0), 0);
+    const totalEligible = sumUniqueSourceAmounts(allValidCoupons || []);
 
     await from('raffles')
       .update({
@@ -462,7 +492,7 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
     if (settings.send_coupon_message_enabled) {
       const numbers = coupons.map((c) => c.coupon_number).join(', ');
       const trackingUrl = `${getAppBaseUrl()}/sorteio/acompanhar/${trackingToken}`;
-      const body = replaceRaffleTemplateVariables(settings.coupon_message_template || DEFAULT_COUPON_TEMPLATE, {
+      const body = replaceRaffleTemplateVariables(ensureCouponTrackingTemplate(settings.coupon_message_template), {
         cliente: customerName,
         telefone: customerPhone,
         valor_total: totalAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),

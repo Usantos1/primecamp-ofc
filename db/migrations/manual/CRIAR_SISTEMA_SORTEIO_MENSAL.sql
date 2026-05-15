@@ -151,6 +151,24 @@ ALTER TABLE public.raffle_coupons
 
 CREATE INDEX IF NOT EXISTS idx_raffle_coupons_tracking_token ON public.raffle_coupons(tracking_token);
 
+WITH missing_tracking AS (
+  SELECT
+    raffle_id,
+    customer_id,
+    replace(gen_random_uuid()::text, '-', '') AS tracking_token
+  FROM public.raffle_coupons
+  WHERE tracking_token IS NULL
+    AND customer_id IS NOT NULL
+  GROUP BY raffle_id, customer_id
+)
+UPDATE public.raffle_coupons rc
+SET tracking_token = missing_tracking.tracking_token,
+    updated_at = NOW()
+FROM missing_tracking
+WHERE rc.raffle_id = missing_tracking.raffle_id
+  AND rc.customer_id = missing_tracking.customer_id
+  AND rc.tracking_token IS NULL;
+
 UPDATE public.raffle_settings
 SET winner_message_template =
   winner_message_template ||
@@ -182,6 +200,29 @@ SET coupon_message_template =
   updated_at = NOW()
 WHERE coupon_message_template NOT LIKE '%{horario_sorteio}%'
    OR coupon_message_template NOT LIKE '%{link_acompanhamento}%';
+
+WITH source_totals AS (
+  SELECT
+    raffle_id,
+    SUM(source_total_amount) AS eligible_sales_amount
+  FROM (
+    SELECT DISTINCT ON (
+      raffle_id,
+      COALESCE(sale_id::text, service_order_id::text, id::text)
+    )
+      raffle_id,
+      source_total_amount
+    FROM public.raffle_coupons
+    WHERE status IN ('valid', 'winner')
+    ORDER BY raffle_id, COALESCE(sale_id::text, service_order_id::text, id::text), generated_at ASC
+  ) unique_sources
+  GROUP BY raffle_id
+)
+UPDATE public.raffles r
+SET eligible_sales_amount = COALESCE(source_totals.eligible_sales_amount, 0),
+    updated_at = NOW()
+FROM source_totals
+WHERE r.id = source_totals.raffle_id;
 
 DO $$
 BEGIN

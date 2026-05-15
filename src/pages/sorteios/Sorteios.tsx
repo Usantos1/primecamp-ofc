@@ -11,12 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { Trophy, Ticket, Users, DollarSign, Shuffle, Settings, ShieldCheck } from 'lucide-react';
+import { Copy, ExternalLink, Trophy, Ticket, Users, DollarSign, Shuffle, Settings, ShieldCheck } from 'lucide-react';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
 import { executeManualRaffle, getOrCreateCurrentRaffle, replaceRaffleTemplateVariables } from '@/utils/raffleService';
+import { useValuesVisibility } from '@/hooks/useValuesVisibility';
+import { MASKED_VALUE } from '@/components/dashboard/FinancialCards';
 import type { Raffle, RaffleAuditLog, RaffleCoupon, RafflePrizeTier, RaffleSettings } from '@/types/raffle';
 
 const DEFAULT_COUPON_TEMPLATE =
@@ -91,6 +93,32 @@ const normalizePrizeTiers = (tiers?: RafflePrizeTier[] | null): RafflePrizeTier[
   });
 };
 
+const maskPhone = (value?: string | null) => {
+  const digits = String(value || '').replace(/\D+/g, '');
+  if (!digits) return '-';
+  return `****-${digits.slice(-4)}`;
+};
+
+const sumUniqueSourceAmounts = (coupons: RaffleCoupon[]) => {
+  const seen = new Set<string>();
+  return coupons.reduce((sum, coupon) => {
+    const sourceKey =
+      coupon.sale_id ? `sale:${coupon.sale_id}` :
+      coupon.service_order_id ? `os:${coupon.service_order_id}` :
+      `coupon:${coupon.id}`;
+    if (seen.has(sourceKey)) return sum;
+    seen.add(sourceKey);
+    return sum + Number(coupon.source_total_amount || 0);
+  }, 0);
+};
+
+const createTrackingToken = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+};
+
 const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
   company_id: companyId || null,
   is_active: false,
@@ -116,6 +144,7 @@ const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
 export default function Sorteios() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const [valuesVisible] = useValuesVisibility();
   const companyId = user?.company_id || null;
   const [activeTab, setActiveTab] = useState('visao-geral');
   const [settings, setSettings] = useState<Partial<RaffleSettings>>(() => emptySettings(companyId));
@@ -137,6 +166,14 @@ export default function Sorteios() {
   }, [raffles]);
 
   const validCoupons = useMemo(() => coupons.filter((c) => c.status === 'valid' || c.status === 'winner'), [coupons]);
+  const eligibleAmountByRaffle = useMemo(() => {
+    return Object.fromEntries(
+      Array.from(new Set(validCoupons.map((coupon) => coupon.raffle_id))).map((raffleId) => [
+        raffleId,
+        sumUniqueSourceAmounts(validCoupons.filter((coupon) => coupon.raffle_id === raffleId)),
+      ]),
+    ) as Record<string, number>;
+  }, [validCoupons]);
   const participants = useMemo(() => {
     const ids = new Set(validCoupons.map((c) => c.customer_id).filter(Boolean));
     return Array.from(ids).map((id) => {
@@ -145,7 +182,7 @@ export default function Sorteios() {
         customer_id: id as string,
         cliente: clientesMap[id as string],
         total_coupons: customerCoupons.length,
-        total_amount: customerCoupons.reduce((sum, c) => sum + Number(c.source_total_amount || 0), 0),
+        total_amount: sumUniqueSourceAmounts(customerCoupons),
         numbers: customerCoupons.map((c) => c.coupon_number).join(', '),
       };
     });
@@ -200,6 +237,7 @@ export default function Sorteios() {
           .limit(500)
           .execute();
         couponsData = (data || []) as RaffleCoupon[];
+        couponsData = await ensureMissingTrackingTokens(couponsData);
         setCoupons(couponsData);
       } else {
         setCoupons([]);
@@ -232,6 +270,50 @@ export default function Sorteios() {
   useEffect(() => {
     loadData();
   }, [companyId]);
+
+  const ensureMissingTrackingTokens = async (rows: RaffleCoupon[]) => {
+    if (!companyId) return rows;
+    const groups = new Map<string, { raffleId: string; customerId: string; token: string }>();
+
+    rows.forEach((coupon) => {
+      if (!coupon.customer_id || !coupon.raffle_id) return;
+      const key = `${coupon.raffle_id}:${coupon.customer_id}`;
+      const existingGroup = groups.get(key);
+      if (existingGroup) {
+        if (coupon.tracking_token) existingGroup.token = coupon.tracking_token;
+        return;
+      }
+      groups.set(key, {
+        raffleId: coupon.raffle_id,
+        customerId: coupon.customer_id,
+        token: coupon.tracking_token || createTrackingToken(),
+      });
+    });
+
+    const missingGroups = Array.from(groups.values()).filter((group) =>
+      rows.some((coupon) =>
+        coupon.raffle_id === group.raffleId &&
+        coupon.customer_id === group.customerId &&
+        !coupon.tracking_token
+      )
+    );
+
+    for (const group of missingGroups) {
+      await from('raffle_coupons')
+        .update({ tracking_token: group.token, updated_at: new Date().toISOString() })
+        .eq('company_id', companyId)
+        .eq('raffle_id', group.raffleId)
+        .eq('customer_id', group.customerId)
+        .is('tracking_token', null)
+        .execute();
+    }
+
+    return rows.map((coupon) => {
+      if (coupon.tracking_token || !coupon.customer_id) return coupon;
+      const group = groups.get(`${coupon.raffle_id}:${coupon.customer_id}`);
+      return group ? { ...coupon, tracking_token: group.token } : coupon;
+    });
+  };
 
   const handleSaveSettings = async () => {
     if (!companyId) {
@@ -426,6 +508,19 @@ export default function Sorteios() {
 
   const activePreview = previewType === 'coupon' ? couponPreview : winnerPreview;
 
+  const getTrackingUrl = (token?: string | null) => {
+    if (!token) return null;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.ativafix.com';
+    return `${origin}/sorteio/acompanhar/${token}`;
+  };
+
+  const copyTrackingLink = async (token?: string | null) => {
+    const link = getTrackingUrl(token);
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    toast({ title: 'Link copiado', description: 'O link de acompanhamento foi copiado.' });
+  };
+
   const content = (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -464,7 +559,7 @@ export default function Sorteios() {
             <Card className="rounded-full border shadow-sm">
               <CardContent className="flex min-h-9 items-center gap-2 px-3 py-1.5">
                 <span className="text-[11px] font-medium text-muted-foreground">Elegível</span>
-                <span className="text-xs font-bold">{currencyFormatters.brl(currentRaffle?.eligible_sales_amount || 0)}</span>
+                <span className="text-xs font-bold">{valuesVisible ? currencyFormatters.brl(currentRaffle ? (eligibleAmountByRaffle[currentRaffle.id] ?? currentRaffle.eligible_sales_amount ?? 0) : 0) : MASKED_VALUE}</span>
               </CardContent>
             </Card>
           </div>
@@ -845,28 +940,46 @@ export default function Sorteios() {
                     <TableHead>Cliente</TableHead>
                     <TableHead>Telefone</TableHead>
                     <TableHead>Origem</TableHead>
-                    <TableHead>Valor</TableHead>
+                    <TableHead>Valor base</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Acompanhamento</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {coupons.map((coupon) => {
                     const cliente = coupon.customer_id ? clientesMap[coupon.customer_id] : null;
+                    const trackingUrl = getTrackingUrl(coupon.tracking_token);
                     return (
                       <TableRow key={coupon.id}>
                         <TableCell className="font-bold">#{coupon.coupon_number}</TableCell>
                         <TableCell>{cliente?.nome || '-'}</TableCell>
-                        <TableCell>{cliente?.whatsapp || cliente?.telefone || '-'}</TableCell>
+                        <TableCell>{valuesVisible ? (cliente?.whatsapp || cliente?.telefone || '-') : maskPhone(cliente?.whatsapp || cliente?.telefone)}</TableCell>
                         <TableCell>{coupon.order_type === 'service_order' ? 'Ordem de Serviço' : 'Venda'}</TableCell>
-                        <TableCell>{currencyFormatters.brl(coupon.source_total_amount)}</TableCell>
+                        <TableCell>{valuesVisible ? currencyFormatters.brl(coupon.eligible_amount) : MASKED_VALUE}</TableCell>
                         <TableCell>{dateFormatters.short(coupon.generated_at)}</TableCell>
                         <TableCell><Badge variant={coupon.status === 'winner' ? 'default' : 'outline'}>{coupon.status}</Badge></TableCell>
+                        <TableCell className="text-right">
+                          {trackingUrl ? (
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" variant="outline" className="rounded-full" onClick={() => copyTrackingLink(coupon.tracking_token)}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="rounded-full" asChild>
+                                <a href={trackingUrl} target="_blank" rel="noreferrer">
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Sem link</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                   {coupons.length === 0 && (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cupom gerado.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum cupom gerado.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -895,9 +1008,9 @@ export default function Sorteios() {
                   {participants.map((participant) => (
                     <TableRow key={participant.customer_id}>
                       <TableCell>{participant.cliente?.nome || participant.customer_id}</TableCell>
-                      <TableCell>{participant.cliente?.whatsapp || participant.cliente?.telefone || '-'}</TableCell>
+                      <TableCell>{valuesVisible ? (participant.cliente?.whatsapp || participant.cliente?.telefone || '-') : maskPhone(participant.cliente?.whatsapp || participant.cliente?.telefone)}</TableCell>
                       <TableCell>{participant.cliente?.cpf_cnpj || '-'}</TableCell>
-                      <TableCell>{currencyFormatters.brl(participant.total_amount)}</TableCell>
+                      <TableCell>{valuesVisible ? currencyFormatters.brl(participant.total_amount) : MASKED_VALUE}</TableCell>
                       <TableCell>{participant.total_coupons}</TableCell>
                       <TableCell className="max-w-[280px] truncate">{participant.numbers}</TableCell>
                     </TableRow>
