@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { Copy, ExternalLink, Trophy, Ticket, Users, DollarSign, Shuffle, Settings, ShieldCheck } from 'lucide-react';
+import { Copy, ExternalLink, Plus, Trash2, Trophy, Ticket, Users, DollarSign, Shuffle, Settings, ShieldCheck } from 'lucide-react';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -85,15 +85,20 @@ const DEFAULT_PRIZE_TIERS: RafflePrizeTier[] = [
 
 const normalizePrizeTiers = (tiers?: RafflePrizeTier[] | null): RafflePrizeTier[] => {
   const source = Array.isArray(tiers) && tiers.length > 0 ? tiers : DEFAULT_PRIZE_TIERS;
-  return DEFAULT_PRIZE_TIERS.map((defaultTier, index) => {
-    const tier = source.find((item) => Number(item.position) === defaultTier.position) || source[index] || defaultTier;
-    return {
-      position: defaultTier.position,
-      type: tier.type === 'product' ? 'product' : 'voucher',
-      description: tier.description || (tier.type === 'product' ? 'Produto' : 'Vale-compra'),
-      value: tier.type === 'product' ? Number(tier.value || 0) : Number(tier.value || defaultTier.value),
-    };
-  });
+  return source
+    .slice(0, 3)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
+    .map((tier, index) => {
+      const defaultTier = DEFAULT_PRIZE_TIERS[index] || DEFAULT_PRIZE_TIERS[0];
+      const type = tier.type === 'product' ? 'product' : 'voucher';
+      return {
+        position: index + 1,
+        type,
+        description: tier.description || (type === 'product' ? 'Produto' : 'Vale-compra'),
+        value: type === 'product' ? 0 : Number(tier.value || defaultTier.value || 0),
+      };
+    })
+    .filter((tier, index) => index === 0 || tier.type === 'product' || tier.value > 0);
 };
 
 const maskPhone = (value?: string | null) => {
@@ -909,11 +914,63 @@ export default function Sorteios() {
                     />
                   </div>
                 </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Faixas de prêmio</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={normalizePrizeTiers(settings.prize_tiers).length >= 3}
+                    onClick={() => setSettings((p) => {
+                      const current = normalizePrizeTiers(p.prize_tiers);
+                      const nextIndex = current.length;
+                      const nextTier = DEFAULT_PRIZE_TIERS[nextIndex] || { position: nextIndex + 1, type: 'voucher', description: p.prize_description || 'Vale-compra', value: 30 };
+                      return {
+                        ...p,
+                        prize_tiers: [
+                          ...current,
+                          {
+                            ...nextTier,
+                            position: current.length + 1,
+                            description: nextTier.description || p.prize_description || 'Vale-compra',
+                          },
+                        ],
+                      };
+                    })}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Adicionar prêmio
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {normalizePrizeTiers(settings.prize_tiers).map((tier) => (
+                  {normalizePrizeTiers(settings.prize_tiers).map((tier, tierIndex) => (
                     <div key={tier.position} className="space-y-2 rounded-2xl border bg-muted/20 p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <Label>{tier.position}º prêmio</Label>
+                        <div className="flex items-center gap-2">
+                          <Label>{tier.position}º prêmio</Label>
+                          {tierIndex > 0 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 rounded-full p-0 text-destructive"
+                              title="Remover prêmio"
+                              onClick={() => setSettings((p) => {
+                                const nextTiers = normalizePrizeTiers(p.prize_tiers)
+                                  .filter((item) => item.position !== tier.position)
+                                  .map((item, index) => ({ ...item, position: index + 1 }));
+                                return {
+                                  ...p,
+                                  prize_value: nextTiers[0]?.value || 0,
+                                  prize_tiers: nextTiers,
+                                };
+                              })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-xs">
                           <span className={tier.type === 'product' ? 'text-muted-foreground' : 'font-medium'}>Vale</span>
                           <Switch
