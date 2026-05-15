@@ -64,6 +64,17 @@ const formatDateBR = (value?: string | Date | null) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR');
 };
 
+const formatPrize = (params: {
+  description?: string | null;
+  value?: number | null;
+  validityDays?: number | null;
+}) => {
+  const description = params.description || 'Vale-compra';
+  const value = Number(params.value || 0);
+  const valueText = value > 0 ? ` de ${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : '';
+  return `${description}${valueText}`;
+};
+
 export const replaceRaffleTemplateVariables = (
   template: string,
   variables: Record<string, string | number | null | undefined>,
@@ -90,7 +101,19 @@ export async function getOrCreateCurrentRaffle(settings: RaffleSettings, company
     console.warn('[Sorteio] Erro ao buscar sorteio mensal:', existingError);
   }
 
-  if (existing) return existing as Raffle;
+  if (existing) {
+    if (existing.status === 'open') {
+      const prizePatch = {
+        prize_description: settings.prize_description || 'Vale-compra',
+        prize_value: Number(settings.prize_value || 100),
+        prize_validity_days: Number(settings.prize_validity_days || 7),
+      prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+      };
+      await from('raffles').update(prizePatch).eq('id', existing.id).execute();
+      return { ...(existing as Raffle), ...prizePatch };
+    }
+    return existing as Raffle;
+  }
 
   const drawDate = buildDrawDate(settings, now);
   const raffleName = `${settings.campaign_name || 'Sorteio Mensal'} ${String(referenceMonth).padStart(2, '0')}/${referenceYear}`;
@@ -104,6 +127,10 @@ export async function getOrCreateCurrentRaffle(settings: RaffleSettings, company
       start_date: startDate,
       end_date: endDate,
       draw_date: drawDate.toISOString(),
+      prize_description: settings.prize_description || 'Vale-compra',
+      prize_value: Number(settings.prize_value || 100),
+      prize_validity_days: Number(settings.prize_validity_days || 7),
+      prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
       status: 'open',
     })
     .select()
@@ -507,7 +534,14 @@ export async function executeManualRaffle(params: {
           empresa: 'Ativa FIX',
           telefone: phone,
           data_sorteio: formatDateBR(new Date()),
-          premio: '',
+          premio: formatPrize({
+            description: raffle.prize_description || (settings as RaffleSettings).prize_description,
+            value: raffle.prize_value ?? (settings as RaffleSettings).prize_value,
+            validityDays: raffle.prize_validity_days ?? (settings as RaffleSettings).prize_validity_days,
+          }),
+          premio_valor: Number((raffle.prize_value ?? (settings as RaffleSettings).prize_value) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          validade_premio: `${Number((raffle.prize_validity_days ?? (settings as RaffleSettings).prize_validity_days) || 0)} dias`,
+          retirada_premio: raffle.prize_redeem_instructions || (settings as RaffleSettings).prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
           valor_total_compras: Number(winner.source_total_amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
         },
       );

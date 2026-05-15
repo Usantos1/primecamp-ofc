@@ -10,19 +10,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Trophy, Ticket, Users, DollarSign, Shuffle, Settings, ShieldCheck } from 'lucide-react';
 import { from } from '@/integrations/db/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { currencyFormatters, dateFormatters } from '@/utils/formatters';
-import { executeManualRaffle } from '@/utils/raffleService';
+import { executeManualRaffle, getOrCreateCurrentRaffle } from '@/utils/raffleService';
 import type { Raffle, RaffleAuditLog, RaffleCoupon, RaffleSettings } from '@/types/raffle';
 
 const DEFAULT_COUPON_TEMPLATE =
   'Olá, {cliente}! 😊\n\nObrigado por comprar na {empresa}.\n\nVocê recebeu seus números da sorte para o sorteio {nome_sorteio}:\n\n{numeros_da_sorte}\n\nO sorteio será realizado no dia {data_sorteio}.\n\nBoa sorte!';
 
 const DEFAULT_WINNER_TEMPLATE =
-  'Parabéns, {cliente}! 🎉\n\nO seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}.\n\nEntre em contato com a nossa equipe para combinar a retirada do prêmio.';
+  'Parabéns, {cliente}! 🎉\n\nO seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}.\n\nPrêmio: {premio}.\nValidade: {validade_premio}.\nRetirada: {retirada_premio}.\n\nObrigado por comprar com a gente!';
+
+const ensureWinnerPrizeVariables = (template?: string | null) => {
+  let message = template || DEFAULT_WINNER_TEMPLATE;
+  if (!message.includes('{premio}')) {
+    message += '\n\nPrêmio: {premio}.';
+  }
+  if (!message.includes('{validade_premio}')) {
+    message += '\nValidade: {validade_premio}.';
+  }
+  if (!message.includes('{retirada_premio}')) {
+    message += '\nRetirada: {retirada_premio}.';
+  }
+  return message;
+};
 
 const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
   company_id: companyId || null,
@@ -38,6 +53,10 @@ const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
   send_winner_message_enabled: true,
   coupon_message_template: DEFAULT_COUPON_TEMPLATE,
   winner_message_template: DEFAULT_WINNER_TEMPLATE,
+  prize_description: 'Vale-compra',
+  prize_value: 100,
+  prize_validity_days: 7,
+  prize_redeem_instructions: 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
   rounding_rule: 'complete_value',
 });
 
@@ -85,7 +104,16 @@ export default function Sorteios() {
         .eq('company_id', companyId)
         .maybeSingle()
         .execute();
-      setSettings(settingsData || emptySettings(companyId));
+      setSettings(settingsData
+        ? {
+            ...settingsData,
+            winner_message_template: ensureWinnerPrizeVariables(settingsData.winner_message_template),
+            prize_description: settingsData.prize_description || 'Vale-compra',
+            prize_value: Number(settingsData.prize_value || 100),
+            prize_validity_days: Number(settingsData.prize_validity_days || 7),
+            prize_redeem_instructions: settingsData.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+          }
+        : emptySettings(companyId));
 
       const { data: rafflesData } = await from('raffles')
         .select('*')
@@ -146,6 +174,8 @@ export default function Sorteios() {
 
     setIsSaving(true);
     try {
+      const winnerMessageTemplate = ensureWinnerPrizeVariables(settings.winner_message_template);
+
       const payload = {
         company_id: companyId,
         is_active: !!settings.is_active,
@@ -159,18 +189,26 @@ export default function Sorteios() {
         send_coupon_message_enabled: !!settings.send_coupon_message_enabled,
         send_winner_message_enabled: !!settings.send_winner_message_enabled,
         coupon_message_template: settings.coupon_message_template || DEFAULT_COUPON_TEMPLATE,
-        winner_message_template: settings.winner_message_template || DEFAULT_WINNER_TEMPLATE,
+        winner_message_template: winnerMessageTemplate,
+        prize_description: settings.prize_description || 'Vale-compra',
+        prize_value: Number(settings.prize_value || 100),
+        prize_validity_days: Number(settings.prize_validity_days || 7),
+        prize_redeem_instructions: settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
         rounding_rule: 'complete_value',
         updated_at: new Date().toISOString(),
       };
 
+      let savedSettings: RaffleSettings | null = null;
+
       if (settings.id) {
         const { error } = await from('raffle_settings').update(payload).eq('id', settings.id).execute();
         if (error) throw error;
+        savedSettings = { ...(settings as RaffleSettings), ...payload, id: settings.id };
       } else {
         const { data, error } = await from('raffle_settings').insert(payload).select().single();
         if (error) throw error;
-        setSettings(data as RaffleSettings);
+        savedSettings = data as RaffleSettings;
+        setSettings(savedSettings);
       }
 
       await from('raffle_audit_logs').insert({
@@ -180,6 +218,10 @@ export default function Sorteios() {
         origin: 'user',
         new_data: payload,
       });
+
+      if (savedSettings?.is_active) {
+        await getOrCreateCurrentRaffle(savedSettings, companyId);
+      }
 
       toast({ title: 'Configurações salvas' });
       await loadData();
@@ -213,6 +255,24 @@ export default function Sorteios() {
     }
   };
 
+  const handleCreateCurrentRaffle = async () => {
+    if (!settings.id || !companyId) {
+      toast({ title: 'Salve as configurações antes de criar o sorteio', variant: 'destructive' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await getOrCreateCurrentRaffle(settings as RaffleSettings, companyId);
+      toast({ title: 'Sorteio do mês criado' });
+      await loadData();
+    } catch (error: any) {
+      toast({ title: 'Erro ao criar sorteio', description: error?.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getCustomerName = (customerId?: string | null) => {
     if (!customerId) return '-';
     return clientesMap[customerId]?.nome || customerId;
@@ -230,9 +290,16 @@ export default function Sorteios() {
             Sistema de sorteio mensal com números da sorte por venda ou OS faturada.
           </p>
         </div>
-        <Button variant="outline" onClick={loadData} disabled={isLoading}>
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          {!currentRaffle && settings.id && (
+            <Button onClick={handleCreateCurrentRaffle} disabled={isSaving}>
+              Criar sorteio do mês
+            </Button>
+          )}
+          <Button variant="outline" onClick={loadData} disabled={isLoading}>
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -353,7 +420,11 @@ export default function Sorteios() {
                 </div>
                 <div className="space-y-2">
                   <Label>Valor base por cupom</Label>
-                  <Input type="number" min="1" step="0.01" value={settings.amount_per_coupon || 10} onChange={(e) => setSettings((p) => ({ ...p, amount_per_coupon: Number(e.target.value) || 10 }))} />
+                  <CurrencyInput
+                    showCurrency
+                    value={Number(settings.amount_per_coupon || 10)}
+                    onChange={(value) => setSettings((p) => ({ ...p, amount_per_coupon: value || 0 }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Número inicial</Label>
@@ -373,6 +444,57 @@ export default function Sorteios() {
                   <Label>Horário</Label>
                   <Input type="time" value={settings.draw_time || '20:00'} onChange={(e) => setSettings((p) => ({ ...p, draw_time: e.target.value }))} />
                 </div>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-emerald-600" />
+                  <div>
+                    <Label>Prêmio do sorteio</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Esse texto fica salvo no sorteio mensal e entra na variável {'{premio}'} da mensagem do ganhador.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo do prêmio</Label>
+                    <Input
+                      value={settings.prize_description || 'Vale-compra'}
+                      onChange={(e) => setSettings((p) => ({ ...p, prize_description: e.target.value }))}
+                      placeholder="Vale-compra"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valor do vale-compra</Label>
+                    <CurrencyInput
+                      showCurrency
+                      value={Number(settings.prize_value ?? 100)}
+                      onChange={(value) => setSettings((p) => ({ ...p, prize_value: value || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Validade em dias</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={settings.prize_validity_days ?? 7}
+                      onChange={(e) => setSettings((p) => ({ ...p, prize_validity_days: Number(e.target.value) || 0 }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Como retirar o prêmio</Label>
+                  <Textarea
+                    rows={3}
+                    value={settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.'}
+                    onChange={(e) => setSettings((p) => ({ ...p, prize_redeem_instructions: e.target.value }))}
+                    placeholder="Ex.: Retirada presencial na loja em até 7 dias, apresentando documento e o número da sorte vencedor."
+                  />
+                </div>
+                <p className="text-sm font-medium">
+                  Prévia: {(settings.prize_description || 'Vale-compra')} de {currencyFormatters.brl(Number(settings.prize_value ?? 100))} válido por {Number(settings.prize_validity_days ?? 7)} dias. {settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -399,6 +521,9 @@ export default function Sorteios() {
               <div className="space-y-2">
                 <Label>Modelo da mensagem para ganhador</Label>
                 <Textarea rows={5} value={settings.winner_message_template || ''} onChange={(e) => setSettings((p) => ({ ...p, winner_message_template: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">
+                  Variáveis do ganhador: {'{cliente}'}, {'{numero_sorteado}'}, {'{nome_sorteio}'}, {'{empresa}'}, {'{premio}'}, {'{premio_valor}'}, {'{validade_premio}'}, {'{retirada_premio}'}.
+                </p>
               </div>
 
               <Button onClick={handleSaveSettings} disabled={isSaving}>

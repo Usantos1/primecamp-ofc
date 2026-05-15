@@ -17,7 +17,11 @@ CREATE TABLE IF NOT EXISTS public.raffle_settings (
   send_coupon_message_enabled BOOLEAN NOT NULL DEFAULT false,
   send_winner_message_enabled BOOLEAN NOT NULL DEFAULT false,
   coupon_message_template TEXT NOT NULL DEFAULT 'Olá, {cliente}! Obrigado por comprar na {empresa}. Você recebeu {quantidade_cupons} número(s) da sorte para o sorteio {nome_sorteio}: {numeros_da_sorte}. Sorteio em {data_sorteio}. Boa sorte!',
-  winner_message_template TEXT NOT NULL DEFAULT 'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}. Entre em contato com nossa equipe para combinar a retirada do prêmio.',
+  winner_message_template TEXT NOT NULL DEFAULT 'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}. Prêmio: {premio}. Validade: {validade_premio}. Retirada: {retirada_premio}. Obrigado por comprar com a gente!',
+  prize_description TEXT NOT NULL DEFAULT 'Vale-compra',
+  prize_value NUMERIC(12,2) NOT NULL DEFAULT 100,
+  prize_validity_days INTEGER NOT NULL DEFAULT 7,
+  prize_redeem_instructions TEXT NOT NULL DEFAULT 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
   rounding_rule TEXT NOT NULL DEFAULT 'complete_value' CHECK (rounding_rule IN ('complete_value')),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -41,6 +45,10 @@ CREATE TABLE IF NOT EXISTS public.raffles (
   eligible_sales_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   winning_coupon_id UUID,
   winning_customer_id UUID,
+  prize_description TEXT,
+  prize_value NUMERIC(12,2),
+  prize_validity_days INTEGER,
+  prize_redeem_instructions TEXT,
   draw_origin TEXT CHECK (draw_origin IN ('automatic', 'manual')),
   drawn_by_user_id UUID,
   cancelled_reason TEXT,
@@ -111,6 +119,37 @@ CREATE INDEX IF NOT EXISTS idx_raffle_coupons_customer ON public.raffle_coupons(
 CREATE INDEX IF NOT EXISTS idx_raffle_coupons_sale ON public.raffle_coupons(sale_id);
 CREATE INDEX IF NOT EXISTS idx_raffle_message_logs_raffle ON public.raffle_message_logs(raffle_id);
 CREATE INDEX IF NOT EXISTS idx_raffle_audit_logs_raffle ON public.raffle_audit_logs(raffle_id);
+
+ALTER TABLE public.raffle_settings
+  ADD COLUMN IF NOT EXISTS prize_description TEXT NOT NULL DEFAULT 'Vale-compra',
+  ADD COLUMN IF NOT EXISTS prize_value NUMERIC(12,2) NOT NULL DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS prize_validity_days INTEGER NOT NULL DEFAULT 7,
+  ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT NOT NULL DEFAULT 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.';
+
+ALTER TABLE public.raffles
+  ADD COLUMN IF NOT EXISTS prize_description TEXT,
+  ADD COLUMN IF NOT EXISTS prize_value NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS prize_validity_days INTEGER,
+  ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT;
+
+UPDATE public.raffle_settings
+SET winner_message_template =
+  winner_message_template ||
+  CASE WHEN winner_message_template NOT LIKE '%{premio}%' THEN E'\n\nPrêmio: {premio}.' ELSE '' END ||
+  CASE WHEN winner_message_template NOT LIKE '%{validade_premio}%' THEN E'\nValidade: {validade_premio}.' ELSE '' END ||
+  CASE WHEN winner_message_template NOT LIKE '%{retirada_premio}%' THEN E'\nRetirada: {retirada_premio}.' ELSE '' END,
+  prize_description = COALESCE(NULLIF(prize_description, ''), 'Vale-compra'),
+  prize_value = COALESCE(prize_value, 100),
+  prize_validity_days = COALESCE(prize_validity_days, 7),
+  prize_redeem_instructions = COALESCE(NULLIF(prize_redeem_instructions, ''), 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.'),
+  updated_at = NOW()
+WHERE winner_message_template NOT LIKE '%{premio}%'
+   OR winner_message_template NOT LIKE '%{validade_premio}%'
+   OR winner_message_template NOT LIKE '%{retirada_premio}%'
+   OR prize_description IS NULL
+   OR prize_value IS NULL
+   OR prize_validity_days IS NULL
+   OR prize_redeem_instructions IS NULL;
 
 DO $$
 BEGIN

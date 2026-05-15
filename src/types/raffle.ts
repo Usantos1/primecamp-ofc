@@ -17,6 +17,10 @@ export interface RaffleSettings {
   send_winner_message_enabled: boolean;
   coupon_message_template: string;
   winner_message_template: string;
+  prize_description: string;
+  prize_value: number;
+  prize_validity_days: number;
+  prize_redeem_instructions: string;
   rounding_rule: 'complete_value';
   created_at?: string;
   updated_at?: string;
@@ -39,6 +43,10 @@ export interface Raffle {
   eligible_sales_amount: number;
   winning_coupon_id?: string | null;
   winning_customer_id?: string | null;
+  prize_description?: string | null;
+  prize_value?: number | null;
+  prize_validity_days?: number | null;
+  prize_redeem_instructions?: string | null;
   draw_origin?: 'automatic' | 'manual' | null;
   drawn_by_user_id?: string | null;
   cancelled_reason?: string | null;
