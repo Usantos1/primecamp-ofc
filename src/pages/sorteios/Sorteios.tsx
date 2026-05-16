@@ -134,6 +134,24 @@ const toBoolean = (value: unknown, fallback = false) => {
   return Boolean(value);
 };
 
+const formatPromptDateTime = (date = new Date(Date.now() + 2 * 60 * 1000)) => {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const parsePromptDrawDate = (value: string) => {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/);
+  if (!match) return null;
+  const [, year, month, day, hour = '20', minute = '00'] = match;
+  const parsed = new Date(`${year}-${month}-${day}T${hour}:${minute}:00-03:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return {
+    iso: `${year}-${month}-${day}T${hour}:${minute}:00-03:00`,
+    dateOnly: `${year}-${month}-${day}`,
+    date: parsed,
+  };
+};
+
 const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
   company_id: companyId || null,
   is_active: false,
@@ -563,6 +581,175 @@ export default function Sorteios() {
     }
   };
 
+  const getNextAvailableReference = (preferredDate: Date) => {
+    const usedReferences = new Set(raffles.map((raffle) => `${raffle.reference_year}-${raffle.reference_month}`));
+    const cursor = new Date(preferredDate);
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const referenceMonth = cursor.getMonth() + 1;
+      const referenceYear = cursor.getFullYear();
+      if (!usedReferences.has(`${referenceYear}-${referenceMonth}`)) {
+        return { referenceMonth, referenceYear };
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return { referenceMonth: preferredDate.getMonth() + 1, referenceYear: preferredDate.getFullYear() };
+  };
+
+  const createRaffleFromBase = async (params: {
+    baseRaffle?: Raffle | null;
+    copyCoupons?: boolean;
+  } = {}) => {
+    if (!settings.id || !companyId) {
+      toast({ title: 'Salve as configurações antes de criar sorteios', variant: 'destructive' });
+      return;
+    }
+
+    const baseName = params.baseRaffle
+      ? `${params.baseRaffle.name} - Teste`
+      : `${settings.campaign_name || 'Sorteio Mensal'} - Teste`;
+    const name = window.prompt('Nome do novo sorteio:', baseName);
+    if (name === null) return;
+
+    const dateInput = window.prompt('Data e hora do sorteio (AAAA-MM-DD HH:mm):', formatPromptDateTime());
+    if (dateInput === null) return;
+    const parsedDrawDate = parsePromptDrawDate(dateInput);
+    if (!parsedDrawDate) {
+      toast({ title: 'Data inválida', description: 'Use o formato AAAA-MM-DD HH:mm.', variant: 'destructive' });
+      return;
+    }
+
+    const { referenceMonth, referenceYear } = getNextAvailableReference(parsedDrawDate.date);
+    const normalizedTiers = normalizePrizeTiers(params.baseRaffle?.prize_tiers || settings.prize_tiers);
+
+    setIsSaving(true);
+    try {
+      const { data: created, error } = await from('raffles')
+        .insert({
+          company_id: companyId,
+          raffle_setting_id: settings.id,
+          name: name.trim() || baseName,
+          reference_month: referenceMonth,
+          reference_year: referenceYear,
+          start_date: parsedDrawDate.dateOnly,
+          end_date: parsedDrawDate.dateOnly,
+          draw_date: parsedDrawDate.iso,
+          status: 'open',
+          total_coupons: 0,
+          total_participants: 0,
+          eligible_sales_amount: 0,
+          prize_description: params.baseRaffle?.prize_description || settings.prize_description || 'Vale-compra',
+          prize_value: Number(params.baseRaffle?.prize_value || settings.prize_value || normalizedTiers[0]?.value || 100),
+          prize_validity_days: Number(params.baseRaffle?.prize_validity_days || settings.prize_validity_days || 7),
+          prize_redeem_instructions: params.baseRaffle?.prize_redeem_instructions || settings.prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+          prize_tiers: normalizedTiers,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      let copiedCoupons: RaffleCoupon[] = [];
+      if (params.baseRaffle && params.copyCoupons) {
+        const sourceCoupons = coupons.filter((coupon) => coupon.raffle_id === params.baseRaffle?.id);
+        const tokenByCustomer = new Map<string, string>();
+        const duplicatedCoupons = sourceCoupons.map((coupon) => {
+          const tokenKey = coupon.customer_id || coupon.id;
+          if (!tokenByCustomer.has(tokenKey)) tokenByCustomer.set(tokenKey, createTrackingToken());
+          return {
+            company_id: coupon.company_id || companyId,
+            raffle_id: created.id,
+            customer_id: coupon.customer_id || null,
+            sale_id: coupon.sale_id || null,
+            service_order_id: coupon.service_order_id || null,
+            order_type: coupon.order_type,
+            coupon_number: coupon.coupon_number,
+            tracking_token: tokenByCustomer.get(tokenKey),
+            eligible_amount: Number(coupon.eligible_amount || settings.amount_per_coupon || 0),
+            source_total_amount: Number(coupon.source_total_amount || 0),
+            status: 'valid',
+            generated_by_user_id: coupon.generated_by_user_id || null,
+            generated_at: new Date().toISOString(),
+          };
+        });
+
+        if (duplicatedCoupons.length > 0) {
+          const { data: insertedCoupons, error: couponError } = await from('raffle_coupons')
+            .insert(duplicatedCoupons)
+            .select()
+            .execute();
+          if (couponError) throw couponError;
+          copiedCoupons = (insertedCoupons || []) as RaffleCoupon[];
+          const participantsCount = new Set(copiedCoupons.map((coupon) => coupon.customer_id).filter(Boolean)).size;
+          await from('raffles')
+            .update({
+              total_coupons: copiedCoupons.length,
+              total_participants: participantsCount,
+              eligible_sales_amount: sumUniqueSourceAmounts(copiedCoupons),
+            })
+            .eq('id', created.id)
+            .execute();
+        }
+      }
+
+      await from('raffle_audit_logs').insert({
+        company_id: companyId,
+        raffle_id: created.id,
+        user_id: user?.id || null,
+        action: params.baseRaffle ? 'raffle_duplicated' : 'raffle_created',
+        origin: 'user',
+        new_data: created,
+        metadata: {
+          base_raffle_id: params.baseRaffle?.id || null,
+          copied_coupons: copiedCoupons.length,
+          reference_month: referenceMonth,
+          reference_year: referenceYear,
+        },
+      });
+
+      toast({
+        title: params.baseRaffle ? 'Sorteio duplicado' : 'Sorteio criado',
+        description: copiedCoupons.length > 0 ? `${copiedCoupons.length} cupom(ns) copiados para teste.` : undefined,
+      });
+      await loadData();
+    } catch (error: any) {
+      toast({ title: 'Erro ao criar sorteio', description: error?.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleInactivateRaffle = async (raffle: Raffle) => {
+    if (raffle.status !== 'open') {
+      toast({ title: 'Somente sorteios abertos podem ser inativados', variant: 'destructive' });
+      return;
+    }
+    const confirm = window.confirm(`Inativar o sorteio "${raffle.name}"? Ele ficará encerrado e não será executado automaticamente.`);
+    if (!confirm) return;
+
+    try {
+      const { error } = await from('raffles')
+        .update({
+          status: 'closed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', raffle.id)
+        .execute();
+      if (error) throw error;
+      await from('raffle_audit_logs').insert({
+        company_id: companyId,
+        raffle_id: raffle.id,
+        user_id: user?.id || null,
+        action: 'raffle_inactivated',
+        origin: 'user',
+        old_data: raffle,
+        new_data: { status: 'closed' },
+      });
+      toast({ title: 'Sorteio inativado' });
+      await loadData();
+    } catch (error: any) {
+      toast({ title: 'Erro ao inativar sorteio', description: error?.message || 'Tente novamente.', variant: 'destructive' });
+    }
+  };
+
   const handleCreateCurrentRaffle = async () => {
     if (!settings.id || !companyId) {
       toast({ title: 'Salve as configurações antes de criar o sorteio', variant: 'destructive' });
@@ -743,9 +930,18 @@ export default function Sorteios() {
             <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2"><Shuffle className="h-5 w-5" /> Sorteios Mensais</CardTitle>
-                <CardDescription>Crie o sorteio do mês e execute o sorteio manual quando houver cupons válidos.</CardDescription>
+                <CardDescription>Crie, duplique para teste, inative ou execute sorteios quando houver cupons válidos.</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => createRaffleFromBase()}
+                  disabled={isSaving || !settings.id}
+                  className="rounded-full bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  Novo teste
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -758,7 +954,7 @@ export default function Sorteios() {
                 <Button
                   type="button"
                   onClick={handleDrawCurrentRaffle}
-                  disabled={isDrawing || !currentRaffle || currentRaffle.status === 'drawn' || currentRaffle.status === 'cancelled'}
+                  disabled={isDrawing || !currentRaffle || currentRaffle.status !== 'open'}
                   className="rounded-full bg-emerald-600 hover:bg-emerald-700"
                 >
                   Sortear na mão
@@ -802,10 +998,29 @@ export default function Sorteios() {
                             <Button
                               size="sm"
                               onClick={() => handleDraw(raffle)}
-                              disabled={isDrawing || raffle.status === 'drawn' || raffle.status === 'cancelled'}
+                              disabled={isDrawing || raffle.status !== 'open'}
                               className="rounded-full"
                             >
                               Sortear na mão
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => createRaffleFromBase({ baseRaffle: raffle, copyCoupons: true })}
+                              disabled={isSaving}
+                              className="rounded-full"
+                            >
+                              <Copy className="mr-1 h-3.5 w-3.5" />
+                              Duplicar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleInactivateRaffle(raffle)}
+                              disabled={raffle.status !== 'open'}
+                              className="rounded-full"
+                            >
+                              Inativar
                             </Button>
                             <Button
                               size="sm"

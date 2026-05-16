@@ -5738,7 +5738,8 @@ app.post('/api/whatsapp/send', async (req, res) => {
       try {
         const token = authHeader.slice(7);
         const decoded = jwt.verify(token, JWT_SECRET);
-        const userRow = await pool.query('SELECT company_id FROM users WHERE id = $1', [decoded.userId || decoded.sub]);
+        const tokenUserId = decoded.id || decoded.userId || decoded.sub;
+        const userRow = await pool.query('SELECT company_id FROM users WHERE id = $1', [tokenUserId]);
         if (userRow.rows[0]?.company_id) companyId = userRow.rows[0].company_id;
       } catch (_) {}
     }
@@ -5766,12 +5767,17 @@ app.post('/api/whatsapp/send', async (req, res) => {
     const formattedNumber = data.number.replace(/\D/g, '');
     const contactName = normalizeAtivaCrmContactName(data.contactName || data.name, formattedNumber);
 
+    console.log('[WhatsApp] Criando/atualizando cliente no Ativa CRM antes do envio:', {
+      number: formattedNumber,
+      contactName: contactName || null,
+      hasTag: Boolean(data.tagId),
+    });
+
     const contactResult = await createAtivaCrmContact({
       token: ativaCrmToken,
       name: contactName,
       email: data.email,
       phone: formattedNumber,
-      tagId: data.tagId,
     });
 
     const contactUpdateResult = await updateAtivaCrmContact({
@@ -5780,15 +5786,6 @@ app.post('/api/whatsapp/send', async (req, res) => {
       email: data.email,
       phone: formattedNumber,
     });
-
-    let contactTagResult = null;
-    if (data.tagId) {
-      contactTagResult = await updateAtivaCrmContactTag({
-        token: ativaCrmToken,
-        phone: formattedNumber,
-        tagId: data.tagId,
-      });
-    }
 
     // Enviar mensagem via API do Ativa CRM (documentação oficial)
     // URL: https://api.ativacrm.com/api/messages/send
@@ -5806,8 +5803,6 @@ app.post('/api/whatsapp/send', async (req, res) => {
         email: data.email || '',
         number: formattedNumber,
         body: data.body,
-        tagId: data.tagId ? Number(data.tagId) : undefined,
-        tags: data.tagId ? [Number(data.tagId)] : undefined,
         contact: {
           name: contactName || formattedNumber,
           contactName: contactName || formattedNumber,
@@ -5852,6 +5847,12 @@ app.post('/api/whatsapp/send', async (req, res) => {
     });
 
     if (data.tagId) {
+      console.log('[WhatsApp] Aplicando tag no Ativa CRM após envio da mensagem:', {
+        number: formattedNumber,
+        tagId: data.tagId,
+        ticketId: ticketId || null,
+        contactId: contactId || null,
+      });
       const contactTagAfterSendResult = await updateAtivaCrmContactTag({
         token: ativaCrmToken,
         phone: formattedNumber,
@@ -5869,10 +5870,12 @@ app.post('/api/whatsapp/send', async (req, res) => {
           tagResult = { ticket: tagResult, contact: contactTagAfterSendResult };
         }
       } else {
-        console.warn('[AtivaCRM] Mensagem enviada, mas nenhum ticketId foi encontrado para aplicar a tag:', data.tagId);
+        if (!contactTagAfterSendResult?.success) {
+          console.warn('[AtivaCRM] Mensagem enviada, mas nenhum ticketId foi encontrado para aplicar a tag:', data.tagId);
+        }
         tagResult = {
-          success: false,
-          warning: 'TICKET_ID_NOT_FOUND',
+          success: Boolean(contactTagAfterSendResult?.success),
+          warning: contactTagAfterSendResult?.success ? 'TAG_APPLIED_TO_CONTACT_ONLY' : 'TICKET_ID_NOT_FOUND',
           tagId: data.tagId,
           contact: contactTagAfterSendResult,
         };
@@ -5886,7 +5889,6 @@ app.post('/api/whatsapp/send', async (req, res) => {
       contact: contactResult,
       contactUpdate: contactUpdateResult,
       contactUpdateAfterSend: contactUpdateAfterSendResult,
-      contactTag: contactTagResult,
       tag: tagResult,
     });
   } catch (error) {
@@ -10666,10 +10668,353 @@ app.get('/api/v1/docs', (req, res) => {
   });
 });
 
+// ============================================
+// WORKER - SORTEIO MENSAL AUTOMATICO
+// ============================================
+
+const RAFFLE_WORKER_INTERVAL_MS = Number(process.env.RAFFLE_WORKER_INTERVAL_MS || 60000);
+let raffleWorkerRunning = false;
+
+function raffleOnlyDigits(value) {
+  return String(value || '').replace(/\D+/g, '');
+}
+
+function normalizeRafflePrizeTiers(value) {
+  const fallback = [{ position: 1, type: 'voucher', description: 'Vale-compra', value: 100 }];
+  const source = Array.isArray(value) ? value : fallback;
+  const normalized = source
+    .map((tier, index) => ({
+      position: Number(tier?.position || index + 1),
+      type: tier?.type === 'product' ? 'product' : 'voucher',
+      description: String(tier?.description || (tier?.type === 'product' ? 'Produto' : 'Vale-compra')),
+      value: tier?.type === 'product' ? 0 : Number(tier?.value || 0),
+    }))
+    .filter((tier) => tier.position > 0)
+    .sort((a, b) => a.position - b.position)
+    .slice(0, 3);
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function replaceRaffleServerTemplate(template, variables) {
+  return Object.entries(variables).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value ?? '')),
+    String(template || ''),
+  );
+}
+
+function formatRaffleCurrency(value) {
+  return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatRafflePrize(tier, validityDays) {
+  const description = tier?.description || (tier?.type === 'product' ? 'Produto' : 'Vale-compra');
+  if (tier?.type === 'product') {
+    return validityDays ? `${description} - validade de ${validityDays} dias` : description;
+  }
+  const valueText = Number(tier?.value || 0) > 0 ? ` de ${formatRaffleCurrency(tier.value)}` : '';
+  const validityText = validityDays ? ` - validade de ${validityDays} dias` : '';
+  return `${description}${valueText}${validityText}`;
+}
+
+function formatRaffleDateBR(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
+async function getAtivaCrmTokenForCompany(companyId) {
+  const keys = companyId ? [`integration_settings_${companyId}`, 'integration_settings'] : ['integration_settings'];
+  for (const key of keys) {
+    const tokenResult = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1 LIMIT 1', [key]);
+    const value = tokenResult.rows[0]?.value;
+    const token = value?.ativaCrmToken;
+    if (token) return token;
+  }
+  return null;
+}
+
+async function sendRaffleWinnerWhatsAppFromWorker({ companyId, raffleId, couponId, customerId, phone, contactName, body }) {
+  const cleanPhone = raffleOnlyDigits(phone);
+  if (cleanPhone.length < 10 || !body) return { skipped: true, reason: 'telefone_invalido' };
+
+  const { rows } = await pool.query(`
+    INSERT INTO public.raffle_message_logs (
+      company_id, raffle_id, coupon_id, customer_id, phone, message_type, message_body, send_status
+    )
+    VALUES ($1, $2, $3, $4, $5, 'winner_notification', $6, 'pending')
+    RETURNING id
+  `, [companyId || null, raffleId || null, couponId || null, customerId || null, cleanPhone, body]);
+  const logId = rows[0]?.id;
+
+  try {
+    const ativaCrmToken = await getAtivaCrmTokenForCompany(companyId);
+    if (!ativaCrmToken) throw new Error('Token do Ativa CRM não configurado');
+
+    const safeContactName = normalizeAtivaCrmContactName(contactName, cleanPhone);
+    await createAtivaCrmContact({ token: ativaCrmToken, name: safeContactName, phone: cleanPhone });
+    await updateAtivaCrmContact({ token: ativaCrmToken, name: safeContactName, phone: cleanPhone });
+
+    const ativaCrmResponse = await fetch('https://api.ativacrm.com/api/messages/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ativaCrmToken}`,
+      },
+      body: JSON.stringify({
+        name: safeContactName || cleanPhone,
+        contactName: safeContactName || cleanPhone,
+        contact_name: safeContactName || cleanPhone,
+        displayName: safeContactName || cleanPhone,
+        number: cleanPhone,
+        body,
+        contact: {
+          name: safeContactName || cleanPhone,
+          contactName: safeContactName || cleanPhone,
+          number: cleanPhone,
+          phone: cleanPhone,
+          whatsapp: cleanPhone,
+        },
+      }),
+    });
+
+    const result = await ativaCrmResponse.json().catch(() => ({}));
+    if (!ativaCrmResponse.ok) {
+      throw new Error(result?.message || result?.error || 'Erro ao enviar WhatsApp');
+    }
+
+    await pool.query(`
+      UPDATE public.raffle_message_logs
+      SET send_status = 'sent',
+          external_message_id = $2,
+          sent_at = now()
+      WHERE id = $1
+    `, [logId, result?.messageId || result?.id || null]);
+    return { success: true, data: result };
+  } catch (error) {
+    await pool.query(`
+      UPDATE public.raffle_message_logs
+      SET send_status = 'failed',
+          error_message = $2
+      WHERE id = $1
+    `, [logId, error.message]);
+    console.warn('[Sorteio Worker] Falha ao enviar WhatsApp do ganhador:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+async function executeAutomaticRaffle(raffleId) {
+  const client = await pool.connect();
+  let drawResult = null;
+
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(`
+      SELECT
+        r.*,
+        rs.id AS settings_id,
+        rs.company_id AS settings_company_id,
+        rs.send_winner_message_enabled,
+        rs.winner_message_template,
+        rs.prize_validity_days AS settings_prize_validity_days,
+        rs.prize_redeem_instructions AS settings_prize_redeem_instructions,
+        rs.prize_tiers AS settings_prize_tiers,
+        co.name AS company_name
+      FROM public.raffles r
+      JOIN public.raffle_settings rs
+        ON rs.id = r.raffle_setting_id OR (r.raffle_setting_id IS NULL AND rs.company_id = r.company_id)
+      LEFT JOIN public.companies co ON co.id = r.company_id
+      WHERE r.id = $1
+        AND r.status = 'open'
+        AND rs.is_active = true
+        AND rs.auto_draw_enabled = true
+        AND r.draw_date <= now()
+      ORDER BY rs.updated_at DESC
+      LIMIT 1
+      FOR UPDATE OF r
+    `, [raffleId]);
+
+    const raffle = rows[0];
+    if (!raffle) {
+      await client.query('ROLLBACK');
+      return { skipped: true, reason: 'indisponivel' };
+    }
+
+    const couponsResult = await client.query(`
+      SELECT *
+      FROM public.raffle_coupons
+      WHERE raffle_id = $1 AND status = 'valid'
+      ORDER BY random()
+    `, [raffle.id]);
+
+    const coupons = couponsResult.rows;
+    if (coupons.length === 0) {
+      await client.query('ROLLBACK');
+      return { skipped: true, reason: 'sem_cupons' };
+    }
+
+    const prizeTiers = normalizeRafflePrizeTiers(raffle.prize_tiers || raffle.settings_prize_tiers);
+    const selectedWinners = [];
+    const usedWinnerKeys = new Set();
+    for (const coupon of coupons) {
+      const winnerKey = coupon.customer_id ? `customer:${coupon.customer_id}` : `coupon:${coupon.id}`;
+      if (usedWinnerKeys.has(winnerKey)) continue;
+      usedWinnerKeys.add(winnerKey);
+      selectedWinners.push(coupon);
+      if (selectedWinners.length >= prizeTiers.length) break;
+    }
+
+    if (selectedWinners.length === 0) {
+      await client.query('ROLLBACK');
+      return { skipped: true, reason: 'sem_ganhadores_unicos' };
+    }
+
+    const winners = [];
+    for (let index = 0; index < selectedWinners.length; index += 1) {
+      const winner = selectedWinners[index];
+      const tier = prizeTiers[index] || prizeTiers[0];
+      const updatedWinner = await client.query(`
+        UPDATE public.raffle_coupons
+        SET status = 'winner',
+            prize_position = $2,
+            prize_type = $3,
+            prize_description = $4,
+            prize_value = $5,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING *
+      `, [winner.id, tier.position, tier.type || 'voucher', tier.description, tier.value]);
+      winners.push(updatedWinner.rows[0]);
+    }
+
+    const mainWinner = winners[0];
+    const updatedRaffle = await client.query(`
+      UPDATE public.raffles
+      SET status = 'drawn',
+          winning_coupon_id = $2,
+          winning_customer_id = $3,
+          draw_executed_at = now(),
+          draw_origin = 'automatic',
+          updated_at = now()
+      WHERE id = $1
+      RETURNING *
+    `, [raffle.id, mainWinner.id, mainWinner.customer_id || null]);
+
+    await client.query(`
+      INSERT INTO public.raffle_audit_logs (
+        company_id, raffle_id, coupon_id, customer_id, action, origin, new_data, metadata
+      )
+      VALUES ($1, $2, $3, $4, 'raffle_drawn', 'cron', $5, $6)
+    `, [
+      raffle.company_id,
+      raffle.id,
+      mainWinner.id,
+      mainWinner.customer_id || null,
+      JSON.stringify({ raffle: updatedRaffle.rows[0], winners }),
+      JSON.stringify({ automatic: true, distinct_winners: true }),
+    ]);
+
+    await client.query('COMMIT');
+    drawResult = { raffle, updatedRaffle: updatedRaffle.rows[0], winners, prizeTiers };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('[Sorteio Worker] Erro ao executar sorteio automatico:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  if (drawResult?.raffle?.send_winner_message_enabled) {
+    for (const winner of drawResult.winners) {
+      if (!winner.customer_id) continue;
+      const customerResult = await pool.query(
+        'SELECT id, nome, telefone, whatsapp FROM public.clientes WHERE id = $1 LIMIT 1',
+        [winner.customer_id],
+      );
+      const customer = customerResult.rows[0];
+      const phone = customer?.whatsapp || customer?.telefone;
+      if (!phone) continue;
+      const tier = drawResult.prizeTiers.find((item) => Number(item.position) === Number(winner.prize_position)) || drawResult.prizeTiers[0];
+      const validityDays = Number(drawResult.raffle.prize_validity_days || drawResult.raffle.settings_prize_validity_days || 0);
+      const body = replaceRaffleServerTemplate(
+        drawResult.raffle.winner_message_template || 'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}. Prêmio: {premio}.',
+        {
+          cliente: customer?.nome || '',
+          numero_sorteado: winner.coupon_number,
+          nome_sorteio: drawResult.raffle.name,
+          empresa: drawResult.raffle.company_name || 'Empresa',
+          telefone: phone,
+          data_sorteio: formatRaffleDateBR(new Date()),
+          premio: formatRafflePrize(tier, validityDays),
+          premio_tipo: tier?.type === 'product' ? 'Produto' : 'Vale-compra',
+          premio_valor: tier?.type === 'product' ? '' : formatRaffleCurrency(tier?.value || 0),
+          posicao_premio: `${tier?.position || 1}º prêmio`,
+          validade_premio: `${validityDays || 0} dias`,
+          retirada_premio: drawResult.raffle.prize_redeem_instructions || drawResult.raffle.settings_prize_redeem_instructions || 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
+          valor_total_compras: formatRaffleCurrency(winner.source_total_amount || 0),
+        },
+      );
+      await sendRaffleWinnerWhatsAppFromWorker({
+        companyId: drawResult.raffle.company_id,
+        raffleId: drawResult.raffle.id,
+        couponId: winner.id,
+        customerId: winner.customer_id,
+        phone,
+        contactName: customer?.nome,
+        body,
+      });
+    }
+  }
+
+  console.log(`[Sorteio Worker] Sorteio automatico executado: ${drawResult.updatedRaffle.id} (${drawResult.winners.length} ganhador(es))`);
+  return { success: true, raffleId: drawResult.updatedRaffle.id, winners: drawResult.winners.length };
+}
+
+async function runAutomaticRaffleWorker() {
+  if (raffleWorkerRunning) return;
+  raffleWorkerRunning = true;
+  try {
+    const dueResult = await pool.query(`
+      SELECT r.id
+      FROM public.raffles r
+      JOIN public.raffle_settings rs
+        ON rs.id = r.raffle_setting_id OR (r.raffle_setting_id IS NULL AND rs.company_id = r.company_id)
+      WHERE r.status = 'open'
+        AND rs.is_active = true
+        AND rs.auto_draw_enabled = true
+        AND r.draw_date <= now()
+      ORDER BY r.draw_date ASC
+      LIMIT 5
+    `);
+
+    for (const row of dueResult.rows) {
+      try {
+        await executeAutomaticRaffle(row.id);
+      } catch (error) {
+        console.error('[Sorteio Worker] Falha em sorteio automatico:', row.id, error.message);
+      }
+    }
+  } catch (error) {
+    console.error('[Sorteio Worker] Erro no ciclo automatico:', error);
+  } finally {
+    raffleWorkerRunning = false;
+  }
+}
+
+function startAutomaticRaffleWorker() {
+  if (process.env.DISABLE_RAFFLE_WORKER === 'true') {
+    console.log('[Sorteio Worker] Desativado por DISABLE_RAFFLE_WORKER=true');
+    return;
+  }
+  setTimeout(runAutomaticRaffleWorker, 10000);
+  setInterval(runAutomaticRaffleWorker, Math.max(15000, RAFFLE_WORKER_INTERVAL_MS));
+  console.log(`[Sorteio Worker] Ativo. Intervalo: ${Math.max(15000, RAFFLE_WORKER_INTERVAL_MS)}ms`);
+}
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
   console.log(`📊 Conectado ao PostgreSQL: ${process.env.DB_HOST}`);
   console.log(`💾 Database: ${process.env.DB_NAME}`);
+  startAutomaticRaffleWorker();
 });
 

@@ -746,7 +746,18 @@ export async function executeManualRaffle(params: {
     .execute();
   const prizeTiers = normalizePrizeTiers((raffle.prize_tiers || (settings as RaffleSettings | null)?.prize_tiers) as RafflePrizeTier[] | null);
   const shuffledCoupons = [...coupons].sort(() => Math.random() - 0.5) as RaffleCoupon[];
-  const winners = shuffledCoupons.slice(0, Math.min(prizeTiers.length, shuffledCoupons.length));
+  const usedWinnerKeys = new Set<string>();
+  const winners: RaffleCoupon[] = [];
+  for (const coupon of shuffledCoupons) {
+    const winnerKey = coupon.customer_id ? `customer:${coupon.customer_id}` : `coupon:${coupon.id}`;
+    if (usedWinnerKeys.has(winnerKey)) continue;
+    usedWinnerKeys.add(winnerKey);
+    winners.push(coupon);
+    if (winners.length >= prizeTiers.length) break;
+  }
+  if (winners.length === 0) {
+    throw new Error('Não há clientes únicos suficientes para sortear.');
+  }
 
   for (let index = 0; index < winners.length; index += 1) {
     const winner = winners[index];

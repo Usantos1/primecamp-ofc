@@ -133,6 +133,9 @@ export default function AcompanharSorteio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [rouletteRunning, setRouletteRunning] = useState(false);
+  const [rouletteFinished, setRouletteFinished] = useState(false);
+  const [rouletteNumber, setRouletteNumber] = useState<number | null>(null);
 
   const loadData = async (silent = false) => {
     if (!token) {
@@ -161,6 +164,9 @@ export default function AcompanharSorteio() {
 
   useEffect(() => {
     loadData();
+    setRouletteRunning(false);
+    setRouletteFinished(false);
+    setRouletteNumber(null);
   }, [token]);
 
   useEffect(() => {
@@ -179,6 +185,30 @@ export default function AcompanharSorteio() {
   const currentWinner = useMemo(() => data?.winners.find((winner) => winner.is_current_participant), [data?.winners]);
   const effectiveDrawDate = useMemo(() => getEffectiveDrawDate(data?.raffle.draw_date, data?.raffle.draw_time), [data?.raffle.draw_date, data?.raffle.draw_time]);
   const countdownParts = getCountdownParts(effectiveDrawDate, now);
+
+  useEffect(() => {
+    if (!isDrawn || rouletteFinished || rouletteRunning || !data?.winners?.length || !data?.coupons?.length) return undefined;
+    setRouletteRunning(true);
+
+    const allNumbers = data.coupons.map((coupon) => Number(coupon.coupon_number)).filter(Number.isFinite);
+    const finalNumber = Number(data.winners[0]?.coupon_number || allNumbers[0]);
+    let ticks = 0;
+    const interval = window.setInterval(() => {
+      ticks += 1;
+      const nextNumber = ticks > 34 ? finalNumber : allNumbers[Math.floor(Math.random() * allNumbers.length)] || finalNumber;
+      setRouletteNumber(nextNumber);
+      if (ticks >= 42) {
+        window.clearInterval(interval);
+        setRouletteNumber(finalNumber);
+        window.setTimeout(() => {
+          setRouletteRunning(false);
+          setRouletteFinished(true);
+        }, 650);
+      }
+    }, 90);
+
+    return () => window.clearInterval(interval);
+  }, [data?.coupons, data?.winners, isDrawn, rouletteFinished, rouletteRunning]);
 
   if (loading) {
     return (
@@ -320,6 +350,26 @@ export default function AcompanharSorteio() {
                 <div className="rounded-3xl border border-amber-100 bg-amber-50 p-5">
                   <p className="font-black text-amber-900">Resultado ainda não disponível.</p>
                   <p className="mt-2 text-sm text-amber-800">Quando o sorteio for realizado, esta página será atualizada automaticamente.</p>
+                </div>
+              ) : rouletteRunning || !rouletteFinished ? (
+                <div className="overflow-hidden rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-600 via-emerald-500 to-lime-400 p-5 text-white shadow-xl shadow-emerald-900/20">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/80">Roleta do sorteio</p>
+                      <p className="mt-1 text-lg font-black">Girando os números da sorte...</p>
+                    </div>
+                    <Trophy className="h-8 w-8 text-white/90" />
+                  </div>
+                  <div className="rounded-[2rem] bg-white/15 p-4 backdrop-blur">
+                    <div className="flex min-h-32 items-center justify-center rounded-[1.5rem] border border-white/30 bg-white text-6xl font-black tracking-tight text-emerald-700 shadow-2xl">
+                      <span className={rouletteRunning ? 'animate-pulse' : ''}>
+                        {rouletteNumber ?? '---'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-white/90">
+                    Aguarde, estamos revelando o cupom vencedor como se fosse uma roleta ao vivo.
+                  </p>
                 </div>
               ) : (
                 <>
