@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Gift, Loader2, RefreshCw, Ticket, Trophy, XCircle } from 'lucide-react';
-import { currencyFormatters, dateFormatters } from '@/utils/formatters';
+import { currencyFormatters } from '@/utils/formatters';
 import { getApiUrl } from '@/utils/apiUrl';
 
 type PublicRaffleData = {
@@ -12,6 +12,8 @@ type PublicRaffleData = {
     id: string;
     name: string;
     draw_date: string;
+    draw_time?: string | null;
+    display_draw_time?: string | null;
     draw_executed_at?: string | null;
     status: 'open' | 'closed' | 'drawn' | 'cancelled' | string;
     company_name: string;
@@ -77,6 +79,54 @@ const getCountdownParts = (target?: string | null, nowMs = Date.now()) => {
   ];
 };
 
+const getSaoPauloDateParts = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  return {
+    year: parts.find((part) => part.type === 'year')?.value || '',
+    month: parts.find((part) => part.type === 'month')?.value || '',
+    day: parts.find((part) => part.type === 'day')?.value || '',
+  };
+};
+
+const normalizeDrawTime = (value?: string | null) => {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
+const getEffectiveDrawDate = (drawDate?: string | null, drawTime?: string | null) => {
+  const dateParts = getSaoPauloDateParts(drawDate);
+  const time = normalizeDrawTime(drawTime);
+  if (dateParts?.year && dateParts.month && dateParts.day && time) {
+    return `${dateParts.year}-${dateParts.month}-${dateParts.day}T${time}:00-03:00`;
+  }
+  return drawDate || null;
+};
+
+const formatDrawDate = (drawDate?: string | null, drawTime?: string | null) => {
+  const effectiveDate = getEffectiveDrawDate(drawDate, drawTime);
+  if (!effectiveDate) return '-';
+  const date = new Date(effectiveDate);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+};
+
+const formatDrawTime = (drawDate?: string | null, drawTime?: string | null, displayDrawTime?: string | null) => {
+  const time = normalizeDrawTime(displayDrawTime) || normalizeDrawTime(drawTime);
+  if (time) return time;
+  const effectiveDate = getEffectiveDrawDate(drawDate, drawTime);
+  if (!effectiveDate) return '-';
+  const date = new Date(effectiveDate);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+};
+
 export default function AcompanharSorteio() {
   const { token } = useParams<{ token: string }>();
   const [data, setData] = useState<PublicRaffleData | null>(null);
@@ -127,7 +177,8 @@ export default function AcompanharSorteio() {
   const isDrawn = data?.raffle.status === 'drawn';
   const isCancelled = data?.raffle.status === 'cancelled';
   const currentWinner = useMemo(() => data?.winners.find((winner) => winner.is_current_participant), [data?.winners]);
-  const countdownParts = getCountdownParts(data?.raffle.draw_date, now);
+  const effectiveDrawDate = useMemo(() => getEffectiveDrawDate(data?.raffle.draw_date, data?.raffle.draw_time), [data?.raffle.draw_date, data?.raffle.draw_time]);
+  const countdownParts = getCountdownParts(effectiveDrawDate, now);
 
   if (loading) {
     return (
@@ -157,7 +208,7 @@ export default function AcompanharSorteio() {
   }
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,#d1fae5,transparent_34%),linear-gradient(135deg,#f0fdf4_0%,#ffffff_48%,#fff7ed_100%)] px-3 py-5 sm:px-5 sm:py-8">
+    <div className="fixed inset-0 overflow-x-hidden overflow-y-scroll bg-[radial-gradient(circle_at_top_left,#d1fae5,transparent_34%),linear-gradient(135deg,#f0fdf4_0%,#ffffff_48%,#fff7ed_100%)] px-3 py-5 sm:px-5 sm:py-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <Card className="overflow-hidden rounded-[2rem] border-emerald-200 shadow-2xl shadow-emerald-900/10">
           <CardHeader className="relative overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-500 to-lime-400 p-6 text-white sm:p-8">
@@ -190,7 +241,7 @@ export default function AcompanharSorteio() {
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sorteio marcado para</p>
-              <p className="mt-2 text-lg font-black text-slate-950">{dateFormatters.short(data.raffle.draw_date)} às {dateFormatters.time(data.raffle.draw_date)}</p>
+              <p className="mt-2 text-lg font-black text-slate-950">{formatDrawDate(data.raffle.draw_date, data.raffle.draw_time)} às {formatDrawTime(data.raffle.draw_date, data.raffle.draw_time, data.raffle.display_draw_time)}</p>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</p>
@@ -245,9 +296,9 @@ export default function AcompanharSorteio() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-emerald-900">{getCountdown(data.raffle.draw_date, now)}</p>
+                    <p className="text-sm text-emerald-900">{getCountdown(effectiveDrawDate, now)}</p>
                   )}
-                  <p className="mt-4 text-sm font-medium text-emerald-900">{getCountdown(data.raffle.draw_date, now)}</p>
+                  <p className="mt-4 text-sm font-medium text-emerald-900">{getCountdown(effectiveDrawDate, now)}</p>
                 </div>
               )}
             </CardContent>

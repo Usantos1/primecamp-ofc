@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar, CheckCircle2, Loader2, LockKeyhole, Search, ShieldCheck, Sparkles, Ticket, Trophy, UserRound } from 'lucide-react';
-import { dateFormatters } from '@/utils/formatters';
 import { getApiUrl } from '@/utils/apiUrl';
 
 type PublicRaffle = {
   id: string;
   name: string;
   draw_date: string;
+  draw_time?: string | null;
+  display_draw_time?: string | null;
   draw_executed_at?: string | null;
   status: string;
   total_coupons?: number | null;
@@ -23,6 +24,8 @@ type Participation = {
   raffle_id: string;
   raffle_name: string;
   draw_date: string;
+  draw_time?: string | null;
+  display_draw_time?: string | null;
   draw_executed_at?: string | null;
   status: string;
   company_name: string;
@@ -75,6 +78,43 @@ const statusClassNames: Record<string, string> = {
   cancelled: 'border-red-200 bg-red-50 text-red-700',
 };
 
+const getSaoPauloDateParts = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  return {
+    year: parts.find((part) => part.type === 'year')?.value || '',
+    month: parts.find((part) => part.type === 'month')?.value || '',
+    day: parts.find((part) => part.type === 'day')?.value || '',
+  };
+};
+
+const normalizeDrawTime = (value?: string | null) => {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  return `${match[1].padStart(2, '0')}:${match[2]}`;
+};
+
+const formatDrawDate = (drawDate?: string | null) => {
+  const dateParts = getSaoPauloDateParts(drawDate);
+  if (!dateParts?.year || !dateParts.month || !dateParts.day) return '-';
+  return `${dateParts.day}/${dateParts.month}/${dateParts.year}`;
+};
+
+const formatDrawTime = (drawDate?: string | null, drawTime?: string | null, displayDrawTime?: string | null) => {
+  const time = normalizeDrawTime(displayDrawTime) || normalizeDrawTime(drawTime);
+  if (time) return time;
+  if (!drawDate) return '-';
+  const date = new Date(drawDate);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+};
+
 export default function ConsultaSorteio() {
   const [raffles, setRaffles] = useState<PublicRaffle[]>([]);
   const [loadingRaffles, setLoadingRaffles] = useState(true);
@@ -94,6 +134,8 @@ export default function ConsultaSorteio() {
         id: participation.raffle_id,
         name: participation.raffle_name,
         draw_date: participation.draw_date,
+        draw_time: participation.draw_time,
+        display_draw_time: participation.display_draw_time,
         draw_executed_at: participation.draw_executed_at,
         status: participation.status,
         total_coupons: participation.total_coupons,
@@ -300,7 +342,7 @@ export default function ConsultaSorteio() {
                         <div>
                           <p className="text-lg font-black text-slate-950">{participation.raffle_name}</p>
                           <p className="text-sm text-slate-500">
-                            {dateFormatters.short(participation.draw_date)} às {dateFormatters.time(participation.draw_date)}
+                            {formatDrawDate(participation.draw_date)} às {formatDrawTime(participation.draw_date, participation.draw_time, participation.display_draw_time)}
                           </p>
                         </div>
                         <Badge variant="outline" className={`w-fit rounded-full ${statusClassNames[participation.status] || ''}`}>{statusLabels[participation.status] || participation.status}</Badge>
@@ -354,7 +396,7 @@ export default function ConsultaSorteio() {
                     <p className="text-lg font-black text-slate-950">{raffle.name}</p>
                     <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
                       <Calendar className="h-4 w-4" />
-                      {dateFormatters.short(raffle.draw_date)} às {dateFormatters.time(raffle.draw_date)}
+                      {formatDrawDate(raffle.draw_date)} às {formatDrawTime(raffle.draw_date, raffle.draw_time, raffle.display_draw_time)}
                     </p>
                     <div className="mt-3 flex items-center justify-between gap-2">
                       <Badge variant="outline" className={`rounded-full ${statusClassNames[raffle.status] || ''}`}>{statusLabels[raffle.status] || raffle.status}</Badge>

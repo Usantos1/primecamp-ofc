@@ -8,6 +8,8 @@ const DEFAULT_COUPON_TEMPLATE =
 const DEFAULT_WINNER_TEMPLATE =
   'Parabéns, {cliente}! O seu número da sorte {numero_sorteado} foi o ganhador do sorteio {nome_sorteio} da {empresa}. Entre em contato com nossa equipe para combinar a retirada do prêmio.';
 
+const DEFAULT_RAFFLE_COUPON_ATIVA_CRM_TAG_ID = 201;
+
 type GenerateRaffleCouponsInput = {
   companyId?: string | null;
   customerId?: string | null;
@@ -198,7 +200,10 @@ export async function getOrCreateCurrentRaffle(settings: RaffleSettings, company
 
   if (existing) {
     if (existing.status === 'open') {
+      const drawDate = buildDrawDate(settings, now);
       const prizePatch = {
+        raffle_setting_id: settings.id || existing.raffle_setting_id || null,
+        draw_date: drawDate,
         prize_description: settings.prize_description || 'Vale-compra',
         prize_value: Number(settings.prize_value || 100),
         prize_validity_days: Number(settings.prize_validity_days || 7),
@@ -293,6 +298,8 @@ async function sendRaffleWhatsApp(params: {
   phone: string;
   messageType: 'coupon_generated' | 'winner_notification';
   messageBody: string;
+  contactName?: string | null;
+  tagId?: number | null;
 }) {
   const logPayload = {
     company_id: params.companyId || null,
@@ -320,6 +327,8 @@ async function sendRaffleWhatsApp(params: {
         data: {
           number: params.phone,
           body: params.messageBody,
+          contactName: params.contactName || undefined,
+          tagId: params.tagId || undefined,
         },
       }),
     });
@@ -518,6 +527,8 @@ export async function generateRaffleCoupons(input: GenerateRaffleCouponsInput) {
         phone: onlyDigits(customerPhone),
         messageType: 'coupon_generated',
         messageBody: body,
+        contactName: customerName,
+        tagId: Number(settings.ativa_crm_coupon_tag_id || DEFAULT_RAFFLE_COUPON_ATIVA_CRM_TAG_ID),
       });
     }
 

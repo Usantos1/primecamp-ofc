@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.raffle_settings (
   draw_time TIME NOT NULL DEFAULT '20:00',
   auto_draw_enabled BOOLEAN NOT NULL DEFAULT false,
   send_coupon_message_enabled BOOLEAN NOT NULL DEFAULT false,
+  ativa_crm_coupon_tag_id INTEGER DEFAULT 201,
   send_winner_message_enabled BOOLEAN NOT NULL DEFAULT false,
   seller_prize_enabled BOOLEAN NOT NULL DEFAULT false,
   seller_prize_value NUMERIC(12,2) NOT NULL DEFAULT 50,
@@ -137,9 +138,14 @@ ALTER TABLE public.raffle_settings
   ADD COLUMN IF NOT EXISTS prize_validity_days INTEGER NOT NULL DEFAULT 7,
   ADD COLUMN IF NOT EXISTS prize_redeem_instructions TEXT NOT NULL DEFAULT 'Retirada presencial na loja mediante apresentação de documento e número da sorte vencedor.',
   ADD COLUMN IF NOT EXISTS prize_tiers JSONB NOT NULL DEFAULT '[{"position":1,"type":"voucher","description":"Vale-compra","value":100},{"position":2,"type":"voucher","description":"Vale-compra","value":70},{"position":3,"type":"voucher","description":"Vale-compra","value":30}]'::jsonb,
+  ADD COLUMN IF NOT EXISTS ativa_crm_coupon_tag_id INTEGER DEFAULT 201,
   ADD COLUMN IF NOT EXISTS seller_prize_enabled BOOLEAN NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS seller_prize_value NUMERIC(12,2) NOT NULL DEFAULT 50,
   ADD COLUMN IF NOT EXISTS seller_prize_requires_no_absence BOOLEAN NOT NULL DEFAULT true;
+
+UPDATE public.raffle_settings
+SET ativa_crm_coupon_tag_id = 201
+WHERE ativa_crm_coupon_tag_id IS NULL;
 
 ALTER TABLE public.raffles
   ADD COLUMN IF NOT EXISTS prize_description TEXT,

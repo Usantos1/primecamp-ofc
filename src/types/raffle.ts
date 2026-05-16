@@ -21,6 +21,7 @@ export interface RaffleSettings {
   draw_time: string;
   auto_draw_enabled: boolean;
   send_coupon_message_enabled: boolean;
+  ativa_crm_coupon_tag_id?: number | null;
   send_winner_message_enabled: boolean;
   seller_prize_enabled?: boolean;
   seller_prize_value?: number;

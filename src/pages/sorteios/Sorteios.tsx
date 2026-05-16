@@ -145,6 +145,7 @@ const emptySettings = (companyId?: string | null): Partial<RaffleSettings> => ({
   draw_time: '20:00',
   auto_draw_enabled: false,
   send_coupon_message_enabled: true,
+  ativa_crm_coupon_tag_id: 201,
   send_winner_message_enabled: true,
   seller_prize_enabled: false,
   seller_prize_value: 50,
@@ -257,6 +258,7 @@ export default function Sorteios() {
             seller_prize_enabled: toBoolean(settingsData.seller_prize_enabled),
             seller_prize_value: Number(settingsData.seller_prize_value || 50),
             seller_prize_requires_no_absence: toBoolean(settingsData.seller_prize_requires_no_absence, true),
+            ativa_crm_coupon_tag_id: Number(settingsData.ativa_crm_coupon_tag_id || 201),
             prize_description: settingsData.prize_description || 'Vale-compra',
             prize_value: Number(settingsData.prize_value || 100),
             prize_validity_days: Number(settingsData.prize_validity_days || 7),
@@ -435,6 +437,7 @@ export default function Sorteios() {
         draw_time: settings.draw_time || '20:00',
         auto_draw_enabled: !!settings.auto_draw_enabled,
         send_coupon_message_enabled: !!settings.send_coupon_message_enabled,
+        ativa_crm_coupon_tag_id: settings.ativa_crm_coupon_tag_id ? Number(settings.ativa_crm_coupon_tag_id) : null,
         send_winner_message_enabled: !!settings.send_winner_message_enabled,
         seller_prize_enabled: settings.seller_prize_enabled === true,
         seller_prize_value: Number(settings.seller_prize_value || 50),
@@ -1051,6 +1054,31 @@ export default function Sorteios() {
                   <Switch checked={!!settings.send_winner_message_enabled} onCheckedChange={(v) => setSettings((p) => ({ ...p, send_winner_message_enabled: v }))} />
                   <span className="text-sm">WhatsApp ao ganhador</span>
                 </label>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-3">
+                <div>
+                  <Label htmlFor="ativa-crm-coupon-tag-id">ID da etiqueta no Ativa CRM para cupom</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Essa etiqueta é aplicada no contato antes de enviar a mensagem com os números da sorte.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Input
+                    id="ativa-crm-coupon-tag-id"
+                    type="number"
+                    min={1}
+                    placeholder="Ex: 201"
+                    value={settings.ativa_crm_coupon_tag_id ?? ''}
+                    onChange={(e) => setSettings((p) => ({
+                      ...p,
+                      ativa_crm_coupon_tag_id: e.target.value ? Number(e.target.value) : null,
+                    }))}
+                  />
+                  <div className="md:col-span-2 flex items-center rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    Atual: {settings.ativa_crm_coupon_tag_id || 'sem etiqueta'} {settings.ativa_crm_coupon_tag_id === 201 ? '- VENDA REALIZADA' : ''}
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-lg border p-3 space-y-3">

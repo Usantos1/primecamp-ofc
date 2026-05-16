@@ -2843,11 +2843,14 @@ app.get('/api/public/sorteios', async (req, res) => {
         r.id,
         r.name,
         r.draw_date,
+        rs.draw_time::text AS draw_time,
+        COALESCE(rs.draw_time::text, to_char(r.draw_date::time, 'HH24:MI:SS')) AS display_draw_time,
         r.draw_executed_at,
         r.status,
         r.total_coupons,
         co.name AS company_name
       FROM public.raffles r
+      LEFT JOIN public.raffle_settings rs ON rs.id = r.raffle_setting_id OR (r.raffle_setting_id IS NULL AND rs.company_id = r.company_id)
       LEFT JOIN public.companies co ON co.id = r.company_id
       ORDER BY r.reference_year DESC, r.reference_month DESC, r.created_at DESC
       LIMIT 60
@@ -2858,6 +2861,8 @@ app.get('/api/public/sorteios', async (req, res) => {
         id: row.id,
         name: row.name,
         draw_date: row.draw_date,
+        draw_time: row.draw_time,
+        display_draw_time: row.display_draw_time,
         draw_executed_at: row.draw_executed_at,
         status: row.status,
         total_coupons: row.total_coupons,
@@ -2935,6 +2940,8 @@ app.post('/api/public/sorteio/consultar', async (req, res) => {
         r.id AS raffle_id,
         r.name AS raffle_name,
         r.draw_date,
+        rs.draw_time::text AS draw_time,
+        COALESCE(rs.draw_time::text, to_char(r.draw_date::time, 'HH24:MI:SS')) AS display_draw_time,
         r.draw_executed_at,
         r.status AS raffle_status,
         co.name AS company_name,
@@ -2943,10 +2950,11 @@ app.post('/api/public/sorteio/consultar', async (req, res) => {
         COUNT(*)::int AS total_coupons
       FROM public.raffle_coupons rc
       JOIN public.raffles r ON r.id = rc.raffle_id
+      LEFT JOIN public.raffle_settings rs ON rs.id = r.raffle_setting_id OR (r.raffle_setting_id IS NULL AND rs.company_id = r.company_id)
       LEFT JOIN public.companies co ON co.id = rc.company_id
       WHERE rc.customer_id = ANY($1::uuid[])
         AND rc.status IN ('valid', 'winner')
-      GROUP BY r.id, r.name, r.draw_date, r.draw_executed_at, r.status, co.name, rc.tracking_token
+      GROUP BY r.id, r.name, r.draw_date, rs.draw_time, r.draw_executed_at, r.status, co.name, rc.tracking_token
       ORDER BY r.reference_year DESC, r.reference_month DESC, r.created_at DESC
       LIMIT 60
     `, [customerIds]);
@@ -2962,6 +2970,8 @@ app.post('/api/public/sorteio/consultar', async (req, res) => {
           raffle_id: row.raffle_id,
           raffle_name: row.raffle_name,
           draw_date: row.draw_date,
+          draw_time: row.draw_time,
+          display_draw_time: row.display_draw_time,
           draw_executed_at: row.draw_executed_at,
           status: row.raffle_status,
           company_name: row.company_name || 'Empresa',
@@ -2992,6 +3002,8 @@ app.get('/api/public/sorteio/:token', async (req, res) => {
         rc.raffle_id,
         r.name AS raffle_name,
         r.draw_date,
+        rs.draw_time::text AS draw_time,
+        COALESCE(rs.draw_time::text, to_char(r.draw_date::time, 'HH24:MI:SS')) AS display_draw_time,
         r.draw_executed_at,
         r.status AS raffle_status,
         r.winning_coupon_id,
@@ -3001,6 +3013,7 @@ app.get('/api/public/sorteio/:token', async (req, res) => {
         c.whatsapp AS customer_whatsapp
       FROM public.raffle_coupons rc
       JOIN public.raffles r ON r.id = rc.raffle_id
+      LEFT JOIN public.raffle_settings rs ON rs.id = r.raffle_setting_id OR (r.raffle_setting_id IS NULL AND rs.company_id = r.company_id)
       LEFT JOIN public.clientes c ON c.id = rc.customer_id
       WHERE rc.tracking_token = $1
       LIMIT 1
@@ -3056,6 +3069,8 @@ app.get('/api/public/sorteio/:token', async (req, res) => {
           id: base.raffle_id,
           name: base.raffle_name,
           draw_date: base.draw_date,
+          draw_time: base.draw_time,
+          display_draw_time: base.display_draw_time,
           draw_executed_at: base.draw_executed_at,
           status: base.raffle_status,
           company_name: companyName,
