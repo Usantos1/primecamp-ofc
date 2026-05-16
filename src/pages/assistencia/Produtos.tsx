@@ -128,8 +128,13 @@ const ProdutoTableRow = memo(({
     const unidadesComEstoque = unidades.filter((item) => (item.available_quantity || 0) > 0);
     const todasAtivas = unidades.length > 1 && unidades.every((item) => item.is_active_branch);
     if (todasAtivas) {
+      const detalhes = (unidadesComEstoque.length ? unidadesComEstoque : unidades)
+        .slice(0, 3)
+        .map((item) => `${item.branch_name}: ${item.available_quantity || 0}`);
       return {
         principal: `${unidadesComEstoque.length || unidades.length} unidade(s)`,
+        detalhes,
+        excedente: Math.max(0, (unidadesComEstoque.length || unidades.length) - detalhes.length),
         outras: 0,
       };
     }
@@ -137,6 +142,8 @@ const ProdutoTableRow = memo(({
     const outrasComEstoque = unidades.filter((item) => !item.is_active_branch && (item.available_quantity || 0) > 0);
     return {
       principal: ativa?.branch_name || '-',
+      detalhes: ativa ? [`Estoque: ${ativa.available_quantity || 0}`] : [],
+      excedente: 0,
       outras: outrasComEstoque.length,
     };
   }, [produto.estoque_unidades]);
@@ -182,6 +189,14 @@ const ProdutoTableRow = memo(({
         <div className="truncate font-medium text-foreground/80" title={unidadeResumo.principal}>
           {unidadeResumo.principal}
         </div>
+        {unidadeResumo.detalhes.map((detalhe) => (
+          <div key={detalhe} className="truncate text-[10px] leading-4 text-muted-foreground" title={detalhe}>
+            {detalhe}
+          </div>
+        ))}
+        {unidadeResumo.excedente > 0 && (
+          <div className="text-[10px] leading-4 text-emerald-700">+{unidadeResumo.excedente} unidade(s)</div>
+        )}
         {unidadeResumo.outras > 0 && (
           <div className="text-[10px] text-emerald-700">+{unidadeResumo.outras} unidade(s)</div>
         )}
