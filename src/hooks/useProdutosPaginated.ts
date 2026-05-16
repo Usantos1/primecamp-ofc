@@ -636,6 +636,10 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
 
   // Atualizar produto
   const updateProduto = useCallback(async (id: string, data: Partial<Produto>) => {
+    const shouldUpdateBranchStock = !!activeBranchId && activeBranchId !== 'all' && (
+      data.quantidade !== undefined ||
+      data.estoque_minimo !== undefined
+    );
     // Buscar estado anterior para auditoria
     const { data: oldRow, error: oldErr } = await dbFrom('produtos')
       .select('id, nome, quantidade, valor_dinheiro_pix, vi_custo')
@@ -655,6 +659,10 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     }
 
     const produtoSupabase = mapAssistenciaToSupabase(data);
+    if (shouldUpdateBranchStock) {
+      delete (produtoSupabase as any).quantidade;
+      delete (produtoSupabase as any).estoque_minimo;
+    }
     
     const { error } = await dbFrom('produtos')
       .eq('id', id)
@@ -673,13 +681,48 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       throw error;
     }
 
+    let beforeBranchQtd: number | null = null;
+    let afterBranchQtd: number | null = null;
+    if (shouldUpdateBranchStock) {
+      const { data: currentStock } = await dbFrom('product_stocks')
+        .select('id,quantity,reserved_quantity,minimum_quantity')
+        .eq('product_id', id)
+        .eq('branch_id', activeBranchId)
+        .maybeSingle();
+
+      beforeBranchQtd = Number(currentStock?.quantity || 0);
+      afterBranchQtd = data.quantidade !== undefined ? Number(data.quantidade || 0) : beforeBranchQtd;
+
+      const stockPayload = {
+        product_id: id,
+        company_id: user?.company_id,
+        branch_id: activeBranchId,
+        quantity: afterBranchQtd,
+        reserved_quantity: Number(currentStock?.reserved_quantity || 0),
+        minimum_quantity: data.estoque_minimo !== undefined ? Number(data.estoque_minimo || 0) : Number(currentStock?.minimum_quantity || 0),
+      };
+
+      if (currentStock?.id) {
+        const { error: stockUpdateError } = await dbFrom('product_stocks')
+          .update(stockPayload)
+          .eq('id', currentStock.id)
+          .execute();
+        if (stockUpdateError) throw stockUpdateError;
+      } else {
+        const { error: stockInsertError } = await dbFrom('product_stocks')
+          .insert(stockPayload)
+          .execute();
+        if (stockInsertError) throw stockInsertError;
+      }
+    }
+
     queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
     queryClient.invalidateQueries({ queryKey: ['produtos-grupos'] });
     
     // Registrar movimentações internas (estoque/preço/custo)
     try {
-      const beforeQtd = Number((oldRow as any)?.quantidade ?? 0);
-      const afterQtd = data.quantidade !== undefined ? Number(data.quantidade ?? 0) : beforeQtd;
+      const beforeQtd = beforeBranchQtd !== null ? beforeBranchQtd : Number((oldRow as any)?.quantidade ?? 0);
+      const afterQtd = afterBranchQtd !== null ? afterBranchQtd : (data.quantidade !== undefined ? Number(data.quantidade ?? 0) : beforeQtd);
       const beforeVenda = Number((oldRow as any)?.valor_dinheiro_pix ?? 0);
       const afterVenda = data.valor_venda !== undefined ? Number(data.valor_venda ?? 0) : beforeVenda;
       const beforeCusto = Number((oldRow as any)?.vi_custo ?? 0);
@@ -750,7 +793,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
       title: 'Sucesso',
       description: 'Produto atualizado com sucesso!',
     });
-  }, [queryClient, user, profile]);
+  }, [queryClient, user, profile, activeBranchId]);
 
   // Deletar produto (deletar fisicamente)
   const deleteProduto = useCallback(async (id: string) => {
