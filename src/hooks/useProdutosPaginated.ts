@@ -73,7 +73,7 @@ interface UseProdutosPaginatedOptions {
 
 export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) {
   const queryClient = useQueryClient();
-  const { user, profile } = useAuth();
+  const { user, profile, activeBranchId } = useAuth();
   const {
     page: initialPage = 1,
     pageSize: initialPageSize = 50,
@@ -121,7 +121,7 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
     isFetching,
     error,
   } = useQuery({
-    queryKey: ['produtos-paginated', page, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
+    queryKey: ['produtos-paginated', activeBranchId, page, pageSize, debouncedSearchTerm, searchField, grupo, localizacao, orderBy, orderDirection],
     queryFn: async () => {
       // Construir query base usando wrapper PostgreSQL
       const selectFields = 'id,codigo,nome,codigo_barras,referencia,marca,modelo,grupo,sub_grupo,qualidade,valor_dinheiro_pix,valor_parcelado_6x,margem_percentual,quantidade,estoque_minimo,localizacao,unidade,tipo,garantia_dias,vi_custo,estoque_grade,criado_em,atualizado_em';
@@ -222,7 +222,27 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
         throw new Error(`Erro ao buscar produtos: ${error.message || error}`);
       }
 
-      const rows = data || [];
+      let rows = data || [];
+      if (activeBranchId && activeBranchId !== 'all' && rows.length > 0) {
+        const productIds = rows.map((row: any) => row.id).filter(Boolean);
+        const { data: stocks, error: stockError } = await dbFrom('product_stocks')
+          .select('product_id,quantity,reserved_quantity,minimum_quantity')
+          .in('product_id', productIds)
+          .execute();
+
+        if (!stockError) {
+          const stockByProduct = new Map((stocks || []).map((stock: any) => [stock.product_id, stock]));
+          rows = rows.map((row: any) => {
+            const stock = stockByProduct.get(row.id);
+            const quantity = stock ? Number(stock.quantity || 0) - Number(stock.reserved_quantity || 0) : 0;
+            return {
+              ...row,
+              quantidade: quantity,
+              estoque_minimo: stock ? Number(stock.minimum_quantity || 0) : 0,
+            };
+          });
+        }
+      }
       
       // Garantir que count seja um número válido
       // Se count for undefined, null, 0 ou NaN, manter o valor anterior ou usar um valor seguro

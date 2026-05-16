@@ -201,6 +201,8 @@ DECLARE
     'bills_to_pay',
     'refunds',
     'refund_items',
+    'vouchers',
+    'voucher_usage',
     'clientes',
     'produto_movimentacoes',
     'sale_items',

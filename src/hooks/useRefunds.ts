@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/integrations/api/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface RefundItem {
   sale_item_id?: string;
@@ -100,10 +101,11 @@ export function useRefunds() {
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { activeBranchId } = useAuth();
 
   // Lista de devoluções com cache — evita múltiplas requisições e 429
   const refundsQuery = useQuery({
-    queryKey: REFUNDS_QUERY_KEY,
+    queryKey: [...REFUNDS_QUERY_KEY, activeBranchId],
     queryFn: async (): Promise<Refund[]> => {
       const response = await apiClient.get('/refunds?');
       if (response.error) throw new Error(response.error as string);
@@ -117,7 +119,7 @@ export function useRefunds() {
 
   // Lista de vales com cache — evita múltiplas requisições e 429
   const vouchersQuery = useQuery({
-    queryKey: VOUCHERS_QUERY_KEY,
+    queryKey: [...VOUCHERS_QUERY_KEY, activeBranchId],
     queryFn: async (): Promise<Voucher[]> => {
       const response = await apiClient.get('/refunds/vouchers/list?');
       if (response.error) throw new Error(response.error as string);
@@ -144,14 +146,14 @@ export function useRefunds() {
         return [];
       }
       const data = response.data?.data ?? [];
-      queryClient.setQueryData(REFUNDS_QUERY_KEY, data);
+      queryClient.setQueryData([...REFUNDS_QUERY_KEY, activeBranchId], data);
       return data;
     } catch (error: any) {
       const msg = error?.data?.error || error?.message || 'Erro ao carregar devoluções';
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
       return [];
     }
-  }, [toast, queryClient]);
+  }, [toast, queryClient, activeBranchId]);
 
   const refetchRefunds = useCallback(() => {
     return queryClient.invalidateQueries({ queryKey: REFUNDS_QUERY_KEY });

@@ -13,6 +13,25 @@ const pool = new Pool({
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
+const branchScoped = (req, alias = '') => {
+  const branchId = req.branchId;
+  const useBranch = branchId && req.branchScope !== 'all';
+  return {
+    branchId: useBranch ? branchId : null,
+    condition: useBranch ? ` AND ${alias ? `${alias}.` : ''}branch_id = $BRANCH_PARAM` : '',
+  };
+};
+
+const appendBranchCondition = (query, params, req, alias = '') => {
+  const scope = branchScoped(req, alias);
+  if (!scope.branchId) return { query, params };
+  const index = params.length + 1;
+  return {
+    query: query + scope.condition.replace('$BRANCH_PARAM', `$${index}`),
+    params: [...params, scope.branchId],
+  };
+};
+
 // ═══════════════════════════════════════════════════════
 // DEVOLUÇÕES
 // ═══════════════════════════════════════════════════════
@@ -42,6 +61,10 @@ router.get('/', async (req, res) => {
     `;
     const params = [companyId];
     let paramIndex = 2;
+    const branchScope = appendBranchCondition('', params, req, 'r');
+    query += branchScope.query;
+    params.splice(0, params.length, ...branchScope.params);
+    paramIndex = params.length + 1;
     
     if (status) {
       query += ` AND r.status = $${paramIndex}`;
@@ -78,6 +101,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const companyId = req.companyId;
     
+    const refundBranch = branchScoped(req, 'r');
     const refundResult = await pool.query(`
       SELECT r.*, 
              s.cliente_nome as sale_customer_name,
@@ -94,8 +118,8 @@ router.get('/:id', async (req, res) => {
       LEFT JOIN vouchers vc ON r.voucher_id = vc.id
       LEFT JOIN users u ON r.created_by = u.id
       LEFT JOIN users u2 ON r.approved_by = u2.id
-      WHERE r.id = $1 AND r.company_id = $2
-    `, [id, companyId]);
+      WHERE r.id = $1 AND r.company_id = $2${refundBranch.branchId ? ' AND r.branch_id = $3' : ''}
+    `, refundBranch.branchId ? [id, companyId, refundBranch.branchId] : [id, companyId]);
     
     if (refundResult.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Devolução não encontrada' });
@@ -129,6 +153,7 @@ router.post('/', async (req, res) => {
     
     const companyId = req.companyId;
     const userId = req.user?.id || req.user?.userId || null;
+    const branchId = req.branchId || null;
     
     if (!companyId) {
       return res.status(401).json({
@@ -171,8 +196,8 @@ router.post('/', async (req, res) => {
     }
 
     const saleResult = await client.query(
-      'SELECT total FROM sales WHERE id = $1 AND company_id = $2',
-      [sale_id, companyId]
+      `SELECT total, branch_id FROM sales WHERE id = $1 AND company_id = $2${branchId && req.branchScope !== 'all' ? ' AND branch_id = $3' : ''}`,
+      branchId && req.branchScope !== 'all' ? [sale_id, companyId, branchId] : [sale_id, companyId]
     );
 
     if (saleResult.rows.length === 0) {
@@ -251,13 +276,13 @@ router.post('/', async (req, res) => {
     // Criar devolução
     const refundResult = await client.query(`
       INSERT INTO refunds (
-        company_id, sale_id, refund_number, refund_type, reason, reason_details,
+        company_id, branch_id, sale_id, refund_number, refund_type, reason, reason_details,
         total_refund_value, refund_method, customer_id, customer_name, notes,
         status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending', $13)
       RETURNING *
     `, [
-      companyId, sale_id, refundNumber, refund_type, reason, reason_details,
+      companyId, branchId || saleResult.rows[0].branch_id || null, sale_id, refundNumber, refund_type, reason, reason_details,
       totalRefundValue, refund_method, customer_id, customer_name, notes, userId
     ]);
     
@@ -321,13 +346,13 @@ router.post('/', async (req, res) => {
       
       const voucherResult = await client.query(`
         INSERT INTO vouchers (
-          company_id, code, original_sale_id, refund_id, customer_id,
+          company_id, branch_id, code, original_sale_id, refund_id, customer_id,
           customer_name, customer_document, customer_phone,
           original_value, current_value, is_transferable, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, $12)
         RETURNING *
       `, [
-        companyId, voucherCode, sale_id, refund.id, customer_id,
+        companyId, branchId || saleResult.rows[0].branch_id || null, voucherCode, sale_id, refund.id, customer_id,
         customer_name, customerDocument, customerPhone,
         totalRefundValue, totalRefundValue, userId
       ]);
@@ -611,6 +636,10 @@ router.get('/vouchers/list', async (req, res) => {
     `;
     const params = [companyId];
     let paramIndex = 2;
+    const branchScope = appendBranchCondition('', params, req, 'v');
+    query += branchScope.query;
+    params.splice(0, params.length, ...branchScope.params);
+    paramIndex = params.length + 1;
     
     if (status) {
       query += ` AND v.status = $${paramIndex}`;
@@ -647,8 +676,8 @@ router.put('/vouchers/:id/cancel', async (req, res) => {
     const userId = req.user?.id || null;
 
     const voucherResult = await client.query(
-      'SELECT * FROM vouchers WHERE id = $1 AND company_id = $2 FOR UPDATE',
-      [id, companyId]
+      `SELECT * FROM vouchers WHERE id = $1 AND company_id = $2${req.branchId && req.branchScope !== 'all' ? ' AND branch_id = $3' : ''} FOR UPDATE`,
+      req.branchId && req.branchScope !== 'all' ? [id, companyId, req.branchId] : [id, companyId]
     );
 
     if (voucherResult.rows.length === 0) {
@@ -724,14 +753,15 @@ router.get('/vouchers/code/:code', async (req, res) => {
     const { code } = req.params;
     const companyId = req.companyId;
     
+    const voucherBranch = branchScoped(req, 'v');
     const result = await pool.query(`
       SELECT v.*,
              r.refund_number,
              r.reason as refund_reason
       FROM vouchers v
       LEFT JOIN refunds r ON v.refund_id = r.id
-      WHERE v.code = $1 AND v.company_id = $2
-    `, [code.toUpperCase(), companyId]);
+      WHERE v.code = $1 AND v.company_id = $2${voucherBranch.branchId ? ' AND v.branch_id = $3' : ''}
+    `, voucherBranch.branchId ? [code.toUpperCase(), companyId, voucherBranch.branchId] : [code.toUpperCase(), companyId]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Vale não encontrado' });
@@ -780,8 +810,8 @@ router.post('/vouchers/:id/use', async (req, res) => {
     
     // Buscar vale
     const voucherResult = await client.query(
-      'SELECT * FROM vouchers WHERE id = $1 AND company_id = $2 FOR UPDATE',
-      [id, companyId]
+      `SELECT * FROM vouchers WHERE id = $1 AND company_id = $2${req.branchId && req.branchScope !== 'all' ? ' AND branch_id = $3' : ''} FOR UPDATE`,
+      req.branchId && req.branchScope !== 'all' ? [id, companyId, req.branchId] : [id, companyId]
     );
     
     if (voucherResult.rows.length === 0) {
@@ -819,9 +849,9 @@ router.post('/vouchers/:id/use', async (req, res) => {
     
     // Registrar uso
     await client.query(`
-      INSERT INTO voucher_usage (voucher_id, sale_id, amount_used, balance_before, balance_after, used_by, company_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [id, sale_id, amount, balanceBefore, balanceAfter, userId, companyId]);
+      INSERT INTO voucher_usage (voucher_id, sale_id, amount_used, balance_before, balance_after, used_by, company_id, branch_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [id, sale_id, amount, balanceBefore, balanceAfter, userId, companyId, voucher.branch_id || req.branchId || null]);
     
     // Atualizar vale como USADO
     await client.query(`
