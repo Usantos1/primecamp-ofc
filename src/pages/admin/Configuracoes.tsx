@@ -19,6 +19,7 @@ import {
   FolderOpen,
   FileText,
   Globe2,
+  Palette,
 } from 'lucide-react';
 import { DashboardConfigModal } from '@/components/dashboard/DashboardConfigModal';
 import {
@@ -118,6 +119,15 @@ export default function Configuracoes() {
       color: 'from-emerald-500 to-green-500',
       hoverColor: 'hover:from-emerald-600 hover:to-green-600',
       path: '/admin/unidades',
+      permission: 'admin.config',
+    },
+    {
+      title: 'Aparência / Marca',
+      description: 'Configure whitelabel, logo, cores e nome do sistema',
+      icon: Palette,
+      color: 'from-emerald-500 to-teal-500',
+      hoverColor: 'hover:from-emerald-600 hover:to-teal-600',
+      path: '/admin/aparencia',
       permission: 'admin.config',
     },
     {

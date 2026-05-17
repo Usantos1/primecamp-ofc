@@ -13,6 +13,8 @@ interface ThemeColors {
 interface ThemeConfig {
   logo?: string;
   logoAlt?: string;
+  favicon?: string;
+  loginBackground?: string;
   colors: ThemeColors;
   companyName?: string;
   navigationVariant?: 'default' | 'miui';
@@ -84,6 +86,8 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
       ...(data.companyName != null && { companyName: data.companyName }),
       ...(data.logo && typeof data.logo === 'string' && { logo: data.logo }),
       ...(data.logoAlt != null && { logoAlt: data.logoAlt }),
+      ...(data.favicon && typeof data.favicon === 'string' && { favicon: data.favicon }),
+      ...(data.loginBackground && typeof data.loginBackground === 'string' && { loginBackground: data.loginBackground }),
       navigationVariant: data.navigationVariant === 'default' ? 'default' : 'miui',
       colors: {
         ...prev.colors,
@@ -126,7 +130,17 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
     if (config.companyName) {
       document.title = config.companyName;
     }
-  }, [config.companyName]);
+    const faviconHref = config.favicon || config.logo;
+    if (faviconHref) {
+      let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = faviconHref;
+    }
+  }, [config.companyName, config.favicon, config.logo]);
 
   const updateConfig = (newConfig: Partial<ThemeConfig>) => {
     setConfig((prev) => {

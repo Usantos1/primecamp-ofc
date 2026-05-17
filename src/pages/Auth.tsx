@@ -26,7 +26,9 @@ const Auth = () => {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { config } = useThemeConfig();
-  const logoUrl = getDefaultConfigByHost().logo || "/logo-ativafix.png";
+  const logoUrl = config.logo || getDefaultConfigByHost().logo || "/logo-ativafix.png";
+  const loginBackgroundUrl = config.loginBackground || LOGIN_BACKGROUND_URL;
+  const buttonColor = config.colors.button || config.colors.primary;
   const currentYear = new Date().getFullYear();
 
   const [loading, setLoading] = useState(false);
@@ -182,7 +184,7 @@ const Auth = () => {
   return (
     <div
       className="relative flex min-h-screen flex-col overflow-hidden bg-slate-950 bg-cover bg-center bg-no-repeat text-slate-700 dark:text-slate-200"
-      style={{ backgroundImage: `url(${LOGIN_BACKGROUND_URL})` }}
+      style={{ backgroundImage: `url(${loginBackgroundUrl})` }}
     >
       <div className="absolute inset-0 bg-slate-950/30 dark:bg-slate-950/60" aria-hidden="true" />
 
@@ -286,7 +288,8 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="h-[44px] w-full rounded-full bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                className="h-[44px] w-full rounded-full text-sm font-semibold text-white shadow-none hover:opacity-90"
+                style={{ backgroundColor: `hsl(${buttonColor})` }}
                 disabled={loading || lockSecondsLeft > 0}
               >
                 {loading ? (
@@ -332,7 +335,8 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="h-[34px] w-full rounded-full bg-[#75c7ad] text-sm font-semibold text-white shadow-none hover:bg-[#63b99e]"
+                className="h-[34px] w-full rounded-full text-sm font-semibold text-white shadow-none hover:opacity-90"
+                style={{ backgroundColor: `hsl(${buttonColor})` }}
                 disabled={loading}
               >
                 {loading ? (
@@ -374,7 +378,7 @@ const Auth = () => {
             Termos de Uso
           </button>
         </div>
-        <p>© {currentYear} Ativa FIX. Todos os direitos reservados.</p>
+        <p>© {currentYear} {config.companyName || 'Ativa FIX'}. Todos os direitos reservados.</p>
       </footer>
 
       <a

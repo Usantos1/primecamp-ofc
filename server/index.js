@@ -306,7 +306,17 @@ function planAllowsCustomDomains(features) {
   return parsedFeatures?.custom_domains === true || parsedFeatures?.custom_domain === true;
 }
 
-async function getCompanyCustomDomainEntitlement(companyId) {
+function planAllowsWhiteLabel(features) {
+  if (!features) return false;
+  const parsedFeatures = typeof features === 'string'
+    ? (() => {
+        try { return JSON.parse(features); } catch { return {}; }
+      })()
+    : features;
+  return parsedFeatures?.white_label === true || parsedFeatures?.whitelabel === true;
+}
+
+async function getCompanyPlanFeatures(companyId) {
   const result = await pool.query(
     `SELECT p.features
      FROM public.subscriptions s
@@ -319,11 +329,23 @@ async function getCompanyCustomDomainEntitlement(companyId) {
      LIMIT 1`,
     [companyId]
   );
-  const features = result.rows[0]?.features || null;
+  return result.rows[0]?.features || null;
+}
+
+async function getCompanyCustomDomainEntitlement(companyId) {
+  const features = await getCompanyPlanFeatures(companyId);
   return {
     allowed: planAllowsCustomDomains(features),
     limit: 1,
   };
+}
+
+async function getCompanyWhiteLabelEntitlement(companyId) {
+  if (companyId === '00000000-0000-0000-0000-000000000001') {
+    return { allowed: true };
+  }
+  const features = await getCompanyPlanFeatures(companyId);
+  return { allowed: planAllowsWhiteLabel(features) };
 }
 
 const BRANCH_ALL_VALUE = 'all';
@@ -7149,6 +7171,46 @@ function themeConfigKey(host) {
   return `theme_config_${normalized}`;
 }
 
+function brandingRowToThemeConfig(row) {
+  if (!row || row.enabled === false) return null;
+  return {
+    companyName: row.system_name || 'Ativa FIX',
+    logo: row.logo_url || undefined,
+    logoAlt: row.logo_alt || row.system_name || 'Ativa FIX',
+    favicon: row.favicon_url || undefined,
+    loginBackground: row.login_background_url || undefined,
+    navigationVariant: 'miui',
+    colors: {
+      primary: row.primary_color || '160 84% 30%',
+      primaryForeground: '0 0% 100%',
+      secondary: '210 40% 95%',
+      accent: row.primary_color || '160 84% 30%',
+      sidebar: row.sidebar_color || row.primary_color || '160 84% 30%',
+      button: row.button_color || row.primary_color || '160 84% 30%',
+    },
+  };
+}
+
+async function getCompanyBrandingConfig(companyId) {
+  if (!companyId || !(await publicTableExists('company_branding'))) return null;
+  const entitlement = await getCompanyWhiteLabelEntitlement(companyId);
+  if (!entitlement.allowed) return null;
+  const result = await pool.query(
+    `SELECT * FROM public.company_branding
+     WHERE company_id = $1 AND enabled = true
+     LIMIT 1`,
+    [companyId]
+  );
+  return brandingRowToThemeConfig(result.rows[0]);
+}
+
+async function resolveThemeCompanyIdFromHost(host) {
+  const normalized = normalizeDomainHost(host);
+  if (!normalized || isInternalSystemHost(normalized)) return null;
+  const resolved = await resolveCompanyDomainByHost(normalized);
+  return resolved?.company_id || null;
+}
+
 // GET /api/theme-config — público (login) ou com auth (tema da empresa do usuário)
 // Com Authorization: retorna tema da empresa (company_id); senão usa ?host= para tema do domínio
 app.get('/api/theme-config', async (req, res) => {
@@ -7167,8 +7229,10 @@ app.get('/api/theme-config', async (req, res) => {
         if (userRow.rows[0]?.company_id) companyId = userRow.rows[0].company_id;
       } catch (_) {}
     }
-    // 1) Se logado com empresa, buscar tema da empresa
+    // 1) Se logado com empresa, buscar whitelabel da empresa
     if (companyId) {
+      const brandingConfig = await getCompanyBrandingConfig(companyId);
+      if (brandingConfig) return res.json(brandingConfig);
       const companyKey = `theme_config_company_${companyId}`;
       const companyResult = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [companyKey]);
       if (companyResult.rows.length > 0 && companyResult.rows[0].value) {
@@ -7186,6 +7250,11 @@ app.get('/api/theme-config', async (req, res) => {
       } catch (_) {}
     }
     const h = (host && host.toLowerCase().replace(/^www\./, '')) || '';
+    const hostCompanyId = req.resolvedCompanyId || await resolveThemeCompanyIdFromHost(h);
+    if (hostCompanyId) {
+      const brandingConfig = await getCompanyBrandingConfig(hostCompanyId);
+      if (brandingConfig) return res.json(brandingConfig);
+    }
     const isLoginHost = h === 'app.ativafix.com' || h === 'localhost' || h === '127.0.0.1';
     if (isLoginHost) {
       const company1Result = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [adminCompanyKey]);
@@ -7217,16 +7286,63 @@ app.post('/api/theme-config', authenticateToken, requirePermission('admin.config
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
-    const { companyName, logo, logoAlt, colors, navigationVariant } = req.body;
+    const { companyName, logo, logoAlt, favicon, loginBackground, colors, navigationVariant } = req.body;
     const companyId = req.companyId || req.user?.company_id;
     if (!companyId) {
       return res.status(403).json({ error: 'Usuário sem empresa vinculada para salvar o tema.' });
+    }
+    const entitlement = await getCompanyWhiteLabelEntitlement(companyId);
+    if (!entitlement.allowed) {
+      return res.status(403).json({ error: 'Seu plano atual não libera whitelabel.' });
+    }
+    if (await publicTableExists('company_branding')) {
+      const systemName = companyName != null ? String(companyName).trim() : null;
+      const logoValue = logo === '' ? null : (logo || null);
+      const faviconValue = favicon === '' ? null : (favicon || null);
+      const loginBackgroundValue = loginBackground === '' ? null : (loginBackground || null);
+      const primaryColor = colors?.primary ? String(colors.primary).trim() : '160 84% 30%';
+      const sidebarColor = colors?.sidebar ? String(colors.sidebar).trim() : primaryColor;
+      const buttonColor = colors?.button ? String(colors.button).trim() : primaryColor;
+      const saved = await pool.query(
+        `INSERT INTO public.company_branding (
+          company_id, enabled, system_name, logo_url, logo_alt, favicon_url,
+          login_background_url, primary_color, sidebar_color, button_color
+        )
+        VALUES ($1, true, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (company_id) DO UPDATE SET
+          enabled = true,
+          system_name = EXCLUDED.system_name,
+          logo_url = EXCLUDED.logo_url,
+          logo_alt = EXCLUDED.logo_alt,
+          favicon_url = EXCLUDED.favicon_url,
+          login_background_url = EXCLUDED.login_background_url,
+          primary_color = EXCLUDED.primary_color,
+          sidebar_color = EXCLUDED.sidebar_color,
+          button_color = EXCLUDED.button_color,
+          updated_at = now()
+        RETURNING *`,
+        [
+          companyId,
+          systemName,
+          logoValue,
+          logoAlt != null ? String(logoAlt).trim() || null : systemName,
+          faviconValue,
+          loginBackgroundValue,
+          primaryColor,
+          sidebarColor,
+          buttonColor,
+        ]
+      );
+      const config = brandingRowToThemeConfig(saved.rows[0]);
+      return res.json({ success: true, config });
     }
     const key = `theme_config_company_${companyId}`;
     const incoming = {
       ...(companyName != null && { companyName: String(companyName).trim() || null }),
       ...(logo != null && { logo: logo === '' ? null : logo }),
       ...(logoAlt != null && { logoAlt: String(logoAlt).trim() || null }),
+      ...(favicon != null && { favicon: favicon === '' ? null : favicon }),
+      ...(loginBackground != null && { loginBackground: loginBackground === '' ? null : loginBackground }),
       ...(navigationVariant != null && {
         navigationVariant: navigationVariant === 'miui' ? 'miui' : 'default',
       }),

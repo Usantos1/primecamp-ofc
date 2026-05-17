@@ -93,6 +93,8 @@ export default function AdminReseller() {
   const [plansDialogOpen, setPlansDialogOpen] = useState(false);
   const [companyUsers, setCompanyUsers] = useState<any[]>([]);
   const [planFormData, setPlanFormData] = useState<Partial<Plan>>({});
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [plansLoaded, setPlansLoaded] = useState(false);
   const [userFormData, setUserFormData] = useState({
     email: '',
     password: '',
@@ -151,13 +153,6 @@ export default function AdminReseller() {
       loadCompanies();
     }
   }, [pagination.page, search, statusFilter, user, isAdmin, profile]);
-
-  useEffect(() => {
-    if (user && isAdmin && profile?.role === 'admin') {
-      loadPlans();
-      loadSegmentos();
-    }
-  }, [user, isAdmin, profile]);
 
   // Quando o modal de empresa (criar/editar) abre e segmentos está vazio, tenta carregar de novo
   useEffect(() => {
@@ -227,10 +222,11 @@ export default function AdminReseller() {
     }
   };
 
-  const loadPlans = async () => {
+  const loadPlans = async (force = false) => {
+    if (!force && plansLoaded) return;
+    setPlansLoading(true);
     try {
       const plansData = await listPlans();
-      console.log('[AdminReseller] Planos carregados:', plansData);
       
       // Se retornar erro 403, significa que não é admin da empresa principal
       if (plansData?.error && plansData.error.includes('Acesso negado')) {
@@ -240,6 +236,7 @@ export default function AdminReseller() {
       }
       
       setPlans(Array.isArray(plansData) ? plansData : []);
+      setPlansLoaded(true);
     } catch (err: any) {
       // Se for erro 403, redirecionar
       if (err.message?.includes('403') || err.message?.includes('Acesso negado')) {
@@ -250,6 +247,8 @@ export default function AdminReseller() {
       console.error('Erro ao carregar planos:', err);
       toast.error('Erro ao carregar planos: ' + err.message);
       setPlans([]);
+    } finally {
+      setPlansLoading(false);
     }
   };
 
@@ -331,8 +330,8 @@ export default function AdminReseller() {
   const openCreateDialog = async () => {
     resetForm();
     setFormData(prev => ({ ...prev, plan_id: '', billing_cycle: 'monthly' }));
-    await Promise.all([loadSegmentos(), loadPlans()]);
     setDialogOpen(true);
+    Promise.all([loadSegmentos(), loadPlans()]).catch(() => undefined);
   };
 
   const openEditDialog = async (company: Company) => {
@@ -362,6 +361,7 @@ export default function AdminReseller() {
     setSelectedCompany(company);
     setFormData({ plan_id: '', billing_cycle: 'monthly' });
     setSubscriptionDialogOpen(true);
+    loadPlans();
   };
 
   const openUsersDialog = async (company: Company) => {
@@ -376,8 +376,14 @@ export default function AdminReseller() {
   };
 
   const openPlansDialog = () => {
+    setPlanFormData({});
     setPlansDialogOpen(true);
     loadPlans();
+  };
+
+  const openPlanEditor = (plan: Plan) => {
+    setPlanFormData(plan);
+    setPlansDialogOpen(true);
   };
 
   const handleCreatePlan = async () => {
@@ -386,7 +392,7 @@ export default function AdminReseller() {
       toast.success('Plano criado com sucesso!');
       setPlansDialogOpen(false);
       setPlanFormData({});
-      loadPlans();
+      loadPlans(true);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar plano');
     }
@@ -408,7 +414,7 @@ export default function AdminReseller() {
       toast.success('Plano atualizado com sucesso!');
       setPlansDialogOpen(false);
       setPlanFormData({});
-      loadPlans();
+      loadPlans(true);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao atualizar plano');
     }
@@ -419,7 +425,7 @@ export default function AdminReseller() {
     try {
       await deletePlan(planId);
       toast.success('Plano desativado com sucesso!');
-      loadPlans();
+      loadPlans(true);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao desativar plano');
     }
@@ -503,7 +509,7 @@ export default function AdminReseller() {
       subtitle="Gerencie empresas, assinaturas e pagamentos"
     >
       <div className="space-y-4">
-        {plans.length === 0 && !loading && (
+        {plansLoaded && plans.length === 0 && !plansLoading && (
           <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
             <CardContent className="flex items-start gap-3 pt-6">
               <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -520,26 +526,26 @@ export default function AdminReseller() {
           </Card>
         )}
 
-        <Tabs defaultValue="empresas" className="w-full" onValueChange={(v) => { if (v === 'empresas' || v === 'segmentos') loadSegmentos(); if (v === 'modulos') loadModulosGlobal(); if (v === 'recursos') loadRecursosGlobal(); }}>
-          <TabsList className="grid w-full grid-cols-5 mb-4">
-            <TabsTrigger value="empresas" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
+        <Tabs defaultValue="empresas" className="w-full overflow-hidden" onValueChange={(v) => { if (v === 'segmentos') loadSegmentos(); if (v === 'planos') loadPlans(); if (v === 'modulos') loadModulosGlobal(); if (v === 'recursos') loadRecursosGlobal(); }}>
+          <TabsList className="mb-4 grid h-auto w-full grid-cols-5 gap-1 rounded-full p-1">
+            <TabsTrigger value="empresas" className="min-w-0 rounded-full px-2 text-xs sm:text-sm">
+              <Building2 className="mr-1 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Empresas
             </TabsTrigger>
-            <TabsTrigger value="planos" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
+            <TabsTrigger value="planos" className="min-w-0 rounded-full px-2 text-xs sm:text-sm">
+              <DollarSign className="mr-1 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Planos
             </TabsTrigger>
-            <TabsTrigger value="segmentos" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
+            <TabsTrigger value="segmentos" className="min-w-0 rounded-full px-2 text-xs sm:text-sm">
+              <Layers className="mr-1 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Segmentos
             </TabsTrigger>
-            <TabsTrigger value="modulos" className="flex items-center gap-2">
-              <Box className="h-4 w-4" />
+            <TabsTrigger value="modulos" className="min-w-0 rounded-full px-2 text-xs sm:text-sm">
+              <Box className="mr-1 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Módulos
             </TabsTrigger>
-            <TabsTrigger value="recursos" className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4" />
+            <TabsTrigger value="recursos" className="min-w-0 rounded-full px-2 text-xs sm:text-sm">
+              <KeyRound className="mr-1 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Recursos
             </TabsTrigger>
           </TabsList>
@@ -1130,7 +1136,8 @@ export default function AdminReseller() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog de gerenciar planos */}
+        {/* Dialog de gerenciar planos movido para fora das abas */}
+        {false && (
         <Dialog open={plansDialogOpen} onOpenChange={setPlansDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -1248,8 +1255,18 @@ export default function AdminReseller() {
               {/* Lista de planos */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Planos Cadastrados ({plans.length})</h3>
-                <div className="space-y-2">
-                  {plans.map((plan) => (
+                {plansLoading ? (
+                  <div className="flex items-center justify-center rounded-2xl bg-slate-50 py-8 text-sm text-muted-foreground">
+                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-primary" />
+                    Carregando planos...
+                  </div>
+                ) : plans.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed bg-slate-50 p-6 text-center text-sm text-muted-foreground">
+                    Nenhum plano cadastrado.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {plans.map((plan) => (
                     <Card key={plan.id}>
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -1289,8 +1306,9 @@ export default function AdminReseller() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
@@ -1303,20 +1321,63 @@ export default function AdminReseller() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
           </TabsContent>
 
           <TabsContent value="planos" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Planos de assinatura</CardTitle>
-                <CardDescription>Gerencie os planos disponíveis para as empresas. Para criar ou editar, use o botão Gerenciar Planos na aba Empresas.</CardDescription>
+                <CardDescription>Gerencie os planos disponíveis para as empresas.</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button variant="outline" onClick={() => { openPlansDialog(); }} className="mb-4">
+              <CardContent className="space-y-4">
+                <Button variant="outline" onClick={() => { openPlansDialog(); }}>
                   <DollarSign className="h-4 w-4 mr-2" />
                   Abrir gerenciador de planos
                 </Button>
-                <div className="text-sm text-muted-foreground">Os planos são configurados no diálogo &quot;Gerenciar Planos&quot; da aba Empresas.</div>
+                {plansLoading ? (
+                  <div className="flex items-center justify-center rounded-2xl bg-slate-50 py-8 text-sm text-muted-foreground">
+                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-primary" />
+                    Carregando planos...
+                  </div>
+                ) : plans.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed bg-slate-50 p-6 text-center text-sm text-muted-foreground">
+                    Nenhum plano cadastrado.
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {plans.map((plan) => (
+                      <Card
+                        key={plan.id}
+                        className="cursor-pointer rounded-2xl transition-colors hover:border-primary/50 hover:bg-slate-50"
+                        onClick={() => openPlanEditor(plan)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-semibold">{plan.name}</p>
+                              <p className="text-xs text-muted-foreground">{plan.code}</p>
+                            </div>
+                            <Badge variant="outline" className="rounded-full">
+                              {plan.active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </div>
+                          <p className="mt-3 text-sm font-semibold">{formatCurrency(plan.price_monthly)}/mês</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Máx. {plan.max_users || '∞'} usuários
+                          </p>
+                          <Badge variant="outline" className="mt-3 rounded-full">
+                            Domínio personalizado: {plan.features?.custom_domains === true ? 'Liberado' : 'Bloqueado'}
+                          </Badge>
+                          <Badge variant="outline" className="ml-2 mt-3 rounded-full">
+                            Whitelabel: {plan.features?.white_label === true ? 'Liberado' : 'Bloqueado'}
+                          </Badge>
+                          <p className="mt-3 text-xs font-semibold text-primary">Clique para editar</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1475,6 +1536,205 @@ export default function AdminReseller() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Dialog de gerenciar planos */}
+        <Dialog open={plansDialogOpen} onOpenChange={setPlansDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Planos</DialogTitle>
+              <DialogDescription>
+                Crie, edite ou desative planos de assinatura
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {planFormData.id ? 'Editar Plano' : 'Novo Plano'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_name_global">Nome *</Label>
+                      <Input
+                        id="plan_name_global"
+                        value={planFormData.name || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
+                        placeholder="Ex: Básico"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_code_global">Código *</Label>
+                      <Input
+                        id="plan_code_global"
+                        value={planFormData.code || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, code: e.target.value })}
+                        placeholder="Ex: basic"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plan_description_global">Descrição</Label>
+                    <Input
+                      id="plan_description_global"
+                      value={planFormData.description || ''}
+                      onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
+                      placeholder="Descrição do plano"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_price_monthly_global">Preço Mensal *</Label>
+                      <Input
+                        id="plan_price_monthly_global"
+                        type="number"
+                        step="0.01"
+                        value={planFormData.price_monthly || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, price_monthly: parseFloat(e.target.value) })}
+                        placeholder="99.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_price_yearly_global">Preço Anual</Label>
+                      <Input
+                        id="plan_price_yearly_global"
+                        type="number"
+                        step="0.01"
+                        value={planFormData.price_yearly || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, price_yearly: parseFloat(e.target.value) })}
+                        placeholder="990.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="plan_max_users_global">Máx. Usuários</Label>
+                      <Input
+                        id="plan_max_users_global"
+                        type="number"
+                        value={planFormData.max_users || ''}
+                        onChange={(e) => setPlanFormData({ ...planFormData, max_users: parseInt(e.target.value) || null })}
+                        placeholder="Ilimitado"
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <Label htmlFor="plan_custom_domains_global" className="font-semibold">Domínio personalizado</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Libera 1 domínio próprio por empresa neste plano.
+                        </p>
+                      </div>
+                      <Switch
+                        id="plan_custom_domains_global"
+                        checked={planFormData.features?.custom_domains === true}
+                        onCheckedChange={(checked) => updatePlanFeature('custom_domains', checked)}
+                      />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-4 border-t pt-4">
+                      <div>
+                        <Label htmlFor="plan_white_label_global" className="font-semibold">Whitelabel</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Libera nome, cores, logo, favicon e login personalizados.
+                        </p>
+                      </div>
+                      <Switch
+                        id="plan_white_label_global"
+                        checked={planFormData.features?.white_label === true}
+                        onCheckedChange={(checked) => updatePlanFeature('white_label', checked)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={planFormData.id ? () => handleUpdatePlan(planFormData as Plan) : handleCreatePlan}
+                      className="flex-1"
+                    >
+                      {planFormData.id ? 'Atualizar' : 'Criar'} Plano
+                    </Button>
+                    {planFormData.id && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setPlanFormData({})}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Planos Cadastrados ({plans.length})</h3>
+                {plansLoading ? (
+                  <div className="flex items-center justify-center rounded-2xl bg-slate-50 py-8 text-sm text-muted-foreground">
+                    <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-primary" />
+                    Carregando planos...
+                  </div>
+                ) : plans.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed bg-slate-50 p-6 text-center text-sm text-muted-foreground">
+                    Nenhum plano cadastrado.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {plans.map((plan) => (
+                      <Card key={plan.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{plan.name} ({plan.code})</div>
+                              <div className="text-sm text-muted-foreground">
+                                {formatCurrency(plan.price_monthly)}/mês
+                                {plan.price_yearly && ` • ${formatCurrency(plan.price_yearly)}/ano`}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Máx. {plan.max_users || '∞'} usuários • {plan.active ? 'Ativo' : 'Inativo'}
+                              </div>
+                              <div className="mt-1 text-xs">
+                                <Badge variant="outline" className="rounded-full">
+                                  Domínio personalizado: {plan.features?.custom_domains === true ? 'Liberado' : 'Bloqueado'}
+                                </Badge>
+                                <Badge variant="outline" className="ml-2 rounded-full">
+                                  Whitelabel: {plan.features?.white_label === true ? 'Liberado' : 'Bloqueado'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPlanFormData(plan)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              {plan.active && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeletePlan(plan.id)}
+                                >
+                                  Desativar
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setPlansDialogOpen(false);
+                setPlanFormData({});
+              }}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialog Editar Segmento (4 abas) */}
         <Dialog open={segmentoEditOpen} onOpenChange={setSegmentoEditOpen}>

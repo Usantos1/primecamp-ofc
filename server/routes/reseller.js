@@ -14,8 +14,6 @@ dotenv.config({ path: join(__dirname, '..', '..', '.env') });
 
 const router = express.Router();
 
-console.log('[Revenda] Rotas de revenda sendo configuradas...');
-
 // Middleware de autenticação JWT
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -35,21 +33,8 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Aplicar autenticação e depois verificação de admin
-router.use((req, res, next) => {
-  console.log('[Revenda] Rota acessada:', req.method, req.path);
-  console.log('[Revenda] Headers authorization:', req.headers['authorization'] ? 'SIM' : 'NÃO');
-  next();
-});
 router.use(authenticateToken);
-router.use((req, res, next) => {
-  console.log('[Revenda] Após autenticação, user:', req.user?.id);
-  next();
-});
 router.use(requireAdminCompany);
-router.use((req, res, next) => {
-  console.log('[Revenda] Após verificação admin, prosseguindo para:', req.method, req.path);
-  next();
-});
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -388,9 +373,6 @@ router.put('/companies/:id', async (req, res) => {
 // Listar planos disponíveis (todos, incluindo inativos)
 router.get('/plans', async (req, res) => {
   try {
-    console.log('[Revenda] GET /plans - Iniciando busca de planos...');
-    console.log('[Revenda] User autenticado:', req.user?.id);
-    
     const { active } = req.query;
     let query = `SELECT * FROM plans`;
     const params = [];
@@ -403,10 +385,6 @@ router.get('/plans', async (req, res) => {
     query += ` ORDER BY price_monthly ASC`;
     
     const result = await pool.query(query, params);
-    
-    console.log('[Revenda] Planos encontrados:', result.rows.length);
-    console.log('[Revenda] Planos:', result.rows.map(p => ({ id: p.id, name: p.name })));
-    
     res.json({ success: true, data: result.rows });
   } catch (error) {
     console.error('[Revenda] Erro ao listar planos:', error);

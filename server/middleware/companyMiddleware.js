@@ -11,6 +11,14 @@ dotenv.config({ path: join(__dirname, '..', '..', '.env') });
 
 export const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
 
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+});
+
 // Verificar se empresa está ativa e pagando
 export const checkCompanyActive = async (companyId) => {
   if (!companyId) return { active: false, reason: 'Company ID não fornecido' };
@@ -19,14 +27,6 @@ export const checkCompanyActive = async (companyId) => {
   if (companyId === ADMIN_COMPANY_ID) {
     return { active: true, isAdmin: true };
   }
-
-  const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  });
 
   try {
     // Verificar status da empresa
@@ -69,8 +69,6 @@ export const checkCompanyActive = async (companyId) => {
   } catch (error) {
     console.error('Erro ao verificar empresa:', error);
     return { active: false, reason: 'Erro ao verificar status da empresa' };
-  } finally {
-    await pool.end();
   }
 };
 
@@ -83,14 +81,6 @@ export const requireCompanyAccess = async (req, res, next) => {
       return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
-    const pool = new Pool({
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-    });
-
     // Buscar company_id do usuário
     const userResult = await pool.query(
       `SELECT company_id FROM users WHERE id = $1`,
@@ -98,7 +88,6 @@ export const requireCompanyAccess = async (req, res, next) => {
     );
 
     if (userResult.rows.length === 0) {
-      await pool.end();
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
@@ -109,7 +98,6 @@ export const requireCompanyAccess = async (req, res, next) => {
     const companyStatus = await checkCompanyActive(companyId);
     
     if (!companyStatus.active) {
-      await pool.end();
       return res.status(403).json({ 
         error: 'Acesso bloqueado',
         reason: companyStatus.reason,
@@ -118,7 +106,6 @@ export const requireCompanyAccess = async (req, res, next) => {
     }
 
     req.companyStatus = companyStatus;
-    await pool.end();
     next();
   } catch (error) {
     console.error('Erro no middleware de company:', error);
@@ -135,14 +122,6 @@ export const requireAdminCompany = async (req, res, next) => {
       return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
-    const pool = new Pool({
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-    });
-
     // Verificar se usuário é admin e pertence à empresa admin
     const userResult = await pool.query(
       `SELECT u.company_id, p.role 
@@ -151,8 +130,6 @@ export const requireAdminCompany = async (req, res, next) => {
        WHERE u.id = $1`,
       [userId]
     );
-
-    await pool.end();
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'Usuário não encontrado' });

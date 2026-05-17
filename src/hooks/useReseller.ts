@@ -245,15 +245,10 @@ export const useReseller = () => {
 
   // Listar planos
   const listPlans = async () => {
-    setLoading(true);
     setError(null);
     try {
-      const headers = getHeaders();
-      console.log('[useReseller] Buscando planos em:', `${API_BASE}/plans`);
-      console.log('[useReseller] Headers:', { ...headers, Authorization: headers.Authorization ? 'Bearer ***' : 'NÃO DEFINIDO' });
-      
       const response = await fetch(`${API_BASE}/plans`, {
-        headers
+        headers: getHeaders()
       });
 
       if (!response.ok) {
@@ -272,8 +267,6 @@ export const useReseller = () => {
     } catch (err: any) {
       setError(err.message);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 

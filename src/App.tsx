@@ -71,6 +71,7 @@ import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
 import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
 import CompanyDomains from "./pages/admin/CompanyDomains";
+import CompanyBranding from "./pages/admin/CompanyBranding";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
 import AcompanharSorteio from "./pages/public/AcompanharSorteio";
@@ -249,6 +250,7 @@ const App = () => {
               <Route path="/admin/estrutura" element={<ProtectedRoute><EstruturaOrganizacional /></ProtectedRoute>} />
               <Route path="/admin/cadastros" element={<ProtectedRoute><CadastrosBase /></ProtectedRoute>} />
               <Route path="/admin/configuracoes" element={<PermissionRoute permission="admin.config"><Configuracoes /></PermissionRoute>} />
+              <Route path="/admin/aparencia" element={<PermissionRoute permission="admin.config"><CompanyBranding /></PermissionRoute>} />
               <Route path="/admin/dominios" element={<PermissionRoute permission="admin.config"><CompanyDomains /></PermissionRoute>} />
               <Route path="/admin/unidades" element={<PermissionRoute permission="admin.config"><UnidadesFiliais /></PermissionRoute>} />
               <Route path="/rh" element={<PermissionRoute permission="rh.view"><RH /></PermissionRoute>} />
