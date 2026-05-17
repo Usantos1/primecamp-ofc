@@ -18,6 +18,7 @@ import {
   Building2,
   FolderOpen,
   FileText,
+  Globe2,
 } from 'lucide-react';
 import { DashboardConfigModal } from '@/components/dashboard/DashboardConfigModal';
 import {
@@ -117,6 +118,15 @@ export default function Configuracoes() {
       color: 'from-emerald-500 to-green-500',
       hoverColor: 'hover:from-emerald-600 hover:to-green-600',
       path: '/admin/unidades',
+      permission: 'admin.config',
+    },
+    {
+      title: 'Domínios',
+      description: 'Configure domínios personalizados e verificação DNS',
+      icon: Globe2,
+      color: 'from-cyan-500 to-blue-500',
+      hoverColor: 'hover:from-cyan-600 hover:to-blue-600',
+      path: '/admin/dominios',
       permission: 'admin.config',
     },
     {

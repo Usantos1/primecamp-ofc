@@ -13,6 +13,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import https from 'https';
 import net from 'net';
+import dns from 'dns/promises';
 
 // Fetch: usar nativo (Node 18+) onde existir; senão node-fetch não é usado na rota telegram (usa https)
 const fetch = typeof globalThis.fetch === 'function' ? globalThis.fetch : null;
@@ -131,6 +132,127 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
+
+const CUSTOM_DOMAIN_CNAME_TARGET = String(process.env.CUSTOM_DOMAIN_CNAME_TARGET || 'custom.ativafix.com').toLowerCase();
+const SYSTEM_DOMAIN_HOSTS = new Set(
+  String(process.env.SYSTEM_DOMAIN_HOSTS || 'ativafix.com,www.ativafix.com,app.ativafix.com,api.ativafix.com,custom.ativafix.com,localhost,127.0.0.1')
+    .split(',')
+    .map((host) => normalizeDomainHost(host))
+    .filter(Boolean)
+);
+
+function normalizeDomainHost(value) {
+  let host = String(value || '').trim().toLowerCase();
+  if (!host) return '';
+  host = host.replace(/^https?:\/\//, '');
+  host = host.split('/')[0] || '';
+  host = host.split('?')[0] || '';
+  host = host.split('#')[0] || '';
+  host = host.replace(/\.$/, '');
+  if (host.startsWith('[')) return host;
+  return host.replace(/:\d+$/, '');
+}
+
+function normalizeCompanyDomainInput(value) {
+  const original = String(value || '').trim();
+  const normalized = normalizeDomainHost(original).replace(/\s+/g, '');
+  if (!normalized) {
+    throw new Error('Informe um domínio.');
+  }
+  if (original.replace(/^https?:\/\//i, '').includes('/')) {
+    throw new Error('Informe apenas o domínio, sem caminho. Exemplo: sistema.seudominio.com.br');
+  }
+  if (!/^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z]{2,63}$/.test(normalized)) {
+    throw new Error('Domínio inválido.');
+  }
+  if (SYSTEM_DOMAIN_HOSTS.has(normalized) || normalized === 'ativafix.com' || normalized.endsWith('.ativafix.com')) {
+    throw new Error('Domínios internos do Ativa FIX não podem ser cadastrados como domínio personalizado.');
+  }
+  return normalized;
+}
+
+function getRequestTenantHost(req) {
+  const originHost = (() => {
+    try {
+      const origin = String(req.headers.origin || '').trim();
+      return origin ? normalizeDomainHost(new URL(origin).host) : '';
+    } catch {
+      return '';
+    }
+  })();
+  const host = normalizeDomainHost(req.headers['x-forwarded-host'] || req.headers.host || req.hostname);
+  if (originHost && !SYSTEM_DOMAIN_HOSTS.has(originHost)) return originHost;
+  return host;
+}
+
+function isInternalSystemHost(host) {
+  const normalized = normalizeDomainHost(host);
+  if (!normalized) return true;
+  if (SYSTEM_DOMAIN_HOSTS.has(normalized)) return true;
+  if (normalized.includes('localhost') || normalized === '127.0.0.1') return true;
+  return false;
+}
+
+async function logCompanyDomainAudit({ companyId, domainId, domain, userId, action, details, errorMessage }) {
+  try {
+    if (!(await publicTableExists('company_domain_audit_logs'))) return;
+    await pool.query(
+      `INSERT INTO public.company_domain_audit_logs (company_id, domain_id, domain, user_id, action, details, error_message)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [companyId || null, domainId || null, domain || null, userId || null, action, details ? JSON.stringify(details) : null, errorMessage || null]
+    );
+  } catch (error) {
+    console.warn('[Domains] Falha ao registrar auditoria:', error.message);
+  }
+}
+
+async function resolveCompanyDomainByHost(host) {
+  const normalizedHost = normalizeDomainHost(host);
+  if (!normalizedHost || isInternalSystemHost(normalizedHost)) return null;
+  if (!(await publicTableExists('company_domains'))) return { missingTable: true, domain: normalizedHost };
+  const result = await pool.query(
+    `SELECT cd.*, c.name AS company_name
+     FROM public.company_domains cd
+     LEFT JOIN public.companies c ON c.id = cd.company_id
+     WHERE lower(cd.domain) = lower($1)
+       AND cd.status IN ('verified', 'active')
+     LIMIT 1`,
+    [normalizedHost]
+  );
+  return result.rows[0] || { notConfigured: true, domain: normalizedHost };
+}
+
+async function verifyDomainDns(domainRow) {
+  const domain = normalizeDomainHost(domainRow.domain);
+  const expectedCname = normalizeDomainHost(domainRow.cname_target || CUSTOM_DOMAIN_CNAME_TARGET);
+  const expectedTxt = domainRow.txt_record_value || `ativa-fix-verification=${domainRow.verification_token}`;
+  const txtName = domainRow.txt_record_name || `_ativafix.${domain}`;
+  const details = { cname: { ok: false, records: [] }, txt: { ok: false, records: [] } };
+
+  try {
+    const cnameRecords = await dns.resolveCname(domain);
+    details.cname.records = cnameRecords;
+    details.cname.ok = cnameRecords.some((record) => normalizeDomainHost(record) === expectedCname);
+  } catch (error) {
+    details.cname.error = error.code || error.message;
+  }
+
+  try {
+    const txtRecords = await dns.resolveTxt(txtName);
+    const flatTxtRecords = txtRecords.map((parts) => parts.join(''));
+    details.txt.records = flatTxtRecords;
+    details.txt.ok = flatTxtRecords.includes(expectedTxt);
+  } catch (error) {
+    details.txt.error = error.code || error.message;
+  }
+
+  const ok = details.cname.ok || details.txt.ok;
+  return {
+    ok,
+    details,
+    errorMessage: ok ? null : 'Não encontramos o apontamento ainda. Aguarde alguns minutos e tente novamente.',
+  };
+}
 
 const BRANCH_ALL_VALUE = 'all';
 const branchScopedTables = new Set([
@@ -1560,6 +1682,37 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+app.use(async (req, res, next) => {
+  try {
+    const host = getRequestTenantHost(req);
+    req.requestHost = host;
+    req.isCustomDomain = false;
+    req.resolvedCompanyId = null;
+    req.resolvedDomainId = null;
+
+    if (!host || isInternalSystemHost(host)) return next();
+
+    const resolved = await resolveCompanyDomainByHost(host);
+    if (resolved?.missingTable || resolved?.notConfigured) {
+      req.unconfiguredCustomDomain = host;
+      if (req.path === '/api/public/domain-resolve') return next();
+      return res.status(421).json({
+        error: 'Este domínio ainda não está configurado no Ativa FIX.',
+        code: 'DOMAIN_NOT_CONFIGURED',
+      });
+    }
+
+    req.isCustomDomain = true;
+    req.resolvedCompanyId = resolved.company_id;
+    req.resolvedDomainId = resolved.id;
+    req.resolvedDomain = resolved;
+    next();
+  } catch (error) {
+    console.error('[Domains] Erro ao resolver domínio:', error);
+    res.status(500).json({ error: 'Erro ao resolver domínio personalizado' });
+  }
+});
+
 // Bypass imediato para GET theme-config/ok (antes de qualquer auth/rota) — evita 401 em deploy
 app.use((req, res, next) => {
   const url = (req.originalUrl || req.url || '').split('?')[0];
@@ -1662,6 +1815,12 @@ const authenticateToken = async (req, res, next) => {
     }
 
     if (req.companyId) {
+      if (req.isCustomDomain && req.resolvedCompanyId && String(req.companyId) !== String(req.resolvedCompanyId)) {
+        return res.status(403).json({
+          error: 'Usuário não pertence à empresa deste domínio.',
+          code: 'DOMAIN_COMPANY_MISMATCH',
+        });
+      }
       try {
         await resolveBranchContextForRequest(req);
       } catch (branchError) {
@@ -2705,6 +2864,16 @@ app.post('/api/auth/login', async (req, res) => {
     const profile = profileResult.rows[0] || null;
     console.log('[API] Profile encontrado:', { hasProfile: !!profile, role: profile?.role });
 
+    if (req.isCustomDomain && req.resolvedCompanyId && String(user.company_id || '') !== String(req.resolvedCompanyId)) {
+      console.warn('[Domains] Login bloqueado por empresa divergente:', {
+        email: user.email,
+        userCompanyId: user.company_id,
+        resolvedCompanyId: req.resolvedCompanyId,
+        host: req.requestHost,
+      });
+      return res.status(403).json({ error: 'Este usuário não pertence à empresa deste domínio.' });
+    }
+
     // Gerar token JWT (incluindo company_id para isolamento de dados)
     const token = jwt.sign(
       { 
@@ -3250,6 +3419,242 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar usuário:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+app.get('/api/public/domain-resolve', async (req, res) => {
+  try {
+    const queryDomain = normalizeDomainHost(req.query?.domain);
+    if (queryDomain && !isInternalSystemHost(queryDomain)) {
+      const resolved = await resolveCompanyDomainByHost(queryDomain);
+      if (resolved?.company_id) {
+        return res.json({
+          configured: true,
+          is_custom_domain: true,
+          domain: resolved.domain,
+          company: {
+            id: resolved.company_id,
+            name: resolved.company_name || 'Empresa',
+          },
+          domain_status: resolved.status,
+          ssl_status: resolved.ssl_status,
+        });
+      }
+      return res.status(404).json({
+        configured: false,
+        is_custom_domain: true,
+        domain: queryDomain,
+        code: 'DOMAIN_NOT_CONFIGURED',
+        message: 'Este domínio ainda não está configurado no Ativa FIX.',
+      });
+    }
+
+    if (req.unconfiguredCustomDomain) {
+      return res.status(404).json({
+        configured: false,
+        is_custom_domain: true,
+        domain: req.unconfiguredCustomDomain,
+        code: 'DOMAIN_NOT_CONFIGURED',
+        message: 'Este domínio ainda não está configurado no Ativa FIX.',
+      });
+    }
+    if (!req.isCustomDomain || !req.resolvedDomain) {
+      return res.json({ configured: true, is_custom_domain: false, domain: req.requestHost || null });
+    }
+    res.json({
+      configured: true,
+      is_custom_domain: true,
+      domain: req.resolvedDomain.domain,
+      company: {
+        id: req.resolvedDomain.company_id,
+        name: req.resolvedDomain.company_name || 'Empresa',
+      },
+      domain_status: req.resolvedDomain.status,
+      ssl_status: req.resolvedDomain.ssl_status,
+    });
+  } catch (error) {
+    console.error('[Domains] Erro no domain-resolve:', error);
+    res.status(500).json({ error: 'Erro ao resolver domínio' });
+  }
+});
+
+app.get('/api/company-domains', authenticateToken, requirePermission('admin.config'), async (req, res) => {
+  try {
+    if (!(await publicTableExists('company_domains'))) {
+      return res.status(503).json({ error: 'Execute a migration db/migrations/manual/CRIAR_DOMINIOS_EMPRESAS.sql' });
+    }
+    const result = await pool.query(
+      `SELECT *
+       FROM public.company_domains
+       WHERE company_id = $1
+       ORDER BY is_primary DESC, created_at DESC`,
+      [req.companyId]
+    );
+    res.json({ domains: result.rows, cname_target: CUSTOM_DOMAIN_CNAME_TARGET });
+  } catch (error) {
+    console.error('[Domains] Erro ao listar domínios:', error);
+    res.status(500).json({ error: 'Erro ao listar domínios' });
+  }
+});
+
+app.post('/api/company-domains', authenticateToken, requirePermission('admin.config'), async (req, res) => {
+  try {
+    if (!(await publicTableExists('company_domains'))) {
+      return res.status(503).json({ error: 'Execute a migration db/migrations/manual/CRIAR_DOMINIOS_EMPRESAS.sql' });
+    }
+    const domain = normalizeCompanyDomainInput(req.body?.domain);
+    const verificationToken = crypto.randomUUID().replace(/-/g, '');
+    const txtRecordName = `_ativafix.${domain}`;
+    const txtRecordValue = `ativa-fix-verification=${verificationToken}`;
+
+    const result = await pool.query(
+      `INSERT INTO public.company_domains (
+        company_id, domain, type, status, verification_token, verification_method,
+        cname_target, txt_record_name, txt_record_value, ssl_status, is_primary
+      )
+      VALUES ($1, $2, 'custom', 'pending', $3, 'cname', $4, $5, $6, 'pending', false)
+      RETURNING *`,
+      [req.companyId, domain, verificationToken, CUSTOM_DOMAIN_CNAME_TARGET, txtRecordName, txtRecordValue]
+    );
+
+    await logCompanyDomainAudit({
+      companyId: req.companyId,
+      domainId: result.rows[0].id,
+      domain,
+      userId: req.user.id,
+      action: 'domain.created',
+      details: { verification_method: 'cname' },
+    });
+
+    res.status(201).json({ domain: result.rows[0] });
+  } catch (error) {
+    const duplicate = error.code === '23505';
+    const message = duplicate ? 'Este domínio já está cadastrado.' : (error.message || 'Erro ao cadastrar domínio');
+    res.status(duplicate ? 409 : 400).json({ error: message });
+  }
+});
+
+app.post('/api/company-domains/:id/verify', authenticateToken, requirePermission('admin.config'), async (req, res) => {
+  try {
+    const domainResult = await pool.query(
+      'SELECT * FROM public.company_domains WHERE id = $1 AND company_id = $2 LIMIT 1',
+      [req.params.id, req.companyId]
+    );
+    const domainRow = domainResult.rows[0];
+    if (!domainRow) return res.status(404).json({ error: 'Domínio não encontrado' });
+    if (domainRow.status === 'disabled') return res.status(400).json({ error: 'Domínio desativado' });
+
+    const verification = await verifyDomainDns(domainRow);
+    const nextStatus = verification.ok ? 'verified' : 'failed';
+    const nextSslStatus = verification.ok && process.env.CUSTOM_DOMAIN_ASSUME_SSL_ACTIVE === 'true' ? 'active' : domainRow.ssl_status || 'pending';
+    const activatedAtSql = nextStatus === 'verified' && nextSslStatus === 'active' ? ', activated_at = COALESCE(activated_at, now()), status = $3' : ', status = $3';
+    const statusValue = nextStatus === 'verified' && nextSslStatus === 'active' ? 'active' : nextStatus;
+
+    const updated = await pool.query(
+      `UPDATE public.company_domains
+       SET last_checked_at = now(),
+           verified_at = CASE WHEN $4 THEN COALESCE(verified_at, now()) ELSE verified_at END,
+           ssl_status = $5,
+           error_message = $6
+           ${activatedAtSql}
+       WHERE id = $1 AND company_id = $2
+       RETURNING *`,
+      [domainRow.id, req.companyId, statusValue, verification.ok, nextSslStatus, verification.errorMessage]
+    );
+
+    await logCompanyDomainAudit({
+      companyId: req.companyId,
+      domainId: domainRow.id,
+      domain: domainRow.domain,
+      userId: req.user.id,
+      action: verification.ok ? 'domain.verified' : 'domain.verification_failed',
+      details: verification.details,
+      errorMessage: verification.errorMessage,
+    });
+
+    res.json({ domain: updated.rows[0], verification });
+  } catch (error) {
+    console.error('[Domains] Erro ao verificar domínio:', error);
+    res.status(500).json({ error: 'Erro ao verificar domínio' });
+  }
+});
+
+app.post('/api/company-domains/:id/set-primary', authenticateToken, requirePermission('admin.config'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const domainResult = await client.query(
+      `SELECT * FROM public.company_domains
+       WHERE id = $1 AND company_id = $2 AND status IN ('verified', 'active')
+       LIMIT 1`,
+      [req.params.id, req.companyId]
+    );
+    const domainRow = domainResult.rows[0];
+    if (!domainRow) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Domínio verificado/ativo não encontrado' });
+    }
+    await client.query('UPDATE public.company_domains SET is_primary = false WHERE company_id = $1', [req.companyId]);
+    const updated = await client.query(
+      `UPDATE public.company_domains
+       SET is_primary = true, updated_at = now()
+       WHERE id = $1 AND company_id = $2
+       RETURNING *`,
+      [domainRow.id, req.companyId]
+    );
+    await client.query('COMMIT');
+    await logCompanyDomainAudit({ companyId: req.companyId, domainId: domainRow.id, domain: domainRow.domain, userId: req.user.id, action: 'domain.primary_set' });
+    res.json({ domain: updated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[Domains] Erro ao definir principal:', error);
+    res.status(500).json({ error: 'Erro ao definir domínio principal' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/company-domains/:id/disable', authenticateToken, requirePermission('admin.config'), async (req, res) => {
+  try {
+    const updated = await pool.query(
+      `UPDATE public.company_domains
+       SET status = 'disabled', is_primary = false, disabled_at = now(), updated_at = now()
+       WHERE id = $1 AND company_id = $2
+       RETURNING *`,
+      [req.params.id, req.companyId]
+    );
+    if (!updated.rows[0]) return res.status(404).json({ error: 'Domínio não encontrado' });
+    await logCompanyDomainAudit({ companyId: req.companyId, domainId: updated.rows[0].id, domain: updated.rows[0].domain, userId: req.user.id, action: 'domain.disabled' });
+    res.json({ domain: updated.rows[0] });
+  } catch (error) {
+    console.error('[Domains] Erro ao desativar domínio:', error);
+    res.status(500).json({ error: 'Erro ao desativar domínio' });
+  }
+});
+
+app.delete('/api/company-domains/:id', authenticateToken, requirePermission('admin.config'), async (req, res) => {
+  try {
+    const domainResult = await pool.query(
+      `DELETE FROM public.company_domains
+       WHERE id = $1 AND company_id = $2 AND status IN ('pending', 'failed', 'disabled')
+       RETURNING *`,
+      [req.params.id, req.companyId]
+    );
+    if (!domainResult.rows[0]) {
+      return res.status(400).json({ error: 'Só é possível remover domínios pendentes, com falha ou desativados.' });
+    }
+    await logCompanyDomainAudit({
+      companyId: req.companyId,
+      domainId: null,
+      domain: domainResult.rows[0].domain,
+      userId: req.user.id,
+      action: 'domain.deleted',
+      details: domainResult.rows[0],
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Domains] Erro ao remover domínio:', error);
+    res.status(500).json({ error: 'Erro ao remover domínio' });
   }
 });
 

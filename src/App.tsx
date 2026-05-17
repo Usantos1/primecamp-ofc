@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeConfigProvider } from "@/contexts/ThemeConfigContext";
 import { ThemeProvider } from "next-themes";
@@ -70,6 +70,7 @@ import Veiculos from "./pages/Veiculos";
 import ConfiguracaoCupom from "./pages/pdv/ConfiguracaoCupom";
 import Devolucoes from "./pages/pdv/Devolucoes";
 import Configuracoes from "./pages/admin/Configuracoes";
+import CompanyDomains from "./pages/admin/CompanyDomains";
 import CupomView from "./pages/pdv/CupomView";
 import AcompanharOS from "./pages/public/AcompanharOS";
 import AcompanharSorteio from "./pages/public/AcompanharSorteio";
@@ -85,6 +86,7 @@ import PainelAlertasConfig from "./pages/painel-alertas/PainelAlertasConfig";
 import PainelAlertasCategoria from "./pages/painel-alertas/PainelAlertasCategoria";
 import PainelAlertasHistorico from "./pages/painel-alertas/PainelAlertasHistorico";
 import Sorteios from "./pages/sorteios/Sorteios";
+import { getApiUrl } from "./utils/apiUrl";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,6 +117,54 @@ function AuthSyncOnNavigate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function DomainResolveGate({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<{ loading: boolean; blocked: boolean; domain?: string }>({ loading: true, blocked: false });
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(`${getApiUrl()}/public/domain-resolve`)
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!mounted) return;
+        setState({
+          loading: false,
+          blocked: response.status === 404 && data?.code === 'DOMAIN_NOT_CONFIGURED',
+          domain: data?.domain,
+        });
+      })
+      .catch(() => {
+        if (mounted) setState({ loading: false, blocked: false });
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (state.loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-emerald-600" />
+      </div>
+    );
+  }
+
+  if (state.blocked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6">
+        <div className="max-w-lg rounded-3xl border bg-white p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-black text-slate-950">Domínio não configurado</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Este domínio ainda não está configurado no Ativa FIX. Verifique se o endereço está correto ou entre em contato com o suporte.
+          </p>
+          {state.domain && <p className="mt-4 rounded-full bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500">{state.domain}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 const App = () => {
   return (
   <ErrorBoundary>
@@ -127,6 +177,7 @@ const App = () => {
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
+                <DomainResolveGate>
                 <BrowserRouter>
             <AuthSyncOnNavigate>
             <Routes>
@@ -198,6 +249,7 @@ const App = () => {
               <Route path="/admin/estrutura" element={<ProtectedRoute><EstruturaOrganizacional /></ProtectedRoute>} />
               <Route path="/admin/cadastros" element={<ProtectedRoute><CadastrosBase /></ProtectedRoute>} />
               <Route path="/admin/configuracoes" element={<PermissionRoute permission="admin.config"><Configuracoes /></PermissionRoute>} />
+              <Route path="/admin/dominios" element={<PermissionRoute permission="admin.config"><CompanyDomains /></PermissionRoute>} />
               <Route path="/admin/unidades" element={<PermissionRoute permission="admin.config"><UnidadesFiliais /></PermissionRoute>} />
               <Route path="/rh" element={<PermissionRoute permission="rh.view"><RH /></PermissionRoute>} />
               
@@ -288,6 +340,7 @@ const App = () => {
               </Routes>
             </AuthSyncOnNavigate>
             </BrowserRouter>
+            </DomainResolveGate>
             </TooltipProvider>
             </NotificationManager>
           </AuthProvider>
