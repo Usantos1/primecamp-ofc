@@ -111,7 +111,8 @@ export default function AdminReseller() {
     city: '',
     state: '',
     zip_code: '',
-    status: 'trial'
+    status: 'trial',
+    settings: { white_label_enabled: false }
   });
 
   // Multi-segmento: estado para abas Segmentos, Módulos, Recursos
@@ -295,6 +296,21 @@ export default function AdminReseller() {
     }
   };
 
+  const handleToggleCompanyWhiteLabel = async (company: Company, checked: boolean) => {
+    try {
+      await updateCompany(company.id, {
+        settings: {
+          ...(company.settings || {}),
+          white_label_enabled: checked,
+        },
+      });
+      toast.success(checked ? 'Whitelabel liberado para a empresa.' : 'Whitelabel bloqueado. A empresa voltará ao padrão Ativa FIX.');
+      loadCompanies();
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar whitelabel da empresa');
+    }
+  };
+
   const handleCreateSubscription = async () => {
     if (!selectedCompany || !formData.plan_id) return;
     try {
@@ -322,7 +338,8 @@ export default function AdminReseller() {
       city: '',
       state: '',
       zip_code: '',
-      status: 'trial'
+      status: 'trial',
+      settings: { white_label_enabled: false }
     });
     setSelectedCompany(null);
   };
@@ -349,7 +366,11 @@ export default function AdminReseller() {
         state: fullCompany.state,
         zip_code: fullCompany.zip_code,
         status: fullCompany.status,
-        segmento_id: (fullCompany as any).segmento_id ?? undefined
+        segmento_id: (fullCompany as any).segmento_id ?? undefined,
+        settings: {
+          ...(fullCompany.settings || {}),
+          white_label_enabled: fullCompany.settings?.white_label_enabled === true,
+        },
       });
       setDialogOpen(true);
     } catch (err: any) {
@@ -626,6 +647,7 @@ export default function AdminReseller() {
                         <TableHead>Email</TableHead>
                         <TableHead>Segmento</TableHead>
                         <TableHead>Plano</TableHead>
+                        <TableHead>Whitelabel</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Usuários</TableHead>
                         <TableHead>Expira em</TableHead>
@@ -651,6 +673,13 @@ export default function AdminReseller() {
                           ) : (
                             <span className="text-muted-foreground">Sem plano</span>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={company.settings?.white_label_enabled === true}
+                            onCheckedChange={(checked) => handleToggleCompanyWhiteLabel(company, checked)}
+                            aria-label={`Whitelabel de ${company.name}`}
+                          />
                         </TableCell>
                         <TableCell>{getStatusBadge(company.status)}</TableCell>
                         <TableCell>{company.user_count || 0}</TableCell>
@@ -878,6 +907,27 @@ export default function AdminReseller() {
                   </Select>
                 </div>
               )}
+              <div className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="company_white_label" className="font-semibold">Whitelabel</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Libera cores, logo, favicon e nome do sistema para esta empresa.
+                  </p>
+                </div>
+                <Switch
+                  id="company_white_label"
+                  checked={formData.settings?.white_label_enabled === true}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...(prev.settings || {}),
+                        white_label_enabled: checked,
+                      },
+                    }))
+                  }
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="segmento_id">Segmento de negócio</Label>
                 {segmentos.length === 0 ? (
@@ -1369,9 +1419,6 @@ export default function AdminReseller() {
                           <Badge variant="outline" className="mt-3 rounded-full">
                             Domínio personalizado: {plan.features?.custom_domains === true ? 'Liberado' : 'Bloqueado'}
                           </Badge>
-                          <Badge variant="outline" className="ml-2 mt-3 rounded-full">
-                            Whitelabel: {plan.features?.white_label === true ? 'Liberado' : 'Bloqueado'}
-                          </Badge>
                           <p className="mt-3 text-xs font-semibold text-primary">Clique para editar</p>
                         </CardContent>
                       </Card>
@@ -1631,19 +1678,6 @@ export default function AdminReseller() {
                         onCheckedChange={(checked) => updatePlanFeature('custom_domains', checked)}
                       />
                     </div>
-                    <div className="mt-4 flex items-center justify-between gap-4 border-t pt-4">
-                      <div>
-                        <Label htmlFor="plan_white_label_global" className="font-semibold">Whitelabel</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Libera nome, cores, logo, favicon e login personalizados.
-                        </p>
-                      </div>
-                      <Switch
-                        id="plan_white_label_global"
-                        checked={planFormData.features?.white_label === true}
-                        onCheckedChange={(checked) => updatePlanFeature('white_label', checked)}
-                      />
-                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -1693,9 +1727,6 @@ export default function AdminReseller() {
                               <div className="mt-1 text-xs">
                                 <Badge variant="outline" className="rounded-full">
                                   Domínio personalizado: {plan.features?.custom_domains === true ? 'Liberado' : 'Bloqueado'}
-                                </Badge>
-                                <Badge variant="outline" className="ml-2 rounded-full">
-                                  Whitelabel: {plan.features?.white_label === true ? 'Liberado' : 'Bloqueado'}
                                 </Badge>
                               </div>
                             </div>

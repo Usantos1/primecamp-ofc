@@ -19,6 +19,7 @@ export interface Company {
   status: 'active' | 'suspended' | 'cancelled' | 'trial';
   trial_ends_at?: string;
   settings?: any;
+  white_label_enabled?: boolean;
   logo_url?: string;
   created_at: string;
   updated_at: string;

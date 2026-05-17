@@ -25,6 +25,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_company_branding_company_unique
 CREATE INDEX IF NOT EXISTS idx_company_branding_enabled
   ON public.company_branding (company_id, enabled);
 
+ALTER TABLE public.companies
+  ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}';
+
+UPDATE public.companies c
+SET settings = COALESCE(c.settings, '{}'::jsonb) || jsonb_build_object('white_label_enabled', true),
+    updated_at = now()
+FROM public.subscriptions s
+JOIN public.plans p ON p.id = s.plan_id
+WHERE s.company_id = c.id
+  AND s.status IN ('active', 'trial')
+  AND (p.features->>'white_label')::boolean = true
+  AND COALESCE((c.settings->>'white_label_enabled')::boolean, false) = false;
+
 ALTER TABLE public.company_branding ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Usuários autenticados podem gerenciar company_branding" ON public.company_branding;

@@ -228,7 +228,8 @@ router.post('/companies', async (req, res) => {
       state,
       zip_code,
       plan_id,
-      billing_cycle = 'monthly'
+      billing_cycle = 'monthly',
+      settings
     } = req.body;
 
     const nameTrim = typeof name === 'string' ? name.trim() : '';
@@ -245,8 +246,12 @@ router.post('/companies', async (req, res) => {
       await client.query('BEGIN');
 
       // Criar empresa (segmento_id opcional se coluna existir)
-      const companyCols = ['name', 'cnpj', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'status'];
-      const companyVals = [nameTrim, cnpj || null, emailTrim, phone || null, address || null, city || null, state || null, zip_code || null, 'trial'];
+      const companyCols = ['name', 'cnpj', 'email', 'phone', 'address', 'city', 'state', 'zip_code', 'status', 'settings'];
+      const companySettings = {
+        ...(settings && typeof settings === 'object' ? settings : {}),
+        white_label_enabled: settings?.white_label_enabled === true,
+      };
+      const companyVals = [nameTrim, cnpj || null, emailTrim, phone || null, address || null, city || null, state || null, zip_code || null, 'trial', JSON.stringify(companySettings)];
       const segmentoId = req.body.segmento_id || null;
       try {
         const hasSeg = await client.query(`SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'segmento_id'`);

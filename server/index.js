@@ -306,16 +306,6 @@ function planAllowsCustomDomains(features) {
   return parsedFeatures?.custom_domains === true || parsedFeatures?.custom_domain === true;
 }
 
-function planAllowsWhiteLabel(features) {
-  if (!features) return false;
-  const parsedFeatures = typeof features === 'string'
-    ? (() => {
-        try { return JSON.parse(features); } catch { return {}; }
-      })()
-    : features;
-  return parsedFeatures?.white_label === true || parsedFeatures?.whitelabel === true;
-}
-
 async function getCompanyPlanFeatures(companyId) {
   const result = await pool.query(
     `SELECT p.features
@@ -341,11 +331,17 @@ async function getCompanyCustomDomainEntitlement(companyId) {
 }
 
 async function getCompanyWhiteLabelEntitlement(companyId) {
-  if (companyId === '00000000-0000-0000-0000-000000000001') {
-    return { allowed: true };
-  }
-  const features = await getCompanyPlanFeatures(companyId);
-  return { allowed: planAllowsWhiteLabel(features) };
+  const result = await pool.query(
+    'SELECT settings FROM public.companies WHERE id = $1 LIMIT 1',
+    [companyId]
+  );
+  const settings = result.rows[0]?.settings || {};
+  const parsedSettings = typeof settings === 'string'
+    ? (() => {
+        try { return JSON.parse(settings); } catch { return {}; }
+      })()
+    : settings;
+  return { allowed: parsedSettings?.white_label_enabled === true };
 }
 
 const BRANCH_ALL_VALUE = 'all';
@@ -7295,7 +7291,7 @@ app.post('/api/theme-config', authenticateToken, requirePermission('admin.config
     }
     const entitlement = await getCompanyWhiteLabelEntitlement(companyId);
     if (!entitlement.allowed) {
-      return res.status(403).json({ error: 'Seu plano atual não libera whitelabel.' });
+      return res.status(403).json({ error: 'Whitelabel não está liberado para esta empresa.' });
     }
     if (await publicTableExists('company_branding')) {
       const systemName = companyName != null ? String(companyName).trim() : null;

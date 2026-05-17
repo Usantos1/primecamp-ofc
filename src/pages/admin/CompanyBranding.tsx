@@ -203,7 +203,7 @@ export default function CompanyBranding() {
       if (error) throw new Error((error as any).message || String(error) || 'Erro ao salvar whitelabel');
       if (data?.resetToDefault) {
         resetConfig();
-        toast.error('Whitelabel não está liberado no plano atual. A aparência voltou para o padrão.');
+        toast.error('Whitelabel não está liberado para esta empresa. A aparência voltou para o padrão.');
         return;
       }
       updateConfig(data?.config || payload);
