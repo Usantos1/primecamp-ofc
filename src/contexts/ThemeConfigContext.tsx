@@ -15,6 +15,7 @@ interface ThemeConfig {
   logoAlt?: string;
   favicon?: string;
   loginBackground?: string;
+  whiteLabelAllowed?: boolean;
   colors: ThemeColors;
   companyName?: string;
   navigationVariant?: 'default' | 'miui';
@@ -23,10 +24,14 @@ interface ThemeConfig {
 // Cores fixas do sistema — uma vez definidas valem para todos os usuários (AppBar, Sidebar, Botões)
 // Verde Ativa FIX (emerald-600 ~ #059669)
 const SYSTEM_PRIMARY_HSL = '160 84% 30%';
+const DEFAULT_SYSTEM_NAME = 'Ativa FIX | Gestão de Assistência e Vendas';
+const DEFAULT_FAVICON = '/favicon-ativafix.png?v=2';
 
 const defaultConfigAtivaFix: ThemeConfig = {
   logo: "/logo-ativafix.png",
   logoAlt: "Ativa FIX",
+  favicon: DEFAULT_FAVICON,
+  whiteLabelAllowed: true,
   colors: {
     primary: SYSTEM_PRIMARY_HSL,
     primaryForeground: '0 0% 100%',
@@ -35,7 +40,7 @@ const defaultConfigAtivaFix: ThemeConfig = {
     sidebar: SYSTEM_PRIMARY_HSL,
     button: SYSTEM_PRIMARY_HSL,
   },
-  companyName: 'Ativa FIX',
+  companyName: DEFAULT_SYSTEM_NAME,
   navigationVariant: 'miui',
 };
 
@@ -67,6 +72,7 @@ const defaultConfig = defaultConfigAtivaFix;
 
 interface ThemeConfigContextType {
   config: ThemeConfig;
+  whiteLabelAllowed: boolean;
   updateConfig: (newConfig: Partial<ThemeConfig>) => void;
   resetConfig: () => void;
   refreshConfig: () => Promise<void>;
@@ -81,11 +87,15 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   const mergeIncomingConfig = (prev: ThemeConfig, data: Partial<ThemeConfig> | null): ThemeConfig => {
     if (!data || typeof data !== 'object') return prev;
     if ((data as { resetToDefault?: boolean }).resetToDefault) {
-      return getDefaultConfigByHost();
+      return {
+        ...getDefaultConfigByHost(),
+        whiteLabelAllowed: data.whiteLabelAllowed !== false,
+      };
     }
 
     return {
       ...prev,
+      ...(data.whiteLabelAllowed != null && { whiteLabelAllowed: data.whiteLabelAllowed }),
       ...(data.companyName != null && { companyName: data.companyName }),
       ...(data.logo && typeof data.logo === 'string' && { logo: data.logo }),
       ...(data.logoAlt != null && { logoAlt: data.logoAlt }),
@@ -133,7 +143,7 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
     if (config.companyName) {
       document.title = config.companyName;
     }
-    const faviconHref = config.favicon || config.logo;
+    const faviconHref = config.favicon || DEFAULT_FAVICON;
     if (faviconHref) {
       let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
       if (!link) {
@@ -188,7 +198,7 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
   }, [config]);
 
   return (
-    <ThemeConfigContext.Provider value={{ config, updateConfig, resetConfig, refreshConfig }}>
+    <ThemeConfigContext.Provider value={{ config, whiteLabelAllowed: config.whiteLabelAllowed !== false, updateConfig, resetConfig, refreshConfig }}>
       {children}
     </ThemeConfigContext.Provider>
   );

@@ -10,6 +10,7 @@ import { usePermissions } from "@/hooks/usePermissions"
 import { HeaderMiui } from "./HeaderMiui"
 import { FinanceiroNavMenu } from "@/components/financeiro/FinanceiroNavMenu"
 import { UserProfileModal } from "@/components/UserProfileModal"
+import { useThemeConfig } from "@/contexts/ThemeConfigContext"
 
 /** Apenas a empresa 1 (administradora) pode alterar nome e cores do sistema. */
 const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
@@ -41,10 +42,11 @@ export function ModernLayout({ children, headerActions }: ModernLayoutProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const { user, profile, signOut } = useAuth()
   const { hasPermission, isAdmin } = usePermissions()
+  const { whiteLabelAllowed } = useThemeConfig()
   const isAdminCompany = user?.company_id === ADMIN_COMPANY_ID
   /** Sempre que estiver no módulo financeiro (MIUI ou barra clássica). */
   const showFinanceiroSubnav = location.pathname.startsWith('/financeiro')
-  const canOpenSettings = isAdminCompany ? hasPermission('admin.config') : (isAdmin || hasPermission('admin.config'))
+  const canOpenSettings = whiteLabelAllowed && (isAdminCompany ? hasPermission('admin.config') : (isAdmin || hasPermission('admin.config')))
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000)
@@ -62,6 +64,12 @@ export function ModernLayout({ children, headerActions }: ModernLayoutProps) {
     window.addEventListener('open-profile-modal', openProfile)
     return () => window.removeEventListener('open-profile-modal', openProfile)
   }, [])
+
+  useEffect(() => {
+    if (!whiteLabelAllowed && isSettingsOpen) {
+      setIsSettingsOpen(false)
+    }
+  }, [whiteLabelAllowed, isSettingsOpen])
 
   const hideDemoBanner = isEmbeddedInLp()
 
@@ -110,10 +118,12 @@ export function ModernLayout({ children, headerActions }: ModernLayoutProps) {
         onOpenChange={setIsProfileOpen}
       />
       
-      <SettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
-      />
+      {whiteLabelAllowed && (
+        <SettingsModal 
+          isOpen={isSettingsOpen} 
+          onClose={() => setIsSettingsOpen(false)} 
+        />
+      )}
       <GlobalCommandPalette />
     </SidebarProvider>
   )

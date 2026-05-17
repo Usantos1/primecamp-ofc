@@ -7170,11 +7170,12 @@ function themeConfigKey(host) {
 function brandingRowToThemeConfig(row) {
   if (!row || row.enabled === false) return null;
   return {
-    companyName: row.system_name || 'Ativa FIX',
+    companyName: row.system_name || 'Ativa FIX | Gestão de Assistência e Vendas',
     logo: row.logo_url || undefined,
-    logoAlt: row.logo_alt || row.system_name || 'Ativa FIX',
+    logoAlt: row.logo_alt || row.system_name || 'Ativa FIX | Gestão de Assistência e Vendas',
     favicon: row.favicon_url || undefined,
     loginBackground: row.login_background_url || undefined,
+    whiteLabelAllowed: true,
     navigationVariant: 'miui',
     colors: {
       primary: row.primary_color || '160 84% 30%',
@@ -7234,8 +7235,10 @@ app.get('/api/theme-config', async (req, res) => {
       const companyResult = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [companyKey]);
       if (companyResult.rows.length > 0 && companyResult.rows[0].value) {
         const val = companyResult.rows[0].value;
-        return res.json(typeof val === 'string' ? JSON.parse(val) : val);
+        const parsed = typeof val === 'string' ? JSON.parse(val) : val;
+        return res.json({ ...parsed, whiteLabelAllowed: true });
       }
+      return res.json({ whiteLabelAllowed: true });
     }
     // 2) Sem auth (tela de login): app.ativafix.com/localhost usam tema da empresa 1 (logo e cores corretos)
     const ADMIN_COMPANY_ID = '00000000-0000-0000-0000-000000000001';

@@ -197,7 +197,7 @@ const Auth = () => {
           <div className="mb-7 flex justify-center">
             <img
               src={logoUrl}
-              alt={config.logoAlt || config.companyName || "Ativa FIX"}
+              alt={config.logoAlt || config.companyName || "Ativa FIX | Gestão de Assistência e Vendas"}
               className="h-16 w-auto max-w-[225px] object-contain"
               loading="eager"
               decoding="async"
@@ -378,7 +378,7 @@ const Auth = () => {
             Termos de Uso
           </button>
         </div>
-        <p>© {currentYear} {config.companyName || 'Ativa FIX'}. Todos os direitos reservados.</p>
+        <p>© {currentYear} {config.companyName || 'Ativa FIX | Gestão de Assistência e Vendas'}. Todos os direitos reservados.</p>
       </footer>
 
       <a

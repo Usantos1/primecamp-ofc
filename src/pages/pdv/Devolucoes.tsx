@@ -434,7 +434,7 @@ export default function Devolucoes() {
     const valorVoucher = voucher.original_value || voucher.current_value || voucher.value || voucher.remaining_value || 0;
     const mostrarLogo = cupomConfig?.mostrar_logo !== false;
     const logoUrl = cupomConfig?.logo_url || '';
-    const companyName = cupomConfig?.empresa_nome || themeConfig?.companyName || 'Ativa FIX';
+    const companyName = cupomConfig?.empresa_nome || themeConfig?.companyName || 'Ativa FIX | Gestão de Assistência e Vendas';
     const logoSrc = logoUrl.startsWith('data:') ? logoUrl : logoUrl.startsWith('http') ? logoUrl : `${window.location.origin}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
     const logoImg =
       mostrarLogo && logoUrl

@@ -11,6 +11,8 @@ import { apiClient } from '@/integrations/api/client';
 import { useThemeConfig } from '@/contexts/ThemeConfigContext';
 
 const DEFAULT_HSL = '160 84% 30%';
+const DEFAULT_SYSTEM_NAME = 'Ativa FIX | Gestão de Assistência e Vendas';
+const DEFAULT_FAVICON = '/favicon-ativafix.png?v=2';
 const DEFAULT_LOGIN_BACKGROUND =
   'https://img.freepik.com/fotos-gratis/nuvens-brancas-dramaticas-e-ceu-azul-da-vista-da-janela-do-aviao-fundo-colorido-do-por-do-sol-cloudscape_90220-1209.jpg';
 
@@ -156,7 +158,7 @@ export default function CompanyBranding() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
-  const [systemName, setSystemName] = useState(config.companyName || 'Ativa FIX');
+  const [systemName, setSystemName] = useState(config.companyName || DEFAULT_SYSTEM_NAME);
   const [logo, setLogo] = useState(config.logo || '');
   const [favicon, setFavicon] = useState(config.favicon || '');
   const [loginBackground, setLoginBackground] = useState(config.loginBackground || DEFAULT_LOGIN_BACKGROUND);
@@ -165,7 +167,7 @@ export default function CompanyBranding() {
   const [buttonColor, setButtonColor] = useState(config.colors.button || config.colors.primary || DEFAULT_HSL);
 
   useEffect(() => {
-    setSystemName(config.companyName || 'Ativa FIX');
+    setSystemName(config.companyName || DEFAULT_SYSTEM_NAME);
     setLogo(config.logo || '');
     setFavicon(config.favicon || '');
     setLoginBackground(config.loginBackground || DEFAULT_LOGIN_BACKGROUND);
@@ -187,9 +189,9 @@ export default function CompanyBranding() {
     setSaving(true);
     try {
       const payload = {
-        companyName: systemName.trim() || 'Ativa FIX',
+        companyName: systemName.trim() || DEFAULT_SYSTEM_NAME,
         logo,
-        logoAlt: systemName.trim() || 'Ativa FIX',
+        logoAlt: systemName.trim() || DEFAULT_SYSTEM_NAME,
         favicon,
         loginBackground,
         navigationVariant: 'miui',
@@ -217,9 +219,9 @@ export default function CompanyBranding() {
   };
 
   const resetLocal = () => {
-    setSystemName('Ativa FIX');
+    setSystemName(DEFAULT_SYSTEM_NAME);
     setLogo('/logo-ativafix.png');
-    setFavicon('');
+    setFavicon(DEFAULT_FAVICON);
     setLoginBackground(DEFAULT_LOGIN_BACKGROUND);
     setPrimaryColor(DEFAULT_HSL);
     setSidebarColor(DEFAULT_HSL);
@@ -312,7 +314,7 @@ export default function CompanyBranding() {
                 <div className="flex items-center gap-3">
                   {logo && <img src={logo} alt="Logo" className="h-10 max-w-[160px] object-contain" />}
                   <div>
-                    <p className="font-bold">{systemName || 'Ativa FIX'}</p>
+                    <p className="font-bold">{systemName || DEFAULT_SYSTEM_NAME}</p>
                     <Badge className="rounded-full" style={{ backgroundColor: `hsl(${buttonColor})` }}>Botão</Badge>
                   </div>
                 </div>

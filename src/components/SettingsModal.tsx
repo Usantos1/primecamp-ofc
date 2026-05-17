@@ -12,6 +12,8 @@ import { useThemeConfig } from '@/contexts/ThemeConfigContext';
 import { toast } from 'sonner';
 import { apiClient } from '@/integrations/api/client';
 
+const DEFAULT_SYSTEM_NAME = 'Ativa FIX | Gestão de Assistência e Vendas';
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,7 +24,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { config, updateConfig, refreshConfig } = useThemeConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [systemName, setSystemName] = useState('Prime Camp | Gestão de Processos');
+  const [systemName, setSystemName] = useState(DEFAULT_SYSTEM_NAME);
   const [autoSave, setAutoSave] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
@@ -38,7 +40,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           if (parsed.notifications != null) setNotifications(parsed.notifications);
           if (parsed.compactMode != null) setCompactMode(parsed.compactMode);
         }
-        setSystemName(config.companyName || 'Prime Camp | Gestão de Processos');
+        setSystemName(config.companyName || DEFAULT_SYSTEM_NAME);
         setLogoPreview(config.logo || null);
         setPrimaryColor(config.colors.primary);
         setSidebarColor(config.colors.sidebar || config.colors.primary);
@@ -57,7 +59,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const handleSave = async () => {
     try {
-      const nameToSave = (systemName || '').trim() || 'Prime Camp | Gestão de Processos';
+      const nameToSave = (systemName || '').trim() || DEFAULT_SYSTEM_NAME;
       localStorage.setItem('systemSettings', JSON.stringify({
         systemName: nameToSave,
         autoSave,

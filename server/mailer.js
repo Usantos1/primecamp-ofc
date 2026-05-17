@@ -10,7 +10,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const FROM = `"${process.env.SMTP_FROM_NAME || 'Ativa FIX'}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`;
+const DEFAULT_SYSTEM_NAME = 'Ativa FIX | Gestão de Assistência e Vendas';
+const FROM = `"${process.env.SMTP_FROM_NAME || DEFAULT_SYSTEM_NAME}" <${process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER}>`;
 
 /**
  * Envia email transacional.
@@ -41,7 +42,7 @@ export async function sendMail({ to, subject, html, text }) {
  */
 export async function sendPasswordResetEmail({ to, resetLink, name }) {
   const saudacao = name ? `Olá, ${name}!` : 'Olá!';
-  const brandName = process.env.SMTP_FROM_NAME || 'Ativa FIX';
+  const brandName = process.env.SMTP_FROM_NAME || DEFAULT_SYSTEM_NAME;
 
   const html = `
 <!DOCTYPE html>
