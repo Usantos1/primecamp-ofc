@@ -80,6 +80,9 @@ export function ThemeConfigProvider({ children }: { children: ReactNode }) {
 
   const mergeIncomingConfig = (prev: ThemeConfig, data: Partial<ThemeConfig> | null): ThemeConfig => {
     if (!data || typeof data !== 'object') return prev;
+    if ((data as { resetToDefault?: boolean }).resetToDefault) {
+      return getDefaultConfigByHost();
+    }
 
     return {
       ...prev,

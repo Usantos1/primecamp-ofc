@@ -7194,7 +7194,7 @@ function brandingRowToThemeConfig(row) {
 async function getCompanyBrandingConfig(companyId) {
   if (!companyId || !(await publicTableExists('company_branding'))) return null;
   const entitlement = await getCompanyWhiteLabelEntitlement(companyId);
-  if (!entitlement.allowed) return null;
+  if (!entitlement.allowed) return { disabled: true };
   const result = await pool.query(
     `SELECT * FROM public.company_branding
      WHERE company_id = $1 AND enabled = true
@@ -7232,6 +7232,7 @@ app.get('/api/theme-config', async (req, res) => {
     // 1) Se logado com empresa, buscar whitelabel da empresa
     if (companyId) {
       const brandingConfig = await getCompanyBrandingConfig(companyId);
+      if (brandingConfig?.disabled) return res.json({ resetToDefault: true, whiteLabelAllowed: false });
       if (brandingConfig) return res.json(brandingConfig);
       const companyKey = `theme_config_company_${companyId}`;
       const companyResult = await pool.query('SELECT value FROM kv_store_2c4defad WHERE key = $1', [companyKey]);
@@ -7253,6 +7254,7 @@ app.get('/api/theme-config', async (req, res) => {
     const hostCompanyId = req.resolvedCompanyId || await resolveThemeCompanyIdFromHost(h);
     if (hostCompanyId) {
       const brandingConfig = await getCompanyBrandingConfig(hostCompanyId);
+      if (brandingConfig?.disabled) return res.json({ resetToDefault: true, whiteLabelAllowed: false });
       if (brandingConfig) return res.json(brandingConfig);
     }
     const isLoginHost = h === 'app.ativafix.com' || h === 'localhost' || h === '127.0.0.1';

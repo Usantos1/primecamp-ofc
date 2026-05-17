@@ -152,7 +152,7 @@ const readImageAsDataUrl = (file: File): Promise<string> =>
   });
 
 export default function CompanyBranding() {
-  const { config, updateConfig, refreshConfig } = useThemeConfig();
+  const { config, updateConfig, refreshConfig, resetConfig } = useThemeConfig();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -201,6 +201,11 @@ export default function CompanyBranding() {
       };
       const { data, error } = await apiClient.post('/theme-config', payload);
       if (error) throw new Error((error as any).message || String(error) || 'Erro ao salvar whitelabel');
+      if (data?.resetToDefault) {
+        resetConfig();
+        toast.error('Whitelabel não está liberado no plano atual. A aparência voltou para o padrão.');
+        return;
+      }
       updateConfig(data?.config || payload);
       await refreshConfig();
       toast.success('Aparência salva com sucesso');
