@@ -780,7 +780,7 @@ async function beginMetaEventLog(companyId, event, context = {}) {
       context.source || 'system',
       context.saleId || null,
       context.ordemServicoId || null,
-      JSON.stringify(event),
+      JSON.stringify(context.requestPayload || event),
     ]);
 
     if (insertResult.rows[0]) {
@@ -788,11 +788,17 @@ async function beginMetaEventLog(companyId, event, context = {}) {
     }
 
     const existingResult = await pool.query(
-      'SELECT id, status, attempts FROM public.meta_ads_event_logs WHERE event_id = $1 LIMIT 1',
+      'SELECT id, status, attempts, request_payload FROM public.meta_ads_event_logs WHERE event_id = $1 LIMIT 1',
       [event.event_id]
     );
     const existing = existingResult.rows[0];
     if (!existing || existing.status === 'enviado' || Number(existing.attempts || 0) >= 3) {
+      if (existing && !existing.request_payload && context.requestPayload) {
+        await pool.query(
+          'UPDATE public.meta_ads_event_logs SET request_payload = $2::jsonb WHERE id = $1',
+          [existing.id, JSON.stringify(context.requestPayload)]
+        );
+      }
       return { shouldSend: false, logId: existing?.id, reason: existing?.status === 'enviado' ? 'already_sent' : 'max_attempts' };
     }
 
@@ -805,7 +811,7 @@ async function beginMetaEventLog(companyId, event, context = {}) {
           request_payload = $2::jsonb
       WHERE id = $1
       RETURNING id
-    `, [existing.id, JSON.stringify(event)]);
+    `, [existing.id, JSON.stringify(context.requestPayload || event)]);
 
     return { shouldSend: true, logId: retryResult.rows[0]?.id || existing.id };
   } catch (error) {
@@ -855,16 +861,16 @@ async function sendMetaEvent(companyId, event, context = {}) {
     return { skipped: true, reason: 'not_configured' };
   }
 
-  const log = await beginMetaEventLog(companyId, event, context);
-  if (!log.shouldSend) {
-    console.log('[Meta Ads] Evento ignorado por idempotência:', { event_id: event.event_id, reason: log.reason });
-    return { skipped: true, reason: log.reason };
-  }
-
   const body = {
     data: [event],
     ...(testEventCode ? { test_event_code: testEventCode } : {}),
   };
+
+  const log = await beginMetaEventLog(companyId, event, { ...context, requestPayload: body });
+  if (!log.shouldSend) {
+    console.log('[Meta Ads] Evento ignorado por idempotência:', { event_id: event.event_id, reason: log.reason });
+    return { skipped: true, reason: log.reason };
+  }
 
   const response = await fetch(`https://graph.facebook.com/v19.0/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, {
     method: 'POST',
@@ -6702,6 +6708,7 @@ app.get('/api/meta-ads/logs', authenticateToken, async (req, res) => {
         last_attempt_at,
         sent_at,
         error_message,
+        request_payload,
         response_payload,
         created_at
       FROM public.meta_ads_event_logs

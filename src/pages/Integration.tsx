@@ -83,6 +83,22 @@ const META_PAYLOAD_EXAMPLE = `{
 
 const MASKED_CURRENCY_VALUE = 'R$ •••';
 
+const formatJsonBlock = (value: unknown) => {
+  if (!value) return 'Sem JSON registrado.';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+const hasJsonPayload = (value: unknown) => {
+  if (!value) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length > 0;
+  return true;
+};
+
 interface IntegrationSettings {
   ativaCrmToken: string;
   ativaCrmSensitiveToken: string;
@@ -139,6 +155,8 @@ interface MetaAdsEventLog {
   status: 'pendente' | 'enviando' | 'enviado' | 'erro' | 'ignorado';
   attempts: number;
   error_message?: string | null;
+  request_payload?: Record<string, unknown> | null;
+  response_payload?: Record<string, unknown> | null;
   sent_at?: string | null;
   created_at: string;
 }
@@ -356,6 +374,7 @@ export default function Integration() {
   const [testMessage, setTestMessage] = useState('Teste de integração WhatsApp');
   const [metaLogs, setMetaLogs] = useState<MetaAdsEventLog[]>([]);
   const [metaLogsWarning, setMetaLogsWarning] = useState<string | null>(null);
+  const [selectedMetaLogId, setSelectedMetaLogId] = useState<string | null>(null);
   const [ativaCrmEvents, setAtivaCrmEvents] = useState<AtivaCrmWebhookEvent[]>([]);
   const [ativaCrmEventsWarning, setAtivaCrmEventsWarning] = useState<string | null>(null);
   const [metaReport, setMetaReport] = useState<MetaAdsReport | null>(null);
@@ -1675,8 +1694,22 @@ export default function Integration() {
                               : log.status === 'erro'
                                 ? 'bg-red-100 text-red-700'
                                 : 'bg-slate-100 text-slate-700';
+                            const isSelected = selectedMetaLogId === log.id;
+                            const hasRequestPayload = hasJsonPayload(log.request_payload);
                             return (
-                              <div key={log.id} className="rounded-lg border bg-background p-3">
+                              <div
+                                key={log.id}
+                                role="button"
+                                tabIndex={0}
+                                className={`rounded-lg border bg-background p-3 text-left transition hover:border-emerald-300 hover:bg-emerald-50/40 ${isSelected ? 'border-emerald-400 bg-emerald-50/50' : ''}`}
+                                onClick={() => setSelectedMetaLogId(isSelected ? null : log.id)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    setSelectedMetaLogId(isSelected ? null : log.id);
+                                  }
+                                }}
+                              >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="min-w-0">
                                     <p className="truncate text-sm font-medium">{log.event_name}</p>
@@ -1690,11 +1723,50 @@ export default function Integration() {
                                   <span>{log.event_type}</span>
                                   <span>tentativas: {log.attempts}</span>
                                   <span>{new Date(log.created_at).toLocaleString('pt-BR')}</span>
+                                  <span className="font-medium text-emerald-700">{isSelected ? 'ocultar JSON' : 'ver JSON enviado'}</span>
                                 </div>
                                 {log.error_message && (
                                   <p className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">
                                     {log.error_message}
                                   </p>
+                                )}
+                                {isSelected && (
+                                  <div className="mt-3 space-y-3" onClick={(event) => event.stopPropagation()}>
+                                    <div>
+                                      <div className="mb-2 flex items-center justify-between gap-2">
+                                        <p className="text-xs font-semibold text-slate-700">JSON enviado para Meta</p>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 px-2 text-xs"
+                                          onClick={() => {
+                                            void navigator.clipboard.writeText(formatJsonBlock(log.request_payload));
+                                            toast.success('JSON enviado copiado.');
+                                          }}
+                                        >
+                                          <Copy className="mr-1 h-3.5 w-3.5" />
+                                          Copiar
+                                        </Button>
+                                      </div>
+                                      <pre className="max-h-80 overflow-auto rounded-lg bg-slate-950 p-3 text-[11px] leading-relaxed text-slate-100">
+                                        {formatJsonBlock(log.request_payload)}
+                                      </pre>
+                                      {!hasRequestPayload && (
+                                        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                                          Este envio foi gravado antes de salvar o JSON enviado. Reprocesse o evento ou aguarde um novo envio para preencher o payload real.
+                                        </p>
+                                      )}
+                                    </div>
+                                    {log.response_payload && (
+                                      <div>
+                                        <p className="mb-2 text-xs font-semibold text-slate-700">Resposta da Meta</p>
+                                        <pre className="max-h-56 overflow-auto rounded-lg bg-slate-950 p-3 text-[11px] leading-relaxed text-slate-100">
+                                          {formatJsonBlock(log.response_payload)}
+                                        </pre>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             );
