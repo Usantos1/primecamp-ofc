@@ -6810,7 +6810,11 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                     <TableCell className="text-muted-foreground">{pag.vendedor_nome || '-'}</TableCell>
                                     <TableCell>
                                       <Badge variant="outline">
-                                        {pag.tipo === 'adiantamento' ? 'Adiantamento' : 'Pagamento Final'}
+                                        {pag.tipo === 'adiantamento'
+                                          ? 'Adiantamento'
+                                          : pag.tipo === 'faturamento'
+                                            ? 'Faturamento da Venda'
+                                            : 'Pagamento Final'}
                                       </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -6822,7 +6826,7 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                     <TableCell className="text-right font-semibold">{currencyFormatters.brl(pag.valor)}</TableCell>
                                     <TableCell>
                                       {pag.sale_id && pag.sale_numero != null ? (
-                                        <Link to={`/vendas?highlight=${pag.sale_id}`} className="text-primary font-medium hover:underline">
+                                        <Link to={`/pdv/venda/${pag.sale_id}/editar`} className="text-primary font-medium hover:underline">
                                           Venda #{pag.sale_numero}
                                         </Link>
                                       ) : (
@@ -6831,15 +6835,19 @@ ${os.previsao_entrega ? `*Previsão Entrega:* ${dateFormatters.short(os.previsao
                                     </TableCell>
                                     {isAdmin && (
                                       <TableCell>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                          onClick={() => setPagamentoToCancel(pag)}
-                                          disabled={isCancellingPagamento}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {pag.payment_id ? (
+                                          <span className="text-xs text-muted-foreground">Venda</span>
+                                        ) : (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => setPagamentoToCancel(pag)}
+                                            disabled={isCancellingPagamento}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        )}
                                       </TableCell>
                                     )}
                                   </TableRow>

@@ -1149,6 +1149,7 @@ export interface PagamentoOSAPI {
   cancelled_at?: string | null;
   cancelled_by?: string | null;
   company_id?: string | null;
+  payment_id?: string;
   // Enriquecido com dados da venda (preenchido pelo hook)
   sale_numero?: number;
   sale_created_at?: string;
@@ -1181,26 +1182,73 @@ export function usePagamentosOSAPI(osId: string) {
       }
 
       const ativos = (rows || []).filter((r: any) => !r.cancelled_at);
-      if (ativos.length === 0) {
-        setList(ativos);
-        setIsLoading(false);
-        return;
-      }
-
-      const saleIds = [...new Set(ativos.map((r: any) => r.sale_id).filter(Boolean))];
-      const { data: salesData } = await from('sales')
-        .select('id, numero, created_at, vendedor_nome')
-        .in('id', saleIds)
+      const { data: linkedSales } = await from('sales')
+        .select('id, numero, created_at, vendedor_nome, status, total, total_pago')
+        .eq('ordem_servico_id', osId)
         .execute();
-
+      const activeLinkedSales = (linkedSales || []).filter((sale: any) => sale.status !== 'canceled');
+      const saleIds = [
+        ...new Set([
+          ...ativos.map((r: any) => r.sale_id).filter(Boolean),
+          ...activeLinkedSales.map((sale: any) => sale.id).filter(Boolean),
+        ]),
+      ];
+      const { data: salesData } = saleIds.length > 0
+        ? await from('sales')
+            .select('id, numero, created_at, vendedor_nome, status, total, total_pago')
+            .in('id', saleIds)
+            .execute()
+        : { data: [] as any[] };
       const salesMap = new Map((salesData || []).map((s: any) => [s.id, s]));
+      const { data: salePayments } = saleIds.length > 0
+        ? await from('payments')
+            .select('id, sale_id, forma_pagamento, valor, troco, status, created_at, confirmed_at')
+            .in('sale_id', saleIds)
+            .eq('status', 'confirmed')
+            .execute()
+        : { data: [] as any[] };
       const enriquecidos: PagamentoOSAPI[] = ativos.map((r: any) => ({
         ...r,
         sale_numero: salesMap.get(r.sale_id)?.numero,
         sale_created_at: salesMap.get(r.sale_id)?.created_at,
         vendedor_nome: salesMap.get(r.sale_id)?.vendedor_nome ?? null,
       }));
-      setList(enriquecidos);
+
+      const osPagamentoSaleIds = new Set(ativos.map((r: any) => r.sale_id).filter(Boolean));
+      const syntheticSalePayments: PagamentoOSAPI[] = (salePayments || [])
+        .filter((payment: any) => payment.sale_id && !osPagamentoSaleIds.has(payment.sale_id))
+        .map((payment: any) => {
+          const sale = salesMap.get(payment.sale_id);
+          const rawValue = Number(payment.valor || 0);
+          const change = String(payment.forma_pagamento || '').toLowerCase().includes('dinheiro')
+            ? Number(payment.troco || 0)
+            : 0;
+          const value = Math.max(0, rawValue - change);
+          return {
+            id: `sale-payment-${payment.id}`,
+            payment_id: payment.id,
+            ordem_servico_id: osId,
+            sale_id: payment.sale_id,
+            valor: value,
+            forma_pagamento: payment.forma_pagamento || 'pagamento',
+            condicao_pagamento: null,
+            total_original: Number(sale?.total || 0),
+            total_final: Number(sale?.total_pago || value),
+            desconto_aplicado: 0,
+            tipo: 'faturamento',
+            observacao: 'Pagamento da venda de faturamento da OS',
+            created_at: payment.confirmed_at || payment.created_at || sale?.created_at,
+            created_by: null,
+            cancelled_at: null,
+            cancelled_by: null,
+            company_id: null,
+            sale_numero: sale?.numero,
+            sale_created_at: sale?.created_at,
+            vendedor_nome: sale?.vendedor_nome ?? null,
+          };
+        });
+
+      setList([...enriquecidos, ...syntheticSalePayments]);
     } catch (e) {
       console.warn('[usePagamentosOSAPI]', e);
       setList([]);

@@ -2648,16 +2648,38 @@ app.get('/api/public/acompanhar-os/:id', async (req, res) => {
         os.data_saida,
         os.created_at,
         os.updated_at,
-        os.valor_total,
+        COALESCE(
+          NULLIF(faturamento_pagamentos.valor_pago, 0),
+          NULLIF(faturamento.total_pago, 0),
+          faturamento.total,
+          os.valor_total
+        ) AS valor_total,
+        os.valor_total AS valor_os,
+        faturamento.total AS valor_venda,
+        faturamento_pagamentos.valor_pago AS valor_pago_venda,
         os.observacoes,
-        (
-          SELECT s.created_at
+        faturamento.created_at AS data_faturamento
+      FROM ordens_servico os
+      LEFT JOIN LATERAL (
+        SELECT s.id, s.created_at, s.total, s.total_pago
           FROM public.sales s
           WHERE s.ordem_servico_id = os.id
+            AND COALESCE(s.status, '') <> 'canceled'
           ORDER BY s.created_at DESC
           LIMIT 1
-        ) AS data_faturamento
-      FROM ordens_servico os
+      ) faturamento ON true
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(
+          CASE
+            WHEN LOWER(COALESCE(p.forma_pagamento, '')) LIKE '%dinheiro%'
+              THEN GREATEST(COALESCE(p.valor, 0) - COALESCE(p.troco, 0), 0)
+            ELSE COALESCE(p.valor, 0)
+          END
+        ), 0) AS valor_pago
+        FROM public.payments p
+        WHERE p.sale_id = faturamento.id
+          AND p.status = 'confirmed'
+      ) faturamento_pagamentos ON true
       WHERE os.id = $1
       LIMIT 1
     `, [id]);
