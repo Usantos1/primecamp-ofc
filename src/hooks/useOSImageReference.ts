@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { from } from '@/integrations/db/client';
 import { apiClient } from '@/integrations/api/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getApiUrl } from '@/utils/apiUrl';
 
 interface OSImageReferenceConfig {
   imageUrl?: string;
@@ -10,6 +11,19 @@ interface OSImageReferenceConfig {
 
 const STORAGE_BUCKET = 'os-reference-images';
 const CONFIG_KEY = 'os_image_reference';
+
+const normalizeImageUrl = (url?: string | null) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if ((parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && parsed.pathname.startsWith('/uploads/')) {
+      return `${new URL(getApiUrl()).origin}${parsed.pathname}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+};
 
 export function useOSImageReference() {
   const { isAdmin } = useAuth();
@@ -36,7 +50,7 @@ export function useOSImageReference() {
 
       if (data?.value) {
         const config = data.value as OSImageReferenceConfig;
-        setImageUrl(config.imageUrl || null);
+        setImageUrl(normalizeImageUrl(config.imageUrl));
       }
     } catch (error) {
       console.error('Erro ao carregar imagem de referência:', error);
@@ -88,7 +102,7 @@ export function useOSImageReference() {
       }
 
       // URL pública será retornada no response.data.url
-      const publicUrl = uploadData?.url || '';
+      const publicUrl = normalizeImageUrl(uploadData?.url) || '';
 
       // Salvar URL na configuração
       const config: OSImageReferenceConfig = {

@@ -6283,10 +6283,16 @@ async function updateAtivaCrmContactTag({ token, phone, tagId, contactId, ticket
   if (!numericTagId || !Number.isFinite(numericTagId)) return null;
 
   const attempts = [];
+  const tagPayload = {
+    tagId: numericTagId,
+    tag_id: numericTagId,
+    tags: [numericTagId],
+    tagIds: [numericTagId],
+  };
   const payloads = [
-    cleanPhone ? { number: cleanPhone, tags: [numericTagId] } : null,
-    contactId ? { contactId, tags: [numericTagId] } : null,
-    ticketId ? { ticketId, tags: [numericTagId] } : null,
+    cleanPhone ? { number: cleanPhone, phone: cleanPhone, whatsapp: cleanPhone, ...tagPayload } : null,
+    contactId ? { contactId, contact_id: contactId, id: contactId, ...tagPayload } : null,
+    ticketId ? { ticketId, ticket_id: ticketId, ...tagPayload } : null,
   ].filter(Boolean);
 
   for (const payload of payloads) {
@@ -6367,11 +6373,13 @@ app.post('/api/whatsapp/send', async (req, res) => {
     // Formatar número (remover caracteres especiais)
     const formattedNumber = data.number.replace(/\D/g, '');
     const contactName = normalizeAtivaCrmContactName(data.contactName || data.name, formattedNumber);
+    const numericTagId = data.tagId ? Number(data.tagId) : null;
+    const tagId = numericTagId && Number.isFinite(numericTagId) ? numericTagId : null;
 
     console.log('[WhatsApp] Criando/atualizando cliente no Ativa CRM antes do envio:', {
       number: formattedNumber,
       contactName: contactName || null,
-      hasTag: Boolean(data.tagId),
+      tagId,
     });
 
     const contactResult = await createAtivaCrmContact({
@@ -6379,6 +6387,7 @@ app.post('/api/whatsapp/send', async (req, res) => {
       name: contactName,
       email: data.email,
       phone: formattedNumber,
+      tagId,
     });
 
     const contactUpdateResult = await updateAtivaCrmContact({
@@ -6390,29 +6399,37 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
     // Enviar mensagem via API do Ativa CRM (documentação oficial)
     // URL: https://api.ativacrm.com/api/messages/send
+    const messagePayload = {
+      name: contactName || formattedNumber,
+      contactName: contactName || formattedNumber,
+      contact_name: contactName || formattedNumber,
+      displayName: contactName || formattedNumber,
+      email: data.email || '',
+      number: formattedNumber,
+      body: data.body,
+      contact: {
+        name: contactName || formattedNumber,
+        contactName: contactName || formattedNumber,
+        number: formattedNumber,
+        phone: formattedNumber,
+        whatsapp: formattedNumber,
+        email: data.email || '',
+      },
+    };
+    if (tagId) {
+      messagePayload.tagId = tagId;
+      messagePayload.tag_id = tagId;
+      messagePayload.tags = [tagId];
+      messagePayload.contact.tags = [tagId];
+    }
+
     const ativaCrmResponse = await fetch('https://api.ativacrm.com/api/messages/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${ativaCrmToken}`,
       },
-      body: JSON.stringify({
-        name: contactName || formattedNumber,
-        contactName: contactName || formattedNumber,
-        contact_name: contactName || formattedNumber,
-        displayName: contactName || formattedNumber,
-        email: data.email || '',
-        number: formattedNumber,
-        body: data.body,
-        contact: {
-          name: contactName || formattedNumber,
-          contactName: contactName || formattedNumber,
-          number: formattedNumber,
-          phone: formattedNumber,
-          whatsapp: formattedNumber,
-          email: data.email || '',
-        },
-      }),
+      body: JSON.stringify(messagePayload),
     });
 
     const ativaCrmData = await ativaCrmResponse.json().catch(() => ({}));
@@ -6447,17 +6464,17 @@ app.post('/api/whatsapp/send', async (req, res) => {
       ticketId,
     });
 
-    if (data.tagId) {
+    if (tagId) {
       console.log('[WhatsApp] Aplicando tag no Ativa CRM após envio da mensagem:', {
         number: formattedNumber,
-        tagId: data.tagId,
+        tagId,
         ticketId: ticketId || null,
         contactId: contactId || null,
       });
       const contactTagAfterSendResult = await updateAtivaCrmContactTag({
         token: ativaCrmToken,
         phone: formattedNumber,
-        tagId: data.tagId,
+        tagId,
         contactId,
         ticketId,
       });
@@ -6465,19 +6482,19 @@ app.post('/api/whatsapp/send', async (req, res) => {
         tagResult = await addAtivaCrmTicketTag({
           token: ativaCrmToken,
           ticketId,
-          tagId: data.tagId,
+          tagId,
         });
         if (contactTagAfterSendResult) {
           tagResult = { ticket: tagResult, contact: contactTagAfterSendResult };
         }
       } else {
         if (!contactTagAfterSendResult?.success) {
-          console.warn('[AtivaCRM] Mensagem enviada, mas nenhum ticketId foi encontrado para aplicar a tag:', data.tagId);
+          console.warn('[AtivaCRM] Mensagem enviada, mas nenhum ticketId foi encontrado para aplicar a tag:', tagId);
         }
         tagResult = {
           success: Boolean(contactTagAfterSendResult?.success),
           warning: contactTagAfterSendResult?.success ? 'TAG_APPLIED_TO_CONTACT_ONLY' : 'TICKET_ID_NOT_FOUND',
-          tagId: data.tagId,
+          tagId,
           contact: contactTagAfterSendResult,
         };
       }
@@ -7381,6 +7398,17 @@ app.post('/api/theme-config', authenticateToken, requirePermission('admin.config
 // ENDPOINT DE STORAGE - UPLOAD DE ARQUIVOS
 // ============================================
 
+function getPublicStorageBaseUrl(req) {
+  if (process.env.STORAGE_BASE_URL) {
+    return process.env.STORAGE_BASE_URL.replace(/\/$/, '');
+  }
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+  const protocol = forwardedProto || req.protocol || 'http';
+  const host = forwardedHost || req.get('host') || `localhost:${PORT}`;
+  return `${protocol}://${host}/uploads`;
+}
+
 // POST /api/storage/upload
 app.post('/api/storage/upload', authenticateToken, upload.single('file'), async (req, res) => {
   try {
@@ -7393,11 +7421,9 @@ app.post('/api/storage/upload', authenticateToken, upload.single('file'), async 
     // Usar path fornecido ou nome do arquivo
     const filePath = path || req.file.filename;
     
-    // Construir URL pública
-    // STORAGE_BASE_URL é opcional - se não definido, usa localhost
-    // Em produção, configure STORAGE_BASE_URL no .env para sua URL pública
-    // Exemplo: STORAGE_BASE_URL=https://api.ativafix.com/uploads
-    const baseUrl = process.env.STORAGE_BASE_URL || `http://localhost:${PORT}/uploads`;
+    // Construir URL pública. Em produção atrás de proxy, usa os headers X-Forwarded.
+    // Também aceita STORAGE_BASE_URL=https://api.ativafix.com/uploads no .env.
+    const baseUrl = getPublicStorageBaseUrl(req);
     const publicUrl = `${baseUrl}/${req.file.filename}`;
 
     console.log('[API] Upload realizado:', {
