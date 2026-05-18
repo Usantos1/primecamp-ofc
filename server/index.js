@@ -6214,18 +6214,34 @@ async function createAtivaCrmContact({ token, name, email, phone, tagId }) {
 
   const contactName = normalizeAtivaCrmContactName(name, cleanPhone);
   const numericTagId = tagId ? Number(tagId) : null;
-  const payload = {
+  const namePayload = {
     name: contactName || cleanPhone,
     contactName: contactName || cleanPhone,
     contact_name: contactName || cleanPhone,
     displayName: contactName || cleanPhone,
+    pushName: contactName || cleanPhone,
+    nome: contactName || cleanPhone,
+    customerName: contactName || cleanPhone,
+  };
+  const payload = {
+    ...namePayload,
     email: email || '',
     phone: cleanPhone,
     number: cleanPhone,
     whatsapp: cleanPhone,
+    contact: {
+      ...namePayload,
+      email: email || '',
+      phone: cleanPhone,
+      number: cleanPhone,
+      whatsapp: cleanPhone,
+    },
   };
   if (numericTagId && Number.isFinite(numericTagId)) {
     payload.tags = [numericTagId];
+    payload.tagId = numericTagId;
+    payload.tag_id = numericTagId;
+    payload.contact.tags = [numericTagId];
   }
 
   const attempts = [];
@@ -6247,22 +6263,34 @@ async function updateAtivaCrmContact({ token, name, email, phone, contactId, tic
   const contactName = normalizeAtivaCrmContactName(name, cleanPhone);
   if (!contactName || (!cleanPhone && !contactId && !ticketId)) return null;
 
-  const basePayload = {
+  const namePayload = {
     name: contactName,
     contactName,
     contact_name: contactName,
     displayName: contactName,
+    pushName: contactName,
+    nome: contactName,
+    customerName: contactName,
+  };
+  const basePayload = {
+    ...namePayload,
     email: email || '',
   };
+  const contactPayload = {
+    ...namePayload,
+    email: email || '',
+    ...(cleanPhone ? { phone: cleanPhone, number: cleanPhone, whatsapp: cleanPhone } : {}),
+    ...(contactId ? { id: contactId, contactId, contact_id: contactId } : {}),
+  };
   const payloads = [
-    cleanPhone ? { ...basePayload, phone: cleanPhone, number: cleanPhone, whatsapp: cleanPhone } : null,
-    contactId ? { ...basePayload, id: contactId, contactId } : null,
-    ticketId ? { ...basePayload, ticketId } : null,
+    cleanPhone ? { ...basePayload, phone: cleanPhone, number: cleanPhone, whatsapp: cleanPhone, contact: contactPayload } : null,
+    contactId ? { ...basePayload, id: contactId, contactId, contact_id: contactId, contact: contactPayload } : null,
+    ticketId ? { ...basePayload, ticketId, ticket_id: ticketId, contact: contactPayload } : null,
   ].filter(Boolean);
 
   const attempts = [];
   for (const payload of payloads) {
-    for (const path of ['updatecontact', 'contactUpdate']) {
+    for (const path of ['updatecontact', 'contactUpdate', 'contacts/update', 'contact/update']) {
       const result = await postAtivaCrmApi({
         token,
         path,
@@ -6404,12 +6432,20 @@ app.post('/api/whatsapp/send', async (req, res) => {
       contactName: contactName || formattedNumber,
       contact_name: contactName || formattedNumber,
       displayName: contactName || formattedNumber,
+      pushName: contactName || formattedNumber,
+      nome: contactName || formattedNumber,
+      customerName: contactName || formattedNumber,
       email: data.email || '',
       number: formattedNumber,
       body: data.body,
       contact: {
         name: contactName || formattedNumber,
         contactName: contactName || formattedNumber,
+        contact_name: contactName || formattedNumber,
+        displayName: contactName || formattedNumber,
+        pushName: contactName || formattedNumber,
+        nome: contactName || formattedNumber,
+        customerName: contactName || formattedNumber,
         number: formattedNumber,
         phone: formattedNumber,
         whatsapp: formattedNumber,
