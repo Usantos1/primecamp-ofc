@@ -33,6 +33,9 @@ function mapSupabaseToAssistencia(supabaseProduto: any): Produto {
     
     // Estoque - usar quantidade (coluna existente)
     quantidade: Number(supabaseProduto.quantidade || 0),
+    estoque_fisico: supabaseProduto.estoque_fisico != null ? Number(supabaseProduto.estoque_fisico || 0) : undefined,
+    estoque_reservado: supabaseProduto.estoque_reservado != null ? Number(supabaseProduto.estoque_reservado || 0) : undefined,
+    estoque_disponivel: supabaseProduto.estoque_disponivel != null ? Number(supabaseProduto.estoque_disponivel || 0) : undefined,
     estoque_minimo: supabaseProduto.estoque_minimo ? Number(supabaseProduto.estoque_minimo) : undefined,
     estoque_unidades: Array.isArray(supabaseProduto.estoque_unidades) ? supabaseProduto.estoque_unidades : undefined,
     localizacao: supabaseProduto.localizacao || undefined,
@@ -232,6 +235,38 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
           .execute();
 
         if (!stockError) {
+          const osReservedByProductBranch = new Map<string, number>();
+          const { data: osItems, error: osItemsError } = await dbFrom('os_items')
+            .select('produto_id,tipo,quantidade,branch_id,ordem_servico_id')
+            .in('produto_id', productIds)
+            .execute();
+
+          const pendingOsItems = osItemsError
+            ? []
+            : (osItems || []).filter((item: any) => String(item.tipo || 'peca').toLowerCase() === 'peca');
+          const osIds = Array.from(new Set(pendingOsItems.map((item: any) => item.ordem_servico_id).filter(Boolean)));
+          let openOsById = new Map<string, any>();
+          if (osIds.length > 0) {
+            const { data: ordens } = await dbFrom('ordens_servico')
+              .select('id,status,branch_id')
+              .in('id', osIds)
+              .execute();
+            const closedStatuses = new Set(['cancelada', 'entregue', 'entregue_faturada', 'entregue_sem_reparo']);
+            openOsById = new Map(
+              (ordens || [])
+                .filter((os: any) => !closedStatuses.has(String(os.status || '').toLowerCase()))
+                .map((os: any) => [os.id, os])
+            );
+          }
+
+          pendingOsItems.forEach((item: any) => {
+            const os = openOsById.get(item.ordem_servico_id);
+            if (!os) return;
+            const branchId = item.branch_id || os.branch_id || '';
+            const key = `${item.produto_id}:${branchId}`;
+            osReservedByProductBranch.set(key, (osReservedByProductBranch.get(key) || 0) + Math.abs(Number(item.quantidade || 0)));
+          });
+
           const branchIds = Array.from(new Set((stocks || []).map((stock: any) => stock.branch_id).filter(Boolean)));
           let branchNames = new Map<string, string>();
           if (branchIds.length > 0) {
@@ -251,22 +286,33 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
             const productStocks = stocksByProduct.get(row.id) || [];
             const isAllBranches = activeBranchId === 'all';
             const stock = isAllBranches ? null : productStocks.find((item) => item.branch_id === activeBranchId);
-            const quantity = isAllBranches
-              ? productStocks.reduce((sum, item) => sum + Number(item.quantity || 0) - Number(item.reserved_quantity || 0), 0)
-              : stock ? Number(stock.quantity || 0) - Number(stock.reserved_quantity || 0) : 0;
+            const getReservedQuantity = (item: any) => Math.max(
+              Number(item.reserved_quantity || 0),
+              osReservedByProductBranch.get(`${row.id}:${item.branch_id}`) || 0
+            );
+            const physicalQuantity = isAllBranches
+              ? productStocks.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+              : stock ? Number(stock.quantity || 0) : 0;
+            const reservedQuantity = isAllBranches
+              ? productStocks.reduce((sum, item) => sum + getReservedQuantity(item), 0)
+              : stock ? getReservedQuantity(stock) : 0;
+            const quantity = Math.max(0, physicalQuantity - reservedQuantity);
             const minimumQuantity = isAllBranches
               ? productStocks.reduce((sum, item) => sum + Number(item.minimum_quantity || 0), 0)
               : stock ? Number(stock.minimum_quantity || 0) : 0;
             return {
               ...row,
               quantidade: quantity,
+              estoque_fisico: physicalQuantity,
+              estoque_reservado: reservedQuantity,
+              estoque_disponivel: quantity,
               estoque_minimo: minimumQuantity,
               estoque_unidades: productStocks.map((item) => ({
                 branch_id: item.branch_id,
                 branch_name: branchNames.get(item.branch_id) || 'Unidade',
                 quantity: Number(item.quantity || 0),
-                reserved_quantity: Number(item.reserved_quantity || 0),
-                available_quantity: Number(item.quantity || 0) - Number(item.reserved_quantity || 0),
+                reserved_quantity: getReservedQuantity(item),
+                available_quantity: Math.max(0, Number(item.quantity || 0) - getReservedQuantity(item)),
                 minimum_quantity: Number(item.minimum_quantity || 0),
                 is_active_branch: isAllBranches || item.branch_id === activeBranchId,
               })),

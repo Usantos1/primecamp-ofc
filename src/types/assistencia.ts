@@ -298,6 +298,9 @@ export interface Produto {
   
   // Estoque
   quantidade: number; // estoque_atual no Supabase (total; se estoque_grade existe, é a soma dos itens)
+  estoque_fisico?: number;
+  estoque_reservado?: number;
+  estoque_disponivel?: number;
   estoque_minimo?: number;
   estoque_unidades?: Array<{
     branch_id: string;

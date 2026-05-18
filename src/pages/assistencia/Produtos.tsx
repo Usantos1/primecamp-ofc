@@ -130,7 +130,10 @@ const ProdutoTableRow = memo(({
     if (todasAtivas) {
       const detalhes = (unidadesComEstoque.length ? unidadesComEstoque : unidades)
         .slice(0, 3)
-        .map((item) => `${item.branch_name}: ${item.available_quantity || 0}`);
+        .map((item) => {
+          const reservado = Number(item.reserved_quantity || 0);
+          return `${item.branch_name}: ${item.available_quantity || 0}${reservado > 0 ? ` disp. / ${reservado} reserv.` : ''}`;
+        });
       return {
         principal: `${unidadesComEstoque.length || unidades.length} unidade(s)`,
         detalhes,
@@ -142,7 +145,9 @@ const ProdutoTableRow = memo(({
     const outrasComEstoque = unidades.filter((item) => !item.is_active_branch && (item.available_quantity || 0) > 0);
     return {
       principal: ativa?.branch_name || '-',
-      detalhes: ativa ? [`Estoque: ${ativa.available_quantity || 0}`] : [],
+      detalhes: ativa ? [
+        `Disponível: ${ativa.available_quantity || 0}${Number(ativa.reserved_quantity || 0) > 0 ? ` • Reservado: ${ativa.reserved_quantity}` : ''}`,
+      ] : [],
       excedente: 0,
       outras: outrasComEstoque.length,
     };
@@ -214,11 +219,18 @@ const ProdutoTableRow = memo(({
         }}
         title="Clique para ver informações de estoque"
       >
-        <div className="flex items-center justify-end gap-2">
-          <span className="font-mono font-bold text-foreground">{produto.quantidade || 0}</span>
-          <Badge className={`${estoqueStatus.className} text-[10px] px-2 py-0.5 font-semibold`}>
-            {estoqueStatus.label}
-          </Badge>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center justify-end gap-2">
+            <span className="font-mono font-bold text-foreground">{produto.quantidade || 0}</span>
+            <Badge className={`${estoqueStatus.className} text-[10px] px-2 py-0.5 font-semibold`}>
+              {estoqueStatus.label}
+            </Badge>
+          </div>
+          {(produto.estoque_reservado || 0) > 0 && (
+            <span className="text-[10px] font-medium text-amber-700">
+              {produto.estoque_reservado} reserv.
+            </span>
+          )}
         </div>
       </td>
       {/* Unidade */}
@@ -1454,13 +1466,23 @@ export default function Produtos() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Estoque Atual</p>
-                    <p className="text-2xl font-bold">{selectedProduto.quantidade || selectedProduto.estoque_atual || 0}</p>
+                    <p className="text-xs text-muted-foreground">Disponível</p>
+                    <p className="text-2xl font-bold">{selectedProduto.estoque_disponivel ?? selectedProduto.quantidade ?? selectedProduto.estoque_atual ?? 0}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Reservado em OS</p>
+                    <p className="text-2xl font-semibold text-amber-700 dark:text-amber-300">{selectedProduto.estoque_reservado || 0}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Estoque Físico</p>
+                    <p className="text-2xl font-semibold">{selectedProduto.estoque_fisico ?? selectedProduto.estoque_atual ?? selectedProduto.quantidade ?? 0}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Estoque Mínimo</p>
                     <p className="text-2xl font-semibold">{selectedProduto.estoque_minimo || 0}</p>
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Preço de Venda</p>
                     <p className="text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
@@ -1470,23 +1492,23 @@ export default function Produtos() {
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Valor Total (custo)</p>
                     <p className="text-2xl font-semibold">
-                      {currencyFormatters.brl((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.preco_custo || selectedProduto.valor_compra || 0))}
+                      {currencyFormatters.brl((selectedProduto.estoque_fisico ?? selectedProduto.estoque_atual ?? selectedProduto.quantidade ?? 0) * (selectedProduto.preco_custo || selectedProduto.valor_compra || 0))}
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Valor Total em Estoque (venda)</p>
+                    <p className="text-xs text-muted-foreground">Valor Disponível em Estoque (venda)</p>
                     <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
-                      {currencyFormatters.brl((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.valor_venda || selectedProduto.preco_venda || 0))}
+                      {currencyFormatters.brl((selectedProduto.estoque_disponivel ?? selectedProduto.quantidade ?? selectedProduto.estoque_atual ?? 0) * (selectedProduto.valor_venda || selectedProduto.preco_venda || 0))}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Lucro Potencial</p>
+                    <p className="text-xs text-muted-foreground">Lucro Potencial Disponível</p>
                     <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
                       {currencyFormatters.brl(
-                        ((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.valor_venda || selectedProduto.preco_venda || 0)) - 
-                        ((selectedProduto.quantidade || selectedProduto.estoque_atual || 0) * (selectedProduto.preco_custo || selectedProduto.valor_compra || 0))
+                        ((selectedProduto.estoque_disponivel ?? selectedProduto.quantidade ?? selectedProduto.estoque_atual ?? 0) * (selectedProduto.valor_venda || selectedProduto.preco_venda || 0)) - 
+                        ((selectedProduto.estoque_disponivel ?? selectedProduto.quantidade ?? selectedProduto.estoque_atual ?? 0) * (selectedProduto.preco_custo || selectedProduto.valor_compra || 0))
                       )}
                     </p>
                   </div>
