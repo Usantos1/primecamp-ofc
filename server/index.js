@@ -5072,13 +5072,15 @@ app.post('/api/insert/:table', async (req, res) => {
     if (tableNameOnly.toLowerCase() === 'sale_items') {
       const saleId = rowsToInsert[0]?.sale_id;
       let isFaturamentoOS = false;
+      let saleBranchId = req.branchId && req.branchScope !== 'all' ? req.branchId : null;
       if (saleId) {
         try {
           const saleRow = await pool.query(
-            'SELECT ordem_servico_id FROM public.sales WHERE id = $1',
+            'SELECT ordem_servico_id, branch_id FROM public.sales WHERE id = $1',
             [saleId]
           );
           isFaturamentoOS = saleRow.rows.length > 0 && saleRow.rows[0].ordem_servico_id != null;
+          saleBranchId = saleBranchId || saleRow.rows[0]?.branch_id || null;
         } catch (e) {
           console.warn('[Insert] sale_items: erro ao checar sale ordem_servico_id:', e.message);
         }
@@ -5090,12 +5092,34 @@ app.post('/api/insert/:table', async (req, res) => {
       if (!isFaturamentoOS) {
         for (const row of rowsToInsert) {
           if (row?.produto_id && row?.quantidade && row?.produto_tipo === 'produto') {
-            const estoqueResult = await pool.query(
-              'SELECT quantidade FROM public.produtos WHERE id = $1',
-              [row.produto_id]
-            );
-            if (estoqueResult.rows.length > 0) {
-              const estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
+            let estoqueDisponivel = null;
+            if (saleBranchId) {
+              const stockResult = await pool.query(
+                `SELECT quantity, reserved_quantity
+                 FROM public.product_stocks
+                 WHERE product_id = $1 AND branch_id = $2
+                 LIMIT 1`,
+                [row.produto_id, saleBranchId]
+              );
+              if (stockResult.rows.length > 0) {
+                estoqueDisponivel = Math.max(
+                  0,
+                  Number(stockResult.rows[0].quantity || 0) - Number(stockResult.rows[0].reserved_quantity || 0)
+                );
+              }
+            }
+
+            if (estoqueDisponivel === null) {
+              const estoqueResult = await pool.query(
+                'SELECT quantidade FROM public.produtos WHERE id = $1',
+                [row.produto_id]
+              );
+              if (estoqueResult.rows.length > 0) {
+                estoqueDisponivel = Number(estoqueResult.rows[0].quantidade || 0);
+              }
+            }
+
+            if (estoqueDisponivel !== null) {
               const quantidadeSolicitada = Number(row.quantidade || 0);
               if (quantidadeSolicitada > estoqueDisponivel) {
                 console.log(`[Insert] Bloqueado: Estoque insuficiente. Solicitado: ${quantidadeSolicitada}, Disponível: ${estoqueDisponivel}`);

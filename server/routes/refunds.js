@@ -32,6 +32,121 @@ const appendBranchCondition = (query, params, req, alias = '') => {
   };
 };
 
+const isMissingRaffleTables = (error) => {
+  const message = String(error?.message || '');
+  return error?.code === '42P01' || message.includes('raffle_coupons') || message.includes('raffles');
+};
+
+async function refreshRaffleTotals(client, raffleIds = []) {
+  const uniqueRaffleIds = Array.from(new Set(raffleIds.filter(Boolean)));
+  for (const raffleId of uniqueRaffleIds) {
+    await client.query(`
+      UPDATE public.raffles
+      SET total_coupons = (
+            SELECT COUNT(*)::int
+            FROM public.raffle_coupons
+            WHERE raffle_id = $1
+              AND status IN ('valid', 'winner')
+          ),
+          total_participants = (
+            SELECT COUNT(DISTINCT customer_id)::int
+            FROM public.raffle_coupons
+            WHERE raffle_id = $1
+              AND status IN ('valid', 'winner')
+              AND customer_id IS NOT NULL
+          ),
+          eligible_sales_amount = (
+            SELECT COALESCE(SUM(source_total_amount), 0)
+            FROM (
+              SELECT DISTINCT ON (
+                COALESCE(sale_id::text, service_order_id::text, id::text)
+              )
+                source_total_amount
+              FROM public.raffle_coupons
+              WHERE raffle_id = $1
+                AND status IN ('valid', 'winner')
+              ORDER BY
+                COALESCE(sale_id::text, service_order_id::text, id::text),
+                generated_at ASC
+            ) unique_sources
+          ),
+          updated_at = NOW()
+      WHERE id = $1
+    `, [raffleId]);
+  }
+}
+
+async function cancelRaffleCouponsForRefund(client, {
+  companyId,
+  saleId,
+  refundId,
+  refundNumber,
+  userId,
+  reason,
+}) {
+  if (!companyId || !saleId) return { cancelled: 0 };
+
+  try {
+    const existingResult = await client.query(`
+      SELECT *
+      FROM public.raffle_coupons
+      WHERE company_id = $1
+        AND sale_id = $2
+        AND status <> 'cancelled'
+    `, [companyId, saleId]);
+
+    if (existingResult.rows.length === 0) {
+      return { cancelled: 0 };
+    }
+
+    const cancellationReason = reason || `Cancelado por devolução${refundNumber ? ` #${refundNumber}` : ''}`;
+    const updatedResult = await client.query(`
+      UPDATE public.raffle_coupons
+      SET status = 'cancelled',
+          cancelled_at = NOW(),
+          cancellation_reason = $3,
+          updated_at = NOW()
+      WHERE company_id = $1
+        AND sale_id = $2
+        AND status <> 'cancelled'
+      RETURNING *
+    `, [companyId, saleId, cancellationReason]);
+
+    for (const coupon of updatedResult.rows) {
+      await client.query(`
+        INSERT INTO public.raffle_audit_logs (
+          company_id, raffle_id, coupon_id, customer_id, sale_id, user_id,
+          action, origin, old_data, new_data, metadata
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, 'coupon_cancelled', 'system', $7::jsonb, $8::jsonb, $9::jsonb)
+      `, [
+        companyId,
+        coupon.raffle_id,
+        coupon.id,
+        coupon.customer_id || null,
+        saleId,
+        userId || null,
+        JSON.stringify(existingResult.rows.find((item) => item.id === coupon.id) || null),
+        JSON.stringify(coupon),
+        JSON.stringify({
+          reason: cancellationReason,
+          refund_id: refundId || null,
+          refund_number: refundNumber || null,
+        }),
+      ]);
+    }
+
+    await refreshRaffleTotals(client, updatedResult.rows.map((coupon) => coupon.raffle_id));
+    return { cancelled: updatedResult.rows.length };
+  } catch (error) {
+    if (isMissingRaffleTables(error)) {
+      console.warn('[Refunds] Tabelas de sorteio ausentes; cupons não foram cancelados:', error.message);
+      return { cancelled: 0, skipped: true };
+    }
+    throw error;
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // DEVOLUÇÕES
 // ═══════════════════════════════════════════════════════
@@ -368,13 +483,23 @@ router.post('/', async (req, res) => {
       );
     }
     
+    const raffleCancellation = await cancelRaffleCouponsForRefund(client, {
+      companyId,
+      saleId: sale_id,
+      refundId: refund.id,
+      refundNumber,
+      userId,
+      reason: `Devolução ${refundNumber}: ${reason || 'sem motivo informado'}`,
+    });
+
     await client.query('COMMIT');
     
     res.json({
       success: true,
       data: {
         refund: { ...refund, voucher_id: voucher?.id },
-        voucher
+        voucher,
+        raffle_coupons_cancelled: raffleCancellation.cancelled || 0,
       }
     });
   } catch (error) {
@@ -494,6 +619,15 @@ router.put('/:id/complete', async (req, res) => {
       }
       // Se for voucher, a venda continua como 'paid' - não muda nada
     }
+
+    const raffleCancellation = await cancelRaffleCouponsForRefund(client, {
+      companyId,
+      saleId: refund.sale_id,
+      refundId: refund.id,
+      refundNumber: refund.refund_number,
+      userId,
+      reason: `Devolução ${refund.refund_number || ''} completada`,
+    });
     
     await client.query('COMMIT');
     
@@ -501,7 +635,8 @@ router.put('/:id/complete', async (req, res) => {
       success: true, 
       message: refund.refund_method === 'cash' 
         ? 'Devolução em dinheiro completada. Venda marcada como devolvida.' 
-        : 'Devolução com voucher completada. Venda permanece paga (dinheiro no caixa).'
+        : 'Devolução com voucher completada. Venda permanece paga (dinheiro no caixa).',
+      raffle_coupons_cancelled: raffleCancellation.cancelled || 0,
     });
   } catch (error) {
     await client.query('ROLLBACK');

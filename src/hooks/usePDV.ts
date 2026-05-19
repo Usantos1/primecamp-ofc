@@ -48,6 +48,7 @@ export function useSales() {
   const auth = useAuth();
   const user = auth?.user || null;
   const profile = auth?.profile || null;
+  const activeBranchId = auth?.activeBranchId || null;
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const cancelInFlightRef = useRef(new Map<string, Promise<Sale>>());
@@ -393,27 +394,54 @@ export function useSales() {
         for (const item of items) {
           if (item.produto_id && item.produto_tipo === 'produto') {
             try {
-              // Buscar quantidade atual do produto
-              const { data: produto, error: produtoError } = await from('produtos')
-                .select('id, quantidade')
-                .eq('id', item.produto_id)
-                .single();
-              
-              if (produtoError || !produto) {
-                console.error(`Erro ao buscar produto ${item.produto_id}:`, produtoError);
-                continue;
-              }
-              
-              // Calcular nova quantidade
-              const quantidadeAtual = Number(produto.quantidade || 0);
               const quantidadeVendida = Number(item.quantidade || 0);
-              const novaQuantidade = Math.max(0, quantidadeAtual - quantidadeVendida);
-              
-              // Atualizar estoque do produto
-              const { error: stockError } = await from('produtos')
-                .update({ quantidade: novaQuantidade })
-                .eq('id', item.produto_id)
-                .execute();
+              let quantidadeAtual = 0;
+              let novaQuantidade = 0;
+              let stockError: any = null;
+
+              if (activeBranchId && activeBranchId !== 'all') {
+                const { data: branchStock, error: branchStockError } = await from('product_stocks')
+                  .select('product_id,branch_id,quantity,reserved_quantity')
+                  .eq('product_id', item.produto_id)
+                  .eq('branch_id', activeBranchId)
+                  .maybeSingle()
+                  .execute();
+
+                if (!branchStockError && branchStock) {
+                  quantidadeAtual = Number((branchStock as any).quantity || 0);
+                  novaQuantidade = Math.max(0, quantidadeAtual - quantidadeVendida);
+                  const updateResult = await from('product_stocks')
+                    .update({ quantity: novaQuantidade })
+                    .eq('product_id', item.produto_id)
+                    .eq('branch_id', activeBranchId)
+                    .execute();
+                  stockError = updateResult.error;
+                } else {
+                  stockError = branchStockError || new Error('Estoque da unidade não encontrado');
+                }
+              }
+
+              if (!activeBranchId || activeBranchId === 'all' || stockError) {
+                // Fallback legado para bases sem estoque por unidade.
+                const { data: produto, error: produtoError } = await from('produtos')
+                  .select('id, quantidade')
+                  .eq('id', item.produto_id)
+                  .single();
+                
+                if (produtoError || !produto) {
+                  console.error(`Erro ao buscar produto ${item.produto_id}:`, produtoError);
+                  continue;
+                }
+                
+                quantidadeAtual = Number(produto.quantidade || 0);
+                novaQuantidade = Math.max(0, quantidadeAtual - quantidadeVendida);
+                
+                const updateResult = await from('produtos')
+                  .update({ quantidade: novaQuantidade })
+                  .eq('id', item.produto_id)
+                  .execute();
+                stockError = updateResult.error;
+              }
               
               if (stockError) {
                 console.error(`Erro ao baixar estoque do produto ${item.produto_id}:`, stockError);
@@ -488,7 +516,7 @@ export function useSales() {
       console.error('Erro ao finalizar venda:', error);
       throw error;
     }
-  }, [sales]);
+  }, [sales, activeBranchId]);
 
   // Cancelar venda
   const cancelSale = useCallback(async (id: string, reason?: string): Promise<Sale> => {
