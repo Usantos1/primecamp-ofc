@@ -260,21 +260,25 @@ const normalizeWhatsAppLinkNumber = (value?: string | null) => {
   if (digits.length === 10 || digits.length === 11) return `55${digits}`;
   return digits;
 };
-const WhatsAppLogo = ({ className = 'h-5 w-5' }: { className?: string }) => (
-  <span className={cn('inline-flex shrink-0 items-center justify-center', className)}>
-    <img
-      src="/whatsapp-logo.png"
-      alt=""
-      className="h-full w-full object-contain"
-      onError={(e) => {
-        e.currentTarget.style.display = 'none';
-        (e.currentTarget.nextElementSibling as HTMLElement)?.classList.remove('hidden');
-      }}
+const WhatsAppIcon = ({ className = 'h-5 w-5' }: { className?: string }) => (
+  <svg
+    viewBox="0 0 32 32"
+    className={cn('shrink-0', className)}
+    aria-hidden
+    focusable="false"
+  >
+    <circle cx="16" cy="16" r="16" fill="#25D366" />
+    <path
+      fill="#FFFFFF"
+      d="M22.62 18.73c-.35-.18-2.08-1.03-2.4-1.14-.32-.12-.56-.18-.79.18-.23.35-.91 1.14-1.11 1.37-.2.23-.41.26-.76.09-.35-.18-1.49-.55-2.84-1.75-1.05-.94-1.76-2.09-1.97-2.44-.2-.35-.02-.54.15-.72.16-.16.35-.41.53-.61.18-.2.23-.35.35-.59.12-.23.06-.44-.03-.61-.09-.18-.79-1.9-1.08-2.6-.28-.68-.57-.59-.79-.6h-.67c-.23 0-.61.09-.93.44-.32.35-1.23 1.2-1.23 2.92s1.26 3.39 1.43 3.62c.18.23 2.48 3.78 6 5.3.84.36 1.49.58 2 .74.84.27 1.61.23 2.22.14.68-.1 2.08-.85 2.38-1.67.29-.82.29-1.52.2-1.67-.09-.15-.32-.23-.67-.4Z"
     />
-    <span className="hidden h-full w-full rounded-full bg-white/95 text-[10px] font-bold leading-none text-green-600" aria-hidden>
-      W
-    </span>
-  </span>
+    <path
+      fill="#FFFFFF"
+      fillRule="evenodd"
+      d="M16.02 5.33c-5.88 0-10.67 4.78-10.67 10.67 0 1.88.49 3.71 1.42 5.32L5.33 26.67l5.49-1.44a10.6 10.6 0 0 0 5.2 1.32h.01c5.88 0 10.67-4.78 10.67-10.67 0-2.85-1.11-5.53-3.13-7.54a10.6 10.6 0 0 0-7.55-3.01Zm.01 19.42h-.01a8.86 8.86 0 0 1-4.52-1.24l-.32-.19-3.25.85.87-3.17-.21-.33A8.82 8.82 0 0 1 7.15 16c0-4.89 3.98-8.87 8.88-8.87 2.37 0 4.59.92 6.27 2.6a8.8 8.8 0 0 1 2.6 6.27c0 4.89-3.98 8.75-8.87 8.75Z"
+      clipRule="evenodd"
+    />
+  </svg>
 );
 
 const InstagramLogo = ({ className = 'h-5 w-5' }: { className?: string }) => (
@@ -1243,18 +1247,20 @@ export default function JobApplicationSteps() {
       </Dialog>
 
       <Dialog open={showExitIntentModal} onOpenChange={setShowExitIntentModal}>
-        <DialogContent className="sm:max-w-[520px]" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
+        <DialogContent className="sm:max-w-[520px] rounded-2xl p-0 overflow-hidden" style={{ backgroundColor: 'hsl(var(--job-card))', borderColor: 'hsl(var(--job-card-border))' }}>
+          <div className="h-1 bg-green-600" />
+          <div className="p-6">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-2">
-              <div className="rounded-full p-2" style={{ backgroundColor: 'hsl(var(--job-primary) / 0.1)' }}>
-                <WhatsAppLogo className="h-6 w-6" />
+              <div className="rounded-full bg-green-50 p-2 text-green-600 dark:bg-green-500/10 dark:text-green-300">
+                <WhatsAppIcon className="h-6 w-6" />
               </div>
               <DialogTitle className="text-xl" style={{ color: 'hsl(var(--job-text))' }}>
                 Está com dificuldade para finalizar?
               </DialogTitle>
             </div>
             <DialogDescription className="text-base pt-2" style={{ color: 'hsl(var(--job-text-muted))' }}>
-              Seu progresso foi salvo. Antes de sair, fale com nosso suporte pelo WhatsApp ou continue a candidatura de onde parou.
+              Seu progresso foi salvo. Continue a candidatura ou fale com nosso suporte se precisar de ajuda.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-3">
@@ -1282,10 +1288,11 @@ export default function JobApplicationSteps() {
               onClick={() => window.open(supportWhatsAppUrl, '_blank', 'noopener,noreferrer')}
               className="bg-green-600 text-white hover:bg-green-700"
             >
-              <WhatsAppLogo className="mr-2 h-4 w-4" />
+              <WhatsAppIcon className="mr-2 h-4 w-4" />
               Falar no WhatsApp
             </Button>
           </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       
@@ -1358,7 +1365,7 @@ export default function JobApplicationSteps() {
         onClick={() => window.open(supportWhatsAppUrl, '_blank', 'noopener,noreferrer')}
         className="fixed bottom-4 right-4 z-40 h-12 rounded-full bg-green-600 px-4 text-white shadow-lg hover:bg-green-700 sm:bottom-6 sm:right-6"
       >
-        <WhatsAppLogo className="mr-2 h-5 w-5" />
+        <WhatsAppIcon className="mr-2 h-5 w-5" />
         Ajuda no WhatsApp
       </Button>
 
@@ -1589,7 +1596,7 @@ export default function JobApplicationSteps() {
 
                       <div className="space-y-2">
                         <Label htmlFor="whatsapp" className="flex items-center gap-2 text-sm sm:text-base font-medium" style={{ color: 'hsl(var(--job-text))' }}>
-                          <WhatsAppLogo className="h-4 w-4 sm:h-5 sm:w-5" />
+                          <WhatsAppIcon className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                           WhatsApp *
                         </Label>
                         <Input
