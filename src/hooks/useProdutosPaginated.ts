@@ -292,7 +292,14 @@ export function useProdutosPaginated(options: UseProdutosPaginatedOptions = {}) 
             );
             const physicalQuantity = isAllBranches
               ? productStocks.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
-              : stock ? Number(stock.quantity || 0) : 0;
+              : stock
+                ? Number(stock.quantity || 0) +
+                  Math.max(
+                    0,
+                    Number(row.quantidade || 0) -
+                      productStocks.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+                  )
+                : Number(row.quantidade || 0);
             const reservedQuantity = isAllBranches
               ? productStocks.reduce((sum, item) => sum + getReservedQuantity(item), 0)
               : stock ? getReservedQuantity(stock) : 0;

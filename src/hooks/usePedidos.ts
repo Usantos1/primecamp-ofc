@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { from } from '@/integrations/db/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,7 +94,8 @@ function mapDbToPedido(row: any, itens: any[]): Pedido {
 
 export function usePedidos() {
   const { toast } = useToast();
-  const { user, profile, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const { user, profile, isAdmin, activeBranchId } = useAuth();
   const userNome = profile?.display_name || user?.email || 'Usuário';
   const companyId = user?.company_id;
 
@@ -373,6 +375,43 @@ export function usePedidos() {
             continue;
           }
 
+          if (activeBranchId && activeBranchId !== 'all' && companyId) {
+            const { data: currentStock, error: stockFetchError } = await from('product_stocks')
+              .select('product_id,company_id,branch_id,quantity,reserved_quantity,minimum_quantity')
+              .eq('product_id', item.produto_id)
+              .eq('branch_id', activeBranchId)
+              .maybeSingle()
+              .execute();
+
+            if (!stockFetchError && currentStock) {
+              const currentQuantity = Number((currentStock as any).quantity || 0);
+              const { error: stockUpdateError } = await from('product_stocks')
+                .update({ quantity: currentQuantity + item.quantidade })
+                .eq('product_id', item.produto_id)
+                .eq('branch_id', activeBranchId)
+                .execute();
+              if (stockUpdateError) {
+                console.warn('[Pedidos] Estoque da unidade não atualizado:', stockUpdateError);
+              }
+            } else if (!stockFetchError) {
+              const { error: stockInsertError } = await from('product_stocks')
+                .insert({
+                  product_id: item.produto_id,
+                  company_id: companyId,
+                  branch_id: activeBranchId,
+                  quantity: item.quantidade,
+                  reserved_quantity: 0,
+                  minimum_quantity: 0,
+                })
+                .execute();
+              if (stockInsertError) {
+                console.warn('[Pedidos] Estoque da unidade não criado:', stockInsertError);
+              }
+            } else {
+              console.warn('[Pedidos] Estoque da unidade não consultado:', stockFetchError);
+            }
+          }
+
           const descricaoEntrada = `Entrada de ${formatQuantidadePedido(item.quantidade)} pelo pedido #${pedidoRef}`;
           const { error: errMov } = await from('produto_movimentacoes')
             .insert({
@@ -440,6 +479,9 @@ export function usePedidos() {
         if (errUpd) throw errUpd;
 
         await loadFromDb();
+        queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+        queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
+        queryClient.invalidateQueries({ queryKey: ['produto_movimentacoes'] });
         toast({
           title: 'Entrada concluída',
           description: `Estoque atualizado.${totalDespesa > 0 ? ' Despesa registrada como paga.' : ''}`,
@@ -456,7 +498,7 @@ export function usePedidos() {
         setDarEntradaId(null);
       }
     },
-    [loadFromDb, toast, user?.id, userNome]
+    [activeBranchId, companyId, loadFromDb, queryClient, toast, user?.id, userNome]
   );
 
   const excluirPedido = useCallback(
@@ -539,6 +581,29 @@ export function usePedidos() {
             .execute();
           if (errUpdate) throw errUpdate;
 
+          if (activeBranchId && activeBranchId !== 'all') {
+            const { data: currentStock, error: stockFetchError } = await from('product_stocks')
+              .select('product_id,branch_id,quantity')
+              .eq('product_id', item.produto_id)
+              .eq('branch_id', activeBranchId)
+              .maybeSingle()
+              .execute();
+
+            if (!stockFetchError && currentStock) {
+              const currentQuantity = Number((currentStock as any).quantity || 0);
+              const { error: stockUpdateError } = await from('product_stocks')
+                .update({ quantity: Math.max(0, currentQuantity - item.quantidade) })
+                .eq('product_id', item.produto_id)
+                .eq('branch_id', activeBranchId)
+                .execute();
+              if (stockUpdateError) {
+                console.warn('[Pedidos] Estoque da unidade não estornado:', stockUpdateError);
+              }
+            } else if (stockFetchError) {
+              console.warn('[Pedidos] Estoque da unidade não consultado para estorno:', stockFetchError);
+            }
+          }
+
           const { error: errMov } = await from('produto_movimentacoes')
             .insert({
               produto_id: item.produto_id,
@@ -595,6 +660,9 @@ export function usePedidos() {
         if (errPedidoDelete) throw errPedidoDelete;
 
         await loadFromDb();
+        queryClient.invalidateQueries({ queryKey: ['produtos-paginated'] });
+        queryClient.invalidateQueries({ queryKey: ['produtos-assistencia'] });
+        queryClient.invalidateQueries({ queryKey: ['produto_movimentacoes'] });
         toast({
           title: 'Pedido estornado',
           description: `Estoque revertido e pedido removido.${totalDespesa > 0 && !billRemovida ? ' Confira a despesa no financeiro.' : ''}`,
@@ -622,7 +690,7 @@ export function usePedidos() {
         setEstornarId(null);
       }
     },
-    [isAdmin, loadFromDb, pedidos, pedidosFromStorage, toast, user?.id, userNome]
+    [activeBranchId, isAdmin, loadFromDb, pedidos, pedidosFromStorage, queryClient, toast, user?.id, userNome]
   );
 
   return {

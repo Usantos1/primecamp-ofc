@@ -717,7 +717,9 @@ export function ProductFormOptimized({
   const quantidadeAtualForm = watch('quantidade');
   const estoqueGradeAtual = watch('estoque_grade');
   const motivoAjusteEstoque = watch('motivo_ajuste_estoque');
-  const estoqueOriginal = Number(produto?.quantidade ?? produto?.estoque_atual ?? 0);
+  const estoqueOriginal = Number(
+    produto?.estoque_fisico ?? produto?.quantidade ?? produto?.estoque_atual ?? 0
+  );
   const estoqueAtualCalculado = estoqueGradeAtual?.itens
     ? Object.values(estoqueGradeAtual.itens).reduce((total, qtd) => total + (Number(qtd) || 0), 0)
     : Number(quantidadeAtualForm || 0);
@@ -745,6 +747,11 @@ export function ProductFormOptimized({
         const valorVenda = Number(produto.valor_venda || produto.preco_venda || 0);
         const valorParcelado = produto.valor_parcelado_6x ? Number(produto.valor_parcelado_6x) : undefined;
         
+        const estoqueFisico =
+          produto.estoque_fisico != null
+            ? Number(produto.estoque_fisico || 0)
+            : Number(produto.quantidade || produto.estoque_atual || 0);
+
         reset({
           nome: produto.nome || produto.descricao || '',
           codigo: produto.codigo,
@@ -758,7 +765,7 @@ export function ProductFormOptimized({
           valor_venda: valorVenda,
           valor_parcelado_6x: valorParcelado,
           margem_percentual: produto.margem_percentual || produto.margem_lucro,
-          quantidade: produto.quantidade || produto.estoque_atual || 0,
+          quantidade: estoqueFisico,
           estoque_minimo: produto.estoque_minimo || 0,
           localizacao: produto.localizacao || '',
           unidade: produto.unidade || 'UN',
@@ -991,7 +998,9 @@ export function ProductFormOptimized({
         if (isEditing) payload.estoque_grade = null as any; // limpar grade se voltar a estoque simples
       }
 
-      const quantidadeAnterior = Number(produto?.quantidade ?? produto?.estoque_atual ?? 0);
+      const quantidadeAnterior = Number(
+        produto?.estoque_fisico ?? produto?.quantidade ?? produto?.estoque_atual ?? 0
+      );
       const quantidadeNova = payload.quantidade !== undefined ? Number(payload.quantidade) : quantidadeAnterior;
       const estoqueFoiAlterado = isEditing && Number.isFinite(quantidadeNova) && quantidadeNova !== quantidadeAnterior;
       const motivoAjuste = data.motivo_ajuste_estoque?.trim() || '';

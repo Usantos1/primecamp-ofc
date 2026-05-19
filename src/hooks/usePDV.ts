@@ -408,7 +408,25 @@ export function useSales() {
                   .execute();
 
                 if (!branchStockError && branchStock) {
-                  quantidadeAtual = Number((branchStock as any).quantity || 0);
+                  const branchQuantity = Number((branchStock as any).quantity || 0);
+                  const [{ data: allStocks }, { data: produtoLegacy }] = await Promise.all([
+                    from('product_stocks')
+                      .select('quantity')
+                      .eq('product_id', item.produto_id)
+                      .execute(),
+                    from('produtos')
+                      .select('id,quantidade')
+                      .eq('id', item.produto_id)
+                      .maybeSingle()
+                      .execute(),
+                  ]);
+                  const totalBranchStock = (allStocks || []).reduce(
+                    (sum: number, stock: any) => sum + Number(stock.quantity || 0),
+                    0
+                  );
+                  const legacyQuantity = Number((produtoLegacy as any)?.quantidade || 0);
+                  const legacyDelta = Math.max(0, legacyQuantity - totalBranchStock);
+                  quantidadeAtual = branchQuantity + legacyDelta;
                   novaQuantidade = Math.max(0, quantidadeAtual - quantidadeVendida);
                   const updateResult = await from('product_stocks')
                     .update({ quantity: novaQuantidade })
@@ -416,6 +434,15 @@ export function useSales() {
                     .eq('branch_id', activeBranchId)
                     .execute();
                   stockError = updateResult.error;
+                  if (!stockError && produtoLegacy) {
+                    const legacyUpdateResult = await from('produtos')
+                      .update({ quantidade: Math.max(0, legacyQuantity - quantidadeVendida) })
+                      .eq('id', item.produto_id)
+                      .execute();
+                    if (legacyUpdateResult.error) {
+                      console.warn(`Erro ao sincronizar estoque legado do produto ${item.produto_id}:`, legacyUpdateResult.error);
+                    }
+                  }
                 } else {
                   stockError = branchStockError || new Error('Estoque da unidade não encontrado');
                 }

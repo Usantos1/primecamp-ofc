@@ -5102,9 +5102,22 @@ app.post('/api/insert/:table', async (req, res) => {
                 [row.produto_id, saleBranchId]
               );
               if (stockResult.rows.length > 0) {
+                const legacyResult = await pool.query(
+                  'SELECT quantidade FROM public.produtos WHERE id = $1',
+                  [row.produto_id]
+                );
+                const totalStocksResult = await pool.query(
+                  'SELECT COALESCE(SUM(quantity), 0) AS total_quantity FROM public.product_stocks WHERE product_id = $1',
+                  [row.produto_id]
+                );
+                const legacyQuantity = Number(legacyResult.rows[0]?.quantidade || 0);
+                const totalBranchQuantity = Number(totalStocksResult.rows[0]?.total_quantity || 0);
+                const legacyDelta = Math.max(0, legacyQuantity - totalBranchQuantity);
                 estoqueDisponivel = Math.max(
                   0,
-                  Number(stockResult.rows[0].quantity || 0) - Number(stockResult.rows[0].reserved_quantity || 0)
+                  Number(stockResult.rows[0].quantity || 0) +
+                    legacyDelta -
+                    Number(stockResult.rows[0].reserved_quantity || 0)
                 );
               }
             }
